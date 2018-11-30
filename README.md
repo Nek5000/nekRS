@@ -17,7 +17,7 @@ make install
 
 ```sh
 make tests
-cd tests/gmsh-test
+cd tests/gmsh/gmsh-test
 mpirun -np 4 ./gmsh-test twistedrod.msh 
 ```
 
