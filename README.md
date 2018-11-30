@@ -24,7 +24,7 @@ mpirun -np 4 ./gmsh-test twistedrod.msh
 ## C Interface
 
 ```sh
-int parRSB_partMesh(long long *egl, long long *vl, int negl,
+int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglcon, long long *vlcon, int neglcon,
                     int nve, MPI_Comm comm)
 ```
