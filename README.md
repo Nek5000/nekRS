@@ -3,6 +3,7 @@
 Parallel domain partitioning tool using recursive spectral bisection.
 
 * Computes high quality partitionings
+* Allows any number of paritions (generalization to non-power-of-2)
 * Supports QUAD and HEX elements
 * Requires MPI and [gslib](https://github.com/gslib/gslib)
 
@@ -23,6 +24,8 @@ mpirun -np 4 ./gmsh-test twistedrod.msh
 
 ## C Interface
 
+We provide a simple C interface to use parRSB as a library.
+
 ```sh
 int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglin, long long *vlin, int neglin,
@@ -37,7 +40,7 @@ vl      (out)    ... local list of vertex IDs for all elements in egl
 negl    (in/out) ... on input dimension of egl / on output local partition size
 
 eglin   (in)     ... local list of global element IDs
-vlin    (in)     ... local list of vertex IDs for all elements in eglin
+vlin    (in)     ... local list of vertex IDs for all elements in eglin (connectivity between elements) 
 neglin  (in)     ... length of eglin
 nve     (in)     ... number of vertices (QUAD:4 / HEX:8)
 comm    (in)     ... MPI Communicator (size determines number of partitions)
