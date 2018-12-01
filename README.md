@@ -1,10 +1,9 @@
 # parRSB
 
-Parallel domain partitioning tool using recursive spectral bisection.
+Parallel mesh partitioning tool
 
-* Computes high quality partitionings
+* Computes high quality partitionings using recursive spectral bisection (RSB)
 * Allows any number of paritions (generalization to non-power-of-2)
-* Supports QUAD and HEX elements
 * Requires MPI and [gslib](https://github.com/gslib/gslib)
 
 ## Build Instruction
