@@ -32,7 +32,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     int nve, MPI_Comm comm) 
 {
   GenmapHandle h;
-  h->Read = NULL;
+  GenmapInit(&h, comm, "interface");
 
   // Check if negl is large enough
   GenmapLong neglcon_ = (GenmapLong) neglcon;

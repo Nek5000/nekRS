@@ -35,3 +35,9 @@ int GenmapRead(GenmapHandle h, void* data) {
 int GenmapWrite(GenmapHandle h, char *fileNameBase) {
   return h->Write(h, fileNameBase);
 }
+
+int GenmapCreateHandle_interface(GenmapHandle h) {
+  h->Read = NULL;
+
+  return 0;
+}

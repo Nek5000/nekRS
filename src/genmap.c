@@ -35,6 +35,7 @@ int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
 //
 int GenmapRegister() {
   int ierr;
+  ierr = GenmapRegisterReader("interface", GenmapCreateHandle_interface);
   ierr |= GenmapRegisterReader("gmsh", GenmapCreateHandle_gmsh);
   return ierr;
 }

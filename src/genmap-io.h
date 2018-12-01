@@ -3,4 +3,7 @@
 
 #include "genmap-gmsh.h"
 
+int GenmapCreateHandle_interface(GenmapHandle h);
+int GenmapRead_interface(GenmapHandle h, void *data);
+
 #endif

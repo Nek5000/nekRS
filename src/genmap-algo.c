@@ -418,7 +418,7 @@ void GenmapRSB(GenmapHandle h) {
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
   GenmapElements elements = GenmapGetElements(h);
-  int maxIter = 50;
+  int maxIter = 150;
 
   if(h->Id(h->global) == 0) printf("Running RSB ... ");
 #if defined(GENMAP_MPI)
@@ -527,7 +527,8 @@ void GenmapRSB(GenmapHandle h) {
     GenmapCreateComm(&(h->local), local);
     crystal_init(&cr, &(h->local->gsComm));
 
-    comm_scan(out, &(h->local->gsComm), gs_long, gs_add, &lelt, 1, buf);
+    lelt_ = (GenmapLong)lelt;
+    comm_scan(out, &(h->local->gsComm), gs_long, gs_add, &lelt_, 1, buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
     id = h->Id(h->local);
