@@ -7,7 +7,7 @@ FC?=mpif77
 
 SRCROOT=.
 
-GSLIBDIR=$(GSLIBPATH)/src
+GSLIBDIR=$(GSLIBPATH)
 
 SRCDIR  =$(SRCROOT)/src
 INCDIR  =$(SRCDIR)
@@ -18,15 +18,15 @@ TARGET=parRSB
 TESTS=$(TESTDIR)/gmsh/gmsh-test
 LIB=src/lib$(TARGET).a
 
-INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)
+INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)/include
 
-ifneq (,$(strip $(PREFIX)))
-INSTALL_ROOT = $(PREFIX)
+ifneq (,$(strip $(DESTDIR)))
+INSTALL_ROOT = $(DESTDIR)
 else
-INSTALL_ROOT = $(SRCROOT)/lib
+INSTALL_ROOT = $(SRCROOT)/build
 endif
 
-TESTLDFLAGS:=-L$(INSTALL_ROOT) -l$(TARGET) -L $(GSLIBDIR)/../lib -lgs $(LDFLAGS)
+TESTLDFLAGS:=-L$(SRCDIR) -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
 
 # Main source
 CSRCS:= $(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-algo.c \
@@ -55,12 +55,15 @@ ifneq ($(UNDERSCORE),0)
 endif
 
 .PHONY: all
-all: check lib
+all: check lib install
 
 .PHONY: install
 install: lib
-	@mkdir -p $(INSTALL_ROOT) 2>/dev/null
-	@cp -v $(LIB) $(INSTALL_ROOT) 2>/dev/null
+	@mkdir -p $(INSTALL_ROOT)/lib 2>/dev/null
+	@cp -v $(LIB) $(INSTALL_ROOT)/lib 2>/dev/null
+	@mkdir -p $(INSTALL_ROOT)/include 2>/dev/null
+	@cp $(SRCDIR)/*.h $(INSTALL_ROOT)/include 2>/dev/null
+
 
 .PHONY: $(TARGET)
 lib: $(SRCOBJS)
@@ -82,7 +85,7 @@ $(FOBJS): %.o: %.f
 .PHONY: tests
 tests: $(TESTS)
 
-$(TESTS): lib install
+$(TESTS): lib
 	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) $@.c -o $@ $(TESTLDFLAGS)
 
 .PHONY: clean
