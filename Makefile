@@ -41,7 +41,7 @@ FOBJS:=$(FSRCS:.f=.o)
 
 SRCOBJS :=$(COBJS) $(FOBJS)
 
-PP=
+PP= -DGENMAP_LONG_LONG
 ifneq ($(MPI),0)
   PP += -DGENMAP_MPI
 endif

@@ -528,7 +528,7 @@ void GenmapRSB(GenmapHandle h) {
     crystal_init(&cr, &(h->local->gsComm));
 
     lelt_ = (GenmapLong)lelt;
-    comm_scan(out, &(h->local->gsComm), gs_long, gs_add, &lelt_, 1, buf);
+    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1, buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
     id = h->Id(h->local);

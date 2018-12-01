@@ -37,7 +37,7 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
       }
     }
 
-    gs(data, gs_long, gs_max, 0, c->verticesHandle, NULL);
+    gs(data, genmap_gs_long, gs_max, 0, c->verticesHandle, NULL);
 
     for(GenmapInt j = 0; j < numPoints; j++) {
       if(data[j] > 0) {

@@ -42,7 +42,7 @@ int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
     for(GenmapInt j = 0; j < nv; j++)
       ucv[nv * i + j] = u->data[i];
 
-  gs(ucv, gs_double, gs_add, 0, c->verticesHandle, NULL);
+  gs(ucv, genmap_gs_scalar, gs_add, 0, c->verticesHandle, NULL);
 
   for(GenmapInt i = 0; i < lelt; i++) {
     v->data[i] = weights->data[i] * u->data[i];
@@ -94,7 +94,7 @@ int GenmapAxInit(GenmapHandle h, GenmapComm c,
     for(GenmapInt j = 0; j < nv; j++)
       u[nv * i + j] = 1.;
 
-  gs(u, gs_double, gs_add, 0, c->verticesHandle, NULL);
+  gs(u, genmap_gs_scalar, gs_add, 0, c->verticesHandle, NULL);
 
   assert(weights->size == lelt);
 
