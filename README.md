@@ -40,7 +40,7 @@ vl      (out)    ... local list of vertex IDs for all elements in egl
 negl    (in/out) ... on input dimension of egl / on output local partition size
 
 eglin   (in)     ... local list of global element IDs
-vlin    (in)     ... local list of vertex IDs making up each element in eglin (mesh connectivity) 
+vlin    (in)     ... local list of vertex IDs making up each element in eglin (nodal graph) 
 neglin  (in)     ... length of eglin
 nve     (in)     ... number of vertices (QUAD:4 / HEX:8)
 comm    (in)     ... MPI Communicator (size determines number of partitions)
