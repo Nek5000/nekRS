@@ -13,7 +13,7 @@ int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha,
   assert(alpha->size == beta->size + 1);
   assert(alpha->size == eVector->size);
 
-  int j;
+  GenmapInt  i, j;
   GenmapInt n = alpha->size;
 
   GenmapVector x, y, t;
@@ -31,7 +31,7 @@ int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha,
     for(j = 0; j < iter; j++) {
       // y = Ax
       y->data[0] = alpha->data[0] * x->data[0] + beta->data[0] * x->data[1];
-      for(GenmapInt i = 1; i < n - 1; i++) {
+      for(i = 1; i < n - 1; i++) {
         y->data[i] = beta->data[i - 1] * x->data[i - 1] + alpha->data[i] *
                      x->data[i] +
                      beta->data[i] * x->data[i + 1];
@@ -73,7 +73,8 @@ int GenmapPowerIterNew(GenmapVector eVector, void (*Ax)(GenmapVector ax,
   GenmapCreateVector(&y, n);
   GenmapCopyVector(x, init);
 
-  for(GenmapInt j = 0; j < iter; j++) {
+  GenmapInt j;
+  for(j = 0; j < iter; j++) {
     // y = Ax
     Ax(y, x, data);
     // Normalize by inf-norm(y)
@@ -108,7 +109,8 @@ int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
     GenmapCreateVector(&y, n);
 
     GenmapCopyVector(x, init);
-    for(GenmapInt j = 0; j < iter; j++) {
+    GenmapInt j;
+    for(j = 0; j < iter; j++) {
       // Ay = x
       GenmapSymTriDiagSolve(y, x, alpha, beta);
 
@@ -145,7 +147,8 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
 
   GenmapCopyVector(x, b);
 
-  for(GenmapInt i = 0; i < n - 1; i++) {
+  GenmapInt i;
+  for(i = 0; i < n - 1; i++) {
     GenmapScalar m = (beta->data[i] / diag->data[i]);
     x->data[i + 1] = x->data[i + 1] - m * x->data[i];
     diag->data[i + 1] = diag->data[i + 1] - m * beta->data[i];
@@ -153,7 +156,7 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
 
   x->data[n - 1] = x->data[n - 1] / diag->data[n - 1];
 
-  for(GenmapInt i = n - 2; i >= 0; i--) {
+  for(i = n - 2; i >= 0; i--) {
     x->data[i] = (x->data[i] - beta->data[i] * x->data[i + 1]) /
                  diag->data[i];
   }
@@ -178,13 +181,14 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   // Create vector q1 orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&q1, lelt);
   GenmapCopyVector(q1, init);
-  for(GenmapInt i = 0;  i < lelt; i++) {
+  GenmapInt i;
+  for(i = 0;  i < lelt; i++) {
     sum += q1->data[i];
   }
 
   GenmapGop(c, &sum, 1, GENMAP_SCALAR, GENMAP_SUM);
 
-  for(GenmapInt i = 0;  i < lelt; i++) {
+  for(i = 0;  i < lelt; i++) {
     q1->data[i] -= sum / (GenmapScalar)h->header->nel;
   }
 
@@ -209,7 +213,8 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   GenmapCreateVector(&weights, lelt);
   h->AxInit(h, c, weights);
 
-  for(GenmapInt k = 0; k < iter; k++) {
+  GenmapInt k;
+  for(k = 0; k < iter; k++) {
     // Store q1
     GenmapCreateVector(&(*q)[k], lelt);
     GenmapCopyVector((*q)[k], q1);
@@ -263,7 +268,8 @@ void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
   *min = 1; *max = -1;
 
   GenmapElements e = GenmapGetElements(h);
-  for(int i = 0; i < h->header->lelt; i++) {
+  GenmapInt i;
+  for(i = 0; i < h->header->lelt; i++) {
     if(e[i].fiedler < *min) {
       *min = e[i].fiedler;
     }
@@ -286,7 +292,8 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
   GenmapInt lelt = h->header->lelt;
   GenmapElements elements = GenmapGetElements(h);
 
-  for(GenmapElements p = elements, e = p + lelt; p != e; p++) {
+  GenmapElements p, e;
+  for(p = elements, e = p + lelt; p != e; p++) {
     GenmapInt id;
     for(id = 0; id < np; id++) {
       GenmapScalar start = min + (range * id) / nbins;
@@ -312,12 +319,13 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapCreateVector(&initVec, h->header->lelt);
   GenmapElements elements = GenmapGetElements(h);
 
+  GenmapInt i;
   if(global) {
-    for(GenmapInt i = 0;  i < lelt; i++) {
+    for(i = 0;  i < lelt; i++) {
       initVec->data[i] = (GenmapScalar) elements[i].globalId;
     }
   } else {
-    for(GenmapInt i = 0;  i < lelt; i++) {
+    for(i = 0;  i < lelt; i++) {
       initVec->data[i] = elements[i].fiedler;
     }
   }
@@ -336,32 +344,33 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapCreateVector(&evInit, iter);
   sum = 0.0;
   // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
-  for(GenmapInt i = 0; i < iter; i++) {
+  for(i = 0; i < iter; i++) {
     evInit->data[i] = i + 1;
     sum += evInit->data[i];
   }
-  for(GenmapInt i = 0;  i < iter; i++) {
+  for(i = 0;  i < iter; i++) {
     evInit->data[i] -= sum / iter;
   }
 
   GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 500);
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
+  GenmapInt j;
   GenmapCreateZerosVector(&evLanczos, lelt);
-  for(GenmapInt i = 0; i < lelt; i++) {
-    for(GenmapInt j = 0; j < iter; j++) {
+  for(i = 0; i < lelt; i++) {
+    for(j = 0; j < iter; j++) {
       evLanczos->data[i] += q[j]->data[i] * evTriDiag->data[j];
     }
   }
 
   GenmapScalar lNorm = 0;
-  for(GenmapInt i = 0; i < lelt; i++) {
+  for(i = 0; i < lelt; i++) {
     lNorm += evLanczos->data[i] * evLanczos->data[i];
   }
 
   GenmapGop(c, &lNorm, 1, GENMAP_SCALAR, GENMAP_SUM);
   GenmapScaleVector(evLanczos, evLanczos, 1. / sqrt(lNorm));
-  for(GenmapInt i = 0; i < lelt; i++) {
+  for(i = 0; i < lelt; i++) {
     elements[i].fiedler = evLanczos->data[i];
   }
 
@@ -372,7 +381,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
   GenmapDestroyVector(evInit);
-  for(int i = 0; i < iter; i++) {
+  for(i = 0; i < iter; i++) {
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
@@ -389,7 +398,8 @@ void GenmapPrimeFactors(GenmapInt n, GenmapInt *pCount,
   GenmapMalloc((size_t)countMax, primes);
 
   while(nLocal > 1) {
-    for(GenmapInt p = 2; p * p <= nLocal; p++) {
+    GenmapInt p;
+    for(p = 2; p * p <= nLocal; p++) {
       if(nLocal % p == 0) {
         while(nLocal % p == 0) nLocal /= p;
 
@@ -448,9 +458,10 @@ void GenmapRSB(GenmapHandle h) {
 
 #if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
     MPI_Barrier(h->local->gsComm.c);
-    for(int i = 0; i < h->Np(h->local); i++) {
+    GenmapInt i, j;
+    for(i = 0; i < h->Np(h->local); i++) {
       if(i == h->Id(h->local)) {
-        for(int j = 0; j < lelt; j++)
+        for(j = 0; j < lelt; j++)
           printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
                  h->Id(h->global),
                  elements[j].globalId, elements[j].fiedler);
@@ -495,7 +506,8 @@ void GenmapRSB(GenmapHandle h) {
     GenmapLong downLimit = start;
     do {
       GenmapInt end = upLimit - start < lelt ? (GenmapInt) (upLimit - start) : lelt;
-      for(GenmapInt i = (GenmapInt) (downLimit - start); i < end;
+      GenmapInt i;
+      for(i = (GenmapInt) (downLimit - start); i < end;
           i++) elements[i].proc = idCount - 1;
       downLimit = upLimit;
       idCount++;

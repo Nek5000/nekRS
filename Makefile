@@ -62,7 +62,7 @@ install: lib
 	@mkdir -p $(INSTALL_ROOT)/lib 2>/dev/null
 	@cp -v $(LIB) $(INSTALL_ROOT)/lib 2>/dev/null
 	@mkdir -p $(INSTALL_ROOT)/include 2>/dev/null
-	@cp $(SRCDIR)/*.h $(INSTALL_ROOT)/include 2>/dev/null
+	@cp $(SRCDIR)/parRSB.h $(INSTALL_ROOT)/include 2>/dev/null
 
 
 .PHONY: $(TARGET)

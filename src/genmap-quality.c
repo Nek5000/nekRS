@@ -14,8 +14,9 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapMalloc(numPoints, &data);
 
   GenmapElements elements = GenmapGetElements(h);
-  for(GenmapInt i = 0; i < lelt; i++) {
-    for(int j = 0; j < nv; j++) {
+  GenmapInt i, j;
+  for(i = 0; i < lelt; i++) {
+    for(j = 0; j < nv; j++) {
       data[i * nv + j] = elements[i].vertices[j];
     }
   }
@@ -26,20 +27,20 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
                                0);
 
   GenmapInt neighborsCount = 0;
-  for(GenmapInt i = 0; i < np; i++) {
+  for(i = 0; i < np; i++) {
     if(i != id) {
-      for(GenmapInt j = 0; j < numPoints; j++) {
+      for(j = 0; j < numPoints; j++) {
         data[j] = -1;
       }
     } else {
-      for(GenmapInt j = 0; j < numPoints; j++) {
+      for(j = 0; j < numPoints; j++) {
         data[j] = id + 1;
       }
     }
 
     gs(data, genmap_gs_long, gs_max, 0, c->verticesHandle, NULL);
 
-    for(GenmapInt j = 0; j < numPoints; j++) {
+    for(j = 0; j < numPoints; j++) {
       if(data[j] > 0) {
         neighborsCount++;
         break;

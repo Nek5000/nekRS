@@ -60,10 +60,11 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   h->elementArray.n = neglcon;
 
   GenmapElements e = GenmapGetElements(h);
+  GenmapInt i,j;
 
-  for(int i = 0; i < neglcon; i++) {
+  for(i = 0; i < neglcon; i++) {
     e[i].globalId = eglcon[i];
-    for(int j = 0; j<nve; j++) {
+    for(j = 0; j<nve; j++) {
       e[i].vertices[j] = vlcon[i*nve+j];
     }
   }
@@ -75,9 +76,9 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
 
   *negl = h->header->lelt;
 
-  for(int i = 0; i < *negl; i++) {
+  for(i = 0; i < *negl; i++) {
     egl[i] = elements[i].globalId;
-    for(int j = 0; j < nv; j++) {
+    for(j = 0; j < nv; j++) {
       vl[nv * i + j] = elements[i].vertices[j];
     }
   }

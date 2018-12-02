@@ -50,7 +50,8 @@ int GenmapRead_gmsh(GenmapHandle h, void *data) {
     GenmapCalloc(NglobalNodes, &VX);
     GenmapCalloc(NglobalNodes, &VY);
     GenmapCalloc(NglobalNodes, &VZ);
-    for(GenmapInt i = 0; i < NglobalNodes; i++) {
+    GenmapInt i;
+    for(i = 0; i < NglobalNodes; i++) {
       status = fgets(buf, BUFSIZ, fp);
       if(status == NULL) {
         printf("Error reading data in %s:%d.\n", __FILE__, __LINE__);
@@ -74,7 +75,8 @@ int GenmapRead_gmsh(GenmapHandle h, void *data) {
     GenmapElements elements = GenmapGetElements(h);
     GenmapLong count = 0;
 
-    for(GenmapLong i = 0; i < NglobalElements; i++) {
+    GenmapLong j;
+    for(j = 0; j < NglobalElements; j++) {
       status = fgets(buf, BUFSIZ, fp);
       GenmapLong elementId;
       GenmapInt elementType;
@@ -152,15 +154,16 @@ int GenmapRead_gmsh(GenmapHandle h, void *data) {
 
   if(rank == GENMAP_ROOT) {
 #if defined(GENMAP_DEBUG)
-    for(int i = 0; i < size; i++) {
+    for(i = 0; i < size; i++) {
       printf("in[%d]="GenmapLongFormat"\n", i, in[i]);
     }
 #endif
     GenmapElements elements = GenmapGetElements(h);
     GenmapInt proc = 0;
-    for(GenmapLong i = 0; i < NglobalElements; i++) {
-      if(i >= in[proc]) proc++;
-      elements[i].proc = proc;
+    GenmapLong j;
+    for(j = 0; j < NglobalElements; j++) {
+      if(j >= in[proc]) proc++;
+      elements[j].proc = proc;
     }
   }
 
@@ -201,7 +204,8 @@ int GenmapWriteGmsh(GenmapScalar *VX, GenmapScalar *VY,
 
   fprintf(fp, "$Nodes\n");
   fprintf(fp, GenmapLongFormat"\n", Nnodes);
-  for(GenmapLong i = 0; i < Nnodes; i++) {
+  GenmapLong i;
+  for(i = 0; i < Nnodes; i++) {
     fprintf(fp,
             GenmapLongFormat" "GenmapScalarFormat" "GenmapScalarFormat" "GenmapScalarFormat
             "\n",
@@ -213,7 +217,7 @@ int GenmapWriteGmsh(GenmapScalar *VX, GenmapScalar *VY,
   fprintf(fp, GenmapLongFormat"\n", Nelements);
   GenmapLong j1, j2, j3, hexid;
   j1 = j2 = j3 = 9; hexid = GENMAP_GMSH_HEX;
-  for(GenmapLong i = 0; i < Nelements; i++) {
+  for(i = 0; i < Nelements; i++) {
     GenmapLong v1 = EToV[8 * i + 0];
     GenmapLong v2 = EToV[8 * i + 1];
     GenmapLong v3 = EToV[8 * i + 2];

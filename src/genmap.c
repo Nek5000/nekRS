@@ -53,9 +53,10 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
   char *registeredReader;
   size_t matchLen = 0, matchIdx = 0;
 
-  for(size_t i = 0; i < GenmapNumReaders; i++) {
+  size_t i, j;
+  for(i = 0; i < GenmapNumReaders; i++) {
     registeredReader = GenmapReaders[i].name;
-    for(size_t j = 0; reader[j]
+    for(j = 0; reader[j]
         && (reader[j] == registeredReader[j]); j++) {
       if(j > matchLen) {
         matchLen = j;
