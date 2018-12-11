@@ -428,7 +428,7 @@ void GenmapRSB(GenmapHandle h) {
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
   GenmapElements elements = GenmapGetElements(h);
-  int maxIter = 150;
+  int maxIter = 50;
 
   if(h->Id(h->global) == 0) printf("Running RSB ... ");
 #if defined(GENMAP_MPI)
