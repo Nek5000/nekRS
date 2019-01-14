@@ -5,6 +5,7 @@ int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
   comm_init(&(*c)->gsComm, ce);
   (*c)->verticesHandle = NULL;
   (*c)->laplacianWeights = NULL;
+  buffer_init(&(*c)->buf,1024);
   return 0;
 }
 

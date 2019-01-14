@@ -10,7 +10,7 @@ Parition mesh using Nek5000's vertex connectivity (con) file.
 
 MPI_Comm comm = MPI_COMM_WORLD;
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
   MPI_Init(&argc, &argv);
   int myid, np;
