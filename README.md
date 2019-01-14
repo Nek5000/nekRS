@@ -9,14 +9,13 @@ Parallel mesh partitioning tool
 ## Build Instruction
 
 ```sh
-make CC=mpicc GSLIBPATH=<path to gslib> 
-make install
+make CC=mpicc GSLIBPATH=<path to gslib>/build 
 ```
 
 ## Build & Run Example
 
 ```sh
-make tests
+make CC=mpicc GSLIBPATH=<path to gslib> tests
 cd tests/gmsh/gmsh-test
 mpirun -np 4 ./gmsh-test twistedrod.msh 
 ```
@@ -30,6 +29,8 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglin, long long *vlin, int neglin,
                     int nve, MPI_Comm comm)
 ```
+
+For more details, see `tests/con/con-test.c`.
 
 ### Parameters
 

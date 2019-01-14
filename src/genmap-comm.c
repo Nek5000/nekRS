@@ -5,16 +5,18 @@ int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
   comm_init(&(*c)->gsComm, ce);
   (*c)->verticesHandle = NULL;
   (*c)->laplacianWeights = NULL;
-
   return 0;
 }
 
 int GenmapDestroyComm(GenmapComm c) {
+  if(&c->buf)
+    buffer_free(&c->buf);
   if(c->verticesHandle)
     gs_free(c->verticesHandle);
   if(c->laplacianWeights)
     GenmapFree(c->laplacianWeights);
-  comm_free(&c->gsComm);
+  if(&c->gsComm)
+    comm_free(&c->gsComm);
   GenmapFree(c);
 
   return 0;
@@ -43,7 +45,7 @@ int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
     for(j = 0; j < nv; j++)
       ucv[nv * i + j] = u->data[i];
 
-  gs(ucv, genmap_gs_scalar, gs_add, 0, c->verticesHandle, NULL);
+  gs(ucv, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
 
   for(i = 0; i < lelt; i++) {
     v->data[i] = weights->data[i] * u->data[i];
@@ -96,7 +98,7 @@ int GenmapAxInit(GenmapHandle h, GenmapComm c,
     for(j = 0; j < nv; j++)
       u[nv * i + j] = 1.;
 
-  gs(u, genmap_gs_scalar, gs_add, 0, c->verticesHandle, NULL);
+  gs(u, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
 
   assert(weights->size == lelt);
 

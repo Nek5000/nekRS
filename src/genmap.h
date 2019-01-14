@@ -17,7 +17,7 @@
 //
 // Genmap Memory Align
 //
-#define GENMAP_ALIGN 64
+#define GENMAP_ALIGN 32
 //
 // Genmap Debug routines
 //

@@ -38,7 +38,7 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
       }
     }
 
-    gs(data, genmap_gs_long, gs_max, 0, c->verticesHandle, NULL);
+    gs(data, genmap_gs_long, gs_max, 0, c->verticesHandle, &c->buf);
 
     for(j = 0; j < numPoints; j++) {
       if(data[j] > 0) {
@@ -58,8 +58,8 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
 
   if(GenmapId(h->global) == 0) {
     printf("Max neighbors: "GenmapIntFormat,ncMax);
-    printf(" Min neighbors: "GenmapIntFormat,ncMin);
-    printf(" Avg neighbors: "GenmapScalarFormat"\n",(1.0*ncSum)/GenmapNp(h->global));
+    printf(" | Min neighbors: "GenmapIntFormat,ncMin);
+    printf(" | Avg neighbors: "GenmapScalarFormat"\n",(1.0*ncSum)/GenmapNp(h->global));
   }
 
   GenmapFree(data);

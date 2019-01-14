@@ -15,7 +15,7 @@ BUILDDIR=$(SRCROOT)/build
 TESTDIR =$(SRCROOT)/tests
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/gmsh/gmsh-test
+TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test
 LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)/include
@@ -54,8 +54,11 @@ ifneq ($(UNDERSCORE),0)
   PP += -DGENMAP_UNDERSCORE
 endif
 
+.PHONY: default
+default: check lib install
+
 .PHONY: all
-all: check lib install
+all: check lib tests install
 
 .PHONY: install
 install: lib

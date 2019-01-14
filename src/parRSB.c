@@ -43,7 +43,6 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
     return 1;
   }
 
-  GenmapCreateHeader(&h->header);
   h->header->lelt = neglcon;
   h->header->npts = neglcon * nve;
   h->header->nv = nve;

@@ -452,6 +452,7 @@ void GenmapRSB(GenmapHandle h) {
       maxIter = GenmapFiedler(h, h->local, maxIter, 1);
     else
       maxIter = GenmapFiedler(h, h->local, maxIter, 0);
+
     // sort locally according to Fiedler vector
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
@@ -537,6 +538,7 @@ void GenmapRSB(GenmapHandle h) {
 
     // Create new communicator
     GenmapCreateComm(&(h->local), local);
+    MPI_Comm_free(&local);
     crystal_init(&cr, &(h->local->gsComm));
 
     lelt_ = (GenmapLong)lelt;
