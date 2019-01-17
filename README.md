@@ -1,6 +1,6 @@
 # parRSB
 
-Parallel mesh partitioning tool
+Parallel graph partitioning tool
 
 * Computes high quality partitionings using recursive spectral bisection (RSB)
 * Allows any number of paritions (generalization to non-power-of-2)
