@@ -173,6 +173,12 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   assert(alpha->size == beta->size + 1);
   assert(init->size == h->header->lelt);
 
+  if(h->header->nel < iter) {
+    iter = h->header->nel;
+    alpha->size = iter;
+    beta->size = iter - 1;
+  }
+
   GenmapVector q0, q1, u;
   GenmapScalar normq1 = 0., b = 0., sum;
 
@@ -238,8 +244,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
       if(fabs(b) < normq1 * GENMAP_TOL) {
         beta->size = k;
         alpha->size = k + 1;
-        iter = k + 1;
-        break;
+        return k + 1;
       }
 
       GenmapCopyVector(q0, q1);
@@ -320,7 +325,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapInt i;
-  if(global) {
+  if(global > 0) {
     for(i = 0;  i < lelt; i++) {
       initVec->data[i] = (GenmapScalar) elements[i].globalId;
     }
@@ -428,7 +433,13 @@ void GenmapRSB(GenmapHandle h) {
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
   GenmapElements elements = GenmapGetElements(h);
-  int maxIter = 50;
+
+  int maxIter = 5;
+  maxIter = (nel / 5 > maxIter) ? nel / 5 : maxIter;
+  maxIter = (maxIter > 50) ? 50 : maxIter;
+
+  int iter = maxIter;
+  int npass = 100, ipass = 0;
 
   if(h->Id(h->global) == 0) printf("Running RSB ... ");
 #if defined(GENMAP_MPI)
@@ -448,13 +459,15 @@ void GenmapRSB(GenmapHandle h) {
   // must be initialized using the global communicator, we never
   // touch global communicator
   while(h->Np(h->local) > 1) {
-    if(h->Np(h->local) == h->Np(h->global))
-      maxIter = GenmapFiedler(h, h->local, maxIter, 1);
-    else
-      maxIter = GenmapFiedler(h, h->local, maxIter, 0);
-
+    int global = (h->Np(h->local) == h->Np(h->global));
+    do {
+      maxIter = GenmapFiedler(h, h->local, maxIter, global);
+      ipass++;
+      global = 0;
+    } while(ipass < npass && iter < maxIter);
     // sort locally according to Fiedler vector
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  fiedler,
                   TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
 
 #if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
@@ -479,11 +492,13 @@ void GenmapRSB(GenmapHandle h) {
     elements = GenmapGetElements(h);
     lelt = h->header->lelt = (GenmapInt)h->elementArray.n;
     // sort locally again -- now we have everything sorted
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  fiedler,
                   TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
 
     GenmapLong lelt_ = (GenmapLong)lelt;
-    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1, buf);
+    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
+              buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
     id = h->Id(h->local);
@@ -496,19 +511,20 @@ void GenmapRSB(GenmapHandle h) {
     else
       bin = 1;
 
-    GenmapInt pNel = (GenmapInt) (nel / np);
-    GenmapInt nrem = (GenmapInt) (nel - pNel * np);
+    GenmapInt pNel = (GenmapInt)(nel / np);
+    GenmapInt nrem = (GenmapInt)(nel - pNel * np);
     GenmapInt idCount = 0;
     while(idCount * pNel + ((idCount < nrem) ? idCount : nrem) < start)
       idCount++;
 
     GenmapLong upLimit = idCount * pNel + ((idCount < nrem) ? idCount :
-                                          nrem);
+                                           nrem);
     GenmapLong downLimit = start;
     do {
-      GenmapInt end = upLimit - start < lelt ? (GenmapInt) (upLimit - start) : lelt;
+      GenmapInt end = upLimit - start < lelt ? (GenmapInt)(
+                        upLimit - start) : lelt;
       GenmapInt i;
-      for(i = (GenmapInt) (downLimit - start); i < end;
+      for(i = (GenmapInt)(downLimit - start); i < end;
           i++) elements[i].proc = idCount - 1;
       downLimit = upLimit;
       idCount++;
@@ -518,10 +534,11 @@ void GenmapRSB(GenmapHandle h) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
                     0, &cr);
     elements = GenmapGetElements(h);
-    lelt = h->header->lelt = (GenmapInt) (h->elementArray.n);
+    lelt = h->header->lelt = (GenmapInt)(h->elementArray.n);
 
     // sort locally again -- now we have everything sorted
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  fiedler,
                   TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
 
 
@@ -542,7 +559,8 @@ void GenmapRSB(GenmapHandle h) {
     crystal_init(&cr, &(h->local->gsComm));
 
     lelt_ = (GenmapLong)lelt;
-    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1, buf);
+    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
+              buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
     id = h->Id(h->local);

@@ -8,10 +8,9 @@
 #include "genmap-io.h"
 #include "parRSB.h"
 
-void fparRSB_partMesh(long long *egl, long long *vl, int *negl, 
+void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
                       long long *eglcon, long long *vlcon, int *neglcon,
-                      int *nve, int *comm, int *err) 
-{
+                      int *nve, int *comm, int *err) {
   *err = 1;
   setbuf(stdout, NULL);
 
@@ -29,8 +28,7 @@ void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
 
 int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglcon, long long *vlcon, int neglcon,
-                    int nve, MPI_Comm comm) 
-{
+                    int nve, MPI_Comm comm) {
   GenmapHandle h;
   GenmapInit(&h, comm, "interface");
 
@@ -59,12 +57,12 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   h->elementArray.n = neglcon;
 
   GenmapElements e = GenmapGetElements(h);
-  GenmapInt i,j;
+  GenmapInt i, j;
 
   for(i = 0; i < neglcon; i++) {
     e[i].globalId = eglcon[i];
-    for(j = 0; j<nve; j++) {
-      e[i].vertices[j] = vlcon[i*nve+j];
+    for(j = 0; j < nve; j++) {
+      e[i].vertices[j] = vlcon[i * nve + j];
     }
   }
 

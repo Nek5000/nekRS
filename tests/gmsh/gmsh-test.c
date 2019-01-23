@@ -6,8 +6,7 @@
 #include <genmap-impl.h>
 
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 #if defined(GENMAP_MPI)
   MPI_Init(&argc, &argv);
 #else

@@ -127,7 +127,7 @@ int GenmapScaleVector(GenmapVector y, GenmapVector x,
 
 int GenmapCreateOnesVector(GenmapVector *x, GenmapInt size) {
   GenmapCreateVector(x, size);
-  
+
   GenmapInt i;
   for(i = 0; i < size; i++) {
     (*x)->data[i] = 1.;

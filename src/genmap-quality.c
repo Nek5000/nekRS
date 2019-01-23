@@ -23,7 +23,8 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
 
   GenmapComm c;
   GenmapCreateComm(&c, h->global->gsComm.c);
-  c->verticesHandle = gs_setup(data, numPoints, &c->gsComm, 0, gs_pairwise,
+  c->verticesHandle = gs_setup(data, numPoints, &c->gsComm, 0,
+                               gs_pairwise,
                                0);
 
   GenmapInt neighborsCount = 0;
@@ -57,13 +58,14 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapGop(c, &ncSum, 1, GENMAP_INT, GENMAP_SUM);
 
   if(GenmapId(h->global) == 0) {
-    printf("Max neighbors: "GenmapIntFormat,ncMax);
-    printf(" | Min neighbors: "GenmapIntFormat,ncMin);
-    printf(" | Avg neighbors: "GenmapScalarFormat"\n",(1.0*ncSum)/GenmapNp(h->global));
+    printf("Max neighbors: "GenmapIntFormat, ncMax);
+    printf(" | Min neighbors: "GenmapIntFormat, ncMin);
+    printf(" | Avg neighbors: "GenmapScalarFormat"\n",
+           (1.0 * ncSum) / GenmapNp(h->global));
   }
 
   GenmapFree(data);
-  GenmapDestroyComm(c); 
+  GenmapDestroyComm(c);
 
   return neighborsCount;
 }

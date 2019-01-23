@@ -6,35 +6,35 @@
 // Genmap types
 //
 #if defined(GENMAP_LONG_LONG)
-  typedef long long GenmapLong;
-  typedef unsigned long long GenmapULong;
-  #define GenmapLongFormat "%lld"
-  #define GenmapULongFormat "%llu"
-  
-  #if defined(GENMAP_MPI)
-  #define GENMAP_LONG MPI_LONG_LONG
-  #define GENMAP_UNSIGNED_LONG MPI_UNSIGNED_LONG_LONG
-  #else
-  #define GENMAP_LONG 0
-  #define GENMAP_UNSIGNED_LONG 0
-  #endif
-  
-  #define genmap_gs_long gs_long_long
-#else
-  typedef long GenmapLong;
-  typedef unsigned long GenmapULong;
-  #define GenmapLongFormat "%ld"
-  #define GenmapULongFormat "%lu"
-  
-  #if defined(GENMAP_MPI)
-  #define GENMAP_LONG MPI_LONG
-  #define GENMAP_UNSIGNED_LONG MPI_UNSIGNED_LONG
-  #else
-  #define GENMAP_LONG 0
-  #define GENMAP_UNSIGNED_LONG 0
-  #endif
+typedef long long GenmapLong;
+typedef unsigned long long GenmapULong;
+#define GenmapLongFormat "%lld"
+#define GenmapULongFormat "%llu"
 
-  #define genmap_gs_long gs_long
+#if defined(GENMAP_MPI)
+#define GENMAP_LONG MPI_LONG_LONG
+#define GENMAP_UNSIGNED_LONG MPI_UNSIGNED_LONG_LONG
+#else
+#define GENMAP_LONG 0
+#define GENMAP_UNSIGNED_LONG 0
+#endif
+
+#define genmap_gs_long gs_long_long
+#else
+typedef long GenmapLong;
+typedef unsigned long GenmapULong;
+#define GenmapLongFormat "%ld"
+#define GenmapULongFormat "%lu"
+
+#if defined(GENMAP_MPI)
+#define GENMAP_LONG MPI_LONG
+#define GENMAP_UNSIGNED_LONG MPI_UNSIGNED_LONG
+#else
+#define GENMAP_LONG 0
+#define GENMAP_UNSIGNED_LONG 0
+#endif
+
+#define genmap_gs_long gs_long
 #endif
 
 typedef int GenmapInt;
