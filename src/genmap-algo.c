@@ -166,6 +166,111 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
 }
 //
 //
+int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c, GenmapVector q1) {
+  GenmapInt i;
+  GenmapScalar sum = 0.0;
+  for(i = 0;  i < h->header->lelt; i++) {
+    sum += q1->data[i];
+  }
+
+  GenmapGop(c, &sum, 1, GENMAP_SCALAR, GENMAP_SUM);
+  GenmapLong n =  h->header->nel;
+  for(i = 0;  i < h->header->lelt; i++) {
+    q1->data[i] -= sum / n;
+  }
+
+  return 0;
+}
+
+int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
+                  GenmapInt niter, GenmapVector **rr, GenmapVector diag,
+                  GenmapVector upper) {
+  assert(diag->size == niter);
+  assert(diag->size == upper->size + 1);
+  assert(f->size == h->header->lelt);
+
+  if(h->header->nel < niter) {
+    niter = h->header->nel;
+    diag->size = niter;
+    upper->size = niter - 1;
+  }
+
+  GenmapScalar eps = 1.e-12;
+  GenmapScalar alpha, beta;
+  GenmapScalar rnorm, rtol, rni, rtr, rtz1, rtz2, pap = 0.0, pap_old;
+  GenmapVector r, p, w, weights;
+
+  rtz1 = 1.0;
+
+  GenmapInt lelt = h->header->lelt;
+
+  // Store Local Laplacian weights
+  GenmapCreateVector(&weights, lelt);
+  GenmapCreateVector(&p, lelt);
+  GenmapCreateVector(&w, lelt);
+  h->AxInit(h, c, weights);
+
+  // Create vector r orthogonalizing init in 1-norm to (1,1,1...)
+  GenmapCreateVector(&r, lelt);
+  GenmapCopyVector(r, f);
+  GenmapOrthogonalizebyOneVector(h, c, r);
+  rtr = GenmapDotVector(r, r);
+  GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
+  rnorm = sqrt(rtr);
+  rtol = rnorm*eps;
+  rni = 1.0 / rnorm;
+
+  // Allocate memory for q-vectors
+  if(*rr == NULL)
+    GenmapMalloc((size_t)niter, rr);
+  GenmapCreateVector(&(*rr)[0], lelt);
+  GenmapScaleVector((*rr)[0], r, rni);
+
+  for(int iter = 0; iter < niter; iter++) {
+    rtz2 = rtz1;
+    rtz1 = rtr;
+    beta = rtz1/rtz2;
+    if(iter == 0) beta = 0.0;
+
+    GenmapAxpbyVector(p, p, beta, r, 1.0);
+    GenmapOrthogonalizebyOneVector(h, c, p);
+    // Multiplication by the laplacian
+    h->Ax(h, c, p, weights, w);
+    
+    pap_old = pap;
+    pap = GenmapDotVector(w, p);
+    GenmapGop(c, &pap, 1, GENMAP_SCALAR, GENMAP_SUM);
+    alpha = rtz1 / pap;
+    GenmapAxpbyVector(r, r, -1.0*alpha, w, 1.0);
+
+    rtr = GenmapDotVector(r, r);
+    GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
+    if(rtr < 0) {
+      diag->size = iter + 1;
+      upper->size = iter;
+      return iter + 1;
+    }
+    rnorm = sqrt(rtr);
+    rni = 1.0 / rnorm;
+    GenmapCreateVector(&(*rr)[iter + 1], lelt);
+    GenmapScaleVector((*rr)[iter + 1], r, rni);
+
+    if(iter == 0) {
+      diag->data[iter] = pap / rtz1;
+    } else {
+      diag->data[iter] = (beta*beta*pap_old + pap)/rtz1;
+      upper->data[iter - 1] = -beta*pap_old/sqrt(rtz2*rtz1);
+    }
+
+    if(rnorm < rtol)  {
+      diag->size = iter + 1;
+      upper->size = iter;
+      return iter + 1;
+    }
+  }
+  return niter;
+}
+
 int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
                   GenmapInt iter, GenmapVector **q, GenmapVector alpha,
                   GenmapVector beta) {
@@ -180,30 +285,20 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   }
 
   GenmapVector q0, q1, u;
-  GenmapScalar normq1 = 0., b = 0., sum;
+  GenmapScalar normq1 = 0., b = 0.;
 
   GenmapInt lelt = h->header->lelt;
 
   // Create vector q1 orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&q1, lelt);
   GenmapCopyVector(q1, init);
-  GenmapInt i;
-  for(i = 0;  i < lelt; i++) {
-    sum += q1->data[i];
-  }
-
-  GenmapGop(c, &sum, 1, GENMAP_SCALAR, GENMAP_SUM);
-
-  for(i = 0;  i < lelt; i++) {
-    q1->data[i] -= sum / (GenmapScalar)h->header->nel;
-  }
-
+  GenmapOrthogonalizebyOneVector(h, c, q1);
   normq1 = GenmapDotVector(q1, q1);
   GenmapGop(c, &normq1, 1, GENMAP_SCALAR, GENMAP_SUM);
   normq1 = sqrt(normq1);
   GenmapScaleVector(q1, q1, 1. / normq1);
 
-  // Create vector u --
+  // Create vector u
   GenmapCreateVector(&u, lelt);
 
   // Set q_0 and beta_0 to zero (both uses 0-indexing)
@@ -340,7 +435,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapVector *q = NULL;
   // TODO: Lanczos doesn't work well for smaller matrices
   // We need to fix this
-  int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
+  int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec, betaVec);
 
   // 2. Do inverse power iteration on local communicator and find
   // local Fiedler vector.
