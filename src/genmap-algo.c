@@ -461,7 +461,7 @@ void GenmapRSB(GenmapHandle h) {
   while(h->Np(h->local) > 1) {
     int global = (h->Np(h->local) == h->Np(h->global));
     do {
-      maxIter = GenmapFiedler(h, h->local, maxIter, global);
+      iter = GenmapFiedler(h, h->local, maxIter, global);
       ipass++;
       global = 0;
     } while(ipass < npass && iter < maxIter);
