@@ -10,9 +10,8 @@
 
 void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
                       long long *eglcon, long long *vlcon, int *neglcon,
-                      int *nve, int *comm, int *err) {
+                      int *nve, int *options, int *comm, int *err) {
   *err = 1;
-  setbuf(stdout, NULL);
 
   GenmapCommExternal c;
 #if defined(GENMAP_MPI)
@@ -23,14 +22,18 @@ void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
 
   *err = parRSB_partMesh(egl, vl, negl,
                          eglcon, vlcon, *neglcon,
-                         *nve, c);
+                         *nve, options, c);
 }
 
 int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglcon, long long *vlcon, int neglcon,
-                    int nve, MPI_Comm comm) {
+                    int nve, int *options, MPI_Comm comm) {
   GenmapHandle h;
   GenmapInit(&h, comm, "interface");
+
+  if (options[0] != 0){ 
+    h->dbgLevel = options[1]; 
+  }
 
   // Check if negl is large enough
   GenmapLong neglcon_ = (GenmapLong) neglcon;
@@ -80,7 +83,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
     }
   }
 
-  GenmapPartitionQuality(h);
+  if(h->dbgLevel > 0) GenmapPartitionQuality(h);
 
   GenmapFinalize(h);
 

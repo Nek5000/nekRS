@@ -38,6 +38,7 @@ int GenmapWrite(GenmapHandle h, char *fileNameBase) {
 
 int GenmapCreateHandle_interface(GenmapHandle h) {
   h->Read = NULL;
+  h->dbgLevel = 0;
 
   return 0;
 }

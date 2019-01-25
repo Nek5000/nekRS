@@ -219,9 +219,13 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   rni = 1.0 / rnorm;
 
   // Allocate memory for q-vectors
-  if(*rr == NULL)
-    GenmapMalloc((size_t)niter, rr);
+  if(*rr == NULL){
+    GenmapMalloc((size_t)(niter+1), rr);
+    GenmapInt i;
+    for(i = 0; i < niter+1; ++i) (*rr)[i] = NULL; 
+  }
   GenmapCreateVector(&(*rr)[0], lelt);
+
   GenmapScaleVector((*rr)[0], r, rni);
 
   int iter;
@@ -313,8 +317,11 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   beta->data[0] = 0.;
 
   // Allocate memory for q-vectors
-  if(*q == NULL)
-    GenmapMalloc((size_t)iter, q);
+  if(*q == NULL){
+    GenmapMalloc((size_t)(iter+1), q);
+    GenmapInt i;
+    for(i = 0; i < iter+1; ++i) (*q)[i] = NULL; 
+  }
 
   // Store Local Laplacian weights
   GenmapVector weights;
@@ -496,7 +503,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
   GenmapDestroyVector(evInit);
-  for(i = 0; i < iter; i++) {
+  for(i = 0; i < iter+1; i++) {
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
@@ -552,6 +559,7 @@ void GenmapRSB(GenmapHandle h) {
   int npass = 50, ipass = 0;
 
   if(h->Id(h->global) == 0) printf("Running RSB ... ");
+  fflush(stdout);
 #if defined(GENMAP_MPI)
   MPI_Barrier(h->global->gsComm.c);
   double t0 = MPI_Wtime();
@@ -675,5 +683,5 @@ void GenmapRSB(GenmapHandle h) {
   time = ((double)clock() - t0) / CLOCKS_PER_SEC;
 #endif
   if(h->Id(h->global) == 0) printf("%lf sec\n", time);
-
+  fflush(stdout);
 }
