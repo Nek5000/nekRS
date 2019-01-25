@@ -3,7 +3,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
-
 //
 // Algorithms
 //
@@ -166,16 +165,15 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
 }
 //
 //
-int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c, GenmapVector q1) {
+int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c, GenmapVector q1, GenmapLong n) {
   GenmapInt i;
   GenmapScalar sum = 0.0;
-  for(i = 0;  i < h->header->lelt; i++) {
+  for(i = 0;  i < q1->size; i++) {
     sum += q1->data[i];
   }
 
   GenmapGop(c, &sum, 1, GENMAP_SCALAR, GENMAP_SUM);
-  GenmapLong n =  h->header->nel;
-  for(i = 0;  i < h->header->lelt; i++) {
+  for(i = 0;  i < q1->size; i++) {
     q1->data[i] -= sum / n;
   }
 
@@ -195,7 +193,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     upper->size = niter - 1;
   }
 
-  GenmapScalar eps = 1.e-12;
+  GenmapScalar eps = 1.e-5;
   GenmapScalar alpha, beta;
   GenmapScalar rnorm, rtol, rni, rtr, rtz1, rtz2, pap = 0.0, pap_old;
   GenmapVector r, p, w, weights;
@@ -206,14 +204,14 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
   // Store Local Laplacian weights
   GenmapCreateVector(&weights, lelt);
-  GenmapCreateVector(&p, lelt);
+  GenmapCreateOnesVector(&p, lelt);
   GenmapCreateVector(&w, lelt);
   h->AxInit(h, c, weights);
 
   // Create vector r orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&r, lelt);
   GenmapCopyVector(r, f);
-  GenmapOrthogonalizebyOneVector(h, c, r);
+  GenmapOrthogonalizebyOneVector(h, c, r, h->header->nel);
   rtr = GenmapDotVector(r, r);
   GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
   rnorm = sqrt(rtr);
@@ -234,7 +232,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     if(iter == 0) beta = 0.0;
 
     GenmapAxpbyVector(p, p, beta, r, 1.0);
-    GenmapOrthogonalizebyOneVector(h, c, p);
+    GenmapOrthogonalizebyOneVector(h, c, p, h->header->nel);
     // Multiplication by the laplacian
     h->Ax(h, c, p, weights, w);
     
@@ -242,7 +240,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     pap = GenmapDotVector(w, p);
     GenmapGop(c, &pap, 1, GENMAP_SCALAR, GENMAP_SUM);
     alpha = rtz1 / pap;
-    GenmapAxpbyVector(r, r, -1.0*alpha, w, 1.0);
+    GenmapAxpbyVector(r, r, 1.0, w, -1.0*alpha);
 
     rtr = GenmapDotVector(r, r);
     GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
@@ -301,7 +299,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   // Create vector q1 orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&q1, lelt);
   GenmapCopyVector(q1, init);
-  GenmapOrthogonalizebyOneVector(h, c, q1);
+  GenmapOrthogonalizebyOneVector(h, c, q1, h->header->nel);
   normq1 = GenmapDotVector(q1, q1);
   GenmapGop(c, &normq1, 1, GENMAP_SCALAR, GENMAP_SUM);
   normq1 = sqrt(normq1);
@@ -421,7 +419,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   // 1. Do lanczos in local communicator.
   GenmapInt lelt = h->header->lelt;
   GenmapVector initVec, alphaVec, betaVec;
-  GenmapScalar sum;
 
   GenmapCreateVector(&initVec, h->header->lelt);
   GenmapElements elements = GenmapGetElements(h);
@@ -450,15 +447,11 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapVector evLanczos, evTriDiag, evInit;
   GenmapCreateVector(&evTriDiag, iter);
   GenmapCreateVector(&evInit, iter);
-  sum = 0.0;
   // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
   for(i = 0; i < iter; i++) {
     evInit->data[i] = i + 1;
-    sum += evInit->data[i];
   }
-  for(i = 0;  i < iter; i++) {
-    evInit->data[i] -= sum / iter;
-  }
+  GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
 
   GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 500);
 
@@ -481,6 +474,20 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   for(i = 0; i < lelt; i++) {
     elements[i].fiedler = evLanczos->data[i];
   }
+#if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
+    MPI_Barrier(h->local->gsComm.c);
+    for(i = 0; i < h->Np(h->local); i++) {
+      if(i == h->Id(h->local)) {
+        for(j = 0; j < lelt; j++)
+          printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
+                 h->Id(h->global),
+                 elements[j].globalId, elements[j].fiedler);
+      }
+      MPI_Barrier(h->local->gsComm.c);
+    }
+    MPI_Barrier(h->local->gsComm.c);
+#endif
+
 
   // n. Destory the data structures
   GenmapDestroyVector(initVec);
@@ -542,7 +549,7 @@ void GenmapRSB(GenmapHandle h) {
   maxIter = (maxIter > 50) ? 50 : maxIter;
 
   int iter = maxIter;
-  int npass = 100, ipass = 0;
+  int npass = 50, ipass = 0;
 
   if(h->Id(h->global) == 0) printf("Running RSB ... ");
 #if defined(GENMAP_MPI)
@@ -567,26 +574,12 @@ void GenmapRSB(GenmapHandle h) {
       iter = GenmapFiedler(h, h->local, maxIter, global);
       ipass++;
       global = 0;
-    } while(ipass < npass && iter < maxIter);
+    } while(ipass < npass && iter == maxIter);
+
     // sort locally according to Fiedler vector
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   fiedler,
                   TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
-
-#if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
-    MPI_Barrier(h->local->gsComm.c);
-    GenmapInt i, j;
-    for(i = 0; i < h->Np(h->local); i++) {
-      if(i == h->Id(h->local)) {
-        for(j = 0; j < lelt; j++)
-          printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
-                 h->Id(h->global),
-                 elements[j].globalId, elements[j].fiedler);
-      }
-      MPI_Barrier(h->local->gsComm.c);
-    }
-    MPI_Barrier(h->local->gsComm.c);
-#endif
 
     // Sort the Fiedler vector globally
     GenmapSetProcessorId(h);
