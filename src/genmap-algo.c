@@ -226,7 +226,8 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   GenmapCreateVector(&(*rr)[0], lelt);
   GenmapScaleVector((*rr)[0], r, rni);
 
-  for(int iter = 0; iter < niter; iter++) {
+  int iter;
+  for(iter = 0; iter < niter; iter++) {
     rtz2 = rtz1;
     rtz1 = rtr;
     beta = rtz1/rtz2;
@@ -248,7 +249,8 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     if(rtr < 0) {
       diag->size = iter + 1;
       upper->size = iter;
-      return iter + 1;
+      iter = iter + 1;
+      break;
     }
     rnorm = sqrt(rtr);
     rni = 1.0 / rnorm;
@@ -265,10 +267,17 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     if(rnorm < rtol)  {
       diag->size = iter + 1;
       upper->size = iter;
-      return iter + 1;
+      iter = iter + 1;
+      break;
     }
   }
-  return niter;
+
+  GenmapDestroyVector(weights);
+  GenmapDestroyVector(p);
+  GenmapDestroyVector(w);
+  GenmapDestroyVector(r);
+
+  return iter;
 }
 
 int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
@@ -314,7 +323,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   GenmapCreateVector(&weights, lelt);
   h->AxInit(h, c, weights);
 
-  GenmapInt k;
+  int k;
   for(k = 0; k < iter; k++) {
     // Store q1
     GenmapCreateVector(&(*q)[k], lelt);
@@ -335,19 +344,18 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
 
     if(k < iter - 1) {
       beta->data[k] = b;
-
+#if defined(GENMAP_DEBUG)
+      printf("beta, k: %lf %d\n", b, k);
+#endif
       if(fabs(b) < normq1 * GENMAP_TOL) {
         beta->size = k;
         alpha->size = k + 1;
-        return k + 1;
+        k = k + 1;
+        break;
       }
 
       GenmapCopyVector(q0, q1);
       GenmapScaleVector(q1, u, 1. / beta->data[k]);
-
-#if defined(GENMAP_DEBUG)
-      //printf("beta, k: %lf %d\n", b, k);
-#endif
     }
   }
 
@@ -356,11 +364,10 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   GenmapDestroyVector(u);
   GenmapDestroyVector(weights);
 
-  return iter;
-}
-
-void GenmapRQI(GenmapHandle h, GenmapVector v) {
-  // Calculate Lv, v^T(Lv)
+#if defined(GENMAP_DEBUG)
+  printf("k: %d, iter = %d\n", k, iter);
+#endif
+  return k;
 }
 
 void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
@@ -436,6 +443,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   // TODO: Lanczos doesn't work well for smaller matrices
   // We need to fix this
   int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec, betaVec);
+  //int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
 
   // 2. Do inverse power iteration on local communicator and find
   // local Fiedler vector.

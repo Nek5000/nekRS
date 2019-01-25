@@ -154,7 +154,7 @@ int GenmapRead_gmsh(GenmapHandle h, void *data) {
 
   if(rank == GENMAP_ROOT) {
 #if defined(GENMAP_DEBUG)
-    for(i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       printf("in[%d]="GenmapLongFormat"\n", i, in[i]);
     }
 #endif

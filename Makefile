@@ -1,6 +1,6 @@
 MPI?=1
 VALGRIND?=1
-DEBUG?=0
+DEBUG?=1
 UNDERSCORE?=1
 CC?=mpicc
 FC?=mpif77
