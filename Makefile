@@ -1,6 +1,6 @@
 MPI?=1
 VALGRIND?=1
-DEBUG?=1
+DEBUG?=0
 UNDERSCORE?=1
 CC?=mpicc
 FC?=mpif77
@@ -76,7 +76,7 @@ lib: $(SRCOBJS)
 .PHONY: check
 check: 
 ifeq ($(GSLIBPATH),)
-	$(error Specify GSLIBPATH=<path to gslib>)
+	$(error Specify GSLIBPATH=<path to gslib>/build)
 endif
 
 $(COBJS): %.o: %.c
