@@ -10,6 +10,7 @@
 int GenmapCreateHandle_gmsh(GenmapHandle h) {
   h->Read = GenmapRead_gmsh;
   h->dbgLevel = 0;
+  h->printStat = 0;
 
   return 0;
 }

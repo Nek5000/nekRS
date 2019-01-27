@@ -32,7 +32,8 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   GenmapInit(&h, comm, "interface");
 
   if (options[0] != 0){ 
-    h->dbgLevel = options[1]; 
+    h->dbgLevel = options[1];
+    h->printStat = options[2]; 
   }
 
   // Check if negl is large enough
@@ -83,7 +84,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
     }
   }
 
-  if(h->dbgLevel > 0) GenmapPartitionQuality(h);
+  if(h->printStat > 0) GenmapPartitionQuality(h);
 
   GenmapFinalize(h);
 

@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(comm, &myid);
   MPI_Comm_size(comm, &np);
 
-  int options[2];
+  int options[3];
 
   struct con c;
   int ierr = conRead(argv[1], &c, comm);
@@ -27,11 +27,12 @@ int main(int argc, char *argv[]) {
   long long *vl = (long long*) malloc(nel_max * c.nv * sizeof(long long));
 
   int nelo = nel_max;
-  options[0] = 0; // use default values
+  options[0] = 1; // use custom options
+  options[1] = 5; // debug level
+  options[2] = 1; // print statistics
   ierr = parRSB_partMesh(el, vl, &nelo, c.el, c.vl, c.nel, c.nv, options, comm);
   if(ierr) goto quit;
 
-  printf("myid = %d, nel = %d\n", myid, nelo);
 
   conFree(&c);
   free(el);

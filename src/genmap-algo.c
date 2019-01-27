@@ -558,8 +558,8 @@ void GenmapRSB(GenmapHandle h) {
   int iter = maxIter;
   int npass = 50, ipass = 0;
 
-  if(h->Id(h->global) == 0) printf("Running RSB ... ");
-  fflush(stdout);
+  if(h->Id(h->global) == 0 && h->dbgLevel > 0) 
+    printf("running RSB "), fflush(stdout);
 #if defined(GENMAP_MPI)
   MPI_Barrier(h->global->gsComm.c);
   double t0 = MPI_Wtime();
@@ -576,7 +576,11 @@ void GenmapRSB(GenmapHandle h) {
   // Calculate the global Fiedler vector, local communicator
   // must be initialized using the global communicator, we never
   // touch global communicator
+
   while(h->Np(h->local) > 1) {
+
+    if(h->Id(h->global) == 0 && h->dbgLevel > 1) printf("."), fflush(stdout);
+
     int global = (h->Np(h->local) == h->Np(h->global));
     do {
       iter = GenmapFiedler(h, h->local, maxIter, global);
@@ -682,6 +686,6 @@ void GenmapRSB(GenmapHandle h) {
 #else
   time = ((double)clock() - t0) / CLOCKS_PER_SEC;
 #endif
-  if(h->Id(h->global) == 0) printf("%lf sec\n", time);
-  fflush(stdout);
+  if(h->Id(h->global) == 0 && h->dbgLevel > 0) 
+    printf("\nfinished in %lfs\n", time), fflush(stdout);
 }

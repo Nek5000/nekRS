@@ -86,7 +86,8 @@ struct GenmapHandle_private {
 
   int (*Write)(GenmapHandle h, char *fileNameBase);
 
-  GenmapInt dbgLevel; 
+  GenmapInt dbgLevel;
+  GenmapInt printStat; 
 };
 
 // GenmapHandle
