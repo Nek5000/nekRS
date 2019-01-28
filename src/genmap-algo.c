@@ -61,36 +61,6 @@ int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha,
   return j;
 }
 
-int GenmapPowerIterNew(GenmapVector eVector, void (*Ax)(GenmapVector ax,
-                       GenmapVector x, void* data), void *data,
-                       GenmapVector init, GenmapInt iter) {
-  assert(eVector->size == init->size);
-  GenmapInt n = init->size;
-
-  GenmapVector x, y;
-  GenmapCreateVector(&x, n);
-  GenmapCreateVector(&y, n);
-  GenmapCopyVector(x, init);
-
-  GenmapInt j;
-  for(j = 0; j < iter; j++) {
-    // y = Ax
-    Ax(y, x, data);
-    // Normalize by inf-norm(y)
-    if(j != iter - 1)
-      GenmapScaleVector(y, y, 1.0 / GenmapNormVector(y, -1));
-
-    GenmapCopyVector(x, y);
-  }
-
-  GenmapCopyVector(eVector, y);
-
-  GenmapDestroyVector(x);
-  GenmapDestroyVector(y);
-
-  return 0;
-}
-
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, GenmapInt iter) {
   assert(alpha->size == beta->size + 1);
@@ -114,8 +84,10 @@ int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
       GenmapSymTriDiagSolve(y, x, alpha, beta);
 
       // Normalize by inf-norm(y)
-      if(j != iter - 1)
-        GenmapScaleVector(y, y, 1.0 / GenmapNormVector(y, -1));
+      if(j != iter - 1) {
+        GenmapScalar lambda = 1.0 / GenmapNormVector(y, -1);
+        GenmapScaleVector(y, y, lambda);
+      }
 
       GenmapCopyVector(x, y);
     }
@@ -586,6 +558,7 @@ void GenmapRSB(GenmapHandle h) {
     if(h->Id(h->global) == 0 && h->dbgLevel > 1) printf("."), fflush(stdout);
 
     int global = (h->Np(h->local) == h->Np(h->global));
+    ipass = 0;
     do {
       iter = GenmapFiedler(h, h->local, maxIter, global);
       ipass++;
