@@ -129,81 +129,79 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
   for(GenmapInt i = 0; i < n; i++) {
     GenmapCreateZerosVector(&(*eVectors)[i], n);
     (*eVectors)[i]->data[i] = 1.0;
+    //GenmapPrintVector((*eVectors)[i]);
   }
 
-  GenmapInt l, iter, m = 0, i;
+  GenmapInt l, iter, m, i;
 
-  for(GenmapInt l = 0; l < n; l++) {
-    iter = 0 ? m == l : iter + 1;
+  for(l = 0; l < n; l++) {
+    iter = 0;
 
-    // label: 1
-    for(m = l; m < n - 1; m++) {
-      GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
-      // Should use a tolerance for this check
-      if((e->data[m] + dd) == dd) break;
-    }
-
-    if(m != l) {
-      if(iter == 30) {
-        printf("Too may iterations.\n");
-        return 1;
+    do {
+      for(m = l; m < n - 1; m++) {
+        GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
+        // Should use a tolerance for this check
+        if(e->data[m]/dd < 1.e-8) break;
       }
 
-      GenmapScalar g = (d->data[l + 1] - d->data[l]) / (2.0 * e->data[l]);
-      GenmapScalar r = sqrt(g * g + 1.0);
-
-      g = d->data[m] - d->data[l] + e->data[l] / GenmapSign(r, g);
-      GenmapScalar s = 1.0, c = 1.0, p = 0.0;
-
-      for(i = m - 1; i < l - 1; i++) {
-        GenmapScalar f = s * e->data[i];
-        GenmapScalar b = c * e->data[i];
-        if(fabs(f) >= fabs(g)) {
-          c = g / f;
-          r = sqrt(c * c + 1.0);
-          e->data[i + 1] = f * r;
-          s = 1.0 / r;
-          c = c * s;
-        } else {
-          s = f / g;
-          r = sqrt(s * s + 1.0);
-          e->data[i + 1] = g * r;
-          c = 1.0 / r;
-          s = s * c;
+      if(m != l) {
+        if(iter++ == 30) {
+          printf("Too may iterations.\n");
+          return 1;
         }
 
-        g = d->data[i + 1] - p;
-        r = (d->data[i] - g) * s + 2.0 * c * b;
-        p = s * r;
-        d->data[i + 1] = g + p;
-        g = c * r - b;
-        // Find eigenvectors
-        for(GenmapInt k = 0; k < n; k++) {
-          f = (*eVectors)[k]->data[i + 1];
-          (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
-          (*eVectors)[k]->data[i] = s * (*eVectors)[k]->data[i] + c * f;
+        GenmapScalar g = (d->data[l + 1] - d->data[l]) / (2.0 * e->data[l]);
+        GenmapScalar r = sqrt(g * g + 1.0);
+
+        g = d->data[m] - d->data[l] + e->data[l] / GenmapSign(r, g);
+        GenmapScalar s = 1.0, c = 1.0, p = 0.0;
+
+        for(i = m - 1; i >= l; i--) {
+          GenmapScalar f = s * e->data[i];
+          GenmapScalar b = c * e->data[i];
+          e->data[i+1] = r = sqrt(f*f + g*g);
+          if(r < 1.e-8) {
+            d->data[i+1] -= p;
+            e->data[m] = 0.0;
+            break;
+          }
+          s = f/r;
+          c = g/r;
+          g = d->data[i + 1] - p;
+          r = (d->data[i] - g) * s + 2.0 * c * b;
+          p = s * r;
+          d->data[i + 1] = g + p;
+          g = c * r - b;
+          // Find eigenvectors
+          for(GenmapInt k = 0; k < n; k++) {
+            f = (*eVectors)[k]->data[i + 1];
+            (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
+            (*eVectors)[k]->data[i] = c * (*eVectors)[k]->data[i] - s * f;
+          }
+          // Done with eigenvectors
         }
-        // Done with eigenvectors
+
+        if(r > 1.e-8 && i >= l) continue;
+
+        d->data[l] -= p;
+        e->data[l] = g;
+        e->data[m] = 0.0;
       }
-
-      d->data[l] -= p;
-      e->data[l] = g;
-      e->data[m] = 0.0;
-    }
+    } while(m != l);
   }
 
   // Orthnormalize eigenvectors -- Just normalize?
 
-  for(GenmapInt ko = 0; ko < n; ko++) {
-    //for(GenmapInt ki = 0; ki < n; ki++) {
-    //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
-    //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
-    //}
-    e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
-    if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
-    GenmapScalar scale = 1.0/e->data[ko];
-    GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
-  }
+  //for(GenmapInt ko = 0; ko < n; ko++) {
+  //  //for(GenmapInt ki = 0; ki < n; ki++) {
+  //  //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
+  //  //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
+  //  //}
+  //  e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
+  //  if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
+  //  GenmapScalar scale = 1.0/e->data[ko];
+  //  GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
+  //}
 
   GenmapDestroyVector(d);
   GenmapDestroyVector(e);
