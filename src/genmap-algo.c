@@ -433,7 +433,11 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapInt i;
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      initVec->data[i] = (GenmapScalar) elements[i].globalId;
+      //initVec->data[i] = (GenmapScalar) elements[i].globalId;
+      if(h->header->start + lelt < h->header->nel/2)
+        initVec->data[i] = h->header->start + i + 1000. * (h->header->nel/2.0);
+      else
+        initVec->data[i] = h->header->start + i;
     }
   } else {
     for(i = 0;  i < lelt; i++) {
