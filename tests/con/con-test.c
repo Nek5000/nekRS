@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
   options[0] = 1; // use custom options
   options[1] = 5; // debug level
   options[2] = 1; // print statistics
-  ierr = parRSB_partMesh(el, vl, &nelo, c.el, c.vl, c.nel, c.nv, options, comm);
+  ierr = parRSB_partMesh(el, vl, &nelo, c.el, c.vl, c.nel, c.nv, options,
+                         comm);
   if(ierr) goto quit;
 
 

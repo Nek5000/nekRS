@@ -137,7 +137,8 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
 }
 //
 //
-int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c, GenmapVector q1, GenmapLong n) {
+int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
+                                   GenmapVector q1, GenmapLong n) {
   GenmapInt i;
   GenmapScalar sum = 0.0;
   for(i = 0;  i < q1->size; i++) {
@@ -153,8 +154,8 @@ int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c, GenmapVector q1
 }
 
 int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
-                  GenmapInt niter, GenmapVector **rr, GenmapVector diag,
-                  GenmapVector upper) {
+                           GenmapInt niter, GenmapVector **rr, GenmapVector diag,
+                           GenmapVector upper) {
   assert(diag->size == niter);
   assert(diag->size == upper->size + 1);
   assert(f->size == h->header->lelt);
@@ -187,14 +188,14 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   rtr = GenmapDotVector(r, r);
   GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
   rnorm = sqrt(rtr);
-  rtol = rnorm*eps;
+  rtol = rnorm * eps;
   rni = 1.0 / rnorm;
 
   // Allocate memory for q-vectors
-  if(*rr == NULL){
-    GenmapMalloc((size_t)(niter+1), rr);
+  if(*rr == NULL) {
+    GenmapMalloc((size_t)(niter + 1), rr);
     GenmapInt i;
-    for(i = 0; i < niter+1; ++i) (*rr)[i] = NULL; 
+    for(i = 0; i < niter + 1; ++i)(*rr)[i] = NULL;
   }
   GenmapCreateVector(&(*rr)[0], lelt);
 
@@ -204,19 +205,19 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   for(iter = 0; iter < niter; iter++) {
     rtz2 = rtz1;
     rtz1 = rtr;
-    beta = rtz1/rtz2;
+    beta = rtz1 / rtz2;
     if(iter == 0) beta = 0.0;
 
     GenmapAxpbyVector(p, p, beta, r, 1.0);
     GenmapOrthogonalizebyOneVector(h, c, p, h->header->nel);
     // Multiplication by the laplacian
     h->Ax(h, c, p, weights, w);
-    
+
     pap_old = pap;
     pap = GenmapDotVector(w, p);
     GenmapGop(c, &pap, 1, GENMAP_SCALAR, GENMAP_SUM);
     alpha = rtz1 / pap;
-    GenmapAxpbyVector(r, r, 1.0, w, -1.0*alpha);
+    GenmapAxpbyVector(r, r, 1.0, w, -1.0 * alpha);
 
     rtr = GenmapDotVector(r, r);
     GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
@@ -234,8 +235,8 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     if(iter == 0) {
       diag->data[iter] = pap / rtz1;
     } else {
-      diag->data[iter] = (beta*beta*pap_old + pap)/rtz1;
-      upper->data[iter - 1] = -beta*pap_old/sqrt(rtz2*rtz1);
+      diag->data[iter] = (beta * beta * pap_old + pap) / rtz1;
+      upper->data[iter - 1] = -beta * pap_old / sqrt(rtz2 * rtz1);
     }
 
     if(rnorm < rtol)  {
@@ -289,10 +290,10 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   beta->data[0] = 0.;
 
   // Allocate memory for q-vectors
-  if(*q == NULL){
-    GenmapMalloc((size_t)(iter+1), q);
+  if(*q == NULL) {
+    GenmapMalloc((size_t)(iter + 1), q);
     GenmapInt i;
-    for(i = 0; i < iter+1; ++i) (*q)[i] = NULL; 
+    for(i = 0; i < iter + 1; ++i)(*q)[i] = NULL;
   }
 
   // Store Local Laplacian weights
@@ -406,8 +407,9 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
       //initVec->data[i] = (GenmapScalar) elements[i].globalId;
-      if(h->header->start + lelt < h->header->nel/2)
-        initVec->data[i] = h->header->start + i + 1000. * (h->header->nel/2.0);
+      if(h->header->start + lelt < h->header->nel / 2)
+        initVec->data[i] = h->header->start + i + 1000. * (h->header->nel /
+                           2.0);
       else
         initVec->data[i] = h->header->start + i;
     }
@@ -422,7 +424,8 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapVector *q = NULL;
   // TODO: Lanczos doesn't work well for smaller matrices
   // We need to fix this
-  int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec, betaVec);
+  int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
+                                    betaVec);
   //int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
 
   // 2. Do inverse power iteration on local communicator and find
@@ -458,17 +461,17 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
     elements[i].fiedler = evLanczos->data[i];
   }
 #if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
-    MPI_Barrier(h->local->gsComm.c);
-    for(i = 0; i < h->Np(h->local); i++) {
-      if(i == h->Id(h->local)) {
-        for(j = 0; j < lelt; j++)
-          printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
-                 h->Id(h->global),
-                 elements[j].globalId, elements[j].fiedler);
-      }
-      MPI_Barrier(h->local->gsComm.c);
+  MPI_Barrier(h->local->gsComm.c);
+  for(i = 0; i < h->Np(h->local); i++) {
+    if(i == h->Id(h->local)) {
+      for(j = 0; j < lelt; j++)
+        printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
+               h->Id(h->global),
+               elements[j].globalId, elements[j].fiedler);
     }
     MPI_Barrier(h->local->gsComm.c);
+  }
+  MPI_Barrier(h->local->gsComm.c);
 #endif
 
 
@@ -479,7 +482,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
   GenmapDestroyVector(evInit);
-  for(i = 0; i < iter+1; i++) {
+  for(i = 0; i < iter + 1; i++) {
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
@@ -534,7 +537,7 @@ void GenmapRSB(GenmapHandle h) {
   int iter = maxIter;
   int npass = 50, ipass = 0;
 
-  if(h->Id(h->global) == 0 && h->dbgLevel > 0) 
+  if(h->Id(h->global) == 0 && h->dbgLevel > 0)
     printf("running RSB "), fflush(stdout);
 #if defined(GENMAP_MPI)
   MPI_Barrier(h->global->gsComm.c);
@@ -555,7 +558,8 @@ void GenmapRSB(GenmapHandle h) {
 
   while(h->Np(h->local) > 1) {
 
-    if(h->Id(h->global) == 0 && h->dbgLevel > 1) printf("."), fflush(stdout);
+    if(h->Id(h->global) == 0
+        && h->dbgLevel > 1) printf("."), fflush(stdout);
 
     int global = (h->Np(h->local) == h->Np(h->global));
     ipass = 0;
@@ -663,6 +667,6 @@ void GenmapRSB(GenmapHandle h) {
 #else
   time = ((double)clock() - t0) / CLOCKS_PER_SEC;
 #endif
-  if(h->Id(h->global) == 0 && h->dbgLevel > 0) 
+  if(h->Id(h->global) == 0 && h->dbgLevel > 0)
     printf("\nfinished in %lfs\n", time), fflush(stdout);
 }
