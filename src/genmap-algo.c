@@ -141,7 +141,7 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
       for(m = l; m < n - 1; m++) {
         GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
         // Should use a tolerance for this check
-        if(e->data[m]/dd < 1.e-8) break;
+        if(e->data[m]/dd < GENMAP_TOL) break;
       }
 
       if(m != l) {
@@ -160,7 +160,7 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
           GenmapScalar f = s * e->data[i];
           GenmapScalar b = c * e->data[i];
           e->data[i+1] = r = sqrt(f*f + g*g);
-          if(r < 1.e-8) {
+          if(r < GENMAP_TOL) {
             d->data[i+1] -= p;
             e->data[m] = 0.0;
             break;
@@ -181,10 +181,11 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
           // Done with eigenvectors
         }
 
-        if(r > 1.e-8 && i >= l) continue;
+        if(r > GENMAP_TOL && i >= l) continue;
 
         d->data[l] -= p;
         e->data[l] = g;
+        printf("m=%d\n", m);
         e->data[m] = 0.0;
       }
     } while(m != l);
@@ -202,6 +203,8 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
   //  GenmapScalar scale = 1.0/e->data[ko];
   //  GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
   //}
+
+  GenmapCopyVector(*eValues, e);
 
   GenmapDestroyVector(d);
   GenmapDestroyVector(e);
@@ -553,6 +556,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   // 2. Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
   GenmapTQLI(alphaVec, betaVec, &eVectors, &eValues);
+  GenmapPrintVector(eValues);
   GenmapScalar eValMin = eValues->data[0];
   GenmapInt eValMinI = 0;
   for(GenmapInt i = 1; i < iter; i++) {
@@ -660,9 +664,9 @@ void GenmapRSB(GenmapHandle h) {
   GenmapLong start = h->header->start;
   GenmapElements elements = GenmapGetElements(h);
 
-  int maxIter = 5;
-  maxIter = (nel / 5 > maxIter) ? nel / 5 : maxIter;
-  maxIter = (maxIter > 50) ? 50 : maxIter;
+  int maxIter = 50;
+  //maxIter = (nel / 5 > maxIter) ? nel / 5 : maxIter;
+  //maxIter = (maxIter > 50) ? 50 : maxIter;
 
   int iter = maxIter;
   int npass = 50, ipass = 0;
