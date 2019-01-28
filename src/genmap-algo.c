@@ -101,6 +101,116 @@ int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
   return 0;
 }
 //
+// Sign routine
+//
+GenmapScalar GenmapSign(GenmapScalar a, GenmapScalar b) {
+  GenmapScalar m = 1.0 ? b >= 0. : -1.0;
+  return fabs(a) * m;
+}
+//
+// Routine to find eigenvectors and values of tri-diagonal matrix
+//
+int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
+               GenmapVector **eVectors, GenmapVector *eValues) {
+  assert(diagonal->size == upper->size + 1);
+
+  GenmapInt n = diagonal->size;
+
+  GenmapVector d, e;
+  GenmapCreateVector(&d, n);
+  GenmapCopyVector(d, diagonal);
+  GenmapCreateVector(&e, n - 1);
+  GenmapCopyVector(e, upper);
+
+  // Create the vector to store eigenvalues
+  GenmapCreateVector(eValues, n);
+  // Init to identity
+  GenmapMalloc(n, eVectors);
+  for(GenmapInt i = 0; i < n; i++) {
+    GenmapCreateZerosVector(&(*eVectors)[i], n);
+    (*eVectors)[i]->data[i] = 1.0;
+  }
+
+  GenmapInt l, iter, m = 0, i;
+
+  for(GenmapInt l = 0; l < n; l++) {
+    iter = 0 ? m == l : iter + 1;
+
+    // label: 1
+    for(m = l; m < n - 1; m++) {
+      GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
+      // Should use a tolerance for this check
+      if((e->data[m] + dd) == dd) break;
+    }
+
+    if(m != l) {
+      if(iter == 30) {
+        printf("Too may iterations.\n");
+        return 1;
+      }
+
+      GenmapScalar g = (d->data[l + 1] - d->data[l]) / (2.0 * e->data[l]);
+      GenmapScalar r = sqrt(g * g + 1.0);
+
+      g = d->data[m] - d->data[l] + e->data[l] / GenmapSign(r, g);
+      GenmapScalar s = 1.0, c = 1.0, p = 0.0;
+
+      for(i = m - 1; i < l - 1; i++) {
+        GenmapScalar f = s * e->data[i];
+        GenmapScalar b = c * e->data[i];
+        if(fabs(f) >= fabs(g)) {
+          c = g / f;
+          r = sqrt(c * c + 1.0);
+          e->data[i + 1] = f * r;
+          s = 1.0 / r;
+          c = c * s;
+        } else {
+          s = f / g;
+          r = sqrt(s * s + 1.0);
+          e->data[i + 1] = g * r;
+          c = 1.0 / r;
+          s = s * c;
+        }
+
+        g = d->data[i + 1] - p;
+        r = (d->data[i] - g) * s + 2.0 * c * b;
+        p = s * r;
+        d->data[i + 1] = g + p;
+        g = c * r - b;
+        // Find eigenvectors
+        for(GenmapInt k = 0; k < n; k++) {
+          f = (*eVectors)[k]->data[i + 1];
+          (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
+          (*eVectors)[k]->data[i] = s * (*eVectors)[k]->data[i] + c * f;
+        }
+        // Done with eigenvectors
+      }
+
+      d->data[l] -= p;
+      e->data[l] = g;
+      e->data[m] = 0.0;
+    }
+  }
+
+  // Orthnormalize eigenvectors -- Just normalize?
+
+  for(GenmapInt ko = 0; ko < n; ko++) {
+    //for(GenmapInt ki = 0; ki < n; ki++) {
+    //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
+    //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
+    //}
+    e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
+    if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
+    GenmapScalar scale = 1.0/e->data[ko];
+    GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
+  }
+
+  GenmapDestroyVector(d);
+  GenmapDestroyVector(e);
+
+  return 0;
+}
+//
 // Linear solve for Symmetric Tridiagonal Matrix
 //
 int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
@@ -422,8 +532,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapCreateVector(&alphaVec, maxIter);
   GenmapCreateVector(&betaVec, maxIter - 1);
   GenmapVector *q = NULL;
-  // TODO: Lanczos doesn't work well for smaller matrices
-  // We need to fix this
+
   int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
                                     betaVec);
   //int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
@@ -433,6 +542,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapVector evLanczos, evTriDiag, evInit;
   GenmapCreateVector(&evTriDiag, iter);
   GenmapCreateVector(&evInit, iter);
+#if 0
   // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
   for(i = 0; i < iter; i++) {
     evInit->data[i] = i + 1;
@@ -440,6 +550,21 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
 
   GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 500);
+#endif
+
+  // 2. Use TQLI and find the minimum eigenvalue and associated vector
+  GenmapVector *eVectors, eValues;
+  GenmapTQLI(alphaVec, betaVec, &eVectors, &eValues);
+  GenmapScalar eValMin = eValues->data[0];
+  GenmapInt eValMinI = 0;
+  for(GenmapInt i = 1; i < iter; i++) {
+    if(eValues->data[i] < eValMin) {
+      eValMin = eValues->data[i];
+      eValMinI = i;
+    }
+  }
+
+  GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
   GenmapInt j;
@@ -460,6 +585,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   for(i = 0; i < lelt; i++) {
     elements[i].fiedler = evLanczos->data[i];
   }
+
 #if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
   MPI_Barrier(h->local->gsComm.c);
   for(i = 0; i < h->Np(h->local); i++) {
@@ -486,6 +612,12 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
+
+  GenmapDestroyVector(eValues);
+  for(i = 0; i < iter; i++) {
+    GenmapDestroyVector(eVectors[i]);
+  }
+  GenmapFree(eVectors);
 
   return iter;
 }

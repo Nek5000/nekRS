@@ -195,5 +195,3 @@ int GenmapFree(void *p) {
   p = NULL;
   return 0;
 }
-
-
