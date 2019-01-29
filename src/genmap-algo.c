@@ -110,7 +110,7 @@ GenmapScalar GenmapSign(GenmapScalar a, GenmapScalar b) {
 //
 // Routine to find eigenvectors and values of tri-diagonal matrix
 //
-int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
+int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues) {
   assert(diagonal->size == upper->size + 1);
 
@@ -119,11 +119,14 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
   GenmapVector d, e;
   GenmapCreateVector(&d, n);
   GenmapCopyVector(d, diagonal);
-  GenmapCreateVector(&e, n - 1);
+  //printf("n is: %d\n", n);
+  GenmapCreateVector(&e, n);
   GenmapCopyVector(e, upper);
+  if(n > 1)
+    e->data[n-1] = e->data[n-2];
 
   // Create the vector to store eigenvalues
-  GenmapCreateVector(eValues, n);
+  GenmapCreateOnesVector(eValues, n);
   // Init to identity
   GenmapMalloc(n, eVectors);
   for(GenmapInt i = 0; i < n; i++) {
@@ -136,31 +139,33 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
 
   for(l = 0; l < n; l++) {
     iter = 0;
-
     do {
       for(m = l; m < n - 1; m++) {
         GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
         // Should use a tolerance for this check
-        if(e->data[m]/dd < GENMAP_TOL) break;
+        if(fabs(e->data[m])/dd < GENMAP_SP_TOL) break;
       }
 
       if(m != l) {
         if(iter++ == 30) {
-          printf("Too may iterations.\n");
+          if(h->Id(h->global) == 0) printf("Too may iterations.\n");
           return 1;
         }
 
+        //printf("l=%d, l+1=%d\n", l, l+1);
         GenmapScalar g = (d->data[l + 1] - d->data[l]) / (2.0 * e->data[l]);
         GenmapScalar r = sqrt(g * g + 1.0);
 
-        g = d->data[m] - d->data[l] + e->data[l] / GenmapSign(r, g);
+        g = d->data[m] - d->data[l] + e->data[l] / (g + GenmapSign(r, g));
         GenmapScalar s = 1.0, c = 1.0, p = 0.0;
 
         for(i = m - 1; i >= l; i--) {
+          //printf("i=%d, i+1=%d\n", i, i+1);
           GenmapScalar f = s * e->data[i];
           GenmapScalar b = c * e->data[i];
           e->data[i+1] = r = sqrt(f*f + g*g);
-          if(r < GENMAP_TOL) {
+
+          if(r < GENMAP_SP_TOL) {
             d->data[i+1] -= p;
             e->data[m] = 0.0;
             break;
@@ -181,11 +186,10 @@ int GenmapTQLI(GenmapVector diagonal, GenmapVector upper,
           // Done with eigenvectors
         }
 
-        if(r > GENMAP_TOL && i >= l) continue;
+        if(r < GENMAP_SP_TOL && i >= l) continue;
 
         d->data[l] -= p;
         e->data[l] = g;
-        printf("m=%d\n", m);
         e->data[m] = 0.0;
       }
     } while(m != l);
@@ -542,20 +546,22 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   // local Fiedler vector.
   GenmapVector evLanczos, evTriDiag, evInit;
   GenmapCreateVector(&evTriDiag, iter);
-  GenmapCreateVector(&evInit, iter);
 #if 0
+  GenmapCreateVector(&evInit, iter);
+
   // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
   for(i = 0; i < iter; i++) {
     evInit->data[i] = i + 1;
   }
   GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
 
-  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 500);
-#endif
-
+  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 100);
+#else
+  printf("Paul's version\n");
   // 2. Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
-  GenmapTQLI(alphaVec, betaVec, &eVectors, &eValues);
+  GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
+
   GenmapPrintVector(eValues);
   GenmapScalar eValMin = eValues->data[0];
   GenmapInt eValMinI = 0;
@@ -567,6 +573,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   }
 
   GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
+#endif
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
   GenmapInt j;
@@ -588,20 +595,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
     elements[i].fiedler = evLanczos->data[i];
   }
 
-#if defined(GENMAP_DEBUG) && defined(GENMAP_MPI)
-  MPI_Barrier(h->local->gsComm.c);
-  for(i = 0; i < h->Np(h->local); i++) {
-    if(i == h->Id(h->local)) {
-      for(j = 0; j < lelt; j++)
-        printf("id = "GenmapIntFormat" globalId = "GenmapLongFormat" fiedler = "GenmapScalarFormat"\n",
-               h->Id(h->global),
-               elements[j].globalId, elements[j].fiedler);
-    }
-    MPI_Barrier(h->local->gsComm.c);
-  }
-  MPI_Barrier(h->local->gsComm.c);
-#endif
-
 
   // n. Destory the data structures
   GenmapDestroyVector(initVec);
@@ -609,11 +602,14 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapDestroyVector(betaVec);
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
+#if 0
   GenmapDestroyVector(evInit);
+
   for(i = 0; i < iter + 1; i++) {
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
+#endif
 
   GenmapDestroyVector(eValues);
   for(i = 0; i < iter; i++) {

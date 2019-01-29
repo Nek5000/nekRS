@@ -71,7 +71,7 @@ int GenmapCopyVector(GenmapVector y, GenmapVector x) {
   /* Asserts:
        - size y = size x
   */
-  assert(y->size == x->size);
+  assert(y->size >= x->size);
 
   GenmapInt n = x->size;
   GenmapInt i;

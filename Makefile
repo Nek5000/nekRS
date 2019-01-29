@@ -47,7 +47,7 @@ ifneq ($(MPI),0)
 endif
 
 ifneq ($(DEBUG),0)
-  PP += -g -DGENMAP_DEBUG
+  PP += -g3 -DGENMAP_DEBUG
 endif
 
 ifneq ($(UNDERSCORE),0)

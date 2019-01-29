@@ -173,4 +173,6 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h);
 // Debug routines
 //
 double GenmapGetMaxRss();
+void print_stack();
+
 #endif
