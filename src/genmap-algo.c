@@ -567,12 +567,11 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
 
-  GenmapPrintVector(eValues);
-  GenmapScalar eValMin = eValues->data[0];
+  GenmapScalar eValMin = fabs(eValues->data[0]);
   GenmapInt eValMinI = 0;
   for(GenmapInt i = 1; i < iter; i++) {
-    if(eValues->data[i] < eValMin) {
-      eValMin = eValues->data[i];
+    if(fabs(eValues->data[i]) < eValMin) {
+      eValMin = fabs(eValues->data[i]);
       eValMinI = i;
     }
   }

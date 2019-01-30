@@ -15,7 +15,7 @@ BUILDDIR=$(SRCROOT)/build
 TESTDIR =$(SRCROOT)/tests
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test
+TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test $(TESTDIR)/eigenvalue
 LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)/include
