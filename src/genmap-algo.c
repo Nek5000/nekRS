@@ -122,11 +122,10 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   //printf("n is: %d\n", n);
   GenmapCreateVector(&e, n);
   GenmapCopyVector(e, upper);
-  if(n > 1)
-    e->data[n-1] = e->data[n-2];
+  e->data[n-1] = 0.0;
 
   // Create the vector to store eigenvalues
-  GenmapCreateOnesVector(eValues, n);
+  GenmapCreateVector(eValues, n);
   // Init to identity
   GenmapMalloc(n, eVectors);
   for(GenmapInt i = 0; i < n; i++) {
@@ -143,7 +142,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
       for(m = l; m < n - 1; m++) {
         GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
         // Should use a tolerance for this check
-        if(fabs(e->data[m])/dd < GENMAP_SP_TOL) break;
+        if(fabs(e->data[m])/dd < GENMAP_DP_TOL) break;
       }
 
       if(m != l) {
@@ -165,7 +164,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           GenmapScalar b = c * e->data[i];
           e->data[i+1] = r = sqrt(f*f + g*g);
 
-          if(r < GENMAP_SP_TOL) {
+          if(r < GENMAP_DP_TOL) {
             d->data[i+1] -= p;
             e->data[m] = 0.0;
             break;
@@ -180,13 +179,13 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           // Find eigenvectors
           for(GenmapInt k = 0; k < n; k++) {
             f = (*eVectors)[k]->data[i + 1];
-            (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
+            (*eVectors)[k]->data[i+1] = s * (*eVectors)[k]->data[i] + c * f;
             (*eVectors)[k]->data[i] = c * (*eVectors)[k]->data[i] - s * f;
           }
           // Done with eigenvectors
         }
 
-        if(r < GENMAP_SP_TOL && i >= l) continue;
+        if(r < GENMAP_DP_TOL && i >= l) continue;
 
         d->data[l] -= p;
         e->data[l] = g;
@@ -196,19 +195,26 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   }
 
   // Orthnormalize eigenvectors -- Just normalize?
+  for(GenmapInt i = 0; i < n; i++) {
+    for(GenmapInt j = 0; j < i; j++) {
+      GenmapScalar tmp = (*eVectors)[i]->data[j];
+      (*eVectors)[i]->data[j] = (*eVectors)[j]->data[i];
+      (*eVectors)[j]->data[i] = tmp;
+    }
+  }
 
-  //for(GenmapInt ko = 0; ko < n; ko++) {
-  //  //for(GenmapInt ki = 0; ki < n; ki++) {
-  //  //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
-  //  //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
-  //  //}
-  //  e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
-  //  if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
-  //  GenmapScalar scale = 1.0/e->data[ko];
-  //  GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
-  //}
+  for(GenmapInt ko = 0; ko < n; ko++) {
+    //for(GenmapInt ki = 0; ki < n; ki++) {
+    //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
+    //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
+    //}
+    e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
+    if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
+    GenmapScalar scale = 1.0/e->data[ko];
+    GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
+  }
 
-  GenmapCopyVector(*eValues, e);
+  GenmapCopyVector(*eValues, d);
 
   GenmapDestroyVector(d);
   GenmapDestroyVector(e);
@@ -281,7 +287,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     upper->size = niter - 1;
   }
 
-  GenmapScalar eps = 1.e-5;
+  GenmapScalar eps = 1.e-12;
   GenmapScalar alpha, beta;
   GenmapScalar rnorm, rtol, rni, rtr, rtz1, rtz2, pap = 0.0, pap_old;
   GenmapVector r, p, w, weights;
@@ -557,7 +563,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
 
   GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 100);
 #else
-  printf("Paul's version\n");
   // 2. Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
