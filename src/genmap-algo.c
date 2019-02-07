@@ -3,6 +3,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include <limits.h>
+
 //
 // Algorithms
 //
@@ -162,6 +164,21 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           //printf("i=%d, i+1=%d\n", i, i+1);
           GenmapScalar f = s * e->data[i];
           GenmapScalar b = c * e->data[i];
+#if defined(GENMAP_PAUL)
+          if(fabs(f) >= fabs(g)) {
+            c = g/f;
+            r = sqrt(c*c + 1.0);
+            e->data[i+1] = f*r;
+            s = 1.0/r;
+            c = c*s;
+          } else {
+            s = f/g;
+            r = sqrt(s*s + 1.0);
+            e->data[i+1] = g*r;
+            c = 1.0/r;
+            s = s*c;
+          }
+#else
           e->data[i+1] = r = sqrt(f*f + g*g);
 
           if(r < GENMAP_DP_TOL) {
@@ -171,6 +188,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           }
           s = f/r;
           c = g/r;
+#endif
           g = d->data[i + 1] - p;
           r = (d->data[i] - g) * s + 2.0 * c * b;
           p = s * r;
@@ -267,8 +285,9 @@ int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
   }
 
   GenmapGop(c, &sum, 1, GENMAP_SCALAR, GENMAP_SUM);
+  sum /= n;
   for(i = 0;  i < q1->size; i++) {
-    q1->data[i] -= sum / n;
+    q1->data[i] -= sum;
   }
 
   return 0;
@@ -287,18 +306,23 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     upper->size = niter - 1;
   }
 
+#if defined(GENMAP_PAUL)
+  GenmapScalar eps = 1.e-5;
+#else
   GenmapScalar eps = 1.e-12;
+#endif
   GenmapScalar alpha, beta;
   GenmapScalar rnorm, rtol, rni, rtr, rtz1, rtz2, pap = 0.0, pap_old;
   GenmapVector r, p, w, weights;
 
   rtz1 = 1.0;
 
+  GenmapScalar tmp;
   GenmapInt lelt = h->header->lelt;
 
   // Store Local Laplacian weights
   GenmapCreateVector(&weights, lelt);
-  GenmapCreateOnesVector(&p, lelt);
+  GenmapCreateZerosVector(&p, lelt);
   GenmapCreateVector(&w, lelt);
   h->AxInit(h, c, weights);
 
@@ -331,8 +355,11 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
     GenmapAxpbyVector(p, p, beta, r, 1.0);
     GenmapOrthogonalizebyOneVector(h, c, p, h->header->nel);
+
     // Multiplication by the laplacian
     h->Ax(h, c, p, weights, w);
+    //if(h->Np(h->local) == h->Np(h->global))
+    GenmapScaleVector(w, w, -1.0);
 
     pap_old = pap;
     pap = GenmapDotVector(w, p);
@@ -515,6 +542,52 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
   return 0;
 }
 
+void GenmapGlobalMinMax(GenmapHandle h, GenmapLong *min,
+                         GenmapLong *max) {
+  *min = LONG_MAX; *max = LONG_MIN;
+
+  GenmapElements e = GenmapGetElements(h);
+  GenmapInt i;
+  for(i = 0; i < h->header->lelt; i++) {
+    if(e[i].globalId < *min) {
+      *min = e[i].globalId;
+    }
+    if(e[i].globalId > *max) {
+      *max = e[i].globalId;
+    }
+  }
+
+  GenmapGop(h->local, min, 1, GENMAP_SCALAR, GENMAP_MIN);
+  GenmapGop(h->local, max, 1, GENMAP_SCALAR, GENMAP_MAX);
+}
+
+GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
+  GenmapLong min, max;
+  GenmapGlobalMinMax(h, &min, &max);
+  GenmapLong range = max - min;
+
+  GenmapInt np = h->Np(h->local);
+  GenmapInt nbins = np;
+  GenmapInt lelt = h->header->lelt;
+  GenmapElements elements = GenmapGetElements(h);
+
+  GenmapElements p, e;
+  for(p = elements, e = p + lelt; p != e; p++) {
+    GenmapInt id;
+    for(id = 0; id < np; id++) {
+      GenmapScalar start = min + (range * id) / nbins;
+      GenmapScalar end = min + (range * (id + 1)) / nbins;
+      if(start <= p->globalId && p->globalId < end) {
+        p->proc = id;
+        break;
+      }
+    }
+    if(id == np) p->proc = np - 1;
+  }
+
+  return 0;
+}
+
 int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
                   int global) {
   // 1. Do lanczos in local communicator.
@@ -525,44 +598,48 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapInt i;
+#if defined(GENMAP_PAUL)
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      //initVec->data[i] = (GenmapScalar) elements[i].globalId;
-      if(h->header->start + lelt < h->header->nel / 2)
-        initVec->data[i] = h->header->start + i + 1000. * (h->header->nel /
-                           2.0);
+      if(h->header->start + i + 1  < h->header->nel / 2)
+        initVec->data[i] = h->header->start + i + 1 + 1000. * h->header->nel;
       else
-        initVec->data[i] = h->header->start + i;
+        initVec->data[i] = h->header->start + i + 1;
     }
   } else {
     for(i = 0;  i < lelt; i++) {
       initVec->data[i] = elements[i].fiedler;
     }
   }
+#else
+  if(global > 0) {
+      initVec->data[i] = (GenmapScalar) elements[i].globalId;
+  } else {
+    for(i = 0;  i < lelt; i++) {
+      initVec->data[i] = elements[i].fiedler;
+    }
+  }
+#endif
 
   GenmapCreateVector(&alphaVec, maxIter);
   GenmapCreateVector(&betaVec, maxIter - 1);
   GenmapVector *q = NULL;
 
+#if defined(GENMAP_PAUL)
+  GenmapOrthogonalizebyOneVector(h, c, initVec, h->header->nel);
+  GenmapScalar rtr = GenmapDotVector(initVec, initVec);
+  GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
+  GenmapScalar rni = 1.0 / sqrt(rtr);
+  GenmapScaleVector(initVec, initVec, rni);
   int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
                                     betaVec);
-  //int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
-
-  // 2. Do inverse power iteration on local communicator and find
-  // local Fiedler vector.
-  GenmapVector evLanczos, evTriDiag, evInit;
-  GenmapCreateVector(&evTriDiag, iter);
-#if 0
-  GenmapCreateVector(&evInit, iter);
-
-  // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
-  for(i = 0; i < iter; i++) {
-    evInit->data[i] = i + 1;
-  }
-  GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
-
-  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 100);
 #else
+  int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
+#endif
+
+  GenmapVector evLanczos, evTriDiag;
+  GenmapCreateVector(&evTriDiag, iter);
+#if defined(GENMAP_PAUL)
   // 2. Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
@@ -577,6 +654,19 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   }
 
   GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
+#else
+  // 2. Do inverse power iteration on local communicator and find
+  // local Fiedler vector.
+  GenmapVector evInit;
+  GenmapCreateVector(&evInit, iter);
+
+  // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
+  for(i = 0; i < iter; i++) {
+    evInit->data[i] = i + 1;
+  }
+  GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
+
+  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 100);
 #endif
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
@@ -599,27 +689,26 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
     elements[i].fiedler = evLanczos->data[i];
   }
 
-
   // n. Destory the data structures
   GenmapDestroyVector(initVec);
   GenmapDestroyVector(alphaVec);
   GenmapDestroyVector(betaVec);
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
-#if 0
-  GenmapDestroyVector(evInit);
-
-  for(i = 0; i < iter + 1; i++) {
-    GenmapDestroyVector(q[i]);
-  }
-  GenmapFree(q);
-#endif
-
+#if defined(GENMAP_PAUL)
   GenmapDestroyVector(eValues);
   for(i = 0; i < iter; i++) {
     GenmapDestroyVector(eVectors[i]);
   }
   GenmapFree(eVectors);
+#else
+  GenmapDestroyVector(evInit);
+
+  for(i = 0; i < iter; i++) {
+    GenmapDestroyVector(q[i]);
+  }
+  GenmapFree(q);
+#endif
 
   return iter;
 }
@@ -695,7 +784,11 @@ void GenmapRSB(GenmapHandle h) {
     if(h->Id(h->global) == 0
         && h->dbgLevel > 1) printf("."), fflush(stdout);
 
+#if defined(GENMAP_PAUL)
+    int global = 1;
+#else
     int global = (h->Np(h->local) == h->Np(h->global));
+#endif
     ipass = 0;
     do {
       iter = GenmapFiedler(h, h->local, maxIter, global);
@@ -706,7 +799,7 @@ void GenmapRSB(GenmapHandle h) {
     // sort locally according to Fiedler vector
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   fiedler,
-                  TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
+                  TYPE_DOUBLE, globalId, TYPE_LONG, &buf0);
 
     // Sort the Fiedler vector globally
     GenmapSetProcessorId(h);
@@ -717,7 +810,7 @@ void GenmapRSB(GenmapHandle h) {
     // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   fiedler,
-                  TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
+                  TYPE_DOUBLE, globalId, TYPE_LONG, &buf0);
 
     GenmapLong lelt_ = (GenmapLong)lelt;
     comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
@@ -762,8 +855,7 @@ void GenmapRSB(GenmapHandle h) {
     // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   fiedler,
-                  TYPE_DOUBLE, globalId, TYPE_INT, &buf0);
-
+                  TYPE_DOUBLE, globalId, TYPE_LONG, &buf0);
 
     // Now it is time to split the communicator
     GenmapCommExternal local;
@@ -789,6 +881,21 @@ void GenmapRSB(GenmapHandle h) {
     id = h->Id(h->local);
     np = h->Np(h->local);
     elements = GenmapGetElements(h);
+
+#if defined(GENMAP_PAUL)
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  globalId,
+                  TYPE_LONG, globalId, TYPE_LONG, &buf0);
+    // Sort the Fiedler vector globally
+    GenmapSetProcessorIdGlobal(h);
+    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
+                    0, &cr);
+    elements = GenmapGetElements(h);
+    lelt = h->header->lelt = (GenmapInt)(h->elementArray.n);
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  globalId,
+                  TYPE_LONG, globalId, TYPE_LONG, &buf0);
+#endif
   }
 
   crystal_free(&cr);

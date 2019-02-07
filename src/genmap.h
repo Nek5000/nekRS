@@ -127,6 +127,10 @@ int GenmapVectorsEqual(GenmapVector x, GenmapVector y,
                        GenmapScalar tol);
 int GenmapCopyVector(GenmapVector x, GenmapVector y);
 GenmapScalar GenmapDotVector(GenmapVector x, GenmapVector y);
+GenmapScalar GenmapAbsMaxVector(GenmapVector x);
+GenmapScalar GenmapMaxVector(GenmapVector x);
+GenmapScalar GenmapAbsMinVector(GenmapVector x);
+GenmapScalar GenmapMinVector(GenmapVector x);
 GenmapScalar GenmapNormVector(GenmapVector x, GenmapInt p);
 
 int GenmapPrintVector(GenmapVector x);

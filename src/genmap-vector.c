@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
+
 //
 // Vector operations
 //
@@ -157,6 +159,54 @@ GenmapScalar GenmapDotVector(GenmapVector y, GenmapVector x) {
   GenmapInt i;
   for(i = 0; i < x->size; i++) {
     result += x->data[i] * y->data[i];
+  }
+
+  return result;
+}
+
+GenmapScalar GenmapAbsMaxVector(GenmapVector x) {
+  GenmapScalar result = 0.0;
+  GenmapInt i;
+  for(i = 0; i < x->size; i++) {
+    if(fabs(x->data[i]) > result) {
+      result = fabs(x->data[i]);
+    }
+  }
+
+  return result;
+}
+
+GenmapScalar GenmapMaxVector(GenmapVector x) {
+  GenmapScalar result = -DBL_MAX;
+  GenmapInt i;
+  for(i = 0; i < x->size; i++) {
+    if(x->data[i] > result) {
+      result = x->data[i];
+    }
+  }
+
+  return result;
+}
+
+GenmapScalar GenmapAbsMinVector(GenmapVector x) {
+  GenmapScalar result = DBL_MAX;
+  GenmapInt i;
+  for(i = 0; i < x->size; i++) {
+    if(fabs(x->data[i]) < result) {
+      result = fabs(x->data[i]);
+    }
+  }
+
+  return result;
+}
+
+GenmapScalar GenmapMinVector(GenmapVector x) {
+  GenmapScalar result = DBL_MAX;
+  GenmapInt i;
+  for(i = 0; i < x->size; i++) {
+    if(x->data[i] < result) {
+      result = x->data[i];
+    }
   }
 
   return result;

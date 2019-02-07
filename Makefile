@@ -4,6 +4,7 @@ DEBUG?=0
 UNDERSCORE?=1
 CC?=mpicc
 FC?=mpif77
+PAUL?=1
 
 SRCROOT=.
 
@@ -15,7 +16,7 @@ BUILDDIR=$(SRCROOT)/build
 TESTDIR =$(SRCROOT)/tests
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test $(TESTDIR)/eigenvalue
+TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test
 LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)/include
@@ -52,6 +53,10 @@ endif
 
 ifneq ($(UNDERSCORE),0)
   PP += -DGENMAP_UNDERSCORE
+endif
+
+ifneq ($(PAUL),0)
+  CFLAGS += -DGENMAP_PAUL
 endif
 
 .PHONY: default
