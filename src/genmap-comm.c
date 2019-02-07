@@ -1,36 +1,5 @@
 #include <genmap-impl.h>
 
-int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
-  GenmapMalloc(1, c);
-  comm_init(&(*c)->gsComm, ce);
-  (*c)->verticesHandle = NULL;
-  (*c)->laplacianWeights = NULL;
-  buffer_init(&(*c)->buf, 1024);
-  return 0;
-}
-
-int GenmapDestroyComm(GenmapComm c) {
-  if(&c->buf)
-    buffer_free(&c->buf);
-  if(c->verticesHandle)
-    gs_free(c->verticesHandle);
-  if(c->laplacianWeights)
-    GenmapFree(c->laplacianWeights);
-  if(&c->gsComm)
-    comm_free(&c->gsComm);
-  GenmapFree(c);
-
-  return 0;
-}
-
-int GenmapNp(GenmapComm c) {
-  return (int) c->gsComm.np;
-}
-
-int GenmapId(GenmapComm c) {
-  return (int) c->gsComm.id;
-}
-
 int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
              GenmapVector weights, GenmapVector v) {
   assert(u->size == v->size);

@@ -1,9 +1,11 @@
 #ifndef _GENMAP_H_
 #define _GENMAP_H_
 
-#include <genmap-gslib.h>
-#include <genmap-types.h>
+#include "genmap-types.h"
 
+// Header for gslib
+#include "genmap-gslib.h"
+// Header for MPI
 #ifdef GENMAP_MPI
 #include <mpi.h>
 #endif
@@ -33,7 +35,7 @@
 #define GENMAP_DP_TOL 1e-12
 #define GENMAP_TOL GENMAP_DP_TOL
 //
-// Genmap Readers
+// Genmap readers
 //
 #define GENMAP_READER_LEN 256
 #define GENMAP_MAX_READERS 32

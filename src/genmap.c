@@ -13,13 +13,13 @@ static struct {
   char name[GENMAP_READER_LEN];
   int (*Create)(GenmapHandle h);
 } GenmapReaders[GENMAP_MAX_READERS];
-
 static size_t GenmapNumReaders = 0;
-static size_t GenmapReadersRegistered = 0;
-
+static int GenmapReadersRegistered = 0;
+//
+// Register readers -- each reader should call this
+//
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
-  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(
-        GenmapReaders[0])) {
+  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(GenmapReaders[0])) {
     //TODO: GenmapError
     printf("Error: Too many readers.\n");
   }
@@ -36,16 +36,13 @@ int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
 int GenmapRegister() {
   int ierr;
   ierr = GenmapRegisterReader("interface", GenmapCreateHandle_interface);
-  ierr |= GenmapRegisterReader("gmsh", GenmapCreateHandle_gmsh);
   return ierr;
 }
 //
 // GenmapInit
 //
 int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
-  // TODO: Make this to use __attribute__((constructor))
-  // Needs -fPIC in gslib :(
-  if(!GenmapReadersRegistered) {
+  if(GenmapReadersRegistered == 0) {
     GenmapRegister();
     GenmapReadersRegistered = 1;
   }
@@ -101,31 +98,21 @@ int GenmapFinalize(GenmapHandle h) {
 // GenmapHandle
 //
 int GenmapCreateHandle(GenmapHandle h) {
+  // Datastructures
   h->global = NULL;
   h->local = NULL;
-
-  h->CreateComm = GenmapCreateComm;
-  h->DestroyComm = GenmapDestroyComm;
-  h->Id = GenmapId;
-  h->Np = GenmapNp;
-
-  h->Ax = GenmapAx;
-  h->AxInit = GenmapAxInit;
-
-  h->Gop = GenmapGop;
   h->header = NULL;
   h->elementArray.ptr = NULL;
   h->elementArray.n = h->elementArray.max = 0;
 
-  h->CreateHeader = GenmapCreateHeader;
-  h->DestroyHeader = GenmapDestroyHeader;
-
-  h->GetElements = GenmapGetElements;
-  h->CreateElements = GenmapCreateElements;
-  h->DestroyElements = GenmapDestroyElements;
+  // Function pointers
+  h->Id = GenmapId;
+  h->Np = GenmapNp;
+  h->Gop = GenmapGop;
+  h->Ax = GenmapAx;
+  h->AxInit = GenmapAxInit;
 
   h->Create(h);
-  h->Destroy = GenmapDestroyHandle;
 
   return 0;
 }
@@ -147,16 +134,38 @@ int GenmapDestroyHeader(GenmapHeader h) {
   GenmapFree(h);
   return 0;
 }
-//
-// GenmapElements: Create, Destroy
-//
-int GenmapCreateElements(GenmapElements *e) {
+
+int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
+  GenmapMalloc(1, c);
+  comm_init(&(*c)->gsComm, ce);
+  (*c)->verticesHandle = NULL;
+  (*c)->laplacianWeights = NULL;
+  buffer_init(&(*c)->buf, 1024);
   return 0;
 }
 
-int GenmapDestroyElements(GenmapElements e) {
+int GenmapDestroyComm(GenmapComm c) {
+  if(&c->buf)
+    buffer_free(&c->buf);
+  if(c->verticesHandle)
+    gs_free(c->verticesHandle);
+  if(c->laplacianWeights)
+    GenmapFree(c->laplacianWeights);
+  if(&c->gsComm)
+    comm_free(&c->gsComm);
+  GenmapFree(c);
+
   return 0;
 }
+
+int GenmapNp(GenmapComm c) {
+  return (int) c->gsComm.np;
+}
+
+int GenmapId(GenmapComm c) {
+  return (int) c->gsComm.id;
+}
+
 GenmapElements GenmapGetElements(GenmapHandle h) {
   return (GenmapElements) h->elementArray.ptr;
 }

@@ -1,8 +1,6 @@
 #ifndef _GENMAP_IMPL_H_
 #define _GENMAP_IMPL_H_
 
-#include <genmap.h>
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -11,6 +9,8 @@
 #ifdef GENMAP_DEBUG
 #include <stdio.h>
 #endif
+
+#include "genmap.h"
 //
 // GenmapComm
 //
@@ -89,8 +89,9 @@ struct GenmapHandle_private {
   GenmapInt dbgLevel;
   GenmapInt printStat;
 };
-
+//
 // GenmapHandle
+//
 int GenmapCreateHandle(GenmapHandle h);
 int GenmapDestroyHandle(GenmapHandle h);
 //
