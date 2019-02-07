@@ -112,7 +112,8 @@ GenmapScalar GenmapSign(GenmapScalar a, GenmapScalar b) {
 //
 // Routine to find eigenvectors and values of tri-diagonal matrix
 //
-int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
+int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
+               GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues) {
   assert(diagonal->size == upper->size + 1);
 
@@ -124,7 +125,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   //printf("n is: %d\n", n);
   GenmapCreateVector(&e, n);
   GenmapCopyVector(e, upper);
-  e->data[n-1] = 0.0;
+  e->data[n - 1] = 0.0;
 
   // Create the vector to store eigenvalues
   GenmapCreateVector(eValues, n);
@@ -144,7 +145,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
       for(m = l; m < n - 1; m++) {
         GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
         // Should use a tolerance for this check
-        if(fabs(e->data[m])/dd < GENMAP_DP_TOL) break;
+        if(fabs(e->data[m]) / dd < GENMAP_DP_TOL) break;
       }
 
       if(m != l) {
@@ -166,28 +167,28 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           GenmapScalar b = c * e->data[i];
 #if defined(GENMAP_PAUL)
           if(fabs(f) >= fabs(g)) {
-            c = g/f;
-            r = sqrt(c*c + 1.0);
-            e->data[i+1] = f*r;
-            s = 1.0/r;
-            c = c*s;
+            c = g / f;
+            r = sqrt(c * c + 1.0);
+            e->data[i + 1] = f * r;
+            s = 1.0 / r;
+            c = c * s;
           } else {
-            s = f/g;
-            r = sqrt(s*s + 1.0);
-            e->data[i+1] = g*r;
-            c = 1.0/r;
-            s = s*c;
+            s = f / g;
+            r = sqrt(s * s + 1.0);
+            e->data[i + 1] = g * r;
+            c = 1.0 / r;
+            s = s * c;
           }
 #else
-          e->data[i+1] = r = sqrt(f*f + g*g);
+          e->data[i + 1] = r = sqrt(f * f + g * g);
 
           if(r < GENMAP_DP_TOL) {
-            d->data[i+1] -= p;
+            d->data[i + 1] -= p;
             e->data[m] = 0.0;
             break;
           }
-          s = f/r;
-          c = g/r;
+          s = f / r;
+          c = g / r;
 #endif
           g = d->data[i + 1] - p;
           r = (d->data[i] - g) * s + 2.0 * c * b;
@@ -197,7 +198,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           // Find eigenvectors
           for(GenmapInt k = 0; k < n; k++) {
             f = (*eVectors)[k]->data[i + 1];
-            (*eVectors)[k]->data[i+1] = s * (*eVectors)[k]->data[i] + c * f;
+            (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
             (*eVectors)[k]->data[i] = c * (*eVectors)[k]->data[i] - s * f;
           }
           // Done with eigenvectors
@@ -228,7 +229,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
     //}
     e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
     if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
-    GenmapScalar scale = 1.0/e->data[ko];
+    GenmapScalar scale = 1.0 / e->data[ko];
     GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
   }
 
@@ -543,7 +544,7 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
 }
 
 void GenmapGlobalMinMax(GenmapHandle h, GenmapLong *min,
-                         GenmapLong *max) {
+                        GenmapLong *max) {
   *min = LONG_MAX; *max = LONG_MIN;
 
   GenmapElements e = GenmapGetElements(h);
@@ -613,7 +614,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   }
 #else
   if(global > 0) {
-      initVec->data[i] = (GenmapScalar) elements[i].globalId;
+    initVec->data[i] = (GenmapScalar) elements[i].globalId;
   } else {
     for(i = 0;  i < lelt; i++) {
       initVec->data[i] = elements[i].fiedler;

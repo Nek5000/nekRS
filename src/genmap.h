@@ -170,7 +170,8 @@ int GenmapPowerIterNew(GenmapVector eVector, void (*Ax)(GenmapVector ax,
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, int iter);
 
-int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
+int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
+               GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues);
 //
 // Evaluate partition quality
