@@ -8,61 +8,9 @@
 //
 // Algorithms
 //
-// Power and inverse power iterations
-int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha,
-                    GenmapVector beta, GenmapVector init, int iter) {
-  assert(alpha->size == beta->size + 1);
-  assert(alpha->size == eVector->size);
-
-  GenmapInt  i, j;
-  GenmapInt n = alpha->size;
-
-  GenmapVector x, y, t;
-  GenmapCreateVector(&x, n);
-  GenmapCreateVector(&t, n);
-  GenmapCreateVector(&y, n);
-  GenmapCopyVector(x, init);
-
-  GenmapScalar norm = GenmapNormVector(x, -1);
-
-  if(n == 1) {
-    eVector->data[0] = alpha->data[0];
-    return 0;
-  } else {
-    for(j = 0; j < iter; j++) {
-      // y = Ax
-      y->data[0] = alpha->data[0] * x->data[0] + beta->data[0] * x->data[1];
-      for(i = 1; i < n - 1; i++) {
-        y->data[i] = beta->data[i - 1] * x->data[i - 1] + alpha->data[i] *
-                     x->data[i] +
-                     beta->data[i] * x->data[i + 1];
-      }
-      y->data[n - 1] = beta->data[n - 2] * x->data[n - 2] + alpha->data[n - 1]
-                       *
-                       x->data[n - 1];
-
-      GenmapAxpbyVector(t, x, norm, y, -1.0);
-      if(GenmapNormVector(t, 2) < GENMAP_TOL && j == iter - 1) {
-        GenmapCopyVector(x, y);
-        break;
-      } else {
-        // Normalize by inf-norm(y)
-        norm = GenmapNormVector(y, -1);
-        GenmapScaleVector(y, y, 1.0 / norm);
-        GenmapCopyVector(x, y);
-      }
-    }
-  }
-
-  GenmapCopyVector(eVector, y);
-
-  GenmapDestroyVector(x);
-  GenmapDestroyVector(t);
-  GenmapDestroyVector(y);
-
-  return j;
-}
-
+//
+// Inverse power iterations
+//
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, GenmapInt iter) {
   assert(alpha->size == beta->size + 1);
@@ -259,8 +207,7 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
   x->data[n - 1] = x->data[n - 1] / diag->data[n - 1];
 
   for(i = n - 2; i >= 0; i--) {
-    x->data[i] = (x->data[i] - beta->data[i] * x->data[i + 1]) /
-                 diag->data[i];
+    x->data[i] = (x->data[i] - beta->data[i] * x->data[i + 1]) / diag->data[i];
   }
 
   GenmapDestroyVector(diag);
