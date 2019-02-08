@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <limits.h>
-
 //
 // Algorithms
 //
@@ -95,7 +94,8 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
 
       if(m != l) {
         if(iter++ == 30) {
-          if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) printf("Too may iterations.\n");
+          if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0)
+            printf("Too may iterations.\n");
           return 1;
         }
 
@@ -382,9 +382,10 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
 
   // Allocate memory for q-vectors
   if(*q == NULL) {
-    GenmapMalloc((size_t)(iter + 1), q);
+    GenmapMalloc((size_t)iter, q);
     GenmapInt i;
-    for(i = 0; i < iter + 1; ++i)(*q)[i] = NULL;
+    for(i = 0; i < iter; ++i)
+      (*q)[i] = NULL;
   }
 
   // Store Local Laplacian weights
@@ -433,8 +434,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   return k;
 }
 
-void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
-                         GenmapScalar *max) {
+void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min, GenmapScalar *max) {
   *min = 1; *max = -1;
 
   GenmapElements e = GenmapGetElements(h);
@@ -452,7 +452,25 @@ void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
   GenmapGop(GenmapGetLocalComm(h), max, 1, GENMAP_SCALAR, GENMAP_MAX);
 }
 
-GenmapInt GenmapSetProcessorId(GenmapHandle h) {
+void GenmapGlobalIdMinMax(GenmapHandle h, GenmapLong *min, GenmapLong *max) {
+  *min = LONG_MAX; *max = LONG_MIN;
+
+  GenmapElements e = GenmapGetElements(h);
+  GenmapInt i;
+  for(i = 0; i < GenmapGetNLocalElements(h); i++) {
+    if(e[i].globalId < *min) {
+      *min = e[i].globalId;
+    }
+    if(e[i].globalId > *max) {
+      *max = e[i].globalId;
+    }
+  }
+
+  GenmapGop(GenmapGetLocalComm(h), min, 1, GENMAP_SCALAR, GENMAP_MIN);
+  GenmapGop(GenmapGetLocalComm(h), max, 1, GENMAP_SCALAR, GENMAP_MAX);
+}
+
+GenmapInt GenmapSetFiedlerBin(GenmapHandle h) {
   GenmapScalar min, max;
   GenmapFiedlerMinMax(h, &min, &max);
   GenmapScalar range = max - min;
@@ -479,28 +497,9 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
   return 0;
 }
 
-void GenmapGlobalMinMax(GenmapHandle h, GenmapLong *min,
-                        GenmapLong *max) {
-  *min = LONG_MAX; *max = LONG_MIN;
-
-  GenmapElements e = GenmapGetElements(h);
-  GenmapInt i;
-  for(i = 0; i < GenmapGetNLocalElements(h); i++) {
-    if(e[i].globalId < *min) {
-      *min = e[i].globalId;
-    }
-    if(e[i].globalId > *max) {
-      *max = e[i].globalId;
-    }
-  }
-
-  GenmapGop(GenmapGetLocalComm(h), min, 1, GENMAP_SCALAR, GENMAP_MIN);
-  GenmapGop(GenmapGetLocalComm(h), max, 1, GENMAP_SCALAR, GENMAP_MAX);
-}
-
-GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
+GenmapInt GenmapSetGlobalIdBin(GenmapHandle h) {
   GenmapLong min, max;
-  GenmapGlobalMinMax(h, &min, &max);
+  GenmapGlobalIdMinMax(h, &min, &max);
   GenmapLong range = max - min;
 
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
@@ -569,8 +568,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
   GenmapScalar rni = 1.0 / sqrt(rtr);
   GenmapScaleVector(initVec, initVec, rni);
-  int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
-                                    betaVec);
+  int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec, betaVec);
 #else
   int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
 #endif
@@ -651,38 +649,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
   return iter;
 }
 
-void GenmapPrimeFactors(GenmapInt n, GenmapInt *pCount,
-                        GenmapInt **primes) {
-  GenmapInt nLocal = n;
-  GenmapInt count = 0;
-  GenmapInt countMax = 10;
-
-  GenmapMalloc((size_t)countMax, primes);
-
-  while(nLocal > 1) {
-    GenmapInt p;
-    for(p = 2; p * p <= nLocal; p++) {
-      if(nLocal % p == 0) {
-        while(nLocal % p == 0) nLocal /= p;
-
-        (*primes)[count] = p;
-        count++;
-        if(count == countMax) {
-          countMax += countMax / 2 + 1;
-          GenmapRealloc((size_t)countMax, primes);
-        }
-      }
-    }
-    if(nLocal > 1) {
-      (*primes)[count] = nLocal;
-      count++;
-      nLocal = 1;
-    }
-  }
-
-  *pCount = count;
-}
-
 void GenmapRSB(GenmapHandle h) {
   GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
@@ -741,7 +707,7 @@ void GenmapRSB(GenmapHandle h) {
                   TYPE_DOUBLE, globalId, TYPE_LONG, &buf0);
 
     // Sort the Fiedler vector globally
-    GenmapSetProcessorId(h);
+    GenmapSetFiedlerBin(h);
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
                     0, &cr);
     elements = GenmapGetElements(h);
@@ -827,7 +793,7 @@ void GenmapRSB(GenmapHandle h) {
                   globalId,
                   TYPE_LONG, globalId, TYPE_LONG, &buf0);
     // Sort the Fiedler vector globally
-    GenmapSetProcessorIdGlobal(h);
+    GenmapSetGlobalIdBin(h);
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
                     0, &cr);
     elements = GenmapGetElements(h);
