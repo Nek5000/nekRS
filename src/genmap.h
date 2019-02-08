@@ -52,10 +52,19 @@ int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h));
 // Genmap header helper functions
 //
 GenmapElements GenmapGetElements(GenmapHandle h);
+void GenmapSetElements(GenmapHandle h, GenmapElements elements);
+
 GenmapComm GenmapGetLocalComm(GenmapHandle h);
+void GenmapSetLocalComm(GenmapHandle h, GenmapComm c);
+
 GenmapComm GenmapGetGlobalComm(GenmapHandle h);
+void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c);
+
 GenmapInt GenmapGetNLocalElements(GenmapHandle h);
+void GenmapSetNLocalElements(GenmapHandle h, GenmapInt localElements);
+
 GenmapLong GenmapGetNGlobalElements(GenmapHandle h);
+void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements);
 //
 // GenmapCommExternal
 //

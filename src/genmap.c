@@ -167,20 +167,40 @@ GenmapElements GenmapGetElements(GenmapHandle h) {
   return (GenmapElements) h->elementArray.ptr;
 }
 
+void GenmapSetElements(GenmapHandle h, GenmapElements elements) {
+  h->elementArray.ptr = elements;
+}
+
 GenmapComm GenmapGetLocalComm(GenmapHandle h) {
   return h->local;
+}
+
+void GenmapSetLocalComm(GenmapHandle h, GenmapComm c) {
+  h->local = c;
 }
 
 GenmapComm GenmapGetGlobalComm(GenmapHandle h) {
   return h->global;
 }
 
+void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c) {
+  h->global = c;
+}
+
 GenmapInt GenmapGetNLocalElements(GenmapHandle h) {
   return h->header->lelt;
 }
 
+void GenmapSetNLocalElements(GenmapHandle h, GenmapInt localElements) {
+  h->header->lelt = localElements;
+}
+
 GenmapLong GenmapGetNGlobalElements(GenmapHandle h) {
   return h->header->nel;
+}
+
+void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements) {
+  h->header->nel = globalElements;
 }
 //
 // GenmapMalloc, Realloc, Calloc and Free
