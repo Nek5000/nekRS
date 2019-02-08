@@ -41,7 +41,7 @@ eglin   (in)     ... local list of global element IDs
 vlin    (in)     ... local list of verticies making up each element in eglin (adjacency structure) 
 neglin  (in)     ... length of eglin
 opt     (in)     ... additional parameters (to use defaults set opt[0] = 0)
-nve     (in)     ... number of vertices (has to be the same for all elements)
+nve     (in)     ... number of vertices of a single element (has to be the same for all)
 comm    (in)     ... MPI Communicator (size determines number of partitions)
 ```
 
