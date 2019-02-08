@@ -31,7 +31,7 @@ int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
 
 int GenmapAxInit(GenmapHandle h, GenmapComm c,
                  GenmapVector weights) {
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapInt nv = h->header->nv;
   GenmapUInt numPoints = (GenmapUInt) nv * lelt;
 

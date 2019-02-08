@@ -293,7 +293,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
                            GenmapVector upper) {
   assert(diag->size == niter);
   assert(diag->size == upper->size + 1);
-  assert(f->size == h->header->lelt);
+  assert(f->size == GenmapGetNLocalElements(h));
 
   if(h->header->nel < niter) {
     niter = h->header->nel;
@@ -313,7 +313,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   rtz1 = 1.0;
 
   GenmapScalar tmp;
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
 
   // Store Local Laplacian weights
   GenmapCreateVector(&weights, lelt);
@@ -404,7 +404,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
                   GenmapVector beta) {
   assert(alpha->size == iter);
   assert(alpha->size == beta->size + 1);
-  assert(init->size == h->header->lelt);
+  assert(init->size == GenmapGetNLocalElements(h));
 
   if(h->header->nel < iter) {
     iter = h->header->nel;
@@ -415,7 +415,7 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   GenmapVector q0, q1, u;
   GenmapScalar normq1 = 0., b = 0.;
 
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
 
   // Create vector q1 orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&q1, lelt);
@@ -492,7 +492,7 @@ void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
 
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i;
-  for(i = 0; i < h->header->lelt; i++) {
+  for(i = 0; i < GenmapGetNLocalElements(h); i++) {
     if(e[i].fiedler < *min) {
       *min = e[i].fiedler;
     }
@@ -512,7 +512,7 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
 
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt nbins = np;
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapElements p, e;
@@ -538,7 +538,7 @@ void GenmapGlobalMinMax(GenmapHandle h, GenmapLong *min,
 
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i;
-  for(i = 0; i < h->header->lelt; i++) {
+  for(i = 0; i < GenmapGetNLocalElements(h); i++) {
     if(e[i].globalId < *min) {
       *min = e[i].globalId;
     }
@@ -558,7 +558,7 @@ GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
 
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt nbins = np;
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapElements p, e;
@@ -581,10 +581,10 @@ GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
 int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
                   int global) {
   // 1. Do lanczos in local communicator.
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapVector initVec, alphaVec, betaVec;
 
-  GenmapCreateVector(&initVec, h->header->lelt);
+  GenmapCreateVector(&initVec, GenmapGetNLocalElements(h));
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapInt i;
@@ -738,7 +738,7 @@ void GenmapPrimeFactors(GenmapInt n, GenmapInt *pCount,
 void GenmapRSB(GenmapHandle h) {
   GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
-  GenmapInt lelt = h->header->lelt;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
   GenmapElements elements = GenmapGetElements(h);

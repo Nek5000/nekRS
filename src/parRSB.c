@@ -51,7 +51,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   h->header->nv = nve;
 
   GenmapLong out[2][1], buf[2][1];
-  GenmapLong lelt_ = h->header->lelt;
+  GenmapLong lelt_ = GenmapGetNLocalElements(h);
   comm_scan(out, &(GenmapGetGlobalComm(h)->gsComm), genmap_gs_long, gs_add,
             &lelt_, 1,
             buf);
@@ -76,7 +76,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt nv = h->header->nv;
 
-  *negl = h->header->lelt;
+  *negl = GenmapGetNLocalElements(h);
 
   for(i = 0; i < *negl; i++) {
     egl[i] = elements[i].globalId;
