@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <string.h>
+
 #include "genmap.h"
 
 #if defined __GLIBC__
 
 #include <execinfo.h>
 /* Obtain a backtrace and print it to stdout. */
-void print_stack(void) {
+void GenmapPrintStack(void) {
   void *bt[50];
   int i;
   int bt_size = backtrace(bt, 50);
@@ -19,7 +20,7 @@ void print_stack(void) {
   free(symbols);
 }
 #else
-void print_stack() {};
+void GenmapPrintStack() {};
 #endif
 
 double GenmapGetMaxRss() {
@@ -31,10 +32,6 @@ double GenmapGetMaxRss() {
 #else
   return (double)(r_usage.ru_maxrss * 1024L);
 #endif
-}
-
-int sizeOfLongInt() {
-  return sizeof(long int);
 }
 
 void set_stdout(char *f, int *sid, int flen) {
