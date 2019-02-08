@@ -538,10 +538,11 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
 #if defined(GENMAP_PAUL)
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      if(h->start + i + 1  < GenmapGetNGlobalElements(h) / 2)
-        initVec->data[i] = h->start + i + 1 + 1000. * GenmapGetNGlobalElements(h);
+      if(GenmapGetLocalStartIndex(h) + i + 1  < GenmapGetNGlobalElements(h) / 2)
+        initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1 + 1000. *
+                           GenmapGetNGlobalElements(h);
       else
-        initVec->data[i] = h->start + i + 1;
+        initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1;
     }
   } else {
     for(i = 0;  i < lelt; i++) {
@@ -687,7 +688,7 @@ void GenmapRSB(GenmapHandle h) {
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapLong nel = GenmapGetNGlobalElements(h);
-  GenmapLong start = h->start;
+  GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapElements elements = GenmapGetElements(h);
 
   int maxIter = 50;
@@ -753,7 +754,7 @@ void GenmapRSB(GenmapHandle h) {
     GenmapLong lelt_ = (GenmapLong)lelt;
     comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
               buf);
-    start = h->start = out[0][0];
+    start = out[0][0]; GenmapSetLocalStartIndex(h, start);
     nel = h->nel = out[1][0];
     id = GenmapCommRank(GenmapGetLocalComm(h));
     np = GenmapCommSize(GenmapGetLocalComm(h));
@@ -815,7 +816,7 @@ void GenmapRSB(GenmapHandle h) {
     comm_scan(out, &(GenmapGetLocalComm(h)->gsComm), genmap_gs_long, gs_add, &lelt_,
               1,
               buf);
-    start = h->start = out[0][0];
+    start = out[0][0]; GenmapSetLocalStartIndex(h, start);
     nel = h->nel = out[1][0];
     id = GenmapCommRank(GenmapGetLocalComm(h));
     np = GenmapCommSize(GenmapGetLocalComm(h));

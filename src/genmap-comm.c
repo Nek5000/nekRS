@@ -62,7 +62,7 @@ int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights) {
 }
 
 int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
-             GenmapVector weights, GenmapVector v) {
+                    GenmapVector weights, GenmapVector v) {
   assert(u->size == v->size);
 
   GenmapInt lelt = u->size;

@@ -185,6 +185,14 @@ GenmapLong GenmapGetNGlobalElements(GenmapHandle h) {
 void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements) {
   h->nel = globalElements;
 }
+
+GenmapLong GenmapGetLocalStartIndex(GenmapHandle h) {
+  return h->start;
+}
+
+void GenmapSetLocalStartIndex(GenmapHandle h, GenmapLong localStart) {
+  h->start = localStart;
+}
 //
 // GenmapMalloc, Realloc, Calloc and Free
 //

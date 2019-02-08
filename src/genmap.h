@@ -64,6 +64,9 @@ void GenmapSetNLocalElements(GenmapHandle h, GenmapInt localElements);
 
 GenmapLong GenmapGetNGlobalElements(GenmapHandle h);
 void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements);
+
+GenmapLong GenmapGetLocalStartIndex(GenmapHandle h);
+void GenmapSetLocalStartIndex(GenmapHandle h, GenmapLong localStart);
 //
 // GenmapCommExternal
 //
