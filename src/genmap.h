@@ -65,8 +65,8 @@ typedef int GenmapDataType;
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce);
 int GenmapDestroyComm(GenmapComm c);
 // Functions to return size and rank of GenmapComm
-int GenmapNp(GenmapComm c);
-int GenmapId(GenmapComm c);
+int GenmapCommSize(GenmapComm c);
+int GenmapCommRank(GenmapComm c);
 // Functions to do global operations
 int GenmapGop(GenmapComm c, void *v, GenmapInt size,
               GenmapDataType type,

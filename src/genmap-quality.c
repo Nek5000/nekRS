@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 GenmapInt GenmapPartitionQuality(GenmapHandle h) {
-  GenmapInt id = h->Id(h->global);
-  GenmapInt np = h->Np(h->global);
+  GenmapInt id = GenmapCommRank(h->global);
+  GenmapInt np = GenmapCommSize(h->global);
   GenmapInt lelt = h->header->lelt;
   GenmapInt nv = h->header->nv;
 
@@ -57,11 +57,11 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapGop(c, &ncMin, 1, GENMAP_INT, GENMAP_MIN);
   GenmapGop(c, &ncSum, 1, GENMAP_INT, GENMAP_SUM);
 
-  if(GenmapId(h->global) == 0) {
+  if(GenmapCommRank(h->global) == 0) {
     printf("Max neighbors: "GenmapIntFormat, ncMax);
     printf(" | Min neighbors: "GenmapIntFormat, ncMin);
     printf(" | Avg neighbors: "GenmapScalarFormat"\n",
-           (1.0 * ncSum) / GenmapNp(h->global));
+           (1.0 * ncSum) / GenmapCommSize(h->global));
   }
 
   GenmapFree(data);

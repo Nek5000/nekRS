@@ -19,7 +19,8 @@ static int GenmapReadersRegistered = 0;
 // Register readers -- each reader should call this
 //
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
-  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(GenmapReaders[0])) {
+  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(
+        GenmapReaders[0])) {
     //TODO: GenmapError
     printf("Error: Too many readers.\n");
   }
@@ -101,14 +102,12 @@ int GenmapCreateHandle(GenmapHandle h) {
   // Datastructures
   h->global = NULL;
   h->local = NULL;
+
   h->header = NULL;
   h->elementArray.ptr = NULL;
   h->elementArray.n = h->elementArray.max = 0;
 
   // Function pointers
-  h->Id = GenmapId;
-  h->Np = GenmapNp;
-  h->Gop = GenmapGop;
   h->Ax = GenmapAx;
   h->AxInit = GenmapAxInit;
 
@@ -158,11 +157,11 @@ int GenmapDestroyComm(GenmapComm c) {
   return 0;
 }
 
-int GenmapNp(GenmapComm c) {
+int GenmapCommSize(GenmapComm c) {
   return (int) c->gsComm.np;
 }
 
-int GenmapId(GenmapComm c) {
+int GenmapCommRank(GenmapComm c) {
   return (int) c->gsComm.id;
 }
 

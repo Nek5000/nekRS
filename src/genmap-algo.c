@@ -150,7 +150,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
 
       if(m != l) {
         if(iter++ == 30) {
-          if(h->Id(h->global) == 0) printf("Too may iterations.\n");
+          if(GenmapCommRank(h->global) == 0) printf("Too may iterations.\n");
           return 1;
         }
 
@@ -359,7 +359,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
     // Multiplication by the laplacian
     h->Ax(h, c, p, weights, w);
-    //if(h->Np(h->local) == h->Np(h->global))
+    //if(GenmapCommSize(h->local) == GenmapCommSize(h->global))
     GenmapScaleVector(w, w, -1.0);
 
     pap_old = pap;
@@ -521,7 +521,7 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
   GenmapFiedlerMinMax(h, &min, &max);
   GenmapScalar range = max - min;
 
-  GenmapInt np = h->Np(h->local);
+  GenmapInt np = GenmapCommSize(h->local);
   GenmapInt nbins = np;
   GenmapInt lelt = h->header->lelt;
   GenmapElements elements = GenmapGetElements(h);
@@ -567,7 +567,7 @@ GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
   GenmapGlobalMinMax(h, &min, &max);
   GenmapLong range = max - min;
 
-  GenmapInt np = h->Np(h->local);
+  GenmapInt np = GenmapCommSize(h->local);
   GenmapInt nbins = np;
   GenmapInt lelt = h->header->lelt;
   GenmapElements elements = GenmapGetElements(h);
@@ -747,8 +747,8 @@ void GenmapPrimeFactors(GenmapInt n, GenmapInt *pCount,
 }
 
 void GenmapRSB(GenmapHandle h) {
-  GenmapInt id = h->Id(h->local);
-  GenmapInt np = h->Np(h->local);
+  GenmapInt id = GenmapCommRank(h->local);
+  GenmapInt np = GenmapCommSize(h->local);
   GenmapInt lelt = h->header->lelt;
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
@@ -761,7 +761,7 @@ void GenmapRSB(GenmapHandle h) {
   int iter = maxIter;
   int npass = 50, ipass = 0;
 
-  if(h->Id(h->global) == 0 && h->dbgLevel > 0)
+  if(GenmapCommRank(h->global) == 0 && h->dbgLevel > 0)
     printf("running RSB "), fflush(stdout);
 #if defined(GENMAP_MPI)
   MPI_Barrier(h->global->gsComm.c);
@@ -780,15 +780,15 @@ void GenmapRSB(GenmapHandle h) {
   // must be initialized using the global communicator, we never
   // touch global communicator
 
-  while(h->Np(h->local) > 1) {
+  while(GenmapCommSize(h->local) > 1) {
 
-    if(h->Id(h->global) == 0
+    if(GenmapCommRank(h->global) == 0
         && h->dbgLevel > 1) printf("."), fflush(stdout);
 
 #if defined(GENMAP_PAUL)
     int global = 1;
 #else
-    int global = (h->Np(h->local) == h->Np(h->global));
+    int global = (GenmapCommSize(h->local) == GenmapCommSize(h->global));
 #endif
     ipass = 0;
     do {
@@ -818,8 +818,8 @@ void GenmapRSB(GenmapHandle h) {
               buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
-    id = h->Id(h->local);
-    np = h->Np(h->local);
+    id = GenmapCommRank(h->local);
+    np = GenmapCommSize(h->local);
     elements = GenmapGetElements(h);
 
     GenmapInt bin;
@@ -879,8 +879,8 @@ void GenmapRSB(GenmapHandle h) {
               buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
-    id = h->Id(h->local);
-    np = h->Np(h->local);
+    id = GenmapCommRank(h->local);
+    np = GenmapCommSize(h->local);
     elements = GenmapGetElements(h);
 
 #if defined(GENMAP_PAUL)
@@ -909,6 +909,6 @@ void GenmapRSB(GenmapHandle h) {
 #else
   time = ((double)clock() - t0) / CLOCKS_PER_SEC;
 #endif
-  if(h->Id(h->global) == 0 && h->dbgLevel > 0)
+  if(GenmapCommRank(h->global) == 0 && h->dbgLevel > 0)
     printf("\nfinished in %lfs\n", time), fflush(stdout);
 }
