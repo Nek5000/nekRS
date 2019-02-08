@@ -1,11 +1,16 @@
 #ifndef _GENMAP_H_
 #define _GENMAP_H_
-
+//
+// Header for Genmap types
+//
 #include "genmap-types.h"
-
+//
 // Header for gslib
+//
 #include "genmap-gslib.h"
+//
 // Header for MPI
+//
 #ifdef GENMAP_MPI
 #include <mpi.h>
 #endif
@@ -20,14 +25,6 @@
 // Genmap Memory Align
 //
 #define GENMAP_ALIGN 32
-//
-// Genmap Debug routines
-//
-#if defined(GENMAP_DEBUG)
-#  define dbgfl printf("%s:%d\n",__FILE__,__LINE__);
-#else
-#  define dbgfl ;
-#endif
 //
 // Genmap tolerances
 //
@@ -47,8 +44,18 @@ typedef struct GenmapHandle_private *GenmapHandle;
 typedef struct GenmapVector_private *GenmapVector;
 typedef struct GenmapElement_private *GenmapElements;
 typedef struct GenmapHeader_private *GenmapHeader;
-
+//
+// Register readers for Genmap; TODO: Remove this
+//
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h));
+//
+// Genmap header helper functions
+//
+GenmapElements GenmapGetElements(GenmapHandle h);
+GenmapComm GenmapGetLocalComm(GenmapHandle h);
+GenmapComm GenmapGetGlobalComm(GenmapHandle h);
+GenmapInt GenmapGetNLocalElements(GenmapHandle h);
+GenmapLong GenmapGetNGlobalElements(GenmapHandle h);
 //
 // GenmapCommExternal
 //
@@ -63,38 +70,20 @@ typedef int GenmapDataType;
 // GenmapComm
 //
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce);
-int GenmapDestroyComm(GenmapComm c);
-// Functions to return size and rank of GenmapComm
 int GenmapCommSize(GenmapComm c);
 int GenmapCommRank(GenmapComm c);
-// Functions to do global operations
-int GenmapGop(GenmapComm c, void *v, GenmapInt size,
-              GenmapDataType type,
-              GenmapInt op);
-
+int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type, GenmapInt op);
+int GenmapDestroyComm(GenmapComm c);
+//
+// Genmap Gop Operations
+//
 #define GENMAP_SUM 0
 #define GENMAP_MAX 1
 #define GENMAP_MIN 2
 //
-// File I/O
-//
-#define GENMAP_HEADER_SIZE 7
-#define GENMAP_NEL      0
-#define GENMAP_NACTIVE  1
-#define GENMAP_DEPTH    2
-#define GENMAP_D2       3
-#define GENMAP_NPTS     4
-#define GENMAP_NRANK    5
-#define GENMAP_NOUTFLOW 6
-#define GENMAP_NC       7
-#define GENMAP_LELT     8
-//
-// Get Elements
-//
-GenmapElements GenmapGetElements(GenmapHandle h);
 // Function to read/write from/to FILE
+//
 int GenmapRead(GenmapHandle h, void *data);
-int GenmapWrite(GenmapHandle h, char *fileNameBase);
 //
 // Genmap: Init, Finalize
 //

@@ -49,7 +49,6 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   h->header->lelt = neglcon;
   h->header->npts = neglcon * nve;
   h->header->nv = nve;
-  h->header->ndim = (nve == 8) ? 3 : 2;
 
   GenmapLong out[2][1], buf[2][1];
   GenmapLong lelt_ = h->header->lelt;

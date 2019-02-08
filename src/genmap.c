@@ -168,6 +168,22 @@ int GenmapCommRank(GenmapComm c) {
 GenmapElements GenmapGetElements(GenmapHandle h) {
   return (GenmapElements) h->elementArray.ptr;
 }
+
+GenmapComm GenmapGetLocalComm(GenmapHandle h) {
+  return h->local;
+}
+
+GenmapComm GenmapGetGlobalComm(GenmapHandle h) {
+  return h->global;
+}
+
+GenmapInt GenmapGetNLocalElements(GenmapHandle h) {
+  return h->header->lelt;
+}
+
+GenmapLong GenmapGetNGlobalElements(GenmapHandle h) {
+  return h->header->nel;
+}
 //
 // GenmapMalloc, Realloc, Calloc and Free
 //

@@ -94,7 +94,7 @@ clean:
 
 .PHONY: astyle
 astyle:
-	astyle --style=google --indent=spaces=2 --max-code-length=72 \
+	astyle --style=google --indent=spaces=2 --max-code-length=80 \
 	    --keep-one-line-statements --keep-one-line-blocks --lineend=linux \
             --suffix=none --preserve-date --formatted --pad-oper \
 	    --unpad-paren tests/*/*.[ch] src/*.[ch]
