@@ -103,10 +103,6 @@ int GenmapCreateHandle(GenmapHandle h) {
   h->elementArray.ptr = NULL;
   h->elementArray.n = h->elementArray.max = 0;
 
-  // Function pointers
-  h->Ax = GenmapAx;
-  h->AxInit = GenmapAxInit;
-
   h->Create(h);
 
   return 0;
