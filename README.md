@@ -28,7 +28,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     int nve, int *opt, MPI_Comm comm)
 ```
 
-For more details, see `tests/con/con-test.c`.
+See example here, see `tests/con/con-test.c`.
 
 ### Parameters
 
