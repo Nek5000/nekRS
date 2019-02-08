@@ -56,8 +56,6 @@ struct GenmapHandle_private {
 
   int (*AxInit)(GenmapHandle h, GenmapComm c, GenmapVector weights);
 
-  int (*Read)(GenmapHandle h, void *data);
-
   int (*Create)(GenmapHandle h);
 
   GenmapInt dbgLevel;
