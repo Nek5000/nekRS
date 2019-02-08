@@ -112,8 +112,7 @@ GenmapScalar GenmapSign(GenmapScalar a, GenmapScalar b) {
 //
 // Routine to find eigenvectors and values of tri-diagonal matrix
 //
-int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
-               GenmapVector upper,
+int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues) {
   assert(diagonal->size == upper->size + 1);
 
@@ -122,7 +121,6 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
   GenmapVector d, e;
   GenmapCreateVector(&d, n);
   GenmapCopyVector(d, diagonal);
-  //printf("n is: %d\n", n);
   GenmapCreateVector(&e, n);
   GenmapCopyVector(e, upper);
   e->data[n - 1] = 0.0;
@@ -134,7 +132,6 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
   for(GenmapInt i = 0; i < n; i++) {
     GenmapCreateZerosVector(&(*eVectors)[i], n);
     (*eVectors)[i]->data[i] = 1.0;
-    //GenmapPrintVector((*eVectors)[i]);
   }
 
   GenmapInt l, iter, m, i;
@@ -154,7 +151,6 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
           return 1;
         }
 
-        //printf("l=%d, l+1=%d\n", l, l+1);
         GenmapScalar g = (d->data[l + 1] - d->data[l]) / (2.0 * e->data[l]);
         GenmapScalar r = sqrt(g * g + 1.0);
 
@@ -162,7 +158,6 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
         GenmapScalar s = 1.0, c = 1.0, p = 0.0;
 
         for(i = m - 1; i >= l; i--) {
-          //printf("i=%d, i+1=%d\n", i, i+1);
           GenmapScalar f = s * e->data[i];
           GenmapScalar b = c * e->data[i];
 #if defined(GENMAP_PAUL)
@@ -223,10 +218,6 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
   }
 
   for(GenmapInt ko = 0; ko < n; ko++) {
-    //for(GenmapInt ki = 0; ki < n; ki++) {
-    //  e->data[ki] = GenmapDotVector((*eVectors)[ki], (*eVectors)[ko]);
-    //  if(e->data[ki] > 0.0) e->data[ki] = sqrt(fabs(e->data[ki]));
-    //}
     e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
     if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
     GenmapScalar scale = 1.0 / e->data[ko];
@@ -276,6 +267,7 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
   return 0;
 }
 //
+// Orthogonalize by 1-vector (vector of all 1's)
 //
 int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
                                    GenmapVector q1, GenmapLong n) {
@@ -293,7 +285,9 @@ int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
 
   return 0;
 }
-
+//
+// Lanczos version used in Paul's original genmap code.
+//
 int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
                            GenmapInt niter, GenmapVector **rr, GenmapVector diag,
                            GenmapVector upper) {
@@ -402,7 +396,9 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
   return iter;
 }
-
+//
+// Lanczos version in Introduction to Sci. Comp by Prof. Heath.
+//
 int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
                   GenmapInt iter, GenmapVector **q, GenmapVector alpha,
                   GenmapVector beta) {

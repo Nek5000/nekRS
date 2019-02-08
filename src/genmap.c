@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200112
-#include <genmap-impl.h>
-#include <genmap-io.h>
+#include "genmap-impl.h"
+#include "genmap-io.h"
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -19,8 +19,7 @@ static int GenmapReadersRegistered = 0;
 // Register readers -- each reader should call this
 //
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
-  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(
-        GenmapReaders[0])) {
+  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(GenmapReaders[0])) {
     //TODO: GenmapError
     printf("Error: Too many readers.\n");
   }
@@ -125,7 +124,6 @@ int GenmapDestroyHandle(GenmapHandle h) {
 //
 int GenmapCreateHeader(GenmapHeader *h) {
   GenmapMalloc(1, h);
-
   return 0;
 }
 
