@@ -359,7 +359,6 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
     // Multiplication by the laplacian
     h->Ax(h, c, p, weights, w);
-    //if(GenmapCommSize(h->local) == GenmapCommSize(h->global))
     GenmapScaleVector(w, w, -1.0);
 
     pap_old = pap;
@@ -471,9 +470,6 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
 
     if(k < iter - 1) {
       beta->data[k] = b;
-#if defined(GENMAP_DEBUG)
-      printf("beta, k: %lf %d\n", b, k);
-#endif
       if(fabs(b) < normq1 * GENMAP_TOL) {
         beta->size = k;
         alpha->size = k + 1;
@@ -491,9 +487,6 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   GenmapDestroyVector(u);
   GenmapDestroyVector(weights);
 
-#if defined(GENMAP_DEBUG)
-  printf("k: %d, iter = %d\n", k, iter);
-#endif
   return k;
 }
 
@@ -512,8 +505,8 @@ void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
     }
   }
 
-  GenmapGop(h->local, min, 1, GENMAP_SCALAR, GENMAP_MIN);
-  GenmapGop(h->local, max, 1, GENMAP_SCALAR, GENMAP_MAX);
+  GenmapGop(GenmapGetLocalComm(h), min, 1, GENMAP_SCALAR, GENMAP_MIN);
+  GenmapGop(GenmapGetLocalComm(h), max, 1, GENMAP_SCALAR, GENMAP_MAX);
 }
 
 GenmapInt GenmapSetProcessorId(GenmapHandle h) {
@@ -521,7 +514,7 @@ GenmapInt GenmapSetProcessorId(GenmapHandle h) {
   GenmapFiedlerMinMax(h, &min, &max);
   GenmapScalar range = max - min;
 
-  GenmapInt np = GenmapCommSize(h->local);
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt nbins = np;
   GenmapInt lelt = h->header->lelt;
   GenmapElements elements = GenmapGetElements(h);
@@ -558,8 +551,8 @@ void GenmapGlobalMinMax(GenmapHandle h, GenmapLong *min,
     }
   }
 
-  GenmapGop(h->local, min, 1, GENMAP_SCALAR, GENMAP_MIN);
-  GenmapGop(h->local, max, 1, GENMAP_SCALAR, GENMAP_MAX);
+  GenmapGop(GenmapGetLocalComm(h), min, 1, GENMAP_SCALAR, GENMAP_MIN);
+  GenmapGop(GenmapGetLocalComm(h), max, 1, GENMAP_SCALAR, GENMAP_MAX);
 }
 
 GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
@@ -567,7 +560,7 @@ GenmapInt GenmapSetProcessorIdGlobal(GenmapHandle h) {
   GenmapGlobalMinMax(h, &min, &max);
   GenmapLong range = max - min;
 
-  GenmapInt np = GenmapCommSize(h->local);
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt nbins = np;
   GenmapInt lelt = h->header->lelt;
   GenmapElements elements = GenmapGetElements(h);
@@ -747,8 +740,8 @@ void GenmapPrimeFactors(GenmapInt n, GenmapInt *pCount,
 }
 
 void GenmapRSB(GenmapHandle h) {
-  GenmapInt id = GenmapCommRank(h->local);
-  GenmapInt np = GenmapCommSize(h->local);
+  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt lelt = h->header->lelt;
   GenmapLong nel = h->header->nel;
   GenmapLong start = h->header->start;
@@ -780,7 +773,7 @@ void GenmapRSB(GenmapHandle h) {
   // must be initialized using the global communicator, we never
   // touch global communicator
 
-  while(GenmapCommSize(h->local) > 1) {
+  while(GenmapCommSize(GenmapGetLocalComm(h)) > 1) {
 
     if(GenmapCommRank(h->global) == 0
         && h->dbgLevel > 1) printf("."), fflush(stdout);
@@ -788,11 +781,12 @@ void GenmapRSB(GenmapHandle h) {
 #if defined(GENMAP_PAUL)
     int global = 1;
 #else
-    int global = (GenmapCommSize(h->local) == GenmapCommSize(h->global));
+    int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
+                    GenmapGetGlobalComm(h)));
 #endif
     ipass = 0;
     do {
-      iter = GenmapFiedler(h, h->local, maxIter, global);
+      iter = GenmapFiedler(h, GenmapGetLocalComm(h), maxIter, global);
       ipass++;
       global = 0;
     } while(ipass < npass && iter == maxIter);
@@ -818,8 +812,8 @@ void GenmapRSB(GenmapHandle h) {
               buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
-    id = GenmapCommRank(h->local);
-    np = GenmapCommSize(h->local);
+    id = GenmapCommRank(GenmapGetLocalComm(h));
+    np = GenmapCommSize(GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
 
     GenmapInt bin;
@@ -870,17 +864,18 @@ void GenmapRSB(GenmapHandle h) {
     GenmapDestroyComm(h->local);
 
     // Create new communicator
-    GenmapCreateComm(&(h->local), local);
+    GenmapCreateComm(&h->local, local);
     MPI_Comm_free(&local);
     crystal_init(&cr, &(h->local->gsComm));
 
     lelt_ = (GenmapLong)lelt;
-    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
+    comm_scan(out, &(GenmapGetLocalComm(h)->gsComm), genmap_gs_long, gs_add, &lelt_,
+              1,
               buf);
     start = h->header->start = out[0][0];
     nel = h->header->nel = out[1][0];
-    id = GenmapCommRank(h->local);
-    np = GenmapCommSize(h->local);
+    id = GenmapCommRank(GenmapGetLocalComm(h));
+    np = GenmapCommSize(GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
 
 #if defined(GENMAP_PAUL)

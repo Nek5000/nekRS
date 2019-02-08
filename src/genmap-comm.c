@@ -51,16 +51,18 @@ int GenmapAxInit(GenmapHandle h, GenmapComm c,
 
 #if defined(GENMAP_DEBUG)
   double t1 = GenmapGetMaxRss();
-  if(GenmapCommRank(h->local) == 0) printf("RSS before gs_setup: %lf\n",
-        t1);
+  if(GenmapCommRank(GenmapGetLocalComm(h)) == 0)
+    printf("RSS before gs_setup: %lf\n",
+           t1);
 #endif
 
   c->verticesHandle = gs_setup(vertices, numPoints, &c->gsComm, 0,
                                gs_crystal_router, 0);
 #if defined(GENMAP_DEBUG)
   t1 = GenmapGetMaxRss();
-  if(GenmapCommRank(h->local) == 0) printf("RSS after gs_setup: %lf\n",
-        t1);
+  if(GenmapCommRank(GenmapGetLocalComm(h)) == 0)
+    printf("RSS after gs_setup: %lf\n",
+           t1);
 #endif
 
   GenmapScalar *u;

@@ -84,7 +84,7 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
 int GenmapFinalize(GenmapHandle h) {
   if(h->global)
     GenmapDestroyComm(h->global);
-  if(h->local)
+  if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
 
   GenmapDestroyHeader(h->header);
@@ -101,7 +101,7 @@ int GenmapFinalize(GenmapHandle h) {
 int GenmapCreateHandle(GenmapHandle h) {
   // Datastructures
   h->global = NULL;
-  h->local = NULL;
+  h->local  = NULL;
 
   h->header = NULL;
   h->elementArray.ptr = NULL;

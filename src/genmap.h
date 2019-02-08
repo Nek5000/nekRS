@@ -72,7 +72,8 @@ typedef int GenmapDataType;
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce);
 int GenmapCommSize(GenmapComm c);
 int GenmapCommRank(GenmapComm c);
-int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type, GenmapInt op);
+int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type,
+              GenmapInt op);
 int GenmapDestroyComm(GenmapComm c);
 //
 // Genmap Gop Operations
