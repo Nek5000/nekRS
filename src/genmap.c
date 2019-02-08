@@ -82,8 +82,8 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
 // GenmapFinalize
 //
 int GenmapFinalize(GenmapHandle h) {
-  if(h->global)
-    GenmapDestroyComm(h->global);
+  if(GenmapGetGlobalComm(h))
+    GenmapDestroyComm(GenmapGetGlobalComm(h));
   if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
 

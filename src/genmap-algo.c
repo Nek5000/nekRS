@@ -150,7 +150,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
 
       if(m != l) {
         if(iter++ == 30) {
-          if(GenmapCommRank(h->global) == 0) printf("Too may iterations.\n");
+          if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) printf("Too may iterations.\n");
           return 1;
         }
 
@@ -754,10 +754,10 @@ void GenmapRSB(GenmapHandle h) {
   int iter = maxIter;
   int npass = 50, ipass = 0;
 
-  if(GenmapCommRank(h->global) == 0 && h->dbgLevel > 0)
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0 && h->dbgLevel > 0)
     printf("running RSB "), fflush(stdout);
 #if defined(GENMAP_MPI)
-  MPI_Barrier(h->global->gsComm.c);
+  MPI_Barrier(GenmapGetGlobalComm(h)->gsComm.c);
   double t0 = MPI_Wtime();
 #else
   clock_t t0 = clock();
@@ -775,7 +775,7 @@ void GenmapRSB(GenmapHandle h) {
 
   while(GenmapCommSize(GenmapGetLocalComm(h)) > 1) {
 
-    if(GenmapCommRank(h->global) == 0
+    if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0
         && h->dbgLevel > 1) printf("."), fflush(stdout);
 
 #if defined(GENMAP_PAUL)
@@ -899,11 +899,11 @@ void GenmapRSB(GenmapHandle h) {
 
   double time;
 #if defined(GENMAP_MPI)
-  MPI_Barrier(h->global->gsComm.c);
+  MPI_Barrier(GenmapGetGlobalComm(h)->gsComm.c);
   time = MPI_Wtime() - t0;
 #else
   time = ((double)clock() - t0) / CLOCKS_PER_SEC;
 #endif
-  if(GenmapCommRank(h->global) == 0 && h->dbgLevel > 0)
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0 && h->dbgLevel > 0)
     printf("\nfinished in %lfs\n", time), fflush(stdout);
 }

@@ -38,9 +38,9 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
 
   // Check if negl is large enough
   GenmapLong neglcon_ = (GenmapLong) neglcon;
-  GenmapGop(h->global, &neglcon_, 1, GENMAP_LONG, GENMAP_SUM);
+  GenmapGop(GenmapGetGlobalComm(h), &neglcon_, 1, GENMAP_LONG, GENMAP_SUM);
   GenmapInt negl_max = (GenmapInt)(neglcon_ / GenmapCommSize(
-                                     h->global)) + 1;
+                                     GenmapGetGlobalComm(h))) + 1;
   if(negl_max > *negl) {
     printf("ERROR: negl to small to hold resulting partition!\n");
     return 1;
@@ -52,7 +52,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
 
   GenmapLong out[2][1], buf[2][1];
   GenmapLong lelt_ = h->header->lelt;
-  comm_scan(out, &(h->global->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
+  comm_scan(out, &(GenmapGetGlobalComm(h)->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
             buf);
   h->header->start = out[0][0];
   h->header->nel = out[1][0];

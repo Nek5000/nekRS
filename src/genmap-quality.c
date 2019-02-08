@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 GenmapInt GenmapPartitionQuality(GenmapHandle h) {
-  GenmapInt id = GenmapCommRank(h->global);
-  GenmapInt np = GenmapCommSize(h->global);
+  GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetGlobalComm(h));
   GenmapInt lelt = h->header->lelt;
   GenmapInt nv = h->header->nv;
 
@@ -22,7 +22,7 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   }
 
   GenmapComm c;
-  GenmapCreateComm(&c, h->global->gsComm.c);
+  GenmapCreateComm(&c, GenmapGetGlobalComm(h)->gsComm.c);
   c->verticesHandle = gs_setup(data, numPoints, &c->gsComm, 0,
                                gs_pairwise,
                                0);
@@ -57,11 +57,11 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapGop(c, &ncMin, 1, GENMAP_INT, GENMAP_MIN);
   GenmapGop(c, &ncSum, 1, GENMAP_INT, GENMAP_SUM);
 
-  if(GenmapCommRank(h->global) == 0) {
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
     printf("Max neighbors: "GenmapIntFormat, ncMax);
     printf(" | Min neighbors: "GenmapIntFormat, ncMin);
     printf(" | Avg neighbors: "GenmapScalarFormat"\n",
-           (1.0 * ncSum) / GenmapCommSize(h->global));
+           (1.0 * ncSum) / GenmapCommSize(GenmapGetGlobalComm(h)));
   }
 
   GenmapFree(data);
