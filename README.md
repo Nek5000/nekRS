@@ -25,7 +25,7 @@ We provide a simple C interface to use parRSB as a library.
 ```sh
 int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglin, long long *vlin, int neglin,
-                    int nve, int *options, MPI_Comm comm)
+                    int nve, int *opt, MPI_Comm comm)
 ```
 
 For more details, see `tests/con/con-test.c`.
