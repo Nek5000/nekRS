@@ -73,7 +73,6 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
 
   GenmapCreateComm(&(*h)->global, ce);
   GenmapCreateComm(&(*h)->local, ce);
-  GenmapCreateHeader(&(*h)->header);
 
   return 0;
 }
@@ -86,7 +85,6 @@ int GenmapFinalize(GenmapHandle h) {
   if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
 
-  GenmapDestroyHeader(h->header);
 
   array_free(&(h->elementArray));
 
@@ -102,7 +100,6 @@ int GenmapCreateHandle(GenmapHandle h) {
   h->global = NULL;
   h->local  = NULL;
 
-  h->header = NULL;
   h->elementArray.ptr = NULL;
   h->elementArray.n = h->elementArray.max = 0;
 
@@ -120,18 +117,8 @@ int GenmapDestroyHandle(GenmapHandle h) {
   return 0;
 }
 //
-// GenmapHeader: Create, Destroy
+// GenmapComm
 //
-int GenmapCreateHeader(GenmapHeader *h) {
-  GenmapMalloc(1, h);
-  return 0;
-}
-
-int GenmapDestroyHeader(GenmapHeader h) {
-  GenmapFree(h);
-  return 0;
-}
-
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
   GenmapMalloc(1, c);
   comm_init(&(*c)->gsComm, ce);
@@ -188,19 +175,19 @@ void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c) {
 }
 
 GenmapInt GenmapGetNLocalElements(GenmapHandle h) {
-  return h->header->lelt;
+  return h->lelt;
 }
 
 void GenmapSetNLocalElements(GenmapHandle h, GenmapInt localElements) {
-  h->header->lelt = localElements;
+  h->lelt = localElements;
 }
 
 GenmapLong GenmapGetNGlobalElements(GenmapHandle h) {
-  return h->header->nel;
+  return h->nel;
 }
 
 void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements) {
-  h->header->nel = globalElements;
+  h->nel = globalElements;
 }
 //
 // GenmapMalloc, Realloc, Calloc and Free

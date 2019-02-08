@@ -7,7 +7,7 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
   GenmapInt np = GenmapCommSize(GenmapGetGlobalComm(h));
   GenmapInt lelt = GenmapGetNLocalElements(h);
-  GenmapInt nv = h->header->nv;
+  GenmapInt nv = h->nv;
 
   GenmapLong *data;
   GenmapInt numPoints = lelt * nv;

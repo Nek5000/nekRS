@@ -46,17 +46,17 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
     return 1;
   }
 
-  h->header->lelt = neglcon;
-  h->header->npts = neglcon * nve;
-  h->header->nv = nve;
+  h->lelt = neglcon;
+  h->npts = neglcon * nve;
+  h->nv = nve;
 
   GenmapLong out[2][1], buf[2][1];
   GenmapLong lelt_ = GenmapGetNLocalElements(h);
   comm_scan(out, &(GenmapGetGlobalComm(h)->gsComm), genmap_gs_long, gs_add,
             &lelt_, 1,
             buf);
-  h->header->start = out[0][0];
-  h->header->nel = out[1][0];
+  h->start = out[0][0];
+  h->nel = out[1][0];
 
   array_init(struct GenmapElement_private, &h->elementArray, neglcon);
   h->elementArray.n = neglcon;
@@ -74,7 +74,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   GenmapRSB(h);
 
   GenmapElements elements = GenmapGetElements(h);
-  GenmapInt nv = h->header->nv;
+  GenmapInt nv = h->nv;
 
   *negl = GenmapGetNLocalElements(h);
 

@@ -43,13 +43,12 @@ typedef struct GenmapComm_private *GenmapComm;
 typedef struct GenmapHandle_private *GenmapHandle;
 typedef struct GenmapVector_private *GenmapVector;
 typedef struct GenmapElement_private *GenmapElements;
-typedef struct GenmapHeader_private *GenmapHeader;
 //
 // Register readers for Genmap; TODO: Remove this
 //
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h));
 //
-// Genmap header helper functions
+// GenmapHandle Getters/Setters
 //
 GenmapElements GenmapGetElements(GenmapHandle h);
 void GenmapSetElements(GenmapHandle h, GenmapElements elements);

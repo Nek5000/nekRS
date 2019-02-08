@@ -5,7 +5,7 @@ int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
   assert(u->size == v->size);
 
   GenmapInt lelt = u->size;
-  GenmapInt nv = h->header->nv;
+  GenmapInt nv = h->nv;
 
   GenmapScalar *ucv;
   GenmapMalloc((size_t)(nv * lelt), &ucv);
@@ -32,7 +32,7 @@ int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
 int GenmapAxInit(GenmapHandle h, GenmapComm c,
                  GenmapVector weights) {
   GenmapInt lelt = GenmapGetNLocalElements(h);
-  GenmapInt nv = h->header->nv;
+  GenmapInt nv = h->nv;
   GenmapUInt numPoints = (GenmapUInt) nv * lelt;
 
   GenmapLong *vertices;

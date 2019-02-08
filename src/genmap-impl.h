@@ -21,23 +21,8 @@ struct GenmapComm_private {
   buffer buf;
 };
 //
-// File I/O
-//
-// Genmap Input File header
-struct GenmapHeader_private {
-  GenmapLong nel;
-  GenmapLong npts;
-  int nv;
-  GenmapInt lelt;
-  GenmapLong start;
-  GenmapLong Nnodes;
-};
-//
-// GenmapHeader: Create, Destroy
-//
-int GenmapCreateHeader(GenmapHeader *h);
-int GenmapDestroyHeader(GenmapHeader h);
 // GenmapElements
+//
 struct GenmapElement_private {
   GenmapScalar fiedler;
   GenmapLong globalId;
@@ -57,7 +42,12 @@ struct GenmapHandle_private {
   GenmapComm global;
   GenmapComm local;
 
-  GenmapHeader header;
+  GenmapLong nel;
+  GenmapLong npts;
+  int nv;
+  GenmapInt lelt;
+  GenmapLong start;
+  GenmapLong Nnodes;
 
   struct array elementArray;
 
@@ -79,7 +69,7 @@ struct GenmapHandle_private {
 int GenmapCreateHandle(GenmapHandle h);
 int GenmapDestroyHandle(GenmapHandle h);
 //
-// Genmap_Vector
+// GenmapVector
 //
 struct GenmapVector_private {
   GenmapInt size;
