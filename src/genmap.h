@@ -130,25 +130,29 @@ int GenmapDestroyVector(GenmapVector x);
 int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights);
 int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
                     GenmapVector weights, GenmapVector v);
-int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init, int maxIter,
-                  GenmapVector **q, GenmapVector alpha, GenmapVector beta);
-int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global);
-void GenmapRSB(GenmapHandle h);
 //
-// Linear solve
+// Eigenvalue/vector calculations
 //
-int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b, GenmapVector alpha,
-                          GenmapVector beta);
-//
-// Power and inverse power iterations
-//
-int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha, GenmapVector beta,
-                    GenmapVector init, GenmapInt iter);
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, int iter);
 int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues);
 //
+// Lanczos routines
+//
+int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
+                                   GenmapVector q1, GenmapLong n);
+int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
+                           GenmapInt niter, GenmapVector **rr, GenmapVector diag,
+                           GenmapVector upper);
+int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
+                  GenmapInt iter, GenmapVector **q, GenmapVector alpha,
+                  GenmapVector beta);
+//
+// Fiedler and rsb
+//
+int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global);
+void GenmapRSB(GenmapHandle h);
 // Evaluate partition quality
 //
 GenmapInt GenmapPartitionQuality(GenmapHandle h);
