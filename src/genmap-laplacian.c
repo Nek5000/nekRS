@@ -2,7 +2,7 @@
 
 int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights) {
   GenmapInt lelt = GenmapGetNLocalElements(h);
-  GenmapInt nv = h->nv;
+  GenmapInt nv = GenmapGetNVertices(h, nv);
   GenmapUInt numPoints = (GenmapUInt) nv * lelt;
 
   GenmapLong *vertices;
@@ -64,9 +64,10 @@ int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights) {
 int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
                     GenmapVector weights, GenmapVector v) {
   assert(u->size == v->size);
+  assert(u->size == GenmapGetNLocalElements(h));
 
-  GenmapInt lelt = u->size;
-  GenmapInt nv = h->nv;
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+  GenmapInt nv = GenmapGetNVertices(h);
 
   GenmapScalar *ucv;
   GenmapMalloc((size_t)(nv * lelt), &ucv);
