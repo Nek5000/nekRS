@@ -99,6 +99,7 @@ int GenmapCommRank(GenmapComm c);
 int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type,
               GenmapInt op);
 int GenmapDestroyComm(GenmapComm c);
+void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin);
 //
 // Function to read/write from/to FILE
 //

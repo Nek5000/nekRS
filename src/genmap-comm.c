@@ -62,3 +62,23 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size,
 #endif
   return 0;
 }
+
+void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
+  // Now it is time to split the communicator
+  GenmapCommExternal local;
+  GenmapLong id = GenmapCommRank(*c);
+#if defined(GENMAP_MPI)
+  MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
+#else
+  local = 0;
+#endif
+  // finalize the crystal router
+  crystal_free(&(h->cr));
+  GenmapDestroyComm(*c);
+
+  // Create new communicator
+  GenmapCreateComm(c, local);
+  MPI_Comm_free(&local);
+  crystal_init(&(h->cr), &((*c)->gsComm));
+}
+

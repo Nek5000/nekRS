@@ -280,12 +280,11 @@ void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
                     &(h->cr));
     elements = GenmapGetElements(h);
     lelt = GenmapGetNLocalElements(h);
-    // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
   } else {
-    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
-                    0, &(h->cr));
+    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
+                    &(h->cr));
     elements = GenmapGetElements(h);
     lelt = GenmapGetNLocalElements(h);
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
@@ -300,25 +299,6 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
   GenmapAssignBins(h, field, buf0);
   GenmapTransferToBins(h, field, buf0);
   GenmapScan(h, GenmapGetLocalComm(h));
-}
-
-void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
-  // Now it is time to split the communicator
-  GenmapCommExternal local;
-  GenmapLong id = GenmapCommRank(*c);
-#if defined(GENMAP_MPI)
-  MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
-#else
-  local = 0;
-#endif
-  // finalize the crystal router
-  crystal_free(&(h->cr));
-  GenmapDestroyComm(*c);
-
-  // Create new communicator
-  GenmapCreateComm(c, local);
-  MPI_Comm_free(&local);
-  crystal_init(&(h->cr), &((*c)->gsComm));
 }
 
 void GenmapRSB(GenmapHandle h) {
@@ -359,6 +339,7 @@ void GenmapRSB(GenmapHandle h) {
     GenmapComm c = GenmapGetLocalComm(h);
     GenmapSplitComm(h, &c, bin);
     GenmapSetLocalComm(h, c);
+
 #if defined(GENMAP_PAUL)
     GenmapBinSort(h, 1, &buf0);
 #endif
