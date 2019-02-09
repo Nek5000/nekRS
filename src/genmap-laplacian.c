@@ -1,0 +1,105 @@
+#include <genmap-impl.h>
+
+int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights) {
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+  GenmapInt nv = h->nv;
+  GenmapUInt numPoints = (GenmapUInt) nv * lelt;
+
+  GenmapLong *vertices;
+  GenmapMalloc(numPoints, &vertices);
+
+  GenmapElements elements = GenmapGetElements(h);
+  GenmapInt i, j;
+  for(i = 0; i < lelt; i++) {
+    for(j = 0; j < nv; j++) {
+      vertices[i * nv + j] = elements[i].vertices[j];
+    }
+  }
+
+  if(c->verticesHandle)
+    gs_free(c->verticesHandle);
+
+#if defined(GENMAP_DEBUG)
+  double t1 = GenmapGetMaxRss();
+  if(GenmapCommRank(GenmapGetLocalComm(h)) == 0)
+    printf("RSS before gs_setup: %lf\n", t1);
+#endif
+
+  c->verticesHandle = gs_setup(vertices, numPoints, &c->gsComm, 0,
+                               gs_crystal_router, 0);
+#if defined(GENMAP_DEBUG)
+  t1 = GenmapGetMaxRss();
+  if(GenmapCommRank(GenmapGetLocalComm(h)) == 0)
+    printf("RSS after gs_setup: %lf\n", t1);
+#endif
+
+  GenmapScalar *u;
+  GenmapMalloc(numPoints, &u);
+
+  for(i = 0; i < lelt; i++)
+    for(j = 0; j < nv; j++)
+      u[nv * i + j] = 1.;
+
+  gs(u, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
+
+  assert(weights->size == lelt);
+
+  for(i = 0; i < lelt; i++) {
+    weights->data[i] = 0.;
+    for(j = 0; j < nv; j++) {
+      weights->data[i] += u[nv * i + j];
+    }
+  }
+
+  for(i = 0; i < lelt; i++) {
+    weights->data[i] *= -1;
+  }
+
+  GenmapFree(u);
+  GenmapFree(vertices);
+
+  return 0;
+}
+
+int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
+                    GenmapVector weights, GenmapVector v) {
+  assert(u->size == v->size);
+
+  GenmapInt lelt = u->size;
+  GenmapInt nv = h->nv;
+
+  GenmapScalar *ucv;
+  GenmapMalloc((size_t)(nv * lelt), &ucv);
+
+  GenmapInt i, j;
+  for(i = 0; i < lelt; i++)
+    for(j = 0; j < nv; j++)
+      ucv[nv * i + j] = u->data[i];
+
+  gs(ucv, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
+
+  for(i = 0; i < lelt; i++) {
+    v->data[i] = weights->data[i] * u->data[i];
+    for(j = 0; j < nv; j ++) {
+      v->data[i] += ucv[nv * i + j];
+    }
+  }
+
+  GenmapFree(ucv);
+
+  return 0;
+}
+
+int GenmapGop(GenmapComm c, void *v, GenmapInt size,
+              GenmapDataType type, GenmapInt op) {
+#ifdef GENMAP_MPI
+  if(op == GENMAP_SUM) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_SUM, c->gsComm.c);
+  } else if(op == GENMAP_MAX) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MAX, c->gsComm.c);
+  } else if(op == GENMAP_MIN) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MIN, c->gsComm.c);
+  }
+#endif
+  return 0;
+}

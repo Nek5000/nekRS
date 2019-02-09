@@ -18,7 +18,7 @@
 // Genmap Operators
 //
 #define GENMAP_SUM 0
-#define GENAMP_MAX 1
+#define GENMAP_MAX 1
 #define GENMAP_MIN 2
 #define GENMAP_MUL 3
 //
@@ -36,6 +36,16 @@
 //
 #define GENMAP_READER_LEN 256
 #define GENMAP_MAX_READERS 32
+// 
+// GenmapCommExternal
+//
+#if defined(GENMAP_MPI)
+typedef MPI_Datatype GenmapDataType;
+typedef MPI_Comm GenmapCommExternal;
+#else
+typedef int GenmapCommExternal;
+typedef int GenmapDataType;
+#endif
 //
 // Genmap Pointer types
 //
@@ -44,9 +54,17 @@ typedef struct GenmapHandle_private *GenmapHandle;
 typedef struct GenmapVector_private *GenmapVector;
 typedef struct GenmapElement_private *GenmapElements;
 //
-// Register readers for Genmap; TODO: Remove this
+// Genmap: Init, Finalize
 //
-int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h));
+int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader);
+int GenmapFinalize(GenmapHandle h);
+//
+// GenmapMalloc, Realloc, Calloc and Free
+//
+int GenmapMallocArray(size_t n, size_t unit, void *p);
+int GenmapCallocArray(size_t n, size_t unit, void *p);
+int GenmapReallocArray(size_t n, size_t unit, void *p);
+int GenmapFree(void *p);
 //
 // GenmapHandle Getters/Setters
 //
@@ -68,16 +86,6 @@ void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements);
 GenmapLong GenmapGetLocalStartIndex(GenmapHandle h);
 void GenmapSetLocalStartIndex(GenmapHandle h, GenmapLong localStart);
 //
-// GenmapCommExternal
-//
-#if defined(GENMAP_MPI)
-typedef MPI_Datatype GenmapDataType;
-typedef MPI_Comm GenmapCommExternal;
-#else
-typedef int GenmapCommExternal;
-typedef int GenmapDataType;
-#endif
-//
 // GenmapComm
 //
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce);
@@ -87,27 +95,9 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type,
               GenmapInt op);
 int GenmapDestroyComm(GenmapComm c);
 //
-// Genmap Gop Operations
-//
-#define GENMAP_SUM 0
-#define GENMAP_MAX 1
-#define GENMAP_MIN 2
-//
 // Function to read/write from/to FILE
 //
 int GenmapRead(GenmapHandle h, void *data);
-//
-// Genmap: Init, Finalize
-//
-int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader);
-int GenmapFinalize(GenmapHandle h);
-//
-// GenmapMalloc, Realloc, Calloc and Free
-//
-int GenmapMallocArray(size_t n, size_t unit, void *p);
-int GenmapCallocArray(size_t n, size_t unit, void *p);
-int GenmapReallocArray(size_t n, size_t unit, void *p);
-int GenmapFree(void *p);
 //
 // GenmapVector operations
 //

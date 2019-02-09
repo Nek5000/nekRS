@@ -27,11 +27,9 @@ else
 INSTALL_ROOT = $(SRCROOT)/build
 endif
 
-
-# Main source
-CSRCS:= $(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-algo.c \
-	$(SRCDIR)/genmap-io.c $(SRCDIR)/genmap-comm.c $(SRCDIR)/genmap.c \
-	$(SRCDIR)/parRSB.c $(SRCDIR)/genmap-quality.c \
+CSRCS:= $(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-algo.c $(SRCDIR)/genmap-handle.c \
+	$(SRCDIR)/genmap-io.c $(SRCDIR)/genmap-laplacian.c $(SRCDIR)/genmap.c \
+	$(SRCDIR)/parRSB.c $(SRCDIR)/genmap-quality.c $(SRCDIR)/genmap-comm.c \
 	$(SRCDIR)/genmap-chelpers.c
 COBJS:=$(CSRCS:.c=.o)
 
