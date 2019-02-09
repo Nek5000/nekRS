@@ -302,6 +302,24 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
   GenmapScan(h, GenmapGetLocalComm(h));
 }
 
+void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
+  // Now it is time to split the communicator
+  GenmapCommExternal local;
+  GenmapLong id = GenmapCommRank(*c);
+#if defined(GENMAP_MPI)
+  MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
+#else
+  local = 0;
+#endif
+  // finalize the crystal router
+  crystal_free(&(h->cr));
+  GenmapDestroyComm(*c);
+
+  // Create new communicator
+  GenmapCreateComm(c, local);
+  MPI_Comm_free(&local);
+  crystal_init(&(h->cr), &((*c)->gsComm));
+}
 
 void GenmapRSB(GenmapHandle h) {
   int maxIter = 50;
@@ -338,23 +356,9 @@ void GenmapRSB(GenmapHandle h) {
     GenmapSplitByMedian(h, &bin);
     GenmapTransferToBins(h, 0, &buf0);
 
-    // Now it is time to split the communicator
-    GenmapCommExternal local;
-    GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
-#if defined(GENMAP_MPI)
-    MPI_Comm_split(h->local->gsComm.c, bin, id, &local);
-#else
-    local = 0;
-#endif
-    // finalize the crystal router
-    crystal_free(&(h->cr));
-    GenmapDestroyComm(h->local);
-
-    // Create new communicator
-    GenmapCreateComm(&h->local, local);
-    MPI_Comm_free(&local);
-    crystal_init(&(h->cr), &(h->local->gsComm));
-
+    GenmapComm c = GenmapGetLocalComm(h);
+    GenmapSplitComm(h, &c, bin);
+    GenmapSetLocalComm(h, c);
 #if defined(GENMAP_PAUL)
     GenmapBinSort(h, 1, &buf0);
 #endif
