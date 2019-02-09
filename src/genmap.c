@@ -2,9 +2,7 @@
 #include "genmap-io.h"
 
 #include <stdlib.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include <time.h>
 //
 // Genmap Readers (FEM meshes, .map files, etc.)
 //
