@@ -220,7 +220,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   return iter;
 }
 
-void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
+void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0) {
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
@@ -228,8 +228,22 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     // sort locally according to Fiedler vector
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
-    // Sort the Fiedler vector globally
+    // set the bin based on Fiedler vector
     GenmapSetFiedlerBin(h);
+  } else {
+    // sort locally according to globalId
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                  globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
+    // set the bin based on globalId
+    GenmapSetGlobalIdBin(h);
+  }
+}
+
+void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
+  GenmapElements elements = GenmapGetElements(h);
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+
+  if(field == 0) { // Fiedler
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     elements = GenmapGetElements(h);
@@ -238,10 +252,6 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
   } else {
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
-                  globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
-    // Sort the Fiedler vector globally
-    GenmapSetGlobalIdBin(h);
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
                     0, &(h->cr));
     elements = GenmapGetElements(h);
@@ -249,6 +259,14 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
   }
+}
+
+void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
+  GenmapElements elements = GenmapGetElements(h);
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+
+  GenmapAssignBins(h, field, buf0);
+  GenmapTransferToBins(h, field, buf0);
   GenmapScan(h, GenmapGetLocalComm(h));
 }
 
