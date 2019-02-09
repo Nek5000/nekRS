@@ -249,6 +249,7 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
   }
+  GenmapScan(h, GenmapGetLocalComm(h));
 }
 
 
@@ -287,7 +288,6 @@ void GenmapRSB(GenmapHandle h) {
 
     GenmapBinSort(h, 0, &buf0);
 
-    GenmapScan(h, GenmapGetLocalComm(h));
     lelt = GenmapGetNLocalElements(h);
     start = GenmapGetLocalStartIndex(h);
     nel = GenmapGetNGlobalElements(h);
@@ -346,15 +346,7 @@ void GenmapRSB(GenmapHandle h) {
 
 #if defined(GENMAP_PAUL)
     GenmapBinSort(h, 1, &buf0);
-    lelt = GenmapGetNLocalElements(h);
 #endif
-
-    GenmapScan(h, GenmapGetLocalComm(h));
-    start = GenmapGetLocalStartIndex(h);
-    nel = GenmapGetNGlobalElements(h);
-    id = GenmapCommRank(GenmapGetLocalComm(h));
-    np = GenmapCommSize(GenmapGetLocalComm(h));
-    elements = GenmapGetElements(h);
   }
 
   crystal_free(&(h->cr));
