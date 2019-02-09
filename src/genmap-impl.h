@@ -43,11 +43,8 @@ struct GenmapHandle_private {
   GenmapComm local;
 
   GenmapLong nel;
-  GenmapLong npts;
-  GenmapInt lelt;
   GenmapLong start;
   GenmapLong Nnodes;
-
   int nv;
 
   struct array elementArray;

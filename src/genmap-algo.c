@@ -233,8 +233,7 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     elements = GenmapGetElements(h);
-    lelt = (GenmapInt)h->elementArray.n;
-    GenmapSetNLocalElements(h, lelt);
+    lelt = GenmapGetNLocalElements(h);
     // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
@@ -246,8 +245,7 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc,
                     0, &(h->cr));
     elements = GenmapGetElements(h);
-    lelt = (GenmapInt)(h->elementArray.n);
-    GenmapSetNLocalElements(h, lelt);
+    lelt = GenmapGetNLocalElements(h);
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
   }

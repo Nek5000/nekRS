@@ -85,6 +85,9 @@ void GenmapSetNGlobalElements(GenmapHandle h, GenmapLong globalElements);
 
 GenmapLong GenmapGetLocalStartIndex(GenmapHandle h);
 void GenmapSetLocalStartIndex(GenmapHandle h, GenmapLong localStart);
+
+int GenmapGetNVertices(GenmapHandle h);
+void GenmapSetNVertices(GenmapHandle, int nVertices);
 //
 // GenmapComm
 //
