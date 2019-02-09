@@ -36,7 +36,7 @@ int GenmapCreateElements(GenmapElements *e);
 int GenmapDestroyElements(GenmapElements e);
 GenmapElements GenmapGetElements_default(GenmapHandle h);
 //
-// Genmap_Handle
+// GenmapHandle
 //
 struct GenmapHandle_private {
   GenmapComm global;
@@ -44,12 +44,15 @@ struct GenmapHandle_private {
 
   GenmapLong nel;
   GenmapLong npts;
-  int nv;
   GenmapInt lelt;
   GenmapLong start;
   GenmapLong Nnodes;
 
+  int nv;
+
   struct array elementArray;
+
+  struct crystal cr;
 
   int (*Create)(GenmapHandle h);
 

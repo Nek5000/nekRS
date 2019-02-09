@@ -115,19 +115,15 @@ int GenmapCreateVector(GenmapVector *x, GenmapInt size);
 int GenmapSetVector(GenmapVector x, GenmapScalar *array);
 int GenmapGetVector(GenmapVector x, GenmapScalar *array);
 
-int GenmapCreateRandomVector(GenmapVector *x, GenmapInt size,
-                             GenmapInt seed);
+int GenmapCreateRandomVector(GenmapVector *x, GenmapInt size, GenmapInt seed);
 int GenmapCreateOnesVector(GenmapVector *x, GenmapInt size);
 int GenmapCreateZerosVector(GenmapVector *x, GenmapInt size);
 
-int GenmapScaleVector(GenmapVector y, GenmapVector x,
-                      GenmapScalar alpha);
-int GenmapAxpbyVector(GenmapVector z, GenmapVector x,
-                      GenmapScalar alpha,
+int GenmapScaleVector(GenmapVector y, GenmapVector x, GenmapScalar alpha);
+int GenmapAxpbyVector(GenmapVector z, GenmapVector x, GenmapScalar alpha,
                       GenmapVector y, GenmapScalar beta);
 
-int GenmapVectorsEqual(GenmapVector x, GenmapVector y,
-                       GenmapScalar tol);
+int GenmapVectorsEqual(GenmapVector x, GenmapVector y, GenmapScalar tol);
 int GenmapCopyVector(GenmapVector x, GenmapVector y);
 GenmapScalar GenmapDotVector(GenmapVector x, GenmapVector y);
 GenmapScalar GenmapAbsMaxVector(GenmapVector x);
@@ -151,24 +147,16 @@ void GenmapRSB(GenmapHandle h);
 //
 // Linear solve
 //
-int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
-                          GenmapVector alpha,
+int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b, GenmapVector alpha,
                           GenmapVector beta);
 //
 // Power and inverse power iterations
 //
-int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha,
-                    GenmapVector beta, GenmapVector init, GenmapInt iter);
-
-int GenmapPowerIterNew(GenmapVector eVector, void (*Ax)(GenmapVector ax,
-                       GenmapVector x, void* data), void *data,
-                       GenmapVector init, GenmapInt iter);
-
+int GenmapPowerIter(GenmapVector eVector, GenmapVector alpha, GenmapVector beta,
+                    GenmapVector init, GenmapInt iter);
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, int iter);
-
-int GenmapTQLI(GenmapHandle h, GenmapVector diagonal,
-               GenmapVector upper,
+int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues);
 //
 // Evaluate partition quality
@@ -179,5 +167,4 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h);
 //
 double GenmapGetMaxRss();
 void GenmapPrintStack();
-
 #endif
