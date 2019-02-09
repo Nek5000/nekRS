@@ -30,10 +30,9 @@ endif
 CSRCS:= $(SRCDIR)/genmap.c \
   	$(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-handle.c $(SRCDIR)/genmap-comm.c \
 	$(SRCDIR)/genmap-eigen.c $(SRCDIR)/genmap-laplacian.c $(SRCDIR)/genmap-lanczos.c \
-	$(SRCDIR)/genmap-algo.c \
-	$(SRCDIR)/parRSB.c $(SRCDIR)/genmap-quality.c \
-	$(SRCDIR)/genmap-io.c \
-	$(SRCDIR)/genmap-chelpers.c
+	$(SRCDIR)/genmap-rsb.c \
+	$(SRCDIR)/genmap-quality.c $(SRCDIR)/genmap-io.c $(SRCDIR)/genmap-chelpers.c \
+	$(SRCDIR)/parRSB.c 
 COBJS:=$(CSRCS:.c=.o)
 
 SRCOBJS:=$(COBJS)
