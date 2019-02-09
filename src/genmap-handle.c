@@ -29,13 +29,12 @@ void GenmapSetElements(GenmapHandle h, GenmapElements elements) {
 }
 
 GenmapInt GenmapGetNLocalElements(GenmapHandle h) {
-  return h->lelt;
+  return h->elementArray.n;
 }
 
 void GenmapSetNLocalElements(GenmapHandle h, GenmapInt localElements) {
   h->lelt = localElements;
 }
-
 GenmapLong GenmapGetNGlobalElements(GenmapHandle h) {
   return h->nel;
 }

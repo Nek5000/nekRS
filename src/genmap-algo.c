@@ -253,6 +253,7 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
   }
 }
 
+
 void GenmapRSB(GenmapHandle h) {
   GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
   GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
@@ -267,12 +268,6 @@ void GenmapRSB(GenmapHandle h) {
 
   if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0 && h->dbgLevel > 0)
     printf("running RSB "), fflush(stdout);
-#if defined(GENMAP_MPI)
-  MPI_Barrier(GenmapGetGlobalComm(h)->gsComm.c);
-  double t0 = MPI_Wtime();
-#else
-  clock_t t0 = clock();
-#endif
 
   crystal_init(&(h->cr), &(h->local->gsComm));
   GenmapLong out[2][1], buf[2][1];
@@ -337,7 +332,7 @@ void GenmapRSB(GenmapHandle h) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     elements = GenmapGetElements(h);
-    lelt = (GenmapInt)(h->elementArray.n); GenmapSetNLocalElements(h, lelt);
+    lelt = GenmapGetNLocalElements(h);
 
     // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
@@ -377,14 +372,4 @@ void GenmapRSB(GenmapHandle h) {
 
   crystal_free(&(h->cr));
   buffer_free(&buf0);
-
-  double time;
-#if defined(GENMAP_MPI)
-  MPI_Barrier(GenmapGetGlobalComm(h)->gsComm.c);
-  time = MPI_Wtime() - t0;
-#else
-  time = ((double)clock() - t0) / CLOCKS_PER_SEC;
-#endif
-  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0 && h->dbgLevel > 0)
-    printf("\nfinished in %lfs\n", time), fflush(stdout);
 }

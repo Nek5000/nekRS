@@ -47,6 +47,9 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   }
 
   GenmapSetNLocalElements(h, neglcon);
+  array_init(struct GenmapElement_private, &h->elementArray, neglcon);
+  h->elementArray.n = neglcon;
+
   h->npts = neglcon * nve;
   h->nv = nve;
 
@@ -57,9 +60,6 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
             buf);
   GenmapSetLocalStartIndex(h, out[0][0]);
   GenmapSetNGlobalElements(h, out[1][0]);
-
-  array_init(struct GenmapElement_private, &h->elementArray, neglcon);
-  h->elementArray.n = neglcon;
 
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i, j;
