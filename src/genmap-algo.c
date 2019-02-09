@@ -95,8 +95,7 @@ GenmapInt GenmapSetGlobalIdBin(GenmapHandle h) {
   return 0;
 }
 
-int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter,
-                  int global) {
+int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   // 1. Do lanczos in local communicator.
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapVector initVec, alphaVec, betaVec;
@@ -231,9 +230,10 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
     // Sort the Fiedler vector globally
     GenmapSetFiedlerBin(h);
-    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0, &(h->cr));
+    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
+                    &(h->cr));
     elements = GenmapGetElements(h);
-    lelt =  (GenmapInt)h->elementArray.n;
+    lelt = (GenmapInt)h->elementArray.n;
     GenmapSetNLocalElements(h, lelt);
     // sort locally again -- now we have everything sorted
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
@@ -334,7 +334,8 @@ void GenmapRSB(GenmapHandle h) {
       upLimit = idCount * pNel + ((idCount < nrem) ? idCount : nrem);
     } while(downLimit - start < lelt);
 
-    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0, &(h->cr));
+    sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
+                    &(h->cr));
     elements = GenmapGetElements(h);
     lelt = (GenmapInt)(h->elementArray.n); GenmapSetNLocalElements(h, lelt);
 

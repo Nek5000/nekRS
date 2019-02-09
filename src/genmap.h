@@ -36,7 +36,7 @@
 //
 #define GENMAP_READER_LEN 256
 #define GENMAP_MAX_READERS 32
-// 
+//
 // GenmapCommExternal
 //
 #if defined(GENMAP_MPI)
