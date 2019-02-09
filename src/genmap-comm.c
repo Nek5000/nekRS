@@ -48,3 +48,17 @@ GenmapComm GenmapGetGlobalComm(GenmapHandle h) {
 void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c) {
   h->global = c;
 }
+
+int GenmapGop(GenmapComm c, void *v, GenmapInt size,
+              GenmapDataType type, GenmapInt op) {
+#ifdef GENMAP_MPI
+  if(op == GENMAP_SUM) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_SUM, c->gsComm.c);
+  } else if(op == GENMAP_MAX) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MAX, c->gsComm.c);
+  } else if(op == GENMAP_MIN) {
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MIN, c->gsComm.c);
+  }
+#endif
+  return 0;
+}

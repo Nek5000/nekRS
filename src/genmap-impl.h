@@ -44,6 +44,7 @@ struct GenmapHandle_private {
 
   GenmapLong nel;
   GenmapLong Nnodes;
+  GenmapLong start;
   int nv;
 
   struct array elementArray;

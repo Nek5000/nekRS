@@ -47,15 +47,8 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   }
 
   GenmapSetNLocalElements(h, (GenmapInt)neglcon);
+  GenmapScan(h, GenmapGetGlobalComm(h));
   GenmapSetNVertices(h, nve);
-
-  GenmapLong out[2][1], buf[2][1];
-  GenmapLong lelt_ = GenmapGetNLocalElements(h);
-  comm_scan(out, &(GenmapGetGlobalComm(h)->gsComm), genmap_gs_long, gs_add,
-            &lelt_, 1,
-            buf);
-  GenmapSetLocalStartIndex(h, out[0][0]);
-  GenmapSetNGlobalElements(h, out[1][0]);
 
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i, j;
@@ -70,14 +63,12 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   GenmapRSB(h);
 
   GenmapElements elements = GenmapGetElements(h);
-  GenmapInt nv = h->nv;
-
   *negl = GenmapGetNLocalElements(h);
 
   for(i = 0; i < *negl; i++) {
     egl[i] = elements[i].globalId;
-    for(j = 0; j < nv; j++) {
-      vl[nv * i + j] = elements[i].vertices[j];
+    for(j = 0; j < nve; j++) {
+      vl[nve * i + j] = elements[i].vertices[j];
     }
   }
 

@@ -253,12 +253,9 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
 
 
 void GenmapRSB(GenmapHandle h) {
-  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
-  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
-  GenmapInt lelt = GenmapGetNLocalElements(h);
-  GenmapLong nel = GenmapGetNGlobalElements(h);
-  GenmapLong start = GenmapGetLocalStartIndex(h);
-  GenmapElements elements = GenmapGetElements(h);
+  GenmapLong id, np, nel, start;
+  GenmapInt lelt;
+  GenmapElements elements;
 
   int maxIter = 50;
   int iter = maxIter;
@@ -268,12 +265,7 @@ void GenmapRSB(GenmapHandle h) {
     printf("running RSB "), fflush(stdout);
 
   crystal_init(&(h->cr), &(h->local->gsComm));
-  GenmapLong out[2][1], buf[2][1];
-
   buffer buf0 = null_buffer;
-  // Calculate the global Fiedler vector, local communicator
-  // must be initialized using the global communicator, we never
-  // touch global communicator
 
   while(GenmapCommSize(GenmapGetLocalComm(h)) > 1) {
     if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0
@@ -295,10 +287,10 @@ void GenmapRSB(GenmapHandle h) {
 
     GenmapBinSort(h, 0, &buf0);
 
-    GenmapLong lelt_ = (GenmapLong)GenmapGetNLocalElements(h);
-    comm_scan(out, &(h->local->gsComm), genmap_gs_long, gs_add, &lelt_, 1, buf);
-    start = out[0][0]; GenmapSetLocalStartIndex(h, start);
-    nel = out[1][0]; GenmapSetNGlobalElements(h, nel);
+    GenmapScan(h, GenmapGetLocalComm(h));
+    lelt = GenmapGetNLocalElements(h);
+    start = GenmapGetLocalStartIndex(h);
+    nel = GenmapGetNGlobalElements(h);
     id = GenmapCommRank(GenmapGetLocalComm(h));
     np = GenmapCommSize(GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
@@ -357,15 +349,12 @@ void GenmapRSB(GenmapHandle h) {
     lelt = GenmapGetNLocalElements(h);
 #endif
 
-    lelt_ = (GenmapLong)lelt;
-    comm_scan(out, &(GenmapGetLocalComm(h)->gsComm), genmap_gs_long, gs_add, &lelt_,
-              1, buf);
-    start = out[0][0]; GenmapSetLocalStartIndex(h, start);
-    nel = h->nel = out[1][0];
+    GenmapScan(h, GenmapGetLocalComm(h));
+    start = GenmapGetLocalStartIndex(h);
+    nel = GenmapGetNGlobalElements(h);
     id = GenmapCommRank(GenmapGetLocalComm(h));
     np = GenmapCommSize(GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
-
   }
 
   crystal_free(&(h->cr));

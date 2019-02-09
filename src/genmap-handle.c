@@ -3,7 +3,6 @@
 // GenmapHandle
 //
 int GenmapCreateHandle(GenmapHandle h) {
-  // Datastructures
   h->global = NULL;
   h->local  = NULL;
 
@@ -59,4 +58,12 @@ int GenmapGetNVertices(GenmapHandle h) {
 
 void GenmapSetNVertices(GenmapHandle h, int nVertices) {
   h->nv = nVertices;
+}
+
+void GenmapScan(GenmapHandle h, GenmapComm c) {
+  GenmapLong out[2][1], buf[2][1];
+  GenmapLong lelt = GenmapGetNLocalElements(h);
+  comm_scan(out, &(c->gsComm), genmap_gs_long, gs_add, &lelt, 1, buf);
+  GenmapSetLocalStartIndex(h, out[0][0]);
+  GenmapSetNGlobalElements(h, out[1][0]);
 }
