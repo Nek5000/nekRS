@@ -1,11 +1,11 @@
-#ifndef _GSLIB_H_
-#define _GSLIB_H_
+#ifndef _GENMAP_GSLIB_H_
+#define _GENMAP_GSLIB_H_
 
-#ifdef GENMAP_UNDERSCORE
+#if defined(GENMAP_UNDERSCORE)
 #  define UNDERSCORE
 #endif
 
-#ifdef GENMAP_MPI
+#if defined(GENMAP_MPI)
 #  define MPI
 #endif
 
