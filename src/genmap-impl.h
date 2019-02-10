@@ -1,8 +1,6 @@
 #ifndef _GENMAP_IMPL_H_
 #define _GENMAP_IMPL_H_
 
-#include <genmap.h>
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -11,6 +9,8 @@
 #ifdef GENMAP_DEBUG
 #include <stdio.h>
 #endif
+
+#include "genmap.h"
 //
 // GenmapComm
 //
@@ -21,24 +21,8 @@ struct GenmapComm_private {
   buffer buf;
 };
 //
-// File I/O
-//
-// Genmap Input File header
-struct GenmapHeader_private {
-  GenmapLong nel;
-  GenmapLong npts;
-  int nv;
-  int ndim;
-  GenmapInt lelt;
-  GenmapLong start;
-  GenmapLong Nnodes;
-};
-//
-// GenmapHeader: Create, Destroy
-//
-int GenmapCreateHeader(GenmapHeader *h);
-int GenmapDestroyHeader(GenmapHeader h);
 // GenmapElements
+//
 struct GenmapElement_private {
   GenmapScalar fiedler;
   GenmapLong globalId;
@@ -52,49 +36,33 @@ int GenmapCreateElements(GenmapElements *e);
 int GenmapDestroyElements(GenmapElements e);
 GenmapElements GenmapGetElements_default(GenmapHandle h);
 //
-// Genmap_Handle
+// GenmapHandle
 //
 struct GenmapHandle_private {
-  int (*Create)(GenmapHandle h);
-  int (*Destroy)(GenmapHandle h);
-
   GenmapComm global;
   GenmapComm local;
-  int (*CreateComm)(GenmapComm *c, GenmapCommExternal ce);
-  int (*DestroyComm)(GenmapComm c);
 
-  GenmapHeader header;
-  int (*CreateHeader)(GenmapHeader *h);
-  int (*DestroyHeader)(GenmapHeader h);
+  GenmapLong nel;
+  GenmapLong Nnodes;
+  GenmapLong start;
+  int nv;
 
   struct array elementArray;
-  GenmapElements(*GetElements)(GenmapHandle h);
-  int (*CreateElements)(GenmapElements *e);
-  int (*DestroyElements)(GenmapElements e);
 
-  GenmapInt(*Np)(GenmapComm c);
-  GenmapInt(*Id)(GenmapComm c);
+  struct crystal cr;
 
-  int (*Ax)(GenmapHandle h, GenmapComm c, GenmapVector u,
-            GenmapVector weights, GenmapVector v);
-  int (*AxInit)(GenmapHandle h, GenmapComm c, GenmapVector weights);
-
-  int (*Gop)(GenmapComm c, void *v, GenmapInt size, GenmapDataType t,
-             GenmapInt op);
-
-  int (*Read)(GenmapHandle h, void *data);
-
-  int (*Write)(GenmapHandle h, char *fileNameBase);
+  int (*Create)(GenmapHandle h);
 
   GenmapInt dbgLevel;
   GenmapInt printStat;
 };
-
+//
 // GenmapHandle
+//
 int GenmapCreateHandle(GenmapHandle h);
 int GenmapDestroyHandle(GenmapHandle h);
 //
-// Genmap_Vector
+// GenmapVector
 //
 struct GenmapVector_private {
   GenmapInt size;

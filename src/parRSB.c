@@ -38,27 +38,17 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
 
   // Check if negl is large enough
   GenmapLong neglcon_ = (GenmapLong) neglcon;
-  GenmapGop(h->global, &neglcon_, 1, GENMAP_LONG, GENMAP_SUM);
-  GenmapInt negl_max = (GenmapInt)(neglcon_ / GenmapNp(h->global)) + 1;
+  GenmapGop(GenmapGetGlobalComm(h), &neglcon_, 1, GENMAP_LONG, GENMAP_SUM);
+  GenmapInt negl_max = (GenmapInt)(neglcon_ / GenmapCommSize(
+                                     GenmapGetGlobalComm(h))) + 1;
   if(negl_max > *negl) {
     printf("ERROR: negl to small to hold resulting partition!\n");
     return 1;
   }
 
-  h->header->lelt = neglcon;
-  h->header->npts = neglcon * nve;
-  h->header->nv = nve;
-  h->header->ndim = (nve == 8) ? 3 : 2;
-
-  GenmapLong out[2][1], buf[2][1];
-  GenmapLong lelt_ = h->header->lelt;
-  comm_scan(out, &(h->global->gsComm), genmap_gs_long, gs_add, &lelt_, 1,
-            buf);
-  h->header->start = out[0][0];
-  h->header->nel = out[1][0];
-
-  array_init(struct GenmapElement_private, &h->elementArray, neglcon);
-  h->elementArray.n = neglcon;
+  GenmapSetNLocalElements(h, (GenmapInt)neglcon);
+  GenmapScan(h, GenmapGetGlobalComm(h));
+  GenmapSetNVertices(h, nve);
 
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i, j;
@@ -73,14 +63,12 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   GenmapRSB(h);
 
   GenmapElements elements = GenmapGetElements(h);
-  GenmapInt nv = h->header->nv;
-
-  *negl = h->header->lelt;
+  *negl = GenmapGetNLocalElements(h);
 
   for(i = 0; i < *negl; i++) {
     egl[i] = elements[i].globalId;
-    for(j = 0; j < nv; j++) {
-      vl[nv * i + j] = elements[i].vertices[j];
+    for(j = 0; j < nve; j++) {
+      vl[nve * i + j] = elements[i].vertices[j];
     }
   }
 

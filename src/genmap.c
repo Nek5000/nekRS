@@ -1,11 +1,8 @@
-#define _POSIX_C_SOURCE 200112
-#include <genmap-impl.h>
-#include <genmap-io.h>
+#include "genmap-impl.h"
+#include "genmap-io.h"
 
 #include <stdlib.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include <time.h>
 //
 // Genmap Readers (FEM meshes, .map files, etc.)
 //
@@ -13,13 +10,13 @@ static struct {
   char name[GENMAP_READER_LEN];
   int (*Create)(GenmapHandle h);
 } GenmapReaders[GENMAP_MAX_READERS];
-
 static size_t GenmapNumReaders = 0;
-static size_t GenmapReadersRegistered = 0;
-
+static int GenmapReadersRegistered = 0;
+//
+// Register readers -- each reader should call this
+//
 int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
-  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(
-        GenmapReaders[0])) {
+  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(GenmapReaders[0])) {
     //TODO: GenmapError
     printf("Error: Too many readers.\n");
   }
@@ -36,16 +33,13 @@ int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
 int GenmapRegister() {
   int ierr;
   ierr = GenmapRegisterReader("interface", GenmapCreateHandle_interface);
-  ierr |= GenmapRegisterReader("gmsh", GenmapCreateHandle_gmsh);
   return ierr;
 }
 //
 // GenmapInit
 //
 int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
-  // TODO: Make this to use __attribute__((constructor))
-  // Needs -fPIC in gslib :(
-  if(!GenmapReadersRegistered) {
+  if(GenmapReadersRegistered == 0) {
     GenmapRegister();
     GenmapReadersRegistered = 1;
   }
@@ -76,7 +70,6 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
 
   GenmapCreateComm(&(*h)->global, ce);
   GenmapCreateComm(&(*h)->local, ce);
-  GenmapCreateHeader(&(*h)->header);
 
   return 0;
 }
@@ -84,81 +77,17 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
 // GenmapFinalize
 //
 int GenmapFinalize(GenmapHandle h) {
-  if(h->global)
-    GenmapDestroyComm(h->global);
-  if(h->local)
+  if(GenmapGetGlobalComm(h))
+    GenmapDestroyComm(GenmapGetGlobalComm(h));
+  if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
 
-  GenmapDestroyHeader(h->header);
 
   array_free(&(h->elementArray));
 
   GenmapDestroyHandle(h);
 
   return 0;
-}
-//
-// GenmapHandle
-//
-int GenmapCreateHandle(GenmapHandle h) {
-  h->global = NULL;
-  h->local = NULL;
-
-  h->CreateComm = GenmapCreateComm;
-  h->DestroyComm = GenmapDestroyComm;
-  h->Id = GenmapId;
-  h->Np = GenmapNp;
-
-  h->Ax = GenmapAx;
-  h->AxInit = GenmapAxInit;
-
-  h->Gop = GenmapGop;
-  h->header = NULL;
-  h->elementArray.ptr = NULL;
-  h->elementArray.n = h->elementArray.max = 0;
-
-  h->CreateHeader = GenmapCreateHeader;
-  h->DestroyHeader = GenmapDestroyHeader;
-
-  h->GetElements = GenmapGetElements;
-  h->CreateElements = GenmapCreateElements;
-  h->DestroyElements = GenmapDestroyElements;
-
-  h->Create(h);
-  h->Destroy = GenmapDestroyHandle;
-
-  return 0;
-}
-
-int GenmapDestroyHandle(GenmapHandle h) {
-  GenmapFree(h);
-  return 0;
-}
-//
-// GenmapHeader: Create, Destroy
-//
-int GenmapCreateHeader(GenmapHeader *h) {
-  GenmapMalloc(1, h);
-
-  return 0;
-}
-
-int GenmapDestroyHeader(GenmapHeader h) {
-  GenmapFree(h);
-  return 0;
-}
-//
-// GenmapElements: Create, Destroy
-//
-int GenmapCreateElements(GenmapElements *e) {
-  return 0;
-}
-
-int GenmapDestroyElements(GenmapElements e) {
-  return 0;
-}
-GenmapElements GenmapGetElements(GenmapHandle h) {
-  return (GenmapElements) h->elementArray.ptr;
 }
 //
 // GenmapMalloc, Realloc, Calloc and Free

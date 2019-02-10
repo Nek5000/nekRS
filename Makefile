@@ -7,19 +7,19 @@ FC?=mpif77
 PAUL?=1
 
 SRCROOT=.
-
 GSLIBDIR=$(GSLIBPATH)
 
 SRCDIR  =$(SRCROOT)/src
-INCDIR  =$(SRCDIR)
 BUILDDIR=$(SRCROOT)/build
 TESTDIR =$(SRCROOT)/tests
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/gmsh/gmsh-test $(TESTDIR)/con/con-test
-LIB=src/lib$(TARGET).a
+TESTS=$(TESTDIR)/con/con-test
+LIB=src/lib$(TARGET).so
 
-INCFLAGS=-I$(INCDIR) -I$(GSLIBDIR)/include
+INCFLAGS=-I$(SRCDIR) -I$(GSLIBDIR)/include
+
+TESTLDFLAGS:=-L$(SRCDIR) -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
 
 ifneq (,$(strip $(DESTDIR)))
 INSTALL_ROOT = $(DESTDIR)
@@ -27,20 +27,15 @@ else
 INSTALL_ROOT = $(SRCROOT)/build
 endif
 
-TESTLDFLAGS:=-L$(SRCDIR) -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
-
-# Main source
-CSRCS:= $(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-algo.c \
-	$(SRCDIR)/genmap-io.c $(SRCDIR)/genmap-comm.c $(SRCDIR)/genmap.c \
-	$(SRCDIR)/parRSB.c $(SRCDIR)/genmap-quality.c \
-	$(SRCDIR)/genmap-chelpers.c $(SRCDIR)/genmap-gmsh.c
-
+CSRCS:= $(SRCDIR)/genmap.c \
+  	$(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-handle.c $(SRCDIR)/genmap-comm.c \
+	$(SRCDIR)/genmap-eigen.c $(SRCDIR)/genmap-laplacian.c $(SRCDIR)/genmap-lanczos.c \
+	$(SRCDIR)/genmap-rsb.c \
+	$(SRCDIR)/genmap-quality.c $(SRCDIR)/genmap-io.c $(SRCDIR)/genmap-chelpers.c \
+	$(SRCDIR)/parRSB.c 
 COBJS:=$(CSRCS:.c=.o)
 
-FSRCS:=
-FOBJS:=$(FSRCS:.f=.o)
-
-SRCOBJS :=$(COBJS) $(FOBJS)
+SRCOBJS:=$(COBJS)
 
 PP= -DGENMAP_LONG_LONG
 ifneq ($(MPI),0)
@@ -87,9 +82,6 @@ endif
 $(COBJS): %.o: %.c
 	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) -c $< -o $@
 
-$(FOBJS): %.o: %.f
-	$(FC) $(FFLAGS) $(PP) $(INCFLAGS) -c $< -o $@
-
 .PHONY: tests
 tests: $(TESTS)
 
@@ -102,7 +94,7 @@ clean:
 
 .PHONY: astyle
 astyle:
-	astyle --style=google --indent=spaces=2 --max-code-length=72 \
+	astyle --style=google --indent=spaces=2 --max-code-length=80 \
 	    --keep-one-line-statements --keep-one-line-blocks --lineend=linux \
             --suffix=none --preserve-date --formatted --pad-oper \
 	    --unpad-paren tests/*/*.[ch] src/*.[ch]

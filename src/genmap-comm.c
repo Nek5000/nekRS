@@ -1,5 +1,7 @@
-#include <genmap-impl.h>
-
+#include "genmap-impl.h"
+//
+// GenmapComm
+//
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
   GenmapMalloc(1, c);
   comm_init(&(*c)->gsComm, ce);
@@ -23,117 +25,60 @@ int GenmapDestroyComm(GenmapComm c) {
   return 0;
 }
 
-int GenmapNp(GenmapComm c) {
+int GenmapCommSize(GenmapComm c) {
   return (int) c->gsComm.np;
 }
 
-int GenmapId(GenmapComm c) {
+int GenmapCommRank(GenmapComm c) {
   return (int) c->gsComm.id;
 }
 
-int GenmapAx(GenmapHandle h, GenmapComm c, GenmapVector u,
-             GenmapVector weights, GenmapVector v) {
-  assert(u->size == v->size);
-
-  GenmapInt lelt = u->size;
-  GenmapInt nv = h->header->nv;
-
-  GenmapScalar *ucv;
-  GenmapMalloc((size_t)(nv * lelt), &ucv);
-
-  GenmapInt i, j;
-  for(i = 0; i < lelt; i++)
-    for(j = 0; j < nv; j++)
-      ucv[nv * i + j] = u->data[i];
-
-  gs(ucv, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
-
-  for(i = 0; i < lelt; i++) {
-    v->data[i] = weights->data[i] * u->data[i];
-    for(j = 0; j < nv; j ++) {
-      v->data[i] += ucv[nv * i + j];
-    }
-  }
-
-  GenmapFree(ucv);
-
-  return 0;
+GenmapComm GenmapGetLocalComm(GenmapHandle h) {
+  return h->local;
 }
 
-int GenmapAxInit(GenmapHandle h, GenmapComm c,
-                 GenmapVector weights) {
-  GenmapInt lelt = h->header->lelt;
-  GenmapInt nv = h->header->nv;
-  GenmapUInt numPoints = (GenmapUInt) nv * lelt;
+void GenmapSetLocalComm(GenmapHandle h, GenmapComm c) {
+  h->local = c;
+}
 
-  GenmapLong *vertices;
-  GenmapMalloc(numPoints, &vertices);
+GenmapComm GenmapGetGlobalComm(GenmapHandle h) {
+  return h->global;
+}
 
-  GenmapElements elements = GenmapGetElements(h);
-  GenmapInt i, j;
-  for(i = 0; i < lelt; i++) {
-    for(j = 0; j < nv; j++) {
-      vertices[i * nv + j] = elements[i].vertices[j];
-    }
-  }
-
-  if(c->verticesHandle)
-    gs_free(c->verticesHandle);
-
-#if defined(GENMAP_DEBUG)
-  double t1 = GenmapGetMaxRss();
-  if(h->Id(h->local) == 0) printf("RSS before gs_setup: %lf\n", t1);
-#endif
-
-  c->verticesHandle = gs_setup(vertices, numPoints, &c->gsComm, 0,
-                               gs_crystal_router, 0);
-#if defined(GENMAP_DEBUG)
-  t1 = GenmapGetMaxRss();
-  if(h->Id(h->local) == 0) printf("RSS after gs_setup: %lf\n", t1);
-#endif
-
-  GenmapScalar *u;
-  GenmapMalloc(numPoints, &u);
-
-  for(i = 0; i < lelt; i++)
-    for(j = 0; j < nv; j++)
-      u[nv * i + j] = 1.;
-
-  gs(u, genmap_gs_scalar, gs_add, 0, c->verticesHandle, &c->buf);
-
-  assert(weights->size == lelt);
-
-  for(i = 0; i < lelt; i++) {
-    weights->data[i] = 0.;
-    for(j = 0; j < nv; j++) {
-      weights->data[i] += u[nv * i + j];
-    }
-  }
-
-  for(i = 0; i < lelt; i++) {
-    weights->data[i] *= -1;
-  }
-
-  GenmapFree(u);
-  GenmapFree(vertices);
-
-  return 0;
+void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c) {
+  h->global = c;
 }
 
 int GenmapGop(GenmapComm c, void *v, GenmapInt size,
               GenmapDataType type, GenmapInt op) {
 #ifdef GENMAP_MPI
   if(op == GENMAP_SUM) {
-    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_SUM,
-                  c->gsComm.c);
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_SUM, c->gsComm.c);
   } else if(op == GENMAP_MAX) {
-    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MAX,
-                  c->gsComm.c);
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MAX, c->gsComm.c);
   } else if(op == GENMAP_MIN) {
-    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MIN,
-                  c->gsComm.c);
+    MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MIN, c->gsComm.c);
   }
 #endif
-
   return 0;
 }
+
+void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
+  // Now it is time to split the communicator
+  GenmapCommExternal local;
+  GenmapLong id = GenmapCommRank(*c);
+#if defined(GENMAP_MPI)
+  MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
+#else
+  local = 0;
+#endif
+  // finalize the crystal router
+  crystal_free(&(h->cr));
+  GenmapDestroyComm(*c);
+
+  // Create new communicator
+  GenmapCreateComm(c, local);
+  MPI_Comm_free(&local);
+  crystal_init(&(h->cr), &((*c)->gsComm));
+}
+
