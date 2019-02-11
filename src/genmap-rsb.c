@@ -220,18 +220,40 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   return iter;
 }
 
-void GenmapSplitByMedian(GenmapHandle h, int *bin) {
+void GenmapSplitByGlobalId(GenmapHandle h) {
   GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapLong nel = GenmapGetNGlobalElements(h);
-  GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
-  GenmapLong np = GenmapCommSize(GenmapGetLocalComm(h));
+  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
-  if(id < (np + 1) / 2)
-    *bin = 0;
-  else
-    *bin = 1;
+  GenmapInt pNel = (GenmapInt)(nel / np);
+  GenmapInt nrem = (GenmapInt)(nel - pNel * np);
+  GenmapInt idCount = 0;
+  while(idCount * pNel + ((idCount < nrem) ? idCount : nrem) < start)
+    idCount++;
+
+  GenmapLong upLimit = idCount * pNel + ((idCount < nrem) ? idCount : nrem);
+  GenmapLong downLimit = start;
+  do {
+    GenmapInt end = upLimit - start < lelt ? (GenmapInt)(upLimit - start) : lelt;
+    GenmapInt i;
+    for(i = (GenmapInt)(downLimit - start); i < end; i++)
+      elements[i].proc = idCount - 1;
+    downLimit = upLimit;
+    idCount++;
+    upLimit = idCount * pNel + ((idCount < nrem) ? idCount : nrem);
+  } while(downLimit - start < lelt);
+}
+
+void GenmapSplitByMedian(GenmapHandle h) {
+  GenmapLong start = GenmapGetLocalStartIndex(h);
+  GenmapLong nel = GenmapGetNGlobalElements(h);
+  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+  GenmapElements elements = GenmapGetElements(h);
 
   GenmapInt pNel = (GenmapInt)(nel / np);
   GenmapInt nrem = (GenmapInt)(nel - pNel * np);
@@ -256,13 +278,13 @@ void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0) {
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  if(field == 0) { // Fiedler
+  if(field == GENMAP_FIEDLER) { // Fiedler
     // sort locally according to Fiedler vector
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
     // set the bin based on Fiedler vector
     GenmapSetFiedlerBin(h);
-  } else {
+  } else if(GENMAP_GLOBALID) {
     // sort locally according to globalId
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                   globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
@@ -275,14 +297,14 @@ void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  if(field == 0) { // Fiedler
+  if(field == GENMAP_FIEDLER) { // Fiedler
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     elements = GenmapGetElements(h);
     lelt = GenmapGetNLocalElements(h);
     sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                   TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
-  } else {
+  } else if(field == GENMAP_GLOBALID) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     elements = GenmapGetElements(h);
@@ -299,6 +321,12 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
   GenmapAssignBins(h, field, buf0);
   GenmapTransferToBins(h, field, buf0);
   GenmapScan(h, GenmapGetLocalComm(h));
+  if(field == GENMAP_FIEDLER) {
+    GenmapSplitByMedian(h);
+  } else if(field == GENMAP_GLOBALID) {
+    GenmapSplitByGlobalId(h);
+  }
+  GenmapTransferToBins(h, field, buf0);
 }
 
 void GenmapRSB(GenmapHandle h) {
@@ -331,10 +359,11 @@ void GenmapRSB(GenmapHandle h) {
     } while(ipass < npass && iter == maxIter);
 
     GenmapBinSort(h, 0, &buf0);
-
     int bin;
-    GenmapSplitByMedian(h, &bin);
-    GenmapTransferToBins(h, 0, &buf0);
+    GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
+    GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+    if(id < (np + 1) / 2) bin = 0;
+    else bin = 1;
 
     GenmapComm c = GenmapGetLocalComm(h);
     GenmapSplitComm(h, &c, bin);

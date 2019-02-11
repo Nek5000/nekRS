@@ -100,6 +100,9 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type,
               GenmapInt op);
 int GenmapDestroyComm(GenmapComm c);
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin);
+int GenmapCrystalInit(GenmapHandle h, GenmapComm c);
+int GenmapCrystalTransfer(GenmapHandle h, int field);
+int GenmapCrystalFinalize(GenmapHandle h);
 //
 // Function to read/write from/to FILE
 //

@@ -22,10 +22,9 @@ mpirun -np 4 ./gmsh-test twistedrod.msh
 
 We provide a simple C interface to use parRSB as a library.
 
-```sh
-int parRSB_partMesh(long long *egl, long long *vl, int *negl,
-                    long long *eglin, long long *vlin, int neglin,
-                    int nve, int *opt, MPI_Comm comm)
+```C
+int parRSB_partMesh(int *part, long long *vtx, int nel, int nve,
+                    int *options, MPI_Comm comm);
 ```
 
 See example here, see `tests/con/con-test.c`.
@@ -33,16 +32,12 @@ See example here, see `tests/con/con-test.c`.
 ### Parameters
 
 ```sh
-egl     (out)    ... local list of global element IDs
-vl      (out)    ... local list of vertex IDs for all elements in egl
-negl    (in/out) ... length of egl on input
-                     local partition size on output
-eglin   (in)     ... local list of global element IDs
-vlin    (in)     ... local list of verticies making up each element in eglin (adjacency structure) 
-neglin  (in)     ... length of eglin
-opt     (in)     ... additional parameters (to use defaults set opt[0] = 0)
-nve     (in)     ... number of vertices of a single element (has to be the same for all)
-comm    (in)     ... MPI Communicator (size determines number of partitions)
+part    (out)   ... Destination MPI rank for each element.
+vtx     (in)    ... Vertices of all the elements (size = nel *nve)
+nel     (in)    ... Total number of local elements to MPI rank
+opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0)
+nve     (in)    ... Number of vertices of a single element (has to be the same for all)
+comm    (in)    ... MPI Communicator (size determines number of partitions)
 ```
 
-Note, any initial distribution of mesh elements (eglin) is valid. 
+Note, any initial distribution of mesh elements is valid. 
