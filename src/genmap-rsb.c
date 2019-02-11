@@ -220,6 +220,33 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   return iter;
 }
 
+void GenmapSplitByGlobalId(GenmapHandle h) {
+  GenmapLong start = GenmapGetLocalStartIndex(h);
+  GenmapLong nel = GenmapGetNGlobalElements(h);
+  GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapLong np = GenmapCommSize(GenmapGetLocalComm(h));
+  GenmapInt lelt = GenmapGetNLocalElements(h);
+  GenmapElements elements = GenmapGetElements(h);
+
+  GenmapInt pNel = (GenmapInt)(nel / np);
+  GenmapInt nrem = (GenmapInt)(nel - pNel * np);
+  GenmapInt idCount = 0;
+  while(idCount * pNel + ((idCount < nrem) ? idCount : nrem) < start)
+    idCount++;
+
+  GenmapLong upLimit = idCount * pNel + ((idCount < nrem) ? idCount : nrem);
+  GenmapLong downLimit = start;
+  do {
+    GenmapInt end = upLimit - start < lelt ? (GenmapInt)(upLimit - start) : lelt;
+    GenmapInt i;
+    for(i = (GenmapInt)(downLimit - start); i < end; i++)
+      elements[i].proc = idCount - 1;
+    downLimit = upLimit;
+    idCount++;
+    upLimit = idCount * pNel + ((idCount < nrem) ? idCount : nrem);
+  } while(downLimit - start < lelt);
+}
+
 void GenmapSplitByMedian(GenmapHandle h, int *bin) {
   GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapLong nel = GenmapGetNGlobalElements(h);
@@ -331,7 +358,6 @@ void GenmapRSB(GenmapHandle h) {
     } while(ipass < npass && iter == maxIter);
 
     GenmapBinSort(h, 0, &buf0);
-
     int bin;
     GenmapSplitByMedian(h, &bin);
     GenmapTransferToBins(h, 0, &buf0);
@@ -342,6 +368,8 @@ void GenmapRSB(GenmapHandle h) {
 
 #if defined(GENMAP_PAUL)
     GenmapBinSort(h, 1, &buf0);
+    GenmapSplitByGlobalId(h);
+    GenmapTransferToBins(h, 1, &buf0);
 #endif
   }
 

@@ -47,6 +47,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
   }
 
   GenmapSetNLocalElements(h, (GenmapInt)neglcon);
+  assert(neglcon > 0);
   GenmapScan(h, GenmapGetGlobalComm(h));
   GenmapSetNVertices(h, nve);
 

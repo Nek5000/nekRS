@@ -1,5 +1,4 @@
 MPI?=1
-VALGRIND?=1
 DEBUG?=0
 UNDERSCORE?=1
 CC?=mpicc
