@@ -14,7 +14,7 @@ TESTDIR =$(SRCROOT)/tests
 
 TARGET=parRSB
 TESTS=$(TESTDIR)/con/con-test
-LIB=src/lib$(TARGET).so
+LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(SRCDIR) -I$(GSLIBDIR)/include
 
