@@ -326,11 +326,10 @@ void GenmapBinSort(GenmapHandle h, int field, buffer *buf0) {
   GenmapScan(h, GenmapGetLocalComm(h));
   if(field == GENMAP_FIEDLER) {
     GenmapSplitByMedian(h);
-    GenmapTransferToBins(h, 0, buf0);
   } else if(field == GENMAP_GLOBALID) {
     GenmapSplitByGlobalId(h);
-    GenmapTransferToBins(h, 1, buf0);
   }
+  GenmapTransferToBins(h, field, buf0);
 }
 
 void GenmapRSB(GenmapHandle h) {
