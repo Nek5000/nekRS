@@ -8,8 +8,8 @@
 #include "genmap-io.h"
 #include "parRSB.h"
 
-void fparRSB_partMesh(int *part, long long *vtx, int *nel,
-                      int *nve, int *options, int *comm, int *err) {
+void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
+                      int *options, int *comm, int *err) {
   *err = 1;
 
   GenmapCommExternal c;
@@ -22,8 +22,8 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel,
   *err = parRSB_partMesh(part, vtx, *nel, *nve, options, c);
 }
 
-int parRSB_partMesh(int *part, long long *vtx, int nel, int nve,
-                     int *options, MPI_Comm comm) {
+int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
+                    MPI_Comm comm) {
   GenmapHandle h;
   GenmapInit(&h, comm, "interface");
 
