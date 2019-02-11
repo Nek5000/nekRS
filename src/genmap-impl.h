@@ -12,6 +12,13 @@
 
 #include "genmap.h"
 //
+// Fiedler fields
+//
+#define GENMAP_FIEDLER 0
+#define GENMAP_GLOBALID 1
+#define GENMAP_PROC 2
+#define GENMAP_ORIGIN 3
+//
 // GenmapComm
 //
 struct GenmapComm_private {
@@ -28,6 +35,7 @@ struct GenmapElement_private {
   GenmapLong globalId;
   GenmapLong vertices[8];
   GenmapInt proc;
+  GenmapInt origin;
 };
 //
 // GenmapElements: Create, Destroy

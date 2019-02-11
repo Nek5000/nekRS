@@ -8,8 +8,7 @@
 #include "genmap-io.h"
 #include "parRSB.h"
 
-void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
-                      long long *eglcon, long long *vlcon, int *neglcon,
+void fparRSB_partMesh(int *part, long long *vtx, int *nel,
                       int *nve, int *options, int *comm, int *err) {
   *err = 1;
 
@@ -20,14 +19,11 @@ void fparRSB_partMesh(long long *egl, long long *vl, int *negl,
   c = 0;
 #endif
 
-  *err = parRSB_partMesh(egl, vl, negl,
-                         eglcon, vlcon, *neglcon,
-                         *nve, options, c);
+  *err = parRSB_partMesh(part, vtx, *nel, *nve, options, c);
 }
 
-int parRSB_partMesh(long long *egl, long long *vl, int *negl,
-                    long long *eglcon, long long *vlcon, int neglcon,
-                    int nve, int *options, MPI_Comm comm) {
+int parRSB_partMesh(int *part, long long *vtx, int nel, int nve,
+                     int *options, MPI_Comm comm) {
   GenmapHandle h;
   GenmapInit(&h, comm, "interface");
 
@@ -36,44 +32,38 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
     h->printStat = options[2];
   }
 
-  // Check if negl is large enough
-  GenmapLong neglcon_ = (GenmapLong) neglcon;
-  GenmapGop(GenmapGetGlobalComm(h), &neglcon_, 1, GENMAP_LONG, GENMAP_SUM);
-  GenmapInt negl_max = (GenmapInt)(neglcon_ / GenmapCommSize(
-                                     GenmapGetGlobalComm(h))) + 1;
-  if(negl_max > *negl) {
-    printf("ERROR: negl to small to hold resulting partition!\n");
-    return 1;
-  }
+  // Assert that nel is greater then zero. Will be remove in future.
+  assert(nel > 0);
 
-  GenmapSetNLocalElements(h, (GenmapInt)neglcon);
-  assert(neglcon > 0);
+  GenmapSetNLocalElements(h, (GenmapInt)nel);
   GenmapScan(h, GenmapGetGlobalComm(h));
   GenmapSetNVertices(h, nve);
 
+  GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
   GenmapElements e = GenmapGetElements(h);
+  GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapInt i, j;
 
-  for(i = 0; i < neglcon; i++) {
-    e[i].globalId = eglcon[i];
+  for(i = 0; i < nel; i++) {
+    e[i].globalId = start + i;
+    e[i].origin = id;
     for(j = 0; j < nve; j++) {
-      e[i].vertices[j] = vlcon[i * nve + j];
+      e[i].vertices[j] = vtx[i * nve + j];
     }
   }
 
   GenmapRSB(h);
 
-  GenmapElements elements = GenmapGetElements(h);
-  *negl = GenmapGetNLocalElements(h);
+  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
+  GenmapCrystalTransfer(h, GENMAP_ORIGIN);
+  GenmapCrystalFinalize(h);
 
-  for(i = 0; i < *negl; i++) {
-    egl[i] = elements[i].globalId;
-    for(j = 0; j < nve; j++) {
-      vl[nve * i + j] = elements[i].vertices[j];
-    }
+  // This should hold true
+  assert(GenmapGetNLocalElements(h) == nel);
+
+  for(i = 0; i < nel; i++) {
+    part[i] = e[i].proc;
   }
-
-  if(h->printStat > 0) GenmapPartitionQuality(h);
 
   GenmapFinalize(h);
 

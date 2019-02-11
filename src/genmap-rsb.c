@@ -5,9 +5,6 @@
 #include <time.h>
 #include <limits.h>
 
-#define GENMAP_FIEDLER  0
-#define GENMAP_GLOBALID 1
-
 void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min, GenmapScalar *max) {
   *min = 1; *max = -1;
 
@@ -226,8 +223,8 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 void GenmapSplitByGlobalId(GenmapHandle h) {
   GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapLong nel = GenmapGetNGlobalElements(h);
-  GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
-  GenmapLong np = GenmapCommSize(GenmapGetLocalComm(h));
+  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
@@ -253,8 +250,8 @@ void GenmapSplitByGlobalId(GenmapHandle h) {
 void GenmapSplitByMedian(GenmapHandle h) {
   GenmapLong start = GenmapGetLocalStartIndex(h);
   GenmapLong nel = GenmapGetNGlobalElements(h);
-  GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
-  GenmapLong np = GenmapCommSize(GenmapGetLocalComm(h));
+  GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
+  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
@@ -363,8 +360,8 @@ void GenmapRSB(GenmapHandle h) {
 
     GenmapBinSort(h, 0, &buf0);
     int bin;
-    GenmapLong np = GenmapCommSize(GenmapGetLocalComm(h));
-    GenmapLong id = GenmapCommRank(GenmapGetLocalComm(h));
+    GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
+    GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
     if(id < (np + 1) / 2) bin = 0;
     else bin = 1;
 
