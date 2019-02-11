@@ -29,7 +29,7 @@ int parRSB_partMesh(long long *egl, long long *vl, int *negl,
                     long long *eglcon, long long *vlcon, int neglcon,
                     int nve, int *options, MPI_Comm comm) {
   GenmapHandle h;
-  GenmapInit(&h, comm, "interface");
+  GenmapInit(&h, comm);
 
   if(options[0] != 0) {
     h->dbgLevel = options[1];

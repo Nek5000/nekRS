@@ -4,72 +4,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 //
-// Genmap Readers (FEM meshes, .map files, etc.)
-//
-static struct {
-  char name[GENMAP_READER_LEN];
-  int (*Create)(GenmapHandle h);
-} GenmapReaders[GENMAP_MAX_READERS];
-static size_t GenmapNumReaders = 0;
-static int GenmapReadersRegistered = 0;
-//
-// Register readers -- each reader should call this
-//
-int GenmapRegisterReader(char *name, int (*Create)(GenmapHandle h)) {
-  if(GenmapNumReaders >= sizeof(GenmapReaders) / sizeof(GenmapReaders[0])) {
-    //TODO: GenmapError
-    printf("Error: Too many readers.\n");
-  }
-
-  strncpy(GenmapReaders[GenmapNumReaders].name, name, GENMAP_READER_LEN);
-  GenmapReaders[GenmapNumReaders].Create = Create;
-  GenmapNumReaders++;
-
-  return 0;
-}
-//
-// GenmapRegister
-//
-int GenmapRegister() {
-  int ierr;
-  ierr = GenmapRegisterReader("interface", GenmapCreateHandle_interface);
-  return ierr;
-}
-//
 // GenmapInit
 //
-int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader) {
-  if(GenmapReadersRegistered == 0) {
-    GenmapRegister();
-    GenmapReadersRegistered = 1;
-  }
-
-  char *registeredReader;
-  size_t matchLen = 0, matchIdx = 0;
-
-  size_t i, j;
-  for(i = 0; i < GenmapNumReaders; i++) {
-    registeredReader = GenmapReaders[i].name;
-    for(j = 0; reader[j]
-        && (reader[j] == registeredReader[j]); j++) {
-      if(j > matchLen) {
-        matchLen = j;
-        matchIdx = i;
-      }
-    }
-  }
-
-  if(!matchLen) {
-    //TODO: GenmapError
-    printf("Error: Reader not found.\n");
-  }
-
+int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
   GenmapMalloc(1, h);
-  (*h)->Create = GenmapReaders[matchIdx].Create;
-  GenmapCreateHandle(*h);
+  GenmapHandle h_ = *h;
 
-  GenmapCreateComm(&(*h)->global, ce);
-  GenmapCreateComm(&(*h)->local, ce);
+  GenmapCreateComm(&h_->global, ce);
+  GenmapCreateComm(&h_->local, ce);
+
+  h_->elementArray.ptr = NULL;
+  h_->elementArray.n = (*h)->elementArray.max = 0;
+
+  h_->dbgLevel = 0;
+  h_->printStat = 0;
 
   return 0;
 }
@@ -82,10 +30,9 @@ int GenmapFinalize(GenmapHandle h) {
   if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
 
-
   array_free(&(h->elementArray));
 
-  GenmapDestroyHandle(h);
+  GenmapFree(h);
 
   return 0;
 }
