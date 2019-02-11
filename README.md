@@ -32,9 +32,9 @@ See example here, see `tests/con/con-test.c`.
 ### Parameters
 
 ```sh
-part    (out)   ... Destination processor each element.
+part    (out)   ... Destination MPI rank for each element.
 vtx     (in)    ... Vertices of all the elements (size = nel *nve)
-nel     (in)    ... Total number of local elements to process
+nel     (in)    ... Total number of local elements to MPI rank
 opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0)
 nve     (in)    ... Number of vertices of a single element (has to be the same for all)
 comm    (in)    ... MPI Communicator (size determines number of partitions)
