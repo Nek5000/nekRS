@@ -5,9 +5,6 @@
 #include <time.h>
 #include <limits.h>
 
-#define GENMAP_FIEDLER  0
-#define GENMAP_GLOBALID 1
-
 void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min, GenmapScalar *max) {
   *min = 1; *max = -1;
 
