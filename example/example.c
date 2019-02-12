@@ -71,6 +71,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  free(el);
+  free(vl);
   array_free(&eList);
   comm_free(&comm);
 
