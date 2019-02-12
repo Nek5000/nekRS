@@ -56,9 +56,11 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
   GenmapRSB(h);
 
-/*
+  crystal_init(&(h->cr), &(h->global->gsComm));
+//  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
   GenmapCrystalTransfer(h, GENMAP_ORIGIN);
-  GenmapCrystalFinalize(h);
+//GenmapCrystalFinalize(h);
+  crystal_free(&(h->cr));
 
   // This should hold true
   assert(GenmapGetNLocalElements(h) == nel);
@@ -66,7 +68,6 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   for(i = 0; i < nel; i++) {
     part[i] = e[i].proc;
   }
-*/
 
   if(id == 0 && h->dbgLevel > 0)
     printf("\nfinished in %lfs\n", comm_time()-time0);
