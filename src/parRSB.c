@@ -56,11 +56,9 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
   GenmapRSB(h);
 
-  struct crystal cr;
-  crystal_init(&cr, &(h->global->gsComm));
-  sarray_transfer(struct GenmapElement_private, &(h->elementArray), origin, 0,
-                  &cr);
-  crystal_free(&cr);
+  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
+  GenmapCrystalTransfer(h, GENMAP_ORIGIN);
+  GenmapCrystalFinalize(h);
 
   // This should hold true
   assert(GenmapGetNLocalElements(h) == nel);

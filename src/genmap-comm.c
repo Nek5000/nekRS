@@ -83,9 +83,7 @@ void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
 }
 
 int GenmapCrystalInit(GenmapHandle h, GenmapComm c) {
-  if(&(h->cr))
-    crystal_free(&(h->cr));
-  crystal_init(&(h->cr), &(h->global->gsComm));
+  crystal_init(&(h->cr), &(c->gsComm));
   return 0;
 }
 
