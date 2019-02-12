@@ -20,13 +20,11 @@ mpirun -np 4 ./example case01.co2
 
 ## C Interface
 
-We provide a simple C interface to use parRSB as a library.
-
 ```C
 int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options, MPI_Comm comm);
 ```
 
-See example here, see `example/example.c`.
+See `example/example.c`.
 
 ### Parameters
 
