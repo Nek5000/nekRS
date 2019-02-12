@@ -34,7 +34,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     h->printStat = options[2];
   }
 
-  // Assert that nel is greater then zero. Will be remove in future.
+  // Assert that nel is greater then zero. Will be removed in future.
   assert(nel > 0);
 
   GenmapSetNLocalElements(h, (GenmapInt)nel);
@@ -56,17 +56,18 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
   GenmapRSB(h);
 
-  crystal_init(&(h->cr), &(h->global->gsComm));
-//  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
-  GenmapCrystalTransfer(h, GENMAP_ORIGIN);
-//GenmapCrystalFinalize(h);
-  crystal_free(&(h->cr));
+  struct crystal cr;
+  crystal_init(&cr, &(h->global->gsComm));
+  sarray_transfer(struct GenmapElement_private, &(h->elementArray), origin, 0,
+                  &cr);
+  crystal_free(&cr);
 
   // This should hold true
   assert(GenmapGetNLocalElements(h) == nel);
 
+  e = GenmapGetElements(h);
   for(i = 0; i < nel; i++) {
-    part[i] = e[i].proc;
+    part[i] = e[i].procGlobal;
   }
 
   if(id == 0 && h->dbgLevel > 0)
