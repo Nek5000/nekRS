@@ -35,7 +35,6 @@ struct GenmapElement_private {
   GenmapLong globalId;
   GenmapLong vertices[8];
   GenmapInt proc;
-  GenmapInt procGlobal;
   GenmapInt origin;
 };
 //

@@ -55,6 +55,11 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
   GenmapRSB(h);
 
+  e = GenmapGetElements(h);
+  for(j = 0; j < GenmapGetNLocalElements(h); j++) {
+    e[j].proc = GenmapCommRank(GenmapGetGlobalComm(h));
+  }
+
   GenmapCrystalInit(h, GenmapGetGlobalComm(h));
   GenmapCrystalTransfer(h, GENMAP_ORIGIN);
   GenmapCrystalFinalize(h);
@@ -68,7 +73,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   buffer_free(&buf);
 
   for(i = 0; i < nel; i++) {
-    part[i] = e[i].procGlobal;
+    part[i] = e[i].proc;
   }
 
   if(id == 0 && h->dbgLevel > 0)

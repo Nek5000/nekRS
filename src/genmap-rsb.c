@@ -59,7 +59,6 @@ GenmapInt GenmapSetFiedlerBin(GenmapHandle h) {
       GenmapScalar end = min + (range * (id + 1)) / nbins;
       if(start <= p->fiedler && p->fiedler < end) {
         p->proc = id;
-        p->procGlobal = GenmapCommRank(GenmapGetGlobalComm(h));
         break;
       }
     }
@@ -87,7 +86,6 @@ GenmapInt GenmapSetGlobalIdBin(GenmapHandle h) {
       GenmapScalar end = min + (range * (id + 1)) / nbins;
       if(start <= p->globalId && p->globalId < end) {
         p->proc = id;
-        p->procGlobal = GenmapCommRank(GenmapGetGlobalComm(h));
         break;
       }
     }
