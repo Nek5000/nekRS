@@ -13,6 +13,7 @@ Parition mesh using Nek5000's vertex connectivity (con) file.
 #define MAXNV 8 /* maximum number of vertices per element */
 typedef struct{
   int proc;
+  long long id;
   long long vtx[MAXNV];
 } elm_data;
 
@@ -33,7 +34,7 @@ int main(int argc, char *argv[]) {
   ierr = conRead(argv[1], &con, comm.c);
   if(ierr) goto quit;
 
-  nv = con.nv;
+  nv  = con.nv;
   nel = con.nel;
   int *part = (int*) malloc(nel * sizeof(int));
 
@@ -43,12 +44,12 @@ int main(int argc, char *argv[]) {
 
   ierr = parRSB_partMesh(part, con.vl, nel, nv, options, comm.c);
   if(ierr) goto quit;
-  printf("before nid:%d, nel:%d\n", comm.id, nel);
 
   /* redistribute data */
   array_init(elm_data, &eList, nel), eList.n = nel;
   for(data = eList.ptr, e = 0; e < nel; ++e) {
     data[e].proc = part[e];
+    data[e].id   = con.el[e];
     for(int n = 0; n < nv; ++n) {
       data[e].vtx[n] = con.vl[e*nv + n];
     }
@@ -60,10 +61,11 @@ int main(int argc, char *argv[]) {
   sarray_transfer(elm_data, &eList, proc, 0, &cr);
   crystal_free(&cr);
   nel = eList.n;
-  printf("after nid:%d, nel:%d\n", comm.id, nel);
 
+  int *el = (int*) malloc(nel * sizeof(int));
   int *vl = (int*) malloc(nv*nel * sizeof(int));
   for(data = eList.ptr, e = 0; e < nel; ++e) {
+    el[e] = data[e].id;
     for(n = 0; n < nv; ++n) {
       vl[e*nv + n] = data[e].vtx[n];
     }

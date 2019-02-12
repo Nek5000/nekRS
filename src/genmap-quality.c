@@ -6,16 +6,16 @@
 GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
   GenmapInt np = GenmapCommSize(GenmapGetGlobalComm(h));
-  GenmapInt lelt = GenmapGetNLocalElements(h);
+  GenmapInt nel = GenmapGetNLocalElements(h);
   GenmapInt nv = h->nv;
 
   GenmapLong *data;
-  GenmapInt numPoints = lelt * nv;
+  GenmapInt numPoints = nel * nv;
   GenmapMalloc(numPoints, &data);
 
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt i, j;
-  for(i = 0; i < lelt; i++) {
+  for(i = 0; i < nel; i++) {
     for(j = 0; j < nv; j++) {
       data[i * nv + j] = elements[i].vertices[j];
     }
@@ -52,17 +52,25 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapInt ncMax = neighborsCount;
   GenmapInt ncMin = neighborsCount;
   GenmapInt ncSum = neighborsCount;
-
   GenmapGop(c, &ncMax, 1, GENMAP_INT, GENMAP_MAX);
   GenmapGop(c, &ncMin, 1, GENMAP_INT, GENMAP_MIN);
   GenmapGop(c, &ncSum, 1, GENMAP_INT, GENMAP_SUM);
 
-  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
-    printf("Max neighbors: "GenmapIntFormat, ncMax);
-    printf(" | Min neighbors: "GenmapIntFormat, ncMin);
-    printf(" | Avg neighbors: "GenmapScalarFormat"\n",
-           (1.0 * ncSum) / GenmapCommSize(GenmapGetGlobalComm(h)));
+  GenmapInt nelMax = nel;
+  GenmapInt nelMin = nel;
+  GenmapGop(c, &nelMin, 1, GENMAP_INT, GENMAP_MIN);
+  GenmapGop(c, &nelMax, 1, GENMAP_INT, GENMAP_MAX);
+
+  if (GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+    printf(
+      " Max neighbors: %d | Min neighbors: %d | Avg neighbors: %lf\n",
+      ncMax, ncMin, (double)ncSum/np);
+    printf(
+      " Max elements: %d | Min elements: %d | Balance: %lf\n",
+      nelMax, nelMin, (double)nelMax/nelMin);
+    fflush(stdout);
   }
+
 
   GenmapFree(data);
   GenmapDestroyComm(c);
