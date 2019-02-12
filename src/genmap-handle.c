@@ -2,23 +2,6 @@
 //
 // GenmapHandle
 //
-int GenmapCreateHandle(GenmapHandle h) {
-  h->global = NULL;
-  h->local  = NULL;
-
-  h->elementArray.ptr = NULL;
-  h->elementArray.n = h->elementArray.max = 0;
-
-  h->Create(h);
-
-  return 0;
-}
-
-int GenmapDestroyHandle(GenmapHandle h) {
-  GenmapFree(h);
-  return 0;
-}
-
 GenmapElements GenmapGetElements(GenmapHandle h) {
   return (GenmapElements) h->elementArray.ptr;
 }

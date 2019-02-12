@@ -56,7 +56,7 @@ typedef struct GenmapElement_private *GenmapElements;
 //
 // Genmap: Init, Finalize
 //
-int GenmapInit(GenmapHandle *h, GenmapCommExternal ce, char *reader);
+int GenmapInit(GenmapHandle *h, GenmapCommExternal ce);
 int GenmapFinalize(GenmapHandle h);
 //
 // GenmapMalloc, Realloc, Calloc and Free

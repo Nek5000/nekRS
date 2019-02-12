@@ -59,10 +59,8 @@ struct GenmapHandle_private {
 
   struct crystal cr;
 
-  int (*Create)(GenmapHandle h);
-
-  GenmapInt dbgLevel;
-  GenmapInt printStat;
+  int dbgLevel;
+  int printStat;
 };
 //
 // GenmapHandle

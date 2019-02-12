@@ -25,7 +25,7 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
 int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
                     MPI_Comm comm) {
   GenmapHandle h;
-  GenmapInit(&h, comm, "interface");
+  GenmapInit(&h, comm);
 
   if(options[0] != 0) {
     h->dbgLevel = options[1];
