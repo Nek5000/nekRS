@@ -5,7 +5,6 @@
 
 #include "genmap.h"
 #include "genmap-impl.h"
-#include "genmap-io.h"
 #include "parRSB.h"
 
 void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
@@ -64,6 +63,10 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   assert(GenmapGetNLocalElements(h) == nel);
 
   e = GenmapGetElements(h);
+  buffer buf; buffer_init(&buf, 1024);
+  sarray_sort(struct GenmapElement_private, e, (unsigned int)nel, globalId, TYPE_LONG, &buf);
+  buffer_free(&buf);
+
   for(i = 0; i < nel; i++) {
     part[i] = e[i].procGlobal;
   }
