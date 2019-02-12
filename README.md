@@ -31,7 +31,7 @@ See example here, see `tests/con/con-test.c`.
 
 ### Parameters
 
-```sh
+```text
 part    (out)   ... Destination MPI rank for each element.
 vtx     (in)    ... Vertices of all the elements (size = nel *nve)
 nel     (in)    ... Total number of local elements to MPI rank
