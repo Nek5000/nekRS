@@ -14,8 +14,8 @@ make CC=mpicc GSLIBPATH=<path to gslib>/build  all
 
 ```sh
 
-cd tests/gmsh/gmsh-test
-mpirun -np 4 ./gmsh-test twistedrod.msh 
+cd tests/con
+mpirun -np 4 ./con-test case01.co2
 ```
 
 ## C Interface
