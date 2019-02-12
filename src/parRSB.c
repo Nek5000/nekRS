@@ -27,6 +27,8 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   GenmapHandle h;
   GenmapInit(&h, comm);
 
+  double time0 = comm_time();
+
   if(options[0] != 0) {
     h->dbgLevel = options[1];
     h->printStat = options[2];
@@ -42,8 +44,8 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
   GenmapElements e = GenmapGetElements(h);
   GenmapLong start = GenmapGetLocalStartIndex(h);
-  GenmapInt i, j;
 
+  GenmapInt i, j;
   for(i = 0; i < nel; i++) {
     e[i].globalId = start + i;
     e[i].origin = id;
@@ -54,7 +56,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
   GenmapRSB(h);
 
-  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
+/*
   GenmapCrystalTransfer(h, GENMAP_ORIGIN);
   GenmapCrystalFinalize(h);
 
@@ -64,8 +66,16 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   for(i = 0; i < nel; i++) {
     part[i] = e[i].proc;
   }
+*/
+
+  if(id == 0 && h->dbgLevel > 0)
+    printf("\nfinished in %lfs\n", comm_time()-time0);
+
+  if(h->printStat > 0) 
+    GenmapPartitionQuality(h); 
 
   GenmapFinalize(h);
+  fflush(stdout);
 
   return 0;
 }

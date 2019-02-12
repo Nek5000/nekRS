@@ -10,10 +10,10 @@ GSLIBDIR=$(GSLIBPATH)
 
 SRCDIR  =$(SRCROOT)/src
 BUILDDIR=$(SRCROOT)/build
-TESTDIR =$(SRCROOT)/tests
+TESTDIR =$(SRCROOT)/example
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/con/con-test
+TESTS=$(TESTDIR)/example
 LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(SRCDIR) -I$(GSLIBDIR)/include
@@ -42,7 +42,7 @@ ifneq ($(MPI),0)
 endif
 
 ifneq ($(DEBUG),0)
-  PP += -g3 -DGENMAP_DEBUG
+  PP += -g -DGENMAP_DEBUG
 endif
 
 ifneq ($(UNDERSCORE),0)
@@ -50,7 +50,7 @@ ifneq ($(UNDERSCORE),0)
 endif
 
 ifneq ($(PAUL),0)
-  CFLAGS += -DGENMAP_PAUL
+  PP += -DGENMAP_PAUL
 endif
 
 .PHONY: default
@@ -85,7 +85,7 @@ $(COBJS): %.o: %.c
 tests: $(TESTS)
 
 $(TESTS): lib
-	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) $@.c -o $@ $(TESTLDFLAGS)
+	$(CC) $(CFLAGS) -DGLOBAL_LONG_LONG -DMPI -DPREFIX=gslib_ $(INCFLAGS) $@.c -o $@ $(TESTLDFLAGS)
 
 .PHONY: clean
 clean:
