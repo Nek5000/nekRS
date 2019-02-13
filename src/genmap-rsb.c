@@ -120,7 +120,9 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   }
 #else
   if(global > 0) {
-    initVec->data[i] = (GenmapScalar) elements[i].globalId;
+    for(i = 0;  i < lelt; i++) {
+      initVec->data[i] = (GenmapScalar) elements[i].globalId;
+    }
   } else {
     for(i = 0;  i < lelt; i++) {
       initVec->data[i] = elements[i].fiedler;
