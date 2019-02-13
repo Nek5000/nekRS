@@ -61,13 +61,13 @@ GenmapInt GenmapPartitionQuality(GenmapHandle h) {
   GenmapGop(c, &nelMin, 1, GENMAP_INT, GENMAP_MIN);
   GenmapGop(c, &nelMax, 1, GENMAP_INT, GENMAP_MAX);
 
-  if (GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
     printf(
       " Max neighbors: %d | Min neighbors: %d | Avg neighbors: %lf\n",
-      ncMax, ncMin, (double)ncSum/np);
+      ncMax, ncMin, (double)ncSum / np);
     printf(
       " Max elements: %d | Min elements: %d | Balance: %lf\n",
-      nelMax, nelMin, (double)nelMax/nelMin);
+      nelMax, nelMin, (double)nelMax / nelMin);
     fflush(stdout);
   }
 

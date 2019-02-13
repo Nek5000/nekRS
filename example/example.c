@@ -11,7 +11,7 @@ Parition mesh using Nek5000's vertex connectivity (con) file.
 #include "conReader.h"
 
 #define MAXNV 8 /* maximum number of vertices per element */
-typedef struct{
+typedef struct {
   int proc;
   long long id;
   long long vtx[MAXNV];
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     data[e].proc = part[e];
     data[e].id   = con.el[e];
     for(int n = 0; n < nv; ++n) {
-      data[e].vtx[n] = con.vl[e*nv + n];
+      data[e].vtx[n] = con.vl[e * nv + n];
     }
   }
   free(part);
@@ -63,11 +63,11 @@ int main(int argc, char *argv[]) {
   nel = eList.n;
 
   int *el = (int*) malloc(nel * sizeof(int));
-  int *vl = (int*) malloc(nv*nel * sizeof(int));
+  int *vl = (int*) malloc(nv * nel * sizeof(int));
   for(data = eList.ptr, e = 0; e < nel; ++e) {
     el[e] = data[e].id;
     for(n = 0; n < nv; ++n) {
-      vl[e*nv + n] = data[e].vtx[n];
+      vl[e * nv + n] = data[e].vtx[n];
     }
   }
 
