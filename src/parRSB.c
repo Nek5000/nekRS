@@ -34,54 +34,58 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   }
 
   // Assert that nel is greater then zero. Will be removed in future.
-  assert(nel > 0);
+  int bin = nel > 0;
+  GenmapComm global = GenmapGetGlobalComm(h);
+  GenmapSplitComm(h, &global, bin);
 
-  GenmapSetNLocalElements(h, (GenmapInt)nel);
-  GenmapScan(h, GenmapGetGlobalComm(h));
-  GenmapSetNVertices(h, nve);
+  if(bin > 0) {
+    GenmapSetNLocalElements(h, (GenmapInt)nel);
+    GenmapScan(h, GenmapGetGlobalComm(h));
+    GenmapSetNVertices(h, nve);
 
-  GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
-  GenmapElements e = GenmapGetElements(h);
-  GenmapLong start = GenmapGetLocalStartIndex(h);
+    GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
+    GenmapElements e = GenmapGetElements(h);
+    GenmapLong start = GenmapGetLocalStartIndex(h);
 
-  GenmapInt i, j;
-  for(i = 0; i < nel; i++) {
-    e[i].globalId = start + i;
-    e[i].origin = id;
-    for(j = 0; j < nve; j++) {
-      e[i].vertices[j] = vtx[i * nve + j];
+    GenmapInt i, j;
+    for(i = 0; i < nel; i++) {
+      e[i].globalId = start + i;
+      e[i].origin = id;
+      for(j = 0; j < nve; j++) {
+        e[i].vertices[j] = vtx[i * nve + j];
+      }
     }
+
+    GenmapRSB(h);
+
+    e = GenmapGetElements(h);
+    for(j = 0; j < GenmapGetNLocalElements(h); j++) {
+      e[j].proc = GenmapCommRank(GenmapGetGlobalComm(h));
+    }
+
+    GenmapCrystalInit(h, GenmapGetGlobalComm(h));
+    GenmapCrystalTransfer(h, GENMAP_ORIGIN);
+    GenmapCrystalFinalize(h);
+
+    // This should hold true
+    assert(GenmapGetNLocalElements(h) == nel);
+
+    e = GenmapGetElements(h);
+    buffer buf; buffer_init(&buf, 1024);
+    sarray_sort(struct GenmapElement_private, e, (unsigned int)nel, globalId,
+                TYPE_LONG, &buf);
+    buffer_free(&buf);
+
+    for(i = 0; i < nel; i++) {
+      part[i] = e[i].proc;
+    }
+
+    if(id == 0 && h->dbgLevel > 0)
+      printf("\nfinished in %lfs\n", comm_time() - time0);
+
+    if(h->printStat > 0)
+      GenmapPartitionQuality(h);
   }
-
-  GenmapRSB(h);
-
-  e = GenmapGetElements(h);
-  for(j = 0; j < GenmapGetNLocalElements(h); j++) {
-    e[j].proc = GenmapCommRank(GenmapGetGlobalComm(h));
-  }
-
-  GenmapCrystalInit(h, GenmapGetGlobalComm(h));
-  GenmapCrystalTransfer(h, GENMAP_ORIGIN);
-  GenmapCrystalFinalize(h);
-
-  // This should hold true
-  assert(GenmapGetNLocalElements(h) == nel);
-
-  e = GenmapGetElements(h);
-  buffer buf; buffer_init(&buf, 1024);
-  sarray_sort(struct GenmapElement_private, e, (unsigned int)nel, globalId, TYPE_LONG, &buf);
-  buffer_free(&buf);
-
-  for(i = 0; i < nel; i++) {
-    part[i] = e[i].proc;
-  }
-
-  if(id == 0 && h->dbgLevel > 0)
-    printf("\nfinished in %lfs\n", comm_time()-time0);
-
-  if(h->printStat > 0) 
-    GenmapPartitionQuality(h); 
-
   GenmapFinalize(h);
   fflush(stdout);
 
