@@ -64,7 +64,6 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size,
 }
 
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
-  // Now it is time to split the communicator
   GenmapCommExternal local;
   GenmapLong id = GenmapCommRank(*c);
 #if defined(GENMAP_MPI)
@@ -73,13 +72,13 @@ void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
   local = 0;
 #endif
   // finalize the crystal router
-  crystal_free(&(h->cr));
+  GenmapCrystalFinalize(h);
   GenmapDestroyComm(*c);
 
   // Create new communicator
   GenmapCreateComm(c, local);
   MPI_Comm_free(&local);
-  crystal_init(&(h->cr), &((*c)->gsComm));
+  GenmapCrystalInit(h, *c);
 }
 
 int GenmapCrystalInit(GenmapHandle h, GenmapComm c) {
