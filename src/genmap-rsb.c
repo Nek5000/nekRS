@@ -208,6 +208,11 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
     GenmapDestroyVector(eVectors[i]);
   }
   GenmapFree(eVectors);
+
+  for(i = 0; i < iter+1; i++) {
+    GenmapDestroyVector(q[i]);
+  }
+  GenmapFree(q);
 #else
   GenmapDestroyVector(evInit);
 
