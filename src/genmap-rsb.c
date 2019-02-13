@@ -134,7 +134,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapCreateVector(&betaVec, maxIter - 1);
   GenmapVector *q = NULL;
 
-#if defined(GENMAP_PAUL)
   GenmapOrthogonalizebyOneVector(h, c, initVec, GenmapGetNGlobalElements(h));
   GenmapScalar rtr = GenmapDotVector(initVec, initVec);
   GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
@@ -142,14 +141,10 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapScaleVector(initVec, initVec, rni);
   int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
                                     betaVec);
-#else
-  int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
-#endif
-
   GenmapVector evLanczos, evTriDiag;
   GenmapCreateVector(&evTriDiag, iter);
-#if defined(GENMAP_PAUL)
-  // 2. Use TQLI and find the minimum eigenvalue and associated vector
+
+  // Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
 
@@ -161,22 +156,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
       eValMinI = i;
     }
   }
-
   GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
-#else
-  // 2. Do inverse power iteration on local communicator and find
-  // local Fiedler vector.
-  GenmapVector evInit;
-  GenmapCreateVector(&evInit, iter);
-
-  // Setup initial vector and orthogonalize in 1-norm to (1,1,1...)
-  for(i = 0; i < iter; i++) {
-    evInit->data[i] = i + 1;
-  }
-  GenmapOrthogonalizebyOneVector(h, c, evInit, (GenmapLong)iter);
-
-  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, evInit, 100);
-#endif
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
   GenmapInt j;
@@ -204,7 +184,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapDestroyVector(betaVec);
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
-#if defined(GENMAP_PAUL)
   GenmapDestroyVector(eValues);
   for(i = 0; i < iter; i++) {
     GenmapDestroyVector(eVectors[i]);
@@ -215,14 +194,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
     GenmapDestroyVector(q[i]);
   }
   GenmapFree(q);
-#else
-  GenmapDestroyVector(evInit);
-
-  for(i = 0; i < iter; i++) {
-    GenmapDestroyVector(q[i]);
-  }
-  GenmapFree(q);
-#endif
 
   return iter;
 }

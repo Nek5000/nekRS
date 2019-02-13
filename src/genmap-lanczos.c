@@ -37,11 +37,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     upper->size = niter - 1;
   }
 
-#if defined(GENMAP_PAUL)
   GenmapScalar eps = 1.e-5;
-#else
-  GenmapScalar eps = 1.e-12;
-#endif
   GenmapScalar alpha, beta;
   GenmapScalar rnorm, rtol, rni, rtr, rtz1, rtz2, pap = 0.0, pap_old;
   GenmapVector r, p, w, weights;
