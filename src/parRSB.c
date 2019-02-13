@@ -24,27 +24,37 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
 int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
                     MPI_Comm comm) {
   int bin = nel > 0;
-  int id;
-  MPI_Comm newComm;
-  MPI_Comm_rank(comm, &id);
-  MPI_Comm_split(comm, bin, id, &newComm);
-
-  GenmapHandle h;
-  GenmapInit(&h, newComm);
-
-  double time0 = comm_time();
-
-  if(options[0] != 0) {
-    h->dbgLevel = options[1];
-    h->printStat = options[2];
-  }
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  printf("Rank=%d nel=%d bin=%d\n", rank, nel, bin);
+  MPI_Comm_size(comm, &size);
+  MPI_Comm commRSB;
+  MPI_Comm_split(comm, bin, rank, &commRSB);
 
   if(bin > 0) {
+    double time0 = comm_time();
+    GenmapHandle h;
+    GenmapInit(&h, commRSB);
+
+    if(options[0] != 0) {
+      h->dbgLevel = options[1];
+      h->printStat = options[2];
+    }
+
     GenmapSetNLocalElements(h, (GenmapInt)nel);
     GenmapScan(h, GenmapGetGlobalComm(h));
     GenmapSetNVertices(h, nve);
 
+    GenmapLong nelg = GenmapGetNGlobalElements(h);
     GenmapInt id = GenmapCommRank(GenmapGetGlobalComm(h));
+    GenmapInt size_ = GenmapCommSize(GenmapGetGlobalComm(h));
+    printf("nelg="GenmapLongFormat" size_=%d\n", nelg, size_);
+    if((GenmapLong)size_ > nelg) {
+      if(id == 0)
+        printf("Total number of elements is smaller than the number of processors.\n"
+               "Run with smaller number of processors.\n");
+      return 1;
+    }
     GenmapElements e = GenmapGetElements(h);
     GenmapLong start = GenmapGetLocalStartIndex(h);
 
@@ -86,9 +96,12 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
     if(h->printStat > 0)
       GenmapPartitionQuality(h);
+
+    GenmapFinalize(h);
+    fflush(stdout);
   }
-  GenmapFinalize(h);
-  fflush(stdout);
+
+  MPI_Comm_free(&commRSB);
 
   return 0;
 }
