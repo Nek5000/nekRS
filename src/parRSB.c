@@ -23,8 +23,14 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
 
 int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
                     MPI_Comm comm) {
+  int bin = nel > 0;
+  int id;
+  MPI_Comm newComm;
+  MPI_Comm_rank(comm, &id);
+  MPI_Comm_split(comm, bin, id, &newComm);
+
   GenmapHandle h;
-  GenmapInit(&h, comm);
+  GenmapInit(&h, newComm);
 
   double time0 = comm_time();
 
@@ -32,11 +38,6 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     h->dbgLevel = options[1];
     h->printStat = options[2];
   }
-
-  // Assert that nel is greater then zero. Will be removed in future.
-  int bin = nel > 0;
-  GenmapComm global = GenmapGetGlobalComm(h);
-  GenmapSplitComm(h, &global, bin);
 
   if(bin > 0) {
     GenmapSetNLocalElements(h, (GenmapInt)nel);
