@@ -37,4 +37,4 @@ opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0).
 comm    (in)    ... MPI Communicator (size determines number of partitions).
 ```
 
-Note, any initial distribution of mesh elements is valid but MPI ranks with nel<0 will not participate. 
+Note, any initial distribution of mesh elements is valid but only MPI ranks with nel>0 will participate. 
