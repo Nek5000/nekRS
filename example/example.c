@@ -9,6 +9,7 @@ Parition mesh using Nek5000's vertex connectivity (con) file.
 #include "gslib.h"
 #include "parRSB.h"
 #include "conReader.h"
+#include "quality.h"
 
 #define MAXNV 8 /* maximum number of vertices per element */
 typedef struct {
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
 
   options[0] = 1; /* use custom options */
   options[1] = 3; /* debug level        */
-  options[2] = 1; /* print statistics   */
+  options[2] = 0; /* not used           */
 
   ierr = parRSB_partMesh(part, con.vl, nel, nv, options, comm.c);
   if(ierr) goto quit;
@@ -62,14 +63,16 @@ int main(int argc, char *argv[]) {
   crystal_free(&cr);
   nel = eList.n;
 
-  int *el = (int*) malloc(nel * sizeof(int));
-  int *vl = (int*) malloc(nv * nel * sizeof(int));
+  long long *el = (long long*) malloc(nel * sizeof(long long));
+  long long *vl = (long long*) malloc(nv * nel * sizeof(long long));
   for(data = eList.ptr, e = 0; e < nel; ++e) {
     el[e] = data[e].id;
     for(n = 0; n < nv; ++n) {
       vl[e * nv + n] = data[e].vtx[n];
     }
   }
+
+  printPartStat(vl, nel, nv, comm.c);
 
   free(el);
   free(vl);

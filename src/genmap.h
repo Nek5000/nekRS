@@ -162,9 +162,6 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
 //
 int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global);
 void GenmapRSB(GenmapHandle h);
-// Evaluate partition quality
-//
-void GenmapPartitionQuality(GenmapHandle h);
 //
 // Debug routines
 //
