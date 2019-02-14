@@ -164,7 +164,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global);
 void GenmapRSB(GenmapHandle h);
 // Evaluate partition quality
 //
-GenmapInt GenmapPartitionQuality(GenmapHandle h);
+void GenmapPartitionQuality(GenmapHandle h);
 //
 // Debug routines
 //
