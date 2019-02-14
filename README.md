@@ -30,11 +30,11 @@ See `example/example.c`.
 
 ```text
 part    (out)   ... Paritition vector of the local elements (size = nel).
-vtx     (in)    ... Vertices of local elements (size = nel *nve).
+vtx     (in)    ... Vertices of local elements (dense unique IDs are required).
 nel     (in)    ... Numer of local elements.
 nve     (in)    ... Number of vertices of a single element (has to be the same for all).
 opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0).
 comm    (in)    ... MPI Communicator (size determines number of partitions).
 ```
 
-Note, any initial distribution of mesh elements is valid. 
+Note, any initial distribution of mesh elements is valid but MPI ranks with nel<0 will not participate. 
