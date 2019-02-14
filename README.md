@@ -1,8 +1,8 @@
 # parRSB
 
-* Computes high quality partitionings using recursive spectral bisection (RSB)
-* Allows any number of paritions (generalization to non-power-of-2)
-* Requires MPI and [gslib](https://github.com/gslib/gslib)
+* Computes high quality partitionings using recursive spectral bisection (RSB).
+* Allows any number of paritions (generalization to non-power-of-2).
+* Requires MPI and [gslib](https://github.com/gslib/gslib).
 
 ## Build Instruction
 
@@ -29,12 +29,12 @@ See `example/example.c`.
 ### Parameters
 
 ```text
-part    (out)   ... Paritition vector of the local elements
-vtx     (in)    ... Vertices of local elements (size = nel *nve)
-nel     (in)    ... Numer of local elements
-opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0)
-nve     (in)    ... Number of vertices of a single element (has to be the same for all)
-comm    (in)    ... MPI Communicator (size determines number of partitions)
+part    (out)   ... Paritition vector of the local elements (size = nel).
+vtx     (in)    ... Vertices of local elements (size = nel *nve).
+nel     (in)    ... Numer of local elements.
+nve     (in)    ... Number of vertices of a single element (has to be the same for all).
+opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0).
+comm    (in)    ... MPI Communicator (size determines number of partitions).
 ```
 
 Note, any initial distribution of mesh elements is valid. 
