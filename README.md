@@ -1,8 +1,7 @@
 # parRSB
 
-* Computes high quality partitionings using recursive spectral bisection (RSB).
-* Allows any number of paritions (generalization to non-power-of-2).
-* Requires MPI and [gslib](https://github.com/gslib/gslib).
+* Computes high quality partitionings using recursive spectral bisection (RSB)
+* Requires MPI and [gslib](https://github.com/gslib/gslib) (requires version 1.0.3 or later)
 
 ## Build Instruction
 
