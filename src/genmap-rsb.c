@@ -396,7 +396,6 @@ void GenmapRSB(GenmapHandle h) {
 #if defined(GENMAP_PAUL)
     GenmapBinSort(h, GENMAP_GLOBALID, &buf0);
 #endif
-    printf("id=%d,nel="GenmapIntFormat, id, GenmapGetNLocalElements(h));
   }
 
   crystal_free(&(h->cr));
