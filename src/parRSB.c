@@ -58,7 +58,6 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
 
     GenmapInt i, j;
     for(i = 0; i < nel; i++) {
-      e[i].globalId = start + i;
       e[i].origin = id;
       for(j = 0; j < nve; j++) {
         e[i].vertices[j] = vtx[i * nve + j];

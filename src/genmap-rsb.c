@@ -29,11 +29,11 @@ void GenmapGlobalIdMinMax(GenmapHandle h, GenmapLong *min, GenmapLong *max) {
   GenmapElements e = GenmapGetElements(h);
   GenmapInt i;
   for(i = 0; i < GenmapGetNLocalElements(h); i++) {
-    if(e[i].globalId < *min) {
-      *min = e[i].globalId;
+    if(e[i].globalId0 < *min) {
+      *min = e[i].globalId0;
     }
-    if(e[i].globalId > *max) {
-      *max = e[i].globalId;
+    if(e[i].globalId0 > *max) {
+      *max = e[i].globalId0;
     }
   }
 
@@ -46,14 +46,14 @@ GenmapInt GenmapSetFiedlerBin(GenmapHandle h) {
   GenmapFiedlerMinMax(h, &min, &max);
   GenmapScalar range = max - min;
 
-  GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
+  int np = GenmapCommSize(GenmapGetLocalComm(h));
   GenmapInt nbins = np;
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapElements elements = GenmapGetElements(h);
 
   GenmapElements p, e;
   for(p = elements, e = p + lelt; p != e; p++) {
-    GenmapInt id;
+    int id;
     for(id = 0; id < np; id++) {
       GenmapScalar start = min + (range * id) / nbins;
       GenmapScalar end = min + (range * (id + 1)) / nbins;
@@ -82,9 +82,9 @@ GenmapInt GenmapSetGlobalIdBin(GenmapHandle h) {
   for(p = elements, e = p + lelt; p != e; p++) {
     GenmapInt id;
     for(id = 0; id < np; id++) {
-      GenmapScalar start = min + (range * id) / nbins;
-      GenmapScalar end = min + (range * (id + 1)) / nbins;
-      if(start <= p->globalId && p->globalId < end) {
+      GenmapLong start = min + (range * id) / nbins;
+      GenmapLong end = min + (range * (id + 1)) / nbins;
+      if(start <= p->globalId0 && p->globalId0 < end) {
         p->proc = id;
         break;
       }
@@ -107,10 +107,10 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 #if defined(GENMAP_PAUL)
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      if(GenmapGetLocalStartIndex(h) + i + 1  < GenmapGetNGlobalElements(h) / 2)
-        initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1 + 1000. *
-                           GenmapGetNGlobalElements(h);
-      else
+      //if(GenmapGetLocalStartIndex(h) + i + 1  < GenmapGetNGlobalElements(h) / 2)
+      //  initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1 + 1000. *
+      //                     GenmapGetNGlobalElements(h);
+      //else
         initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1;
     }
   } else {
@@ -121,7 +121,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 #else
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      initVec->data[i] = (GenmapScalar) elements[i].globalId;
+      initVec->data[i] = (GenmapScalar) elements[i].globalId0;
     }
   } else {
     for(i = 0;  i < lelt; i++) {
@@ -139,11 +139,16 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapGop(c, &rtr, 1, GENMAP_SCALAR, GENMAP_SUM);
   GenmapScalar rni = 1.0 / sqrt(rtr);
   GenmapScaleVector(initVec, initVec, rni);
+#if defined(GENMAP_PAUL)
   int iter = GenmapLanczosLegendary(h, c, initVec, maxIter, &q, alphaVec,
                                     betaVec);
+#else
+  int iter = GenmapLanczos(h, c, initVec, maxIter, &q, alphaVec, betaVec);
+#endif
   GenmapVector evLanczos, evTriDiag;
   GenmapCreateVector(&evTriDiag, iter);
 
+#if defined(GENMAP_PAUL)
   // Use TQLI and find the minimum eigenvalue and associated vector
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
@@ -157,6 +162,19 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
     }
   }
   GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
+#else
+  GenmapVector init;
+  GenmapCreateVector(&init, iter);
+  for(int i = 0; i < iter; i++) {
+    init->data[i] = i + 1.0;
+  }
+  GenmapScalar avg = 0.5 * iter * (1.0 + iter) / iter;
+  for(int i = 0; i < iter; i++) {
+    init->data[i] -= avg;
+  }
+  GenmapInvPowerIter(evTriDiag, alphaVec, betaVec, init, 100);
+  GenmapDestroyVector(init);
+#endif
 
   // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
   GenmapInt j;
@@ -184,15 +202,23 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapDestroyVector(betaVec);
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
+#if defined(GENMAP_PAUL)
   GenmapDestroyVector(eValues);
   for(i = 0; i < iter; i++) {
     GenmapDestroyVector(eVectors[i]);
   }
   GenmapFree(eVectors);
+#endif
 
+#if defined(GENMAP_PAUL)
   for(i = 0; i < iter + 1; i++) {
     GenmapDestroyVector(q[i]);
   }
+#else
+  for(i = 0; i < iter; i++) {
+    GenmapDestroyVector(q[i]);
+  }
+#endif
   GenmapFree(q);
 
   return iter;
@@ -258,14 +284,16 @@ void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0) {
 
   if(field == GENMAP_FIEDLER) { // Fiedler
     // sort locally according to Fiedler vector
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
-                  TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
+    sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+                TYPE_DOUBLE, buf0);
+    //sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+    //            TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
     // set the bin based on Fiedler vector
     GenmapSetFiedlerBin(h);
   } else if(GENMAP_GLOBALID) {
     // sort locally according to globalId
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
-                  globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
+    sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                globalId0, TYPE_LONG, buf0);
     // set the bin based on globalId
     GenmapSetGlobalIdBin(h);
   }
@@ -278,17 +306,21 @@ void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
   if(field == GENMAP_FIEDLER) { // Fiedler
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
+    GenmapScan(h, GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
     lelt = GenmapGetNLocalElements(h);
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
-                  TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
+    sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+                TYPE_DOUBLE, buf0);
+    //sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+    //            TYPE_DOUBLE, globalId0, TYPE_LONG, buf0);
   } else if(field == GENMAP_GLOBALID) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
+    GenmapScan(h, GenmapGetLocalComm(h));
     elements = GenmapGetElements(h);
     lelt = GenmapGetNLocalElements(h);
-    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt,
-                  globalId, TYPE_LONG, globalId, TYPE_LONG, buf0);
+    sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt,
+                globalId0, TYPE_LONG, buf0);
   }
 }
 
@@ -311,6 +343,13 @@ void GenmapRSB(GenmapHandle h) {
   int maxIter = 50;
   int npass = 50;
 
+  GenmapElements e = GenmapGetElements(h);
+  GenmapScan(h, GenmapGetLocalComm(h));
+  for(GenmapInt i = 0; i < GenmapGetNLocalElements(h); i++) {
+    e[i].globalId = GenmapGetLocalStartIndex(h) + i + 1;
+    e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
+  }
+
   if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0 && h->dbgLevel > 0)
     printf("running RSB "), fflush(stdout);
 
@@ -323,6 +362,13 @@ void GenmapRSB(GenmapHandle h) {
 
 #if defined(GENMAP_PAUL)
     int global = 1;
+    //int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
+    //                GenmapGetGlobalComm(h)));
+    //GenmapElements e = GenmapGetElements(h);
+    //GenmapScan(h, GenmapGetLocalComm(h));
+    //for(GenmapInt i = 0; i < GenmapGetNLocalElements(h); i++) {
+    //  e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
+    //}
 #else
     int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
                     GenmapGetGlobalComm(h)));
@@ -336,7 +382,7 @@ void GenmapRSB(GenmapHandle h) {
       global = 0;
     } while(ipass < npass && iter == maxIter);
 
-    GenmapBinSort(h, 0, &buf0);
+    GenmapBinSort(h, GENMAP_FIEDLER, &buf0);
     int bin;
     GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
     GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));
@@ -348,8 +394,9 @@ void GenmapRSB(GenmapHandle h) {
     GenmapSetLocalComm(h, c);
 
 #if defined(GENMAP_PAUL)
-    GenmapBinSort(h, 1, &buf0);
+    GenmapBinSort(h, GENMAP_GLOBALID, &buf0);
 #endif
+    printf("id=%d,nel="GenmapIntFormat, id, GenmapGetNLocalElements(h));
   }
 
   crystal_free(&(h->cr));

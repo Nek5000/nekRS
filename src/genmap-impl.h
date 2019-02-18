@@ -33,6 +33,7 @@ struct GenmapComm_private {
 struct GenmapElement_private {
   GenmapScalar fiedler;
   GenmapLong globalId;
+  GenmapLong globalId0;
   GenmapLong vertices[8];
   GenmapInt proc;
   GenmapInt origin;

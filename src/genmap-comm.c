@@ -65,7 +65,7 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size,
 
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
   GenmapCommExternal local;
-  GenmapLong id = GenmapCommRank(*c);
+  int id = GenmapCommRank(*c);
 #if defined(GENMAP_MPI)
   MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
 #else
@@ -77,7 +77,9 @@ void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
 
   // Create new communicator
   GenmapCreateComm(c, local);
+#if defined(GENMAP_MPI)
   MPI_Comm_free(&local);
+#endif
   GenmapCrystalInit(h, *c);
 }
 
