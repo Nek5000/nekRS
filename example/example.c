@@ -6,9 +6,10 @@ Parition mesh using Nek5000's vertex connectivity (con) file.
 #include <stdlib.h>
 #include <mpi.h>
 
+#include "conReader.h"
+
 #include "gslib.h"
 #include "parRSB.h"
-#include "conReader.h"
 #include "quality.h"
 
 #define MAXNV 8 /* maximum number of vertices per element */

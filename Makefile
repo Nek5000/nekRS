@@ -1,9 +1,7 @@
-MPI?=1
-DEBUG?=0
-UNDERSCORE?=1
-CC?=mpicc
-FC?=mpif77
-PAUL?=1
+DEBUG ?= 0
+PAUL ?= 1
+CC ?= mpicc
+CFLAGS ?= -O2
 
 SRCROOT=.
 GSLIBDIR=$(GSLIBPATH)
@@ -18,7 +16,7 @@ LIB=src/lib$(TARGET).a
 
 INCFLAGS=-I$(SRCDIR) -I$(GSLIBDIR)/include
 
-TESTLDFLAGS:=-L$(SRCDIR) -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
+TESTLDFLAGS:=-L$(BUILDDIR)/lib -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
 
 ifneq (,$(strip $(DESTDIR)))
 INSTALL_ROOT = $(DESTDIR)
@@ -36,17 +34,10 @@ COBJS:=$(CSRCS:.c=.o)
 
 SRCOBJS:=$(COBJS)
 
-PP= -DGENMAP_LONG_LONG
-ifneq ($(MPI),0)
-  PP += -DGENMAP_MPI
-endif
+PP=
 
 ifneq ($(DEBUG),0)
   PP += -g -DGENMAP_DEBUG
-endif
-
-ifneq ($(UNDERSCORE),0)
-  PP += -DGENMAP_UNDERSCORE
 endif
 
 ifneq ($(PAUL),0)
@@ -84,8 +75,8 @@ $(COBJS): %.o: %.c
 .PHONY: tests
 tests: $(TESTS)
 
-$(TESTS): lib
-	$(CC) $(CFLAGS) -DGLOBAL_LONG_LONG -DMPI -DPREFIX=gslib_ $(INCFLAGS) $@.c -o $@ $(TESTLDFLAGS)
+$(TESTS): lib install
+	$(CC) $(CFLAGS) -I$(GSLIBDIR)/include -I$(BUILDDIR)/include $@.c -o $@ $(TESTLDFLAGS)
 
 .PHONY: clean
 clean:

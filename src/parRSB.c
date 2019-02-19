@@ -12,12 +12,7 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
   *err = 1;
 
   GenmapCommExternal c;
-#if defined(GENMAP_MPI)
   c = MPI_Comm_f2c(*comm);
-#else
-  c = 0;
-#endif
-
   *err = parRSB_partMesh(part, vtx, *nel, *nve, options, c);
 }
 

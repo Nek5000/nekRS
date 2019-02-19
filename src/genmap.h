@@ -11,9 +11,7 @@
 //
 // Header for MPI
 //
-#ifdef GENMAP_MPI
 #include <mpi.h>
-#endif
 //
 // Genmap Operators
 //
@@ -39,13 +37,8 @@
 //
 // GenmapCommExternal
 //
-#if defined(GENMAP_MPI)
 typedef MPI_Datatype GenmapDataType;
 typedef MPI_Comm GenmapCommExternal;
-#else
-typedef int GenmapCommExternal;
-typedef int GenmapDataType;
-#endif
 //
 // Genmap Pointer types
 //
