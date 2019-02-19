@@ -8,7 +8,7 @@ void conFree(struct con *c) {
   free(c->vl);
 }
 
-int conRead(char *fname, struct con *c, MPI_Comm comm) {
+int conRead(const char *fname, struct con *c, MPI_Comm comm) {
   int i, j, ierr;
   int myid, np;
   MPI_Comm_rank(comm, &myid);
@@ -22,13 +22,13 @@ int conRead(char *fname, struct con *c, MPI_Comm comm) {
   }
 
   char hdr[132];
-  MPI_File_read_all(fh, hdr, sizeof(hdr), MPI_BYTE, MPI_STATUS_IGNORE);
-  char ver[5];
+  MPI_File_read_all(fh, hdr, 132, MPI_BYTE, MPI_STATUS_IGNORE);
+  char ver[6];
   int nelgt, nelgv, nv;
-  sscanf(hdr, "%s %d %d %d", &ver[0], &nelgt, &nelgv, &nv);
+  sscanf(hdr, "%s %d %d %d", ver, &nelgt, &nelgv, &nv);
 
   float byte_test;
-  MPI_File_read_all(fh, &byte_test, 1, MPI_FLOAT, MPI_STATUS_IGNORE);
+  MPI_File_read_all(fh, &byte_test, 4, MPI_BYTE, MPI_STATUS_IGNORE);
   if(abs(byte_test - 6.543210) > 1e-7) {
     if(myid == 0) printf("ERROR byte_test failed! %f\n", byte_test);
     return 1;

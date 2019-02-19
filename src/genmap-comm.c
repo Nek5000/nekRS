@@ -12,14 +12,12 @@ int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
 }
 
 int GenmapDestroyComm(GenmapComm c) {
-  if(&c->buf)
-    buffer_free(&c->buf);
+  buffer_free(&c->buf);
   if(c->verticesHandle)
     gs_free(c->verticesHandle);
   if(c->laplacianWeights)
     GenmapFree(c->laplacianWeights);
-  if(&c->gsComm)
-    comm_free(&c->gsComm);
+  comm_free(&c->gsComm);
   GenmapFree(c);
 
   return 0;
@@ -51,7 +49,6 @@ void GenmapSetGlobalComm(GenmapHandle h, GenmapComm c) {
 
 int GenmapGop(GenmapComm c, void *v, GenmapInt size,
               GenmapDataType type, GenmapInt op) {
-#ifdef GENMAP_MPI
   if(op == GENMAP_SUM) {
     MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_SUM, c->gsComm.c);
   } else if(op == GENMAP_MAX) {
@@ -59,27 +56,17 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size,
   } else if(op == GENMAP_MIN) {
     MPI_Allreduce(MPI_IN_PLACE, v, size, type, MPI_MIN, c->gsComm.c);
   }
-#endif
   return 0;
 }
 
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
   GenmapCommExternal local;
   int id = GenmapCommRank(*c);
-#if defined(GENMAP_MPI)
   MPI_Comm_split((*c)->gsComm.c, bin, id, &local);
-#else
-  local = 0;
-#endif
-  // finalize the crystal router
   GenmapCrystalFinalize(h);
   GenmapDestroyComm(*c);
-
-  // Create new communicator
   GenmapCreateComm(c, local);
-#if defined(GENMAP_MPI)
   MPI_Comm_free(&local);
-#endif
   GenmapCrystalInit(h, *c);
 }
 
