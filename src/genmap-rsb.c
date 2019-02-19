@@ -121,7 +121,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 #else
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      initVec->data[i] = (GenmapScalar) elements[i].globalId0;
+      initVec->data[i] = (GenmapScalar) elements[i].globalId;
     }
   } else {
     for(i = 0;  i < lelt; i++) {
@@ -162,6 +162,12 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
     }
   }
   GenmapCopyVector(evTriDiag, eVectors[eValMinI]);
+#if defined(GENMAP_DEBUG)
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+    printf("evTriDiag:\n");
+    GenmapPrintVector(evTriDiag);
+  }
+#endif
 #else
   GenmapVector init;
   GenmapCreateVector(&init, iter);
@@ -184,6 +190,15 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
       evLanczos->data[i] += q[j]->data[i] * evTriDiag->data[j];
     }
   }
+#if defined(GENMAP_DEBUG)
+#if 0
+  if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+    for(int i = 0; i < evLanczos->size; i++) {
+      printf("evLanczos:"GenmapScalarFormat"\n", evLanczos->data[i]);
+    }
+  }
+#endif
+#endif
 
   GenmapScalar lNorm = 0;
   for(i = 0; i < lelt; i++) {
@@ -363,7 +378,7 @@ void GenmapRSB(GenmapHandle h) {
 #if defined(GENMAP_PAUL)
     int global = 1;
     //int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
-    //                GenmapGetGlobalComm(h)));
+    //              GenmapGetGlobalComm(h)));
     //GenmapElements e = GenmapGetElements(h);
     //GenmapScan(h, GenmapGetLocalComm(h));
     //for(GenmapInt i = 0; i < GenmapGetNLocalElements(h); i++) {
@@ -383,6 +398,24 @@ void GenmapRSB(GenmapHandle h) {
     } while(ipass < npass && iter == maxIter);
 
     GenmapBinSort(h, GENMAP_FIEDLER, &buf0);
+#if defined(GENMAP_DEBUG)
+    e = GenmapGetElements(h);
+    if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+      for(int i = 0; i < GenmapGetNLocalElements(h); i++) {
+        printf("\nglobalId="GenmapLongFormat",Fiedler(%d):"GenmapScalarFormat,
+            e[i].globalId, i, e[i].fiedler);
+        fflush(stdout);
+      }
+    }
+    MPI_Barrier(GenmapGetGlobalComm(h)->gsComm.c);
+    if(GenmapCommRank(GenmapGetGlobalComm(h)) == 1) {
+      for(int i = 0; i < GenmapGetNLocalElements(h); i++) {
+        printf("\nglobalId="GenmapLongFormat",Fiedler(%d):"GenmapScalarFormat,
+            e[i].globalId, i, e[i].fiedler);
+        fflush(stdout);
+      }
+    }
+#endif
     int bin;
     GenmapInt np = GenmapCommSize(GenmapGetLocalComm(h));
     GenmapInt id = GenmapCommRank(GenmapGetLocalComm(h));

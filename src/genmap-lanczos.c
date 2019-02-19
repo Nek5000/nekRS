@@ -112,6 +112,11 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
       diag->data[iter] = (beta * beta * pap_old + pap) / rtz1;
       upper->data[iter - 1] = -beta * pap_old / sqrt(rtz2 * rtz1);
     }
+#if defined(GENMAP_DEBUG)
+    if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
+      printf("diag[%d]="GenmapScalarFormat"\n", iter+1, diag->data[iter]);
+    }
+#endif
 
     if(rnorm < rtol)  {
       diag->size = iter + 1;
