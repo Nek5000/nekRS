@@ -108,12 +108,13 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   GenmapCreateVector(eValues, n);
   // Init to identity
   GenmapMalloc(n, eVectors);
-  for(GenmapInt i = 0; i < n; i++) {
+  GenmapInt i;
+  for(i = 0; i < n; i++) {
     GenmapCreateZerosVector(&(*eVectors)[i], n);
     (*eVectors)[i]->data[i] = 1.0;
   }
 
-  GenmapInt l, iter, m, i;
+  GenmapInt l, iter, m;
 
   for(l = 0; l < n; l++) {
     iter = 0;
