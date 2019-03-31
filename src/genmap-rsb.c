@@ -155,7 +155,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 
   GenmapScalar eValMin = fabs(eValues->data[0]);
   GenmapInt eValMinI = 0;
-  for(GenmapInt i = 1; i < iter; i++) {
+  for(i = 1; i < iter; i++) {
     if(fabs(eValues->data[i]) < eValMin) {
       eValMin = fabs(eValues->data[i]);
       eValMinI = i;
@@ -358,9 +358,10 @@ void GenmapRSB(GenmapHandle h) {
   int maxIter = 50;
   int npass = 50;
 
+  GenmapInt i;
   GenmapElements e = GenmapGetElements(h);
   GenmapScan(h, GenmapGetLocalComm(h));
-  for(GenmapInt i = 0; i < GenmapGetNLocalElements(h); i++) {
+  for(i = 0; i < GenmapGetNLocalElements(h); i++) {
     e[i].globalId = GenmapGetLocalStartIndex(h) + i + 1;
     e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
   }
@@ -381,7 +382,7 @@ void GenmapRSB(GenmapHandle h) {
     //              GenmapGetGlobalComm(h)));
     //GenmapElements e = GenmapGetElements(h);
     //GenmapScan(h, GenmapGetLocalComm(h));
-    //for(GenmapInt i = 0; i < GenmapGetNLocalElements(h); i++) {
+    //for(i = 0; i < GenmapGetNLocalElements(h); i++) {
     //  e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
     //}
 #else

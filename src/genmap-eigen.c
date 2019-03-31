@@ -114,7 +114,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
     (*eVectors)[i]->data[i] = 1.0;
   }
 
-  GenmapInt l, iter, m;
+  GenmapInt j, k, l, iter, m;
 
   for(l = 0; l < n; l++) {
     iter = 0;
@@ -173,7 +173,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           d->data[i + 1] = g + p;
           g = c * r - b;
           // Find eigenvectors
-          for(GenmapInt k = 0; k < n; k++) {
+          for(k = 0; k < n; k++) {
             f = (*eVectors)[k]->data[i + 1];
             (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
             (*eVectors)[k]->data[i] = c * (*eVectors)[k]->data[i] - s * f;
@@ -191,19 +191,19 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   }
 
   // Orthnormalize eigenvectors -- Just normalize?
-  for(GenmapInt i = 0; i < n; i++) {
-    for(GenmapInt j = 0; j < i; j++) {
+  for(i = 0; i < n; i++) {
+    for(j = 0; j < i; j++) {
       GenmapScalar tmp = (*eVectors)[i]->data[j];
       (*eVectors)[i]->data[j] = (*eVectors)[j]->data[i];
       (*eVectors)[j]->data[i] = tmp;
     }
   }
 
-  for(GenmapInt ko = 0; ko < n; ko++) {
-    e->data[ko] = GenmapDotVector((*eVectors)[ko], (*eVectors)[ko]);
-    if(e->data[ko] > 0.0) e->data[ko] = sqrt(fabs(e->data[ko]));
-    GenmapScalar scale = 1.0 / e->data[ko];
-    GenmapScaleVector((*eVectors)[ko], (*eVectors)[ko], scale);
+  for(k = 0; k < n; k++) {
+    e->data[k] = GenmapDotVector((*eVectors)[k], (*eVectors)[k]);
+    if(e->data[k] > 0.0) e->data[k] = sqrt(fabs(e->data[k]));
+    GenmapScalar scale = 1.0 / e->data[k];
+    GenmapScaleVector((*eVectors)[k], (*eVectors)[k], scale);
   }
 
   GenmapCopyVector(*eValues, d);
