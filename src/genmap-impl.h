@@ -62,9 +62,11 @@ struct GenmapHandle_private {
 
   int dbgLevel;
   int printStat;
+
+  parRSBHistogram histogram;
 };
 //
-// GenmapHandle
+// GenmapHandle: Create, Destroy
 //
 int GenmapCreateHandle(GenmapHandle h);
 int GenmapDestroyHandle(GenmapHandle h);
@@ -81,5 +83,24 @@ struct GenmapVector_private {
 #define GenmapMalloc(n, p) GenmapMallocArray ((n), sizeof(**(p)), p)
 #define GenmapCalloc(n, p) GenmapCallocArray ((n), sizeof(**(p)), p)
 #define GenmapRealloc(n, p) GenmapReallocArray((n), sizeof(**(p)), p)
+//
+// Binsort
+//
+void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min, GenmapScalar *max);
+void GenmapGlobalIdMinMax(GenmapHandle h, GenmapLong *min, GenmapLong *max);
+GenmapInt GenmapSetFiedlerBin(GenmapHandle h);
+GenmapInt GenmapSetGlobalIdBin(GenmapHandle h);
+void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0);
+void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0);
+void GenmapBinSort(GenmapHandle h, int field, buffer *buf0);
+//
+// HistoSort
+//
+void parRSBHistogramSort(GenmapHandle h,GenmapComm c,int field,buffer *buf0);
+
+struct parRSBHistogram_private {
+  GenmapLong *count;
+  GenmapScalar *probes;
+};
 
 #endif

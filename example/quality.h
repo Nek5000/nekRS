@@ -22,7 +22,7 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   np = comm.np;
   id = comm.id;
 
-  if (np == 1) return;
+  if(np == 1) return;
 
   numPoints = nel * nv;
   data = (long long*) malloc(numPoints * sizeof(long long));

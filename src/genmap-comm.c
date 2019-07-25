@@ -59,6 +59,22 @@ int GenmapGop(GenmapComm c, void *v, GenmapInt size,
   return 0;
 }
 
+int GenmapReduce(GenmapComm c, void *out, void *in, GenmapInt size,
+                 GenmapDataType type, GenmapInt op) {
+  if(op == GENMAP_SUM) {
+    MPI_Reduce(in, out, size, type, MPI_SUM, 0, c->gsComm.c);
+  } else if(op == GENMAP_MAX) {
+    MPI_Reduce(in, out, size, type, MPI_MAX, 0, c->gsComm.c);
+  } else if(op == GENMAP_MIN) {
+    MPI_Reduce(in, out, size, type, MPI_MIN, 0, c->gsComm.c);
+  }
+  return 0;
+}
+
+int GenmapBcast(GenmapComm c, void *in, GenmapInt count, GenmapDataType type) {
+  return MPI_Bcast(in, count, type, 0, c->gsComm.c);
+}
+
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin) {
   GenmapCommExternal local;
   int id = GenmapCommRank(*c);

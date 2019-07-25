@@ -114,7 +114,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     }
 #if defined(GENMAP_DEBUG)
     if(GenmapCommRank(GenmapGetGlobalComm(h)) == 0) {
-      printf("diag[%d]="GenmapScalarFormat"\n", iter+1, diag->data[iter]);
+      printf("diag[%d]="GenmapScalarFormat"\n", iter + 1, diag->data[iter]);
     }
 #endif
 

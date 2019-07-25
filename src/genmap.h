@@ -46,6 +46,7 @@ typedef struct GenmapComm_private *GenmapComm;
 typedef struct GenmapHandle_private *GenmapHandle;
 typedef struct GenmapVector_private *GenmapVector;
 typedef struct GenmapElement_private *GenmapElements;
+typedef struct parRSBHistogram_private *parRSBHistogram;
 //
 // Genmap: Init, Finalize
 //
@@ -89,8 +90,13 @@ void GenmapScan(GenmapHandle h, GenmapComm c);
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce);
 int GenmapCommSize(GenmapComm c);
 int GenmapCommRank(GenmapComm c);
+
 int GenmapGop(GenmapComm c, void *v, GenmapInt size, GenmapDataType type,
               GenmapInt op);
+int GenmapReduce(GenmapComm c, void *out, void *in, GenmapInt size,
+                 GenmapDataType type, GenmapInt op);
+int GenmapBcast(GenmapComm c, void *in, GenmapInt count, GenmapDataType type);
+
 int GenmapDestroyComm(GenmapComm c);
 void GenmapSplitComm(GenmapHandle h, GenmapComm *c, int bin);
 int GenmapCrystalInit(GenmapHandle h, GenmapComm c);
