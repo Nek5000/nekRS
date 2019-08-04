@@ -27,15 +27,15 @@ Requirements:
 Download the latest release tarball
 
 ```sh
-wget https://github.com/Nek5000/nekrs/archive/nekRS-v19.0.tar.gz
-tar -zxf v19.0.tar.gz
+wget https://github.com/Nek5000/nekRS/releases/download/v19.0/nekRS-v19.0.tar.gz 
+tar -zxf nekRS-v19.0.tar.gz 
 ```
 
 
 or clone our GitHub repository:
 
 ```sh
-git clone https://github.com/Nek5000/nekrs.git
+git clone https://github.com/Nek5000/nekRS.git
 ```
 
 To install the code just run:
@@ -70,14 +70,14 @@ nrsmpi ethier 2 # run on two MPI ranks
 
 ## Contributing
 
-Our project is hosted on [GitHub](https://github.com/Nek5000/nekrs) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
+Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
 ## Troubleshooting
 
 If you run into problems compiling, installing, or running nekRS, please send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS). Please [sign up](https://groups.google.com/forum/#!forum/nek5000/join) to post your questions, concerns or suggestions.
 
 ## Reporting Bugs
-nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekrs/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
+nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
 
 ## License
 nekRS is released under the BSD 3-clause license (see the LICENSE file). All new contributions must be made under the BSD 3-clause license.
