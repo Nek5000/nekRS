@@ -27,7 +27,7 @@ Requirements:
 Download the latest release tarball
 
 ```sh
-wget https://github.com/Nek5000/nekrs/archive/v19.0.tar.gz
+wget https://github.com/Nek5000/nekrs/archive/nekRS-v19.0.tar.gz
 tar -zxf v19.0.tar.gz
 ```
 
