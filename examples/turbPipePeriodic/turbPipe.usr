@@ -1,0 +1,138 @@
+C This is a round turbulent pipe flow example
+
+#define ZLENGTH  6.0  /* diameters  */
+
+c-----------------------------------------------------------------------
+      subroutine userchk
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      data icalld /0/
+      save icalld
+
+      real x0(3)
+      data x0 /0.0, 0.0, 0.0/
+      save x0
+
+      integer bIDs(1)
+      save iobj_wall
+
+      save atime,timel,drag_avg
+
+      if (icalld.eq.0) then
+        bIDs(1) = 1
+        call create_obj(iobj_wall,bIDs,1)
+        drag_avg = 0
+        atime    = 0
+        timel    = time
+        icalld   = 1
+        call cfill(vdiff,param(2),nx1*ny1*nz1*nelt)
+      endif
+
+      dtime = time - timel
+      atime = atime + dtime
+
+      ! averaging over time
+      if (atime.ne.0. .and. dtime.ne.0.) then
+        beta      = dtime / atime
+        alpha     = 1. - beta
+
+        call torque_calc(1.0,x0,.false.,.false.) ! compute wall shear
+        drag_avg = alpha*drag_avg + beta*dragz(iobj_wall)
+
+        rho    = 1
+        dnu    = param(2)
+        A_w    = 2*pi * 0.5 * ZLENGTH
+        tw     = drag_avg / A_w
+ 
+        u_tau  = sqrt(abs(tw) / rho)
+        Re_tau = u_tau * 0.5 / dnu
+        ubar  = glsc2(vz,bm1,nx1*ny1*nz1*nelt)/volvm1
+
+        if (nid.eq.0) write(6,*) 'Re_tau', Re_tau, 'U_b', ubar 
+        timel = time
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      xr = x/0.5
+      yr = y/0.5
+      rr = xr*xr + yr*yr
+      if (rr.gt.0) rr=sqrt(rr)
+      th = atan2(y,x)
+      zo = 2*pi*z/ZLENGTH
+
+      uz = 6.*(1-rr**6)/5.
+
+c     Assign a wiggly shear layer near the wall
+      amp_z    = 0.35  ! Fraction of 2pi for z-based phase modification
+      freq_z   = 4     ! Number of wiggles in axial- (z-) direction
+      freq_t   = 9     ! Frequency of wiggles in azimuthal-direction
+
+      amp_tht  = 5     ! Amplification factor for clipped sine function
+      amp_clip = 0.2   ! Clipped amplitude
+
+      blt      = 0.07  ! Fraction of boundary layer with momentum deficit
+
+      phase_z = amp_z*(2*pi)*sin(freq_z*zo)
+
+      arg_tht = freq_t*th + phase_z
+      amp_sin = 5*sin(arg_tht)
+      if (amp_sin.gt. amp_clip) amp_sin =  amp_clip
+      if (amp_sin.lt.-amp_clip) amp_sin = -amp_clip
+
+      if (rr.gt.(1-blt)) uz = uz + amp_sin
+
+c     Quick P-independent randomizer
+      big  = 1.e3*eg + 1.e2*ix + 1.e1*iy + 1.e0*iz
+      rand = sin(big)
+
+      ux   = .05*rand*rand
+      uy   = .10*rand*rand*rand
+      uz   = uz + .01*rand
+
+      temp = 0.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      z0 = 0.0
+      z1 = ZLENGTH
+
+      call rescale_x(zm1,z0,z1)
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+c         if (cbc(ifc,iel,1) .eq. 'W  ') cbc(ifc,iel,1) = 'v  ' 
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end

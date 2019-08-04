@@ -1,0 +1,26 @@
+@kernel void addDpDz(const dlong Ntotal,
+                     const dlong offset,
+                     const dfloat CONST,
+                     @restrict dfloat * NU) 
+{
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+    if(n<Ntotal){
+      const dlong id = n + 2*offset;
+      NU[id] = NU[id] + CONST;
+    }
+  }
+}
+
+// Boundary conditions
+/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
+void insVelocityDirichletConditions3D(bcData *bc)
+{                                                                        
+}
+
+void insVelocityNeumannConditions3D(bcData *bc)
+{                                                           
+}
+
+void insPressureDirichletConditions3D(bcData *bc)
+{
+}

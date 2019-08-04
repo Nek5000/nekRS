@@ -1,0 +1,28 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+polynomialOrder = 7
+#startFrom = restart.fld U time=0 
+stopAt = endTime
+endTime = 200
+
+dt = 5.0e-3
+timeStepper = bdf2
+extrapolation = OIFS
+targetCFL = 3.8
+
+writeControl = runTime
+writeInterval = 1
+
+filtering = hpfrt
+filterWeight = 2
+filterCutoffRatio = 0.9 
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+viscosity = -19100
+residualTol = 1e-06

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+  echo "usage: ${0##*/} <casename> <#target procs>"
+  exit 0
+fi
+
+mpirun -np 1 nekrs --setup $1 --build-only $2

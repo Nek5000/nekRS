@@ -1,0 +1,226 @@
+c
+c  Exact fully 3D Navier-Stokes benchmark
+c   
+c  Reference:
+c
+c    C Ross Ethier, David Steinman,
+c    Exact fully 3D Navier-Stokes solutions for benchmarking,
+c    International Journal for Numerical Methods in Fluids,
+c    Volume 19, Number 5, March 1994, pages 369-375.
+c
+c  Setup:
+c
+c    [-1,1] cube centered at (0,0,0), 
+c    from t = 0 to t = 0.1, with parameters a = PI/4 and d = PI/2,
+c    and with Dirichlet boundary conditions on all faces of the cube.
+
+#define u0 (1.0)
+#define v0 (0.1)
+#define w0 (0.2)
+
+C-----------------------------------------------------------------------
+      subroutine userchk()
+      include 'SIZE'
+      include 'TOTAL'
+
+      real uxe  (lx1*ly1*lz1*lelv)
+      real uye  (lx1*ly1*lz1*lelv)
+      real uze  (lx1*ly1*lz1*lelv)
+      real uxerr(lx1*ly1*lz1*lelv)
+      real uyerr(lx1*ly1*lz1*lelv)
+      real uzerr(lx1*ly1*lz1*lelv)
+
+      real pre  (lx2,ly2,lz2,lelv)
+      real prerr(lx2,ly2,lz2,lelv)
+
+      common /SCRNS/ wo1(lx1,ly1,lz1,lelv)
+     &              ,wo2(lx1,ly1,lz1,lelv)
+     &              ,omg(lx1*ly1*lz1*lelv,ldim)
+
+      common /SCNRS/ wrk(2)
+
+      n  = nelv*nx1*ny1*nz1
+      n2 = nelv*nx2*ny2*nz2
+
+      call comp_vort3(omg,wo1,wo2,vx,vy,vz)
+      call copy(t,omg(1,3),nx1*ny1*nz1*nelv)
+
+      call exactu(uxe,uye,uze,xm1,ym1,zm1,n)
+      call exactp(pre,xm2,ym2,zm2,n2)
+
+      call chsign(pre,n2)
+      pbar  = glsc2(pr ,bm2,n2)/volvm2
+      pbre  = glsc2(pre,bm2,n2)/volvm2
+      pbarm = -pbre
+      call cadd(pre,pbarm,n2)     !  Make sure pr and pre have same
+      call cadd(pre,pbar,n2)      !  average pressure before comparing.
+
+      call sub3(uxerr,vx,uxe,n)
+      call sub3(uyerr,vy,uye,n)
+      call sub3(uzerr,vz,uze,n)
+      uxerrl2 = glsc3(uxerr,bm1,uxerr,n)
+      uxerrl2 = sqrt(uxerrl2)
+
+      call sub3(prerr,pr,pre,n2)
+      prerrl2 = glsc3(prerr,bm2,prerr,n2)
+      prerrl2 = sqrt(prerrl2)
+
+      wrk(1) = uxerrl2
+      wrk(2) = prerrl2
+
+      if (nid.eq.nio) write(6,*) istep,time,uxerrl2,prerrl2,' L2 err'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat()   ! This routine to modify element vertices
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2()  ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+        if (boundaryID(ifc,iel) .eq. 1) cbc(ifc,iel,1)='v  '
+        if (boundaryID(ifc,iel) .eq. 2) cbc(ifc,iel,1)='v  '
+        if (boundaryID(ifc,iel) .eq. 3) cbc(ifc,iel,1)='v  '
+        if (boundaryID(ifc,iel) .eq. 4) cbc(ifc,iel,1)='v  '
+        if (boundaryID(ifc,iel) .eq. 5) cbc(ifc,iel,1)='v  '
+        if (boundaryID(ifc,iel) .eq. 6) cbc(ifc,iel,1)='v  '
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3()
+      include 'SIZE'
+      include 'TOTAL'
+
+      ifto = .true.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric(ix,iy,iz,eg) ! set up initial conditions
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      integer e,eg
+
+      call exactu(ux,uy,uz,x,y,z,1)
+      temp = 1.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine exactu(uxe,uye,uze,x,y,z,n)
+      include 'SIZE'
+      include 'TOTAL'
+
+      real uxe(n),uye(n),uze(n)
+      real x(n),y(n),z(n)
+
+      real w1(lx1*ly1*lz1*lelt)
+
+      a = pi/2.
+      d = pi/1. 
+      call uvwp_ethier(param(2),a,d,n,x,y,z,time,uxe,uye,uze,w1)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine exactp(pre,x,y,z,n)
+      include 'SIZE'
+      include 'TOTAL'
+
+      real pre(n)
+      real x(n),y(n),z(n)
+
+      real w1(lx1*ly1*lz1*lelt)
+
+      a = pi/2.
+      d = pi/1. 
+      call uvwp_ethier(param(2),a,d,n,x,y,z,time,w1,w1,w1,pre)
+
+      call ortho(pre)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine uvwp_ethier (nu,a,d,n,x,y,z,t,u,v,w,p)
+
+      implicit none
+
+      integer n
+
+      real nu
+      real a
+      real cxy(n)
+      real cyz(n)
+      real czx(n)
+      real d
+      real e2t
+      real ex(n)
+      real exy(n)
+      real ey(n)
+      real eyz(n)
+      real ez(n)
+      real ezx(n)
+      integer i
+      real p(n)
+      real sxy(n)
+      real syz(n)
+      real szx(n)
+      real t
+      real u(n)
+      real v(n)
+      real w(n)
+      real x(n)
+      real y(n)
+      real z(n)
+      
+      real xx, yy, zz   
+ 
+      do i = 1, n
+
+        xx = x(i) - u0*t
+        yy = y(i) - v0*t
+        zz = z(i) - w0*t
+
+        ex(i) = exp ( a * xx )
+        ey(i) = exp ( a * yy )
+        ez(i) = exp ( a * zz )
+
+        e2t = exp  ( - nu * d * d * t )
+
+        exy(i) = exp ( a * ( xx + yy ) )
+        eyz(i) = exp ( a * ( yy + zz ) )
+        ezx(i) = exp ( a * ( zz + xx ) )
+
+        sxy(i) = sin ( a * xx + d * yy )
+        syz(i) = sin ( a * yy + d * zz )
+        szx(i) = sin ( a * zz + d * xx )
+
+        cxy(i) = cos ( a * xx + d * yy )
+        cyz(i) = cos ( a * yy + d * zz )
+        czx(i) = cos ( a * zz + d * xx )
+
+        u(i) = - a * ( ex(i) * syz(i) + ez(i) * cxy(i) ) * e2t + u0
+        v(i) = - a * ( ey(i) * szx(i) + ex(i) * cyz(i) ) * e2t + v0
+        w(i) = - a * ( ez(i) * sxy(i) + ey(i) * czx(i) ) * e2t + w0
+        p(i) = 0.5D+00 * a * a * e2t * e2t * (
+     &    + ex(i) * ex(i) + 2.0D+00 * sxy(i) * czx(i) * eyz(i)
+     &    + ey(i) * ey(i) + 2.0D+00 * syz(i) * cxy(i) * ezx(i)
+     &    + ez(i) * ez(i) + 2.0D+00 * szx(i) * cyz(i) * exy(i) )
+
+      end do
+
+      return
+      end
+c-----------------------------------------------------------------------

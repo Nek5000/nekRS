@@ -1,0 +1,12 @@
+#!/bin/bash
+set -x
+
+source ./mktar
+
+mkdir -p .getdep
+cd .getdep
+
+tar_3rd_party 0
+
+cd ..
+rm -rf .getdep

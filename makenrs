@@ -1,0 +1,205 @@
+#!/bin/bash
+#set -x
+
+###############################################################################
+# USER SETTINGS
+# (uncomment to overwrite default)
+###############################################################################
+
+#NEKRS_INSTALL_DIR=${HOME}/.local/nekrs
+
+#NEKRS_CC="mpicc"
+#NEKRS_CXX="mpic++"
+#NEKRS_FC="mpif77"
+#NEKRS_CXXFLAGS="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"
+
+#OCCA_CUDA_ENABLED=0
+
+
+
+###############################################################################
+# DONT'T TOUCH WHAT FOLLOWS !!!
+###############################################################################
+set -e -a
+NEKRS_SOURCED=0
+(return 0 2>/dev/null) && NEKRS_SOURCED=1
+if [ ${NEKRS_SOURCED} -eq 1 ]; then
+   NEKRS_EXIT_CMD=return
+else
+   NEKRS_EXIT_CMD=exit
+fi
+
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+: ${NEKRS_CC:="mpicc"}
+: ${NEKRS_CXX:="mpic++"}
+: ${NEKRS_FC:="mpif77"}
+: ${NEKRS_CXXFLAGS:="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"}
+
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=0}
+: ${OCCA_OPENCL_ENABLED:=0}
+
+NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
+NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
+NEKRS_DEBUG=0
+NEKRS_LIBP_DEFINES="-DUSE_NULL_PROJECTION=1"
+NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
+
+export OCCA_CUDA_ENABLED
+export OCCA_HIP_ENABLED
+export OCCA_OPENCL_ENABLED
+export OCCA_METAL_ENABLED=0
+
+export NEKRS_CC
+export NEKRS_CXX
+export NEKRS_FC
+
+export NEKRS_CFLAGS
+export NEKRS_CXXFLAGS
+export NEKRS_FFLAGS
+
+export NEKRS_DEBUG
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+export NEKRS_INSTALL_DIR
+export NEKRS_LIBP_DEFINES
+export NEKRS_NEK5000_PPLIST
+
+export NEKRS_DIR=`pwd`
+export NEKRS_UDF_DIR="${NEKRS_INSTALL_DIR}/udf"
+export NEKRS_NEKINTERFACE_DIR="${NEKRS_INSTALL_DIR}/nekInterface"
+export NEKRS_NEK5000_DIR="${NEKRS_INSTALL_DIR}/nek5000"
+export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
+
+export OCCA_CXXFLAGS="${NEKRS_CXXFLAGS} ${NEKRS_LIBP_DEFINES}"
+export OCCA_DIR="${NEKRS_INSTALL_DIR}/occa"
+
+export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"
+
+function nekrs_info() {
+  local GREEN='\033[0;92m'
+  local NC='\033[0m' 
+  echo -e "${GREEN} $1 ${NC}"
+}
+export -f nekrs_info
+
+function nekrs_error() {
+  local RED='\033[0;31m'
+  local NC='\033[0m' 
+  echo -e "${RED} $1 ${NC}"
+}
+export -f nekrs_error
+
+export NEKRS_BUILD_DIR=`pwd`/build
+
+if [ ${NEKRS_SOURCED} -eq 1 ]; then
+  ${NEKRS_EXIT_CMD} 0
+fi
+
+if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
+  nekrs_error "Install directory and source directory are the same."
+  ${NEKRS_EXIT_CMD} 1
+fi
+
+################################################################################
+# See if its just cleaning and if yes, clean and exit
+################################################################################
+if [ "$#" -eq 1 ]; then
+  if [[ "$1" = *"clean"* ]]; then
+    set +e
+    rm -rf "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+    set -e
+    exit 0
+  else
+    nekrs_info "Usage: makenrs [clean]"
+    ${NEKRS_EXIT_CMD} 1
+  fi
+fi
+
+################################################################################
+# Install bin/bashrc file
+################################################################################
+mkdir -p ${NEKRS_INSTALL_DIR}/bin > /dev/null 2>&1
+bashFile=${NEKRS_INSTALL_DIR}/bin/nekrs.bashrc
+
+echo "#!/bin/bash" > ${bashFile}
+
+echo ": \${NEKRS_CXX:=${NEKRS_CXX}}" >> ${bashFile}
+echo ": \${NEKRS_CC:=${NEKRS_CC}}" >> ${bashFile}
+echo ": \${NEKRS_FC:=${NEKRS_FC}}" >> ${bashFile}
+echo ": \${NEKRS_CXXFLAGS:=${NEKRS_CXXFLAGS}}" >> ${bashFile}
+echo ": \${NEKRS_CFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
+echo ": \${NEKRS_FFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
+echo ": \${NEKRS_DIR:=${NEKRS_DIR}}" >> ${bashFile}
+echo ": \${NEKRS_DEBUG:=${NEKRS_DEBUG}}" >> ${bashFile}
+echo ": \${NEKRS_INSTALL_DIR:=${NEKRS_INSTALL_DIR}}" >> ${bashFile}
+echo ": \${NEKRS_NEK5000_DIR:=\${NEKRS_INSTALL_DIR}/nek5000}" >> ${bashFile}
+echo ": \${NEKRS_NEK5000_PPLIST:=${NEKRS_NEK5000_PPLIST}}" >> ${bashFile}
+echo ": \${NEKRS_LIBP_DIR:=\${NEKRS_INSTALL_DIR}/libparanumal}" >> ${bashFile}
+echo ": \${NEKRS_LIBP_DEFINES:=${NEKRS_LIBP_DEFINES}}" >> ${bashFile}
+echo ": \${NEKRS_UDF_DIR:=\${NEKRS_INSTALL_DIR}/udf}" >> ${bashFile}
+echo ": \${NEKRS_NEKINTERFACE_DIR:=\${NEKRS_INSTALL_DIR}/nekInterface}" >> ${bashFile}
+echo ": \${OCCA_CXX:=\${NEKRS_CXX}}" >> ${bashFile}
+echo ": \${OCCA_CXXFLAGS:=\${NEKRS_CXXFLAGS} \${NEKRS_LIBP_DEFINES}}" >> ${bashFile}
+echo ": \${OCCA_DIR:=\${NEKRS_INSTALL_DIR}/occa}" >> ${bashFile}
+
+echo "export NEKRS_CC" >> ${bashFile}
+echo "export NEKRS_CXX" >> ${bashFile}
+echo "export NEKRS_FC" >> ${bashFile}
+echo "export NEKRS_CFLAGS" >> ${bashFile}
+echo "export NEKRS_CXXFLAGS" >> ${bashFile}
+echo "export NEKRS_FFLAGS" >> ${bashFile}
+echo "export NEKRS_DIR" >> ${bashFile}
+echo "export NEKRS_DEBUG" >> ${bashFile}
+echo "export NEKRS_INSTALL_DIR" >> ${bashFile}
+echo "export NEKRS_EXAMPLES=${NEKRS_INSTALL_DIR}/examples" >> ${bashFile}
+echo "export NEKRS_NEK5000_DIR" >> ${bashFile}
+echo "export NEKRS_NEK5000_PPLIST" >> ${bashFile}
+echo "export NEKRS_LIBP_DIR" >> ${bashFile}
+echo "export NEKRS_LIBP_DEFINES" >> ${bashFile}
+echo "export NEKRS_UDF_DIR" >> ${bashFile}
+echo "export NEKRS_NEKINTERFACE_DIR" >> ${bashFile}
+echo "export OCCA_CXX" >> ${bashFile}
+echo "export OCCA_CXXFLAGS" >> ${bashFile}
+echo "export OCCA_DIR" >> ${bashFile}
+echo "export PATH=\"\${NEKRS_INSTALL_DIR}/bin:\${OCCA_DIR}/bin:\${PATH}\"" >> ${bashFile}
+
+NEKRS_BUILD_TYPE=None
+if [ ${NEKRS_DEBUG} -ne 0 ]; then
+  NEKRS_BUILD_TYPE=Debug
+fi
+################################################################################
+# Build NekRS 
+################################################################################
+nekrs_info "Building NekRS ..."
+
+mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
+
+cd "${NEKRS_BUILD_DIR}"
+  FC="${NEKRS_FC}" CC="${NEKRS_CC}" CXX="${NEKRS_CXX}" \
+  FFLAGS="${NEKRS_FFLAGS}" CFLAGS="${NEKRS_CFLAGS}" CXXFLAGS="${NEKRS_CXXFLAGS}" \
+  cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
+        -DCMAKE_INSTALL_PREFIX=${NEKRS_INSTALL_DIR} \
+        -DNEK5000_PPLIST=${NEKRS_NEK5000_PPLIST} \
+        ${NEKRS_DIR} && make install
+
+
+if [ $? -ne 0 ]; then
+  echo
+  echo "##################################################################"
+  echo
+  echo "An error occured duing installation!"
+  echo
+  echo "##################################################################"
+  ${NEKRS_EXIT_CMD} 1
+else
+  echo
+  echo "##################################################################"
+  echo
+  echo "Installation to $NEKRS_INSTALL_DIR successful!"
+  echo
+  echo "##################################################################"
+  ${NEKRS_EXIT_CMD} 0
+fi
+echo

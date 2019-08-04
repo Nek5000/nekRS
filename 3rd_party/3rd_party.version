@@ -1,0 +1,187 @@
+#!/bin/bash
+
+NEK_VER=19.0-rc1
+NEK_GIT_BRANCH=master
+NEK_GIT_URL=https://github.com/nek5000/nek5000.git
+
+GS_VER=1.0.5
+GS_CHKSUM=1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27
+GS_ARCHIVE_URL=http://github.com/gslib/gslib/archive/v${GS_VER}.tar.gz
+
+PARRSB_VER=0.1
+PARRSB_ARCHIVE_URL=https://github.com/Nek5000/parRSB/archive/v${PARRSB_VER}.tar.gz
+
+OCCA_VER=1.0 #random
+OCCA_GIT_BRANCH=master
+OCCA_GIT_URL=https://github.com/libocca/occa.git
+
+LIBP_VER=1.0 #random
+LIBP_GIT_BRANCH=next
+LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
+
+HYPRE_VER=1.0 #random
+HYPRE_GIT_BRANCH=master
+HYPRE_GIT_URL=https://github.com/hypre-space/hypre.git
+
+function clone_nek() {
+  NEK_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/nek5000.tgz
+  # clone nek5000
+  if [ -f ${NEK_TAR} ]; then
+    tar -xvf ${NEK_TAR}
+  elif [ -z ${NEK_ARCHIVE_URL} ]; then
+    if [ -z ${NEK_GIT_URL} ]; then
+      echo "No way to clone Nek5000."
+      exit 1
+    elif [ -z ${NEK_GIT_BRANCH} ]; then
+      echo "Can't find the Nek5000 branch."
+      exit 1
+    else #clone nek5000
+      git clone --depth 1 -b ${NEK_GIT_BRANCH} ${NEK_GIT_URL}
+    fi
+  else # using archive url
+    if [ -z ${NEK_VER} ]; then
+      echo "Can't find the nek version and tar name."
+      exit 1
+    fi
+    NEK_TAR=v${NEK_VER}.tar.gz
+    wget --no-check-certificate -O ${NEK_TAR} ${NEK_ARCHIVE_URL}
+    tar -xvf ${NEK_TAR} && mv Nek5000-${NEK_VER} nek5000
+  fi
+}
+
+function clone_gslib() {
+  # clone gslib
+  GS_PATH=nek5000/3rd_party/gslib/
+  GS_TAR=v${GS_VER}.tar.gz
+  if [ -f  ${GS_PATH}/${GS_TAR} ]; then
+    return 0
+  fi 
+
+  if [ -z ${GS_ARCHIVE_URL} ]; then
+    if [ -z ${GS_GIT_URL} ]; then
+      echo "No way to clone gslib."
+      exit 1
+    elif [ -z ${GS_GIT_BRANCH} ]; then
+      echo "Can't find the gslib branch."
+      exit 1
+    else #clone gslib
+      git clone --depth 1 -b ${GS_GIT_BRANCH} ${GS_GIT_URL} ${GS_PATH}/
+    fi
+  else # using archive url
+    if [ -z ${GS_VER} ]; then
+      echo "Can't find the gslib version and tar name."
+      exit 1
+    fi
+
+    wget --no-check-certificate -O ${GS_PATH}/${GS_TAR} ${GS_ARCHIVE_URL}
+
+    SUM=`openssl dgst -sha1 ${GS_PATH}/${GS_TAR} | sed 's/^.* //'`
+    if [ $SUM != ${GS_CHKSUM} ] ; then
+      echo 'Invalid checksum!'
+      rm -rf ${GS_PATH}/${GS_TAR}
+      exit 1
+    fi
+  fi
+}
+
+function clone_parrsb() {
+  # clone parrsb
+  PARRSB_PATH=nek5000/3rd_party/parRSB/
+  PARRSB_TAR=v${PARRSB_VER}.tar.gz
+  if [ -f  ${PARRSB_PATH}/${PARRSB_TAR} ]; then
+    return 0
+  fi 
+
+  if [ -z ${PARRSB_ARCHIVE_URL} ]; then
+    if [ -z ${PARRSB_GIT_URL} ]; then
+      echo "No way to clone parRSB."
+      exit 1
+    elif [ -z ${PARRSB_GIT_BRANCH} ]; then
+      echo "Can't find the parRSB branch."
+      exit 1
+    else
+      git clone --depth 1 -b ${PARRSB_GIT_BRANCH} ${PARRSB_GIT_URL} ${PARRSB_PATH}/
+    fi
+  else # using archive url
+    if [ -z ${PARRSB_VER} ]; then
+      echo "Can't find the parRSB version and tar name."
+      exit 1
+    fi
+    wget --no-check-certificate -O ${PARRSB_PATH}/${PARRSB_TAR} ${PARRSB_ARCHIVE_URL}
+  fi
+}
+
+function clone_occa() {
+  OCCA_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/occa.tgz
+  if [ -f ${OCCA_TAR} ]; then
+    tar -xvf ${OCCA_TAR}
+  elif [ -z ${OCCA_ARCHIVE_URL} ]; then
+    if [ -z ${OCCA_GIT_URL} ]; then
+      echo "No way to clone OCCA."
+      exit 1
+    elif [ -z ${OCCA_GIT_BRANCH} ]; then
+      echo "Can't find the OCCA branch."
+      exit 1
+    else
+      git clone --depth 1 -b ${OCCA_GIT_BRANCH} ${OCCA_GIT_URL}
+    fi
+  else # using archive url
+    if [ -z ${OCCA_VER} ]; then
+      echo "Can't find the OCCA version and tar name."
+      exit 1
+    fi
+    OCCA_TAR=v${OCCA_VER}.tar.gz
+    wget --no-check-certificate -O ${OCCA_TAR} ${OCCA_ARCHIVE_URL}
+    tar -xvf ${OCCA_TAR}
+  fi
+}
+
+function clone_libp() {
+  LIBP_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/libparanumal.tgz
+  if [ -f ${LIBP_TAR} ]; then
+    tar -xvf ${LIBP_TAR}
+  elif [ -z ${LIBP_ARCHIVE_URL} ]; then
+    if [ -z ${LIBP_GIT_URL} ]; then
+      echo "No way to clone libP."
+      exit 1
+    elif [ -z ${LIBP_GIT_BRANCH} ]; then
+      echo "Can't find the libP branch."
+      exit 1
+    else
+      git clone --depth 1 -b ${LIBP_GIT_BRANCH} ${LIBP_GIT_URL}
+    fi
+  else # using archive url
+    if [ -z ${LIBP_VER} ]; then
+      echo "Can't find the libP version and tar name."
+      exit 1
+    fi
+    LIBP_TAR=v${LIBP_VER}.tar.gz
+    wget --no-check-certificate -O ${LIBP_TAR} ${LIBP_ARCHIVE_URL}
+    tar -xvf ${LIBP_TAR}
+  fi
+}
+
+function clone_hypre() {
+  HYPRE_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/hypre.tgz
+  if [ -f ${HYPRE_TAR} ]; then
+    tar -xvf ${HYPRE_TAR}
+  elif [ -z ${HYPRE_ARCHIVE_URL} ]; then
+    if [ -z ${HYPRE_GIT_URL} ]; then
+      echo "No way to clone HYPRE."
+      exit 1
+    elif [ -z ${HYPRE_GIT_BRANCH} ]; then
+      echo "Can't find the HYPRE branch."
+      exit 1
+    else
+      git clone --depth 1 -b ${HYPRE_GIT_BRANCH} ${HYPRE_GIT_URL}
+    fi
+  else # using archive url
+    if [ -z ${HYPRE_VER} ]; then
+      echo "Can't find the libP version and tar name."
+      exit 1
+    fi
+    HYPRE_TAR=v${HYPRE_VER}.tar.gz
+    wget --no-check-certificate -O ${HYPRE_TAR} ${HYPRE_ARCHIVE_URL}
+    tar -xvf ${HYPRE_TAR}
+  fi
+}

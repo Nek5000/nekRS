@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e -x
+
+source ${NEKRS_SRC_THIRD_PARTY_DIR}/3rd_party.version
+
+if [ ! -d occa ]; then
+  clone_occa 
+fi
+
+cd occa
+make CC="${NEKRS_CC}" \
+  CFLAGS="${NEKRS_CFLAGS}" \
+  CXX="${NEKRS_CXX}" \
+  CXXFLAGS="${NEKRS_CXXFLAGS}" \
+  PREFIX=${NEKRS_INSTALL_DIR}/occa all
+cd -
+
+if [ $? -ne 0 ]; then 
+  echo "Error: Failed building libocca.so"
+  exit 1
+fi

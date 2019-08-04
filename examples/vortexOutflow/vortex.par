@@ -1,0 +1,20 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL] 
+polynomialOrder = 7
+#startFrom = restart.fld
+stopAt = endTime
+endTime = 15
+dt = 2e-03
+timeStepper = bdf2
+writeInterval = 500
+
+[PRESSURE]
+preconditioner = semg_amg
+residualTol = 1e-05
+
+[VELOCITY]
+residualTol = 1e-08
+viscosity = -1000 

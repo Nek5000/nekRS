@@ -1,0 +1,35 @@
+language: cpp c fortran
+dist: bionic
+
+cache:
+    directories:
+     - $HOME/install
+
+sudo: required
+
+jobs:
+  include:
+    - stage: prepare cache 
+      script:
+        - cd ${TRAVIS_BUILD_DIR}
+  	- OCCA_CUDA_ENABLED=0 NEKRS_INSTALL_DIR=./install ./makenrs
+  	- source ./install/bin/nekrs.bashrc
+  	- cd $NEKRS_EXAMPLES/eddy
+  	- mpirun -np 1 nekrs --setup eddy --build-only 1
+    - stage: test
+      name: "ethier"
+      env:
+        - TESTCASE=ethier
+        - NPROC=1
+
+before_install: 
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libmpich-dev mpich
+
+install:
+
+script: 
+  - cd ${TRAVIS_BUILD_DIR}
+  - source ./install/bin/nekrs.bashrc
+  - cd $NEKRS_EXAMPLES/$TESTCASE 
+  - mpirun -np $NPROC nekrs --setup $TESTCASE 

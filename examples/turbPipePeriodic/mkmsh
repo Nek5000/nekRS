@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# generate 2D mesh
+pretex << EOF
+circle
+   1 READ PREVIOUS PARAMETERS 
+dummy
+   1 BUILD FROM FILE          
+dummy
+   5 DELETE ELEMENT           
+   4 CURVE SIDES              
+   5 Autosphere               
+4 5 Enter number of elements in core and shell:
+.4  Enter ratio in outer shell:
+   1 BUILD MENU               
+   3 GLOBAL REFINE            
+  14 Clean up vertices        
+   7 REPLICATE/ROTATE         
+3    Rep. (1), Rot. (2), Rep/Rot (3) Template (4)? (0=abort)
+90   Input rotation angle (deg):
+3    Input number of reps (e.g., 1 --> double mesh size)
+  14 Clean up vertices        
+   1 END GLOBAL REFINE        
+   1 END    ELEMENTS          
+   1 ACCEPT MATL,QVOL         
+   1 ACCEPT B.C.'s            
+   1 ACCEPT B.C.'s            
+   1 EXIT                     
+EOF
+
+n2to3 << EOF
+circle
+pipe
+1    For ASCII output only: 0; For .rea/.re2: 1
+35   input number of levels: (1, 2, 3,...; < 0 for circular sweep.):
+0    input z min:
+6    input z max:
+1    input gain (0=custom,1=uniform,other=geometric spacing):
+no   This is for CEM: yes or no:
+P    Enter Z(5) FLUID boundary condition (P,v,O,ect):
+P    Enter Z(6) FLUID boundary condition (P,v,O,ect):
+P
+P

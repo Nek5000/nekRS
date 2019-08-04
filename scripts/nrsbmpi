@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+  echo "usage: ${0##*/} <casename> <#procs>"
+  exit 0
+fi
+
+rm -f logfile
+mv $1.log.$2 $1.log1.$2 2>/dev/null
+mpirun -np $2 nekrs --setup $1 > $1.log.$2 &
+ln -sf $1.log.$2 logfile
+echo "started job in background"
+echo "redirecting output to logfile"

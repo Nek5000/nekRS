@@ -1,0 +1,59 @@
+void exact(dfloat *u, dfloat *v, dfloat *w,
+           const dfloat x, const dfloat y, const dfloat z,
+           const dfloat t, const dfloat visc)
+{                                                                        
+  dfloat a = M_PI/2.f;                                                   
+  dfloat d = M_PI/1.f;                                                   
+  dfloat ex,ey,ez;                                                       
+  dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
+
+  const dfloat u0 = 1.0;
+  const dfloat v0 = 0.1;
+  const dfloat w0 = 0.2;
+
+  const dfloat xx = x - u0*t;
+  const dfloat yy = y - v0*t;
+  const dfloat zz = z - w0*t;
+
+  ex  = exp(a*xx);                                                        
+  ey  = exp(a*yy);                                                        
+  ez  = exp(a*zz);                                                        
+  e2t = exp(-visc*d*d*t);                                                  
+                                                                         
+  exy = exp(a*(xx + yy));                                                 
+  eyz = exp(a*(yy + zz));                                                  
+  ezx = exp(a*(zz + xx));                                                  
+                                                                         
+  sxy = sin(a*xx + d*yy);                                                  
+  syz = sin(a*yy + d*zz);                                                  
+  szx = sin(a*zz + d*xx);                                                  
+                                                                         
+  cxy = cos(a*xx + d*yy);                                                  
+  cyz = cos(a*yy + d*zz);                                                  
+  czx = cos(a*zz + d*xx);                                                  
+                                                                         
+  *(u)= -a*(ex*syz + ez*cxy)*e2t + u0;                                        
+  *(v)= -a*(ey*szx + ex*cyz)*e2t + v0;                                        
+  *(w)= -a*(ez*sxy + ey*czx)*e2t + w0;                                        
+}   
+
+// Boundary conditions
+/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
+void insVelocityDirichletConditions3D(bcData *bc)
+{                                                                        
+  if(bc->id == INLET) {
+    dfloat u, v, w;
+    exact(&u, &v, &w, bc->x, bc->y, bc->z, bc->time, p_nu);
+    bc->uP = u;
+    bc->vP = v;
+    bc->wP = w;
+  }
+}
+
+void insVelocityNeumannConditions3D(bcData *bc)
+{                                                           
+}
+
+void insPressureDirichletConditions3D(bcData *bc)
+{
+}

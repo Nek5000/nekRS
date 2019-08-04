@@ -1,0 +1,56 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+#define RE_TAU 550.0
+#define RE_B (1/ins->nu)
+
+/* User Functions */
+
+occa::kernel addDpDzKernel; 
+
+void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  const dfloat DPDZ = -4*pow(RE_TAU/(0.5*RE_B), 2);
+  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
+  addDpDzKernel(Nlocal, ins->fieldOffset, DPDZ, o_FU);
+
+/*
+  ins->o_U.copyTo(ins->U);
+  ins->o_P.copyTo(ins->P);
+  nek_copyFrom(ins, time, 0);
+  dfloat *ffx = ins->FU + 0*ins->fieldOffset;
+  dfloat *ffy = ins->FU + 1*ins->fieldOffset;
+  dfloat *ffz = ins->FU + 2*ins->fieldOffset;
+  nek_nekuf(ffx, ffy, ffz);
+  o_FU.copyFrom(ins->FU, ins->NVfields*ins->Ntotal*sizeof(dfloat));
+*/
+}
+
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(ins_t *ins, const occa::properties kernelInfo)
+{
+  addDpDzKernel = udfBuildKernel(ins->mesh, "addDpDz", kernelInfo);
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  // get IC from nek
+  nek_copyTo(ins, ins->startTime);
+
+  nek_userchk();
+
+  // assign function pointer to drive flow by constant mean pressure gradient
+  udf.velocityForce = &userf;
+
+  // reset time
+  ins->startTime = 0;
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+}
