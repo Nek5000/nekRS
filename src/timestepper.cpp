@@ -95,7 +95,7 @@ void extbdfCoefficents(ins_t *ins, int order) {
 void runPlan4(ins_t *ins){
 
   mesh_t *mesh = ins->mesh;
-  
+
   double time0 = MPI_Wtime();
   for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
 
@@ -166,119 +166,12 @@ void runPlan4(ins_t *ins){
 
     dfloat cfl = insComputeCfl(ins, time+ins->dt, tstep+1);
     if (mesh->rank==0)
-      printf("tstep = %d, time = %.5e, cfl =  %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
+      printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
         tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-time0);
 
     if (ins->outputStep > 0)
       if (((tstep+1)%(ins->outputStep))==0  ||  tstep+1 == ins->NtimeSteps)
         report(ins, time+ins->dt, tstep+1);
-
-    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
-  }
-}
-
-void runPlan0(ins_t *ins){
-
-  mesh_t *mesh = ins->mesh;
-
-  for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
-      if(tstep<1)
-        extbdfCoefficents(ins,tstep+1);
-      else if(tstep<2 && ins->temporalOrder>=2)
-        extbdfCoefficents(ins,tstep+1);
-      else if(tstep<3 && ins->temporalOrder>=3)
-        extbdfCoefficents(ins,tstep+1);
-
-    dfloat time = ins->startTime + tstep*ins->dt;
-
-    dlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
-
-    if(ins->Nsubsteps) {
-      libParanumal::insSubCycle(ins, time, ins->Nstages, ins->o_U, ins->o_NU);
-    } else {
-      libParanumal::insAdvection(ins, time, ins->o_U, ins->o_NU);
-    }
-
-    // make force
-    ins->setScalarKernel(ins->Ntotal*ins->NVfields, 0.0, ins->o_FU);
-    if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-      ins->filterKernel(mesh->Nelements,
-                        ins->o_filterMT,
-                        ins->filterS,
-                        ins->fieldOffset,
-                        ins->o_U,
-                        ins->o_FU);
-
-
-    if(udf.velocityForce) udf.velocityForce(ins, time+ins->dt, ins->o_U, ins->o_FU);
-
-    libParanumal::insGradient (ins, time, ins->o_P, ins->o_GP);
-
-    libParanumal::insVelocityRhs  (ins, time+ins->dt, ins->Nstages, ins->o_rhsU, ins->o_rhsV,
-      ins->o_rhsW);
-    libParanumal::insVelocitySolve(ins, time+ins->dt, ins->Nstages, ins->o_rhsU, ins->o_rhsV,
-      ins->o_rhsW, ins->o_rkU);
-
-    libParanumal::insPressureRhs  (ins, time+ins->dt, ins->Nstages);
-    libParanumal::insPressureSolve(ins, time+ins->dt, ins->Nstages);
-
-    libParanumal::insPressureUpdate(ins, time+ins->dt, ins->Nstages, ins->o_rkP);
-    libParanumal::insGradient(ins, time+ins->dt, ins->o_rkP, ins->o_rkGP);
-
-    //cycle history
-    for (int s=ins->Nstages;s>1;s--) {
-      ins->o_U.copyFrom(ins->o_U, ins->Ntotal*ins->NVfields*sizeof(dfloat),
-                                  (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat),
-                                  (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-      ins->o_P.copyFrom(ins->o_P, ins->Ntotal*sizeof(dfloat),
-                                  (s-1)*ins->Ntotal*sizeof(dfloat),
-                                  (s-2)*ins->Ntotal*sizeof(dfloat));
-    }
-
-    //copy updated pressure
-    ins->o_P.copyFrom(ins->o_rkP, ins->Ntotal*sizeof(dfloat));
-
-    //update velocity
-    libParanumal::insVelocityUpdate(ins, time+ins->dt, ins->Nstages, ins->o_rkGP, ins->o_rkU);
-
-    if(mesh->dim==3){
-      if(ins->elementType == QUADRILATERALS ||
-	 ins->elementType == TRIANGLES){
-	ins->constrainKernel(mesh->Nelements,
-			     offset,
-			     mesh->o_x,
-			     mesh->o_y,
-			     mesh->o_z,
-			     ins->o_rkU);
-      }
-    }
-
-    //copy updated pressure
-    ins->o_U.copyFrom(ins->o_rkU, ins->NVfields*ins->Ntotal*sizeof(dfloat));
-
-    //cycle rhs history
-    for (int s=ins->Nstages;s>1;s--) {
-      ins->o_NU.copyFrom(ins->o_NU, ins->Ntotal*ins->NVfields*sizeof(dfloat),
-			 (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat),
-			 (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-      ins->o_GP.copyFrom(ins->o_GP, ins->Ntotal*ins->NVfields*sizeof(dfloat),
-			 (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat),
-			 (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-      ins->o_FU.copyFrom(ins->o_FU, ins->Ntotal*ins->NVfields*sizeof(dfloat),
-                         (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat),
-                         (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-    }
-  
-    if (ins->dim==2 && mesh->rank==0)
-      printf("tstep = %d, time = %.4e, iterations: U - %3d, V - %3d, P - %3d\n",
-        tstep+1, time+ins->dt, ins->NiterU, ins->NiterV, ins->NiterP);
-    if (ins->dim==3 && mesh->rank==0)
-      printf("tstep = %d, time = %.4e, iterations: U - %3d, V - %3d, W - %3d, P - %3d\n",
-        tstep+1, time+ins->dt, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP);
-    //fflush(stdout);
-
-    if (((tstep+1)%(ins->outputStep))==0 && tstep+1<ins->NtimeSteps)
-      report(ins, time+ins->dt, tstep+1);
 
     if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
   }

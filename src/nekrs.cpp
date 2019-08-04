@@ -329,6 +329,7 @@ int main(int argc, char **argv)
     options.getArgs("RESTART FILE NAME", restartFile);
     nek_restart((char*)restartFile.c_str());
     nek_copyTo(ins, ins->startTime); 
+    ins->NtimeSteps = (ins->finalTime - ins->startTime)/ins->dt; 
   }
 
   if(rank == 0) {
@@ -350,17 +351,12 @@ int main(int argc, char **argv)
 
   // run time stepper
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
-  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) {
-    runPlan4(ins);
-  } 
-  else {
-    if (rank ==0) cout << "\nERROR: Unsupport time stepper!" << endl;
-    EXIT(-1);
-  }
+
+  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runPlan4(ins); 
+
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;
-  dfloat finalTime = ins->startTime + ins->NtimeSteps*ins->dt;
   if(rank == 0) 
-    cout << "\nreached final time " << finalTime << " in " << tElapsed << " seconds" << endl; 
+    cout << "\nreached final time " << ins->finalTime << " in " << tElapsed << " seconds" << endl; 
 
   if(rank == 0) cout << "\nEnd." << endl;
   MPI_Finalize();

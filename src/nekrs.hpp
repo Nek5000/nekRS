@@ -9,7 +9,6 @@
 #include "libParanumal.hpp"
 
 void runPlan4(ins_t *ins);
-void runPlan0(ins_t *ins);
 void restartRead(ins_t *ins, setupAide &options);
 void report(ins_t *ins, dfloat time, int tstep);
 

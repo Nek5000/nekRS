@@ -4,7 +4,7 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL]
 polynomialOrder = 7
-#startFrom = restart.fld U time=0 
+#startFrom = restart.fld
 stopAt = endTime
 endTime = 200
 
@@ -21,6 +21,8 @@ filterWeight = 2
 filterCutoffRatio = 0.9 
 
 [PRESSURE]
+preconditioner = semg_amg
+#amgSolver = parAlmond
 residualTol = 1e-04
 
 [VELOCITY]
