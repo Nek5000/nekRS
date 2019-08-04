@@ -41,7 +41,7 @@ git clone https://github.com/Nek5000/nekRS.git
 To install the code just run:
 
 ```sh
-cd nekrs
+cd nekRS
 ./makenrs
 ```
 Please edit the make script to customize build settings.

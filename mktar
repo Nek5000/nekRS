@@ -68,10 +68,10 @@ function tar_3rd_party() {
 }
 
 function tar_nekrs() {
-  mkdir nekrs
-  cp -r ../3rd_party/ ../CMake*.txt ../examples/ \
-    ../install_*.cmake ../LICENSE ../make* ../README* ../src nekrs/
-  tar --exclude=.git -cvzf nekrs.tar.gz nekrs/
+  mkdir nekRS
+  cp -r ../3rd_party ../CMake*.txt ../examples \
+    ../install_*.cmake ../LICENSE ../make* ../README* ../src nekRS
+  tar --exclude=.git -cvzf nekrs.tar.gz nekRS
   if [ $? -ne 0 ]; then
     echo "Failed to creare a .tar out of nekrs."
     exit 1
