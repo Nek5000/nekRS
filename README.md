@@ -6,7 +6,7 @@ The current release has the following capabilities:
 
 * Non-dimensional 3D incompressible Navier Stokes
 * CG-SEM using hexaheadral elements 
-* Inlet, outflow, wall, slip wall and  periodic boundary conditions 
+* Inlet, outflow, wall, slip and periodic boundary conditions 
 * Constant density and viscosity
 * Fixed timestep 2nd order BDF + EXT/OIFS
 * Dealiasing and high-pass filter relaxation term regularization
