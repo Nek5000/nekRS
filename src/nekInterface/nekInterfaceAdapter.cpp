@@ -82,7 +82,7 @@ void nek_uf(double *u, double *v, double *w)
 int nek_lglel(int e)
 {
   int ee = e+1;
-  (*nek_lglel_ptr)(&ee) - 1;
+  return (*nek_lglel_ptr)(&ee) - 1;
 }
 
 DEFINE_USER_FUNC(usrdat)
