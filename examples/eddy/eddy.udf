@@ -8,7 +8,7 @@
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins, const occa::properties kernelInfo)
+void UDF_LoadKernels(ins_t *ins)
 {
 }
 

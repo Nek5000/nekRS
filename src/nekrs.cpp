@@ -87,7 +87,7 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   if (!udfFile.empty()) {
     if(rank == 0) udfBuild(udfFile.c_str()); 
     MPI_Barrier(comm);
-    udfLoadFunction("UDF_LoadKernels",1);
+    *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
   } 
 
   // jit compile nek
@@ -103,8 +103,11 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   libParanumal::ins_t *ins = insSetup(mesh, options);
 
   // jit compile udf kernels
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  if (udf.loadKernels) udf.loadKernels(ins, kernelInfo);
+  if (udf.loadKernels) {
+    if (rank == 0) cout << "building udf kernels ...";
+    udf.loadKernels(ins);
+    if (rank == 0) cout << " done" << endl;
+  }
 
   if (mesh->rank == 0) cout << "\nBuild successful." << endl;
 }
@@ -314,9 +317,12 @@ int main(int argc, char **argv)
   meshNekSetupHex3D(N, mesh);
   libParanumal::ins_t *ins = insSetup(mesh, options);
 
-  // jit user okl
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  if(udf.loadKernels) udf.loadKernels(ins, kernelInfo);
+  // jit compile udf kernels
+  if (udf.loadKernels) {
+    if (rank == 0) cout << "building udf kernels ...";
+    udf.loadKernels(ins);
+    if (rank == 0) cout << " done" << endl;
+  }
 
   // set initial condition
   for (int n = 0; n < mesh->Np*mesh->Nelements; ++n) ins->P[n] = 0;

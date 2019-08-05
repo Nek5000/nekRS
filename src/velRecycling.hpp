@@ -26,6 +26,29 @@ static occa::kernel getBCFluxKernel;
 static occa::kernel sumReductionKernel; 
 static occa::kernel scalarMultiplyKernel; 
 
+bool buildKernelCalled = 0;
+bool setupCalled = 0;
+
+void buildKernel(ins_t *ins)
+{
+  mesh_t *mesh = ins->mesh; 
+
+  string fileName;
+  int rank = mesh->rank;
+  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
+  fileName += "/okl/recycling.okl";
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  for (int r=0;r<2;r++){
+    if ((r==0 && rank==0) || (r==1 && rank>0)) {
+       setValueBCKernel     =  mesh->device.buildKernel(fileName.c_str(), "setBCVectorValue", kernelInfo);
+       getBCFluxKernel      =  mesh->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
+       sumReductionKernel   =  mesh->device.buildKernel(fileName.c_str(), "sumReduction", kernelInfo);
+       scalarMultiplyKernel =  mesh->device.buildKernel(fileName.c_str(), "scalarMultiply", kernelInfo);
+    }
+    MPI_Barrier(mesh->comm);
+  }
+} 
+
 void copy()
 {
   mesh_t *mesh = ins->mesh; 
@@ -95,21 +118,6 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const int nelSlab, const int slabId
 
   ogs = ogsSetup(Ntotal, ids, mesh->comm, 1, mesh->device);
   free(ids);
-
-  string fileName;
-  int rank = mesh->rank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/recycling.okl";
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  for (int r=0;r<2;r++){
-    if ((r==0 && rank==0) || (r==1 && rank>0)) {
-       setValueBCKernel     =  mesh->device.buildKernel(fileName.c_str(), "setBCVectorValue", kernelInfo);
-       getBCFluxKernel      =  mesh->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
-       sumReductionKernel   =  mesh->device.buildKernel(fileName.c_str(), "sumReduction", kernelInfo);
-       scalarMultiplyKernel =  mesh->device.buildKernel(fileName.c_str(), "scalarMultiply", kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
-  }
 
   tmp1   = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
   o_tmp1 = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp1);

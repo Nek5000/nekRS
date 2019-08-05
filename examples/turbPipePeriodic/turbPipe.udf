@@ -32,9 +32,9 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins, const occa::properties kernelInfo)
+void UDF_LoadKernels(ins_t *ins)
 {
-  addDpDzKernel = udfBuildKernel(ins->mesh, "addDpDz", kernelInfo);
+  addDpDzKernel = udfBuildKernel(ins, "addDpDz");
 }
 
 void UDF_Setup(ins_t *ins)

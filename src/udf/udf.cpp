@@ -56,7 +56,7 @@ void *udfLoadFunction(const char *fname, int errchk)
   sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
   void *h, *fptr;
-  h = dlopen(udfLib, RTLD_NOW | RTLD_GLOBAL);
+  h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);
   if (!h) goto err;
 
   fptr = dlsym(h,fname);
@@ -77,9 +77,10 @@ void udfLoad(void)
   *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",1);
 }
 
-occa::kernel udfBuildKernel(mesh_t *mesh, const char *function, const occa::properties kernelInfo)
+occa::kernel udfBuildKernel(ins_t *ins, const char *function)
 {
   int rank;
+  mesh_t *mesh = ins->mesh;
   MPI_Comm_rank(mesh->comm, &rank);
 
   const char *fname = "__udf.okl";
@@ -100,13 +101,16 @@ occa::kernel udfBuildKernel(mesh_t *mesh, const char *function, const occa::prop
   }
 
   occa::kernel k;
+  occa::properties& kernelInfo = *ins->kernelInfo;
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
        k = mesh->device.buildKernel(fname, function, kernelInfo);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mesh->comm);
   }
 
-  if (rank == 0) remove(fname);
+  if (rank == 0) {
+    remove(fname);
+  }
   return k;
 }
