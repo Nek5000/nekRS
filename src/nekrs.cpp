@@ -166,7 +166,7 @@ void setDataFile(libParanumal::setupAide &options)
 
   char *ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
-    if (rank ==0) cout << "ERROR: Cannot find " << oklFile << " !\n";
+    if (rank ==0) cout << "ERROR: Cannot find " << oklFile << "!\n";
     EXIT(-1);
   }
   free(ptr);
@@ -255,7 +255,7 @@ int main(int argc, char **argv)
     if (const char *env_p = getenv("OCCA_CACHE_DIR"))
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
     else
-      cout << "OCCA_CACHE_DIR undefined fallback to default!" << endl << endl;
+      cout << "OCCA_CACHE_DIR undefined fallback to default" << endl << endl;
   }
 
 #ifdef DEBUG

@@ -1,6 +1,11 @@
-# Introduction
+# nekRS
 
-nekRS is an open-source based Navier Stokes solver using the spectral element method. It is build on top of the discretization library [libParanumal](https://github.com/libParanumal/libParanumal/) targeting modern processors and accelerators including multi/many-core CPU and GPU platforms using [OCCA](https://github.com/occa/occa/).
+-----------------
+
+[![Build Status](https://travis-ci.org/Nek5000/nekRS.svg?branch=next)](https://travis-ci.org/Nek5000/nekRS)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
+
+**nekRS** is an open-source based Navier Stokes solver using the spectral element method. It is build on top of the discretization library [libParanumal](https://github.com/libParanumal/libParanumal/) targeting modern processors and accelerators including multi/many-core CPU and GPU platforms using [OCCA](https://github.com/occa/occa/).
 
 The current release has the following capabilities:
 
