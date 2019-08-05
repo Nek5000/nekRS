@@ -8,7 +8,7 @@ polynomialOrder = 7
 stopAt = endTime
 endTime = 200
 
-dt = 5.0e-3
+dt = 6.0e-3
 timeStepper = bdf2
 extrapolation = OIFS
 targetCFL = 3.8
@@ -26,5 +26,5 @@ preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]
-viscosity = -19100
+viscosity = -19000
 residualTol = 1e-06

@@ -36,8 +36,12 @@ void copy()
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
   setValueBCKernel(mesh->Nelements, 0.0, bc, ins->fieldOffset,
                    o_wrk, mesh->o_vmapM, mesh->o_EToB);
-  ogsGatherScatterMany(o_wrk, ins->dim, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, ogs);
+
+  //ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
+  //                     ogsDfloat, ogsAdd, ogs);
+  for(int k=0;k<ins->dim;++k)
+    ogsGatherScatter(o_wrk+k*ins->fieldOffset*sizeof(dfloat),
+                     ogsDfloat, ogsAdd, ogs);
   
   // rescale
   getBCFluxKernel(mesh->Nelements, bc, ins->fieldOffset, o_wrk,
