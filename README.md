@@ -70,7 +70,7 @@ nrsmpi ethier 2 # run on two MPI ranks
 
 ## Current Limitations
 
-* Only basic functionality is available
+* Only the basic functionality of Nek5000 is available
 * Kernels are optimized primarily for latest NVIDIA GPUs 
 
 ## Contributing
