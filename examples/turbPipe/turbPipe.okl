@@ -2,11 +2,9 @@
 /* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
-  if (bc->id == INLET) {
-    bc->uP = bc->wrk[bc->idM + 0*bc->fieldOffset];
-    bc->vP = bc->wrk[bc->idM + 1*bc->fieldOffset];
-    bc->wP = bc->wrk[bc->idM + 2*bc->fieldOffset];
-  }
+  bc->uP = bc->wrk[bc->idM + 0*bc->fieldOffset];
+  bc->vP = bc->wrk[bc->idM + 1*bc->fieldOffset];
+  bc->wP = bc->wrk[bc->idM + 2*bc->fieldOffset];
 }
 
 void insVelocityNeumannConditions3D(bcData *bc)
@@ -16,10 +14,8 @@ void insVelocityNeumannConditions3D(bcData *bc)
 // Stabilized outflow (Dong et al)
 void insPressureDirichletConditions3D(bcData *bc)
 {
-  if (bc->id == OUTLET) {
-    const dfloat iU0delta = 10.0;
-    const dfloat un = bc->uM*bc->nx + bc->vM*bc->ny + bc->wM*bc->nz;
-    const dfloat s0 = 0.5 * (1.0 - tanh(un*iU0delta)); 
-    bc->pP = -0.5 * (bc->uM*bc->uM + bc->vM*bc->vM + bc->wM*bc->wM) * s0;
-  }
+  const dfloat iU0delta = 10.0;
+  const dfloat un = bc->uM*bc->nx + bc->vM*bc->ny + bc->wM*bc->nz;
+  const dfloat s0 = 0.5 * (1.0 - tanh(un*iU0delta)); 
+  bc->pP = -0.5 * (bc->uM*bc->uM + bc->vM*bc->vM + bc->wM*bc->wM) * s0;
 }

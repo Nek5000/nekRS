@@ -81,13 +81,11 @@ void exact(dfloat *uu, dfloat *vv, const dfloat xx, const dfloat yy,
 /* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
-  if(bc->id == INLET) {
-    dfloat u, v;
-    exact(&u, &v, bc->x, bc->y, bc->time, p_nu);
-    bc->uP = u;
-    bc->vP = v;
-    bc->wP = 0;
-  }
+  dfloat u, v;
+  exact(&u, &v, bc->x, bc->y, bc->time, p_nu);
+  bc->uP = u;
+  bc->vP = v;
+  bc->wP = 0;
 }
 
 void insVelocityNeumannConditions3D(bcData *bc)
