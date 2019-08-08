@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NEK_VER=19.0-rc1
+NEK_VER=19.0 # latest 
 NEK_GIT_BRANCH=master
 NEK_GIT_URL=https://github.com/nek5000/nek5000.git
 
@@ -11,17 +11,16 @@ GS_ARCHIVE_URL=http://github.com/gslib/gslib/archive/v${GS_VER}.tar.gz
 PARRSB_VER=0.1
 PARRSB_ARCHIVE_URL=https://github.com/Nek5000/parRSB/archive/v${PARRSB_VER}.tar.gz
 
-OCCA_VER=1.0 #random
+OCCA_VER=1.0 # latest
 OCCA_GIT_BRANCH=master
 OCCA_GIT_URL=https://github.com/libocca/occa.git
 
-LIBP_VER=1.0 #random
+LIBP_VER=1.0 # latest
 LIBP_GIT_BRANCH=next
 LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
 
-HYPRE_VER=1.0 #random
-HYPRE_GIT_BRANCH=master
-HYPRE_GIT_URL=https://github.com/hypre-space/hypre.git
+HYPRE_VER=2.17.0
+HYPRE_ARCHIVE_URL=https://github.com/hypre-space/hypre/archive/v${HYPRE_VER}.tar.gz
 
 function clone_nek() {
   NEK_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/nek5000.tgz
@@ -164,8 +163,10 @@ function clone_libp() {
 function clone_hypre() {
   HYPRE_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/hypre.tgz
   if [ -f ${HYPRE_TAR} ]; then
-    tar -xvf ${HYPRE_TAR}
+    mkdir -p hypre
+    tar -zxf ${HYPRE_TAR} -C ./hypre --strip-components=1 
   elif [ -z ${HYPRE_ARCHIVE_URL} ]; then
+
     if [ -z ${HYPRE_GIT_URL} ]; then
       echo "No way to clone HYPRE."
       exit 1
@@ -175,13 +176,17 @@ function clone_hypre() {
     else
       git clone --depth 1 -b ${HYPRE_GIT_BRANCH} ${HYPRE_GIT_URL}
     fi
+
   else # using archive url
+
     if [ -z ${HYPRE_VER} ]; then
-      echo "Can't find the libP version and tar name."
+      echo "Can't find the Hypre version and tar name."
       exit 1
     fi
-    HYPRE_TAR=v${HYPRE_VER}.tar.gz
+#    HYPRE_TAR=v${HYPRE_VER}.tar.gz
     wget --no-check-certificate -O ${HYPRE_TAR} ${HYPRE_ARCHIVE_URL}
-    tar -xvf ${HYPRE_TAR}
+    mkdir -p hypre
+    tar -zxf ${HYPRE_TAR} -C ./hypre --strip-components=1 
+
   fi
 }

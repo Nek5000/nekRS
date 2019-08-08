@@ -7,6 +7,11 @@ if [ ! -d libparanumal ]; then
   clone_libp
 fi
 
+if [ ! -f libparanumal/libs/parAlmond/hypre/hypre.tgz ]; then
+  clone_hypre 
+  cp -f ${NEKRS_SRC_THIRD_PARTY_DIR}/hypre.tgz libparanumal/libs/parAlmond/hypre
+fi
+
 make \
   NEKRS_CC="${NEKRS_CC}"\
   NEKRS_CFLAGS="${NEKRS_CFLAGS}"\

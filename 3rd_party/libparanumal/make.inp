@@ -16,3 +16,5 @@ FFLAGS := $(NEKRS_FFLAGS)
 
 # link flags to be used
 LDFLAGS := $(NEKRS_LIBP_DEFINES)
+
+ENABLE_HYPRE = 1

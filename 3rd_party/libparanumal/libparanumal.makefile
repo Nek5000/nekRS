@@ -204,7 +204,7 @@ libblas:
 
 libparAlmond:
 	$(MAKE) -C $(ALMONDDIR) CC="$(CC)" CXX="$(CXX)" LD="$(CXX)" \
-	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" lib
+	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
 
 
 all: libins
