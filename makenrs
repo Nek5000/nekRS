@@ -60,6 +60,7 @@ export NEKRS_CXXFLAGS
 export NEKRS_FFLAGS
 
 export NEKRS_DEBUG
+mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 export NEKRS_INSTALL_DIR
 export NEKRS_LIBP_DEFINES
