@@ -4,6 +4,20 @@ set -x
 function tar_3rd_party() {
   cleanup=$1
 
+  clone_hypre
+
+  if [ $cleanup -eq 1 ]; then
+    tar --exclude=hypre/.git -cvzf hypre.tgz hypre/
+  else
+    tar -cvzf hypre.tgz hypre/
+  fi
+
+  if [ $? -ne 0 ]; then
+    echo "Failed to creare a .tar out of hypre."
+    exit 1
+  fi
+  mv hypre.tgz ../3rd_party/
+
   clone_nek
   clone_gslib
   clone_parrsb
@@ -52,19 +66,6 @@ function tar_3rd_party() {
   fi
   mv libparanumal.tgz ../3rd_party/
 
-  clone_hypre
-
-  if [ $cleanup -eq 1 ]; then
-    tar --exclude=hypre/.git -cvzf hypre.tgz hypre/
-  else
-    tar -cvzf hypre.tgz hypre/
-  fi
-
-  if [ $? -ne 0 ]; then
-    echo "Failed to creare a .tar out of hypre."
-    exit 1
-  fi
-  mv hypre.tgz ../3rd_party/
 }
 
 function tar_nekrs() {
@@ -83,7 +84,7 @@ function tar_nekrs() {
   rm -rf .package
 }
 
-NEKRS_SRC_3RDPARTY_DIR=./3rd_party
+NEKRS_SRC_THIRD_PARTY_DIR=`pwd`/3rd_party
 . ./3rd_party/3rd_party.version
 
 # Exit if being sourced
