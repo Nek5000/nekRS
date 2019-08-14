@@ -29,6 +29,11 @@ else
    NEKRS_EXIT_CMD=exit
 fi
 
+if [ $SHELL != "$BASH" ]; then 
+  echo "Error: user's login shell needs to be bash!"
+  ${NEKRS_EXIT_CMD} 1
+fi
+
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
 
 : ${NEKRS_CC:="mpicc"}
