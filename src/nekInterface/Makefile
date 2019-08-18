@@ -1,7 +1,3 @@
-ifndef NEKRS_DIR
-$(error "Error, environment variable [NEKRS_DIR] is not set")
-endif
-
 ifndef NEKRS_NEK5000_DIR
 $(error "Error, environment variable [NEKRS_NEK5000_DIR] is not set")
 endif

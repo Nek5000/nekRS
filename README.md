@@ -28,6 +28,7 @@ Requirements:
 * GNU Fortran and C Compiler version 6.2 or later
 * MPI-3.1 or later
 * CMake version 3.1 or later
+* Login shell is bash or zsh
 
 Download the latest release tarball
 

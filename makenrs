@@ -29,8 +29,8 @@ else
    NEKRS_EXIT_CMD=exit
 fi
 
-if [ $SHELL != "$BASH" ]; then 
-  echo "Error: user's login shell needs to be bash!"
+if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then 
+  echo "Error: user's login shell needs to be bash or zsh!"
   ${NEKRS_EXIT_CMD} 1
 fi
 
@@ -136,7 +136,6 @@ echo ": \${NEKRS_FC:=${NEKRS_FC}}" >> ${bashFile}
 echo ": \${NEKRS_CXXFLAGS:=${NEKRS_CXXFLAGS}}" >> ${bashFile}
 echo ": \${NEKRS_CFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
 echo ": \${NEKRS_FFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
-echo ": \${NEKRS_DIR:=${NEKRS_DIR}}" >> ${bashFile}
 echo ": \${NEKRS_DEBUG:=${NEKRS_DEBUG}}" >> ${bashFile}
 echo ": \${NEKRS_INSTALL_DIR:=${NEKRS_INSTALL_DIR}}" >> ${bashFile}
 echo ": \${NEKRS_NEK5000_DIR:=\${NEKRS_INSTALL_DIR}/nek5000}" >> ${bashFile}
@@ -155,7 +154,6 @@ echo "export NEKRS_FC" >> ${bashFile}
 echo "export NEKRS_CFLAGS" >> ${bashFile}
 echo "export NEKRS_CXXFLAGS" >> ${bashFile}
 echo "export NEKRS_FFLAGS" >> ${bashFile}
-echo "export NEKRS_DIR" >> ${bashFile}
 echo "export NEKRS_DEBUG" >> ${bashFile}
 echo "export NEKRS_INSTALL_DIR" >> ${bashFile}
 echo "export NEKRS_EXAMPLES=${NEKRS_INSTALL_DIR}/examples" >> ${bashFile}
