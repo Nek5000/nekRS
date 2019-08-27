@@ -309,6 +309,14 @@ int main(int argc, char **argv)
   string usrFileName = "./" + nekCasename + ".usr"; 
   nek_setup(comm, usrFileName.c_str(), options);
 
+  int readRestartFile = 0;
+  options.getArgs("RESTART FROM FILE", readRestartFile);
+  if(readRestartFile){
+    string restartFile;
+    options.getArgs("RESTART FILE NAME", restartFile);
+    nek_restart((char*)restartFile.c_str());
+  }
+
   // setup libP
   mesh_t *mesh = new mesh_t[1];
   mesh->comm = comm;
@@ -327,13 +335,7 @@ int main(int argc, char **argv)
   // set initial condition
   for (int n = 0; n < mesh->Np*mesh->Nelements; ++n) ins->P[n] = 0;
   ins->o_P.copyFrom(ins->P);
-
-  int readRestartFile = 0;
-  options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile){
-    string restartFile;
-    options.getArgs("RESTART FILE NAME", restartFile);
-    nek_restart((char*)restartFile.c_str());
     nek_copyTo(ins, ins->startTime); 
     ins->NtimeSteps = (ins->finalTime - ins->startTime)/ins->dt; 
   }
