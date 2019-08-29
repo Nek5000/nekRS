@@ -12,13 +12,6 @@
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
-// std::to_string might be not accurate enough 
-string to_string_f(double a) {
-  stringstream s;
-  s << std::scientific << a;
-  return s.str();
-}
-
 
 void setDefaultSettings(libParanumal::setupAide &options, string casename, int rank)
 {
@@ -152,10 +145,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   LOWER(stopAt);
   if(stopAt != "endtime") { 
     int numSteps;
-    if(ini.extract("general", "numsteps", numSteps))
+    if(ini.extract("general", "numsteps", numSteps)) {
+      options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = numSteps*dt;
-    else
-      ABORT("Cannot find mandatory parameter GENERAL::numSteps!"); 
+    } else {
+      ABORT("Cannot find mandatory parameter GENERAL::numSteps!");
+    } 
   } else {
     if(!ini.extract("general", "endtime", endTime))
       ABORT("Cannot find mandatory parameter GENERAL::endTime!"); 

@@ -8,6 +8,13 @@
 
 #include "libParanumal.hpp"
 
+// std::to_string might be not accurate enough 
+static string to_string_f(double a) {
+  stringstream s;
+  s << std::scientific << a;
+  return s.str();
+}
+
 void runPlan4(ins_t *ins);
 void restartRead(ins_t *ins, setupAide &options);
 void report(ins_t *ins, dfloat time, int tstep);

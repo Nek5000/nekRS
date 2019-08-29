@@ -315,6 +315,17 @@ int main(int argc, char **argv)
     string restartFile;
     options.getArgs("RESTART FILE NAME", restartFile);
     nek_restart((char*)restartFile.c_str());
+
+    float startTime = *(nekData.time);
+    options.setArgs("START TIME", to_string_f(startTime));
+    int numSteps;
+    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
+      double dt, endTime;
+      options.getArgs("DT", dt);
+      options.getArgs("FINAL TIME", endTime);
+      endTime += startTime + dt;
+      options.setArgs("FINAL TIME", to_string_f(endTime));
+    }
   }
 
   // setup libP
@@ -335,10 +346,7 @@ int main(int argc, char **argv)
   // set initial condition
   for (int n = 0; n < mesh->Np*mesh->Nelements; ++n) ins->P[n] = 0;
   ins->o_P.copyFrom(ins->P);
-  if(readRestartFile){
-    nek_copyTo(ins, ins->startTime); 
-    ins->NtimeSteps = (ins->finalTime - ins->startTime)/ins->dt; 
-  }
+  if(readRestartFile) nek_copyTo(ins, ins->startTime);
 
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
