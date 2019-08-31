@@ -335,8 +335,8 @@ int buildNekInterface(const char *casename, int nFields, int N, int np) {
 
   char ver[10];
   int nelgv, nelgt, ndim;
-  sscanf(buf, "%5s %9d %1d %9d", ver, &nelgv, &ndim, &nelgt);
-  int lelt = nelgt/np + 1;
+  sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
+  int lelt = nelgt/np + 2;
   int ldimt = nFields;
   mkSIZE(N+1, N+1, lelt, nelgt, ndim, np, ldimt);
 
