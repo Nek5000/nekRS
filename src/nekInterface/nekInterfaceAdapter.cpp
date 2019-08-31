@@ -238,6 +238,8 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
       sprintf(line, "      parameter (lgmres=%d)\n", 1);
     } else if(strstr(line, "parameter (lorder=") != NULL) {
       sprintf(line, "      parameter (lorder=%d)\n", 1);
+    } else if(strstr(line, "parameter (lelr=") != NULL) {
+      sprintf(line, "      parameter (lelr=%d)\n", 128*lelt);
     }
 
     strcpy(sizeFile + count, line);
