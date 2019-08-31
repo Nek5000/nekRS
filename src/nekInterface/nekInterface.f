@@ -34,6 +34,8 @@ c-----------------------------------------------------------------------
          ptr = loc(param(1))
       elseif (id .eq. 'nelt') then 
          ptr = loc(nelt)
+      elseif (id .eq. 'nelv') then 
+         ptr = loc(nelv)
       elseif (id .eq. 'ndim') then 
          ptr = loc(ndim)
       elseif (id .eq. 'nx1') then 
@@ -203,7 +205,7 @@ c
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
-      call set_vert(glo_num,ngv,2,nelt,vertex,.false.)
+      call set_vert(glo_num,ngv,2,nelv,vertex,.false.)
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3

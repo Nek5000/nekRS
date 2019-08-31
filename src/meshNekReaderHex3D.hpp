@@ -48,8 +48,8 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
   mesh->Nverts = 8;
   mesh->Nfaces = 2*mesh->dim;
   mesh->NfaceVertices = 4;
-  mesh->Nelements = nekData.nelt;
-  mesh->Nnodes = nekData.ngv;
+  mesh->Nelements = nekData.nelv;
+  mesh->Nnodes = nekData.ngv; /* global number of vertices */
 
   const int faceVertices[6][4] = {{0,1,2,3},{0,1,5,4},{1,2,6,5},
                                   {2,3,7,6},{3,0,4,7},{4,5,6,7}};

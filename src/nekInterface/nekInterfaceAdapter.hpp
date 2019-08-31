@@ -46,7 +46,7 @@ typedef struct {
   /* dimension of the problem */
   int ndim;
   /* local problem size */
-  int nelt;
+  int nelv, nelt;
   /* polynomial order + 1*/
   int nx1;
 

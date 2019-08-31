@@ -392,6 +392,7 @@ int nek_setup(MPI_Comm c, const char *casename_, setupAide &options) {
 
   nekData.ndim = *(int *) nek_ptr("ndim");
   nekData.nelt = *(int *) nek_ptr("nelt");
+  nekData.nelv = *(int *) nek_ptr("nelv");
   nekData.nx1 =  *(int *) nek_ptr("nx1");
 
   nekData.vx = (double *) nek_ptr("vx");
