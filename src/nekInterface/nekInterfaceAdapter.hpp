@@ -31,6 +31,8 @@ typedef struct {
   double *pr;
   double *t;
 
+  int ifgetu, ifgetp;
+
   double *cbscnrs;
 
   /* global vertex ids */
@@ -76,7 +78,7 @@ void*  nek_ptr(const char *id);
 void   nek_outfld(void);
 void   nek_uic(int ifield);
 void   nek_end(void);
-void   nek_restart(char *rfile);
+void   nek_restart(setupAide &options);
 void   nek_map_m_to_n(double *a, int na, double *b, int nb);
 void   nek_outpost(double *v1, double *v2, double *v3, double *vp, double *vt, char *name);
 int    nek_lglel(int e);

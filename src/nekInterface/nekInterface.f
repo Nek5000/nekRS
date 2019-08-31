@@ -237,17 +237,23 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_restart(rfile,l)
+      subroutine nekf_restart(rfile,l, getu, getp)
 
       character*(l) rfile
+      integer getu, getp
 
       include 'SIZE'
+      include 'RESTART'
       include 'INPUT'
 
       call blank(initc(1),132)
       call chcopy(initc(1),rfile,l)
-      !call restart(1)
       call setics()
+
+      getu = 0
+      getp = 0
+      if(ifgetu) getu = 1
+      if(ifgetp) getp = 1
 
       return
       end

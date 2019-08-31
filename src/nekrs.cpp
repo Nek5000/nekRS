@@ -280,6 +280,8 @@ int main(int argc, char **argv)
   options.getArgs("POLYNOMIAL DEGREE", N);
   options.getArgs("UDF FILE", udfFile);
   options.getArgs("NEK CASENAME", nekCasename);
+  int readRestartFile = 0;
+  options.getArgs("RESTART FROM FILE", readRestartFile);
   setDataFile(options);
 
   if (buildOnly){
@@ -309,24 +311,7 @@ int main(int argc, char **argv)
   string usrFileName = "./" + nekCasename + ".usr"; 
   nek_setup(comm, usrFileName.c_str(), options);
 
-  int readRestartFile = 0;
-  options.getArgs("RESTART FROM FILE", readRestartFile);
-  if(readRestartFile){
-    string restartFile;
-    options.getArgs("RESTART FILE NAME", restartFile);
-    nek_restart((char*)restartFile.c_str());
-
-    float startTime = *(nekData.time);
-    options.setArgs("START TIME", to_string_f(startTime));
-    int numSteps;
-    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
-      double dt, endTime;
-      options.getArgs("DT", dt);
-      options.getArgs("FINAL TIME", endTime);
-      endTime += startTime + dt;
-      options.setArgs("FINAL TIME", to_string_f(endTime));
-    }
-  }
+  if(readRestartFile) nek_restart(options);
 
   // setup libP
   mesh_t *mesh = new mesh_t[1];
@@ -344,26 +329,37 @@ int main(int argc, char **argv)
   }
 
   // set initial condition
-  for (int n = 0; n < mesh->Np*mesh->Nelements; ++n) ins->P[n] = 0;
-  ins->o_P.copyFrom(ins->P);
-  if(readRestartFile) nek_copyTo(ins, ins->startTime);
-
-  if(rank == 0) {
-    cout << "\nsettings:\n" << endl;
-    cout << ins->vOptions << endl;
+  for (int n = 0; n < mesh->Np*mesh->Nelements; ++n) {
+    ins->U[0*ins->fieldOffset + n] = 0;
+    ins->U[1*ins->fieldOffset + n] = 0;
+    ins->U[2*ins->fieldOffset + n] = 0;
+    ins->P[n] = 0;
   }
-
+  if(readRestartFile) {
+    dlong Nlocal = mesh->Nelements*mesh->Np;
+    if (nekData.ifgetu) {
+      dfloat *vx = ins->U + 0*ins->fieldOffset;
+      dfloat *vy = ins->U + 1*ins->fieldOffset;
+      dfloat *vz = ins->U + 2*ins->fieldOffset;
+      memcpy(vx, nekData.vx, sizeof(dfloat)*Nlocal);
+      memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
+      memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
+    }
+    if (nekData.ifgetp) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+  }
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
 
-  fflush(stdout);
   if(rank == 0) {
+    cout << "\nsettings:\n" << endl;
+    cout << ins->vOptions << endl;
     cout << "\ninitialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
     cout << "starting time loop" << endl;
   }
+  fflush(stdout);
 
   // run time stepper
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();

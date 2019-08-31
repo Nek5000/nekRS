@@ -15,7 +15,7 @@ void UDF_LoadKernels(ins_t *ins)
 void UDF_Setup(ins_t *ins)
 {
   // get IC from nek
-  nek_copyTo(ins, ins->startTime);
+  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
   nek_userchk();
 }
 

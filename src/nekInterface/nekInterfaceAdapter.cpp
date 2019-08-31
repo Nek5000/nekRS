@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <fstream>
-#include "libParanumal.hpp"
+#include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 nekdata_private nekData;
@@ -21,7 +21,7 @@ static void (*nek_ptr_ptr)(void **, char *, int*);
 static void (*nek_outfld_ptr)(void);
 static void (*nek_uic_ptr)(int *);
 static void (*nek_end_ptr)(void);
-static void (*nek_restart_ptr)(char *, int *);
+static void (*nek_restart_ptr)(char *, int *, int *, int *);
 static void (*nek_map_m_to_n_ptr)(double *a, int *na, double *b, int *nb, int *if3d,
              double *w, int *nw);
 static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
@@ -52,9 +52,26 @@ void nek_end(){
   (*nek_end_ptr)();
 }
 
-void nek_restart(char *rfile){
-  int len = strlen(rfile);
-  (*nek_restart_ptr)(rfile, &len);
+void nek_restart(setupAide &options){
+  std::string str1;
+  options.getArgs("RESTART FILE NAME", str1);
+  std::string str2(str1.size(), '\0');
+  std::replace_copy(str1.begin(), str1.end(), str2.begin(), '+', ' ');
+  int len = str2.length();
+
+  (*nek_restart_ptr)((char *)str2.c_str(), &len,
+                     &nekData.ifgetu, &nekData.ifgetp);
+
+  float startTime = *(nekData.time);
+  options.setArgs("START TIME", to_string_f(startTime));
+  int numSteps;
+  if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
+    double dt, endTime;
+    options.getArgs("DT", dt);
+    options.getArgs("FINAL TIME", endTime);
+    endTime += startTime + dt;
+    options.setArgs("FINAL TIME", to_string_f(endTime));
+  }
 }
 
 void nek_map_m_to_n(double *a, int na, double *b, int nb) {
@@ -145,7 +162,8 @@ void set_function_handles(char *session_in,int verbose) {
   check_error(dlerror());
   nek_outfld_ptr = (void (*)(void)) dlsym(handle, fname("nekf_outfld"));
   check_error(dlerror());
-  nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
+  nek_restart_ptr = (void (*)(char *, int *, int *, int *)) 
+                    dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());
   nek_cfl_ptr = (double (*)(double *, double *, double *, double *)) dlsym(handle,
 	fname("nekf_cfl"));
