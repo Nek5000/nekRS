@@ -35,7 +35,7 @@ namespace libParanumal {
   using ::insPressureSolve;
   using ::insPressureUpdate;
   using ::insSubCycle;
-  using ::insNekSubCycle;
+  using ::insStrongSubCycle;
   using ::insAdvection;
   using ::insRestartWrite;
   using ::insReport;

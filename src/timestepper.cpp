@@ -111,7 +111,7 @@ void runPlan4(ins_t *ins){
     dlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
 
     if(ins->Nsubsteps) {
-      insNekSubCycle(ins, time, ins->Nstages, ins->o_U, ins->o_NU);
+      libParanumal::insStrongSubCycle(ins, time, ins->Nstages, ins->o_U, ins->o_NU);
     } else {
       libParanumal::insAdvection(ins, time, ins->o_U, ins->o_NU);
     }
