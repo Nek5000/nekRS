@@ -29,7 +29,7 @@ static occa::kernel scalarMultiplyKernel;
 bool buildKernelCalled = 0;
 bool setupCalled = 0;
 
-void buildKernel(ins_t *ins)
+inline void buildKernel(ins_t *ins)
 {
   mesh_t *mesh = ins->mesh; 
 
@@ -49,7 +49,7 @@ void buildKernel(ins_t *ins)
   }
 } 
 
-void copy()
+inline void copy()
 {
   mesh_t *mesh = ins->mesh; 
   const int bc = 2;
@@ -88,7 +88,7 @@ void copy()
 }
 
 
-void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
+inline void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
 {
   ins = ins_;
   o_wrk = o_wrk_; 
