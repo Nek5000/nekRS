@@ -69,65 +69,64 @@ void copy()
   // rescale
   getBCFluxKernel(mesh->Nelements, bc, ins->fieldOffset, o_wrk,
                   mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
- 
+
   const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp; 
   sumReductionKernel(NfpTotal, o_area, o_flux, o_tmp1, o_tmp2); 
+
   o_tmp1.copyTo(tmp1);
   o_tmp2.copyTo(tmp2);
   dfloat sbuf[2] = {0,0};
-  for(int n=0; n<ins->Nblock; n++){
+  for(int n=0; n<blockSize; n++){
     sbuf[0] += tmp1[n]; 
     sbuf[1] += tmp2[n]; 
   }
   MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, mesh->comm); 
 
   const dfloat scale = -wbar*sbuf[0] / sbuf[1]; 
+  //printf("here: %f %f %f\n", scale, sbuf[0], sbuf[1]);
   scalarMultiplyKernel(ins->NVfields*ins->Ntotal, scale, o_wrk);
 }
 
 
-void setup(ins_t *ins_, occa::memory o_wrk_, const int nelSlab, const int slabIdSrc)
+void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
 {
   ins = ins_;
   o_wrk = o_wrk_; 
   mesh_t *mesh = ins->mesh;
 
-  const int slabIdDst = 0;
-  const int offset = (slabIdSrc - slabIdDst) * nelSlab;
-  const int egStartSrc = slabIdSrc * nelSlab;   
-  const int egStartDst = slabIdDst * nelSlab;   
   const int Ntotal = mesh->Np * mesh->Nelements;
-
   hlong *ids = (hlong *) calloc(Ntotal, sizeof(hlong));
 
   for (int e=0; e < mesh->Nelements; e++){
-    for (int n=0; n < mesh->Np; n++) 
-      ids[e*mesh->Np + n] = 0; // gs noop
-
+    // establish a unique numbering
     const int eg = nek_lglel(e); // 0-based
-
-    if (eg >= egStartSrc && eg < egStartSrc + nelSlab)
-      for (int n=0; n < mesh->Np; n++) {
-        ids[e*mesh->Np + n] = (eg-offset)*mesh->Np+n+1;
-      }
-    if (eg >= egStartDst && eg < egStartDst + nelSlab)
-      for (int n=0; n < mesh->Np; n++)  {
-        ids[e*mesh->Np + n] = (eg*mesh->Np+n+1); 
-      }
+    for (int n=0; n < mesh->Np; n++)  {
+      ids[e*mesh->Np + n] = eg*mesh->Np + n+1; 
+    }
+    
+    for (int n=0; n < mesh->Nfp*mesh->Nfaces; n++) {
+      const int f = n/mesh->Nfp;
+      const int idM = ins->mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
+      const int id  = ins->mesh->EToB[f + e*mesh->Nfaces];
+      if (id == 2) ids[idM] += eOffset*mesh->Np; 
+    }
+   
   }
 
   ogs = ogsSetup(Ntotal, ids, mesh->comm, 1, mesh->device);
   free(ids);
 
-  tmp1   = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
-  o_tmp1 = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp1);
-  tmp2   = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
-  o_tmp2 = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp2);
-
   const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp;
+  const int ntmp = (NfpTotal+blockSize-1)/blockSize;
+  tmp1   = (dfloat *) calloc(ntmp, sizeof(dfloat));
+  tmp2   = (dfloat *) calloc(ntmp, sizeof(dfloat));
+
+  o_tmp1 = mesh->device.malloc(ntmp*sizeof(dfloat), tmp1);
+  o_tmp2 = mesh->device.malloc(ntmp*sizeof(dfloat), tmp2);
+
   flux   = (dfloat *)calloc(NfpTotal, sizeof(dfloat));
-  o_flux = mesh->device.malloc(NfpTotal*sizeof(dfloat), flux);
   area   = (dfloat *)calloc(NfpTotal, sizeof(dfloat));
+  o_flux = mesh->device.malloc(NfpTotal*sizeof(dfloat), flux);
   o_area = mesh->device.malloc(NfpTotal*sizeof(dfloat), area);
 }
 

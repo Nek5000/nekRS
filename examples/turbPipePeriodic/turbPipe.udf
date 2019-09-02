@@ -46,9 +46,6 @@ void UDF_Setup(ins_t *ins)
 
   // assign function pointer to drive flow by constant mean pressure gradient
   udf.velocityForce = &userf;
-
-  // reset time
-  ins->startTime = 0;
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
