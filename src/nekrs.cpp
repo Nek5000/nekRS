@@ -88,7 +88,10 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
     if(rank == 0) udfBuild(udfFile.c_str()); 
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
+    *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",1);
   } 
+
+  if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
   if (rank == 0) buildNekInterface(nekCasename.c_str(), 1, N, npTarget);
@@ -372,7 +375,7 @@ int main(int argc, char **argv)
 
   if(rank == 0) { 
     cout << "\nreached final time " << ins->finalTime << " in " 
-         << tElapsed << " seconds" << endl; 
+         << tElapsed << " seconds" << endl 
          << "\nEnd." << endl;
   }
   MPI_Finalize();
