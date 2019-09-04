@@ -64,8 +64,9 @@ message("-- Installing libParanumal")
 install_batch_if_newer(@LIBPDIR@ @CMAKE_INSTALL_PREFIX@/libparanumal)
 install_batch_if_newer(@OGSDIR@ @CMAKE_INSTALL_PREFIX@/gatherScatter)
 install_batch_if_newer(@PARALMONDDIR@ @CMAKE_INSTALL_PREFIX@/parAlmond)
-install_batch_if_newer(@INSDIR@ @CMAKE_INSTALL_PREFIX@/ins)
 install_batch_if_newer(@ELLIPTICDIR@ @CMAKE_INSTALL_PREFIX@/elliptic)
+install_batch_if_newer(@CDSDIR@ @CMAKE_INSTALL_PREFIX@/cds)
+install_batch_if_newer(@INSDIR@ @CMAKE_INSTALL_PREFIX@/ins)
 
 ## nek5000
 message("-- Installing nek5000")
