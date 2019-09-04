@@ -363,14 +363,18 @@ int main(int argc, char **argv)
 
   // run time stepper
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
+  MPI_Pcontrol(1);
 
   if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runPlan4(ins); 
 
+  MPI_Pcontrol(0);
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;
-  if(rank == 0) 
-    cout << "\nreached final time " << ins->finalTime << " in " << tElapsed << " seconds" << endl; 
 
-  if(rank == 0) cout << "\nEnd." << endl;
+  if(rank == 0) { 
+    cout << "\nreached final time " << ins->finalTime << " in " 
+         << tElapsed << " seconds" << endl; 
+         << "\nEnd." << endl;
+  }
   MPI_Finalize();
 
   return 0;
