@@ -375,7 +375,7 @@ int main(int argc, char **argv)
 
   if(rank == 0) { 
     cout << "\nreached final time " << ins->finalTime << " in " 
-         << tElapsed << " seconds" << endl 
+         << tElapsed << " seconds" << endl
          << "\nEnd." << endl;
   }
   MPI_Finalize();
