@@ -17,10 +17,12 @@ set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
 set(ALMONDDIR   ${NEKRS_INSTALL_DIR}/parAlmond)
 set(ELLIPTICDIR ${NEKRS_INSTALL_DIR}/elliptic)
+set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
 set(INSDIR      ${NEKRS_INSTALL_DIR}/ins)
 set(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   ${INSDIR} 
+  ${CDSDIR}
   ${HDRDIR}
   ${OGSDIR}
   ${GSDIR}
