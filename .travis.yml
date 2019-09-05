@@ -23,10 +23,10 @@ jobs:
      script: cd ethier && nrspre ethier 1  
    - stage: test
      name: "ethier default"
-     script: cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 1 
+     script: source $HOME/.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_INSTALL_DIR/examples/ethier && mpirun -np 2 nekrs --setup ethier --cimode 1 
    - stage: test
      name: "ethier oifs"
-     script: cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 2 
+     script: source $HOME/.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_INSTALL_DIR/examples/ethier && mpirun -np 2 nekrs --setup ethier --cimode 2 
 
 before_install:
   - sudo apt-get update -qq
@@ -35,5 +35,3 @@ before_install:
 install:
 
 before_script:
-  - source $HOME/.local/nekrs/bin/nekrs.bashrc
-  - cd $NEKRS_INSTALL_DIR/examples 
