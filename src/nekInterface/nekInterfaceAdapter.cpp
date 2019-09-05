@@ -62,14 +62,14 @@ void nek_restart(setupAide &options){
   (*nek_restart_ptr)((char *)str2.c_str(), &len,
                      &nekData.ifgetu, &nekData.ifgetp);
 
-  float startTime = *(nekData.time);
+  double startTime = *(nekData.time);
   options.setArgs("START TIME", to_string_f(startTime));
   int numSteps;
   if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
-    double dt, endTime;
+    dfloat dt, endTime;
     options.getArgs("DT", dt);
     options.getArgs("FINAL TIME", endTime);
-    endTime += startTime + dt;
+    endTime += startTime;
     options.setArgs("FINAL TIME", to_string_f(endTime));
   }
 }
