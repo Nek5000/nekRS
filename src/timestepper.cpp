@@ -119,6 +119,8 @@ void runPlan4(ins_t *ins){
     insCurlCurl(ins, time, ins->o_U, ins->o_NC);
 
     ins->setScalarKernel(ins->Ntotal*ins->NVfields, 0.0, ins->o_FU);
+    if(udf.velocityForce) udf.velocityForce(ins, time+ins->dt, ins->o_U, ins->o_FU);
+
     if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
       ins->filterKernel(mesh->Nelements,
                         ins->o_filterMT,
@@ -126,8 +128,6 @@ void runPlan4(ins_t *ins){
                         ins->fieldOffset,
                         ins->o_U,
                         ins->o_FU);
-
-    if(udf.velocityForce) udf.velocityForce(ins, time+ins->dt, ins->o_U, ins->o_FU);
 
     insPressureRhs  (ins, time+ins->dt, ins->Nstages);
     insPressureSolve(ins, time+ins->dt, ins->Nstages); 

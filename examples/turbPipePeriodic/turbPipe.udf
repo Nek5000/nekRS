@@ -24,7 +24,7 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
   dfloat *ffx = ins->FU + 0*ins->fieldOffset;
   dfloat *ffy = ins->FU + 1*ins->fieldOffset;
   dfloat *ffz = ins->FU + 2*ins->fieldOffset;
-  nek_nekuf(ffx, ffy, ffz);
+  nek_uf(ffx, ffy, ffz);
   o_FU.copyFrom(ins->FU, ins->NVfields*ins->Ntotal*sizeof(dfloat));
 */
 }
