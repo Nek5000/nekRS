@@ -180,7 +180,7 @@ void setDataFile(libParanumal::setupAide &options)
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
 
-  string dataFile = cache_dir + "/" + oklFile;
+  string dataFile = oklFile;
 
   if (rank == 0) {
     sprintf(buf,"cp -f %s %s", oklFile.c_str(), cache_dir.c_str());
