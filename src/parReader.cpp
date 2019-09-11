@@ -24,8 +24,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("SUBCYCLING STEPS", string("0"));
 
-  options.setArgs("NEK CASENAME", casename);
-  options.setArgs("UDF OKL FILE", casename + ".okl");
+  options.setArgs("CASENAME", casename);
+  options.setArgs("UDF OKL FILE", casename + ".oudf");
   options.setArgs("UDF FILE", casename + ".udf");
 
   options.setArgs("THREAD MODEL", "SERIAL");

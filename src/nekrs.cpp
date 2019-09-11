@@ -79,7 +79,7 @@ int buildOnly = 0;  // hack for libParanumal::meshPhysicalNodes()
 int ciMode = 0;
 
 void dryRun(libParanumal::setupAide &options, string udfFile, 
-            string nekCasename,int N, int npTarget)
+            string casename,int N, int npTarget)
 {
   if (rank == 0) cout << "performing dry-run to build code ...\n" << endl;
 
@@ -88,13 +88,13 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
     if(rank == 0) udfBuild(udfFile.c_str()); 
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
-    *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",1);
+    *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   } 
 
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
-  if (rank == 0) buildNekInterface(nekCasename.c_str(), 1, N, npTarget);
+  if (rank == 0) buildNekInterface(casename.c_str(), 1, N, npTarget);
   MPI_Barrier(comm);
 
   // jit compile libP kernels
@@ -179,11 +179,12 @@ void setDataFile(libParanumal::setupAide &options)
 
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-
-  string dataFile = oklFile;
+  string casename;
+  options.getArgs("CASENAME", casename);
+  string dataFile = cache_dir + "/" + casename + ".okl";
 
   if (rank == 0) {
-    sprintf(buf,"cp -f %s %s", oklFile.c_str(), cache_dir.c_str());
+    sprintf(buf,"cp -f %s %s", oklFile.c_str(), dataFile.c_str());
     system(buf);
 
     std::ofstream s;
@@ -275,20 +276,20 @@ int main(int argc, char **argv)
 
   // read rc file + set defaults
   int N;
-  string udfFile, nekCasename;
+  string udfFile, casename;
   mkdir(cache_dir.c_str(),0755);
 
   libParanumal::setupAide options = parRead(setupFile, comm);
 
   options.getArgs("POLYNOMIAL DEGREE", N);
   options.getArgs("UDF FILE", udfFile);
-  options.getArgs("NEK CASENAME", nekCasename);
+  options.getArgs("CASENAME", casename);
   int readRestartFile = 0;
   options.getArgs("RESTART FROM FILE", readRestartFile);
   setDataFile(options);
 
   if (buildOnly){
-    dryRun(options, udfFile, nekCasename, N, sizeTarget);
+    dryRun(options, udfFile, casename, N, sizeTarget);
     EXIT(0);
   }
 
@@ -304,14 +305,14 @@ int main(int argc, char **argv)
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
-  if(rank == 0) buildNekInterface(nekCasename.c_str(), 1, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), 1, N, size);
   MPI_Barrier(comm);
 
   if(rank == 0 && ciMode) 
     cout << "performing continous integration tests\n" << endl;
 
   // boot up nek
-  string usrFileName = "./" + nekCasename + ".usr"; 
+  string usrFileName = "./" + casename + ".usr"; 
   nek_setup(comm, usrFileName.c_str(), options);
 
   if(readRestartFile) nek_restart(options);
