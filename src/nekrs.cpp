@@ -276,18 +276,14 @@ int main(int argc, char **argv)
   MPI_Barrier(comm);
 #endif
 
-  // read rc file + set defaults
-  int N;
-  string udfFile, casename;
-  mkdir(cache_dir.c_str(),0755);
-
+  // read settings
   libParanumal::setupAide options = parRead(setupFile, comm);
 
+  int N;
+  string udfFile, casename;
   options.getArgs("POLYNOMIAL DEGREE", N);
   options.getArgs("UDF FILE", udfFile);
   options.getArgs("CASENAME", casename);
-  int readRestartFile = 0;
-  options.getArgs("RESTART FROM FILE", readRestartFile);
   setDataFile(options);
 
   if (buildOnly){
@@ -317,6 +313,8 @@ int main(int argc, char **argv)
   string usrFileName = "./" + casename + ".usr"; 
   nek_setup(comm, usrFileName.c_str(), options);
 
+  int readRestartFile;
+  options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_restart(options);
 
   // setup libP
@@ -375,6 +373,7 @@ int main(int argc, char **argv)
 
   MPI_Pcontrol(0);
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;
+
 
   if(rank == 0) { 
     cout << "\nreached final time " << ins->finalTime << " in " 

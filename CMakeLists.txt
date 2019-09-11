@@ -252,7 +252,6 @@ set(SRC src/nekrs.cpp
     src/udf/udf.cpp
     src/meshPhysicalNodesHex3D.cpp
     src/occaDeviceConfig.cpp
-    src/report.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
     ## To get fortran flags

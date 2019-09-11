@@ -108,6 +108,15 @@ void runPlan4(ins_t *ins){
 
     dfloat time = ins->startTime + tstep*ins->dt;
 
+    ins->isOutputStep = 0;
+    nek_ifoutfld(0);
+    if (ins->outputStep > 0) {
+      if (((tstep+1)%(ins->outputStep))==0 ||  tstep+1 == ins->NtimeSteps) {
+        ins->isOutputStep = 1;
+        nek_ifoutfld(1);
+      }
+    }
+
     dlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
 
     if(ins->Nsubsteps) {
@@ -165,20 +174,15 @@ void runPlan4(ins_t *ins){
     }
 
     dfloat cfl = insComputeCfl(ins, time+ins->dt, tstep+1);
-    if (mesh->rank==0)
+
+    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
+    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
+    if (ins->isOutputStep) nek_outfld(); 
+
+    if (mesh->rank==0) {
       printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
         tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-time0);
-
-    if (ins->outputStep > 0)
-      if (((tstep+1)%(ins->outputStep))==0  ||  tstep+1 == ins->NtimeSteps) {
-        nek_ifoutfld(1);
-        nek_userchk();
-        report(ins, time+ins->dt, tstep+1);
-        nek_ifoutfld(0);
-      }
-
-    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
-
-    if (mesh->rank==0 && (tstep+1)%5==0) fflush(stdout);
+      if ((tstep+1)%5==0) fflush(stdout);
+    }
   }
 }

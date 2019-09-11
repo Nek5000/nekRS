@@ -27,4 +27,5 @@ void UDF_Setup(ins_t *ins)
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
 {
+  if (ins->isOutputStep) nek_userchk();
 }
