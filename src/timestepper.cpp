@@ -170,8 +170,12 @@ void runPlan4(ins_t *ins){
         tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-time0);
 
     if (ins->outputStep > 0)
-      if (((tstep+1)%(ins->outputStep))==0  ||  tstep+1 == ins->NtimeSteps)
+      if (((tstep+1)%(ins->outputStep))==0  ||  tstep+1 == ins->NtimeSteps) {
+        nek_ifoutfld(1);
+        nek_userchk();
         report(ins, time+ins->dt, tstep+1);
+        nek_ifoutfld(0);
+      }
 
     if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
 

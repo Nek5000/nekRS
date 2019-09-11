@@ -36,7 +36,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      call lambda2(t) 
+      if (ifoutfld) call lambda2(t) 
 
       return
       end

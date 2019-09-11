@@ -85,6 +85,7 @@ int    nek_lglel(int e);
 double nek_cfl(double *u, double *v, double *w, double dt);
 void   nek_uf(double *u, double *v, double *w);
 int    nek_setup(MPI_Comm c, const char *casename_, setupAide &options);
+void   nek_ifoutfld(int i);
 
 #ifdef __cplusplus
 }

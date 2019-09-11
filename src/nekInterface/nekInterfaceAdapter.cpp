@@ -30,6 +30,7 @@ static double (*nek_cfl_ptr)(double *, double *, double *, double *);
 static void (*nek_uf_ptr)(double *, double *, double *);
 static int (*nek_lglel_ptr)(int *);
 static void (*nek_setup_ptr)(int *, char *, char *, int, int);
+static void (*nek_ifoutfld_ptr)(int *);
 
 void noop_func(void) {}
 
@@ -102,6 +103,13 @@ int nek_lglel(int e)
   return (*nek_lglel_ptr)(&ee) - 1;
 }
 
+void nek_ifoutfld(int i)
+{
+  (*nek_ifoutfld_ptr)(&i);
+}
+
+
+
 DEFINE_USER_FUNC(usrdat)
 DEFINE_USER_FUNC(usrdat2)
 DEFINE_USER_FUNC(usrdat3)
@@ -173,7 +181,7 @@ void set_function_handles(char *session_in,int verbose) {
   check_error(dlerror());
   nek_lglel_ptr = (int (*)(int *)) dlsym(handle,fname("nekf_lglel"));
   check_error(dlerror());
-
+  nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
@@ -239,7 +247,7 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
     if(strstr(line, "parameter (lx1=") != NULL) {
       sprintf(line, "      parameter (lx1=%d)\n", lx1);
     } else if(strstr(line, "parameter (lxd=") != NULL) {
-      sprintf(line, "      parameter (lxd=%d)\n", 1);
+      sprintf(line, "      parameter (lxd=%d)\n", lxd);
     } else if(strstr(line, "parameter (lelt=") != NULL) {
       sprintf(line, "      parameter (lelt=%d)\n", lelt);
     } else if(strstr(line, "parameter (lelg=") != NULL) {
@@ -310,7 +318,7 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
   fflush(stdout);
 }
 
-int buildNekInterface(const char *casename, int nFields, int N, int np) {
+int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   printf("building nek ... "); fflush(stdout);
 
   char buf[BUFSIZ];
@@ -337,8 +345,7 @@ int buildNekInterface(const char *casename, int nFields, int N, int np) {
   int nelgv, nelgt, ndim;
   sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
   int lelt = nelgt/np + 2;
-  int ldimt = nFields;
-  mkSIZE(N+1, N+1, lelt, nelgt, ndim, np, ldimt);
+  mkSIZE(N+1, 1, lelt, nelgt, ndim, np, ldimt);
 
   // Copy case.usr file to cache_dir
   sprintf(buf,"%s.usr",casename);

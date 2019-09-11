@@ -73,6 +73,8 @@ not be used for advertising or product endorsement purposes.
 #include "udf.hpp"
 #include "header.h"
 
+#define NEKLDIMT 2
+
 int rank, size;
 MPI_Comm comm;
 int buildOnly = 0;  // hack for libParanumal::meshPhysicalNodes() 
@@ -94,7 +96,7 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
-  if (rank == 0) buildNekInterface(casename.c_str(), 1, N, npTarget);
+  if (rank == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, npTarget);
   MPI_Barrier(comm);
 
   // jit compile libP kernels
@@ -305,7 +307,7 @@ int main(int argc, char **argv)
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
-  if(rank == 0) buildNekInterface(casename.c_str(), 1, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, size);
   MPI_Barrier(comm);
 
   if(rank == 0 && ciMode) 
