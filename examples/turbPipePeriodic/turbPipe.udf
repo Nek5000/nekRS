@@ -42,8 +42,6 @@ void UDF_Setup(ins_t *ins)
   // get IC from nek
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
 
-  nek_userchk();
-
   // assign function pointer to drive flow by constant mean pressure gradient
   udf.velocityForce = &userf;
 }

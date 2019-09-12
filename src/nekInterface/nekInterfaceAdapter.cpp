@@ -4,6 +4,8 @@
 #include "nekInterfaceAdapter.hpp"
 
 nekdata_private nekData;
+static int rank;
+static setupAide *options; 
 
 static void (*usrdat_ptr)(void);
 static void (*usrdat2_ptr)(void);
@@ -21,7 +23,7 @@ static void (*nek_ptr_ptr)(void **, char *, int*);
 static void (*nek_outfld_ptr)(void);
 static void (*nek_uic_ptr)(int *);
 static void (*nek_end_ptr)(void);
-static void (*nek_restart_ptr)(char *, int *, int *, int *);
+static void (*nek_restart_ptr)(char *, int *);
 static void (*nek_map_m_to_n_ptr)(double *a, int *na, double *b, int *nb, int *if3d,
              double *w, int *nw);
 static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
@@ -31,6 +33,7 @@ static void (*nek_uf_ptr)(double *, double *, double *);
 static int (*nek_lglel_ptr)(int *);
 static void (*nek_setup_ptr)(int *, char *, char *, int, int);
 static void (*nek_ifoutfld_ptr)(int *);
+static void (*nek_setics_ptr)(void);
 
 void noop_func(void) {}
 
@@ -53,25 +56,25 @@ void nek_end(){
   (*nek_end_ptr)();
 }
 
-void nek_restart(setupAide &options){
-  std::string str1;
-  options.getArgs("RESTART FILE NAME", str1);
-  std::string str2(str1.size(), '\0');
-  std::replace_copy(str1.begin(), str1.end(), str2.begin(), '+', ' ');
-  int len = str2.length();
+void nek_setic(void)
+{
+  int readRestartFile;
+  options->getArgs("RESTART FROM FILE", readRestartFile);
 
-  (*nek_restart_ptr)((char *)str2.c_str(), &len,
-                     &nekData.ifgetu, &nekData.ifgetp);
+  if (readRestartFile) {
+    std::string str1;
+    options->getArgs("RESTART FILE NAME", str1);
+    std::string str2(str1.size(), '\0');
+    std::replace_copy(str1.begin(), str1.end(), str2.begin(), '+', ' ');
+    int len = str2.length();
+    (*nek_restart_ptr)((char *)str2.c_str(), &len);
+  }
 
-  double startTime = *(nekData.time);
-  options.setArgs("START TIME", to_string_f(startTime));
-  int numSteps;
-  if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
-    dfloat dt, endTime;
-    options.getArgs("DT", dt);
-    options.getArgs("FINAL TIME", endTime);
-    endTime += startTime;
-    options.setArgs("FINAL TIME", to_string_f(endTime));
+  (*nek_setics_ptr)();
+
+  if (readRestartFile) {
+    double startTime = *(nekData.time);
+    options->setArgs("START TIME", to_string_f(startTime));
   }
 }
 
@@ -108,12 +111,20 @@ void nek_ifoutfld(int i)
   (*nek_ifoutfld_ptr)(&i);
 }
 
+void nek_setics(void)
+{
+  (*nek_setics_ptr)();
+}
 
+void nek_userchk(void)
+{
+  if(rank==0) printf("calling nek_userchk\n");
+  (*userchk_ptr)();
+}
 
 DEFINE_USER_FUNC(usrdat)
 DEFINE_USER_FUNC(usrdat2)
 DEFINE_USER_FUNC(usrdat3)
-DEFINE_USER_FUNC(userchk)
 DEFINE_USER_FUNC(uservp)
 DEFINE_USER_FUNC(userf)
 DEFINE_USER_FUNC(userq)
@@ -129,7 +140,7 @@ void check_error(char *error) {
   }
 }
 
-void set_function_handles(char *session_in,int verbose) {
+void set_function_handles(const char *session_in,int verbose) {
   // load lib{session_in}.so
   char lib_session[BUFSIZ], *error;
 
@@ -170,8 +181,7 @@ void set_function_handles(char *session_in,int verbose) {
   check_error(dlerror());
   nek_outfld_ptr = (void (*)(void)) dlsym(handle, fname("nekf_outfld"));
   check_error(dlerror());
-  nek_restart_ptr = (void (*)(char *, int *, int *, int *)) 
-                    dlsym(handle, fname("nekf_restart"));
+  nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());
   nek_cfl_ptr = (double (*)(double *, double *, double *, double *)) dlsym(handle,
 	fname("nekf_cfl"));
@@ -182,6 +192,7 @@ void set_function_handles(char *session_in,int verbose) {
   nek_lglel_ptr = (int (*)(int *)) dlsym(handle,fname("nekf_lglel"));
   check_error(dlerror());
   nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
+  nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
@@ -388,29 +399,23 @@ err:
   exit(EXIT_FAILURE);
 }
 
-int nek_setup(MPI_Comm c, const char *casename_, setupAide &options) {
-  MPI_Fint nek_comm = MPI_Comm_c2f(c);
-  int len;
-  char *last, *casename, *session_in, *path_in;
-
-  casename = (char *) calloc(strlen(casename_)+1,sizeof(char));
-  strncpy(casename,casename_,strlen(casename_));
-
-  last = strrchr(casename,'/');
-  len = last - casename;
-  path_in = (char *) calloc(len+1,sizeof(char));
-  strncpy(path_in,casename,len);
-  session_in = (char *) calloc(strlen(casename)-len-4,sizeof(char));
-  // 5 = 1 (/) + 4 (.usr)
-  strncpy(session_in,last+1,strlen(casename)-len-5);
-
-  int rank;
+int nek_setup(MPI_Comm c, setupAide &options_in) {
+  options = &options_in;
   MPI_Comm_rank(c,&rank);
-  set_function_handles(session_in,0);
-  (*nek_setup_ptr)(&nek_comm,path_in,session_in,strlen(path_in),strlen(session_in));
-  free(session_in);
-  free(path_in);
-  free(casename);
+  MPI_Fint nek_comm = MPI_Comm_c2f(c);
+
+  string casename;
+  options->getArgs("CASENAME", casename);
+
+  char buf[FILENAME_MAX];
+  getcwd(buf, sizeof(buf));
+  string cwd;
+  cwd.assign(buf);
+
+  set_function_handles(casename.c_str(), 0);
+
+  (*nek_setup_ptr)(&nek_comm, (char *)cwd.c_str(), (char *)casename.c_str(),
+                   cwd.length(), casename.length());
 
   nekData.param = (double *) nek_ptr("param");
   nekData.ifield = (int *) nek_ptr("ifield");
@@ -427,6 +432,9 @@ int nek_setup(MPI_Comm c, const char *casename_, setupAide &options) {
   nekData.vz = (double *) nek_ptr("vz");
   nekData.pr = (double *) nek_ptr("pr");
   nekData.t  = (double *) nek_ptr("t");
+
+  nekData.ifgetu = (int *) nek_ptr("ifgetu");
+  nekData.ifgetp = (int *) nek_ptr("ifgetp");
 
   nekData.unx = (double *) nek_ptr("unx");
   nekData.uny = (double *) nek_ptr("uny"); 
@@ -450,7 +458,7 @@ int nek_setup(MPI_Comm c, const char *casename_, setupAide &options) {
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
 
   dfloat nu;
-  options.getArgs("VISCOSITY", nu);
+  options->getArgs("VISCOSITY", nu);
   nekData.param[1] = nu;
 
   return 0;
@@ -483,6 +491,11 @@ void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
 
 void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
 
+  if(rank==0) {
+    printf("copying solution to nek\n");
+    fflush(stdout);
+  }
+
   mesh_t *mesh = ins->mesh;
 
   dlong Nlocal = mesh->Nelements*mesh->Np;
@@ -501,12 +514,18 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
 }
 
 void nek_ocopyTo(ins_t *ins, dfloat &time) {
+
   nek_copyTo(ins, time);
   ins->o_P.copyFrom(ins->P);
   ins->o_U.copyFrom(ins->U);
 }
 
 void nek_copyTo(ins_t *ins, dfloat &time) {
+
+  if(rank==0) {
+    printf("copying solution from nek\n");
+    fflush(stdout);
+  }
 
   mesh_t *mesh = ins->mesh;
 

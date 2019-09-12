@@ -96,7 +96,7 @@ void runPlan4(ins_t *ins){
 
   mesh_t *mesh = ins->mesh;
 
-  double time0 = MPI_Wtime();
+  double etime0 = MPI_Wtime();
   for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
 
     if(tstep<1) 
@@ -175,14 +175,17 @@ void runPlan4(ins_t *ins){
 
     dfloat cfl = insComputeCfl(ins, time+ins->dt, tstep+1);
 
-    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
-    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
-    if (ins->isOutputStep) nek_outfld(); 
-
     if (mesh->rank==0) {
       printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
-        tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-time0);
+        tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-etime0);
       if ((tstep+1)%5==0) fflush(stdout);
     }
+
+    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
+
+    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
+
+    if (ins->isOutputStep) nek_outfld(); 
+
   }
 }

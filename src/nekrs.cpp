@@ -281,9 +281,12 @@ int main(int argc, char **argv)
 
   int N;
   string udfFile, casename;
+  int readRestartFile;
   options.getArgs("POLYNOMIAL DEGREE", N);
   options.getArgs("UDF FILE", udfFile);
   options.getArgs("CASENAME", casename);
+  options.getArgs("RESTART FROM FILE", readRestartFile);
+
   setDataFile(options);
 
   if (buildOnly){
@@ -309,13 +312,23 @@ int main(int argc, char **argv)
   if(rank == 0 && ciMode) 
     cout << "performing continous integration tests\n" << endl;
 
-  // boot up nek
-  string usrFileName = "./" + casename + ".usr"; 
-  nek_setup(comm, usrFileName.c_str(), options);
+  // init nek
+  nek_setup(comm, options);
+  nek_setic();
+  nek_userchk();
 
-  int readRestartFile;
-  options.getArgs("RESTART FROM FILE", readRestartFile);
-  if(readRestartFile) nek_restart(options);
+  // enfore num steps
+  dfloat startTime;
+  options.getArgs("START TIME", startTime);
+  if(startTime > 0.0) {
+    int numSteps;
+    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) {
+      dfloat endTime;
+      options.getArgs("FINAL TIME", endTime);
+      endTime += startTime;
+      options.setArgs("FINAL TIME", to_string_f(endTime));
+    }
+  }
 
   // setup libP
   mesh_t *mesh = new mesh_t[1];
@@ -341,7 +354,7 @@ int main(int argc, char **argv)
   }
   if(readRestartFile) {
     dlong Nlocal = mesh->Nelements*mesh->Np;
-    if (nekData.ifgetu) {
+    if (*(nekData.ifgetu)) {
       dfloat *vx = ins->U + 0*ins->fieldOffset;
       dfloat *vy = ins->U + 1*ins->fieldOffset;
       dfloat *vz = ins->U + 2*ins->fieldOffset;
@@ -349,13 +362,14 @@ int main(int argc, char **argv)
       memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
       memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
     }
-    if (nekData.ifgetp) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+    if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   }
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
+  nek_copyFrom(ins, ins->startTime, 0);
 
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
@@ -375,6 +389,7 @@ int main(int argc, char **argv)
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;
 
 
+  // finalize
   if(rank == 0) { 
     cout << "\nreached final time " << ins->finalTime << " in " 
          << tElapsed << " seconds" << endl

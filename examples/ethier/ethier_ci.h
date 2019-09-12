@@ -8,6 +8,7 @@
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("7"));
+  options.setArgs("RESTART FROM FILE", string("0"));
   options.setArgs("VISCOSITY", string("0.01"));
   options.setArgs("FINAL TIME", string("1.0"));
   options.setArgs("DT", string("2e-4"));

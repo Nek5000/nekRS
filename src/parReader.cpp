@@ -36,6 +36,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("RESTART FROM FILE", "0");
   options.setArgs("FILTER STABILIZATION", "NONE");
 
+  options.setArgs("START TIME", "0.0");
+
   options.setArgs("VELOCITY KRYLOV SOLVER", "PCG");
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");

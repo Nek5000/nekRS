@@ -15,14 +15,7 @@ c-----------------------------------------------------------------------
 
       include 'SIZE'
       include 'TOTAL'
-
-      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
-      integer mid,mp,nekcomm,nekgroup,nekreal
-      common /nrs_vd/ glo_num((2**ldim)*lelt), ngv
-      integer*8 glo_num, ngv
-
-      COMMON /SCNRS/ SC_NRS(LX1*LY1*LZ1*LELT*7)
-      real SC_NRS
+      include 'NEKINTF'
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
@@ -96,6 +89,10 @@ c-----------------------------------------------------------------------
          ptr = loc(t(1,1,1,1,1)) 
       elseif (id .eq. 'time') then
          ptr = loc(time)
+      elseif (id .eq. 'ifgetu') then
+         ptr = loc(getu)
+      elseif (id .eq. 'ifgetp') then
+         ptr = loc(getp)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -109,20 +106,15 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
-c
-      include 'OPCTR'
-      include 'CTIMER'
+      include 'NEKINTF'
 
       integer comm_in
-      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
-      common /rdump/ ntdump
+      character session_in*(*),path_in*(*)
 
-      common /nrs_vd/ glo_num((2**ldim)*lelt), ngv
-      integer*8 glo_num, ngv
+      common /rdump/ ntdump
       common /ivrtx/ vertex ((2**ldim),lelt)
       integer vertex
 
-      character session_in*(*),path_in*(*)
       real rtest
       integer itest
       integer*8 itest8
@@ -210,13 +202,11 @@ c
       call usrdat3
       if(nio.eq.0) write(6,'(A,/)') ' done :: usrdat3'
 
-      ntdump=0
-
-      call setics
-
       call dofcnt
 
-      tinit = dnekclock_sync() - etimes
+      jp = 0 ! Set perturbation field count to 0 for baseline flow
+      p0thn = p0th
+      ntdump=0
 
       call flush(6)
 
@@ -236,10 +226,9 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_restart(rfile,l, getu, getp)
+      subroutine nekf_restart(rfile,l)
 
       character*(l) rfile
-      integer getu, getp
 
       include 'SIZE'
       include 'RESTART'
@@ -247,12 +236,6 @@ c-----------------------------------------------------------------------
 
       call blank(initc(1),132)
       call chcopy(initc(1),rfile,l)
-      call setics()
-
-      getu = 0
-      getp = 0
-      if(ifgetu) getu = 1
-      if(ifgetp) getp = 1
 
       return
       end
@@ -317,6 +300,22 @@ c-----------------------------------------------------------------------
 
       ifoutfld = .true.
       if (iswitch .eq. 0) ifoutfld = .false. 
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setics()
+
+      include 'SIZE'
+      include 'RESTART'
+      include 'NEKINTF'
+
+      call setics()
+      getu = 1
+      getp = 1
+    
+      if (.not. ifgetu) getu = 0 
+      if (.not. ifgetp) getp = 0
 
       return
       end

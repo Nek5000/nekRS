@@ -19,8 +19,6 @@ void UDF_Setup(ins_t *ins)
   // get IC from nek
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
 
-  nek_userchk();
-
   // setup scratch space
   ins->o_Wrk.free(); free(ins->Wrk);
   ins->Wrk   = (dfloat*) calloc(ins->NVfields*ins->Ntotal, sizeof(dfloat));

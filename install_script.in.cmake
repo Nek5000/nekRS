@@ -97,4 +97,4 @@ install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/nekInterface "*.hpp" @CMAKE_INSTALL
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl "*.okl" @CMAKE_INSTALL_PREFIX@/okl)
 
 install_files_if_newer(@CMAKE_SOURCE_DIR@/src/udf/CMakeLists.txt @CMAKE_INSTALL_PREFIX@/udf)
-install_files_if_newer("@CMAKE_SOURCE_DIR@/src/nekInterface/nekInterface.f;@CMAKE_SOURCE_DIR@/src/nekInterface/Makefile" @CMAKE_INSTALL_PREFIX@/nekInterface)
+install_files_if_newer("@CMAKE_SOURCE_DIR@/src/nekInterface/NEKINTF;@CMAKE_SOURCE_DIR@/src/nekInterface/nekInterface.f;@CMAKE_SOURCE_DIR@/src/nekInterface/Makefile" @CMAKE_INSTALL_PREFIX@/nekInterface)

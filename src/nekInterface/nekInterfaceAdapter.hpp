@@ -31,7 +31,7 @@ typedef struct {
   double *pr;
   double *t;
 
-  int ifgetu, ifgetp;
+  int *ifgetu, *ifgetp;
 
   double *cbscnrs;
 
@@ -65,7 +65,6 @@ extern "C" {
 DECLARE_USER_FUNC(usrdat)
 DECLARE_USER_FUNC(usrdat2)
 DECLARE_USER_FUNC(usrdat3)
-DECLARE_USER_FUNC(userchk)
 DECLARE_USER_FUNC(uservp)
 DECLARE_USER_FUNC(userf)
 DECLARE_USER_FUNC(userq)
@@ -78,14 +77,15 @@ void*  nek_ptr(const char *id);
 void   nek_outfld(void);
 void   nek_uic(int ifield);
 void   nek_end(void);
-void   nek_restart(setupAide &options);
 void   nek_map_m_to_n(double *a, int na, double *b, int nb);
 void   nek_outpost(double *v1, double *v2, double *v3, double *vp, double *vt, char *name);
 int    nek_lglel(int e);
 double nek_cfl(double *u, double *v, double *w, double dt);
 void   nek_uf(double *u, double *v, double *w);
-int    nek_setup(MPI_Comm c, const char *casename_, setupAide &options);
+int    nek_setup(MPI_Comm c, setupAide &options);
 void   nek_ifoutfld(int i);
+void   nek_setic(void);
+void   nek_userchk(void);
 
 #ifdef __cplusplus
 }
