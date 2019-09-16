@@ -1,0 +1,371 @@
+/*
+
+  The MIT License (MIT)
+
+  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+*/
+
+#define surfaceTerms(sk,face,m, i, j)                                   \
+  {									\
+    struct bcData bc;  \
+    bc.idM = vmapM[sk];         \
+    bc.nx = sgeo[sk*p_Nsgeo+p_NXID];        \
+    bc.ny = sgeo[sk*p_Nsgeo+p_NYID];        \
+    bc.nz = sgeo[sk*p_Nsgeo+p_NZID];        \
+    bc.time = time; \
+    bc.x   = x[bc.idM]; \
+    bc.y   = y[bc.idM]; \
+    bc.z   = z[bc.idM]; \
+    bc.fieldOffset = offset; \
+    const dfloat WsJ = sgeo[sk*p_Nsgeo+p_WSJID];      \
+                                                      \
+    bc.pxP=0.f; bc.pyP=0.f; bc.pzP=0.f; bc.pP=0.f;      \
+    bc.uM    = U[bc.idM+0*offset];  bc.vM   = U[bc.idM+1*offset];  bc.wM   = U[bc.idM+2*offset]; \
+    bc.wrk = (dfloat *) W; \
+                    \
+    dfloat pP = 0.f, pxP = 0.f, pyP = 0.f, pzP = 0.f;       \
+    bc.id = EToB[face+p_Nfaces*e];        \
+    if(bc.id==3) {                \
+      insPressureDirichletConditions3D(&bc); \
+      insPressureNeumannConditions3D(&bc); \
+      pP = bc.pP; pxP = bc.pxP;  pyP = bc.pyP;  pzP = bc.pzP;       \
+      for (int s=0;s<stage;s++) {         \
+      dfloat prkBn;           \
+      if (ARKswitch) {            \
+        prkBn = prkB[stage*(p_Nstages+1)+s];        \
+        bc.time = time-(c[stage]-c[s])*dt;        \
+      } else {              \
+        prkBn = prkB[s];            \
+        bc.time = time-(s+1)*dt;          \
+      }               \
+                  \
+      insPressureDirichletConditions3D(&bc); \
+      insPressureNeumannConditions3D(&bc); \
+                  \
+                  \
+        pP     -= prkBn*bc.pP;           \
+        pxP    -= prkBn*bc.pxP;            \
+        pyP    -= prkBn*bc.pyP;            \
+        pzP    -= prkBn*bc.pzP;            \
+      }                 \
+    }                 \
+                                                                        \
+    s_p  [m][j][i] = pP;						\
+    s_ndp[m][j][i] = -WsJ*(bc.nx*pxP + bc.ny*pyP + bc.nz*pzP);		\
+  }
+
+//RHS contributions for continuous solver
+@kernel void insPressureBCHex3D(const dlong Nelements,
+        const dlong offset,
+				@restrict const  dfloat *  ggeo,
+				@restrict const  dfloat *  sgeo,
+				@restrict const  dfloat *  D,
+				@restrict const  dfloat *  S,
+				@restrict const  dlong  *  vmapM,
+				@restrict const  int  *  EToB,
+				@restrict const  dlong  *  sMT,
+				const dfloat time,
+				const dfloat dt,
+				const int stage,
+				const int ARKswitch,
+				@restrict const  dfloat *  c,
+				@restrict const  dfloat *  prkB,
+				@restrict const  dfloat *  x,
+				@restrict const  dfloat *  y,
+				@restrict const  dfloat *  z,
+				@restrict const  int    *  mapB,
+        @restrict const  dfloat *  W,
+        @restrict const  dfloat *  U,
+				@restrict dfloat  *  rhsP){
+  
+  for(dlong e=0; e<Nelements; ++e; @outer(0)){
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_p[2][p_Nq][p_Nq];
+    @shared dfloat s_ndp[2][p_Nq][p_Nq];
+
+    @exclusive dfloat r_pt, r_Gpt;
+    @exclusive dfloat r_p[p_Nq]; // register array to hold u(i,j,0:N) private to thread
+    @exclusive dfloat r_rhs[p_Nq];// array for results Au(i,j,0:N)
+
+    dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22;
+
+    // for all face nodes of all elements
+    // face 0 & 5
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        //load D into local memory
+        // s_D[i][j] = d \phi_i at node j
+        s_D[j][i] = D[p_Nq*j+i]; // D is column major
+
+#pragma unroll p_Nq
+        for(int k=0;k<p_Nq;++k){
+          r_p[k] = 0.;
+          r_rhs[k] = 0.;
+        }
+
+        const dlong sk0 = e*p_Nfp*p_Nfaces + 0*p_Nfp + i + j*p_Nq;
+        const dlong sk5 = e*p_Nfp*p_Nfaces + 5*p_Nfp + i + j*p_Nq;
+
+        surfaceTerms(sk0,0,0,i,j);
+        surfaceTerms(sk5,5,1,i,j);
+      }
+    }
+
+    @barrier("local");
+
+    // face 0 & 5
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        //face 0
+        r_p[0] = s_p[0][j][i];
+
+	if(EToB[e*p_Nfaces+0]>0)
+	  r_rhs[0] += s_ndp[0][j][i];
+
+        //face 5
+        r_p[p_Nq-1] = s_p[1][j][i];
+
+	if(EToB[e*p_Nfaces+5]>0)
+	  r_rhs[p_Nq-1] += s_ndp[1][j][i];
+      }
+    }
+
+    @barrier("local");    
+
+    // face 1 & 3
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        const dlong sk1 = e*p_Nfp*p_Nfaces + 1*p_Nfp + i + k*p_Nq;
+        const dlong sk3 = e*p_Nfp*p_Nfaces + 3*p_Nfp + i + k*p_Nq;
+
+        surfaceTerms(sk1,1,0,i,k);
+        surfaceTerms(sk3,3,1,i,k);
+      }
+    }
+
+    @barrier("local");
+
+    // face 1 & 3
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        if (j==0) {//face 1
+#pragma unroll p_Nq
+          for (int k=0;k<p_Nq;k++) {
+            r_p[k] = s_p[0][k][i];
+
+	    if(EToB[e*p_Nfaces+1]>0)
+	      r_rhs[k] += s_ndp[0][k][i];
+          }
+        }
+        if (j==p_Nq-1) {//face 3
+#pragma unroll p_Nq
+          for (int k=0;k<p_Nq;k++) {
+            r_p[k] = s_p[1][k][i];
+
+	    if(EToB[e*p_Nfaces+3]>0)
+	      r_rhs[k] += s_ndp[1][k][i];
+          }
+        }
+      }
+    }
+
+    @barrier("local");    
+
+    // face 2 & 4
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        const dlong sk2 = e*p_Nfp*p_Nfaces + 2*p_Nfp + j + k*p_Nq;
+        const dlong sk4 = e*p_Nfp*p_Nfaces + 4*p_Nfp + j + k*p_Nq;
+
+        surfaceTerms(sk2,2,0,j,k);
+        surfaceTerms(sk4,4,1,j,k);
+      }
+    }
+
+    @barrier("local");
+
+    // face 2 & 4
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        if (i==p_Nq-1) {//face 2
+#pragma unroll p_Nq
+          for (int k=0;k<p_Nq;k++) {
+            r_p[k] = s_p[0][k][j];
+
+	    if(EToB[e*p_Nfaces+2]>0)
+	      r_rhs[k] += s_ndp[0][k][j];
+          }
+        }
+        if (i==0) {//face 4
+#pragma unroll p_Nq
+          for (int k=0;k<p_Nq;k++) {
+            r_p[k] = s_p[1][k][j];
+
+	    if(EToB[e*p_Nfaces+4]>0)
+	      r_rhs[k] += s_ndp[1][k][j];
+          }
+        }
+      }
+    }
+
+    @barrier("local"); 
+
+
+    // Layer by layer
+#pragma unroll p_Nq
+    for(int k = 0;k < p_Nq; k++){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+
+	  // prefetch geometric factors
+	  const dlong gbase = e*p_Nggeo*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+	  r_G00 = ggeo[gbase+p_G00ID*p_Np];
+	  r_G01 = ggeo[gbase+p_G01ID*p_Np];
+	  r_G02 = ggeo[gbase+p_G02ID*p_Np];
+
+	  r_G11 = ggeo[gbase+p_G11ID*p_Np];
+	  r_G12 = ggeo[gbase+p_G12ID*p_Np];
+	  r_G22 = ggeo[gbase+p_G22ID*p_Np];
+	}
+      }
+
+      @barrier("local");
+
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+
+	  // share u(:,:,k)
+	  s_p[0][j][i] = r_p[k];
+
+	  r_pt = 0;
+
+#pragma unroll p_Nq
+	  for(int m = 0; m < p_Nq; m++) {
+	    r_pt += s_D[k][m]*r_p[m];
+	  }
+	}
+      }
+
+      @barrier("local");
+
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+
+	  dfloat pr = 0.f;
+	  dfloat ps = 0.f;
+
+#pragma unroll p_Nq
+	  for(int m = 0; m < p_Nq; m++) {
+	    pr += s_D[i][m]*s_p[0][j][m];
+	    ps += s_D[j][m]*s_p[0][m][i];
+	  }
+
+	  //reuse the s_ndp array
+	  s_ndp[0][j][i] = (r_G01*pr + r_G11*ps + r_G12*r_pt);
+	  s_ndp[1][j][i] = (r_G00*pr + r_G01*ps + r_G02*r_pt);
+
+	  // put this here for a performance bump
+	  r_Gpt = (r_G02*pr + r_G12*ps + r_G22*r_pt);
+	}
+      }
+
+      @barrier("local");
+
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+	  dfloat Apk=0.f;
+
+#pragma unroll p_Nq
+	  for(int m = 0; m < p_Nq; m++){
+	    Apk      += s_D[m][j]*s_ndp[0][m][i];
+	    r_rhs[m] += s_D[k][m]*r_Gpt; // DT(m,k)*ut(i,j,k,e)
+	    Apk      += s_D[m][i]*s_ndp[1][j][m];
+	  }
+
+	  r_rhs[k] += Apk;
+	}
+      }
+    }
+
+    // write out
+
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+#pragma unroll p_Nq
+	for(int k = 0; k < p_Nq; k++){
+	  const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
+	  rhsP[id] -= r_rhs[k];
+	}
+      }
+    }
+  }
+}
+
+// We are solving for Pressure Difference
+@kernel void insPressureAddBCTOMBOHex3D(const dlong Nelements,
+					const dfloat time,
+					const dfloat dt,
+					const dlong offset,
+					@restrict const  dfloat *  sgeo, 
+					@restrict const  dfloat *  x,
+					@restrict const  dfloat *  y,
+					@restrict const  dfloat *  z,
+					@restrict const  dlong  *  vmapM,
+					@restrict const  int    *  mapB,
+					@restrict const  int    *  EToB,
+          @restrict const  dfloat *  W,
+          @restrict const  dfloat *  U,
+          @restrict dfloat *  P){
+  
+  for(dlong e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Nfp*p_Nfaces;++n;@inner(0)){
+      const int f = n/p_Nfp; 
+      struct bcData bc;
+      const dlong sid  = e*p_Nfaces*p_Nfp + n;
+      bc.idM  = vmapM[e*p_Nfp*p_Nfaces + n];
+      bc.id   = EToB[f + p_Nfaces*e]; 
+      bc.time = time;
+      bc.fieldOffset = offset; 
+      //  
+      if(bc.id==3) {
+        bc.x  = x[bc.idM]; 
+        bc.y  = y[bc.idM]; 
+        bc.z  = z[bc.idM]; 
+        bc.nx = sgeo[sid*p_Nsgeo+p_NXID];
+        bc.ny = sgeo[sid*p_Nsgeo+p_NYID];
+        bc.nz = sgeo[sid*p_Nsgeo+p_NZID];
+        // Get Current Solution i.e. Un
+        bc.uM = U[bc.idM + 0*offset]; 
+        bc.vM = U[bc.idM + 1*offset]; 
+        bc.wM = U[bc.idM + 2*offset]; 
+
+        bc.pP  = 0.f; 
+        bc.wrk = (dfloat *) W; 
+        //
+        insPressureDirichletConditions3D(&bc);
+        P[bc.idM] = bc.pP;         
+      }    
+    }
+  }
+}

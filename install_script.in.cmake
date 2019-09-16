@@ -91,7 +91,7 @@ install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/examples * @CMAKE_INSTALL_PREFI
 ## nekRS
 message("-- Installing nekRS")
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/scripts * @CMAKE_INSTALL_PREFIX@/bin)
-install_glob_if_newer(@CMAKE_SOURCE_DIR@/src "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
+install_glob_if_newer(@CMAKE_SOURCE_DIR@/src "*.h*" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/udf "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/nekInterface "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl "*.okl" @CMAKE_INSTALL_PREFIX@/okl)

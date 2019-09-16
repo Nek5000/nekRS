@@ -248,7 +248,8 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 # Add nekrs target                                                            #
 ###############################################################################
 set(SRC src/nekrs.cpp
-    src/timestepper.cpp
+    src/setup.cpp
+    src/runTombo.cpp
     src/udf/udf.cpp
     src/meshPhysicalNodesHex3D.cpp
     src/occaDeviceConfig.cpp

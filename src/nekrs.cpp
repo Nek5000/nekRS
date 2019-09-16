@@ -83,7 +83,10 @@ int ciMode = 0;
 void dryRun(libParanumal::setupAide &options, string udfFile, 
             string casename,int N, int npTarget)
 {
-  if (rank == 0) cout << "performing dry-run to build code ...\n" << endl;
+  if (rank == 0) 
+    cout << "performing dry-run for "
+         << npTarget
+         << " MPI ranks ...\n" << endl;
 
   // jit compile udf
   if (!udfFile.empty()) {
@@ -186,15 +189,36 @@ void setDataFile(libParanumal::setupAide &options)
   string dataFile = cache_dir + "/" + casename + ".okl";
 
   if (rank == 0) {
-    sprintf(buf,"cp -f %s %s", oklFile.c_str(), dataFile.c_str());
-    system(buf);
 
-    std::ofstream s;
-    s.open(dataFile, std::ios_base::app);
-    s << "// automatically added \n" 
-      << "void insFlowField3D(bcData *bc){}\n"
-      << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
-    s.close();
+    std::ifstream in;
+    in.open(oklFile);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    in.close();
+
+    std::ofstream out;
+    out.open(dataFile, std::ios::trunc);
+
+    out << buffer.str();
+
+    out << "// automatically added \n" 
+        << "void insFlowField3D(bcData *bc){}\n"
+        << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
+
+    std::size_t found;
+    found = buffer.str().find("void insVelocityDirichletConditions");
+    if (found == std::string::npos)
+      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void insVelocityNeumannConditions");
+    if (found == std::string::npos)
+      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void insPressureDirichletConditions");
+    if (found ==std::string::npos)
+      out << "void insPressureDirichletConditions3D(bcData *bc){}\n"; 
+
+    out.close();
   }
 
   options.setArgs("DATA FILE", dataFile);

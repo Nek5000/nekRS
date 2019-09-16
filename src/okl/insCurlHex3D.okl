@@ -1,0 +1,131 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+@kernel void insCurlHex3D(const dlong Nelements, 
+                           @restrict const  dfloat *  vgeo,
+                           @restrict const  dfloat *  const D,
+                           @restrict const  dfloat *  const M,
+                           const dlong offset,
+                           @restrict const  dfloat *  U,
+                           @restrict dfloat *  Wx,
+                           @restrict dfloat *  Wy,
+                           @restrict dfloat *  Wz){  
+
+for(dlong e=0;e<Nelements;e++;@outer(0)){  // for all elements
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){ 
+        for(int i=0;i<p_Nq;++i;@inner(0)){    
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq+i;
+
+          s_U[k][j][i]  = U[id+0*offset];
+          s_V[k][j][i]  = U[id+1*offset];
+          s_W[k][j][i]  = U[id+2*offset];
+
+          if (k==0)
+            s_D[j][i] = D[j*p_Nq+i];
+        }
+      }
+    }
+
+    @barrier("local"); 
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){ 
+        for(int i=0;i<p_Nq;++i;@inner(0)){  
+          const dlong gid = e*p_Np*p_Nvgeo +k*p_Nq*p_Nq +j*p_Nq +i;
+          const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          const dfloat JW   = vgeo[gid + p_JWID*p_Np];
+
+
+           // compute 'r' and 's' derivatives of (q_m) at node n
+          dfloat dudr  = 0.f, duds  = 0.f, dudt  = 0.f;
+          dfloat dvdr  = 0.f, dvds  = 0.f, dvdt  = 0.f;
+          dfloat dwdr  = 0.f, dwds  = 0.f, dwdt  = 0.f;
+
+          #pragma unroll p_Nq
+            for(int n=0;n<p_Nq;++n){
+              const dfloat Dr = s_D[i][n];
+              const dfloat Ds = s_D[j][n];
+              const dfloat Dt = s_D[k][n];
+
+              dudr += Dr*s_U[k][j][n];
+              duds += Ds*s_U[k][n][i];
+              dudt += Dt*s_U[n][j][i];
+
+              dvdr += Dr*s_V[k][j][n];
+              dvds += Ds*s_V[k][n][i];
+              dvdt += Dt*s_V[n][j][i];
+
+              dwdr += Dr*s_W[k][j][n];
+              dwds += Ds*s_W[k][n][i];
+              dwdt += Dt*s_W[n][j][i];
+
+            }
+          // compute local derivatives
+          const dfloat ux = drdx*dudr + dsdx*duds + dtdx*dudt;
+          const dfloat uy = drdy*dudr + dsdy*duds + dtdy*dudt;
+          const dfloat uz = drdz*dudr + dsdz*duds + dtdz*dudt;
+
+          const dfloat vx = drdx*dvdr + dsdx*dvds + dtdx*dvdt;
+          const dfloat vy = drdy*dvdr + dsdy*dvds + dtdy*dvdt;
+          const dfloat vz = drdz*dvdr + dsdz*dvds + dtdz*dvdt;
+
+          const dfloat wx = drdx*dwdr + dsdx*dwds + dtdx*dwdt;
+          const dfloat wy = drdy*dwdr + dsdy*dwds + dtdy*dwdt;
+          const dfloat wz = drdz*dwdr + dsdz*dwds + dtdz*dwdt;
+
+          // Multiply with mass matrix
+          const dfloat vortx = JW*(wy - vz); 
+          const dfloat vorty = JW*(uz - wx); 
+          const dfloat vortz = JW*(vx - uy); 
+          
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+          Wx[id+0*offset] = vortx;
+          Wy[id+0*offset] = vorty;
+          Wz[id+0*offset] = vortz;
+
+        }
+      }
+    }
+  }  
+}
