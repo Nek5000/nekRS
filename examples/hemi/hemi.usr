@@ -71,6 +71,23 @@ c-----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
       subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 3
+         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 4
+      enddo
+      enddo
+
+      call setbc(1,1,'v  ')
+      call setbc(2,1,'O  ')
+      call setbc(3,1,'W  ')
+      call setbc(4,1,'SYM')
+
       return
       end
 c-----------------------------------------------------------------------

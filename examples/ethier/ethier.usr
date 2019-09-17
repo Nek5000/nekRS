@@ -84,16 +84,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      do iel=1,nelt
-      do ifc=1,2*ndim
-        if (boundaryID(ifc,iel) .eq. 1) cbc(ifc,iel,1)='v  '
-        if (boundaryID(ifc,iel) .eq. 2) cbc(ifc,iel,1)='v  '
-        if (boundaryID(ifc,iel) .eq. 3) cbc(ifc,iel,1)='v  '
-        if (boundaryID(ifc,iel) .eq. 4) cbc(ifc,iel,1)='v  '
-        if (boundaryID(ifc,iel) .eq. 5) cbc(ifc,iel,1)='v  '
-        if (boundaryID(ifc,iel) .eq. 6) cbc(ifc,iel,1)='v  '
-      enddo
-      enddo
+      call setbc(1,1,'v  ')
 
       return
       end

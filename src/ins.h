@@ -235,8 +235,10 @@ typedef struct {
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
 
-  occa::memory o_InvM;
+  int *EToB;
+  occa::memory o_EToB;
 
+  occa::memory o_InvM;
   occa::properties *kernelInfo;
 
 }ins_t;

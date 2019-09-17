@@ -196,6 +196,8 @@ c-----------------------------------------------------------------------
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
+      call findSYMOrient
+
       call set_vert(glo_num,ngv,2,nelv,vertex,.false.)
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
@@ -316,6 +318,83 @@ c-----------------------------------------------------------------------
     
       if (.not. ifgetu) getu = 0 
       if (.not. ifgetp) getp = 0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      integer function nekf_bcmap(bID, ifld)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      integer bID, ifld
+      character*3 c
+
+      if (bID < 1) then
+        nekf_bcmap = 0
+        return 
+      endif 
+
+      ibc = 0 
+      c = cbc_bmap(bID, ifld)
+
+      if (ifld.eq.1) then
+        if (c.eq.'W  ') then 
+          ibc = 1
+        else if (c.eq.'v  ') then 
+          ibc = 2
+        else if (c.eq.'o  ' .or. c.eq.'O  ') then 
+          ibc = 3
+        else if (c.eq.'SYX') then 
+          ibc = 4
+        else if (c.eq.'SYY') then 
+          ibc = 5
+         else if (c.eq.'SYZ') then 
+          ibc = 6
+        endif
+      else
+        if (c.eq.'t  ') then 
+          ibc = 1
+        else if (c.eq.'f  ') then 
+          ibc = 2
+        else if (c.eq.'o  ' .or. c.eq.'O  ' .or. c.eq.'I  ') then 
+          ibc = 3
+        endif
+      endif
+
+      write(6,*) 'bcmap:', bID, ibc, c 
+
+      if (ibc.eq.0) then
+        write(6,*) 'Found unsupport BC type:', c
+        call exitt 
+      endif
+
+      nekf_bcmap = ibc
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine findSYMOrient
+
+      include 'SIZE'
+      include 'INPUT'
+      include 'GEOM'
+
+      integer bID
+      logical ifalgn,ifnorx,ifnory,ifnorz
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1).eq.'SYM') then
+           bID = boundaryID(ifc,iel) 
+           call chknord(ifalgn,ifnorx,ifnory,ifnorz,ifc,iel) 
+           if (ifnorx) cbc_bmap(bID, 1) = 'SYX'
+           if (ifnory) cbc_bmap(bID, 1) = 'SYY'
+           if (ifnorz) cbc_bmap(bID, 1) = 'SYZ'
+         endif
+      enddo
+      enddo
 
       return
       end

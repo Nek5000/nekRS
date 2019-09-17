@@ -34,6 +34,7 @@ static int (*nek_lglel_ptr)(int *);
 static void (*nek_setup_ptr)(int *, char *, char *, int, int);
 static void (*nek_ifoutfld_ptr)(int *);
 static void (*nek_setics_ptr)(void);
+static int (*nek_bcmap_ptr)(int *, int*);
 
 void noop_func(void) {}
 
@@ -193,6 +194,7 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
   nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
+  nek_bcmap_ptr = (int (*)(int *, int *)) dlsym(handle,fname("nekf_bcmap"));
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
@@ -540,4 +542,8 @@ void nek_copyTo(ins_t *ins, dfloat &time) {
   memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
   memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
   memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+}
+
+int nek_bcmap(int bid, int ifld) {
+  return (*nek_bcmap_ptr)(&bid, &ifld);
 }

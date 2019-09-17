@@ -106,8 +106,13 @@ c-----------------------------------------------------------------------
       do iel=1,nelt
       do ifc=5,6
          cbc(ifc,iel,1) = 'P  '
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
       enddo
       enddo
+
+      call setbc(1,1,'v  ')
+      call setbc(2,1,'O  ')
 
       ifto = .true.
 

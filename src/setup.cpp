@@ -1,7 +1,7 @@
 #include "nekrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 ins_t *setup(mesh_t *mesh, setupAide &options){
-
   ins_t *ins = new ins_t();
   
   ins->mesh = mesh;
@@ -279,9 +279,9 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   int pBCType[7] = {0,2,2,1,2,2,2}; // bc=3 => outflow => Dirichlet => pBCType[3] = 1, etc.
   // int pBCType[7] = {0,2,2,2,2,2,2}; // bc=3 => outflow => Dirichlet => pBCType[3] = 1, etc.
 
-  //Solver tolerances 
-  ins->presTOL = 1E-8;
-  ins->velTOL  = 1E-8;
+  //default solver tolerances 
+  ins->presTOL = 1E-4;
+  ins->velTOL  = 1E-6;
 
   if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
@@ -337,9 +337,13 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
     for (int n=0;n<mesh->Np;n++) ins->VmapB[n+e*mesh->Np] = largeNumber;
   }
 
+  ins->EToB = (int*) calloc(mesh->Nelements*mesh->Nfaces, sizeof(int));
+
+  int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      int bc = mesh->EToB[f+e*mesh->Nfaces];
+      ins->EToB[cnt] = nek_bcmap(mesh->EToB[f+e*mesh->Nfaces], 1);
+      int bc = ins->EToB[cnt];
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
 	  int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -347,6 +351,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
 	  ins->PmapB[fid+e*mesh->Np] = mymax(bc,ins->PmapB[fid+e*mesh->Np]);
 	}
       }
+      cnt++;
     }
   }
 
@@ -654,6 +659,9 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
     }
     MPI_Barrier(mesh->comm);
   }
+
+  ins->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),
+                                    ins->EToB);
 
   // Initialize Cfl Stuff
   ins->cflComputed = 0; 

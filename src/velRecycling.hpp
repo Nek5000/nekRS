@@ -58,7 +58,7 @@ void copy()
   // copy recycling plane in interior to inlet
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
   setValueBCKernel(mesh->Nelements, 0.0, bc, ins->fieldOffset,
-                   o_wrk, mesh->o_vmapM, mesh->o_EToB);
+                   o_wrk, mesh->o_vmapM, ins->o_EToB);
 
   //ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
   //                     ogsDfloat, ogsAdd, ogs);
@@ -68,7 +68,7 @@ void copy()
   
   // rescale
   getBCFluxKernel(mesh->Nelements, bc, ins->fieldOffset, o_wrk,
-                  mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
+                  mesh->o_vmapM, ins->o_EToB, mesh->o_sgeo, o_area, o_flux);
 
   const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp; 
   sumReductionKernel(NfpTotal, o_area, o_flux, o_tmp1, o_tmp2); 
@@ -107,7 +107,7 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
     for (int n=0; n < mesh->Nfp*mesh->Nfaces; n++) {
       const int f = n/mesh->Nfp;
       const int idM = ins->mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
-      const int id  = ins->mesh->EToB[f + e*mesh->Nfaces];
+      const int id  = ins->EToB[f + e*mesh->Nfaces];
       if (id == 2) ids[idM] += eOffset*mesh->Np; 
     }
    

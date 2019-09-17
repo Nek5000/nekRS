@@ -87,6 +87,7 @@ int    nek_setup(MPI_Comm c, setupAide &options);
 void   nek_ifoutfld(int i);
 void   nek_setic(void);
 void   nek_userchk(void);
+int    nek_bcmap(int bid, int ifld);
 
 #ifdef __cplusplus
 }
