@@ -22,7 +22,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("MESH DIMENSION", string("3"));
 
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
-  options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("SUBCYCLING STEPS", "0");
+  options.setArgs("SUBCYCLING TIME ORDER", "4");
 
   options.setArgs("CASENAME", casename);
   options.setArgs("UDF OKL FILE", casename + ".oudf");

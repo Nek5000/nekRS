@@ -1,34 +1,6 @@
-/*
+#include "nekrs.hpp"
 
-  The MIT License (MIT)
-
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
-
-#include "ins.h"
-#include "omp.h"
-#include <unistd.h>
-
-ins_t *insSetup(mesh_t *mesh, setupAide options){
+ins_t *setup(mesh_t *mesh, setupAide &options){
 
   ins_t *ins = new ins_t();
   
@@ -42,8 +14,6 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
   
-  ins->TOMBO = 1; 
-
   ins->NVfields = (ins->dim==3) ? 3:2; //  Total Number of Velocity Fields
   ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
 
@@ -113,10 +83,10 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
   ins->rkGP = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
 
   ins->FU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
+
   //extra storage for interpolated fields
   ins->cU = (dfloat *) calloc(ins->NVfields*mesh->Nelements*mesh->cubNp,sizeof(dfloat));
 
-  ins->Nsubsteps = 0;
   options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
 
   if(ins->Nsubsteps){
@@ -124,19 +94,11 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
     ins->Ue    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
     ins->resU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
     ins->rhsUd = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-    ins->cUd = (dfloat *) calloc(ins->NVfields*mesh->Nelements*mesh->cubNp,sizeof(dfloat));
-
-    // Note that resU and resV can be replaced with already introduced buffer
-    ins->o_Ue    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
-    ins->o_Ud    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ud);
-    ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
-    ins->o_rhsUd = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsUd);
-    ins->o_cUd = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cUd);
+    ins->cUd   = (dfloat*) calloc(ins->NVfields*mesh->Nelements*mesh->cubNp,sizeof(dfloat));
 
     // Prepare RK stages for Subcycling Part
-    
-    int Sorder = 4; // Defaulting to LSERK 4(5) 
-    
+   
+    int Sorder; 
     options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder==2){
       ins->SNrk     = 2; 
@@ -179,12 +141,9 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
     }
   }
 
-  dfloat rho  = 1.0 ;  // Give density for getting actual pressure in nondimensional solve
-
   options.getArgs("VISCOSITY", ins->nu);
 
-  //Reynolds number
-  ins->Re = ins->ubar/ins->nu;
+  ins->Re = 1/ins->nu;
 
   occa::properties& kernelInfo = *ins->kernelInfo;
   kernelInfo["defines"].asObject();
@@ -228,6 +187,15 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
   ins->o_U = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
   ins->o_P = mesh->device.malloc(              ins->Nstages*Ntotal*sizeof(dfloat), ins->P);
 
+  if(ins->Nsubsteps){
+    // Note that resU and resV can be replaced with already introduced buffer
+    ins->o_Ue    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
+    ins->o_Ud    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ud);
+    ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
+    ins->o_rhsUd = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsUd);
+    ins->o_cUd = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cUd);
+  }
+
   dfloat dt; 
   options.getArgs("DT", dt);
   
@@ -238,18 +206,16 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
   options.getArgs("FINAL TIME", ins->finalTime);
   options.getArgs("START TIME", ins->startTime);
  
-  if (options.compareArgs("TIME INTEGRATOR", "TOMBO") ){
-    ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+  ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
 
-    if(ins->Nsubsteps){
-      ins->dt         = ins->Nsubsteps*ins->dt;
-      ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-      ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-      ins->sdt        = ins->dt/ins->Nsubsteps;
-    } else{
-      ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-      ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-    }
+  if(ins->Nsubsteps){
+    ins->dt         = ins->Nsubsteps*ins->dt;
+    ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+    ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
+    ins->sdt        = ins->dt/ins->Nsubsteps;
+  } else{
+    ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+    ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
   }
 
   // Hold some inverses for kernels
@@ -400,7 +366,6 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
 
   // TW: this code needs to be re-evaluated to here <======
   // and the kernels that use VmapB, PmapB
-  
 
   kernelInfo["defines/" "p_blockSize"]= blockSize;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
@@ -573,7 +538,18 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
       ins->invMassMatrixKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);  
 
+      fileName = oklpath + "insGradient" + suffix + ".okl";
+      kernelName = "insGradientVolume" + suffix;
+      ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      kernelName = "insGradientSurface" + suffix;
+      ins->gradientSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
       fileName = oklpath + "insDivergence" + suffix + ".okl";
+      kernelName = "insDivergenceVolumeTOMBO" + suffix;
+      ins->divergenceVolumeKernel = 
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       kernelName = "insDivergenceSurfaceTOMBO" + suffix;
       ins->divergenceSurfaceKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);

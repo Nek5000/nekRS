@@ -108,7 +108,7 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   mesh->rank = rank;
   mesh->size = size;
   meshBoxSetupHex3D(N, mesh);
-  libParanumal::ins_t *ins = insSetup(mesh, options);
+  libParanumal::ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
@@ -360,7 +360,7 @@ int main(int argc, char **argv)
   mesh->rank = rank;
   mesh->size = size;
   meshNekSetupHex3D(N, mesh);
-  libParanumal::ins_t *ins = insSetup(mesh, options);
+  libParanumal::ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
