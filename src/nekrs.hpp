@@ -17,7 +17,7 @@ static string to_string_f(double a) {
 }
 
 ins_t *setup(mesh_t *mesh, setupAide &options);
-void runPlan4(ins_t *ins);
+void runTombo(ins_t *ins);
 void restartRead(ins_t *ins, setupAide &options);
 void report(ins_t *ins, dfloat time, int tstep);
 

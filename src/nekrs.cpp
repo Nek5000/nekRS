@@ -407,7 +407,7 @@ int main(int argc, char **argv)
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
   MPI_Pcontrol(1);
 
-  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runPlan4(ins); 
+  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTombo(ins); 
 
   MPI_Pcontrol(0);
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;

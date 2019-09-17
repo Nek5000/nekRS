@@ -589,7 +589,7 @@ void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
 }
 
 
-void runPlan4(ins_t *ins)
+void runTombo(ins_t *ins)
 {
   mesh_t *mesh = ins->mesh;
 
