@@ -638,15 +638,17 @@ ins_t *insSetup(mesh_t *mesh, setupAide options){
 
       // ===========================================================================
 
-      fileName = oklpath + "math" + ".okl";
+      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
       kernelName = "scaledAddwOffset";
       ins->scaledAddKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = install_dir + "/libparanumal/okl/addScalar.okl";
       kernelName = "setScalar";
       ins->setScalarKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = oklpath + "math" + ".okl";
       kernelName = "max";
       ins->maxKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);

@@ -10,7 +10,6 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/occa/lib")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/ins")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/elliptic")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/parAlmond")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/libparanumal")
@@ -68,7 +67,6 @@ set(SRC_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rd_party" CACHE STRING "")
 
 set(LIBPDIR "${BIN_THIRD_PARTY_DIR}/libparanumal/")
 set(ELLIPTICDIR "${LIBPDIR}/solvers/elliptic/")
-set(INSDIR "${LIBPDIR}/solvers/ins/")
 set(PARALMONDDIR "${LIBPDIR}/libs/parAlmond/")
 set(OGSDIR "${LIBPDIR}/libs/gatherScatter/")
 set(NEKDIR "${BIN_THIRD_PARTY_DIR}/nek5000/")
@@ -194,7 +192,6 @@ set(THIRD_PARTY_INCLUDES ${THIRD_PARTY_INCLUDES}
   ${PARALMONDDIR}
   ${ELLIPTICDIR}
   ${OGSDIR}
-  ${INSDIR}
 )
 
 set(NEKRS_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -219,7 +216,6 @@ macro(FIND_LIBP_DEPS target_name builddir)
 endmacro()
 
 FIND_LIBP_DEPS(P "${LIBPDIR}")
-FIND_LIBP_DEPS(ins "${INSDIR}")
 FIND_LIBP_DEPS(elliptic "${ELLIPTICDIR}")
 FIND_LIBP_DEPS(parAlmond "${PARALMONDDIR}")
 FIND_LIBP_DEPS(ogs "${OGSDIR}")
@@ -248,6 +244,7 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 # Add nekrs target                                                            #
 ###############################################################################
 set(SRC src/nekrs.cpp
+    src/filterSetup.cpp
     src/setup.cpp
     src/runTombo.cpp
     src/udf/udf.cpp
@@ -261,7 +258,7 @@ set(SRC src/nekrs.cpp
 
 add_executable(nekrs ${SRC})
 set_target_properties(nekrs PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(nekrs ${CMAKE_DL_LIBS} ins elliptic parAlmond P ogs occa)
+target_link_libraries(nekrs ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
 target_include_directories(nekrs PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
 add_dependencies(nekrs occa_build libparanumal_build nek_build)
 

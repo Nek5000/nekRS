@@ -42,41 +42,16 @@ CFLAGS_:=$(CFLAGS)
 
 .c.o: $(DEPS)
 	$(CXX) $(CFLAGS_) -D DHOLMES=\"$(NEKRS_INSTALL_DIR)/libparanumal\" \
-	-D DINS=\"$(NEKRS_INSTALL_DIR)/ins\" \
 	-o $*.o -c $*.c $(paths)
 
 ## We need separate DHOLMES and DINS when CFLAGS gets quoted
 CFLAGS:= $(CFLAGS_) -D DHOLMES="\\\"$(NEKRS_INSTALL_DIR)/libparanumal\\\"" \
-	-D DINS="\\\"$(NEKRS_INSTALL_DIR)/ins\\\"" \
 	-D DOGS="\\\"$(NEKRS_INSTALL_DIR)/gatherScatter\\\"" \
 	-D DELLIPTIC="\\\"$(NEKRS_INSTALL_DIR)/elliptic\\\"" \
 	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\""
 
 # list of objects to be compiled
-AOBJS    = \
-$(INSDIR)/src/insSetup.o \
-$(INSDIR)/src/insCurlCurl.o \
-$(INSDIR)/src/insPlotWallsVTUHex3D.o \
-$(INSDIR)/src/insPlotVTUHex3D.o \
-$(INSDIR)/src/insPlotVTU.o \
-$(INSDIR)/src/insForces.o \
-$(INSDIR)/src/insComputeDt.o \
-$(INSDIR)/src/insAdvection.o \
-$(INSDIR)/src/insDiffusion.o \
-$(INSDIR)/src/insGradient.o \
-$(INSDIR)/src/insDivergence.o \
-$(INSDIR)/src/insSubCycle.o \
-$(INSDIR)/src/insVelocityRhs.o \
-$(INSDIR)/src/insVelocitySolve.o \
-$(INSDIR)/src/insVelocityUpdate.o \
-$(INSDIR)/src/insPressureRhs.o \
-$(INSDIR)/src/insPressureSolve.o \
-$(INSDIR)/src/insPressureUpdate.o \
-$(INSDIR)/src/insWeldTriVerts.o \
-$(INSDIR)/src/insIsoPlotVTU.o \
-$(INSDIR)/src/insBrownMinionQuad3D.o \
-$(INSDIR)/src/insFilterSetup.o \
-$(INSDIR)/src/insComputeCfl.o
+AOBJS    = 
 
 # library objects
 LOBJS = \

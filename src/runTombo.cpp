@@ -68,6 +68,72 @@ void extbdfCoefficents(ins_t *ins, int order) {
   }
 }
 
+void insGetDh(ins_t *ins){
+
+  mesh_t *mesh = ins->mesh; 
+  
+  dfloat *dH; 
+  if(ins->elementType==QUADRILATERALS || ins->elementType==HEXAHEDRA){
+    dH = (dfloat*) calloc((mesh->N+1),sizeof(dfloat));
+
+    for(int n=0; n<(mesh->N+1); n++){
+      if(n==0)
+        dH[n] = mesh->gllz[n+1] - mesh->gllz[n];
+      else if(n==mesh->N)
+        dH[n] = mesh->gllz[n] - mesh->gllz[n-1];
+      else
+        dH[n] = 0.5*( mesh->gllz[n+1] - mesh->gllz[n-1]); 
+    }
+    // // invert it
+    for(int n=0; n< (mesh->N+1); n++)
+      dH[n] = 1.0/dH[n]; 
+
+    // Move data to Device
+    ins->o_idH = mesh->device.malloc((mesh->N+1)*sizeof(dfloat), dH); 
+    free(dH); 
+  }else{
+    printf("cfl for tri and tet is not included yet\n");
+    exit(0);
+  }
+
+  ins->cflComputed = 1; 
+
+}
+
+dfloat insComputeCfl(ins_t *ins, dfloat time, int tstep){
+
+  mesh_t *mesh = ins->mesh; 
+  // create dH i.e. nodal spacing in reference coordinates
+  if(!ins->cflComputed)
+    insGetDh(ins);
+  // Compute cfl factors i.e. dt* U / h 
+  ins->cflKernel(mesh->Nelements,
+                 ins->dt, 
+                 mesh->o_vgeo,
+                 ins->o_idH,
+                 ins->fieldOffset,
+                 ins->o_U,
+                 ins->o_rhsU);  
+  
+  // find the local maximum of CFL number
+  const dlong Ntotal = mesh->Np*mesh->Nelements; 
+  dfloat *tmp        = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
+  occa::memory o_tmp = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp);
+  ins->maxKernel(Ntotal, ins->o_rhsU, o_tmp);
+  o_tmp.copyTo(tmp);
+  
+  // finish reduction
+  dfloat cfl = 0.f; 
+  for(dlong n=0;n<ins->Nblock;++n){
+    cfl  = mymax(cfl, tmp[n]);
+  }
+
+  dfloat gcfl = 0.f;
+  MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, mesh->comm);
+  
+  free(tmp);
+  return gcfl; 
+}
 
 void pressureRhs(ins_t *ins, dfloat time)
 {
@@ -137,6 +203,78 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_rkP)
                             ins->o_PI,
                             ins->o_P,
                             o_rkP);
+}
+
+void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP)
+{
+  mesh_t *mesh = ins->mesh;
+
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.finish();
+    
+    // switch to data stream
+    mesh->device.setStream(mesh->dataStream);
+
+    int one = 1;
+    dlong Ndata = one*mesh->Nfp*mesh->totalHaloPairs;
+
+    ins->haloGetKernel(mesh->totalHaloPairs,
+		       one,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloGetNodeIds,
+		       o_P,
+		       ins->o_pHaloBuffer);   
+    
+    // copy extracted halo to HOST 
+    ins->o_pHaloBuffer.copyTo(ins->pSendBuffer,
+			      Ndata*sizeof(dfloat), 0, "async: true");
+    
+    mesh->device.setStream(mesh->defaultStream);
+  }
+  
+  // Compute Volume Contribution
+  ins->gradientVolumeKernel(mesh->Nelements,
+			    mesh->o_vgeo,
+			    mesh->o_Dmatrices,
+                            ins->fieldOffset,
+                            o_P,
+                            o_GP);
+
+  // COMPLETE HALO EXCHANGE
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.setStream(mesh->dataStream);
+    mesh->device.finish();
+
+    // start halo exchange
+    meshHaloExchangeStart(mesh,
+			  mesh->Nfp*sizeof(dfloat),
+			  ins->pSendBuffer,
+			  ins->pRecvBuffer);
+    
+    meshHaloExchangeFinish(mesh);
+    
+    int one = 1;
+    dlong Ndata = one*mesh->Nfp*mesh->totalHaloPairs;
+    
+    ins->o_pHaloBuffer.copyFrom(ins->pRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
+    
+    ins->haloPutKernel(mesh->totalHaloPairs,
+		       one,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloPutNodeIds,
+		       ins->o_pHaloBuffer,
+		       o_P);
+
+    mesh->device.finish();
+    mesh->device.setStream(mesh->defaultStream);
+    mesh->device.finish();
+  }
 }
 
 void velocityRhs(ins_t *ins, dfloat time) 
@@ -591,3 +729,91 @@ void runPlan4(ins_t *ins)
   }
 }
 
+
+// Compute divergence of the velocity field using physical boundary data at t = time. 
+void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU){
+
+  mesh_t *mesh = ins->mesh;
+
+  //  if (ins->vOptions.compareArgs("DISCRETIZATION","IPDG")) {
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.finish();
+    
+    // switch to data stream
+    mesh->device.setStream(mesh->dataStream);
+    
+    ins->haloGetKernel(mesh->totalHaloPairs,
+		       ins->NVfields,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloGetNodeIds,
+		       o_U,
+		       ins->o_vHaloBuffer);
+    
+    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
+    
+    // copy extracted halo to HOST 
+    ins->o_vHaloBuffer.copyTo(ins->vSendBuffer, Ndata*sizeof(dfloat), 0, "async: true");// zero offset             
+
+    mesh->device.setStream(mesh->defaultStream);
+  }
+
+  // computes div u^(n+1) volume term
+  ins->divergenceVolumeKernel(mesh->Nelements,
+                             mesh->o_vgeo,
+                             mesh->o_Dmatrices,
+                             ins->fieldOffset,
+                             o_U,
+                             o_DU);
+  
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.setStream(mesh->dataStream);
+    mesh->device.finish();
+    
+    // start halo exchange
+    meshHaloExchangeStart(mesh,
+			  mesh->Nfp*(ins->NVfields)*sizeof(dfloat),
+			  ins->vSendBuffer,
+			  ins->vRecvBuffer);
+        
+    meshHaloExchangeFinish(mesh);
+    
+    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
+    
+    ins->o_vHaloBuffer.copyFrom(ins->vRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
+    
+    ins->haloPutKernel(mesh->totalHaloPairs,
+		       ins->NVfields,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloPutNodeIds,
+		       ins->o_vHaloBuffer,
+		       o_U);
+
+    mesh->device.setStream(mesh->defaultStream);
+  }
+  
+  //computes div u^(n+1) surface term
+  const dfloat lambda = -ins->g0*ins->idt; 
+  ins->divergenceSurfaceKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_sgeo,
+    mesh->o_LIFTT,
+    mesh->o_vmapM,
+    mesh->o_vmapP,
+    mesh->o_EToB,
+    time,
+    lambda, 
+    mesh->o_x,
+    mesh->o_y,
+    mesh->o_z,
+    ins->fieldOffset,
+    ins->o_Wrk,
+    o_U,
+    o_DU);
+}
