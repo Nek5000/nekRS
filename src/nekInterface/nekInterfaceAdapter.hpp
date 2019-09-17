@@ -8,6 +8,7 @@
 #include <mpi.h>
 
 #include "setupAide.hpp"
+#include "nekrs.hpp"
 
 #define DECLARE_USER_FUNC(a) void nek_ ## a(void);
 #define DEFINE_USER_FUNC(a) void nek_ ## a(void) { (* a ## _ptr)(); }

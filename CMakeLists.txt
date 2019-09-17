@@ -244,6 +244,7 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 # Add nekrs target                                                            #
 ###############################################################################
 set(SRC src/nekrs.cpp
+    src/cfl.cpp
     src/filterSetup.cpp
     src/setup.cpp
     src/runTombo.cpp

@@ -7,6 +7,7 @@
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
 
 #include "libParanumal.hpp"
+#include "ins.h"
 
 // std::to_string might be not accurate enough 
 static string to_string_f(double a) {

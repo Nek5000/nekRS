@@ -48,18 +48,16 @@ typedef struct {
   setupAide vOptions, pOptions; 	
 
   // INS SOLVER OCCA VARIABLES
-  dfloat rho, nu, Re;
-  dfloat ubar, vbar, wbar, pbar;
+  dfloat nu, Re;
   int NVfields, NTfields;
   dlong fieldOffset;
   dlong Ntotal;
 
   int Nblock;
 
-  dfloat dt, cfl, dti;          // time step
-  dfloat dtMIN;         
+  dfloat dt, dti;          // time step
   dfloat time;
-  int tstep, frame;
+  int tstep;
   dfloat g0, ig0, lambda;      // helmhotz solver -lap(u) + lamda u
   dfloat startTime;   
   dfloat finalTime;   
@@ -71,13 +69,10 @@ typedef struct {
   int   outputStep;
   int   isOutputStep;
   int   outputForceStep; 
-  int   dtAdaptStep; 
-
 
   int ARKswitch;
   
   int NiterU, NiterV, NiterW, NiterP;
-
 
   //solver tolerances
   dfloat presTOL, velTOL;
@@ -95,7 +90,6 @@ typedef struct {
   
   dfloat *Vort, *Div;
 
-  dfloat g[3];      // gravitational Acceleration
   //RK Subcycle Data
   int SNrk;
   dfloat *Srka, *Srkb, *Srkc; 
@@ -142,18 +136,6 @@ typedef struct {
   int cflComputed; 
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
 
-  // Some Iso-surfacing variables
-  int isoField, isoColorField, isoNfields, isoNlevels, isoMaxNtris, *isoNtris; 
-  dfloat isoMinVal, isoMaxVal, *isoLevels, *isoq; 
-  size_t isoMax; 
-  
-  int *isoGNlevels, isoGNgroups;
-  dfloat **isoGLvalues;
-  // NBN: add storage for compacted isosurf data for gmsh write
-  std::vector<dfloat> iso_nodes;
-  std::vector<int> iso_tris;
-
-
   int readRestartFile,writeRestartFile, restartedFromFile;
 
   // Filter Stabilization Matrix
@@ -161,11 +143,6 @@ typedef struct {
   dfloat *filterM, filterS; 
   occa::memory o_filterMT; // transpose of filter matrix 
   occa::kernel filterKernel; // Relaxation-Term based filtering
-
-
-  occa::memory *o_isoGLvalues; 
-  occa::memory o_isoLevels, o_isoq, o_isoNtris; 
-  occa::memory o_plotInterp, o_plotEToV; 
 
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
@@ -215,8 +192,6 @@ typedef struct {
   occa::kernel pressureHaloExtractKernel;
   occa::kernel pressureHaloScatterKernel;
 
-  occa::kernel setFlowFieldKernel;
-
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;
   occa::kernel advectionCubatureVolumeKernel;
@@ -226,7 +201,6 @@ typedef struct {
   occa::kernel advectionStrongCubatureVolumeKernel;
   
   occa::kernel diffusionKernel;
-  occa::kernel diffusionIpdgKernel;
   occa::kernel velocityGradientKernel;
 
   occa::kernel gradientVolumeKernel;
@@ -238,27 +212,21 @@ typedef struct {
   occa::kernel divergenceStrongVolumeKernel;
   
   occa::kernel pressureRhsKernel;
-  occa::kernel pressureRhsIpdgBCKernel;
   occa::kernel pressureRhsBCKernel;
   occa::kernel pressureAddBCKernel;
   occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
-  occa::kernel velocityRhsIpdgBCKernel;
   occa::kernel velocityRhsBCKernel;
   occa::kernel velocityAddBCKernel;
   occa::kernel velocityUpdateKernel;  
   
-  occa::kernel vorticityKernel;
-  occa::kernel isoSurfaceKernel;
-
   occa::kernel setScalarKernel; 
 
   occa::kernel cflKernel; 
   occa::kernel maxKernel; 
 
-  // New TOMBO stuff
   int TOMBO;  
   occa::kernel pressureAxKernel; 
   occa::kernel velocityAxKernel; 
@@ -267,16 +235,7 @@ typedef struct {
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
 
-
-  // error Realted
-  occa::kernel setFlowFieldCubKernel; 
-  occa::kernel errorKernel;
-
   occa::memory o_InvM;
-  
-  dfloat *Uer, *Per; 
-
-  occa::memory o_Uex, o_Pex; 
 
   occa::properties *kernelInfo;
 
@@ -288,13 +247,6 @@ void insRunARK(ins_t *ins);
 void insRunEXTBDF(ins_t *ins);
 void insRunTOMBO(ins_t *ins);
 
-void insPlotVTU(ins_t *ins, char *fileNameBase);
-void insReport(ins_t *ins, dfloat time,  int tstep);
-void insError(ins_t *ins, dfloat time);
-void insForces(ins_t *ins, dfloat time);
-void insComputeDt(ins_t *ins, dfloat time); 
-
-// Relexation-Type low-pass filtering
 void insFilterSetup(ins_t *ins);
 void insAddVelocityRhs(ins_t *ins, dfloat time);
 
@@ -312,43 +264,9 @@ void insPressureRhs  (ins_t *ins, dfloat time, int stage);
 void insPressureSolve(ins_t *ins, dfloat time, int stage);
 void insPressureUpdate(ins_t *ins, dfloat time, int stage, occa::memory o_rkP);
 
-// Welding  to Tris, needs to be moved seperate library
-int insWeldTriVerts(ins_t *ins, int isoNtris, dfloat *isoq);
-void insIsoPlotVTU(ins_t *ins, char *fileName);
-
-// Restarting from file
-void insRestartWrite(ins_t *ins, setupAide &options, dfloat time); 
-void insRestartRead(ins_t *ins, setupAide &options); 
-
-void insBrownMinionQuad3D(ins_t *ins);
-void insExtBdfCoefficents(ins_t *ins, int order);
-dfloat insMean(ins_t *ins, occa::memory o_q);
-
-// just for testing, remove later
-void insFieldDifference(ins_t *ins, char *fileName1, char *fileName2);
-void insWriteField(ins_t *ins, char *fileName);
-
 void insCurlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC); 
 
 dfloat insComputeCfl(ins_t *ins, dfloat time, int tstep); 
-
-// customized hex writer
-extern "C"
-{
-  void insPlotVTUHex3D(ins_t *ins, char *fileNameBase);
-  void insPlotWallsVTUHex3D(ins_t *ins, char *fileNameBase);
-}
-
-
-void insRenderQuad3D(ins_t *ins, char *fileBaseName, int fileIndex);
-
-void simpleRayTracer(int     plotNelements,
-		     dfloat *plotx,
-		     dfloat *ploty,
-		     dfloat *plotz,
-		     dfloat *plotq,
-		     const char *fileBaseName,
-		     const int fileIndex);
 
 void insStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, occa::memory o_Ud);
 } // end C Linkage
