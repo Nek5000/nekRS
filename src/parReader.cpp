@@ -21,6 +21,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("ELEMENT MAP", string("ISOPARAMETRIC"));
   options.setArgs("MESH DIMENSION", string("3"));
 
+  options.setArgs("NUMBER OF SCALARS", "0");
+
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
@@ -267,10 +269,21 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("problemtype", "equation", equation))
     if(equation != "incompNS") ABORT("Only PROBLEMTYPE::equation = incompNS is supported!");
 
-  if(ini.sections.count("temperature"))
-    ABORT("No support for temperature yet!");
-  if(ini.sections.count("scalar01"))
-    ABORT("No support for scalars yet!");
- 
+  int nscal = 0;
+  if(ini.sections.count("scalar01")) nscal = 1;
+  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+
+  double s_residualTol;
+  if(ini.extract("scalar01", "residualtol", s_residualTol)) {
+    options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
+  }
+
+  double diffusivity; 
+  if(ini.extract("scalar01", "diffusivity", diffusivity)) {
+    options.setArgs("NUMBER OF SCALARS", "0");
+    if(diffusivity < 0) diffusivity = abs(1/diffusivity);
+    options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+  }
+
   return options;
 }

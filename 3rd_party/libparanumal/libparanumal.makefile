@@ -154,14 +154,6 @@ ifeq ($(detected_OS),Darwin)
 	EXT=dylib
 endif
 
-libins: libelliptic $(AOBJS)
-	cd $(INSDIR) && $(CXX) $(SHARED) -o libins.$(EXT) $(AOBJS) -Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/ins/libins.$(EXT) \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/ins -L$(ELLIPTICDIR) -lelliptic \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/parAlmond  -L$(ALMONDDIR) -lparAlmond \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/libparanumal -L$(HDRDIR) -lP \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/gatherScatter -L$(OGSDIR) -logs \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/BlasLapack -L$(BLASDIR) -lBlasLapack
-
 libelliptic: libogs libP libparAlmond
 	$(MAKE) -C $(ELLIPTICDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
 	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
@@ -182,7 +174,7 @@ libparAlmond:
 	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
 
 
-all: libins
+all: libelliptic 
 
 clean:
 	cd $(ELLIPTICDIR); make clean; cd -

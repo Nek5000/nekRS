@@ -19,6 +19,8 @@ c-----------------------------------------------------------------------
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
+      elseif (id .eq. 'lelt') then 
+         ptr = loc(llelt)
       elseif (id .eq. 'nekcomm') then 
          ptr = loc(nekcomm)
       elseif (id .eq. 'istep') then 
@@ -101,7 +103,7 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in,session_in)
+      subroutine nekf_setup(comm_in,path_in, session_in, npscal_in)
 
       include 'SIZE'
       include 'TOTAL'
@@ -133,6 +135,8 @@ c-----------------------------------------------------------------------
       ! set word size for CHARACTER
       csize = sizeof(ctest)
 
+      llelt = lelt
+
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
@@ -155,6 +159,15 @@ c-----------------------------------------------------------------------
       ifheat = .false.
       ifvo   = .true.
       ifpo   = .true.
+
+      if (npscal_in .gt. 0) then
+        ifheat = .true.
+        npscal = npscal_in - 1
+        ifto   = .true.       
+        do i = 1,npscal
+          ifpsco(i) = .true.
+        enddo 
+      endif
 
       call bcastParam
 
@@ -331,7 +344,7 @@ c-----------------------------------------------------------------------
       integer bID, ifld
       character*3 c
 
-      if (bID < 1) then
+      if (bID < 1) then ! not a boundary
         nekf_bcmap = 0
         return 
       endif 
@@ -353,7 +366,7 @@ c-----------------------------------------------------------------------
          else if (c.eq.'SYZ') then 
           ibc = 6
         endif
-      else
+      else if(ifld.gt.1) then
         if (c.eq.'t  ') then 
           ibc = 1
         else if (c.eq.'f  ') then 
@@ -363,7 +376,7 @@ c-----------------------------------------------------------------------
         endif
       endif
 
-      write(6,*) 'bcmap:', bID, ibc, c 
+c      write(6,*) 'bcmap: ', bID, c, ibc 
 
       if (ibc.eq.0) then
         write(6,*) 'Found unsupport BC type:', c
@@ -399,3 +412,21 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
+      integer function nekf_nbid()
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+ 
+      n = 0  
+      do iel = 1,nelt
+      do ifc = 1,2*ndim
+         n = max(nekf_nbid,boundaryID(ifc,iel))
+      enddo
+      enddo
+      nekf_nbid = iglmax(n,1) 
+
+c      write(6,*) 'nekf_nbid:', nekf_nbid
+
+      return
+      end

@@ -43,6 +43,8 @@ typedef struct {
   char *cbc;
   int *boundaryID;
 
+  int NboundaryID;
+
   /* id to face mapping */
   int *eface1, *eface, *icface; 
 
@@ -50,6 +52,7 @@ typedef struct {
   int ndim;
   /* local problem size */
   int nelv, nelt;
+  int lelt;
   /* polynomial order + 1*/
   int nx1;
 

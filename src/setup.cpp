@@ -1,6 +1,9 @@
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
+#define DIRICHLET 1
+#define NEUMANN 2
+
 ins_t *setup(mesh_t *mesh, setupAide &options){
   ins_t *ins = new ins_t();
   
@@ -266,19 +269,31 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  // SetUp Boundary Flags types for Elliptic Solve
-  // bc = 1 -> wall
-  // bc = 2 -> inflow
-  // bc = 3 -> outflow
-  // bc = 4 -> x-aligned slip
-  // bc = 5 -> y-aligned slip
-  // bc = 6 -> z-aligned slip
-  int uBCType[7] = {0,1,1,2,1,2,2}; // bc=3 => outflow => Neumann   => vBCType[3] = 2, etc.
-  int vBCType[7] = {0,1,1,2,2,1,2}; // bc=3 => outflow => Neumann   => vBCType[3] = 2, etc.
-  int wBCType[7] = {0,1,1,2,2,2,1}; // bc=3 => outflow => Neumann   => vBCType[3] = 2, etc.
-  int pBCType[7] = {0,2,2,1,2,2,2}; // bc=3 => outflow => Dirichlet => pBCType[3] = 1, etc.
-  // int pBCType[7] = {0,2,2,2,2,2,2}; // bc=3 => outflow => Dirichlet => pBCType[3] = 1, etc.
 
+  const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
+  const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
+  const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
+  const int nbrBIDs = nekData.NboundaryID;
+
+  int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+  int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+  int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+  int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+  //int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+
+  // boundary IDs are contiguous and start from 1 
+  for (int bID=1; bID <= nbrBIDs; bID++) {
+    int bcID = nek_bcmap(bID, 1);
+    uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
+    if (bcID == 4) uBCType[bID] = DIRICHLET; 
+    if (bcID == 5) vBCType[bID] = DIRICHLET; 
+    if (bcID == 6) wBCType[bID] = DIRICHLET;
+    pBCType[bID] = prMap[bcID];;
+
+    //bcID = nek_bcmap(bID, 2);
+    //sBCType[bID] = scalMap[bcID];
+  }
+ 
   //default solver tolerances 
   ins->presTOL = 1E-4;
   ins->velTOL  = 1E-6;
@@ -290,8 +305,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->uSolver->options = ins->vOptions;
   ins->uSolver->dim = ins->dim;
   ins->uSolver->elementType = ins->elementType;
-  ins->uSolver->BCType = (int*) calloc(7,sizeof(int));
-  memcpy(ins->uSolver->BCType,uBCType,7*sizeof(int));
+  ins->uSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
+  memcpy(ins->uSolver->BCType,uBCType,(nbrBIDs+1)*sizeof(int));
 
   ellipticSolveSetup(ins->uSolver, ins->lambda, kernelInfoV); 
 
@@ -300,8 +315,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->vSolver->options = ins->vOptions;
   ins->vSolver->dim = ins->dim;
   ins->vSolver->elementType = ins->elementType;
-  ins->vSolver->BCType = (int*) calloc(7,sizeof(int));
-  memcpy(ins->vSolver->BCType,vBCType,7*sizeof(int));
+  ins->vSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
+  memcpy(ins->vSolver->BCType,vBCType,(nbrBIDs+1)*sizeof(int));
   
   ellipticSolveSetup(ins->vSolver, ins->lambda, kernelInfoV); //!!!!!
 
@@ -311,8 +326,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
     ins->wSolver->options = ins->vOptions;
     ins->wSolver->dim = ins->dim;
     ins->wSolver->elementType = ins->elementType;
-    ins->wSolver->BCType = (int*) calloc(7,sizeof(int));
-    memcpy(ins->wSolver->BCType,wBCType,7*sizeof(int));
+    ins->wSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
+    memcpy(ins->wSolver->BCType,wBCType,(nbrBIDs+1)*sizeof(int));
     
     ellipticSolveSetup(ins->wSolver, ins->lambda, kernelInfoV);  //!!!!!
   }
@@ -323,8 +338,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->pSolver->options = ins->pOptions;
   ins->pSolver->dim = ins->dim;
   ins->pSolver->elementType = ins->elementType;
-  ins->pSolver->BCType = (int*) calloc(7,sizeof(int));
-  memcpy(ins->pSolver->BCType,pBCType,7*sizeof(int));
+  ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
+  memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
   
   ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
 

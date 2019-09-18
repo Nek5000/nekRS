@@ -7,5 +7,5 @@
       COMMON /SCNRS/ SC_NRS(LX1*LY1*LZ1*LELT*7)
       real           SC_NRS
 
-      common /INTNRS/ getu, getp
-      integer         getu, getp
+      common /INTNRS/ getu, getp, llelt
+      integer         getu, getp, llelt

@@ -1,21 +1,24 @@
 @kernel void setBCVectorValue(const dlong Nelements,
-	          	  	 const dfloat c,
-			 	 const dlong bcid,
-				 const dlong offset,
-				 @restrict dfloat *  U, 
-				 @restrict const  dlong  *  vmapM,
-				 @restrict const  int    *  EToB){
-  
+                              const dfloat c,
+			      const dlong bcid,
+			      const dlong offset,
+			      @restrict dfloat *U, 
+			      @restrict const  dlong *vmapM,
+			      @restrict const  int   *EToB)
+{
   for(dlong e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0;n<p_Nfp*p_Nfaces;++n;@inner(0)){
-      const int f = n/p_Nfp; 
-      const int idM  = vmapM[e*p_Nfp*p_Nfaces + n];
-      const int id   = EToB[f + p_Nfaces*e]; 
-      if(id==bcid) {
-        U[idM + 0*offset] = c; 
-        U[idM + 1*offset] = c; 
-        U[idM + 2*offset] = c; 
-      }    
+    for(int f=0; f<p_Nfaces; f++){
+      @barrier("global");
+      for(int m=0;m<p_Nfp;++m;@inner(0)){
+        const int n = m + f*p_Nfp; 
+        const int idM = vmapM[e*p_Nfp*p_Nfaces + n];
+        const int id = EToB[f + p_Nfaces*e]; 
+        if(id == bcid) {
+          U[idM + 0*offset] = c; 
+          U[idM + 1*offset] = c; 
+          U[idM + 2*offset] = c; 
+        }    
+      }
     }
   }
 }
@@ -23,32 +26,36 @@
 @kernel void getBCFlux(const dlong Nelements,
                        const  dlong bcid,
                        const  dlong offset,
-                       @restrict const  dfloat *  U,
-                       @restrict const  dlong  *  vmapM,
-                       @restrict const  int    *  EToB,
-                       @restrict const  dfloat *  sgeo,
-                       @restrict        dfloat * Area,
-                       @restrict        dfloat * Flux){
-              
+                       @restrict const  dfloat *U,
+                       @restrict const  dlong  *vmapM,
+                       @restrict const  int    *EToB,
+                       @restrict const  dfloat *sgeo,
+                       @restrict        dfloat *Area,
+                       @restrict        dfloat *Flux)
+{
   for(dlong e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0;n<p_Nfp*p_Nfaces;++n;@inner(0)){
-      const int f       = n/p_Nfp; 
-      const int id      = EToB[f + p_Nfaces*e]; 
-      const dlong sk    = e*p_Nfp*p_Nfaces + n;
-      const int idM     = vmapM[e*p_Nfp*p_Nfaces + n];
+    for(int f=0; f<p_Nfaces; f++){
+      @barrier("global");
+      for(int m=0;m<p_Nfp;++m;@inner(0)){
+        const int n = m + f*p_Nfp; 
+        const int id = EToB[f + p_Nfaces*e]; 
+        const dlong sk = e*p_Nfp*p_Nfaces + n;
+        const int idM  = vmapM[sk];
 
-      const dfloat sWJ  = sgeo[sk*p_Nsgeo + p_WSJID];
-      const dfloat nx   = sgeo[sk*p_Nsgeo + p_NXID];
-      const dfloat ny   = sgeo[sk*p_Nsgeo + p_NYID];
-      const dfloat nz   = sgeo[sk*p_Nsgeo + p_NZID];
-      const dfloat un   = U[idM + 0*offset]*nx + U[idM + 1*offset]*ny + 
-                          U[idM + 2*offset]*nz;
+        const dfloat sWJ = sgeo[sk*p_Nsgeo + p_WSJID];
+        const dfloat nx  = sgeo[sk*p_Nsgeo + p_NXID];
+        const dfloat ny  = sgeo[sk*p_Nsgeo + p_NYID];
+        const dfloat nz  = sgeo[sk*p_Nsgeo + p_NZID];
+        const dfloat un  = U[idM + 0*offset]*nx + 
+                           U[idM + 1*offset]*ny + 
+                           U[idM + 2*offset]*nz;
 
-      Area[sk] = 0;
-      Flux[sk] = 0;
-      if(id == bcid) {
-        Area[sk] = sWJ;
-        Flux[sk] = sWJ*un;
+        Area[sk] = 0;
+        Flux[sk] = 0;
+        if(id == bcid) {
+          Area[sk] = sWJ;
+          Flux[sk] = sWJ*un;
+        }
       }
     }
   }

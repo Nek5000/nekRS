@@ -30,11 +30,12 @@ static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
              double *vt, char *name, int);
 static double (*nek_cfl_ptr)(double *, double *, double *, double *);
 static void (*nek_uf_ptr)(double *, double *, double *);
-static int (*nek_lglel_ptr)(int *);
-static void (*nek_setup_ptr)(int *, char *, char *, int, int);
+static int  (*nek_lglel_ptr)(int *);
+static void (*nek_setup_ptr)(int *, char *, char *, int*, int, int);
 static void (*nek_ifoutfld_ptr)(int *);
 static void (*nek_setics_ptr)(void);
-static int (*nek_bcmap_ptr)(int *, int*);
+static int  (*nek_bcmap_ptr)(int *, int*);
+static int  (*nek_nbid_ptr)(void);
 
 void noop_func(void) {}
 
@@ -174,7 +175,7 @@ void set_function_handles(const char *session_in,int verbose) {
 
   nek_ptr_ptr = (void (*)(void **, char *, int *)) dlsym(handle, fname("nekf_ptr"));
   check_error(dlerror());
-  nek_setup_ptr = (void (*)(int *, char *, char *, int, int)) dlsym(handle, fname("nekf_setup"));
+  nek_setup_ptr = (void (*)(int *, char *, char *, int *, int, int)) dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int *)) dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -195,6 +196,7 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
   nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
   nek_bcmap_ptr = (int (*)(int *, int *)) dlsym(handle,fname("nekf_bcmap"));
+  nek_nbid_ptr = (int (*)(void)) dlsym(handle,fname("nekf_nbid"));
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
@@ -416,8 +418,11 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
 
   set_function_handles(casename.c_str(), 0);
 
+  int nscal = 0;
+  options->getArgs("NUMBER OF SCALARS", nscal);
+
   (*nek_setup_ptr)(&nek_comm, (char *)cwd.c_str(), (char *)casename.c_str(),
-                   cwd.length(), casename.length());
+                   &nscal, cwd.length(), casename.length());
 
   nekData.param = (double *) nek_ptr("param");
   nekData.ifield = (int *) nek_ptr("ifield");
@@ -427,6 +432,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.ndim = *(int *) nek_ptr("ndim");
   nekData.nelt = *(int *) nek_ptr("nelt");
   nekData.nelv = *(int *) nek_ptr("nelv");
+  nekData.lelt = *(int *) nek_ptr("lelt");
   nekData.nx1 =  *(int *) nek_ptr("nx1");
 
   nekData.vx = (double *) nek_ptr("vx");
@@ -458,6 +464,8 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.eface = (int *) nek_ptr("eface");
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
+
+  nekData.NboundaryID = (*nek_nbid_ptr)(); 
 
   dfloat nu;
   options->getArgs("VISCOSITY", nu);

@@ -26,8 +26,14 @@ static occa::kernel getBCFluxKernel;
 static occa::kernel sumReductionKernel; 
 static occa::kernel scalarMultiplyKernel; 
 
-bool buildKernelCalled = 0;
-bool setupCalled = 0;
+static bool buildKernelCalled = 0;
+static bool setupCalled = 0;
+
+static int bID;
+static dfloat wbar; 
+
+static int Nblock;
+
 
 void buildKernel(ins_t *ins)
 {
@@ -52,23 +58,24 @@ void buildKernel(ins_t *ins)
 void copy()
 {
   mesh_t *mesh = ins->mesh; 
-  const int bc = 2;
-  const dfloat wbar = 1.0; 
 
   // copy recycling plane in interior to inlet
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
-  setValueBCKernel(mesh->Nelements, 0.0, bc, ins->fieldOffset,
-                   o_wrk, mesh->o_vmapM, ins->o_EToB);
+  setValueBCKernel(mesh->Nelements, 0.0, bID, ins->fieldOffset,
+                   o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
-  //ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
-  //                     ogsDfloat, ogsAdd, ogs);
+  ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
+                       ogsDfloat, ogsAdd, ogs);
+
+/*
   for(int k=0;k<ins->dim;++k)
     ogsGatherScatter(o_wrk+k*ins->fieldOffset*sizeof(dfloat),
                      ogsDfloat, ogsAdd, ogs);
-  
+*/
+
   // rescale
-  getBCFluxKernel(mesh->Nelements, bc, ins->fieldOffset, o_wrk,
-                  mesh->o_vmapM, ins->o_EToB, mesh->o_sgeo, o_area, o_flux);
+  getBCFluxKernel(mesh->Nelements, bID, ins->fieldOffset, o_wrk,
+                  mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
 
   const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp; 
   sumReductionKernel(NfpTotal, o_area, o_flux, o_tmp1, o_tmp2); 
@@ -76,22 +83,26 @@ void copy()
   o_tmp1.copyTo(tmp1);
   o_tmp2.copyTo(tmp2);
   dfloat sbuf[2] = {0,0};
-  for(int n=0; n<blockSize; n++){
+  for(int n=0; n<Nblock; n++){
     sbuf[0] += tmp1[n]; 
     sbuf[1] += tmp2[n]; 
   }
   MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, mesh->comm); 
 
   const dfloat scale = -wbar*sbuf[0] / sbuf[1]; 
-  //printf("here: %f %f %f\n", scale, sbuf[0], sbuf[1]);
+  //printf("rescaling inflow: %f\n", scale);
   scalarMultiplyKernel(ins->NVfields*ins->Ntotal, scale, o_wrk);
 }
 
 
-void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
+void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
+           const dfloat wbar_)
 {
   ins = ins_;
-  o_wrk = o_wrk_; 
+  o_wrk = o_wrk_;
+  bID = bID_;
+  wbar = wbar_;
+ 
   mesh_t *mesh = ins->mesh;
 
   const int Ntotal = mesh->Np * mesh->Nelements;
@@ -100,6 +111,7 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
   for (int e=0; e < mesh->Nelements; e++){
     // establish a unique numbering
     const int eg = nek_lglel(e); // 0-based
+
     for (int n=0; n < mesh->Np; n++)  {
       ids[e*mesh->Np + n] = eg*mesh->Np + n+1; 
     }
@@ -107,8 +119,8 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
     for (int n=0; n < mesh->Nfp*mesh->Nfaces; n++) {
       const int f = n/mesh->Nfp;
       const int idM = ins->mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
-      const int id  = ins->EToB[f + e*mesh->Nfaces];
-      if (id == 2) ids[idM] += eOffset*mesh->Np; 
+      if (mesh->EToB[f + e*mesh->Nfaces] == bID) 
+          ids[idM] += eOffset*mesh->Np;
     }
    
   }
@@ -117,12 +129,13 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset)
   free(ids);
 
   const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp;
-  const int ntmp = (NfpTotal+blockSize-1)/blockSize;
-  tmp1   = (dfloat *) calloc(ntmp, sizeof(dfloat));
-  tmp2   = (dfloat *) calloc(ntmp, sizeof(dfloat));
 
-  o_tmp1 = mesh->device.malloc(ntmp*sizeof(dfloat), tmp1);
-  o_tmp2 = mesh->device.malloc(ntmp*sizeof(dfloat), tmp2);
+  Nblock = (NfpTotal+blockSize-1)/blockSize;
+  tmp1   = (dfloat *) calloc(Nblock, sizeof(dfloat));
+  tmp2   = (dfloat *) calloc(Nblock, sizeof(dfloat));
+
+  o_tmp1 = mesh->device.malloc(Nblock*sizeof(dfloat), tmp1);
+  o_tmp2 = mesh->device.malloc(Nblock*sizeof(dfloat), tmp2);
 
   flux   = (dfloat *)calloc(NfpTotal, sizeof(dfloat));
   area   = (dfloat *)calloc(NfpTotal, sizeof(dfloat));
