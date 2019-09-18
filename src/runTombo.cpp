@@ -592,6 +592,7 @@ void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
 void runTombo(ins_t *ins)
 {
   mesh_t *mesh = ins->mesh;
+  cds_t *cds = ins->cds; 
 
   double etime0 = MPI_Wtime();
   for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
@@ -604,6 +605,7 @@ void runTombo(ins_t *ins)
       extbdfCoefficents(ins,tstep+1);
 
     dfloat time = ins->startTime + tstep*ins->dt;
+    
 
     ins->isOutputStep = 0;
     nek_ifoutfld(0);
@@ -613,6 +615,9 @@ void runTombo(ins_t *ins)
         nek_ifoutfld(1);
       }
     }
+
+    if(ins->Nscalar)
+      cdsSolveStep(cds, time, ins->dt, cds->o_U, cds->o_S); 
 
     makef(ins, time+ins->dt);
     curlCurl(ins, time, ins->o_U, ins->o_NC);

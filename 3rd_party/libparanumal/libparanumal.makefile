@@ -17,6 +17,7 @@ GSDIR       = $(HDRDIR)/3rdParty/gslib
 ALMONDDIR   = $(HDRDIR)/libs/parAlmond
 ELLIPTICDIR = $(HDRDIR)/solvers/elliptic
 INSDIR      = $(HDRDIR)/solvers/ins
+CDSDIR      = $(HDRDIR)/solvers/cds
 BLASDIR     = $(HDRDIR)/3rdParty/BlasLapack
 
 # define LIBP_OPT_FLAGS
@@ -32,7 +33,8 @@ $(OGSDIR)/ogs.hpp \
 $(ALMONDDIR)/parAlmond.hpp \
 $(ELLIPTICDIR)/elliptic.h \
 $(ELLIPTICDIR)/ellipticPrecon.h \
-$(ELLIPTICDIR)/ellipticMultiGrid.h
+$(ELLIPTICDIR)/ellipticMultiGrid.h \
+$(CDSDIR)/cds.h
 
 # types of files we are going to construct rules for
 .SUFFIXES: .c
@@ -48,10 +50,10 @@ CFLAGS_:=$(CFLAGS)
 CFLAGS:= $(CFLAGS_) -D DHOLMES="\\\"$(NEKRS_INSTALL_DIR)/libparanumal\\\"" \
 	-D DOGS="\\\"$(NEKRS_INSTALL_DIR)/gatherScatter\\\"" \
 	-D DELLIPTIC="\\\"$(NEKRS_INSTALL_DIR)/elliptic\\\"" \
-	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\""
+	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\"" \
+	-D DCDS="\\\"$(NEKRS_INSTALL_DIR)/cds\\\""
 
 # list of objects to be compiled
-AOBJS    = 
 
 # library objects
 LOBJS = \
@@ -154,13 +156,18 @@ ifeq ($(detected_OS),Darwin)
 	EXT=dylib
 endif
 
+libcds: libogs libP libparAlmond
+	$(MAKE) -C $(CDSDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
+	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
+
 libelliptic: libogs libP libparAlmond
 	$(MAKE) -C $(ELLIPTICDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
 	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
 
 libP: libblas libogs $(LOBJS)
 	cd $(HDRDIR) && $(CXX) $(SHARED) -o libP.$(EXT) $(LOBJS) -Wl,$(WHOLE) \
-        -L$(BLASDIR) -lBlasLapack -Wl,$(NOWHOLE) -Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/libparanumal/libP.$(EXT)
+        -L$(BLASDIR) -lBlasLapack -Wl,$(NOWHOLE) \
+	-Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/libparanumal/libP.$(EXT)
 
 libogs:
 	$(MAKE) -C $(OGSDIR) CC="$(CC)" CXX="$(CXX)" LD="$(CXX)" \
@@ -171,10 +178,11 @@ libblas:
 
 libparAlmond:
 	$(MAKE) -C $(ALMONDDIR) CC="$(CC)" CXX="$(CXX)" LD="$(CXX)" \
-	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
+	CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" \
+	ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
 
 
-all: libelliptic 
+all: libelliptic libcds
 
 clean:
 	cd $(ELLIPTICDIR); make clean; cd -

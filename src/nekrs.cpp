@@ -218,6 +218,14 @@ void setDataFile(libParanumal::setupAide &options)
     if (found ==std::string::npos)
       out << "void insPressureDirichletConditions3D(bcData *bc){}\n"; 
 
+    found = buffer.str().find("void cdsNeumannConditions");
+    if (found == std::string::npos)
+      out << "void cdsNeumannConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void cdsDirichletConditions");
+    if (found ==std::string::npos)
+      out << "void cdsDirichletConditions3D(bcData *bc){}\n"; 
+
     out.close();
   }
 

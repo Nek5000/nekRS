@@ -32,6 +32,7 @@ SOFTWARE.
 #include "mesh2D.h"
 #include "mesh3D.h"
 #include "elliptic.h"
+#include "cds.h"
 
 extern "C" { // Begin C Linkage
 typedef struct {
@@ -43,7 +44,9 @@ typedef struct {
   elliptic_t *vSolver;
   elliptic_t *wSolver;
   elliptic_t *pSolver;
-
+  cds_t      *cds;
+  
+  int Nscalar; 
   setupAide options;
   setupAide vOptions, pOptions; 	
 

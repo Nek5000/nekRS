@@ -46,6 +46,11 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
+  options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
+  options.setArgs("SCALAR01 BASIS", "NODAL");
+  options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
+  options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
+
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
