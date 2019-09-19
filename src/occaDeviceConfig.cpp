@@ -67,12 +67,12 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
   else if(options.compareArgs("THREAD MODEL", "HIP")){
     sprintf(deviceConfig, "mode: 'HIP', device_id: %d",device_id);
   }
-  else if(options.compareArgs("THREAD MODEL", "OpenCL")){
+  else if(options.compareArgs("THREAD MODEL", "OPENCL")){
     int plat;
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "mode: 'OpenCL', device_id: %d, platform_id: %d", device_id, plat);
   }
-  else if(options.compareArgs("THREAD MODEL", "OpenMP")){
+  else if(options.compareArgs("THREAD MODEL", "OPENMP")){
     sprintf(deviceConfig, "mode: 'OpenMP' ");
   }
   else{
