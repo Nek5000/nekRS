@@ -204,7 +204,10 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
     kernelInfo["defines/" "p_SUBCYCLING"]=  1;
   else
     kernelInfo["defines/" "p_SUBCYCLING"]=  0;
-
+#if 1
+  kernelInfo["defines/" "p_EXTBDF"]= 0; // will be removed AK
+  kernelInfo["defines/" "p_TOMBO"]= 1;
+#endif
   kernelInfo["defines/" "p_blockSize"]= blockSize;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
@@ -290,36 +293,11 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->o_PI    = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->PI);
 
   ins->o_cU = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cU);
-
-
-  // dfloat dt; 
-  // options.getArgs("DT", dt);
-  // // MPI_Allreduce to get global minimum dt
-  // MPI_Allreduce(&dt, &(ins->dti), 1, MPI_DFLOAT, MPI_MIN, mesh->comm);
-  // ins->dt = ins->dti; 
-
-  // options.getArgs("FINAL TIME", ins->finalTime);
-  // options.getArgs("START TIME", ins->startTime);
- 
-  // ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-
-  // if(ins->Nsubsteps){
-  //   ins->dt         = ins->Nsubsteps*ins->dt;
-  //   ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-  //   ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-  //   ins->sdt        = ins->dt/ins->Nsubsteps;
-  // } else{
-  //   ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-  //   ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-  // }
-
-  // // Hold some inverses for kernels
-  // ins->inu = 1.0/ins->nu; 
-  // ins->idt = 1.0/ins->dt;
   
   // ins->lambda = ins->g0 / (ins->dt * ins->nu);
   if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP=========================\n");
-
+  
+  options.getArgs("NUMBER OF SCALARS", ins->Nscalar); 
   if(ins->Nscalar)
     setupCDS(ins, options, kernelInfoS); 
 
@@ -478,70 +456,10 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->o_VmapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), ins->VmapB);
   ins->o_PmapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), ins->PmapB);
 
-  // TW: this code needs to be re-evaluated to here <======
-  // and the kernels that use VmapB, PmapB
-
-  // kernelInfo["defines/" "p_blockSize"]= blockSize;
-  // //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-
-  // int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
-  // kernelInfo["defines/" "p_maxNodes"]= maxNodes;
-
-  // int NblockV = mymax(1,256/mesh->Np); // works for CUDA
-  // kernelInfo["defines/" "p_NblockV"]= NblockV;
-
-  // int NblockS = mymax(1,256/maxNodes); // works for CUDA
-  // kernelInfo["defines/" "p_NblockS"]= NblockS;
-
-  // int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);  
-  // kernelInfo["defines/" "p_maxNodesVolumeCub"]= maxNodesVolumeCub;
-  // int cubNblockV = mymax(1,256/maxNodesVolumeCub);
-  // //
-  // int maxNodesSurfaceCub = mymax(mesh->Np, mymax(mesh->Nfaces*mesh->Nfp, mesh->Nfaces*mesh->intNfp));
-  // kernelInfo["defines/" "p_maxNodesSurfaceCub"]=maxNodesSurfaceCub;
-  // int cubNblockS = mymax(256/maxNodesSurfaceCub,1); // works for CUDA
-  // //
-  // kernelInfo["defines/" "p_cubNblockV"]=cubNblockV;
-  // kernelInfo["defines/" "p_cubNblockS"]=cubNblockS;
-
-
   if (mesh->rank==0) {
     printf("Np: %d \t Ncub: %d \n", mesh->Np, mesh->cubNp);
   }
   
-  // dfloat rkC[4] = {1.0, 0.0, -1.0, -2.0};
-
-  // ins->o_rkC  = mesh->device.malloc(4*sizeof(dfloat),rkC);
-  // ins->o_extbdfA = mesh->device.malloc(3*sizeof(dfloat));
-  // ins->o_extbdfB = mesh->device.malloc(3*sizeof(dfloat));
-  // ins->o_extbdfC = mesh->device.malloc(3*sizeof(dfloat)); 
-
-  // ins->o_extC = mesh->device.malloc(3*sizeof(dfloat)); 
-
-  // ins->o_prkA = ins->o_extbdfC;
-  // ins->o_prkB = ins->o_extbdfC;
-
-  // // dummy decleration for scratch space 
-  // ins->Wrk     = (dfloat*) calloc(1, sizeof(dfloat));
-  // ins->o_Wrk   = mesh->device.malloc(1*sizeof(dfloat), ins->Wrk);
- 
-  // // MEMORY ALLOCATION
-  // ins->o_rhsU  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsU);
-  // ins->o_rhsV  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsV);
-  // ins->o_rhsW  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsW);
-  // ins->o_rhsP  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsP);
-  // //storage for helmholtz solves
-  // ins->o_UH = mesh->device.malloc(Ntotal*sizeof(dfloat));
-  // ins->o_VH = mesh->device.malloc(Ntotal*sizeof(dfloat));
-  // ins->o_WH = mesh->device.malloc(Ntotal*sizeof(dfloat));
-
-  // ins->o_FU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->FU);
-  // ins->o_NU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->NU);
-  // ins->o_GP    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->GP);
-  // ins->o_rkGP  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rkGP);
-
-  // ins->o_NC = ins->o_GP; // Use GP storage to store curl(curl(u)) history
-
   // build lumped mass matrix for NEK
   dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
   dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
@@ -561,12 +479,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->o_invLumpedMassMatrix = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
   ins->o_InvM = ins->o_invLumpedMassMatrix; 
  
-  // ins->o_rkU   = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rkU);
-  // ins->o_rkP   = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->rkP);
-  // ins->o_PI    = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->PI);
-
-  // ins->o_cU = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cU);
-
   // halo setup
   if(mesh->totalHaloPairs){
     dlong vHaloBytes = mesh->totalHaloPairs*mesh->Np*ins->NVfields*sizeof(dfloat);
@@ -828,15 +740,10 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   cds->Nblock      = (Nlocal+blockSize-1)/blockSize;
 
   // Solution storage at interpolation nodes
-  // cds->U     = (dfloat*) calloc(cds->NVfields*(cds->Nstages+0)*Ntotal,sizeof(dfloat));
-  cds->S     = (dfloat*) calloc(cds->NSfields*(cds->Nstages+0)*Ntotal,sizeof(dfloat));
-  cds->NS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
-  cds->rkS   = (dfloat*) calloc(cds->NSfields                 *Ntotal,sizeof(dfloat));
-
-
   cds->U     = ins->U; // Point to INS side Velocity
   cds->S     = (dfloat*) calloc(cds->NSfields*(cds->Nstages+0)*Ntotal,sizeof(dfloat));
   cds->NS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
+  // cds->FS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
   cds->rkS   = (dfloat*) calloc(cds->NSfields                 *Ntotal,sizeof(dfloat));
   cds->rhsS  = (dfloat*) calloc(cds->NSfields                 *Ntotal,sizeof(dfloat));
 
@@ -881,33 +788,11 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
 
   // if(mesh->rank==0) printf("Compiling CDS kernels==========\n");
   string suffix, fileName, kernelName;
-  // for (int r=0;r<2;r++){
-  //   if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
-  //     if (cds->dim==2){ 
-  //        fileName    = DCDS + "/okl/cdsSetScalarField2D.okl"; 
-  //         kernelName = "cdsSetScalarField2D"; 
-  //     }else{
-  //        fileName    = DCDS + "/okl/cdsSetScalarField3D.okl"; 
-  //         kernelName = "cdsSetScalarField3D"; 
-  //     }
-  //       cds->setScalarFieldKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
-  //   }
-  //   MPI_Barrier(mesh->comm);
-  // }
-  
   // start time and time step size have to be same with flow solver
   cds->startTime =ins->startTime;
   cds->dt  = ins->dt; 
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
-
-  cds->setScalarFieldKernel(mesh->Nelements,
-          cds->startTime,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          cds->sOffset,
-          cds->o_S);
 
   if (cds->Nsubsteps && mesh->rank==0) 
     printf("dt: %.8f and sdt: %.8f ratio: %.8f \n", cds->dt, cds->sdt, cds->dt/cds->sdt);
@@ -937,10 +822,10 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
 
   cds->options.setArgs("DEBUG ENABLE OGS", "1");
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
-  if (mesh->rank==0) printf("==================ELLIPTIC SOLVE SETUP=========================\n");
-
+  // if (mesh->rank==0) printf("==================ELLIPTIC SOLVE SETUP=========================\n");
   //Solver tolerances 
-  // cds->TOL = 1E-8;
+  cds->TOL = 1E-8;
+
   const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
   const int nbrBIDs = nekData.NboundaryID;
 
@@ -953,11 +838,11 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   }
 
   // Use third Order Velocity Solve: full rank should converge for low orders
-  if (mesh->rank==0) printf("==================HELMHOLTZ SETUP SOLVE SETUP=========================\n");
+  // if (mesh->rank==0) printf("==================HELMHOLTZ SETUP SOLVE SETUP=========================\n");
 
   cds->solver = new elliptic_t();
   cds->solver->mesh = mesh;
-  cds->solver->options = ins->vOptions;
+  cds->solver->options = cds->options;
   cds->solver->dim = ins->dim;
   cds->solver->elementType = ins->elementType;
   cds->solver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
@@ -970,14 +855,16 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   for (int e=0;e<mesh->Nelements;e++) {
     for (int n=0;n<mesh->Np;n++) cds->mapB[n+e*mesh->Np] = largeNumber;
   }
-
-  cds->EToB = (int*) calloc(mesh->Nelements*mesh->Nfaces, sizeof(int));
+  
+  
+  cds->EToB   = (int*) calloc(mesh->Nelements*mesh->Nfaces, sizeof(int));
 
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
       cds->EToB[cnt] = nek_bcmap(mesh->EToB[f+e*mesh->Nfaces], 2);
       int bc = cds->EToB[cnt];
+       // int bc = mesh->EToB[f+e*mesh->Nfaces];
       if (bc>0) {
   for (int n=0;n<mesh->Nfp;n++) {
     int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -995,9 +882,10 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
       cds->mapB[n] = 0.;
     }
   }
+
+  cds->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), cds->EToB);
   cds->o_mapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), cds->mapB);
 
-    
     // mass lumping
     dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
     dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
@@ -1034,6 +922,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   // MEMORY ALLOCATION
   cds->o_rhsS  = mesh->device.malloc(cds->NSfields*                 Ntotal*sizeof(dfloat), cds->rhsS);
   cds->o_NS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->NS);
+  // cds->o_FS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->FS);
   cds->o_rkS   = mesh->device.malloc(                               Ntotal*sizeof(dfloat), cds->rkS);  
 
   if(mesh->totalHaloPairs){//halo setup
@@ -1178,8 +1067,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     }
     MPI_Barrier(mesh->comm);
   }
-
-  if(mesh->rank==0) printf("......Scalar Solver is set........ \n");
 
 }
 

@@ -490,12 +490,14 @@ void nek_copyFrom(ins_t *ins, dfloat time) {
   memcpy(nekData.vy, vy, sizeof(dfloat)*Nlocal);
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar) memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
 }
 
 void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
 
   ins->o_U.copyTo(ins->U);
   ins->o_P.copyTo(ins->P); 
+  if(ins->Nscalar) ins->cds->o_S.copyTo(ins->cds->S);
   nek_copyFrom(ins, time, tstep);
 }
 
@@ -521,6 +523,8 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
   memcpy(nekData.vy, vy, sizeof(dfloat)*Nlocal);
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar)  memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
+ 
 }
 
 void nek_ocopyTo(ins_t *ins, dfloat &time) {
@@ -528,6 +532,7 @@ void nek_ocopyTo(ins_t *ins, dfloat &time) {
   nek_copyTo(ins, time);
   ins->o_P.copyFrom(ins->P);
   ins->o_U.copyFrom(ins->U);
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S); 
 }
 
 void nek_copyTo(ins_t *ins, dfloat &time) {
@@ -550,6 +555,7 @@ void nek_copyTo(ins_t *ins, dfloat &time) {
   memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
   memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
   memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar)  memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
 }
 
 int nek_bcmap(int bid, int ifld) {

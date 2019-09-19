@@ -285,7 +285,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   double diffusivity; 
   if(ini.extract("scalar01", "diffusivity", diffusivity)) {
-    options.setArgs("NUMBER OF SCALARS", "0");
     if(diffusivity < 0) diffusivity = abs(1/diffusivity);
     options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
   }

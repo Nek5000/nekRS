@@ -21,6 +21,8 @@ typedef void (*udfexecuteStep)(ins_t *ins, dfloat time, int tstep);
 
 typedef void (*udfuEqnSource)(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU);
 
+typedef void (*udfsEqnSource)(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_SU);
+
 typedef struct
 {
   udfsetup0 setup0;
@@ -28,6 +30,7 @@ typedef struct
   udfloadKernels loadKernels;
   udfexecuteStep executeStep;
   udfuEqnSource uEqnSource;
+  udfsEqnSource sEqnSource;
 } UDF;
 
 extern UDF udf;

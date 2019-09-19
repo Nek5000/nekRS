@@ -383,6 +383,7 @@ int main(int argc, char **argv)
     ins->U[1*ins->fieldOffset + n] = 0;
     ins->U[2*ins->fieldOffset + n] = 0;
     ins->P[n] = 0;
+    if(ins->Nscalar) ins->cds->S[n] = 0;
   }
   if(readRestartFile) {
     dlong Nlocal = mesh->Nelements*mesh->Np;
@@ -399,6 +400,8 @@ int main(int argc, char **argv)
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
+  if(ins->Nscalar)
+     ins->cds->o_S.copyFrom(ins->cds->S);    
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_copyFrom(ins, ins->startTime, 0);

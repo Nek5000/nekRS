@@ -27,6 +27,14 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->lambda = ins->g0 / (ins->dt * ins->nu);
     ins->ig0 = 1.0/ins->g0;
+
+     if(ins->Nscalar){
+      ins->cds->ExplicitOrder = 1;  
+      ins->cds->g0 = ins->g0;    
+      ins->cds->lambda = ins->cds->g0 / (ins->dt * ins->cds->alf);
+      ins->cds->ig0 = 1.0/ins->cds->g0; 
+    }
+
   } else if(order==2) {
     //advection, second order in time, increment
     ins->g0 =  1.5f;
@@ -46,6 +54,13 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->lambda = ins->g0 / (ins->dt * ins->nu);
     ins->ig0 = 1.0/ins->g0;
+
+     if(ins->Nscalar){
+      ins->cds->ExplicitOrder = 2;  
+      ins->cds->g0 = ins->g0;  
+      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
+      ins->cds->ig0 = 1.0/ins->cds->g0; 
+    }
   } else if(order==3) {
     //advection, third order in time, increment
     ins->g0 =  11.f/6.f;
@@ -65,7 +80,53 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->lambda = ins->g0 / (ins->dt * ins->nu);
     ins->ig0 = 1.0/ins->g0;
+
+    if(ins->Nscalar){
+    ins->cds->ExplicitOrder = 3;  
+    ins->cds->g0 = ins->g0;  
+    ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
+    ins->cds->ig0 = 1.0/ins->cds->g0; 
   }
+  }
+}
+
+
+void cdsSolve(cds_t *cds, dfloat time, dfloat dt, occa::memory o_U, occa::memory o_S){
+
+  mesh_t *mesh = cds->mesh;
+  
+  hlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+
+  if(cds->Nsubsteps) {
+    cdsStrongSubCycle(cds, time, cds->Nstages, o_U, o_S,  cds->o_NS);
+  } else {
+    // First extrapolate velocity to t^(n+1)
+     cds->subCycleExtKernel(mesh->Nelements,
+                            cds->ExplicitOrder,
+                            cds->vOffset,
+                            cds->o_extbdfC,
+                            o_U,
+                            cds->o_Ue);
+     
+    cdsAdvection(cds, time, cds->o_Ue, o_S, cds->o_NS);
+  }    
+
+  cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
+
+  cdsHelmholtzSolve(cds, time+dt, cds->Nstages, cds->o_rhsS, cds->o_rkS);
+   
+  //cycle history
+  for (int s=cds->Nstages;s>1;s--) {
+    o_S.copyFrom( o_S, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+      (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+      (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
+
+    cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+           (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+           (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
+  }
+  //copy updated scalar
+  o_S.copyFrom(cds->o_rkS, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
 }
 
 
@@ -615,9 +676,10 @@ void runTombo(ins_t *ins)
         nek_ifoutfld(1);
       }
     }
-
+    
+    // Solve for Scalar Field 
     if(ins->Nscalar)
-      cdsSolveStep(cds, time, ins->dt, cds->o_U, cds->o_S); 
+      cdsSolve(cds, time, ins->dt, cds->o_U, cds->o_S); 
 
     makef(ins, time+ins->dt);
     curlCurl(ins, time, ins->o_U, ins->o_NC);
@@ -654,6 +716,10 @@ void runTombo(ins_t *ins)
     dfloat cfl = insComputeCfl(ins, time+ins->dt, tstep+1);
 
     if (mesh->rank==0) {
+      if(ins->Nscalar)
+      printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, S - %3d, elapsed = %.5e s\n",
+        tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
+      else
       printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
         tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-etime0);
       if ((tstep+1)%5==0) fflush(stdout);
