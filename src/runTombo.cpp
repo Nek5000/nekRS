@@ -91,8 +91,30 @@ void extbdfCoefficents(ins_t *ins, int order) {
 }
 
 
-void cdsSolve(cds_t *cds, dfloat time, dfloat dt, occa::memory o_U, occa::memory o_S){
+void makeq(ins_t *ins, dfloat time){
+  cds_t *cds   = ins->cds; 
+  mesh_t *mesh = ins->mesh;
 
+  ins->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, cds->o_FS);
+  
+  if(udf.sEqnSource){
+    printf("I ma here \n"); 
+   udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
+  }
+  
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+    ins->filterKernel(mesh->Nelements,
+                      ins->o_filterMT,
+                      ins->filterS,
+                      cds->sOffset,
+                      cds->o_S,
+                      cds->o_FS);
+
+}
+
+void cdsSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U, occa::memory o_S){
+
+  cds_t *cds   = ins->cds;
   mesh_t *mesh = cds->mesh;
   
   hlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
@@ -109,7 +131,9 @@ void cdsSolve(cds_t *cds, dfloat time, dfloat dt, occa::memory o_U, occa::memory
                             cds->o_Ue);
      
     cdsAdvection(cds, time, cds->o_Ue, o_S, cds->o_NS);
-  }    
+  }
+
+  makeq(ins, time); 
 
   cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
 
@@ -122,6 +146,10 @@ void cdsSolve(cds_t *cds, dfloat time, dfloat dt, occa::memory o_U, occa::memory
       (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
 
     cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+           (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+           (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
+
+    cds->o_FS.copyFrom(cds->o_FS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
   }
@@ -679,7 +707,7 @@ void runTombo(ins_t *ins)
     
     // Solve for Scalar Field 
     if(ins->Nscalar)
-      cdsSolve(cds, time, ins->dt, cds->o_U, cds->o_S); 
+      cdsSolve(ins, time, ins->dt, cds->o_U, cds->o_S); 
 
     makef(ins, time+ins->dt);
     curlCurl(ins, time, ins->o_U, ins->o_NC);

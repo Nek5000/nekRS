@@ -29,6 +29,7 @@ C-----------------------------------------------------------------------
       real uxerr(lx1*ly1*lz1*lelv)
       real uyerr(lx1*ly1*lz1*lelv)
       real uzerr(lx1*ly1*lz1*lelv)
+      real terr (lx1*ly1*lz1*lelv)
 
       real pre  (lx2,ly2,lz2,lelv)
       real prerr(lx2,ly2,lz2,lelv)
@@ -41,9 +42,6 @@ C-----------------------------------------------------------------------
 
       n  = nelv*nx1*ny1*nz1
       n2 = nelv*nx2*ny2*nz2
-
-      call comp_vort3(omg,wo1,wo2,vx,vy,vz)
-      call copy(t,omg(1,3),nx1*ny1*nz1*nelv)
 
       call exactu(uxe,uye,uze,xm1,ym1,zm1,n)
       call exactp(pre,xm2,ym2,zm2,n2)
@@ -61,14 +59,20 @@ C-----------------------------------------------------------------------
       uxerrl2 = glsc3(uxerr,bm1,uxerr,n)
       uxerrl2 = sqrt(uxerrl2)
 
+      call sub3(terr,t,uxe,n)
+      terrl2 = glsc3(terr,bm1,terr,n)
+      terrl2 = sqrt(terrl2)
+
       call sub3(prerr,pr,pre,n2)
       prerrl2 = glsc3(prerr,bm2,prerr,n2)
       prerrl2 = sqrt(prerrl2)
 
       wrk(1) = uxerrl2
       wrk(2) = prerrl2
+      wrk(3) = terrl2
 
-      if (nid.eq.nio) write(6,*) istep,time,uxerrl2,prerrl2,' L2 err'
+      if (nid.eq.nio) write(6,*) istep,time,uxerrl2,prerrl2,
+     &                           terrl2, ' L2 err'
 
       return
       end
@@ -85,6 +89,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
 
       call setbc(1,1,'v  ')
+      call setbc(1,2,'t  ')
 
       return
       end
@@ -105,7 +110,7 @@ c-----------------------------------------------------------------------
       integer e,eg
 
       call exactu(ux,uy,uz,x,y,z,1)
-      temp = 1.0
+      temp = ux
 
       return
       end

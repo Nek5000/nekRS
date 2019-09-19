@@ -421,7 +421,7 @@ c-----------------------------------------------------------------------
       n = 0  
       do iel = 1,nelt
       do ifc = 1,2*ndim
-         n = max(nekf_nbid,boundaryID(ifc,iel))
+         n = max(n,boundaryID(ifc,iel))
       enddo
       enddo
       nekf_nbid = iglmax(n,1) 

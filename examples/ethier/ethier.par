@@ -5,12 +5,12 @@ deviceNumber = LOCAL-RANK
 [GENERAL] 
 polynomialOrder = 7
 #startFrom = restart.fld
-stopAt = endTime
-endTime = 1.0 
+stopAt = numSteps
+numSteps = 3
 dt = 2e-04
-timeStepper = bdf2
-writeControl = runTime
-writeInterval = 0.1
+timeStepper = bdf1
+writeControl = numSteps
+writeInterval = 1
 
 [PRESSURE]
 preconditioner = semg_amg
@@ -19,3 +19,7 @@ residualTol = 1e-08
 [VELOCITY]
 residualTol = 1e-12
 viscosity = -100 
+
+[SCALAR01]
+residualTol = 1e-12
+diffusivity = -100  

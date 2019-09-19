@@ -6,10 +6,22 @@
 #include "udf.hpp"
 #include "ethier_ci.h"
 
-/* UDF Functions */                                                      
+/* UDF Functions */   
+
+occa::kernel userqKernel; 
+
+void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  mesh_t *mesh = ins->mesh; 
+  cds_t *cds   = ins->cds; 
+  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
+  userqKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->sOffset, o_FS);
+
+}                                                   
 
 void UDF_LoadKernels(ins_t *ins)
 {
+userqKernel = udfBuildKernel(ins, "dpdx");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -21,6 +33,7 @@ void UDF_Setup(ins_t *ins)
 {
   // get IC from nek
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+  udf.sEqnSource = &userq;
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
