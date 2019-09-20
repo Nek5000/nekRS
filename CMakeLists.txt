@@ -249,10 +249,14 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 set(SRC src/nekrs.cpp
     src/cfl.cpp
-    src/filterSetup.cpp
+    src/filter.cpp
+    src/velRecycling.cpp
     src/setup.cpp
-    src/runTombo.cpp
+    src/runTime.cpp
+    src/tombo.cpp
     src/udf/udf.cpp
+    src/meshSetup.cpp
+    src/meshNekReader.cpp
     src/meshPhysicalNodesHex3D.cpp
     src/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp

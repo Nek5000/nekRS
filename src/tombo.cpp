@@ -1,162 +1,92 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "nekrs.hpp"
-#include "nekInterfaceAdapter.hpp"
-#include "udf.hpp"
 
-void extbdfCoefficents(ins_t *ins, int order) {
+// Compute divergence of the velocity field using physical boundary data at t = time. 
+void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU){
 
-  if(order==1) {
-     //advection, first order in time, increment
-    ins->g0 =  1.0f;
-    dfloat extbdfB[3] = {1.0f, 0.0f, 0.0f};
-    dfloat extbdfA[3] = {1.0f, 0.0f, 0.0f};
-    dfloat extbdfC[3] = {1.0f, 0.0f, 0.0f};
-
-    memcpy(ins->extbdfB, extbdfB, 3*sizeof(dfloat));
-    memcpy(ins->extbdfA, extbdfA, 3*sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3*sizeof(dfloat));
-
-    ins->o_extbdfB.copyFrom(extbdfB);
-    ins->o_extbdfA.copyFrom(extbdfA);
-    ins->o_extbdfC.copyFrom(extbdfC);
-
-    ins->ExplicitOrder = 1;
-
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
-
-     if(ins->Nscalar){
-      ins->cds->ExplicitOrder = 1;  
-      ins->cds->g0 = ins->g0;    
-      ins->cds->lambda = ins->cds->g0 / (ins->dt * ins->cds->alf);
-      ins->cds->ig0 = 1.0/ins->cds->g0; 
-    }
-
-  } else if(order==2) {
-    //advection, second order in time, increment
-    ins->g0 =  1.5f;
-    dfloat extbdfB[3] = {2.0f,-0.5f, 0.0f};
-    dfloat extbdfA[3] = {2.0f,-1.0f, 0.0f};
-    dfloat extbdfC[3] = {1.0f, 0.0f, 0.0f};
-
-    memcpy(ins->extbdfB, extbdfB, 3*sizeof(dfloat));
-    memcpy(ins->extbdfA, extbdfA, 3*sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3*sizeof(dfloat));
-
-    ins->o_extbdfB.copyFrom(extbdfB);
-    ins->o_extbdfA.copyFrom(extbdfA);
-    ins->o_extbdfC.copyFrom(extbdfC);
-
-    ins->ExplicitOrder=2;
-
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
-
-     if(ins->Nscalar){
-      ins->cds->ExplicitOrder = 2;  
-      ins->cds->g0 = ins->g0;  
-      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
-      ins->cds->ig0 = 1.0/ins->cds->g0; 
-    }
-  } else if(order==3) {
-    //advection, third order in time, increment
-    ins->g0 =  11.f/6.f;
-    dfloat extbdfB[3] = {3.0f,-1.5f, 1.0f/3.0f};
-    dfloat extbdfA[3] = {3.0f,-3.0f, 1.0f};
-    dfloat extbdfC[3] = {2.0f,-1.0f, 0.0f};
-
-    memcpy(ins->extbdfB, extbdfB, 3*sizeof(dfloat));
-    memcpy(ins->extbdfA, extbdfA, 3*sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3*sizeof(dfloat));
-
-    ins->o_extbdfB.copyFrom(extbdfB);
-    ins->o_extbdfA.copyFrom(extbdfA);
-    ins->o_extbdfC.copyFrom(extbdfC);
-
-    ins->ExplicitOrder=3;
-
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
-
-    if(ins->Nscalar){
-    ins->cds->ExplicitOrder = 3;  
-    ins->cds->g0 = ins->g0;  
-    ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
-    ins->cds->ig0 = 1.0/ins->cds->g0; 
-  }
-  }
-}
-
-
-void makeq(ins_t *ins, dfloat time){
-  cds_t *cds   = ins->cds; 
   mesh_t *mesh = ins->mesh;
 
-  ins->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, cds->o_FS);
+  //  if (ins->vOptions.compareArgs("DISCRETIZATION","IPDG")) {
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.finish();
+    
+    // switch to data stream
+    mesh->device.setStream(mesh->dataStream);
+    
+    ins->haloGetKernel(mesh->totalHaloPairs,
+		       ins->NVfields,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloGetNodeIds,
+		       o_U,
+		       ins->o_vHaloBuffer);
+    
+    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
+    
+    // copy extracted halo to HOST 
+    ins->o_vHaloBuffer.copyTo(ins->vSendBuffer, Ndata*sizeof(dfloat), 0, "async: true");// zero offset             
+
+    mesh->device.setStream(mesh->defaultStream);
+  }
+
+  // computes div u^(n+1) volume term
+  ins->divergenceVolumeKernel(mesh->Nelements,
+                             mesh->o_vgeo,
+                             mesh->o_Dmatrices,
+                             ins->fieldOffset,
+                             o_U,
+                             o_DU);
   
-  if(udf.sEqnSource){
-    printf("I ma here \n"); 
-   udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
+  if(mesh->totalHaloPairs>0){
+
+    // make sure compute device is ready to perform halo extract
+    mesh->device.setStream(mesh->dataStream);
+    mesh->device.finish();
+    
+    // start halo exchange
+    meshHaloExchangeStart(mesh,
+			  mesh->Nfp*(ins->NVfields)*sizeof(dfloat),
+			  ins->vSendBuffer,
+			  ins->vRecvBuffer);
+        
+    meshHaloExchangeFinish(mesh);
+    
+    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
+    
+    ins->o_vHaloBuffer.copyFrom(ins->vRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
+    
+    ins->haloPutKernel(mesh->totalHaloPairs,
+		       ins->NVfields,
+		       ins->fieldOffset,
+		       mesh->o_haloElementList,
+		       mesh->o_haloPutNodeIds,
+		       ins->o_vHaloBuffer,
+		       o_U);
+
+    mesh->device.setStream(mesh->defaultStream);
   }
   
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->filterKernel(mesh->Nelements,
-                      ins->o_filterMT,
-                      ins->filterS,
-                      cds->sOffset,
-                      cds->o_S,
-                      cds->o_FS);
-
+  //computes div u^(n+1) surface term
+  const dfloat lambda = -ins->g0*ins->idt; 
+  ins->divergenceSurfaceKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_sgeo,
+    mesh->o_LIFTT,
+    mesh->o_vmapM,
+    mesh->o_vmapP,
+    ins->o_EToB,
+    time,
+    lambda, 
+    mesh->o_x,
+    mesh->o_y,
+    mesh->o_z,
+    ins->fieldOffset,
+    ins->o_Wrk,
+    o_U,
+    o_DU);
 }
-
-void cdsSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U, occa::memory o_S){
-
-  cds_t *cds   = ins->cds;
-  mesh_t *mesh = cds->mesh;
-  
-  hlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
-
-  if(cds->Nsubsteps) {
-    cdsStrongSubCycle(cds, time, cds->Nstages, o_U, o_S,  cds->o_NS);
-  } else {
-    // First extrapolate velocity to t^(n+1)
-     cds->subCycleExtKernel(mesh->Nelements,
-                            cds->ExplicitOrder,
-                            cds->vOffset,
-                            cds->o_extbdfC,
-                            o_U,
-                            cds->o_Ue);
-     
-    cdsAdvection(cds, time, cds->o_Ue, o_S, cds->o_NS);
-  }
-
-  makeq(ins, time); 
-
-  cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
-
-  cdsHelmholtzSolve(cds, time+dt, cds->Nstages, cds->o_rhsS, cds->o_rkS);
-   
-  //cycle history
-  for (int s=cds->Nstages;s>1;s--) {
-    o_S.copyFrom( o_S, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-      (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-      (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
-
-    cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-           (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-           (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
-
-    cds->o_FS.copyFrom(cds->o_FS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-           (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
-           (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
-  }
-  //copy updated scalar
-  o_S.copyFrom(cds->o_rkS, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
-}
-
 
 void pressureRhs(ins_t *ins, dfloat time)
 {
@@ -525,54 +455,6 @@ void subCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, occa::memo
   }
 }
 
-
-void advection(ins_t *ins, dfloat time)
-{
-  mesh_t *mesh = ins->mesh;
-  if(ins->Nsubsteps) {
-    subCycle(ins, time, ins->Nstages, ins->o_U, ins->o_NU);
-  } else {
-    if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-       ins->advectionStrongCubatureVolumeKernel(
-         mesh->Nelements,
-         mesh->o_vgeo,
-         mesh->o_cubvgeo,
-         mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
-         mesh->o_cubInterpT,
-         mesh->o_cubProjectT,
-         ins->fieldOffset,
-         ins->o_U,
-         ins->o_cU,
-         ins->o_NU);
-     else
-       ins->advectionStrongVolumeKernel(
-         mesh->Nelements,
-         mesh->o_vgeo,
-         mesh->o_Dmatrices,
-         ins->fieldOffset,
-         ins->o_U,
-         ins->o_NU);
-  }
-}
-
-void makef(ins_t *ins, dfloat time)
-{
-  mesh_t *mesh = ins->mesh;
-
-  advection(ins, time);
-
-  ins->setScalarKernel(ins->Ntotal*ins->NVfields, 0.0, ins->o_FU);
-  if(udf.uEqnSource) udf.uEqnSource(ins, time, ins->o_U, ins->o_FU);
-
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->filterKernel(mesh->Nelements,
-                      ins->o_filterMT,
-                      ins->filterS,
-                      ins->fieldOffset,
-                      ins->o_U,
-                      ins->o_FU);
-}
-
 void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
 {
   mesh_t *mesh = ins->mesh;
@@ -678,175 +560,4 @@ void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
 }
 
 
-void runTombo(ins_t *ins)
-{
-  mesh_t *mesh = ins->mesh;
-  cds_t *cds = ins->cds; 
 
-  double etime0 = MPI_Wtime();
-  for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
-
-    if(tstep<1) 
-      extbdfCoefficents(ins,tstep+1);
-    else if(tstep<2 && ins->temporalOrder>=2) 
-      extbdfCoefficents(ins,tstep+1);
-    else if(tstep<3 && ins->temporalOrder>=3) 
-      extbdfCoefficents(ins,tstep+1);
-
-    dfloat time = ins->startTime + tstep*ins->dt;
-    
-
-    ins->isOutputStep = 0;
-    nek_ifoutfld(0);
-    if (ins->outputStep > 0) {
-      if (((tstep+1)%(ins->outputStep))==0 ||  tstep+1 == ins->NtimeSteps) {
-        ins->isOutputStep = 1;
-        nek_ifoutfld(1);
-      }
-    }
-    
-    // Solve for Scalar Field 
-    if(ins->Nscalar)
-      cdsSolve(ins, time, ins->dt, cds->o_U, cds->o_S); 
-
-    makef(ins, time+ins->dt);
-    curlCurl(ins, time, ins->o_U, ins->o_NC);
-
-    // o_rkU = sum_j (alpha_j U_j)- sum_j ( beta_j (FU_J + NU_j + NC_j) )
-    pressureRhs  (ins, time+ins->dt);
-    pressureSolve(ins, time+ins->dt, ins->o_rkP); 
-    ins->o_P.copyFrom(ins->o_rkP, ins->Ntotal*sizeof(dfloat)); 
-
-    // rhsU^s = MM*1/nu*[ -(grad P) + sum_i ( (a_i) U^(n-i)/dt - b_i (NU+FU)^(n-i) )]
-    velocityRhs  (ins, time+ins->dt);
-    velocitySolve(ins, time+ins->dt, ins->o_rkU);
-    for (int s=ins->Nstages;s>1;s--)
-      ins->o_U.copyFrom(ins->o_U, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-    ins->o_U.copyFrom(ins->o_rkU, ins->NVfields*ins->Ntotal*sizeof(dfloat)); 
-
-    //cycle rhs history
-    for (int s=ins->Nstages;s>1;s--) {
-      ins->o_NU.copyFrom(ins->o_NU, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-      
-      ins->o_NC.copyFrom(ins->o_NC, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-      
-      ins->o_FU.copyFrom(ins->o_FU, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
-       (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-    }
-
-    dfloat cfl = insComputeCfl(ins, time+ins->dt, tstep+1);
-
-    if (mesh->rank==0) {
-      if(ins->Nscalar)
-      printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, S - %3d, elapsed = %.5e s\n",
-        tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
-      else
-      printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
-        tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-etime0);
-      if ((tstep+1)%5==0) fflush(stdout);
-    }
-
-    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
-
-    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
-
-    if (ins->isOutputStep) nek_outfld(); 
-
-  }
-}
-
-
-// Compute divergence of the velocity field using physical boundary data at t = time. 
-void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU){
-
-  mesh_t *mesh = ins->mesh;
-
-  //  if (ins->vOptions.compareArgs("DISCRETIZATION","IPDG")) {
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.finish();
-    
-    // switch to data stream
-    mesh->device.setStream(mesh->dataStream);
-    
-    ins->haloGetKernel(mesh->totalHaloPairs,
-		       ins->NVfields,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloGetNodeIds,
-		       o_U,
-		       ins->o_vHaloBuffer);
-    
-    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
-    
-    // copy extracted halo to HOST 
-    ins->o_vHaloBuffer.copyTo(ins->vSendBuffer, Ndata*sizeof(dfloat), 0, "async: true");// zero offset             
-
-    mesh->device.setStream(mesh->defaultStream);
-  }
-
-  // computes div u^(n+1) volume term
-  ins->divergenceVolumeKernel(mesh->Nelements,
-                             mesh->o_vgeo,
-                             mesh->o_Dmatrices,
-                             ins->fieldOffset,
-                             o_U,
-                             o_DU);
-  
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.setStream(mesh->dataStream);
-    mesh->device.finish();
-    
-    // start halo exchange
-    meshHaloExchangeStart(mesh,
-			  mesh->Nfp*(ins->NVfields)*sizeof(dfloat),
-			  ins->vSendBuffer,
-			  ins->vRecvBuffer);
-        
-    meshHaloExchangeFinish(mesh);
-    
-    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
-    
-    ins->o_vHaloBuffer.copyFrom(ins->vRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
-    
-    ins->haloPutKernel(mesh->totalHaloPairs,
-		       ins->NVfields,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloPutNodeIds,
-		       ins->o_vHaloBuffer,
-		       o_U);
-
-    mesh->device.setStream(mesh->defaultStream);
-  }
-  
-  //computes div u^(n+1) surface term
-  const dfloat lambda = -ins->g0*ins->idt; 
-  ins->divergenceSurfaceKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_sgeo,
-    mesh->o_LIFTT,
-    mesh->o_vmapM,
-    mesh->o_vmapP,
-    ins->o_EToB,
-    time,
-    lambda, 
-    mesh->o_x,
-    mesh->o_y,
-    mesh->o_z,
-    ins->fieldOffset,
-    ins->o_Wrk,
-    o_U,
-    o_DU);
-}

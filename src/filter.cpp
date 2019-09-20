@@ -23,10 +23,6 @@
 
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "mesh2D.h"
-#include "mesh3D.h"
 #include "ins.h"
 
 // AK. Keep them here to make filterSetup self contained
@@ -44,7 +40,7 @@ dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N);
 
 dfloat filterFactorial(int n); 
 
-void insFilterSetup(ins_t* ins){
+void filterSetup(ins_t* ins){
 
   // Setting Filter Here.....
   mesh_t *mesh = ins->mesh; 

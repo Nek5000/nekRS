@@ -10,9 +10,6 @@ namespace libParanumal {
   using ::mesh3D;
   using ::setupAide;
 
-  // Functions
-  using ::readDfloatArray;
-  using ::readIntArray;
   // mesh
   using ::meshParallelConnect;
   using ::meshHaloSetup;

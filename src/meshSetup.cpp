@@ -1,5 +1,5 @@
-#include "libParanumal.hpp"
-#include "meshNekReaderHex3D.hpp"
+#include "nekrs.hpp"
+#include "meshNekReader.hpp"
 
 void meshBoxSetupHex3D(int N, mesh_t *mesh) {
  

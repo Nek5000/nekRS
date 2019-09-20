@@ -1,13 +1,23 @@
-
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "meshSetup.hpp"
+#include "filter.hpp"
 
 #define DIRICHLET 1
 #define NEUMANN 2
 
+extern int buildOnly;
+
 void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 
 ins_t *setup(mesh_t *mesh, setupAide &options){
+  int N;
+  options.getArgs("POLYNOMIAL DEGREE", N);
+  if (!buildOnly) 
+    meshNekSetupHex3D(N, mesh);
+  else
+    meshBoxSetupHex3D(N, mesh);
+
   ins_t *ins = new ins_t();
   
   ins->mesh = mesh;
@@ -685,11 +695,10 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),
                                     ins->EToB);
 
-  // Initialize Cfl Stuff
-  ins->cflComputed = 0; 
+  ins->computedDh = 0; 
    
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    insFilterSetup(ins); 
+    filterSetup(ins); 
 
   return ins;
 }

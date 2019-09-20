@@ -1,4 +1,3 @@
-void printHeader(){
   cout << R"(                 __    ____  _____)" << endl
        << R"(   ____   ___   / /__ / __ \/ ___/)" << endl
        << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
@@ -8,4 +7,3 @@ void printHeader(){
        << "COPYRIGHT (c) 2019 UCHICAGO ARGONNE, LLC" << endl
        << "Version: " << NEKRS_VERSION << "." << NEKRS_SUBVERSION << endl
        << endl;
-}

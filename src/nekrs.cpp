@@ -60,20 +60,13 @@ not be used for advertising or product endorsement purposes.
 
 \*---------------------------------------------------------------------------*/
 
-#include <cstdio>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <getopt.h>
-
 #include "nekrs.hpp"
-#include "meshNekSetupHex3D.hpp"
+#include "meshSetup.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
-#include "header.h"
-
-#define NEKLDIMT 2
+#include "setup.hpp"
+#include "parReader.hpp"
+#include "runTime.hpp"
 
 int rank, size;
 MPI_Comm comm;
@@ -107,7 +100,6 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
-  meshBoxSetupHex3D(N, mesh);
   ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
@@ -289,7 +281,7 @@ int main(int argc, char **argv)
 
   // print header
   if (rank == 0) {
-    printHeader();
+    #include "printHeader.inc"
     
     cout << "MPI ranks: " << size << endl << endl;
 
@@ -367,7 +359,6 @@ int main(int argc, char **argv)
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
-  meshNekSetupHex3D(N, mesh);
   ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
@@ -418,7 +409,7 @@ int main(int argc, char **argv)
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
   MPI_Pcontrol(1);
 
-  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTombo(ins); 
+  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTime(ins); 
 
   MPI_Pcontrol(0);
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;

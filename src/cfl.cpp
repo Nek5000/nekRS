@@ -28,7 +28,7 @@ void insGetDh(ins_t *ins){
     exit(0);
   }
 
-  ins->cflComputed = 1; 
+  ins->computedDh = 1; 
 
 }
 
@@ -36,7 +36,7 @@ dfloat insComputeCfl(ins_t *ins, dfloat time, int tstep){
 
   mesh_t *mesh = ins->mesh; 
   // create dH i.e. nodal spacing in reference coordinates
-  if(!ins->cflComputed)
+  if(!ins->computedDh)
     insGetDh(ins);
   // Compute cfl factors i.e. dt* U / h 
   ins->cflKernel(mesh->Nelements,

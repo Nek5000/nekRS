@@ -1,34 +1,6 @@
-/*
+#if !defined(nekrs_ins_hpp_)
+#define nekrs_ins_hpp_
 
-The MIT License (MIT)
-
-Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "mpi.h"
 #include "mesh2D.h"
 #include "mesh3D.h"
 #include "elliptic.h"
@@ -136,7 +108,7 @@ typedef struct {
   occa::memory o_Wrk; 
 
   // Cfl related
-  int cflComputed; 
+  int computedDh; 
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
 
   int readRestartFile,writeRestartFile, restartedFromFile;
@@ -246,32 +218,6 @@ typedef struct {
 
 }ins_t;
 
-ins_t *insSetup(mesh_t *mesh, setupAide options);
-
-void insRunARK(ins_t *ins);
-void insRunEXTBDF(ins_t *ins);
-void insRunTOMBO(ins_t *ins);
-
-void insFilterSetup(ins_t *ins);
-void insAddVelocityRhs(ins_t *ins, dfloat time);
-
-void insAdvection(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NU);
-void insDiffusion(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_LU);
-void insGradient (ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP);
-void insDivergence(ins_t *ins,dfloat time, occa::memory o_U, occa::memory o_DU);
-void insSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, occa::memory o_NU);
-
-void insVelocityRhs  (ins_t *ins, dfloat time, int stage, occa::memory o_rhsU, occa::memory o_rhsV, occa::memory o_rhsW);
-void insVelocitySolve(ins_t *ins, dfloat time, int stage, occa::memory o_rhsU, occa::memory o_rhsV, occa::memory o_rhsW, occa::memory o_rkU);
-void insVelocityUpdate(ins_t *ins, dfloat time, int stage, occa::memory o_rkGP, occa::memory o_rkU);
-
-void insPressureRhs  (ins_t *ins, dfloat time, int stage);
-void insPressureSolve(ins_t *ins, dfloat time, int stage);
-void insPressureUpdate(ins_t *ins, dfloat time, int stage, occa::memory o_rkP);
-
-void insCurlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC); 
-
-dfloat insComputeCfl(ins_t *ins, dfloat time, int tstep); 
-
-void insStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, occa::memory o_Ud);
 } // end C Linkage
+
+#endif
