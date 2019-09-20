@@ -10,14 +10,15 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} $ENV{NEKRS_LIBP_DEFINES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{NEKRS_LIBP_DEFINES}")
+set(NEKRS_INSTALL_DIR "$ENV{NEKRS_INSTALL_DIR}")
 
-set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
 set(HDRDIR      ${NEKRS_INSTALL_DIR}/libparanumal/include)
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
 set(ALMONDDIR   ${NEKRS_INSTALL_DIR}/parAlmond)
 set(ELLIPTICDIR ${NEKRS_INSTALL_DIR}/elliptic)
 set(INSDIR      ${NEKRS_INSTALL_DIR}/ins)
+set(UDFDIR      ${NEKRS_INSTALL_DIR}/udf)
 set(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   ${INSDIR} 
@@ -26,12 +27,13 @@ set(INCLUDE_DIRS
   ${GSDIR}
   ${ELLIPTICDIR}
   ${ALMONDDIR}
+  ${UDFDIR}
   ${NEKRS_INSTALL_DIR}/include
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 
-execute_process(COMMAND bash -c "cp -f ${FILENAME} ${CMAKE_CURRENT_SOURCE_DIR}/udf.cpp")
-add_library(UDF SHARED udf.cpp)
+execute_process(COMMAND bash -c "cp -f ${FILENAME} ${CMAKE_CURRENT_SOURCE_DIR}/user_udf.cpp")
+add_library(UDF SHARED user_udf.cpp udf.cpp)
 target_include_directories(UDF PRIVATE ${INCLUDE_DIRS} ${UDF_DIR})
 
 if(APPLE)

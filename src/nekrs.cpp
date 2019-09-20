@@ -70,7 +70,7 @@ not be used for advertising or product endorsement purposes.
 #include "nekrs.hpp"
 #include "meshNekSetupHex3D.hpp"
 #include "nekInterfaceAdapter.hpp"
-#include "udf.hpp"
+#include "udfHelper.hpp"
 #include "header.h"
 
 #define NEKLDIMT 2
@@ -343,6 +343,7 @@ int main(int argc, char **argv)
     if (rank == 0) cout << "building udf kernels ...";
     udf.loadKernels(ins);
     if (rank == 0) cout << " done" << endl;
+    udfInit(ins);
   }
 
   // set initial condition
@@ -364,6 +365,7 @@ int main(int argc, char **argv)
     }
     if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   }
+
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);

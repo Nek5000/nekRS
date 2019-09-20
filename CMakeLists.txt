@@ -249,11 +249,11 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 set(SRC src/nekrs.cpp
     src/timestepper.cpp
-    src/udf/udf.cpp
     src/meshPhysicalNodesHex3D.cpp
     src/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
+    src/udfHelper.cpp
     ## To get fortran flags
     src/dummy.f
 )

@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
-#include "udf.hpp"
+#include "udfHelper.hpp"
 
 void extbdfCoefficents(ins_t *ins, int order) {
 
@@ -108,11 +108,11 @@ void runPlan4(ins_t *ins){
 
     dfloat time = ins->startTime + tstep*ins->dt;
 
-    ins->isOutputStep = 0;
+    ins->outputStep = 0;
     nek_ifoutfld(0);
     if (ins->outputStep > 0) {
       if (((tstep+1)%(ins->outputStep))==0 ||  tstep+1 == ins->NtimeSteps) {
-        ins->isOutputStep = 1;
+        ins->outputStep = 1;
         nek_ifoutfld(1);
       }
     }
@@ -181,11 +181,11 @@ void runPlan4(ins_t *ins){
       if ((tstep+1)%5==0) fflush(stdout);
     }
 
-    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
+    if (ins->outputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1);
 
     if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
 
-    if (ins->isOutputStep) nek_outfld(); 
+    if (ins->outputStep) nek_outfld();
 
   }
 }

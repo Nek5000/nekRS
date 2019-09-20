@@ -158,7 +158,7 @@ c-----------------------------------------------------------------------
 
       call bcastParam
 
-      call usrdat0
+      call usrdat
 
       call read_re2_hdr(ifbswap)
       call chkParam
