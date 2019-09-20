@@ -35,12 +35,9 @@
       const dfloat czx = cos( a * zz + d * xx );
       // 
       const dfloat dpdx = 0.5f*(a*a*exp(-2.f*d*d*p_nu*time)*(2.f*a*exp(2.f*a*xx) 
-                         + 2.f*a*cxy*czx*eyz 
-                         + 2.f*d*czx*cyz*exy 
-                         + 2.f*a*cxy*syz*ezx  
-                         + 2.f*a*cyz*szx*exy 
-                         - 2.f*a*sxy*syz*ezx 
-                         - 2.f*d*sxy*szx*eyz)); 
+                         + 2.f*a*cxy*czx*eyz + 2.f*d*czx*cyz*exy 
+                         + 2.f*a*cxy*syz*ezx + 2.f*a*cyz*szx*exy 
+                         - 2.f*a*sxy*syz*ezx - 2.f*d*sxy*szx*eyz)); 
 
       FS[n + 0*offset] = -dpdx; 
     }

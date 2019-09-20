@@ -97,10 +97,8 @@ void makeq(ins_t *ins, dfloat time){
 
   ins->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, cds->o_FS);
   
-  if(udf.sEqnSource){
-    printf("I ma here \n"); 
-   udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
-  }
+  if(udf.sEqnSource) udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
+
   
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     ins->filterKernel(mesh->Nelements,
@@ -131,6 +129,7 @@ void cdsSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U, occa::memory
                             cds->o_Ue);
      
     cdsAdvection(cds, time, cds->o_Ue, o_S, cds->o_NS);
+    // cdsAdvection(cds, time, o_U, o_S, cds->o_NS);
   }
 
   makeq(ins, time); 
