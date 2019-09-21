@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include "udf.hpp"
+#include "casedata.h"
 #include "ethier_ci.h"
 
 /* UDF Functions */   

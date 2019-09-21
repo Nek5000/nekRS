@@ -30,19 +30,21 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_userchk();
 
   double *err = nekData.cbscnrs;
-  double vxErr, prErr;
+  double vxErr, prErr, sErr;
 
   switch (ciMode) {
     case 1: vxErr = abs((err[0] - 1.018684E-04)/err[0]);
             prErr = abs((err[1] - 5.148630E-04)/err[1]);
+            sErr  = abs((err[2] - 1.385985E-04)/err[2]);
             break;
     case 2: vxErr = abs((err[0] - 1.014353E-04)/err[0]);
             prErr = abs((err[1] - 5.127882E-04)/err[1]);
+            sErr  = abs((err[2] - 1.390466E-04)/err[2]);
             break;
   }
 
   if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g\n", vxErr, prErr);
+    printf("relative error to target: vx=%g pr=%g s=%g\n", vxErr, prErr, sErr);
 
-  (vxErr < EPS && prErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && prErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
 }

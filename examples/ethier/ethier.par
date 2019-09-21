@@ -5,17 +5,10 @@ deviceNumber = LOCAL-RANK
 [GENERAL] 
 polynomialOrder = 7
 #startFrom = restart.fld
-stopAt = endTime #numSteps
-#numSteps = 1000
-endTime = 1.0
-
+stopAt = endTime
+endTime = 1.0 
 dt = 2e-04
 timeStepper = bdf2
-extrapolation = OIFS
-targetCFL = 4.0
-
-#writeControl = numSteps
-#writeInterval = 100
 writeControl = runTime
 writeInterval = 0.1
 
@@ -25,8 +18,8 @@ residualTol = 1e-08
 
 [VELOCITY]
 residualTol = 1e-12
-viscosity = 0.01
+viscosity = -100
 
 [SCALAR01]
 residualTol = 1e-12
-diffusivity = 0.01  
+diffusivity = -100
