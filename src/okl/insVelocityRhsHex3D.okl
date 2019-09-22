@@ -74,9 +74,9 @@ SOFTWARE.
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
                   // 
-                  rhsUn -= JW*inu*extbdfA[s]*FUx;
-                  rhsVn -= JW*inu*extbdfA[s]*FUy;
-                  rhsWn -= JW*inu*extbdfA[s]*FUz;
+                  rhsUn += JW*inu*extbdfA[s]*FUx;
+                  rhsVn += JW*inu*extbdfA[s]*FUy;
+                  rhsWn += JW*inu*extbdfA[s]*FUz;
                 }
               } else {
               rhsUn = -JW*inu*GP[id+0*fieldOffset];
@@ -98,9 +98,9 @@ SOFTWARE.
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
 
-                  rhsUn += JW*inu*(idt*extbdfB[s]*Um - extbdfA[s]*(NUm + FUx));
-                  rhsVn += JW*inu*(idt*extbdfB[s]*Vm - extbdfA[s]*(NVm + FUy));
-                  rhsWn += JW*inu*(idt*extbdfB[s]*Wm - extbdfA[s]*(NWm + FUz));
+                  rhsUn += JW*inu*(idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx));
+                  rhsVn += JW*inu*(idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy));
+                  rhsWn += JW*inu*(idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz));
                 }
               }
 

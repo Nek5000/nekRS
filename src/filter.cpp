@@ -50,6 +50,7 @@ void filterSetup(ins_t* ins){
   dfloat filterC = 0.90; // Nc/N i.e. percentage of modes that is not touched 
   ins->options.getArgs("FILTER STRENGTH", ins->filterS); 
   ins->options.getArgs("FILTER CUTOFF RATIO", filterC); 
+  ins->filterS = -1*fabs(ins->filterS);
 
   // Construc Filter Function
   int Nmodes = 1; 
@@ -139,7 +140,8 @@ void filterSetup(ins_t* ins){
   ins->o_filterMT =  mesh->device.malloc(Nmodes*Nmodes*sizeof(dfloat), A); // copy Tranpose
 
   if(mesh->rank==0)
-  printf("Filter is Activated: filter Strength: %.4f and cutoff Order=%d \n", ins->filterS, ins->filterNc);
+    printf("High pass filter relaxation: chi = %.4f using %d mode\n", 
+           fabs(ins->filterS), Nmodes - ins->filterNc);
 
   free(A); 
   free(C); 
