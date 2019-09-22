@@ -9,11 +9,10 @@
 #include "cfl.hpp"
 
 void extbdfCoefficents(ins_t *ins, int order);
-void makeq(ins_t *ins, dfloat time);
-void scalarSolve(ins_t *ins, dfloat time, occa::memory o_S);
-void makef(ins_t *ins, dfloat time);
+void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS);
+void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
+void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU);
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U);
-
 
 void runTime(ins_t *ins)
 {
@@ -42,9 +41,13 @@ void runTime(ins_t *ins)
     }
     
     if(ins->Nscalar) scalarSolve(ins, time, ins->dt, cds->o_S); 
-    velocitySolve(ins, time, ins->dt, ins->U);
+    velocitySolve(ins, time, ins->dt, ins->o_U);
 
     dfloat cfl = computeCFL(ins, time+ins->dt, tstep+1);
+    if (cfl > 20) {
+      if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
+      EXIT(0);
+    }
 
     if (mesh->rank==0) {
       if(ins->Nscalar)
@@ -154,7 +157,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
   mesh_t *mesh = ins->mesh;
 
   if(cds->Nsubsteps) {
-    cdsStrongSubCycle(cds, time, cds->Nstages, ins->o_U, cds->o_S,  o_NS);
+    cdsStrongSubCycle(cds, time, cds->Nstages, ins->o_U, cds->o_S, o_NS);
   } else {
     // First extrapolate velocity to t^(n+1)
      cds->subCycleExtKernel(mesh->Nelements,
@@ -256,6 +259,7 @@ void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU)
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
 {
   makef(ins, time, ins->o_NU, ins->o_FU);
+
   curlCurl(ins, time, o_U, ins->o_NC);
 
   // o_rkU = sum_j (alpha_j U_j)- sum_j ( beta_j (FU_J + NU_j + NC_j) )

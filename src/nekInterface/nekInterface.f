@@ -376,7 +376,7 @@ c-----------------------------------------------------------------------
         endif
       endif
 
-c      write(6,*) 'bcmap: ', bID, c, ibc 
+c      write(6,*) ifld, 'bcmap: ', bID, c, ibc
 
       if (ibc.eq.0) then
         write(6,*) 'Found unsupport BC type:', c

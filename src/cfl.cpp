@@ -1,6 +1,6 @@
 #include "nekrs.hpp"
 
-void insGetDh(ins_t *ins){
+void getDh(ins_t *ins){
 
   mesh_t *mesh = ins->mesh; 
   
@@ -16,28 +16,23 @@ void insGetDh(ins_t *ins){
       else
         dH[n] = 0.5*( mesh->gllz[n+1] - mesh->gllz[n-1]); 
     }
-    // // invert it
     for(int n=0; n< (mesh->N+1); n++)
       dH[n] = 1.0/dH[n]; 
 
-    // Move data to Device
     ins->o_idH = mesh->device.malloc((mesh->N+1)*sizeof(dfloat), dH); 
     free(dH); 
-  }else{
-    printf("cfl for tri and tet is not included yet\n");
-    exit(0);
   }
 
   ins->computedDh = 1; 
 
 }
 
-dfloat insComputeCfl(ins_t *ins, dfloat time, int tstep){
+dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
 
   mesh_t *mesh = ins->mesh; 
   // create dH i.e. nodal spacing in reference coordinates
   if(!ins->computedDh)
-    insGetDh(ins);
+    getDh(ins);
   // Compute cfl factors i.e. dt* U / h 
   ins->cflKernel(mesh->Nelements,
                  ins->dt, 

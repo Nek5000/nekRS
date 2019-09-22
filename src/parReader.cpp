@@ -260,7 +260,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   double viscosity;
   if(ini.extract("velocity", "viscosity", viscosity)) {
-    if(viscosity < 0) viscosity = abs(1/viscosity);
+    if(viscosity < 0) viscosity = fabs(1/viscosity);
     options.setArgs("VISCOSITY", to_string_f(viscosity));
   } else {
     ABORT("Cannot find mandatory parameter VELOCITY::vicosity!"); 

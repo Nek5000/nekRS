@@ -386,6 +386,7 @@ int main(int argc, char **argv)
       memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
       memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
     }
+    memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
     if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   }
   if(udf.setup) udf.setup(ins);

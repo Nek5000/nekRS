@@ -9,13 +9,13 @@
 
 /* User Functions */
 
-occa::kernel addDpDzKernel; 
+occa::kernel userfKernel; 
 
 void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   const dfloat DPDZ = -4*pow(RE_TAU/(0.5*RE_B), 2);
   const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  addDpDzKernel(Nlocal, ins->fieldOffset, DPDZ, o_FU);
+  userfKernel(Nlocal, ins->fieldOffset, DPDZ, o_FU);
 
 /*
   ins->o_U.copyTo(ins->U);
@@ -34,7 +34,7 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 void UDF_LoadKernels(ins_t *ins)
 {
-  addDpDzKernel = udfBuildKernel(ins, "addDpDz");
+  userfKernel = udfBuildKernel(ins, "cfillz");
 }
 
 void UDF_Setup(ins_t *ins)

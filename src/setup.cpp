@@ -355,14 +355,12 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
 
   const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
   const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
-  const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
   const int nbrBIDs = nekData.NboundaryID;
 
   int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-  //int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
   // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
@@ -372,9 +370,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
     if (bcID == 5) vBCType[bID] = DIRICHLET; 
     if (bcID == 6) wBCType[bID] = DIRICHLET;
     pBCType[bID] = prMap[bcID];;
-
-    //bcID = nek_bcmap(bID, 2);
-    //sBCType[bID] = scalMap[bcID];
   }
  
   //default solver tolerances 
@@ -717,9 +712,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
  DCDS.assign(getenv("NEKRS_INSTALL_DIR")); DCDS +="/cds"; 
  DHOLMES.assign(getenv("NEKRS_LIBP_DIR"));
 
-  if(mesh->rank==0) printf("==========Setting Scalar Solver==========\n");
-
-  if(mesh->rank==0) printf("Setting Primitives========\n");
   // set mesh, options
   cds->mesh        = mesh; 
   cds->elementType = ins->elementType; 
@@ -728,7 +720,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   // Number of scalar field is hard coded for now
   cds->NSfields    = 1; 
 
-  if(mesh->rank==0) printf("Setting Time Stepper Info==========\n");
   cds->extbdfA = ins->extbdfA;
   cds->extbdfB = ins->extbdfB;
   cds->extbdfC = ins->extbdfC;
@@ -737,8 +728,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   cds->Nstages       = ins->Nstages; 
   cds->temporalOrder = ins->temporalOrder; 
   cds->g0            = ins->g0; 
-  // cds->nu            = ins->nu; 
-
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
@@ -759,7 +748,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   // Use Nsubsteps if INS does to prevent stability issues
   cds->Nsubsteps = ins->Nsubsteps; 
 
-
   cds->Ue      = (dfloat*) calloc(cds->NVfields*Ntotal,sizeof(dfloat));
   
   if(cds->Nsubsteps){
@@ -775,8 +763,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     cds->Srkc = ins->Srkc; 
   }
 
- 
-  
   options.getArgs("SCALAR01 DIFFUSIVITY", cds->alf);
   options.getArgs("SBAR", cds->sbar);
   cds->ialf   = 1.0/cds->alf;              // Inverse diff. 
@@ -795,19 +781,12 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   cds->o_U = ins->o_U; // point to INS velocity very important !!!!!
   cds->o_S = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
 
-  // if(mesh->rank==0) printf("Compiling CDS kernels==========\n");
   string suffix, fileName, kernelName;
   // start time and time step size have to be same with flow solver
   cds->startTime =ins->startTime;
   cds->dt  = ins->dt; 
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
-
-  if (cds->Nsubsteps && mesh->rank==0) 
-    printf("dt: %.8f and sdt: %.8f ratio: %.8f \n", cds->dt, cds->sdt, cds->dt/cds->sdt);
-  else if(mesh->rank==0)
-    printf("sdt:%.8f \n", cds->dt);
-
 
   cds->idt     = 1.0/cds->dt;
   cds->lambda  = cds->g0 / (cds->dt * cds->alf);
@@ -831,9 +810,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
 
   cds->options.setArgs("DEBUG ENABLE OGS", "1");
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
-  // if (mesh->rank==0) printf("==================ELLIPTIC SOLVE SETUP=========================\n");
-  //Solver tolerances 
-  cds->TOL = 1E-8;
+  cds->TOL = 1e-6;
 
   const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
   const int nbrBIDs = nekData.NboundaryID;
@@ -845,9 +822,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     int bcID = nek_bcmap(bID, 2);
     sBCType[bID] = scalMap[bcID];
   }
-
-  // Use third Order Velocity Solve: full rank should converge for low orders
-  // if (mesh->rank==0) printf("==================HELMHOLTZ SETUP SOLVE SETUP=========================\n");
 
   cds->solver = new elliptic_t();
   cds->solver->mesh = mesh;
@@ -865,15 +839,13 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     for (int n=0;n<mesh->Np;n++) cds->mapB[n+e*mesh->Np] = largeNumber;
   }
   
-  
-  cds->EToB   = (int*) calloc(mesh->Nelements*mesh->Nfaces, sizeof(int));
+  cds->EToB = (int*) calloc(mesh->Nelements*mesh->Nfaces, sizeof(int));
 
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
       cds->EToB[cnt] = nek_bcmap(mesh->EToB[f+e*mesh->Nfaces], 2);
       int bc = cds->EToB[cnt];
-       // int bc = mesh->EToB[f+e*mesh->Nfaces];
       if (bc>0) {
   for (int n=0;n<mesh->Nfp;n++) {
     int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -932,7 +904,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   cds->o_rhsS  = mesh->device.malloc(cds->NSfields*                 Ntotal*sizeof(dfloat), cds->rhsS);
   cds->o_NS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->NS);
   cds->o_FS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->FS);
-  cds->o_rkS   = mesh->device.malloc(                               Ntotal*sizeof(dfloat), cds->rkS);  
+  cds->o_rkS   = mesh->device.malloc(cds->NSfields*                 Ntotal*sizeof(dfloat), cds->rkS);  
 
   if(mesh->totalHaloPairs){//halo setup
     // Define new variable nodes per element (npe) to test thin halo; 
@@ -959,7 +931,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
       cds->o_shaloGatherTmp = mesh->device.malloc(sgatherBytes,  cds->shaloGatherTmp);
     }
   }
-
 
   // set kernel name suffix
   if(ins->elementType==QUADRILATERALS)
@@ -989,7 +960,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
 
       fileName = DCDS + "/okl/cdsAdvection" + suffix + ".okl";
 
-      // needed to be implemented
       kernelName = "cdsAdvectionCubatureVolume" + suffix;
       cds->advectionCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
@@ -1024,7 +994,6 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
       kernelName = "cdsHelmholtzAddBC" + suffix;
       cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-    
       fileName = DCDS + "/okl/cdsMassMatrix.okl"; 
       kernelName = "cdsMassMatrix" + suffix;
       cds->massMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
