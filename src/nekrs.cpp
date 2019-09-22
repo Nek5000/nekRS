@@ -288,7 +288,7 @@ int main(int argc, char **argv)
     if (const char *env_p = getenv("OCCA_CACHE_DIR"))
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
     else
-      cout << "OCCA_CACHE_DIR undefined fallback to default" << endl << endl;
+      cout << "OCCA_CACHE_DIR undefined -> fallback to default" << endl << endl;
   }
 
 #ifdef DEBUG
@@ -386,14 +386,13 @@ int main(int argc, char **argv)
       memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
       memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
     }
-    memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
+    if(ins->Nscalar) memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
     if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   }
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
-  if(ins->Nscalar)
-     ins->cds->o_S.copyFrom(ins->cds->S);    
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_copyFrom(ins, ins->startTime, 0);

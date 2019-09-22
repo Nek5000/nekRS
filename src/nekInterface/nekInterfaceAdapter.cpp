@@ -28,7 +28,6 @@ static void (*nek_map_m_to_n_ptr)(double *a, int *na, double *b, int *nb, int *i
              double *w, int *nw);
 static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
              double *vt, char *name, int);
-static double (*nek_cfl_ptr)(double *, double *, double *, double *);
 static void (*nek_uf_ptr)(double *, double *, double *);
 static int  (*nek_lglel_ptr)(int *);
 static void (*nek_setup_ptr)(int *, char *, char *, int*, int, int);
@@ -90,11 +89,6 @@ void nek_map_m_to_n(double *a, int na, double *b, int nb) {
 
   (*nek_map_m_to_n_ptr)(a, &na, b, &nb, &if3d, w, &N);
   free(w);
-}
-
-double nek_cfl(double *u, double *v, double *w, double dt)
-{
-  return (*nek_cfl_ptr)(u, v, w, &dt);
 }
 
 void nek_uf(double *u, double *v, double *w)
@@ -185,8 +179,6 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());
-  nek_cfl_ptr = (double (*)(double *, double *, double *, double *)) dlsym(handle,
-	fname("nekf_cfl"));
   check_error(dlerror());
   nek_uf_ptr = (void (*)(double *, double *, double *)) dlsym(handle,
 	fname("nekf_uf"));
@@ -194,12 +186,17 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_lglel_ptr = (int (*)(int *)) dlsym(handle,fname("nekf_lglel"));
   check_error(dlerror());
   nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
+  check_error(dlerror());
   nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
+  check_error(dlerror());
   nek_bcmap_ptr = (int (*)(int *, int *)) dlsym(handle,fname("nekf_bcmap"));
-  nek_nbid_ptr = (int (*)(void)) dlsym(handle,fname("nekf_nbid"));
+  check_error(dlerror());
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
+  nek_nbid_ptr = (int (*)(void)) dlsym(handle,fname("nekf_nbid"));
+  check_error(dlerror());
+
 
 #define postfix(x) x##_ptr
 #define load_or_noop(s) \

@@ -150,9 +150,9 @@ c-----------------------------------------------------------------------
       call setDefaultParam
       param(1)  = 1.0
       param(2)  = 1.0
-      param(27) = 1  ! 1st-order in time
+      param(27) = 1  ! torder 1 to save mem
       param(32) = 1  ! read only vel BC from re2
-      param(99) = -1 ! no dealiasing
+      param(99) = -1 ! no dealiasing to save mem
 
       ifflow = .true.
       iftran = .true.
@@ -219,7 +219,6 @@ c-----------------------------------------------------------------------
 
       call dofcnt
 
-      jp = 0 ! Set perturbation field count to 0 for baseline flow
       p0thn = p0th
       ntdump=0
 
@@ -262,17 +261,6 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      real function nekf_cfl(u,v,w,dt)
-
-      real u(*), v(*), w(*), dt
-      real cfl
-
-      call compute_cfl(cfl,u,v,w,dt)
-      nekf_cfl = cfl
-
-      return
-      end
-c-----------------------------------------------------------------------
       real function nekf_uf(u,v,w)
 
       real u(*), v(*), w(*)
@@ -282,7 +270,6 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-
       integer function nekf_lglel(e)
 
       integer e
@@ -416,17 +403,15 @@ c-----------------------------------------------------------------------
 
       include 'SIZE'
       include 'TOTAL'
-      include 'NEKINTF'
- 
-      n = 0  
+
+      n = 0
       do iel = 1,nelt
       do ifc = 1,2*ndim
          n = max(n,boundaryID(ifc,iel))
       enddo
       enddo
-      nekf_nbid = iglmax(n,1) 
-
-c      write(6,*) 'nekf_nbid:', nekf_nbid
+      nekf_nbid = iglmax(n,1)
 
       return
       end
+c-----------------------------------------------------------------------

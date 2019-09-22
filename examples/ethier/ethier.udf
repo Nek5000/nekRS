@@ -9,20 +9,20 @@
 
 /* UDF Functions */   
 
-occa::kernel userqKernel; 
+occa::kernel dpdxKernel; 
 
 void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   mesh_t *mesh = ins->mesh; 
   cds_t *cds   = ins->cds; 
   const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  userqKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->sOffset, o_FS);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->sOffset, o_FS);
 
 }                                                   
 
 void UDF_LoadKernels(ins_t *ins)
 {
-userqKernel = udfBuildKernel(ins, "dpdx");
+  dpdxKernel = udfBuildKernel(ins, "dpdx");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

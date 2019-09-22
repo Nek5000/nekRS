@@ -51,11 +51,14 @@ void runTime(ins_t *ins)
 
     if (mesh->rank==0) {
       if(ins->Nscalar)
-        printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, S - %3d, elapsed = %.5e s\n",
-          tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
+        printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: %d  tElapsed= %.5e s\n",
+          tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+          ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
       else
-        printf("tstep = %d, time = %.5e, cfl = %.2f, iter: U - %3d, V - %3d, W - %3d, P - %3d, elapsed = %.5e s\n",
-          tstep+1, time+ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP, MPI_Wtime()-etime0);
+        printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
+          tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+          ins->NiterP, MPI_Wtime()-etime0);
+
       if ((tstep+1)%5==0) fflush(stdout);
     }
 
@@ -91,9 +94,9 @@ void extbdfCoefficents(ins_t *ins, int order) {
     ins->ig0 = 1.0/ins->g0;
 
      if(ins->Nscalar){
-       ins->cds->ExplicitOrder = 1;  
+       ins->cds->ExplicitOrder = ins->ExplicitOrder;  
        ins->cds->g0 = ins->g0;    
-       ins->cds->lambda = ins->cds->g0 / (ins->dt * ins->cds->alf);
+       ins->cds->lambda = ins->cds->g0 / (ins->dt * ins->cds->diff);
        ins->cds->ig0 = 1.0/ins->cds->g0; 
     }
 
@@ -118,9 +121,9 @@ void extbdfCoefficents(ins_t *ins, int order) {
     ins->ig0 = 1.0/ins->g0;
 
      if(ins->Nscalar){
-      ins->cds->ExplicitOrder = 2;  
+      ins->cds->ExplicitOrder = ins->ExplicitOrder=2;  
       ins->cds->g0 = ins->g0;  
-      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
+      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->diff);
       ins->cds->ig0 = 1.0/ins->cds->g0; 
     }
   } else if(order==3) {
@@ -144,9 +147,9 @@ void extbdfCoefficents(ins_t *ins, int order) {
     ins->ig0 = 1.0/ins->g0;
 
     if(ins->Nscalar){
-      ins->cds->ExplicitOrder = 3;  
+      ins->cds->ExplicitOrder = ins->ExplicitOrder=3;  
       ins->cds->g0 = ins->g0;  
-      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->alf);
+      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->diff);
       ins->cds->ig0 = 1.0/ins->cds->g0; 
     }
   }

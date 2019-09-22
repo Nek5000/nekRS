@@ -177,7 +177,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("general", "targetcfl", targetCFL)) {
       int subCycles = round(targetCFL/2);
       options.setArgs("SUBCYCLING STEPS", std::to_string(subCycles));
-      options.setArgs("DT", to_string_f(dt/subCycles));
     } else {
       ABORT("Cannot find mandatory parameter GENERAL::targetCFL!"); 
     }

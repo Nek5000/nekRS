@@ -6,11 +6,11 @@
 #define DIRICHLET 1
 #define NEUMANN 2
 
+cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
 
-void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
-
-ins_t *setup(mesh_t *mesh, setupAide &options){
+ins_t *setup(mesh_t *mesh, setupAide &options)
+{
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
   if (!buildOnly) 
@@ -170,22 +170,13 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   options.getArgs("START TIME", ins->startTime);
  
   ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+  if(ins->Nsubsteps) ins->sdt = ins->dt/ins->Nsubsteps;
 
-  if(ins->Nsubsteps){
-    ins->dt         = ins->Nsubsteps*ins->dt;
-    ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-    ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-    ins->sdt        = ins->dt/ins->Nsubsteps;
-  } else{
-    ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-    ins->dt         = (ins->finalTime-ins->startTime)/ins->NtimeSteps;
-  }
   // Hold some inverses for kernels
   ins->inu = 1.0/ins->nu; 
   ins->idt = 1.0/ins->dt;
   ins->lambda = ins->g0 / (ins->dt * ins->nu);
   options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
-
 
   occa::properties& kernelInfo = *ins->kernelInfo;
   kernelInfo["defines"].asObject();
@@ -303,13 +294,10 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->o_PI    = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->PI);
 
   ins->o_cU = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cU);
-  
-  // ins->lambda = ins->g0 / (ins->dt * ins->nu);
-  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP=========================\n");
-  
+
+  // setup cds solver 
   options.getArgs("NUMBER OF SCALARS", ins->Nscalar); 
-  if(ins->Nscalar)
-    setupCDS(ins, options, kernelInfoS); 
+  if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
 
   //make option objects for elliptc solvers
   ins->vOptions = options;
@@ -352,6 +340,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
+  if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
   const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
   const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
@@ -365,6 +354,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     int bcID = nek_bcmap(bID, 1);
+    if(mesh->rank == 0) printf("bID %d -> bcID %d\n", bID, bcID);
     uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
     if (bcID == 4) uBCType[bID] = DIRICHLET; 
     if (bcID == 5) vBCType[bID] = DIRICHLET; 
@@ -375,8 +365,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   //default solver tolerances 
   ins->presTOL = 1E-4;
   ins->velTOL  = 1E-6;
-
-  if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
   ins->uSolver = new elliptic_t();
   ins->uSolver->mesh = mesh;
@@ -698,27 +686,22 @@ ins_t *setup(mesh_t *mesh, setupAide &options){
   return ins;
 }
 
-
-
-void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
+cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 {
 
   mesh_t *mesh = ins->mesh; 
-  ins->cds = new cds_t();
-  cds_t *cds = ins->cds; 
+  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
 
- string DCDS, DHOLMES; 
-
- DCDS.assign(getenv("NEKRS_INSTALL_DIR")); DCDS +="/cds"; 
- DHOLMES.assign(getenv("NEKRS_LIBP_DIR"));
-
+  cds_t *cds = new cds_t(); 
+  string install_dir;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  
   // set mesh, options
   cds->mesh        = mesh; 
   cds->elementType = ins->elementType; 
   cds->dim         = ins->dim; 
   cds->NVfields    = ins->NVfields;
-  // Number of scalar field is hard coded for now
-  cds->NSfields    = 1; 
+  cds->NSfields    = 1; // hard coded for now 
 
   cds->extbdfA = ins->extbdfA;
   cds->extbdfB = ins->extbdfB;
@@ -763,33 +746,26 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     cds->Srkc = ins->Srkc; 
   }
 
-  options.getArgs("SCALAR01 DIFFUSIVITY", cds->alf);
-  options.getArgs("SBAR", cds->sbar);
-  cds->ialf   = 1.0/cds->alf;              // Inverse diff. 
+  options.getArgs("SCALAR01 DIFFUSIVITY", cds->diff);
+  cds->idiff   = 1.0/cds->diff;
 
-
-  //Reynolds number
-  cds->Re = ins->Re; 
-  // occa::properties& kernelInfoH = *ins->kernelInfoS;
   occa::properties& kernelInfo  = *ins->kernelInfo; 
   // ADD-DEFINES
-  kernelInfo["defines/" "p_sbar"]     = cds->sbar;
   kernelInfo["defines/" "p_NSfields"] = cds->NSfields;
   kernelInfo["defines/" "p_NTSfields"]= (cds->NVfields+cds->NSfields + 1);
-  kernelInfo["defines/" "p_alf"]      = cds->alf;
+  kernelInfo["defines/" "p_diff"]      = cds->diff;
  
-  cds->o_U = ins->o_U; // point to INS velocity very important !!!!!
+  cds->o_U = ins->o_U;
   cds->o_S = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
 
   string suffix, fileName, kernelName;
-  // start time and time step size have to be same with flow solver
   cds->startTime =ins->startTime;
   cds->dt  = ins->dt; 
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
 
   cds->idt     = 1.0/cds->dt;
-  cds->lambda  = cds->g0 / (cds->dt * cds->alf);
+  cds->lambda  = cds->g0 / (cds->dt * cds->diff);
 
   //make option objects for elliptc solvers
   cds->options = options;
@@ -820,6 +796,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     int bcID = nek_bcmap(bID, 2);
+    if(mesh->rank == 0) printf("bID %d -> bcID %d\n", bID, bcID); 
     sBCType[bID] = scalMap[bcID];
   }
 
@@ -867,26 +844,26 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   cds->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), cds->EToB);
   cds->o_mapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), cds->mapB);
 
-    // mass lumping
-    dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
-    dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
+  // mass lumping
+  dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
+  dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
 
-    for(hlong e=0;e<mesh->Nelements;++e){
-      for(int n=0;n<mesh->Np;++n){
-        lumpedMassMatrix[e*mesh->Np+n]     = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
-        copyLumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
-      }
+  for(hlong e=0;e<mesh->Nelements;++e){
+    for(int n=0;n<mesh->Np;++n){
+      lumpedMassMatrix[e*mesh->Np+n]     = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
+      copyLumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
     }
-  
-    ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
+  }
 
-    for(int n=0;n<mesh->Np*mesh->Nelements;++n)
-      lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
+  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
 
-    cds->o_invLumpedMassMatrix = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
+  for(int n=0;n<mesh->Np*mesh->Nelements;++n)
+    lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
 
-    // Need to be revised for Tet/Tri
-    cds->o_InvM = cds->o_invLumpedMassMatrix; 
+  cds->o_invLumpedMassMatrix = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
+
+  // Need to be revised for Tet/Tri
+  cds->o_InvM = cds->o_invLumpedMassMatrix; 
 
   // time stepper
   dfloat rkC[4] = {1.0, 0.0, -1.0, -2.0};
@@ -941,7 +918,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
   for (int r=0;r<mesh->size;r++) {
     if (r==mesh->rank) {
       
-      fileName = DCDS + "/okl/cdsHaloExchange.okl";
+      fileName = install_dir + "/okl/cdsHaloExchange.okl";
       
       kernelName = "cdsHaloGet";
       cds->haloGetKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo); 
@@ -957,20 +934,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
         cds->scalarHaloPutKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);    
       } 
 
-
-      fileName = DCDS + "/okl/cdsAdvection" + suffix + ".okl";
-
-      kernelName = "cdsAdvectionCubatureVolume" + suffix;
-      cds->advectionCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "cdsAdvectionCubatureSurface" + suffix;
-      cds->advectionCubatureSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-      
-      kernelName = "cdsAdvectionVolume" + suffix;
-      cds->advectionVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "cdsAdvectionSurface" + suffix;
-      cds->advectionSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      fileName = install_dir + "/okl/cdsAdvection" + suffix + ".okl";
 
       kernelName = "cdsStrongAdvectionVolume" + suffix;
       cds->advectionStrongVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -980,21 +944,18 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
 
       // ===========================================================================
       
-      fileName   = DCDS + "/okl/cdsHelmholtzRhs" + suffix + ".okl"; 
+      fileName   = install_dir + "/okl/cdsHelmholtzRhs" + suffix + ".okl"; 
       kernelName = "cdsHelmholtzRhsEXTBDF" + suffix;
       cds->helmholtzRhsKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       
-      fileName = DCDS + "/okl/cdsHelmholtzBC" +suffix + ".okl"; 
-      kernelName = "cdsHelmholtzIpdgBC" + suffix;
-      cds->helmholtzRhsIpdgBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
+      fileName = install_dir + "/okl/cdsHelmholtzBC" +suffix + ".okl"; 
       kernelName = "cdsHelmholtzBC" + suffix; 
       cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       kernelName = "cdsHelmholtzAddBC" + suffix;
       cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = DCDS + "/okl/cdsMassMatrix.okl"; 
+      fileName = install_dir + "/okl/cdsMassMatrix.okl"; 
       kernelName = "cdsMassMatrix" + suffix;
       cds->massMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
 
@@ -1009,36 +970,24 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
         cds->o_resS   = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);
         cds->o_rhsSd  = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->rhsSd);
 
-        fileName = DHOLMES + "/okl/scaledAdd.okl";
+        fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
         kernelName = "scaledAddwOffset";
         cds->scaledAddKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-        fileName = DCDS + "/okl/cdsSubCycle" + suffix + ".okl"; 
-        kernelName = "cdsSubCycleVolume" + suffix;
-        cds->subCycleVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-        kernelName = "cdsSubCycleSurface" + suffix;
-        cds->subCycleSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-        kernelName = "cdsSubCycleCubatureVolume" + suffix;
-        cds->subCycleCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-        kernelName = "cdsSubCycleCubatureSurface" + suffix;
-        cds->subCycleCubatureSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
+        fileName = install_dir + "/okl/cdsSubCycle" + suffix + ".okl"; 
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
         kernelName = "cdsSubCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-        fileName = DCDS + "/okl/cdsSubCycle.okl";
+        fileName = install_dir + "/okl/cdsSubCycle.okl";
         kernelName = "cdsSubCycleRKUpdate";
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       }
-      // this is also required if Nstages =0 !!!
-        fileName = DCDS + "/okl/cdsSubCycle.okl";
+        // this is also required if Nstages =0 !!!
+        fileName = install_dir + "/okl/cdsSubCycle.okl";
         kernelName = "cdsSubCycleExt";
         cds->subCycleExtKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
    
@@ -1046,5 +995,7 @@ void setupCDS(ins_t *ins, setupAide &options,occa::properties &kernelInfoH)
     MPI_Barrier(mesh->comm);
   }
 
+  return cds;
 }
+
 

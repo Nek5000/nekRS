@@ -16,8 +16,6 @@ OGSDIR      = $(HDRDIR)/libs/gatherScatter
 GSDIR       = $(HDRDIR)/3rdParty/gslib
 ALMONDDIR   = $(HDRDIR)/libs/parAlmond
 ELLIPTICDIR = $(HDRDIR)/solvers/elliptic
-INSDIR      = $(HDRDIR)/solvers/ins
-CDSDIR      = $(HDRDIR)/solvers/cds
 BLASDIR     = $(HDRDIR)/3rdParty/BlasLapack
 
 # define LIBP_OPT_FLAGS
@@ -34,7 +32,6 @@ $(ALMONDDIR)/parAlmond.hpp \
 $(ELLIPTICDIR)/elliptic.h \
 $(ELLIPTICDIR)/ellipticPrecon.h \
 $(ELLIPTICDIR)/ellipticMultiGrid.h \
-$(CDSDIR)/cds.h
 
 # types of files we are going to construct rules for
 .SUFFIXES: .c
@@ -51,7 +48,6 @@ CFLAGS:= $(CFLAGS_) -D DHOLMES="\\\"$(NEKRS_INSTALL_DIR)/libparanumal\\\"" \
 	-D DOGS="\\\"$(NEKRS_INSTALL_DIR)/gatherScatter\\\"" \
 	-D DELLIPTIC="\\\"$(NEKRS_INSTALL_DIR)/elliptic\\\"" \
 	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\"" \
-	-D DCDS="\\\"$(NEKRS_INSTALL_DIR)/cds\\\""
 
 # list of objects to be compiled
 
@@ -156,10 +152,6 @@ ifeq ($(detected_OS),Darwin)
 	EXT=dylib
 endif
 
-libcds: libogs libP libparAlmond
-	$(MAKE) -C $(CDSDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
-	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
-
 libelliptic: libogs libP libparAlmond
 	$(MAKE) -C $(ELLIPTICDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
 	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
@@ -182,14 +174,12 @@ libparAlmond:
 	ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
 
 
-all: libelliptic libcds
+all: libP libelliptic
 
 clean:
 	cd $(ELLIPTICDIR); make clean; cd -
 	cd ${HDRDIR}/src; rm *.o; cd -
-	rm $(INSDIR)/src/*.o libins.$(EXT)
 
 realclean:
 	cd $(ELLIPTICDIR); make realclean; cd -
 	cd ${HDRDIR}/src; rm *.o; cd -
-	rm $(INSDIR)/src/*.o libins.$(EXT)
