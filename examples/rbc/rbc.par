@@ -1,0 +1,33 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL] 
+polynomialOrder = 5
+startFrom = r.fld
+stopAt = endTime
+endTime = 100 
+
+dt = 6e-03
+timeStepper = bdf2 
+#extrapolation = OIFS
+#targetCFL = 2.0
+
+writeControl = runTime
+writeInterval = 4
+
+filtering = hpfrt
+filterWeight = 10
+filterCutoffRatio = 0.9
+
+[PRESSURE]
+solver = parAlmond
+residualTol = 1e-04
+
+[VELOCITY]
+viscosity = 2.6457e-4 # sqrt(PRA/RA) 
+residualTol = 1e-06
+
+[SCALAR01]
+diffusivity = 3.7796e-5 # 1/sqrt(RA*PRA) 
+residualTol = 1e-06

@@ -1,0 +1,32 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+occa::kernel fillFUKernel; 
+
+void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
+  fillFUKernel(Nlocal, ins->fieldOffset, ins->cds->o_S, ins->o_FU);
+}
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  fillFUKernel = udfBuildKernel(ins, "fillFU");
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+
+  // assign function pointer to drive flow by constant mean pressure gradient
+  udf.uEqnSource = &userf;
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  if (ins->isOutputStep) nek_userchk(); 
+}
