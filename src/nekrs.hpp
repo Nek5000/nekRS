@@ -10,8 +10,8 @@
 #include <getopt.h>
 #include <mpi.h>
 
-#define NEKRS_VERSION "19"
-#define NEKRS_SUBVERSION "0"
+#define NEKRS_VERSION "0"
+#define NEKRS_SUBVERSION "2"
 
 #define NEKLDIMT 2
 

@@ -10,8 +10,8 @@ endTime = 100
 
 dt = 3e-03
 timeStepper = bdf2 
-#extrapolation = OIFS # enable for first 40 time units
-#targetCFL = 2.0
+extrapolation = OIFS # disable after transition
+targetCFL = 2.0
 
 writeControl = runTime
 writeInterval = 5

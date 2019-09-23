@@ -468,6 +468,9 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   options->getArgs("VISCOSITY", nu);
   nekData.param[1] = nu;
 
+  options->getArgs("SCALAR01 DIFFUSIVITY", nu);
+  nekData.param[7] = nu;
+
   return 0;
 }
 

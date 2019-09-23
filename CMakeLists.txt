@@ -247,7 +247,6 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 set(SRC src/nekrs.cpp
     src/cfl.cpp
     src/filter.cpp
-    src/velRecycling.cpp
     src/setup.cpp
     src/runTime.cpp
     src/tombo.cpp

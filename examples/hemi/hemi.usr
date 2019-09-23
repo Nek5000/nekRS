@@ -64,9 +64,9 @@ c-----------------------------------------------------------------------
       subroutine usrdat3
       include 'SIZE'
       include 'TOTAL'
- 
-      ifto = .true.
 
+      ifto = .true. ! required to lambda2
+ 
       return
       end
 c-----------------------------------------------------------------------
@@ -74,12 +74,18 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      logical ifaln,ifnorx,ifnory,ifnorz
+
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
          if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
          if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 3
-         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 4
+         if (cbc(ifc,iel,1) .eq. 'SYM') then
+            call chknord(ifaln,ifnorx,ifnory,ifnorz,ifc,iel)
+            boundaryid(ifc,iel) = 4
+            if (ifnorz) boundaryid(ifc,iel) = 5
+         endif
       enddo
       enddo
 

@@ -150,6 +150,8 @@ c-----------------------------------------------------------------------
       call setDefaultParam
       param(1)  = 1.0
       param(2)  = 1.0
+      param(7)  = 1.0
+      param(8)  = 1.0
       param(27) = 1  ! torder 1 to save mem
       param(32) = 1  ! read only vel BC from re2
       param(99) = -1 ! no dealiasing to save mem

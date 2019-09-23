@@ -1,6 +1,3 @@
-#define RA 1e8
-#define PRA 7.0
-
 #include "post.f"
 
 c-----------------------------------------------------------------------
@@ -21,8 +18,8 @@ c-----------------------------------------------------------------------
       real grad_valv,grad_valt,tiny
 
       if(istep.eq.0) then
-         prefac1= 1/sqrt(RA*PRA)
-         prefac2= sqrt(PRA/RA)
+         prefac1= param(8)
+         prefac2= param(2)
       endif
 
       n = nx1*ny1*nz1*nelv
@@ -32,6 +29,8 @@ c-----------------------------------------------------------------------
       tmax = glmax(t ,n)
       if (nid.eq.0) write(6,1) istep,time,tmin,tmax,wmin,wmax
     1    format(i8,1p5e12.4,' min/max t,vz')
+
+      call nusselt
 
       return
 
@@ -97,8 +96,6 @@ c-----------------------------------------------------------------------
 	call bulk_mean(uzt,3)
       endif
  
-      call nusselt
-
       return
       end
 c-----------------------------------------------------------------------

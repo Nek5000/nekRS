@@ -13,7 +13,7 @@
 #NEKRS_FC="mpif77"
 #NEKRS_CXXFLAGS="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"
 
-OCCA_CUDA_ENABLED=0
+#OCCA_CUDA_ENABLED=1
 
 
 ###############################################################################
