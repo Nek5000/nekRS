@@ -44,7 +44,6 @@ C-----------------------------------------------------------------------
       call exactu(uxe,uye,uze,xm1,ym1,zm1,n)
       call exactp(pre,xm2,ym2,zm2,n2)
 
-      call chsign(pre,n2)
       pbar  = glsc2(pr ,bm2,n2)/volvm2
       pbre  = glsc2(pre,bm2,n2)/volvm2
       pbarm = -pbre

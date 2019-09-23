@@ -6,6 +6,9 @@
 #define DIRICHLET 1
 #define NEUMANN 2
 
+const string v_bcIDInfo[] = {"empty", "noSlip", "fixedValue", "outlet", "slipX", "slipY", "slipZ"};
+const string s_bcIDInfo[] = {"empty", "fixedValue", "fixedFlux", "zeroFlux"}; 
+
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
 
@@ -337,7 +340,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     int bcID = nek_bcmap(bID, 1);
-    if(mesh->rank == 0) printf("bID %d -> bcID %d\n", bID, bcID);
+    if(mesh->rank == 0) printf("bID %d -> byType %s\n", bID, v_bcIDInfo[bcID].c_str());
     uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
     if (bcID == 4) uBCType[bID] = DIRICHLET; 
     if (bcID == 5) vBCType[bID] = DIRICHLET; 
@@ -799,7 +802,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     int bcID = nek_bcmap(bID, 2);
-    if(mesh->rank == 0) printf("bID %d -> bcID %d\n", bID, bcID); 
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, s_bcIDInfo[bcID].c_str()); 
     sBCType[bID] = scalMap[bcID];
   }
 

@@ -35,9 +35,6 @@ c-----------------------------------------------------------------------
 
       return
 
-c      ifxyo = .true.
-c      if (istep.gt.iostep) ifxyo = .false.
-
       if (ifoutfld) then
         call gradm1(dtdx,dtdy,dtdz,t)
 

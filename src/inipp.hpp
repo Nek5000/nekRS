@@ -216,6 +216,10 @@ public:
                                                   std::ptr_fun<int, int>(std::tolower));
 					detail::rtrim(variable);
 					detail::ltrim(value);
+
+                                        transform(value.begin(), value.end(), value.begin(), 
+                                                          std::ptr_fun<int, int>(std::tolower));
+	
 					auto & sec = sections[section];
 					if (sec.find(variable) == sec.end())
 						sec.insert(std::make_pair(variable, value));

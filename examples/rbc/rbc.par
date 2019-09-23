@@ -10,7 +10,7 @@ endTime = 100
 
 dt = 3e-03
 timeStepper = bdf2 
-#extrapolation = OIFS
+#extrapolation = OIFS # enable for first 40 time units
 #targetCFL = 2.0
 
 writeControl = runTime
@@ -28,6 +28,6 @@ residualTol = 1e-04
 viscosity = 2.6457e-4 # sqrt(PRA/RA) 
 residualTol = 1e-06
 
-[SCALAR01]
-diffusivity = 3.7796e-5 # 1/sqrt(RA*PRA) 
+[TEMPERATURE]
+conductivity = 3.7796e-5 # 1/sqrt(RA*PRA)
 residualTol = 1e-06

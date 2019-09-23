@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "tinyexpr.h"
+
 #include "nekrs.hpp"
 #include "inipp.hpp"
 
@@ -102,6 +104,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.parse(is);
   ini.interpolate();
 
+  string sbuf;
+
   string startFrom;
   // TODO: add restart arguments
   if (ini.extract("general", "startfrom", startFrom)) {
@@ -134,7 +138,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string timeStepper;
   ini.extract("general", "timestepper", timeStepper);
-  LOWER(timeStepper);
   if(timeStepper == "bdf3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
     ABORT("No support for bdf3!"); 
@@ -153,7 +156,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   double endTime;
   string stopAt;
   ini.extract("general", "stopat", stopAt);
-  LOWER(stopAt);
   if(stopAt != "endtime") { 
     int numSteps;
     if(ini.extract("general", "numsteps", numSteps)) {
@@ -170,7 +172,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string extrapolation;
   ini.extract("general", "extrapolation", extrapolation);
-  LOWER(extrapolation);
   if(extrapolation == "oifs") {
     double targetCFL;
 
@@ -187,7 +188,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   string writeControl;
   if(ini.extract("general", "writecontrol", writeControl)) {
-    LOWER(writeControl);
     if(writeControl == "runtime") writeInterval = writeInterval/dt;  
   } 
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(int (writeInterval)));
@@ -206,7 +206,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string filtering;
   ini.extract("general", "filtering", filtering);
-  LOWER(filtering);
   if(filtering == "hpfrt") {
     options.setArgs("FILTER STABILIZATION", "RELAXATION");
     double filterWeight;
@@ -236,12 +235,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string p_preconditioner; 
   ini.extract("pressure", "preconditioner", p_preconditioner);
-  LOWER(p_preconditioner);
   if(p_preconditioner == "semg_amg" || p_preconditioner == "semg_amg_hypre") { 
     options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
     string p_amgsolver; 
     ini.extract("pressure", "amgsolver", p_amgsolver);
-    LOWER(p_amgsolver);
     if(p_amgsolver == "boomeramg") 
       options.setArgs("AMG SOLVER", "BOOMERAMG");
     else if (p_amgsolver == "paralmond")
@@ -258,7 +255,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
   //
   double viscosity;
-  if(ini.extract("velocity", "viscosity", viscosity)) {
+  if(ini.extract("velocity", "viscosity", sbuf)) {
+    int err = 0;
+    viscosity = te_interp(sbuf.c_str(), &err);
+    if(err) ABORT("Invalid expression for viscosity!");
     if(viscosity < 0) viscosity = fabs(1/viscosity);
     options.setArgs("VISCOSITY", to_string_f(viscosity));
   } else {
@@ -273,17 +273,20 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("problemtype", "equation", equation))
     if(equation != "incompNS") ABORT("Only PROBLEMTYPE::equation = incompNS is supported!");
 
-  int nscal = 0;
-  if(ini.sections.count("scalar01")) nscal = 1;
+  int nscal = 0; // fixed for now
+  if(ini.sections.count("temperature")) nscal = 1;
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
   double s_residualTol;
-  if(ini.extract("scalar01", "residualtol", s_residualTol)) {
+  if(ini.extract("temperature", "residualtol", s_residualTol)) {
     options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
   }
 
   double diffusivity; 
-  if(ini.extract("scalar01", "diffusivity", diffusivity)) {
+  if(ini.extract("temperature", "conductivity", sbuf)) {
+    int err = 0;
+    diffusivity = te_interp(sbuf.c_str(), &err);
+    if(err) ABORT("Invalid expression for conductivity!");
     if(diffusivity < 0) diffusivity = abs(1/diffusivity);
     options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
   }

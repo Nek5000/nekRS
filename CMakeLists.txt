@@ -259,6 +259,7 @@ set(SRC src/nekrs.cpp
     src/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
+    src/tinyexpr.c
     ## To get fortran flags
     src/dummy.f
 )
