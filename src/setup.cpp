@@ -295,9 +295,14 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   ins->o_cU = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cU);
 
-  // setup cds solver 
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+    filterSetup(ins); 
+
+  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
   options.getArgs("NUMBER OF SCALARS", ins->Nscalar); 
   if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
+
+  if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
   //make option objects for elliptc solvers
   ins->vOptions = options;
@@ -319,28 +324,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   
   ins->vOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->vOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
-
-  ins->pOptions = options;
-  ins->pOptions.setArgs("KRYLOV SOLVER",        options.getArgs("PRESSURE KRYLOV SOLVER"));
-  ins->pOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("PRESSURE SOLVER TOLERANCE"));
-  ins->pOptions.setArgs("DISCRETIZATION",       options.getArgs("PRESSURE DISCRETIZATION"));
-  ins->pOptions.setArgs("BASIS",                options.getArgs("PRESSURE BASIS"));
-  ins->pOptions.setArgs("PRECONDITIONER",       options.getArgs("PRESSURE PRECONDITIONER"));
-  ins->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
-  ins->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
-  ins->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
-
-  ins->pOptions.setArgs("PARALMOND CYCLE",      options.getArgs("PRESSURE PARALMOND CYCLE"));
-  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE PARALMOND SMOOTHER"));
-  ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
-  ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
-
-  ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
-  
-  ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
-  ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
-
-  if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
   const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
   const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
@@ -401,6 +384,27 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   if (mesh->rank==0) printf("==================PRESSURE SOLVE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
   ins->pSolver->mesh = mesh;
+
+  ins->pOptions = options;
+  ins->pOptions.setArgs("KRYLOV SOLVER",        options.getArgs("PRESSURE KRYLOV SOLVER"));
+  ins->pOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("PRESSURE SOLVER TOLERANCE"));
+  ins->pOptions.setArgs("DISCRETIZATION",       options.getArgs("PRESSURE DISCRETIZATION"));
+  ins->pOptions.setArgs("BASIS",                options.getArgs("PRESSURE BASIS"));
+  ins->pOptions.setArgs("PRECONDITIONER",       options.getArgs("PRESSURE PRECONDITIONER"));
+  ins->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
+  ins->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
+  ins->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
+
+  ins->pOptions.setArgs("PARALMOND CYCLE",      options.getArgs("PRESSURE PARALMOND CYCLE"));
+  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE PARALMOND SMOOTHER"));
+  ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
+  ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
+
+  ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
+  
+  ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
+  ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
+
   ins->pSolver->options = ins->pOptions;
   ins->pSolver->dim = ins->dim;
   ins->pSolver->elementType = ins->elementType;
@@ -651,8 +655,11 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
       // ===========================================================================
 
       fileName = oklpath + "insFilter" + ".okl";
-      kernelName = "insFilterRT" + suffix;
-      ins->filterKernel = 
+      kernelName = "insVFilterRT" + suffix;
+      ins->VFilterKernel = 
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "insSFilterRT" + suffix;
+      ins->SFilterKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insCfl" + suffix + ".okl";
@@ -680,9 +687,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   ins->computedDh = 0; 
    
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    filterSetup(ins); 
-
   return ins;
 }
 
@@ -690,7 +694,6 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 {
 
   mesh_t *mesh = ins->mesh; 
-  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
 
   cds_t *cds = new cds_t(); 
   string install_dir;

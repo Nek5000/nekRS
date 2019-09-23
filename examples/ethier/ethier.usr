@@ -208,7 +208,7 @@ c-----------------------------------------------------------------------
         u(i) = - a * ( ex(i) * syz(i) + ez(i) * cxy(i) ) * e2t + U0
         v(i) = - a * ( ey(i) * szx(i) + ex(i) * cyz(i) ) * e2t + V0
         w(i) = - a * ( ez(i) * sxy(i) + ey(i) * czx(i) ) * e2t + W0
-        p(i) = 0.5D+00 * a * a * e2t * e2t * (
+        p(i) = - 0.5D+00 * a * a * e2t * e2t * (
      &    + ex(i) * ex(i) + 2.0D+00 * sxy(i) * czx(i) * eyz(i)
      &    + ey(i) * ey(i) + 2.0D+00 * syz(i) * cxy(i) * ezx(i)
      &    + ez(i) * ez(i) + 2.0D+00 * szx(i) * cyz(i) * exy(i) )

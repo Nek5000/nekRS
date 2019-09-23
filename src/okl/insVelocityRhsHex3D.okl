@@ -79,9 +79,9 @@ SOFTWARE.
                   rhsWn += JW*inu*extbdfA[s]*FUz;
                 }
               } else {
-              rhsUn = -JW*inu*GP[id+0*fieldOffset];
-              rhsVn = -JW*inu*GP[id+1*fieldOffset];
-              rhsWn = -JW*inu*GP[id+2*fieldOffset];
+                rhsUn = -JW*inu*GP[id+0*fieldOffset];
+                rhsVn = -JW*inu*GP[id+1*fieldOffset];
+                rhsWn = -JW*inu*GP[id+2*fieldOffset];
 
                 for (int s=0;s<p_Nstages;s++) {
                   //U 

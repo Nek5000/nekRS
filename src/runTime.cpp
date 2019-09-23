@@ -177,14 +177,14 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
   
   if(udf.sEqnSource)
     udf.sEqnSource(ins, time, cds->o_S, o_FS);
-  
+
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->filterKernel(mesh->Nelements,
-                      ins->o_filterMT,
-                      ins->filterS,
-                      cds->sOffset,
-                      cds->o_S,
-                      o_FS);
+    ins->SFilterKernel(mesh->Nelements,
+                       ins->o_filterMT,
+                       ins->filterS,
+                       cds->sOffset,
+                       cds->o_S,
+                       o_FS);
 }
 
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
@@ -199,13 +199,17 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
   cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
 
   cdsHelmholtzSolve(cds, time+dt, cds->Nstages, cds->o_rhsS, cds->o_rkS);
-   
-  //cycle history
+
   for (int s=cds->Nstages;s>1;s--) {
     o_S.copyFrom( o_S, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
       (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
       (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
+  }
 
+  //copy updated scalar
+  o_S.copyFrom(cds->o_rkS, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
+   
+  for (int s=cds->Nstages;s>1;s--) {
     cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
@@ -214,8 +218,6 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
            (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
   }
-  //copy updated scalar
-  o_S.copyFrom(cds->o_rkS, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
 }
 
 void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU)
@@ -249,14 +251,14 @@ void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU)
 
   ins->setScalarKernel(ins->Ntotal*ins->NVfields, 0.0, o_FU);
   if(udf.uEqnSource) udf.uEqnSource(ins, time, ins->o_U, o_FU);
-
+  
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->filterKernel(mesh->Nelements,
-                      ins->o_filterMT,
-                      ins->filterS,
-                      ins->fieldOffset,
-                      ins->o_U,
-                      o_FU);
+    ins->VFilterKernel(mesh->Nelements,
+                       ins->o_filterMT,
+                       ins->filterS,
+                       ins->fieldOffset,
+                       ins->o_U,
+                       o_FU);
 }
 
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
@@ -273,13 +275,14 @@ void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   // rhsU^s = MM*1/nu*[ -(grad P) + sum_i ( (a_i) U^(n-i)/dt - b_i (NU+FU)^(n-i) )]
   velocityRhs  (ins, time+dt);
   velocitySolve(ins, time+dt, ins->o_rkU);
+
   for (int s=ins->Nstages;s>1;s--)
     o_U.copyFrom(o_U, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
      (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
      (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
+
   o_U.copyFrom(ins->o_rkU, ins->NVfields*ins->Ntotal*sizeof(dfloat)); 
 
-  //cycle rhs history
   for (int s=ins->Nstages;s>1;s--) {
     ins->o_NU.copyFrom(ins->o_NU, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
      (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 

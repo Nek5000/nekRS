@@ -25,7 +25,6 @@
 
 #include "ins.h"
 
-// AK. Keep them here to make filterSetup self contained
 void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A); 
 void filterFunctionRelaxationTri2D(int N, int Nc, dfloat *A); 
 void filterFunctionRelaxationTet3D(int N, int Nc, dfloat *A); 
@@ -42,7 +41,6 @@ dfloat filterFactorial(int n);
 
 void filterSetup(ins_t* ins){
 
-  // Setting Filter Here.....
   mesh_t *mesh = ins->mesh; 
 
   // First construct filter function
@@ -50,7 +48,7 @@ void filterSetup(ins_t* ins){
   dfloat filterC = 0.90; // Nc/N i.e. percentage of modes that is not touched 
   ins->options.getArgs("FILTER STRENGTH", ins->filterS); 
   ins->options.getArgs("FILTER CUTOFF RATIO", filterC); 
-  ins->filterS = -1*fabs(ins->filterS);
+  ins->filterS = -1.0*fabs(ins->filterS);
 
   // Construc Filter Function
   int Nmodes = 1; 
@@ -64,7 +62,6 @@ void filterSetup(ins_t* ins){
     // Approximate cutoff order from percentage 
     ins->filterNc = (Nmodes - mymax( (int)round(Nmodes*(1.0-filterC)) -1, 0)) -1;
   }
-
   
   // Vandermonde matrix
   dfloat *V = (dfloat *) calloc(Nmodes*Nmodes, sizeof(dfloat));

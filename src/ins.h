@@ -117,7 +117,8 @@ typedef struct {
   int filterNc; // filter cut modes i.e. below is not touched
   dfloat *filterM, filterS; 
   occa::memory o_filterMT; // transpose of filter matrix 
-  occa::kernel filterKernel; // Relaxation-Term based filtering
+  occa::kernel VFilterKernel; // Relaxation-Term based filtering
+  occa::kernel SFilterKernel; // Relaxation-Term based filtering
 
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;

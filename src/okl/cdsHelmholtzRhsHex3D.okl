@@ -60,18 +60,18 @@ SOFTWARE.
                 const dfloat NSm = NS[id+0*sOffset];
                 rhsSn = JW*ialf*idt*NSm;
                  for (int s=0;s<p_Nstages;s++) {
-                  rhsSn -= JW*ialf*extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  rhsSn += JW*ialf*extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
                 }
               }else {
-                rhsSn = 0.f;
-               for (int s=0;s<p_Nstages;s++) {
+                 rhsSn = 0.f;
+                 for (int s=0;s<p_Nstages;s++) {
                   // S 
                   const dfloat Sm  = S[id+0*sOffset+s*p_NSfields*sOffset];
                   // NS
                   const dfloat NSm = NS[id+0*sOffset+s*p_NSfields*sOffset];
                   const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
-                  rhsSn += JW*ialf*(idt*extbdfB[s]*Sm - extbdfA[s]*(NSm + FSm));
-                }
+                  rhsSn += JW*ialf*(idt*extbdfB[s]*Sm - extbdfA[s]*(NSm - FSm));
+                  }
               }
               rhsS[id] = rhsSn;
             }

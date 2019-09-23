@@ -3,21 +3,21 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
-polynomialOrder = 7
+polynomialOrder = 9
 #startFrom = restart.fld
 stopAt = endTime
 endTime = 100 
 
-dt = 1e-02
+dt = 3e-03
 timeStepper = bdf2 
-extrapolation = OIFS
-targetCFL = 2.0
+#extrapolation = OIFS
+#targetCFL = 2.0
 
 writeControl = runTime
 writeInterval = 5
 
 filtering = hpfrt
-filterWeight = 5
+filterWeight = 15
 filterCutoffRatio = 0.9
 
 [PRESSURE]

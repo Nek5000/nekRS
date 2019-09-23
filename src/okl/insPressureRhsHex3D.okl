@@ -73,9 +73,9 @@
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
-                  rhsUn += extbdfA[s]*(FUx + nu*NCx);
-                  rhsVn += extbdfA[s]*(FUy + nu*NCy);
-                  rhsWn += extbdfA[s]*(FUz + nu*NCz);
+                  rhsUn += extbdfA[s]*(FUx - nu*NCx);
+                  rhsVn += extbdfA[s]*(FUy - nu*NCy);
+                  rhsWn += extbdfA[s]*(FUz - nu*NCz);
 		           }
       	      } else {
             		rhsUn = 0.f;
