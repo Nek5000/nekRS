@@ -11,12 +11,13 @@ Capabilities:
 
 * Incompressible Navier-Stokes + scalar transport 
 * Constant properties
-* Inlet, outflow, wall, slip and periodic boundary conditions 
 * CG-SEM using hexaheadral elements 
 * Fixed timestep 2nd order BDF + OIFS
 * Dealiasing and high-pass filter relaxation term stabilization
 * MPI+X hybrid parallelism supporting serial (CPU) and CUDA 
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
+* Reads mesh files (.re2) and outputs solution field files (.f%05d) 
+
 
 Note, the code is an early prototype so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
 
@@ -71,7 +72,7 @@ nrsmpi ethier 2 # run on two MPI ranks
 
 ## Current Limitations
 
-* Kernels are optimized primarily for latest NVIDIA GPUs 
+* Kernels are optimized primarily for NVIDIA GPUs 
 
 ## Contributing
 
