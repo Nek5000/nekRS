@@ -287,7 +287,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     int err = 0;
     diffusivity = te_interp(sbuf.c_str(), &err);
     if(err) ABORT("Invalid expression for conductivity!");
-    if(diffusivity < 0) diffusivity = abs(1/diffusivity);
+    if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
     options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
   }
 
