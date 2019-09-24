@@ -5,7 +5,7 @@ LIBP_EXT_LIBS  = -lBlasLapack
 CXX := $(NEKRS_CXX)
 CXXFLAGS := $(NEKRS_CXXFLAGS) $(compilerFlags) $(flags) \
 	 -I$(HDRDIR) -I$(HDRDIR)/include -I$(OGSDIR) -I$(OGSDIR)/include -I$(GSDIR)/src \
-         -I$(ELLIPTICDIR) -I$(ALMONDDIR) -I$(ALMONDDIR)/include -I$(INSDIR) \
+         -I$(ELLIPTICDIR) -I$(ALMONDDIR) -I$(ALMONDDIR)/include -I$(INSDIR) -I$(CDSDIR) \
          $(NEKRS_LIBP_DEFINES)
 
 CC := $(NEKRS_CC)

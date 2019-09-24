@@ -2,6 +2,8 @@ project(libUDF)
 cmake_minimum_required(VERSION 2.8)
 enable_language(C CXX)
 
+set (CMAKE_CXX_STANDARD 14)
+
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 set(CMAKE_VERBOSE_MAKEFILE on)
@@ -17,11 +19,13 @@ set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
 set(ALMONDDIR   ${NEKRS_INSTALL_DIR}/parAlmond)
 set(ELLIPTICDIR ${NEKRS_INSTALL_DIR}/elliptic)
+set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
 set(INSDIR      ${NEKRS_INSTALL_DIR}/ins)
 set(UDFDIR      ${NEKRS_INSTALL_DIR}/udf)
 set(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   ${INSDIR} 
+  ${CDSDIR}
   ${HDRDIR}
   ${OGSDIR}
   ${GSDIR}

@@ -1,6 +1,6 @@
 #include "udf.hpp"
 
-namespace udf{
+namespace udf_{
   namespace{
     ins_t *ins;
   }
@@ -12,7 +12,7 @@ namespace udf{
   }
 
   /* get and set dt */
-  double dt(){
+  dfloat dt(){
     return ins->dt;
   }
 
@@ -21,13 +21,18 @@ namespace udf{
     return 0;
   }
 
+  dfloat startTime(){ return ins->startTime; }
+
   /* Check if output step */
   int isOutputStep(){ return ins->isOutputStep; }
 
   /* Check if we have restart file */
   int readRestartFile(){ return ins->readRestartFile; }
+
+  dlong nElements(){ return ins->mesh->Nelements; }
+  int Np(){ return ins->mesh->Np; }
 }
 
-int UDF_Init(ins_t *ins){
-  return udf::init(ins);
+int  UDF_Init(ins_t *ins){
+  udf_::init(ins);
 }

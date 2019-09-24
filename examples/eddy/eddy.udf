@@ -8,6 +8,8 @@
 
 /* UDF Functions */                                                      
 
+using namespace udf_;
+
 void UDF_LoadKernels(ins_t *ins)
 {
 }
@@ -20,11 +22,11 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 void UDF_Setup(ins_t *ins)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+  if (!readRestartFile()) nek_copyTo(ins, startTime());
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) nek_userchk();
+  if (isOutputStep()) nek_userchk();
   if (ciMode) ciTestErrors(ins, time, tstep); 
 }

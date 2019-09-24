@@ -6,9 +6,9 @@ deviceNumber = LOCAL-RANK
 polynomialOrder = 9
 #startFrom = restart.fld
 stopAt = endTime
-endTime = 200 
+endTime = 50 
 
-dt = 1e-2
+dt = 7e-3
 timeStepper = bdf2
 extrapolation = OIFS
 targetCFL = 2.0
@@ -23,7 +23,6 @@ filterCutoffRatio = 0.9
 [PRESSURE]
 preconditioner = semg_amg
 residualTol = 1e-04
-residualProj = yes
 
 [VELOCITY]
 residualTol = 1e-06

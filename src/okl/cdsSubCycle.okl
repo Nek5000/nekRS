@@ -1,0 +1,87 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+@kernel void cdsSubCycleRKUpdate(const dlong Nelements,
+                                const dfloat dt,  
+                                const dfloat rka,
+                                const dfloat rkb,
+                                const dlong soffset,
+                                @restrict const  dfloat *  rhsS,
+                                @restrict dfloat  *  resS,
+                                @restrict dfloat  *  S){
+
+  // Low storage Runge Kutta time step update
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      const dlong id = n + e*p_Np;
+
+      #pragma unroll p_NSfields
+      for (int i=0;i<p_NSfields;i++) {
+        dfloat ress =   resS[id+i*soffset];
+        dfloat rhss =  -rhsS[id+i*soffset];// -Nu !!!!!!
+        dfloat sn   =      S[id+i*soffset];
+
+        ress = rka*ress + dt*rhss;
+        sn += rkb*ress;
+
+        resS[id+i*soffset] = ress;
+        S[id+i*soffset]    = sn;
+      }
+    }
+  }
+}
+
+
+@kernel void cdsSubCycleExt(const dlong Nelements,
+                           const int Nstages,
+                           const dlong voffset,
+                           @restrict const  dfloat *  c,
+                           @restrict const  dfloat *  U,
+                                 @restrict dfloat *  Ue){
+
+ // Low storage Runge Kutta time step update
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = n+p_Np*e;
+      
+      #pragma unroll p_NVfields
+      for (int i=0;i<p_NVfields;i++) {
+        dfloat Un = 0.f;
+
+        for (int s=0;s<Nstages;s++) {
+          const dlong idm = id+i*voffset+s*p_NVfields*voffset;
+          const dfloat Um = U[idm];
+          Un += c[s]*Um;
+        }
+
+        Ue[id+i*voffset] = Un;
+      }
+    }
+  }
+}
+

@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "tinyexpr.h"
+
 #include "nekrs.hpp"
 #include "inipp.hpp"
 
@@ -21,8 +23,11 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("ELEMENT MAP", string("ISOPARAMETRIC"));
   options.setArgs("MESH DIMENSION", string("3"));
 
+  options.setArgs("NUMBER OF SCALARS", "0");
+
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
-  options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("SUBCYCLING STEPS", "0");
+  options.setArgs("SUBCYCLING TIME ORDER", "4");
 
   options.setArgs("CASENAME", casename);
   options.setArgs("UDF OKL FILE", casename + ".oudf");
@@ -42,6 +47,11 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
+
+  options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
+  options.setArgs("SCALAR01 BASIS", "NODAL");
+  options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
+  options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
@@ -94,6 +104,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.parse(is);
   ini.interpolate();
 
+  string sbuf;
+
   string startFrom;
   // TODO: add restart arguments
   if (ini.extract("general", "startfrom", startFrom)) {
@@ -126,7 +138,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string timeStepper;
   ini.extract("general", "timestepper", timeStepper);
-  LOWER(timeStepper);
   if(timeStepper == "bdf3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
     ABORT("No support for bdf3!"); 
@@ -145,7 +156,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   double endTime;
   string stopAt;
   ini.extract("general", "stopat", stopAt);
-  LOWER(stopAt);
   if(stopAt != "endtime") { 
     int numSteps;
     if(ini.extract("general", "numsteps", numSteps)) {
@@ -162,14 +172,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string extrapolation;
   ini.extract("general", "extrapolation", extrapolation);
-  LOWER(extrapolation);
   if(extrapolation == "oifs") {
     double targetCFL;
 
     if(ini.extract("general", "targetcfl", targetCFL)) {
       int subCycles = round(targetCFL/2);
       options.setArgs("SUBCYCLING STEPS", std::to_string(subCycles));
-      options.setArgs("DT", to_string_f(dt/subCycles));
     } else {
       ABORT("Cannot find mandatory parameter GENERAL::targetCFL!"); 
     }
@@ -180,7 +188,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   string writeControl;
   if(ini.extract("general", "writecontrol", writeControl)) {
-    LOWER(writeControl);
     if(writeControl == "runtime") writeInterval = writeInterval/dt;  
   } 
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(int (writeInterval)));
@@ -199,7 +206,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string filtering;
   ini.extract("general", "filtering", filtering);
-  LOWER(filtering);
   if(filtering == "hpfrt") {
     options.setArgs("FILTER STABILIZATION", "RELAXATION");
     double filterWeight;
@@ -229,12 +235,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //
   string p_preconditioner; 
   ini.extract("pressure", "preconditioner", p_preconditioner);
-  LOWER(p_preconditioner);
   if(p_preconditioner == "semg_amg" || p_preconditioner == "semg_amg_hypre") { 
     options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
     string p_amgsolver; 
     ini.extract("pressure", "amgsolver", p_amgsolver);
-    LOWER(p_amgsolver);
     if(p_amgsolver == "boomeramg") 
       options.setArgs("AMG SOLVER", "BOOMERAMG");
     else if (p_amgsolver == "paralmond")
@@ -251,8 +255,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
   //
   double viscosity;
-  if(ini.extract("velocity", "viscosity", viscosity)) {
-    if(viscosity < 0) viscosity = abs(1/viscosity);
+  if(ini.extract("velocity", "viscosity", sbuf)) {
+    int err = 0;
+    viscosity = te_interp(sbuf.c_str(), &err);
+    if(err) ABORT("Invalid expression for viscosity!");
+    if(viscosity < 0) viscosity = fabs(1/viscosity);
     options.setArgs("VISCOSITY", to_string_f(viscosity));
   } else {
     ABORT("Cannot find mandatory parameter VELOCITY::vicosity!"); 
@@ -266,10 +273,23 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("problemtype", "equation", equation))
     if(equation != "incompNS") ABORT("Only PROBLEMTYPE::equation = incompNS is supported!");
 
-  if(ini.sections.count("temperature"))
-    ABORT("No support for temperature yet!");
-  if(ini.sections.count("scalar01"))
-    ABORT("No support for scalars yet!");
- 
+  int nscal = 0; // fixed for now
+  if(ini.sections.count("temperature")) nscal = 1;
+  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+
+  double s_residualTol;
+  if(ini.extract("temperature", "residualtol", s_residualTol)) {
+    options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
+  }
+
+  double diffusivity; 
+  if(ini.extract("temperature", "conductivity", sbuf)) {
+    int err = 0;
+    diffusivity = te_interp(sbuf.c_str(), &err);
+    if(err) ABORT("Invalid expression for conductivity!");
+    if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
+    options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+  }
+
   return options;
 }

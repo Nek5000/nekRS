@@ -1,0 +1,91 @@
+/*
+
+  The MIT License (MIT)
+
+  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+*/
+
+// Compute Gradient in weak Form
+@kernel void insCflHex3D(const dlong Nelements,
+			 const dfloat dt,
+			 @restrict const  dfloat *  vgeo,
+			 @restrict const  dfloat *  idH,
+			 const dlong offset,
+			 @restrict const  dfloat *  U,
+			 @restrict dfloat *  rhsU){
+
+  for(dlong e=0;e<Nelements;e++;@outer(0)){  // for all elements
+
+    @shared dfloat s_idH[p_Nq];
+    // @shared dfloat s_U[p_Nq][p_Nq];
+    // @shared dfloat s_V[p_Nq][p_Nq];
+    // @shared dfloat s_W[p_Nq][p_Nq];
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){ 
+        for(int i=0;i<p_Nq;++i;@inner(0)){    
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq+i;
+
+          // s_U[k][j][i]  = U[id+0*offset];
+          // s_V[k][j][i]  = U[id+1*offset];
+          // s_W[k][j][i]  = U[id+2*offset];
+
+          if (k==0 && j==0)
+            s_idH[i] = idH[i];
+        }
+      }
+    }
+
+    // Make sure all node data is loaded into @shared
+    @barrier("local");
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){ 
+        for(int i=0;i<p_Nq;++i;@inner(0)){  
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+          const dlong gid = e*p_Np*p_Nvgeo +k*p_Nq*p_Nq +j*p_Nq +i;
+          const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          //         
+          const dfloat un = U[id+0*offset];
+          const dfloat vn = U[id+1*offset];
+          const dfloat wn = U[id+2*offset];
+
+          dfloat ur  = fabs((un*drdx + vn*drdy +wn*drdz)*s_idH[i]*dt); 
+          dfloat us  = fabs((un*dsdx + vn*dsdy +wn*dsdz)*s_idH[j]*dt); 
+          dfloat ut  = fabs((un*dtdx + vn*dtdy +wn*dtdz)*s_idH[k]*dt); 
+
+          rhsU[id+0*offset] = ur + us + ut;
+        }
+      }
+    }
+  }  
+}
+
+
+
