@@ -93,6 +93,7 @@ c-----------------------------------------------------------------------
       call setbc(2,1,'O  ')
       call setbc(3,1,'W  ')
       call setbc(4,1,'SYM')
+      call setbc(5,1,'SYM')
 
       return
       end

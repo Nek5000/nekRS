@@ -43,7 +43,7 @@ void UDF_Setup(ins_t *ins)
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
 
   // assign function pointer to drive flow by constant mean pressure gradient
-  udf.velocityForce = &userf;
+  udf.uEqnSource = &userf;
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)

@@ -21,7 +21,7 @@ filterWeight = 15
 filterCutoffRatio = 0.9
 
 [PRESSURE]
-solver = parAlmond
+preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]
