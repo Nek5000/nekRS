@@ -1,12 +1,24 @@
 #if !defined(nekrs_nekrs_hpp_)
 #define nekrs_nekrs_hpp_
 
-#define NEKRS_VERSION "19"
-#define NEKRS_SUBVERSION "0"
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <unistd.h>
+#include <getopt.h>
+#include <mpi.h>
+
+#define NEKRS_VERSION "0"
+#define NEKRS_SUBVERSION "2"
+
+#define NEKLDIMT 2
 
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
 
 #include "libParanumal.hpp"
+#include "ins.h"
 
 // std::to_string might be not accurate enough 
 static string to_string_f(double a) {
@@ -14,11 +26,5 @@ static string to_string_f(double a) {
   s << std::scientific << a;
   return s.str();
 }
-
-void runPlan4(ins_t *ins);
-void restartRead(ins_t *ins, setupAide &options);
-void report(ins_t *ins, dfloat time, int tstep);
-
-libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm); 
 
 #endif

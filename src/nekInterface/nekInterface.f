@@ -19,6 +19,8 @@ c-----------------------------------------------------------------------
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
+      elseif (id .eq. 'lelt') then 
+         ptr = loc(llelt)
       elseif (id .eq. 'nekcomm') then 
          ptr = loc(nekcomm)
       elseif (id .eq. 'istep') then 
@@ -101,7 +103,7 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in,session_in)
+      subroutine nekf_setup(comm_in,path_in, session_in, npscal_in)
 
       include 'SIZE'
       include 'TOTAL'
@@ -133,6 +135,8 @@ c-----------------------------------------------------------------------
       ! set word size for CHARACTER
       csize = sizeof(ctest)
 
+      llelt = lelt
+
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
@@ -146,15 +150,26 @@ c-----------------------------------------------------------------------
       call setDefaultParam
       param(1)  = 1.0
       param(2)  = 1.0
-      param(27) = 1  ! 1st-order in time
+      param(7)  = 1.0
+      param(8)  = 1.0
+      param(27) = 1  ! torder 1 to save mem
       param(32) = 1  ! read only vel BC from re2
-      param(99) = -1 ! no dealiasing
+      param(99) = -1 ! no dealiasing to save mem
 
       ifflow = .true.
       iftran = .true.
       ifheat = .false.
       ifvo   = .true.
       ifpo   = .true.
+
+      if (npscal_in .gt. 0) then
+        ifheat = .true.
+        npscal = npscal_in - 1
+        ifto   = .true.       
+        do i = 1,npscal
+          ifpsco(i) = .true.
+        enddo 
+      endif
 
       call bcastParam
 
@@ -196,6 +211,8 @@ c-----------------------------------------------------------------------
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
+      call findSYMOrient
+
       call set_vert(glo_num,ngv,2,nelv,vertex,.false.)
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
@@ -204,7 +221,6 @@ c-----------------------------------------------------------------------
 
       call dofcnt
 
-      jp = 0 ! Set perturbation field count to 0 for baseline flow
       p0thn = p0th
       ntdump=0
 
@@ -247,17 +263,6 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      real function nekf_cfl(u,v,w,dt)
-
-      real u(*), v(*), w(*), dt
-      real cfl
-
-      call compute_cfl(cfl,u,v,w,dt)
-      nekf_cfl = cfl
-
-      return
-      end
-c-----------------------------------------------------------------------
       real function nekf_uf(u,v,w)
 
       real u(*), v(*), w(*)
@@ -267,7 +272,6 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-
       integer function nekf_lglel(e)
 
       integer e
@@ -316,6 +320,99 @@ c-----------------------------------------------------------------------
     
       if (.not. ifgetu) getu = 0 
       if (.not. ifgetp) getp = 0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      integer function nekf_bcmap(bID, ifld)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      integer bID, ifld
+      character*3 c
+
+      if (bID < 1) then ! not a boundary
+        nekf_bcmap = 0
+        return 
+      endif 
+
+      ibc = 0 
+      c = cbc_bmap(bID, ifld)
+
+      if (ifld.eq.1) then
+        if (c.eq.'W  ') then 
+          ibc = 1
+        else if (c.eq.'v  ') then 
+          ibc = 2
+        else if (c.eq.'o  ' .or. c.eq.'O  ') then 
+          ibc = 3
+        else if (c.eq.'SYX') then 
+          ibc = 4
+        else if (c.eq.'SYY') then 
+          ibc = 5
+         else if (c.eq.'SYZ') then 
+          ibc = 6
+        endif
+      else if(ifld.gt.1) then
+        if (c.eq.'t  ') then 
+          ibc = 1
+        else if (c.eq.'f  ') then 
+          ibc = 2
+        else if (c.eq.'o  ' .or. c.eq.'O  ' .or. c.eq.'I  ') then 
+          ibc = 3
+        endif
+      endif
+
+c      write(6,*) ifld, 'bcmap: ', bID, c, ibc
+
+      if (ibc.eq.0) then
+        write(6,*) 'Found unsupport BC type:', c
+        call exitt 
+      endif
+
+      nekf_bcmap = ibc
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine findSYMOrient
+
+      include 'SIZE'
+      include 'INPUT'
+      include 'GEOM'
+
+      integer bID
+      logical ifalgn,ifnorx,ifnory,ifnorz
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1).eq.'SYM') then
+           bID = boundaryID(ifc,iel) 
+           call chknord(ifalgn,ifnorx,ifnory,ifnorz,ifc,iel) 
+           if (ifnorx) cbc_bmap(bID, 1) = 'SYX'
+           if (ifnory) cbc_bmap(bID, 1) = 'SYY'
+           if (ifnorz) cbc_bmap(bID, 1) = 'SYZ'
+         endif
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      integer function nekf_nbid()
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      n = 0
+      do iel = 1,nelt
+      do ifc = 1,2*ndim
+         n = max(n,boundaryID(ifc,iel))
+      enddo
+      enddo
+      nekf_nbid = iglmax(n,1)
 
       return
       end

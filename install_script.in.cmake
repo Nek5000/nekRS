@@ -64,7 +64,6 @@ message("-- Installing libParanumal")
 install_batch_if_newer(@LIBPDIR@ @CMAKE_INSTALL_PREFIX@/libparanumal)
 install_batch_if_newer(@OGSDIR@ @CMAKE_INSTALL_PREFIX@/gatherScatter)
 install_batch_if_newer(@PARALMONDDIR@ @CMAKE_INSTALL_PREFIX@/parAlmond)
-install_batch_if_newer(@INSDIR@ @CMAKE_INSTALL_PREFIX@/ins)
 install_batch_if_newer(@ELLIPTICDIR@ @CMAKE_INSTALL_PREFIX@/elliptic)
 
 ## nek5000
@@ -91,7 +90,7 @@ install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/examples * @CMAKE_INSTALL_PREFI
 ## nekRS
 message("-- Installing nekRS")
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/scripts * @CMAKE_INSTALL_PREFIX@/bin)
-install_glob_if_newer(@CMAKE_SOURCE_DIR@/src "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
+install_glob_if_newer(@CMAKE_SOURCE_DIR@/src "*.h*" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/udf "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/nekInterface "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl "*.okl" @CMAKE_INSTALL_PREFIX@/okl)

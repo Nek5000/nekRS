@@ -28,12 +28,13 @@ static void (*nek_map_m_to_n_ptr)(double *a, int *na, double *b, int *nb, int *i
              double *w, int *nw);
 static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
              double *vt, char *name, int);
-static double (*nek_cfl_ptr)(double *, double *, double *, double *);
 static void (*nek_uf_ptr)(double *, double *, double *);
-static int (*nek_lglel_ptr)(int *);
-static void (*nek_setup_ptr)(int *, char *, char *, int, int);
+static int  (*nek_lglel_ptr)(int *);
+static void (*nek_setup_ptr)(int *, char *, char *, int*, int, int);
 static void (*nek_ifoutfld_ptr)(int *);
 static void (*nek_setics_ptr)(void);
+static int  (*nek_bcmap_ptr)(int *, int*);
+static int  (*nek_nbid_ptr)(void);
 
 void noop_func(void) {}
 
@@ -88,11 +89,6 @@ void nek_map_m_to_n(double *a, int na, double *b, int nb) {
 
   (*nek_map_m_to_n_ptr)(a, &na, b, &nb, &if3d, w, &N);
   free(w);
-}
-
-double nek_cfl(double *u, double *v, double *w, double dt)
-{
-  return (*nek_cfl_ptr)(u, v, w, &dt);
 }
 
 void nek_uf(double *u, double *v, double *w)
@@ -173,7 +169,7 @@ void set_function_handles(const char *session_in,int verbose) {
 
   nek_ptr_ptr = (void (*)(void **, char *, int *)) dlsym(handle, fname("nekf_ptr"));
   check_error(dlerror());
-  nek_setup_ptr = (void (*)(int *, char *, char *, int, int)) dlsym(handle, fname("nekf_setup"));
+  nek_setup_ptr = (void (*)(int *, char *, char *, int *, int, int)) dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int *)) dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -183,8 +179,6 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());
-  nek_cfl_ptr = (double (*)(double *, double *, double *, double *)) dlsym(handle,
-	fname("nekf_cfl"));
   check_error(dlerror());
   nek_uf_ptr = (void (*)(double *, double *, double *)) dlsym(handle,
 	fname("nekf_uf"));
@@ -192,10 +186,17 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_lglel_ptr = (int (*)(int *)) dlsym(handle,fname("nekf_lglel"));
   check_error(dlerror());
   nek_ifoutfld_ptr = (void (*)(int *)) dlsym(handle,fname("nekf_ifoutfld"));
+  check_error(dlerror());
   nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
+  check_error(dlerror());
+  nek_bcmap_ptr = (int (*)(int *, int *)) dlsym(handle,fname("nekf_bcmap"));
+  check_error(dlerror());
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
   check_error(dlerror());
+  nek_nbid_ptr = (int (*)(void)) dlsym(handle,fname("nekf_nbid"));
+  check_error(dlerror());
+
 
 #define postfix(x) x##_ptr
 #define load_or_noop(s) \
@@ -375,7 +376,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   if (retval) goto err; 
 
   //TODO: Fix hardwired compiler flags 
-  sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer\"");
+  sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../ \"");
   sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\""); 
 
   sprintf(buf, "cd %s && FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
@@ -414,8 +415,11 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
 
   set_function_handles(casename.c_str(), 0);
 
+  int nscal = 0;
+  options->getArgs("NUMBER OF SCALARS", nscal);
+
   (*nek_setup_ptr)(&nek_comm, (char *)cwd.c_str(), (char *)casename.c_str(),
-                   cwd.length(), casename.length());
+                   &nscal, cwd.length(), casename.length());
 
   nekData.param = (double *) nek_ptr("param");
   nekData.ifield = (int *) nek_ptr("ifield");
@@ -425,6 +429,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.ndim = *(int *) nek_ptr("ndim");
   nekData.nelt = *(int *) nek_ptr("nelt");
   nekData.nelv = *(int *) nek_ptr("nelv");
+  nekData.lelt = *(int *) nek_ptr("lelt");
   nekData.nx1 =  *(int *) nek_ptr("nx1");
 
   nekData.vx = (double *) nek_ptr("vx");
@@ -457,9 +462,14 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
 
+  nekData.NboundaryID = (*nek_nbid_ptr)(); 
+
   dfloat nu;
   options->getArgs("VISCOSITY", nu);
   nekData.param[1] = nu;
+
+  options->getArgs("SCALAR01 DIFFUSIVITY", nu);
+  nekData.param[7] = nu;
 
   return 0;
 }
@@ -480,12 +490,14 @@ void nek_copyFrom(ins_t *ins, dfloat time) {
   memcpy(nekData.vy, vy, sizeof(dfloat)*Nlocal);
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar) memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
 }
 
 void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
 
   ins->o_U.copyTo(ins->U);
   ins->o_P.copyTo(ins->P); 
+  if(ins->Nscalar) ins->cds->o_S.copyTo(ins->cds->S);
   nek_copyFrom(ins, time, tstep);
 }
 
@@ -511,6 +523,8 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
   memcpy(nekData.vy, vy, sizeof(dfloat)*Nlocal);
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar)  memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
+ 
 }
 
 void nek_ocopyTo(ins_t *ins, dfloat &time) {
@@ -518,6 +532,7 @@ void nek_ocopyTo(ins_t *ins, dfloat &time) {
   nek_copyTo(ins, time);
   ins->o_P.copyFrom(ins->P);
   ins->o_U.copyFrom(ins->U);
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S); 
 }
 
 void nek_copyTo(ins_t *ins, dfloat &time) {
@@ -540,4 +555,9 @@ void nek_copyTo(ins_t *ins, dfloat &time) {
   memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
   memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
   memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+  if(ins->Nscalar)  memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
+}
+
+int nek_bcmap(int bid, int ifld) {
+  return (*nek_bcmap_ptr)(&bid, &ifld);
 }

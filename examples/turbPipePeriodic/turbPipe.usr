@@ -122,9 +122,10 @@ c-----------------------------------------------------------------------
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
-c         if (cbc(ifc,iel,1) .eq. 'W  ') cbc(ifc,iel,1) = 'v  ' 
       enddo
       enddo
+
+      call setbc(1,1,'W  ')
 
       return
       end

@@ -1,19 +1,60 @@
+#include "casedata.h"
+
+@kernel void dpdx(const dlong Ntotal,
+                     const dfloat time, 
+                     @restrict const  dfloat *  x,
+                     @restrict const  dfloat *  y,
+                     @restrict const  dfloat *  z,                      
+                     const dlong offset,
+                     @restrict dfloat * FS) {
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+    if(n<Ntotal){
+      const dfloat xn = x[n]; 
+      const dfloat yn = y[n]; 
+      const dfloat zn = z[n]; 
+      //
+      const dfloat a = _A; 
+      const dfloat d = _D; 
+      //
+      const dfloat xx = xn - U0*time; 
+      const dfloat yy = yn - V0*time; 
+      const dfloat zz = zn - W0*time; 
+      //
+      const dfloat exy = exp( a * ( xx + yy ) );
+      const dfloat eyz = exp( a * ( yy + zz ) );
+      const dfloat ezx = exp( a * ( zz + xx ) );
+      // 
+      const dfloat sxy = sin( a * xx + d * yy );
+      const dfloat syz = sin( a * yy + d * zz );
+      const dfloat szx = sin( a * zz + d * xx );
+      //
+      const dfloat cxy = cos( a * xx + d * yy );
+      const dfloat cyz = cos( a * yy + d * zz );
+      const dfloat czx = cos( a * zz + d * xx );
+      // 
+      const dfloat dpdx = -0.5f*(a*a*exp(-2.f*d*d*p_nu*time)*(2.f*a*exp(2.f*a*xx) 
+                         + 2.f*a*cxy*czx*eyz + 2.f*d*czx*cyz*exy 
+                         + 2.f*a*cxy*syz*ezx + 2.f*a*cyz*szx*exy 
+                         - 2.f*a*sxy*syz*ezx - 2.f*d*sxy*szx*eyz)); 
+
+      FS[n + 0*offset] = -dpdx; 
+    }
+  }
+}
+
+
 void exact(dfloat *u, dfloat *v, dfloat *w,
            const dfloat x, const dfloat y, const dfloat z,
            const dfloat t, const dfloat visc)
 {                                                                        
-  dfloat a = M_PI/2.f;                                                   
-  dfloat d = M_PI/1.f;                                                   
+  dfloat a = _A;                                                   
+  dfloat d = _D;                                                   
   dfloat ex,ey,ez;                                                       
   dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
 
-  const dfloat u0 = 1.0;
-  const dfloat v0 = 0.1;
-  const dfloat w0 = 0.2;
-
-  const dfloat xx = x - u0*t;
-  const dfloat yy = y - v0*t;
-  const dfloat zz = z - w0*t;
+  const dfloat xx = x - U0*t;
+  const dfloat yy = y - V0*t;
+  const dfloat zz = z - W0*t;
 
   ex  = exp(a*xx);                                                        
   ey  = exp(a*yy);                                                        
@@ -32,9 +73,9 @@ void exact(dfloat *u, dfloat *v, dfloat *w,
   cyz = cos(a*yy + d*zz);                                                  
   czx = cos(a*zz + d*xx);                                                  
                                                                          
-  *(u)= -a*(ex*syz + ez*cxy)*e2t + u0;                                        
-  *(v)= -a*(ey*szx + ex*cyz)*e2t + v0;                                        
-  *(w)= -a*(ez*sxy + ey*czx)*e2t + w0;                                        
+  *(u)= -a*(ex*syz + ez*cxy)*e2t + U0;                                        
+  *(v)= -a*(ey*szx + ex*cyz)*e2t + V0;                                        
+  *(w)= -a*(ez*sxy + ey*czx)*e2t + W0;                                        
 }   
 
 // Boundary conditions
@@ -55,3 +96,15 @@ void insVelocityNeumannConditions3D(bcData *bc)
 void insPressureDirichletConditions3D(bcData *bc)
 {
 }
+
+void cdsDirichletConditions3D(bcData *bc)
+{                                                                        
+  dfloat u, v, w;
+  exact(&u, &v, &w, bc->x, bc->y, bc->z, bc->time, p_nu);
+  bc->sP = u;
+}
+
+void cdsNeumannConditions3D(bcData *bc)
+{                                                           
+}
+

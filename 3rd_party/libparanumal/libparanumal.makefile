@@ -16,7 +16,6 @@ OGSDIR      = $(HDRDIR)/libs/gatherScatter
 GSDIR       = $(HDRDIR)/3rdParty/gslib
 ALMONDDIR   = $(HDRDIR)/libs/parAlmond
 ELLIPTICDIR = $(HDRDIR)/solvers/elliptic
-INSDIR      = $(HDRDIR)/solvers/ins
 BLASDIR     = $(HDRDIR)/3rdParty/BlasLapack
 
 # define LIBP_OPT_FLAGS
@@ -32,7 +31,7 @@ $(OGSDIR)/ogs.hpp \
 $(ALMONDDIR)/parAlmond.hpp \
 $(ELLIPTICDIR)/elliptic.h \
 $(ELLIPTICDIR)/ellipticPrecon.h \
-$(ELLIPTICDIR)/ellipticMultiGrid.h
+$(ELLIPTICDIR)/ellipticMultiGrid.h \
 
 # types of files we are going to construct rules for
 .SUFFIXES: .c
@@ -42,41 +41,15 @@ CFLAGS_:=$(CFLAGS)
 
 .c.o: $(DEPS)
 	$(CXX) $(CFLAGS_) -D DHOLMES=\"$(NEKRS_INSTALL_DIR)/libparanumal\" \
-	-D DINS=\"$(NEKRS_INSTALL_DIR)/ins\" \
 	-o $*.o -c $*.c $(paths)
 
 ## We need separate DHOLMES and DINS when CFLAGS gets quoted
 CFLAGS:= $(CFLAGS_) -D DHOLMES="\\\"$(NEKRS_INSTALL_DIR)/libparanumal\\\"" \
-	-D DINS="\\\"$(NEKRS_INSTALL_DIR)/ins\\\"" \
 	-D DOGS="\\\"$(NEKRS_INSTALL_DIR)/gatherScatter\\\"" \
 	-D DELLIPTIC="\\\"$(NEKRS_INSTALL_DIR)/elliptic\\\"" \
-	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\""
+	-D DPARALMOND="\\\"$(NEKRS_INSTALL_DIR)/parAlmond\\\"" \
 
 # list of objects to be compiled
-AOBJS    = \
-$(INSDIR)/src/insSetup.o \
-$(INSDIR)/src/insCurlCurl.o \
-$(INSDIR)/src/insPlotWallsVTUHex3D.o \
-$(INSDIR)/src/insPlotVTUHex3D.o \
-$(INSDIR)/src/insPlotVTU.o \
-$(INSDIR)/src/insForces.o \
-$(INSDIR)/src/insComputeDt.o \
-$(INSDIR)/src/insAdvection.o \
-$(INSDIR)/src/insDiffusion.o \
-$(INSDIR)/src/insGradient.o \
-$(INSDIR)/src/insDivergence.o \
-$(INSDIR)/src/insSubCycle.o \
-$(INSDIR)/src/insVelocityRhs.o \
-$(INSDIR)/src/insVelocitySolve.o \
-$(INSDIR)/src/insVelocityUpdate.o \
-$(INSDIR)/src/insPressureRhs.o \
-$(INSDIR)/src/insPressureSolve.o \
-$(INSDIR)/src/insPressureUpdate.o \
-$(INSDIR)/src/insWeldTriVerts.o \
-$(INSDIR)/src/insIsoPlotVTU.o \
-$(INSDIR)/src/insBrownMinionQuad3D.o \
-$(INSDIR)/src/insFilterSetup.o \
-$(INSDIR)/src/insComputeCfl.o
 
 # library objects
 LOBJS = \
@@ -179,21 +152,14 @@ ifeq ($(detected_OS),Darwin)
 	EXT=dylib
 endif
 
-libins: libelliptic $(AOBJS)
-	cd $(INSDIR) && $(CXX) $(SHARED) -o libins.$(EXT) $(AOBJS) -Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/ins/libins.$(EXT) \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/ins -L$(ELLIPTICDIR) -lelliptic \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/parAlmond  -L$(ALMONDDIR) -lparAlmond \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/libparanumal -L$(HDRDIR) -lP \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/gatherScatter -L$(OGSDIR) -logs \
-    -Wl,-rpath,$(NEKRS_INSTALL_DIR)/BlasLapack -L$(BLASDIR) -lBlasLapack
-
 libelliptic: libogs libP libparAlmond
 	$(MAKE) -C $(ELLIPTICDIR) cc="$(CC)" FC="$(FC)" CC="$(CXX)" LD="$(CXX)" \
 	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" sharedlib
 
 libP: libblas libogs $(LOBJS)
 	cd $(HDRDIR) && $(CXX) $(SHARED) -o libP.$(EXT) $(LOBJS) -Wl,$(WHOLE) \
-        -L$(BLASDIR) -lBlasLapack -Wl,$(NOWHOLE) -Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/libparanumal/libP.$(EXT)
+        -L$(BLASDIR) -lBlasLapack -Wl,$(NOWHOLE) \
+	-Wl,$(SONAME),$(NEKRS_INSTALL_DIR)/libparanumal/libP.$(EXT)
 
 libogs:
 	$(MAKE) -C $(OGSDIR) CC="$(CC)" CXX="$(CXX)" LD="$(CXX)" \
@@ -204,17 +170,16 @@ libblas:
 
 libparAlmond:
 	$(MAKE) -C $(ALMONDDIR) CC="$(CC)" CXX="$(CXX)" LD="$(CXX)" \
-	  CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
+	CFLAGS="$(CFLAGS)" GSDIR="$(GSDIR)" LDFLAGS="$(LDFLAGS)" \
+	ENABLE_HYPRE="$(ENABLE_HYPRE)" lib
 
 
-all: libins
+all: libP libelliptic
 
 clean:
 	cd $(ELLIPTICDIR); make clean; cd -
 	cd ${HDRDIR}/src; rm *.o; cd -
-	rm $(INSDIR)/src/*.o libins.$(EXT)
 
 realclean:
 	cd $(ELLIPTICDIR); make realclean; cd -
 	cd ${HDRDIR}/src; rm *.o; cd -
-	rm $(INSDIR)/src/*.o libins.$(EXT)

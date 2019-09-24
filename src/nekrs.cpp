@@ -60,20 +60,13 @@ not be used for advertising or product endorsement purposes.
 
 \*---------------------------------------------------------------------------*/
 
-#include <cstdio>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <getopt.h>
-
 #include "nekrs.hpp"
-#include "meshNekSetupHex3D.hpp"
+#include "meshSetup.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
-#include "header.h"
-
-#define NEKLDIMT 2
+#include "setup.hpp"
+#include "parReader.hpp"
+#include "runTime.hpp"
 
 int rank, size;
 MPI_Comm comm;
@@ -83,7 +76,10 @@ int ciMode = 0;
 void dryRun(libParanumal::setupAide &options, string udfFile, 
             string casename,int N, int npTarget)
 {
-  if (rank == 0) cout << "performing dry-run to build code ...\n" << endl;
+  if (rank == 0) 
+    cout << "performing dry-run for "
+         << npTarget
+         << " MPI ranks ...\n" << endl;
 
   // jit compile udf
   if (!udfFile.empty()) {
@@ -104,8 +100,7 @@ void dryRun(libParanumal::setupAide &options, string udfFile,
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
-  meshBoxSetupHex3D(N, mesh);
-  libParanumal::ins_t *ins = insSetup(mesh, options);
+  ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
@@ -186,15 +181,44 @@ void setDataFile(libParanumal::setupAide &options)
   string dataFile = cache_dir + "/" + casename + ".okl";
 
   if (rank == 0) {
-    sprintf(buf,"cp -f %s %s", oklFile.c_str(), dataFile.c_str());
-    system(buf);
 
-    std::ofstream s;
-    s.open(dataFile, std::ios_base::app);
-    s << "// automatically added \n" 
-      << "void insFlowField3D(bcData *bc){}\n"
-      << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
-    s.close();
+    std::ifstream in;
+    in.open(oklFile);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    in.close();
+
+    std::ofstream out;
+    out.open(dataFile, std::ios::trunc);
+
+    out << buffer.str();
+
+    out << "// automatically added \n" 
+        << "void insFlowField3D(bcData *bc){}\n"
+        << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
+
+    std::size_t found;
+    found = buffer.str().find("void insVelocityDirichletConditions");
+    if (found == std::string::npos)
+      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void insVelocityNeumannConditions");
+    if (found == std::string::npos)
+      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void insPressureDirichletConditions");
+    if (found ==std::string::npos)
+      out << "void insPressureDirichletConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void cdsNeumannConditions");
+    if (found == std::string::npos)
+      out << "void cdsNeumannConditions3D(bcData *bc){}\n"; 
+
+    found = buffer.str().find("void cdsDirichletConditions");
+    if (found ==std::string::npos)
+      out << "void cdsDirichletConditions3D(bcData *bc){}\n"; 
+
+    out.close();
   }
 
   options.setArgs("DATA FILE", dataFile);
@@ -257,14 +281,14 @@ int main(int argc, char **argv)
 
   // print header
   if (rank == 0) {
-    printHeader();
+    #include "printHeader.inc"
     
     cout << "MPI ranks: " << size << endl << endl;
 
     if (const char *env_p = getenv("OCCA_CACHE_DIR"))
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
     else
-      cout << "OCCA_CACHE_DIR undefined fallback to default" << endl << endl;
+      cout << "OCCA_CACHE_DIR undefined -> fallback to default" << endl << endl;
   }
 
 #ifdef DEBUG
@@ -335,8 +359,7 @@ int main(int argc, char **argv)
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
-  meshNekSetupHex3D(N, mesh);
-  libParanumal::ins_t *ins = insSetup(mesh, options);
+  ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
@@ -351,6 +374,7 @@ int main(int argc, char **argv)
     ins->U[1*ins->fieldOffset + n] = 0;
     ins->U[2*ins->fieldOffset + n] = 0;
     ins->P[n] = 0;
+    if(ins->Nscalar) ins->cds->S[n] = 0;
   }
   if(readRestartFile) {
     dlong Nlocal = mesh->Nelements*mesh->Np;
@@ -362,11 +386,13 @@ int main(int argc, char **argv)
       memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
       memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
     }
+    if(ins->Nscalar) memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
     if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   }
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_copyFrom(ins, ins->startTime, 0);
@@ -383,7 +409,7 @@ int main(int argc, char **argv)
   MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
   MPI_Pcontrol(1);
 
-  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runPlan4(ins); 
+  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTime(ins); 
 
   MPI_Pcontrol(0);
   MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;

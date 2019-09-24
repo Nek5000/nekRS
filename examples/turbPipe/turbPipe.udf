@@ -25,11 +25,13 @@ void UDF_Setup(ins_t *ins)
   ins->o_Wrk = ins->mesh->device.malloc(ins->NVfields*ins->Ntotal*sizeof(dfloat), ins->Wrk);
 
   // recycling
+  const dfloat wbar  = 1.0;
+  const int bID      = 1; 
   const int nSlabs   = 60; 
   const int nelSlab  = 108;
   dfloat zRecycLayer = 5.0;
   const hlong offset = nelSlab * round(nSlabs * zRecycLayer/ZLENGTH); 
-  velRecycling::setup(ins, ins->o_Wrk, offset);
+  velRecycling::setup(ins, ins->o_Wrk, offset, bID, wbar);
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)

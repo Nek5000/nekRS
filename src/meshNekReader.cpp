@@ -1,35 +1,9 @@
-/*
-
-The MIT License (MIT)
-
-Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "mpi.h"
-#include "libParanumal.hpp"
+#include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 void meshNekReaderHex3D(int N, mesh_t *mesh){
@@ -69,24 +43,13 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
     }
   }
 
-  // find number of boundary faces and check if supported
+  // find number of boundary faces
   int nbc = 0;
-  char *cbc = nekData.cbc;
+  int *bid = nekData.boundaryID;
   for(int e = 0; e < mesh->Nelements; e++) {
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
-      if(!strncmp(cbc, "W  ", 3)) {
-        nbc++;
-      } else if(!strncmp(cbc, "v  ", 3) || !strncmp(cbc, "SYM", 3)) {
-        nbc++;
-      } else if(!strncmp(cbc, "o  ", 3) || !strncmp(cbc, "O  ", 3)) {
-        nbc++;
-      } else if(!strncmp(cbc, "E  ", 3) || !strncmp(cbc, "P  ",3 )) {
-        ({;});
-      } else {
-        printf("ERROR: Unsupported nek bcType %s found!\n", cbc);
-        exit(EXIT_FAILURE);
-      }
-      cbc += 3;
+      if(*bid) nbc++;
+      bid++;
     }
   }
  
@@ -101,10 +64,13 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
   // build boundary info (for now every rank has all)
   mesh->NboundaryFaces = nbc;
   MPI_Allreduce(MPI_IN_PLACE, &mesh->NboundaryFaces, 1, MPI_HLONG, MPI_SUM, mesh->comm);
-  if(mesh->rank == 0) printf("NboundaryFaces: %d\n", mesh->NboundaryFaces);
+  if(mesh->rank == 0) {
+    printf("NboundaryIDs: %d\n", nekData.NboundaryID);
+    printf("NboundaryFaces: %d\n", mesh->NboundaryFaces);
+  }
 
   int cnt = 0;
-  cbc = nekData.cbc;
+  bid = nekData.boundaryID;
   int *eface1 = nekData.eface1;
   int *icface = nekData.icface;
   const double eps = 1e-6;
@@ -113,27 +79,7 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
      
   for(int e = 0; e < mesh->Nelements; e++) {
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
-      int ibc = -1;
-      if(!strncmp(cbc, "W  ", 3)) {
-        ibc = 1;
-      } else if(!strncmp(cbc, "v  ", 3)) {
-        ibc = 2;
-      } else if(!strncmp(cbc, "o  ", 3) || !strncmp(cbc, "O  ", 3)) {
-        ibc = 3;
-      } else if(!strncmp(cbc, "SYM", 3)) {
-        const int id = iface*Nfp + e*6*Nfp;
-        const double nx = nekData.unx[id];
-        const double ny = nekData.uny[id];
-        const double nz = nekData.unz[id];
-        if(abs(nx*nx-1) < eps && abs(ny*ny-0) < eps && abs(nz*nz-0) < eps) ibc=4; 
-        if(abs(nx*nx-0) < eps && abs(ny*ny-1) < eps && abs(nz*nz-0) < eps) ibc=5; 
-        if(abs(nx*nx-0) < eps && abs(ny*ny-0) < eps && abs(nz*nz-1) < eps) ibc=6; 
-        if(ibc == -1) { 
-          printf("ERROR: SYM boundary (n=%g,%g,%g) needs to be aligned!\n", nx, ny, nz);
-          exit(EXIT_FAILURE);
-        }
-      }
-
+      int ibc = *bid;
       if(ibc > 0) {
         hlong offset = displacement[mesh->rank]*(mesh->NfaceVertices+1);
         mesh->boundaryInfo[offset + cnt*(mesh->NfaceVertices+1)] = ibc;
@@ -144,8 +90,7 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
         }
         cnt++;
       }
-
-      cbc+=3;
+      bid++;
     }
   }
 

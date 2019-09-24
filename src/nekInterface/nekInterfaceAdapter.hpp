@@ -8,6 +8,7 @@
 #include <mpi.h>
 
 #include "setupAide.hpp"
+#include "nekrs.hpp"
 
 #define DECLARE_USER_FUNC(a) void nek_ ## a(void);
 #define DEFINE_USER_FUNC(a) void nek_ ## a(void) { (* a ## _ptr)(); }
@@ -42,6 +43,8 @@ typedef struct {
   char *cbc;
   int *boundaryID;
 
+  int NboundaryID;
+
   /* id to face mapping */
   int *eface1, *eface, *icface; 
 
@@ -49,6 +52,7 @@ typedef struct {
   int ndim;
   /* local problem size */
   int nelv, nelt;
+  int lelt;
   /* polynomial order + 1*/
   int nx1;
 
@@ -80,12 +84,12 @@ void   nek_end(void);
 void   nek_map_m_to_n(double *a, int na, double *b, int nb);
 void   nek_outpost(double *v1, double *v2, double *v3, double *vp, double *vt, char *name);
 int    nek_lglel(int e);
-double nek_cfl(double *u, double *v, double *w, double dt);
 void   nek_uf(double *u, double *v, double *w);
 int    nek_setup(MPI_Comm c, setupAide &options);
 void   nek_ifoutfld(int i);
 void   nek_setic(void);
 void   nek_userchk(void);
+int    nek_bcmap(int bid, int ifld);
 
 #ifdef __cplusplus
 }
