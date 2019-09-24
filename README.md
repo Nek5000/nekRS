@@ -30,7 +30,7 @@ Requirements:
 * CMake version 3.1 or later
 * Login shell bash or zsh
 
-Download the latest release tarball
+Download the latest release tarball (not yet available!)
 
 ```sh
 wget https://github.com/Nek5000/nekRS/releases/download/v19.0/nekRS-v19.0.tar.gz 
