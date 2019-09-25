@@ -1,25 +1,25 @@
 #include "timer.hpp"
 
-int timer::timerInit(int ifsync){
+int nekrs::timer::timerInit(int ifsync){
   ifsync_=ifsync;
 }
 
-int timer::timerInit(occa::device &device,int ifsync){
+int nekrs::timer::timerInit(occa::device &device,int ifsync){
   device_=device;
   ifdevice_=1;
   timerInit(ifsync);
 }
 
-int timer::timerReset(){
+int nekrs::timer::timerReset(){
   ifsync_=0;
   m_.clear();
 }
 
-int timer::timerFinalize(){
+int nekrs::timer::timerFinalize(){
   timerReset();
 }
 
-static int timer::updateTic(std::string &tag,double time){
+static int nekrs::timer::updateTic(std::string &tag,double time){
   auto it=m_.find(tag);
   if(it==m_.end()){
     // new key
@@ -34,10 +34,10 @@ static int timer::updateTic(std::string &tag,double time){
   }
 }
 
-static int timer::updateToc(std::string &tag,double time){
+static int nekrs::timer::updateToc(std::string &tag,double time){
   auto it=m_.find(tag);
   if(it==m_.end()){
-    printf("nekrs::timer::htoc called before nekrs::timer::htic or "
+    printf("nekrs::nekrs::timer::htoc called before nekrs::nekrs::timer::htic or "
       "nekrs::timer is not in a valid state.\n");
     return 1;
   } else {
@@ -48,38 +48,38 @@ static int timer::updateToc(std::string &tag,double time){
   }
 }
 
-int timer::tic(std::string &tag){
+int nekrs::timer::tic(std::string &tag){
   if(isSync()) mpi::Barrier();
   if(isDevice()) device_.finish(); 
   return updateTic(tag,mpi::Wtime());
 }
 
-int timer::toc(std::string &tag){
+int nekrs::timer::toc(std::string &tag){
   if(isSync()) mpi::Barrier();
   if(isDevice()) device_.finish(); 
   return updateToc(tag,mpi::Wtime());
 }
 
 /*
-int timer::hostTic(std::string &tag){
+int nekrs::timer::hostTic(std::string &tag){
   if(isSync()) mpi::Barrier();
   double time=mpi::Wtime();
   return updateTic(tag,time);
 }
 
-int timer::hostToc(std::string &tag){
+int nekrs::timer::hostToc(std::string &tag){
   if(isSync()) mpi::Barrier();
   double time=mpi::Wtime();
   return updateToc(tag,time);
 }
 
-int timer::deviceTic(std::string &tag){
+int nekrs::timer::deviceTic(std::string &tag){
   if(isSync()) mpi::Barrier();
   if(isDevice()) device.finish(); 
   double time=mpi::Wtime();
   updateTic(tag,time);
 }
-int timer::deviceToc(std::string &tag){
+int nekrs::timer::deviceToc(std::string &tag){
   if(isSync()) mpi::Barrier();
   if(isDevice()) device_.finish(); 
   double time=mpi::Wtime();
@@ -87,19 +87,19 @@ int timer::deviceToc(std::string &tag){
 }
 */
 
-double timer::elapsed(std::string &tag){
+double nekrs::timer::elapsed(std::string &tag){
   auto it=m_.find(tag);
   if(it==m_.end()){ printf("nekrs::timer invalid key.\n"); return 1;}
   return it->second.elapsed;
 }
 
-int timer::count(std::string &tag){
+int nekrs::timer::count(std::string &tag){
   auto it=m_.find(tag);
   if(it==m_.end()){ printf("nekrs::timer invalid key.\n"); return 1;}
   return it->second.count;
 }
 
-int timer::reset(std::string &tag){
+int nekrs::timer::reset(std::string &tag){
   auto it=m_.find(tag);
   if(it!=m_.end()) m_.erase(it);
   return 0;

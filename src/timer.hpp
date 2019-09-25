@@ -7,7 +7,7 @@
 #include "occa.hpp"
 #include "mpi_wrapper.hpp"
 
-namespace timer{
+namespace nekrs::timer{
   struct tagData{
     int count;
     double elapsed;
