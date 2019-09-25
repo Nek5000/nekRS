@@ -1,4 +1,4 @@
-#include "mpi_wrapper.hpp"
+#include "mpiWrapper.hpp"
 
 int nekrs::mpi::mpiInit(MPI_Comm comm, int root){
   comm_=comm;
@@ -33,6 +33,14 @@ double nekrs::mpi::Wtime(){
 
 MPI_Comm nekrs::mpi::Comm(){
   return comm_;
+}
+
+int nekrs::mpi::Bcast(void *buffer,int size,int root){
+  return MPI_Bcast(buffer,size,MPI_BYTE,root,comm_);
+}
+
+int nekrs::mpi::Bcast(void *buffer,int size){
+  return Bcast(buffer,size,root_);
 }
 
 int nekrs::mpi::mpiFinalize(){

@@ -3,8 +3,9 @@
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
+using namespace nekrs::mpi;
+
 nekdata_private nekData;
-static int rank;
 static setupAide *options; 
 
 static void (*usrdat_ptr)(void);
@@ -114,7 +115,7 @@ void nek_setics(void)
 
 void nek_userchk(void)
 {
-  if(rank==0) printf("calling nek_userchk\n");
+  if(Rank()==0) printf("calling nek_userchk\n");
   (*userchk_ptr)();
 }
 
@@ -400,10 +401,9 @@ err:
   exit(EXIT_FAILURE);
 }
 
-int nek_setup(MPI_Comm c, setupAide &options_in) {
+int nek_setup(setupAide &options_in) {
   options = &options_in;
-  MPI_Comm_rank(c,&rank);
-  MPI_Fint nek_comm = MPI_Comm_c2f(c);
+  MPI_Fint nek_comm = MPI_Comm_c2f(Comm());
 
   string casename;
   options->getArgs("CASENAME", casename);
@@ -503,7 +503,7 @@ void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
 
 void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
 
-  if(rank==0) {
+  if(Rank()==0) {
     printf("copying solution to nek\n");
     fflush(stdout);
   }
@@ -537,7 +537,7 @@ void nek_ocopyTo(ins_t *ins, dfloat &time) {
 
 void nek_copyTo(ins_t *ins, dfloat &time) {
 
-  if(rank==0) {
+  if(Rank()==0) {
     printf("copying solution from nek\n");
     fflush(stdout);
   }

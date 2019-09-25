@@ -9,14 +9,14 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "mpi_wrapper.hpp"
+#include "mpiWrapper.hpp"
 
 #define NEKRS_VERSION "0"
 #define NEKRS_SUBVERSION "2"
 
 #define NEKLDIMT 2
 
-#define EXIT(a)  { MPI_Finalize(); exit(a); }
+#define EXIT(a)  { nekrs::mpi::mpiFinalize(); exit(a); }
 
 #include "libParanumal.hpp"
 #include "ins.h"

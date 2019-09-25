@@ -14,6 +14,8 @@ namespace nekrs::mpi{
   int Barrier();
   double Wtime();
   MPI_Comm Comm();
+  int Bcast(void *buffer,int size,int root);
+  int Bcast(void *buffer,int size);
   int mpiFinalize();
 }
 

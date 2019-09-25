@@ -248,7 +248,7 @@ int main(int argc, char **argv)
   if (Rank() == 0)
     retval = processCmdLineOptions(argc, argv, setupFile, buildOnly, sizeTarget);
 
-  MPI_Bcast(&retval, sizeof(retval), MPI_BYTE, 0, Comm());
+  Bcast(&retval, sizeof(retval));
   if (retval) {
     if (Rank() == 0)
       cout << "usage: ./nekrs --setup <case name> [ --build-only <#procs> ] [ --cimode <id> ]"
@@ -257,10 +257,10 @@ int main(int argc, char **argv)
   }
 
   strcpy(buf, setupFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, Comm());
+  Bcast(buf, sizeof(buf));
   setupFile.assign(buf);
-  MPI_Bcast(&sizeTarget, sizeof(sizeTarget), MPI_BYTE, 0, Comm());
-  MPI_Bcast(&ciMode, sizeof(ciMode), MPI_BYTE, 0, Comm());
+  Bcast(&sizeTarget, sizeof(sizeTarget));
+  Bcast(&ciMode, sizeof(ciMode));
 
   // set cache dir
   getcwd(buf, sizeof(buf));
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 #endif
 
   // read settings
-  libParanumal::setupAide options = parRead(setupFile, Comm());
+  libParanumal::setupAide options = parRead(setupFile);
 
   int N;
   string udfFile, casename;
@@ -333,7 +333,7 @@ int main(int argc, char **argv)
     cout << "performing continous integration tests\n" << endl;
 
   // init nek
-  nek_setup(Comm(), options);
+  nek_setup(options);
   nek_setic();
   nek_userchk();
 

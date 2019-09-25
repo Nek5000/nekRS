@@ -5,6 +5,8 @@
 
 #include "udf.hpp"
 
+using namespace nekrs::mpi;
+
 UDF udf = {NULL, NULL, NULL, NULL};
 
 void udfBuild(const char *udfFile)
@@ -79,9 +81,8 @@ void udfLoad(void)
 
 occa::kernel udfBuildKernel(ins_t *ins, const char *function)
 {
-  int rank;
+  int rank=Rank();
   mesh_t *mesh = ins->mesh;
-  MPI_Comm_rank(mesh->comm, &rank);
 
   const char *fname = "__udf.okl";
 
@@ -106,7 +107,7 @@ occa::kernel udfBuildKernel(ins_t *ins, const char *function)
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
        k = mesh->device.buildKernel(fname, function, kernelInfo);
     }
-    MPI_Barrier(mesh->comm);
+    Barrier();
   }
 
   if (rank == 0) {

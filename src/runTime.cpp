@@ -8,6 +8,8 @@
 #include "tombo.hpp" 
 #include "cfl.hpp"
 
+using namespace nekrs::mpi;
+
 void extbdfCoefficents(ins_t *ins, int order);
 void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS);
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
@@ -19,7 +21,7 @@ void runTime(ins_t *ins)
   mesh_t *mesh = ins->mesh;
   cds_t *cds = ins->cds; 
 
-  double etime0 = MPI_Wtime();
+  double etime0 = Wtime();
   for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
 
     if(tstep<1) 
@@ -53,11 +55,11 @@ void runTime(ins_t *ins)
       if(ins->Nscalar)
         printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: %d  tElapsed= %.5e s\n",
           tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-          ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
+          ins->NiterP, cds->Niter, Wtime()-etime0);
       else
         printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
           tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-          ins->NiterP, MPI_Wtime()-etime0);
+          ins->NiterP, Wtime()-etime0);
 
       if ((tstep+1)%5==0) fflush(stdout);
     }
