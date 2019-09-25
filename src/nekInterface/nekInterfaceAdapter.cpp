@@ -462,7 +462,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
 
-  nekData.NboundaryID = (*nek_nbid_ptr)(); 
+  nekData.NboundaryIDs = (*nek_nbid_ptr)(); 
 
   dfloat nu;
   options->getArgs("VISCOSITY", nu);

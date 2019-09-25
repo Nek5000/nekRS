@@ -2,12 +2,10 @@
 #include "nekInterfaceAdapter.hpp"
 #include "meshSetup.hpp"
 #include "filter.hpp"
+#include "bcMap.hpp"
 
 #define DIRICHLET 1
 #define NEUMANN 2
-
-const string v_bcIDInfo[] = {"empty", "noSlip", "fixedValue", "outlet", "slipX", "slipY", "slipZ"};
-const string s_bcIDInfo[] = {"empty", "fixedValue", "fixedFlux", "zeroFlux"}; 
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
@@ -16,15 +14,18 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 {
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
+
   if (!buildOnly) 
     meshNekSetupHex3D(N, mesh);
   else
     meshBoxSetupHex3D(N, mesh);
 
   ins_t *ins = new ins_t();
-  
   ins->mesh = mesh;
   ins->options = options;
+
+  options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
+
   ins->kernelInfo = new occa::properties();
 
   string install_dir;
@@ -37,9 +38,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
 
   ins->SNrk = 0;
-  
   mesh->Nfields = 1; 
-
   ins->g0 =  1.0;
 
   ins->extbdfA = (dfloat*) calloc(3, sizeof(dfloat));
@@ -302,7 +301,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
     filterSetup(ins); 
 
   if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
-  options.getArgs("NUMBER OF SCALARS", ins->Nscalar); 
   if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
 
   if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
@@ -330,17 +328,21 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
   const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryID;
+  const int nbrBIDs = nekData.NboundaryIDs;
 
   int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
-  // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = nek_bcmap(bID, 1);
-    if(mesh->rank == 0) printf("bID %d -> byType %s\n", bID, v_bcIDInfo[bcID].c_str());
+    int bcID = bcMap::lookup(bID, "velocity");
+    if(mesh->rank == 0 && bcID == -1) {
+      printf("Cannot find velocity bcType for bID %d!", bID); 
+      EXIT(1);
+    }
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
+                               bcMap::IDToText(bcID, "velocity").c_str());
     uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
     if (bcID == 4) uBCType[bID] = DIRICHLET; 
     if (bcID == 5) vBCType[bID] = DIRICHLET; 
@@ -430,7 +432,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      ins->EToB[cnt] = nek_bcmap(mesh->EToB[f+e*mesh->Nfaces], 1);
+      ins->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "velocity");
       int bc = ins->EToB[cnt];
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
@@ -795,14 +797,18 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   cds->TOL = 1e-6;
 
   const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryID;
+  const int nbrBIDs = nekData.NboundaryIDs;
 
   int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
-  // boundary IDs are contiguous and start from 1 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = nek_bcmap(bID, 2);
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, s_bcIDInfo[bcID].c_str()); 
+    int bcID = bcMap::lookup(bID, "scalar01");
+    if(mesh->rank == 0 && bcID == -1) {
+      printf("Cannot find scalar bcType for bID %d!", bID); 
+      EXIT(1);
+    }
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
+                               bcMap::IDToText(bcID, "scalar01").c_str());
     sBCType[bID] = scalMap[bcID];
   }
 
@@ -827,13 +833,13 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      cds->EToB[cnt] = nek_bcmap(mesh->EToB[f+e*mesh->Nfaces], 2);
+      cds->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
       int bc = cds->EToB[cnt];
       if (bc>0) {
-  for (int n=0;n<mesh->Nfp;n++) {
-    int fid = mesh->faceNodes[n+f*mesh->Nfp];
-    cds->mapB[fid+e*mesh->Np] = mymin(bc,cds->mapB[fid+e*mesh->Np]);
-  }
+        for (int n=0;n<mesh->Nfp;n++) {
+          int fid = mesh->faceNodes[n+f*mesh->Nfp];
+          cds->mapB[fid+e*mesh->Np] = mymin(bc,cds->mapB[fid+e*mesh->Np]);
+        }
       }
       cnt++;
     }

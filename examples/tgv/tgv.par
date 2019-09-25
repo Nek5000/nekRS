@@ -24,5 +24,6 @@ filterCutoffRatio = 0.9
 residualTol = 1e-04
 
 [VELOCITY]
+boundaryTypeMap = null
 viscosity = -1600
 residualTol = 1e-06

@@ -25,5 +25,6 @@ preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]
+boundaryTypeMap = inlet, outlet, wall, slipY, slipZ
 residualTol = 1e-06
 viscosity = -1400

@@ -43,7 +43,7 @@ typedef struct {
   char *cbc;
   int *boundaryID;
 
-  int NboundaryID;
+  int NboundaryIDs;
 
   /* id to face mapping */
   int *eface1, *eface, *icface; 

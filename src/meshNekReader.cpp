@@ -5,6 +5,7 @@
 #include "mpi.h"
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "bcMap.hpp"
 
 void meshNekReaderHex3D(int N, mesh_t *mesh){
 
@@ -63,9 +64,10 @@ void meshNekReaderHex3D(int N, mesh_t *mesh){
 
   // build boundary info (for now every rank has all)
   mesh->NboundaryFaces = nbc;
-  MPI_Allreduce(MPI_IN_PLACE, &mesh->NboundaryFaces, 1, MPI_HLONG, MPI_SUM, mesh->comm);
+  MPI_Allreduce(MPI_IN_PLACE, &mesh->NboundaryFaces, 1, MPI_HLONG, 
+                MPI_SUM, mesh->comm);
   if(mesh->rank == 0) {
-    printf("NboundaryIDs: %d\n", nekData.NboundaryID);
+    printf("NboundaryIDs: %d\n", nekData.NboundaryIDs);
     printf("NboundaryFaces: %d\n", mesh->NboundaryFaces);
   }
 

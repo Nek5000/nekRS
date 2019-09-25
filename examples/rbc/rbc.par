@@ -25,9 +25,11 @@ preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]
-viscosity = 2.6457e-4 # sqrt(PRA/RA) 
+boundaryTypeMap = wall, wall
+viscosity = sqrt(7/1e8) # sqrt(PRA/RA) 
 residualTol = 1e-06
 
 [TEMPERATURE]
-conductivity = 3.7796e-5 # 1/sqrt(RA*PRA)
+boundaryTypeMap = inlet, insulated
+conductivity = 1/sqrt(7*1e8) # 1/sqrt(RA*PRA)
 residualTol = 1e-06

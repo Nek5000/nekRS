@@ -17,13 +17,11 @@ preconditioner = semg_amg
 residualTol = 1e-08
 
 [VELOCITY]
+boundaryTypeMap = inlet 
 residualTol = 1e-12
 viscosity = -100
 
-[SCALAR01]
-residualTol = 1e-12
-diffusivity = -100
-
 [TEMPERATURE]
+boundaryTypeMap = inlet 
 residualTol = 1e-12
 conductivity = -100

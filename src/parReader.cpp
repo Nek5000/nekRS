@@ -6,14 +6,14 @@
 #include <getopt.h>
 
 #include "tinyexpr.h"
+#include "inipp.hpp"
 
 #include "nekrs.hpp"
-#include "inipp.hpp"
+#include "bcMap.hpp"
 
 #define ABORT(a)  { if(rank==0) cout << a << endl; MPI_Finalize(); exit(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
-
 
 void setDefaultSettings(libParanumal::setupAide &options, string casename, int rank)
 {
@@ -253,6 +253,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
   else
     ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
+
+  string v_bcMap;
+  if(ini.extract("velocity", "boundarytypemap", v_bcMap))
+    bcMap::setup(v_bcMap, "velocity");
+  else
+    ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
+
   //
   double viscosity;
   if(ini.extract("velocity", "viscosity", sbuf)) {
@@ -273,22 +280,32 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("problemtype", "equation", equation))
     if(equation != "incompNS") ABORT("Only PROBLEMTYPE::equation = incompNS is supported!");
 
-  int nscal = 0; // fixed for now
-  if(ini.sections.count("temperature")) nscal = 1;
+  int nscal = 0;
+  if(ini.sections.count("temperature")) nscal = 1; // fixed for now
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
-  double s_residualTol;
-  if(ini.extract("temperature", "residualtol", s_residualTol)) {
-    options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
-  }
+  if (nscal) {
 
-  double diffusivity; 
-  if(ini.extract("temperature", "conductivity", sbuf)) {
-    int err = 0;
-    diffusivity = te_interp(sbuf.c_str(), &err);
-    if(err) ABORT("Invalid expression for conductivity!");
-    if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
-    options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+    double s_residualTol;
+    if(ini.extract("temperature", "residualtol", s_residualTol)) {
+      options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
+    }
+ 
+    double diffusivity; 
+    if(ini.extract("temperature", "conductivity", sbuf)) {
+      int err = 0;
+      diffusivity = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for conductivity!");
+      if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
+      options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+ 
+    string s_bcMap;
+    if(ini.extract("temperature", "boundarytypemap", s_bcMap))
+      bcMap::setup(s_bcMap, "scalar01");
+    else
+      ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!"); 
+    }
+
   }
 
   return options;
