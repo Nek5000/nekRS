@@ -8,7 +8,7 @@ namespace nekrs::mpi{
   static int root_;
 
   int mpiInit(MPI_Comm comm, int root=0);
-  int mpiInit(int *argc,char **argv[],root=0);
+  int mpiInit(int *argc,char **argv[],int root=0);
   int Rank();
   int Size();
   int Barrier();

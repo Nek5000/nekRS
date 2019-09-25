@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------*\
-Copyright (c) 2019, UCHICAGO ARGONNE, LLC. 
+Copyright (c) 2019, UCHICAGO ARGONNE, LLC.
 
 The UChicago Argonne, LLC as Operator of Argonne National
 Laboratory holds copyright in the Software. The copyright holder
@@ -22,40 +22,40 @@ distribution.
 may be used to endorse or promote products derived from this software
 without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL 
-UCHICAGO ARGONNE, LLC, THE U.S. DEPARTMENT OF 
-ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
-TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+UCHICAGO ARGONNE, LLC, THE U.S. DEPARTMENT OF
+ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Additional BSD Notice
 ---------------------
 1. This notice is required to be provided under our contract with
 the U.S. Department of Energy (DOE). This work was produced at
-Argonne National Laboratory under Contract 
+Argonne National Laboratory under Contract
 No. DE-AC02-06CH11357 with the DOE.
 
-2. Neither the United States Government nor UCHICAGO ARGONNE, 
-LLC nor any of their employees, makes any warranty, 
+2. Neither the United States Government nor UCHICAGO ARGONNE,
+LLC nor any of their employees, makes any warranty,
 express or implied, or assumes any liability or responsibility for the
 accuracy, completeness, or usefulness of any information, apparatus,
 product, or process disclosed, or represents that its use would not
 infringe privately-owned rights.
 
-3. Also, reference herein to any specific commercial products, process, 
-or services by trade name, trademark, manufacturer or otherwise does 
-not necessarily constitute or imply its endorsement, recommendation, 
-or favoring by the United States Government or UCHICAGO ARGONNE LLC. 
-The views and opinions of authors expressed 
-herein do not necessarily state or reflect those of the United States 
-Government or UCHICAGO ARGONNE, LLC, and shall 
+3. Also, reference herein to any specific commercial products, process,
+or services by trade name, trademark, manufacturer or otherwise does
+not necessarily constitute or imply its endorsement, recommendation,
+or favoring by the United States Government or UCHICAGO ARGONNE LLC.
+The views and opinions of authors expressed
+herein do not necessarily state or reflect those of the United States
+Government or UCHICAGO ARGONNE, LLC, and shall
 not be used for advertising or product endorsement purposes.
 
 \*---------------------------------------------------------------------------*/
@@ -68,51 +68,51 @@ not be used for advertising or product endorsement purposes.
 #include "parReader.hpp"
 #include "runTime.hpp"
 
-int rank, size;
-MPI_Comm comm;
-int buildOnly = 0;  // hack for libParanumal::meshPhysicalNodes() 
+using namespace nekrs::mpi;
+
+int buildOnly = 0;  // hack for libParanumal::meshPhysicalNodes()
 int ciMode = 0;
 
-void dryRun(libParanumal::setupAide &options, string udfFile, 
+void dryRun(libParanumal::setupAide &options, string udfFile,
             string casename,int N, int npTarget)
 {
-  if (rank == 0) 
+  if (Rank() == 0)
     cout << "performing dry-run for "
          << npTarget
          << " MPI ranks ...\n" << endl;
 
   // jit compile udf
   if (!udfFile.empty()) {
-    if(rank == 0) udfBuild(udfFile.c_str()); 
-    MPI_Barrier(comm);
+    if(Rank() == 0) udfBuild(udfFile.c_str());
+    Barrier();
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-  } 
+  }
 
-  if(udf.setup0) udf.setup0(comm, options);
+  if(udf.setup0) udf.setup0(Comm(), options);
 
   // jit compile nek
-  if (rank == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, npTarget);
-  MPI_Barrier(comm);
+  if (Rank() == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, npTarget);
+  Barrier();
 
   // jit compile libP kernels
   mesh_t *mesh = new mesh_t[1];
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
+  mesh->comm = Comm();
+  mesh->rank = Rank();
+  mesh->size = Size();
   ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
-    if (rank == 0) cout << "building udf kernels ...";
+    if (Rank() == 0) cout << "building udf kernels ...";
     udf.loadKernels(ins);
-    if (rank == 0) cout << " done" << endl;
+    if (Rank() == 0) cout << " done" << endl;
   }
 
   if (mesh->rank == 0) cout << "\nBuild successful." << endl;
 }
 
-int processCmdLineOptions(int argc, char **argv, string &setupFile, 
+int processCmdLineOptions(int argc, char **argv, string &setupFile,
                           int &build, int &sizeTarget)
 {
   int foundSetup = 0;
@@ -130,32 +130,32 @@ int processCmdLineOptions(int argc, char **argv, string &setupFile,
 
     if (c == -1)
       break;
- 
-    switch(c){ 
+
+    switch(c){
         case 's':
-            setupFile.assign(optarg);  
+            setupFile.assign(optarg);
             setupFile = setupFile + ".par";
-            if (const char *ptr = realpath(setupFile.c_str(), NULL)) 
+            if (const char *ptr = realpath(setupFile.c_str(), NULL))
               foundSetup = 1;
-            else 
+            else
               cout << "ERROR: Cannot find " << setupFile << "!\n";
-            break;  
-        case 'b':  
+            break;
+        case 'b':
             build = 1;
-            sizeTarget = atoi(optarg);  
-            break; 
-         case 'c':  
+            sizeTarget = atoi(optarg);
+            break;
+         case 'c':
             ciMode = atoi(optarg);
             if (ciMode < 1) {
               cout << "ERROR: ci test id has to be >0!\n";
               return 1;
             }
-            break;  
-        default:  
+            break;
+        default:
             return 1;
-    }  
-  }  
-  if (!foundSetup) return 1; 
+    }
+  }
+  if (!foundSetup) return 1;
 
   return 0;
 }
@@ -169,7 +169,7 @@ void setDataFile(libParanumal::setupAide &options)
 
   char *ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
-    if (rank ==0) cout << "ERROR: Cannot find " << oklFile << "!\n";
+    if (Rank() ==0) cout << "ERROR: Cannot find " << oklFile << "!\n";
     EXIT(-1);
   }
   free(ptr);
@@ -180,7 +180,7 @@ void setDataFile(libParanumal::setupAide &options)
   options.getArgs("CASENAME", casename);
   string dataFile = cache_dir + "/" + casename + ".okl";
 
-  if (rank == 0) {
+  if (Rank() == 0) {
 
     std::ifstream in;
     in.open(oklFile);
@@ -193,30 +193,30 @@ void setDataFile(libParanumal::setupAide &options)
 
     out << buffer.str();
 
-    out << "// automatically added \n" 
+    out << "// automatically added \n"
         << "void insFlowField3D(bcData *bc){}\n"
-        << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
+        << "void insPressureNeumannConditions3D(bcData *bc){}\n";
 
     std::size_t found;
     found = buffer.str().find("void insVelocityDirichletConditions");
     if (found == std::string::npos)
-      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void insVelocityNeumannConditions");
     if (found == std::string::npos)
-      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n"; 
+      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void insPressureDirichletConditions");
     if (found ==std::string::npos)
-      out << "void insPressureDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void insPressureDirichletConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void cdsNeumannConditions");
     if (found == std::string::npos)
-      out << "void cdsNeumannConditions3D(bcData *bc){}\n"; 
+      out << "void cdsNeumannConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void cdsDirichletConditions");
     if (found ==std::string::npos)
-      out << "void cdsDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void cdsDirichletConditions3D(bcData *bc){}\n";
 
     out.close();
   }
@@ -229,9 +229,8 @@ int main(int argc, char **argv)
   int retval;
   int provided, required = MPI_THREAD_MULTIPLE;
   //retval =  MPI_Init_thread(&argc, &argv, required, &provided);
-  retval =  MPI_Init(&argc, &argv);
 
-  if (retval != MPI_SUCCESS) {
+  if (mpiInit(&argc,&argv) != MPI_SUCCESS) {
     cout << "FATAL ERROR: Cannot initialize MPI!" << endl;
     exit(-1);
   }
@@ -242,31 +241,26 @@ int main(int argc, char **argv)
   }
 */
 
-  MPI_Comm_dup(MPI_COMM_WORLD, &comm);
-
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-
   // parse cmdline
   char buf[FILENAME_MAX];
   string setupFile;
   int sizeTarget;
-  if (rank == 0)
+  if (Rank() == 0)
     retval = processCmdLineOptions(argc, argv, setupFile, buildOnly, sizeTarget);
 
-  MPI_Bcast(&retval, sizeof(retval), MPI_BYTE, 0, comm);
+  MPI_Bcast(&retval, sizeof(retval), MPI_BYTE, 0, Comm());
   if (retval) {
-    if (rank == 0)
+    if (Rank() == 0)
       cout << "usage: ./nekrs --setup <case name> [ --build-only <#procs> ] [ --cimode <id> ]"
            << endl;
     EXIT(-1);
   }
 
   strcpy(buf, setupFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, Comm());
   setupFile.assign(buf);
-  MPI_Bcast(&sizeTarget, sizeof(sizeTarget), MPI_BYTE, 0, comm);
-  MPI_Bcast(&ciMode, sizeof(ciMode), MPI_BYTE, 0, comm);
+  MPI_Bcast(&sizeTarget, sizeof(sizeTarget), MPI_BYTE, 0, Comm());
+  MPI_Bcast(&ciMode, sizeof(ciMode), MPI_BYTE, 0, Comm());
 
   // set cache dir
   getcwd(buf, sizeof(buf));
@@ -276,14 +270,14 @@ int main(int argc, char **argv)
   setenv("NEKRS_CACHE_DIR", buf, 1);
   string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-  if (rank == 0) mkdir(cache_dir.c_str(), S_IRWXU);
-  MPI_Barrier(comm);
+  if (Rank() == 0) mkdir(cache_dir.c_str(), S_IRWXU);
+  Barrier();
 
   // print header
-  if (rank == 0) {
+  if (Rank() == 0) {
     #include "printHeader.inc"
-    
-    cout << "MPI ranks: " << size << endl << endl;
+
+    cout << "MPI ranks: " << Size() << endl << endl;
 
     if (const char *env_p = getenv("OCCA_CACHE_DIR")) {
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
@@ -294,16 +288,16 @@ int main(int argc, char **argv)
   }
 
 #ifdef DEBUG
-  if (rank == 0) {
+  if (Rank() == 0) {
     char str[10];
     cout << "Press any key to continue" << endl;
     gets(str);
   }
-  MPI_Barrier(comm);
+  Barrier();
 #endif
 
   // read settings
-  libParanumal::setupAide options = parRead(setupFile, comm);
+  libParanumal::setupAide options = parRead(setupFile, Comm());
 
   int N;
   string udfFile, casename;
@@ -320,26 +314,26 @@ int main(int argc, char **argv)
     EXIT(0);
   }
 
-  MPI_Barrier(comm); double t0 = MPI_Wtime();
+  Barrier(); double t0 = Wtime();
 
   // jit compile udf
   if (!udfFile.empty()){
-    if(rank == 0) udfBuild(udfFile.c_str()); 
-    MPI_Barrier(comm);
+    if(Rank() == 0) udfBuild(udfFile.c_str());
+    Barrier();
     udfLoad();
-  } 
+  }
 
-  if(udf.setup0) udf.setup0(comm, options);
+  if(udf.setup0) udf.setup0(Comm(), options);
 
   // jit compile nek
-  if(rank == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, size);
-  MPI_Barrier(comm);
+  if(Rank() == 0) buildNekInterface(casename.c_str(), NEKLDIMT, N, Size());
+  Barrier();
 
-  if(rank == 0 && ciMode) 
+  if(Rank() == 0 && ciMode)
     cout << "performing continous integration tests\n" << endl;
 
   // init nek
-  nek_setup(comm, options);
+  nek_setup(Comm(), options);
   nek_setic();
   nek_userchk();
 
@@ -358,16 +352,16 @@ int main(int argc, char **argv)
 
   // setup libP
   mesh_t *mesh = new mesh_t[1];
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
+  mesh->comm = Comm();
+  mesh->rank = Rank();
+  mesh->size = Size();
   ins_t *ins = setup(mesh, options);
 
   // jit compile udf kernels
   if (udf.loadKernels) {
-    if (rank == 0) cout << "building udf kernels ...";
+    if (Rank() == 0) cout << "building udf kernels ...";
     udf.loadKernels(ins);
-    if (rank == 0) cout << " done" << endl;
+    if (Rank() == 0) cout << " done" << endl;
   }
 
   // set initial condition
@@ -394,36 +388,36 @@ int main(int argc, char **argv)
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
-  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_copyFrom(ins, ins->startTime, 0);
 
-  if(rank == 0) {
+  if(Rank() == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
-    cout << "\ninitialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
+    cout << "\ninitialization took " << Wtime() - t0 << " seconds" << endl;
     cout << "starting time loop" << endl;
   }
   fflush(stdout);
 
   // run time stepper
-  MPI_Barrier(mesh->comm); t0 = MPI_Wtime();
+  Barrier(); t0 = Wtime();
   MPI_Pcontrol(1);
 
-  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTime(ins); 
+  if(ins->options.compareArgs("TIME INTEGRATOR", "TOMBO")) runTime(ins);
 
   MPI_Pcontrol(0);
-  MPI_Barrier(mesh->comm); double tElapsed = MPI_Wtime() - t0;
+  Barrier(); double tElapsed = Wtime() - t0;
 
 
   // finalize
-  if(rank == 0) { 
-    cout << "\nreached final time " << ins->finalTime << " in " 
+  if(Rank() == 0) {
+    cout << "\nreached final time " << ins->finalTime << " in "
          << tElapsed << " seconds" << endl
          << "\nEnd." << endl;
   }
-  MPI_Finalize();
+  mpiFinalize();
 
   return 0;
 }
