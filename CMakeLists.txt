@@ -244,25 +244,7 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 # Add nekrs target                                                            #
 ###############################################################################
-set(SRC src/nekrs.cpp
-    src/cfl.cpp
-    src/filter.cpp
-    src/bcMap.cpp
-    src/setup.cpp
-    src/runTime.cpp
-    src/tombo.cpp
-    src/cds.cpp
-    src/udf/udf.cpp
-    src/meshSetup.cpp
-    src/meshNekReader.cpp
-    src/meshPhysicalNodesHex3D.cpp
-    src/occaDeviceConfig.cpp
-    src/nekInterface/nekInterfaceAdapter.cpp
-    src/parReader.cpp
-    src/tinyexpr.c
-    ## To get fortran flags
-    src/dummy.f
-)
+file(GLOB_RECURSE SRC src/*.cpp src/*.c src/dummy.f)
 
 add_executable(nekrs ${SRC})
 set_target_properties(nekrs PROPERTIES LINKER_LANGUAGE CXX)
