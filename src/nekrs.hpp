@@ -28,4 +28,6 @@ static string to_string_f(double a) {
   return s.str();
 }
 
+extern int ciMode;
+
 #endif
