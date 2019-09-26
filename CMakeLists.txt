@@ -260,6 +260,7 @@ set(SRC src/nekrs.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
     src/tinyexpr.c
+    src/timer.cpp
     ## To get fortran flags
     src/dummy.f
 )
