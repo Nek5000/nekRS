@@ -1,5 +1,7 @@
 #include "nekrs.hpp"
 
+using namespace nekrs::mpi;
+
 void getDh(ins_t *ins){
 
   mesh_t *mesh = ins->mesh; 
@@ -56,7 +58,7 @@ dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
   }
 
   dfloat gcfl = 0.f;
-  MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, mesh->comm);
+  Allreduce(&cfl, &gcfl, sizeof(dfloat), MPI_MAX);
   
   free(tmp);
   return gcfl; 

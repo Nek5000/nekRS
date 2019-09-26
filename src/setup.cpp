@@ -7,6 +7,8 @@
 #define DIRICHLET 1
 #define NEUMANN 2
 
+using namespace nekrs::mpi;
+
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
 
@@ -165,7 +167,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   dfloat dt; 
   options.getArgs("DT", dt);
   // MPI_Allreduce to get global minimum dt
-  MPI_Allreduce(&dt, &(ins->dti), 1, MPI_DFLOAT, MPI_MIN, mesh->comm);
+  Allreduce(&dt, &(ins->dti), sizeof(dfloat), MPI_MIN);
   ins->dt = ins->dti; 
 
   options.getArgs("FINAL TIME", ins->finalTime);
@@ -684,7 +686,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
     }
-    MPI_Barrier(mesh->comm);
+    Barrier();
   }
 
   ins->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),
@@ -1004,7 +1006,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
         cds->subCycleExtKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
    
     }
-    MPI_Barrier(mesh->comm);
+    Barrier();
   }
 
   return cds;

@@ -2,12 +2,14 @@
    copy velocity data of a given slab (slabIdSrc) to another slab
    (slideIdDst) also known as recycling
 
-   Note: This implementation relies on a special global element 
+   Note: This implementation relies on a special global element
          numbering which is only true for extruded meshes in z from nek!
 */
 
 #include <nekrs.hpp>
 #include <nekInterfaceAdapter.hpp>
+
+using namespace nekrs::mpi;
 
 namespace velRecycling {
 
@@ -24,21 +26,21 @@ static occa::memory o_tmp1, o_tmp2;
 
 static occa::kernel setValueBCKernel;
 static occa::kernel getBCFluxKernel;
-static occa::kernel sumReductionKernel; 
-static occa::kernel scalarMultiplyKernel; 
+static occa::kernel sumReductionKernel;
+static occa::kernel scalarMultiplyKernel;
 
 static bool buildKernelCalled = 0;
 static bool setupCalled = 0;
 
 static int bID;
-static dfloat wbar; 
+static dfloat wbar;
 
 static int Nblock;
 
 
 void buildKernel(ins_t *ins)
 {
-  mesh_t *mesh = ins->mesh; 
+  mesh_t *mesh = ins->mesh;
 
   string fileName;
   int rank = mesh->rank;
@@ -52,13 +54,13 @@ void buildKernel(ins_t *ins)
        sumReductionKernel   =  mesh->device.buildKernel(fileName.c_str(), "sumReduction", kernelInfo);
        scalarMultiplyKernel =  mesh->device.buildKernel(fileName.c_str(), "scalarMultiply", kernelInfo);
     }
-    MPI_Barrier(mesh->comm);
+    Barrier();
   }
-} 
+}
 
 void copy()
 {
-  mesh_t *mesh = ins->mesh; 
+  mesh_t *mesh = ins->mesh;
 
   // copy recycling plane in interior to inlet
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
@@ -78,19 +80,19 @@ void copy()
   getBCFluxKernel(mesh->Nelements, bID, ins->fieldOffset, o_wrk,
                   mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
 
-  const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp; 
-  sumReductionKernel(NfpTotal, o_area, o_flux, o_tmp1, o_tmp2); 
+  const int NfpTotal = mesh->Nelements*mesh->Nfaces*mesh->Nfp;
+  sumReductionKernel(NfpTotal, o_area, o_flux, o_tmp1, o_tmp2);
 
   o_tmp1.copyTo(tmp1);
   o_tmp2.copyTo(tmp2);
   dfloat sbuf[2] = {0,0};
   for(int n=0; n<Nblock; n++){
-    sbuf[0] += tmp1[n]; 
-    sbuf[1] += tmp2[n]; 
+    sbuf[0] += tmp1[n];
+    sbuf[1] += tmp2[n];
   }
-  MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, mesh->comm); 
+  Allreduce(MPI_IN_PLACE, sbuf, 2*sizeof(dfloat), MPI_SUM);
 
-  const dfloat scale = -wbar*sbuf[0] / sbuf[1]; 
+  const dfloat scale = -wbar*sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
   scalarMultiplyKernel(ins->NVfields*ins->Ntotal, scale, o_wrk);
 }
@@ -103,7 +105,7 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
   o_wrk = o_wrk_;
   bID = bID_;
   wbar = wbar_;
- 
+
   mesh_t *mesh = ins->mesh;
 
   const int Ntotal = mesh->Np * mesh->Nelements;
@@ -114,16 +116,16 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
     const int eg = nek_lglel(e); // 0-based
 
     for (int n=0; n < mesh->Np; n++)  {
-      ids[e*mesh->Np + n] = eg*mesh->Np + n+1; 
+      ids[e*mesh->Np + n] = eg*mesh->Np + n+1;
     }
-    
+
     for (int n=0; n < mesh->Nfp*mesh->Nfaces; n++) {
       const int f = n/mesh->Nfp;
       const int idM = ins->mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
-      if (mesh->EToB[f + e*mesh->Nfaces] == bID) 
+      if (mesh->EToB[f + e*mesh->Nfaces] == bID)
           ids[idM] += eOffset*mesh->Np;
     }
-   
+
   }
 
   ogs = ogsSetup(Ntotal, ids, mesh->comm, 1, mesh->device);
@@ -145,4 +147,4 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
 }
 
 
-} // namespace 
+} // namespace

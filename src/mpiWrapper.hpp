@@ -16,6 +16,7 @@ namespace nekrs::mpi{
   MPI_Comm Comm();
   int Bcast(void *buffer,int size,int root);
   int Bcast(void *buffer,int size);
+  int Allreduce(const void *sendbuf,void *recvbuf,int count,MPI_Op op);
   int mpiFinalize();
 }
 

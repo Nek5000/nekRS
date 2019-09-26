@@ -43,6 +43,10 @@ int nekrs::mpi::Bcast(void *buffer,int size){
   return Bcast(buffer,size,root_);
 }
 
+int nekrs::mpi::Allreduce(const void *sendbuf,void *recvbuf,int count,MPI_Op op){
+  MPI_Allreduce(sendbuf,recvbuf,count,MPI_BYTE,op,comm_);
+}
+
 int nekrs::mpi::mpiFinalize(){
   return MPI_Finalize();
 }
