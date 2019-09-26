@@ -265,12 +265,6 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      do iel=1,nelt
-      do ifc=1,2*ndim
-         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
-      enddo
-      enddo
-
       return
       end
 c-----------------------------------------------------------------------
@@ -293,7 +287,13 @@ c-----------------------------------------------------------------------
 
       do iel=1,nelt
       do ifc=5,6
-         cbc(ifc,iel,1) = 'P  '
+         cbc(ifc,iel,1) = 'P  ' ! required for kludge (see below)
+      enddo
+      enddo
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
       enddo
       enddo
 
