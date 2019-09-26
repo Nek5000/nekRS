@@ -130,7 +130,7 @@ void s_setup(string s)
     if (key.compare("p") == 0) key = "periodic";
     if (key.compare("t") == 0) key = "fixedvalue";
     if (key.compare("inlet") == 0) key = "fixedvalue";
-    if (key.compare("fixedflux") == 0) key = "fixedgradient";
+    if (key.compare("flux") == 0) key = "fixedgradient";
     if (key.compare("f") == 0) key = "fixedgradient";
     if (key.compare("zeroflux") == 0) key = "zerogradient";
     if (key.compare("i") == 0) key = "zerogradient";
