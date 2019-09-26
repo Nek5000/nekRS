@@ -27,15 +27,14 @@ namespace nekrs::timer{
 
   inline int ifSync(){ return ifSync_;}
 
-  int timerInit(MPI_Comm comm,int ifsync=1);
-  int timerInit(occa::device &device);
+  int timerInit(MPI_Comm comm,occa::device &device,int ifsync=1);
   int timerReset();
   int timerFinalize();
 
   int hostTic(std::string tag);
-  int hostToc(std::string tag);
+  double hostToc(std::string tag);
   int deviceTic(std::string tag);
-  int deviceToc(std::string tag);
+  double deviceToc(std::string tag);
 
   // Replaced query by elapsed and count;
   double elapsed(std::string tag);
