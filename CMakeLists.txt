@@ -57,7 +57,7 @@ if (NOT FortranCInterface_VERIFIED_CXX)
 endif()
 
 ## Use c++14
-set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14)
 
 ###############################################################################
 # Setup cmake variables                                                       #
@@ -131,6 +131,10 @@ macro(set_shared_lib target_name builddir)
    set(${target_name}_lib
      "${builddir}/${CMAKE_SHARED_LIBRARY_PREFIX}${target_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 endmacro()
+
+# switch to add_compile_definitions for cmake>=3.12
+add_definitions(-DNEKRS_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
+add_definitions(-DNEKRS_PATH_SEPARATOR="/")
 
 ###############################################################################
 # Build OCCA                                                                  #
@@ -260,6 +264,7 @@ set(SRC src/nekrs.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
     src/tinyexpr.c
+    src/environment.cpp
     ## To get fortran flags
     src/dummy.f
 )
