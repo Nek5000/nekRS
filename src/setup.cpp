@@ -207,10 +207,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
     kernelInfo["defines/" "p_SUBCYCLING"]=  1;
   else
     kernelInfo["defines/" "p_SUBCYCLING"]=  0;
-#if 1
-  kernelInfo["defines/" "p_EXTBDF"]= 0; // will be removed AK
-  kernelInfo["defines/" "p_TOMBO"]= 1;
-#endif
+
   kernelInfo["defines/" "p_blockSize"]= blockSize;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
@@ -300,7 +297,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(ins); 
 
-  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
   if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
 
   if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
@@ -700,6 +696,8 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 
   mesh_t *mesh = ins->mesh; 
 
+  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
+
   cds_t *cds = new cds_t(); 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -927,9 +925,9 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   if(ins->elementType==HEXAHEDRA)
      suffix = "Hex3D";
 
-  for (int r=0;r<mesh->size;r++) {
-    if (r==mesh->rank) {
-      
+  for (int r=0;r<2;r++){
+    if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
+
       fileName = install_dir + "/okl/cdsHaloExchange.okl";
       
       kernelName = "cdsHaloGet";

@@ -285,6 +285,8 @@ int main(int argc, char **argv)
     
     cout << "MPI ranks: " << size << endl << endl;
 
+    cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
+/*
     if (const char *env_p = getenv("OCCA_CACHE_DIR")) {
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
     } else {
@@ -292,6 +294,7 @@ int main(int argc, char **argv)
       cout << "OCCA_CACHE_DIR undefined -> fallback to " << occa::env::OCCA_CACHE_DIR
            << endl << endl;
     }
+*/
   }
 
 #ifdef DEBUG
