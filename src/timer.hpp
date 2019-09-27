@@ -3,43 +3,57 @@
 
 #include <string>
 #include <map>
-#include <stack>
 
 #include "occa.hpp"
 #include "mpi.h"
 
-namespace nekrs::timer{
-  struct tagData{
+namespace timer{
+  const int NEKRS_TIMER_INVALID_KEY   =-1;
+  const int NEKRS_TIMER_INVALID_METRIC=-2;
+
+  typedef struct tagData_{
     int count;
-    double elapsed;
+    double hostElapsed;
+    double deviceElapsed;
     double startTime;
     occa::streamTag startTag;
-    int host;
-  };
+  } tagData;
+
+  typedef struct tagStats_{
+    double hostMin;
+    double hostMax;
+    double hostSum;
+    double deviceMin;
+    double deviceMax;
+    double deviceSum;
+    int count;
+  } tagStats;
 
   /* private variables */
   static int ifSync_;
   static occa::device device_;
   static MPI_Comm comm_;
-  static std::map<std::string,struct tagData> m_;
-  static occa::streamTag startTag ,stopTag;
-  static double          startTime,stopTime;
+  static std::map<std::string,tagData> m_;
 
-  inline int ifSync(){ return ifSync_;}
+  inline int ifSync(){ return ifSync_; }
 
-  int timerInit(MPI_Comm comm,occa::device &device,int ifsync=1);
-  int timerReset();
-  int timerFinalize();
+  int init(MPI_Comm comm,occa::device &device,int ifsync=1);
+  int reset();
+  int reset(const std::string tag);
+  int finalize();
 
-  int hostTic(std::string tag);
-  double hostToc(std::string tag);
-  int deviceTic(std::string tag);
-  double deviceToc(std::string tag);
+  int tic(const std::string tag);
+  int toc(const std::string tag);
+  int hostTic(const std::string tag);
+  int hostToc(const std::string tag);
+  int deviceTic(const std::string tag);
+  int deviceToc(const std::string tag);
 
-  // Replaced query by elapsed and count;
-  double elapsed(std::string tag);
-  int count(std::string tag);
-  int reset(std::string tag);
+  double hostElapsed(const std::string tag);
+  double deviceElapsed(const std::string tag);
+  int count(const std::string tag);
+  tagStats query(const std::string tag);
+  double query(const std::string tag,std::string metric);
 }
 
 #endif
