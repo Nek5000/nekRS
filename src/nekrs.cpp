@@ -289,7 +289,8 @@ int main(int argc, char **argv)
       cout << "using OCCA_CACHE_DIR: " << env_p << endl << endl;
     } else {
       occa::env::OCCA_CACHE_DIR = cache_dir + "/.occa/";
-      cout << "OCCA_CACHE_DIR undefined -> fallback to ./cache" << endl << endl;
+      cout << "OCCA_CACHE_DIR undefined -> fallback to " << occa::env::OCCA_CACHE_DIR
+           << endl << endl;
     }
   }
 
@@ -402,8 +403,10 @@ int main(int argc, char **argv)
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
-    cout << "\ninitialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
-    cout << "starting time loop" << endl;
+    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
+    size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
+    cout << "device memory allocation: " << dMB << " MB" << endl;
+    cout << "\nstarting time loop" << endl;
   }
   fflush(stdout);
 
