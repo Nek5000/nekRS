@@ -1,11 +1,7 @@
 #include "nekrs.hpp"
-#include "nekInterfaceAdapter.hpp"
 #include "meshSetup.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
-
-#define DIRICHLET 1
-#define NEUMANN 2
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
@@ -19,6 +15,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
     meshNekSetupHex3D(N, mesh);
   else
     meshBoxSetupHex3D(N, mesh);
+
+  bcMap::check(mesh);
 
   ins_t *ins = new ins_t();
   ins->mesh = mesh;
@@ -322,28 +320,24 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   ins->vOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->vOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
-  const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryIDs;
-
+  const int nbrBIDs = bcMap::size();
   int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = bcMap::lookup(bID, "velocity");
-    if(mesh->rank == 0 && bcID == -1) {
+    string bcTypeText(bcMap::text(bID, "velocity"));
+    if(mesh->rank == 0 && bcTypeText.empty()) {
       printf("Cannot find velocity bcType for bID %d!", bID); 
       EXIT(1);
     }
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
-                               bcMap::IDToText(bcID, "velocity").c_str());
-    uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
-    if (bcID == 4) uBCType[bID] = DIRICHLET; 
-    if (bcID == 5) vBCType[bID] = DIRICHLET; 
-    if (bcID == 6) wBCType[bID] = DIRICHLET;
-    pBCType[bID] = prMap[bcID];;
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
+
+    uBCType[bID] = bcMap::type(bID, "x-velocity");
+    vBCType[bID] = bcMap::type(bID, "y-velocity");
+    wBCType[bID] = bcMap::type(bID, "z-velocity");
+    pBCType[bID] = bcMap::type(bID, "pressure");
   }
  
   //default solver tolerances 
@@ -428,7 +422,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      ins->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "velocity");
+      ins->EToB[cnt] = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "velocity");
       int bc = ins->EToB[cnt];
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
@@ -794,20 +788,19 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
   cds->TOL = 1e-6;
 
-  const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryIDs;
+  const int nbrBIDs = bcMap::size();
 
   int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = bcMap::lookup(bID, "scalar01");
-    if(mesh->rank == 0 && bcID == -1) {
-      printf("Cannot find scalar bcType for bID %d!", bID); 
+    string bcTypeText(bcMap::text(bID, "scalar01"));
+    if(mesh->rank == 0 && bcTypeText.empty()) {
+      printf("Cannot find velocity bcType for bID %d!", bID); 
       EXIT(1);
     }
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
-                               bcMap::IDToText(bcID, "scalar01").c_str());
-    sBCType[bID] = scalMap[bcID];
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
+
+    sBCType[bID] = bcMap::type(bID, "scalar01");
   }
 
   cds->solver = new elliptic_t();
@@ -831,7 +824,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      cds->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
+      cds->EToB[cnt] = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
       int bc = cds->EToB[cnt];
       if (bc>0) {
         for (int n=0;n<mesh->Nfp;n++) {

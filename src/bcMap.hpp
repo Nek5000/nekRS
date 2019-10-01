@@ -3,12 +3,16 @@
 
 #include <string>
 #include "setupAide.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 namespace bcMap {
 
 void setup(string s, string field);
-int lookup(int bid, string field);
-string IDToText(int bcID, string field);
+int id(int bid, string field);
+int type(int bid, string field);
+string text(int bid, string field);
+int size(void);
+void check(mesh_t *mesh);
 
 }
 

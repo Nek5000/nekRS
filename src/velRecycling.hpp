@@ -9,34 +9,36 @@
 #include <nekrs.hpp>
 #include <nekInterfaceAdapter.hpp>
 
+// private members
+namespace {
+  static ogs_t *ogs;
+  static ins_t *ins;
+ 
+  static occa::memory o_wrk;
+  
+  static dfloat *flux, *area;
+  static occa::memory o_flux, o_area;
+  
+  static dfloat *tmp1, *tmp2;
+  static occa::memory o_tmp1, o_tmp2;
+  
+  static occa::kernel setValueBCKernel;
+  static occa::kernel getBCFluxKernel;
+  static occa::kernel sumReductionKernel; 
+  static occa::kernel scalarMultiplyKernel; 
+  
+  static bool buildKernelCalled = 0;
+  static bool setupCalled = 0;
+  
+  static int bID;
+  static dfloat wbar; 
+  
+  static int Nblock;
+}
+
 namespace velRecycling {
 
-static ogs_t *ogs;
-static ins_t *ins;
-
-static occa::memory o_wrk;
-
-static dfloat *flux, *area;
-static occa::memory o_flux, o_area;
-
-static dfloat *tmp1, *tmp2;
-static occa::memory o_tmp1, o_tmp2;
-
-static occa::kernel setValueBCKernel;
-static occa::kernel getBCFluxKernel;
-static occa::kernel sumReductionKernel; 
-static occa::kernel scalarMultiplyKernel; 
-
-static bool buildKernelCalled = 0;
-static bool setupCalled = 0;
-
-static int bID;
-static dfloat wbar; 
-
-static int Nblock;
-
-
-void buildKernel(ins_t *ins)
+inline void buildKernel(ins_t *ins)
 {
   mesh_t *mesh = ins->mesh; 
 
@@ -56,7 +58,7 @@ void buildKernel(ins_t *ins)
   }
 } 
 
-void copy()
+inline void copy()
 {
   mesh_t *mesh = ins->mesh; 
 
@@ -96,7 +98,7 @@ void copy()
 }
 
 
-void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
+inline void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
            const dfloat wbar_)
 {
   ins = ins_;
@@ -106,7 +108,7 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
  
   mesh_t *mesh = ins->mesh;
 
-  const int Ntotal = mesh->Np * mesh->Nelements;
+  const dlong Ntotal = mesh->Np * mesh->Nelements;
   hlong *ids = (hlong *) calloc(Ntotal, sizeof(hlong));
 
   for (int e=0; e < mesh->Nelements; e++){
@@ -143,6 +145,5 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
   o_flux = mesh->device.malloc(NfpTotal*sizeof(dfloat), flux);
   o_area = mesh->device.malloc(NfpTotal*sizeof(dfloat), area);
 }
-
 
 } // namespace 
