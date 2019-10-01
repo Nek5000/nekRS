@@ -37,23 +37,25 @@ namespace timer{
 
   inline int ifSync(){ return ifSync_; }
 
-  int init(MPI_Comm comm,occa::device &device,int ifsync=1);
-  int reset();
-  int reset(const std::string tag);
-  int finalize();
+  void init(MPI_Comm comm,occa::device &device,int ifsync=1);
+  void reset();
+  void reset(const std::string tag);
+  void finalize();
 
-  int tic(const std::string tag);
-  int toc(const std::string tag);
-  int hostTic(const std::string tag);
-  int hostToc(const std::string tag);
-  int deviceTic(const std::string tag);
-  int deviceToc(const std::string tag);
+  void tic(const std::string tag);
+  void toc(const std::string tag);
+  void hostTic(const std::string tag);
+  void hostToc(const std::string tag);
+  void deviceTic(const std::string tag);
+  void deviceToc(const std::string tag);
 
   double hostElapsed(const std::string tag);
   double deviceElapsed(const std::string tag);
   int count(const std::string tag);
   tagStats query(const std::string tag);
   double query(const std::string tag,std::string metric);
+
+  std::map<std::string,tagData>::const_iterator getTags();
 }
 
 #endif
