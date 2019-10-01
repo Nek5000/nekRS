@@ -9,146 +9,143 @@
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-#define NOTBOUNDARY 1
+#define NOTBOUNDARY 0
 #define DIRICHLET 1
 #define NEUMANN 2
 
-// private members
-namespace {
-  static std::map<int, int> vBToBc;
-  static std::map<int, int> sBToBc;
-  
-  static std::map<string, int> vBcTextToID = {
-    {"periodic"               , 0},  
-    {"zerovalue"              , 1},  
-    {"fixedvalue"             , 2},  
-    {"zerogradient"           , 3},  
-    {"zeroxvalue/zerogradient", 4}, 
-    {"zeroyvalue/zerogradient", 5},  
-    {"zerozvalue/zerogradient", 6}  
-  };
-  
-  static std::map<int, string> vBcIDToText = {
-    {0, "periodic"               },  
-    {1, "zeroValue"              },  
-    {2, "fixedValue"             },  
-    {3, "zeroGradient"           },  
-    {4, "zeroXValue/zeroGradient"}, 
-    {5, "zeroYValue/zeroGradient"},  
-    {6, "zeroZValue/zeroGradient"}  
-  };
-  
-  static std::map<string, int> sBcTextToID = {
-    {"periodic"     , 0},  
-    {"fixedvalue"   , 1},  
-    {"fixedgradient", 2},  
-    {"zerogradient" , 3}  
-  };
-  
-  static std::map<int, string> sBcIDToText = {
-    {0, "periodic"     },  
-    {1, "fixedValue"   },  
-    {2, "fixedGradient"},  
-    {3, "zeroGradient" }  
-  };
-  
-  void v_setup(string s);
-  void s_setup(string s);
-  
-  std::vector<std::string> serializeString(const std::string sin)
-  {
-    std::vector<std::string> slist;
-    string s(sin);
-    s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-    std::stringstream ss;
-    ss.str(s);
-    while( ss.good() )
-    {
-        std::string substr;
-        std::getline(ss, substr, ',');
-        slist.push_back(substr);
-    }
-    return slist;
-  }
+static std::map<int, int> vBToBc;
+static std::map<int, int> sBToBc;
 
-  void v_setup(string s)
+static std::map<string, int> vBcTextToID = {
+  {"periodic"               , 0},  
+  {"zerovalue"              , 1},  
+  {"fixedvalue"             , 2},  
+  {"zerogradient"           , 3},  
+  {"zeroxvalue/zerogradient", 4}, 
+  {"zeroyvalue/zerogradient", 5},  
+  {"zerozvalue/zerogradient", 6}  
+};
+
+static std::map<int, string> vBcIDToText = {
+  {0, "periodic"               },  
+  {1, "zeroValue"              },  
+  {2, "fixedValue"             },  
+  {3, "zeroGradient"           },  
+  {4, "zeroXValue/zeroGradient"}, 
+  {5, "zeroYValue/zeroGradient"},  
+  {6, "zeroZValue/zeroGradient"}  
+};
+
+static std::map<string, int> sBcTextToID = {
+  {"periodic"     , 0},  
+  {"fixedvalue"   , 1},  
+  {"fixedgradient", 2},  
+  {"zerogradient" , 3}  
+};
+
+static std::map<int, string> sBcIDToText = {
+  {0, "periodic"     },  
+  {1, "fixedValue"   },  
+  {2, "fixedGradient"},  
+  {3, "zeroGradient" }  
+};
+
+void v_setup(string s);
+void s_setup(string s);
+
+std::vector<std::string> serializeString(const std::string sin)
+{
+  std::vector<std::string> slist;
+  string s(sin);
+  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+  std::stringstream ss;
+  ss.str(s);
+  while( ss.good() )
   {
-    std::vector<std::string> slist;
-    slist = serializeString(s);
-  
-    for(int i=0; i < slist.size(); i++){
-  
-      string key = slist[i];
-      if (key.compare("p") == 0) key = "periodic";
-      if (key.compare("w") == 0) key = "zerovalue"; 
-      if (key.compare("wall") == 0) key = "zerovalue";
-      if (key.compare("inlet") == 0) key = "fixedvalue";
-      if (key.compare("v") == 0) key = "fixedvalue";
-      if (key.compare("outlet") == 0) key = "zerogradient";
-      if (key.compare("outflow") == 0) key = "zerogradient";
-      if (key.compare("o") == 0) key = "zerogradient"; 
-      if (key.compare("slipx") == 0) key = "zeroxvalue/zerogradient";
-      if (key.compare("slipy") == 0) key = "zeroyvalue/zerogradient"; 
-      if (key.compare("slipz") == 0) key = "zerozvalue/zerogradient"; 
-      if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient"; 
-      if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
-      if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
-  
-      if (vBcTextToID.find(key) == vBcTextToID.end()) {
-        cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
-        EXIT(1);
-      }
-  
-      try
-      {
-        vBToBc[i] = vBcTextToID.at(key);
-      }
-      catch (const std::out_of_range& oor) 
-      {
-        cout << "Out of Range error: " << oor.what() << "!\n";
-        EXIT(1);
-      }
-  
+      std::string substr;
+      std::getline(ss, substr, ',');
+      slist.push_back(substr);
+  }
+  return slist;
+}
+
+void v_setup(string s)
+{
+  std::vector<std::string> slist;
+  slist = serializeString(s);
+
+  for(int i=0; i < slist.size(); i++){
+
+    string key = slist[i];
+    if (key.compare("p") == 0) key = "periodic";
+    if (key.compare("w") == 0) key = "zerovalue"; 
+    if (key.compare("wall") == 0) key = "zerovalue";
+    if (key.compare("inlet") == 0) key = "fixedvalue";
+    if (key.compare("v") == 0) key = "fixedvalue";
+    if (key.compare("outlet") == 0) key = "zerogradient";
+    if (key.compare("outflow") == 0) key = "zerogradient";
+    if (key.compare("o") == 0) key = "zerogradient"; 
+    if (key.compare("slipx") == 0) key = "zeroxvalue/zerogradient";
+    if (key.compare("slipy") == 0) key = "zeroyvalue/zerogradient"; 
+    if (key.compare("slipz") == 0) key = "zerozvalue/zerogradient"; 
+    if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient"; 
+    if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
+    if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
+
+    if (vBcTextToID.find(key) == vBcTextToID.end()) {
+      cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
+      EXIT(1);
+    }
+
+    try
+    {
+      vBToBc[i] = vBcTextToID.at(key);
+    }
+    catch (const std::out_of_range& oor) 
+    {
+      cout << "Out of Range error: " << oor.what() << "!\n";
+      EXIT(1);
+    }
+
+  }
+}
+
+void s_setup(string s)
+{
+  std::vector<std::string> slist;
+  slist = serializeString(s);
+
+  for(int i=0; i < slist.size(); i++){
+
+    string key = slist[i];
+    if (key.compare("p") == 0) key = "periodic";
+    if (key.compare("t") == 0) key = "fixedvalue";
+    if (key.compare("inlet") == 0) key = "fixedvalue";
+    if (key.compare("flux") == 0) key = "fixedgradient";
+    if (key.compare("f") == 0) key = "fixedgradient";
+    if (key.compare("zeroflux") == 0) key = "zerogradient";
+    if (key.compare("i") == 0) key = "zerogradient";
+    if (key.compare("insulated") == 0) key = "zerogradient";
+    if (key.compare("outflow") == 0) key = "zerogradient";
+    if (key.compare("outlet") == 0) key = "zerogradient"; 
+    if (key.compare("o") == 0) key = "zerogradient"; 
+
+    if (sBcTextToID.find(key) == sBcTextToID.end()) {
+      cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
+      EXIT(1);
+    }
+
+    try
+    {
+      sBToBc[i] = sBcTextToID.at(key);
+    }
+    catch (const std::out_of_range& oor) 
+    {
+      cout << "Out of Range error: " << oor.what() << "!\n";
+      EXIT(1);
     }
   }
-  
-  void s_setup(string s)
-  {
-    std::vector<std::string> slist;
-    slist = serializeString(s);
-  
-    for(int i=0; i < slist.size(); i++){
-  
-      string key = slist[i];
-      if (key.compare("p") == 0) key = "periodic";
-      if (key.compare("t") == 0) key = "fixedvalue";
-      if (key.compare("inlet") == 0) key = "fixedvalue";
-      if (key.compare("flux") == 0) key = "fixedgradient";
-      if (key.compare("f") == 0) key = "fixedgradient";
-      if (key.compare("zeroflux") == 0) key = "zerogradient";
-      if (key.compare("i") == 0) key = "zerogradient";
-      if (key.compare("insulated") == 0) key = "zerogradient";
-      if (key.compare("outflow") == 0) key = "zerogradient";
-      if (key.compare("outlet") == 0) key = "zerogradient"; 
-      if (key.compare("o") == 0) key = "zerogradient"; 
-  
-      if (sBcTextToID.find(key) == sBcTextToID.end()) {
-        cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
-        EXIT(1);
-      }
-  
-      try
-      {
-        sBToBc[i] = sBcTextToID.at(key);
-      }
-      catch (const std::out_of_range& oor) 
-      {
-        cout << "Out of Range error: " << oor.what() << "!\n";
-        EXIT(1);
-      }
-    }
-  }
-} 
+}
 
 namespace bcMap {
  
@@ -244,12 +241,10 @@ namespace bcMap {
   
     if (field.compare("velocity") == 0) {
   
-      if (bid > vBToBc.size()) return std::string(); 
       return vBcIDToText[vBToBc[bid-1]];
   
     } else if (field.compare("scalar01") == 0) {
   
-      if (bid > sBToBc.size()) return std::string(); 
       return sBcIDToText[sBToBc[bid-1]];
   
     }

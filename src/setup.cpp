@@ -11,12 +11,12 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
 
-  if (!buildOnly) 
-    meshNekSetupHex3D(N, mesh);
-  else
+  if (buildOnly) { 
     meshBoxSetupHex3D(N, mesh);
-
-  bcMap::check(mesh);
+  } else {
+    meshNekSetupHex3D(N, mesh);
+    bcMap::check(mesh);
+  }
 
   ins_t *ins = new ins_t();
   ins->mesh = mesh;
@@ -328,10 +328,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     string bcTypeText(bcMap::text(bID, "velocity"));
-    if(mesh->rank == 0 && bcTypeText.empty()) {
-      printf("Cannot find velocity bcType for bID %d!", bID); 
-      EXIT(1);
-    }
     if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
 
     uBCType[bID] = bcMap::type(bID, "x-velocity");
@@ -422,8 +418,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      ins->EToB[cnt] = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "velocity");
-      int bc = ins->EToB[cnt];
+      int bc = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "velocity");
+      ins->EToB[cnt] = bc;
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
 	  int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -794,12 +790,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
     string bcTypeText(bcMap::text(bID, "scalar01"));
-    if(mesh->rank == 0 && bcTypeText.empty()) {
-      printf("Cannot find velocity bcType for bID %d!", bID); 
-      EXIT(1);
-    }
     if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
-
     sBCType[bID] = bcMap::type(bID, "scalar01");
   }
 
@@ -824,8 +815,8 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      cds->EToB[cnt] = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
-      int bc = cds->EToB[cnt];
+      int bc = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
+      cds->EToB[cnt] = bc;
       if (bc>0) {
         for (int n=0;n<mesh->Nfp;n++) {
           int fid = mesh->faceNodes[n+f*mesh->Nfp];
