@@ -79,15 +79,15 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     udfLoad();
   } 
 
+  options.setArgs("CI-MODE", std::to_string(ciMode));
+  if(rank == 0 && ciMode) 
+    cout << "enabling continous integration mode\n" << endl;
+
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
   if(rank == 0) buildNekInterface(casename.c_str(), nscal, N, size);
   MPI_Barrier(comm);
-
-  options.setArgs("CI-MODE", std::to_string(ciMode));
-  if(rank == 0 && ciMode) 
-    cout << "enabling continous integration mode\n" << endl;
 
   // init nek
   nek_setup(comm, options);
