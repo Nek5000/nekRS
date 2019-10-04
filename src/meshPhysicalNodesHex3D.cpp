@@ -30,7 +30,7 @@ SOFTWARE.
 #include "libParanumal.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-extern int buildOnly;
+extern int nrsBuildOnly;
 
 void meshPhysicalBoxNodesHex3D(mesh3D *mesh){
   
@@ -115,7 +115,7 @@ void meshPhysicalBoxNodesHex3D(mesh3D *mesh){
 
 void meshPhysicalNodesHex3D(mesh3D *mesh){
  
-  if (buildOnly) {
+  if (nrsBuildOnly) {
     meshPhysicalBoxNodesHex3D(mesh);
     return; 
   } 

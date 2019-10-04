@@ -1,5 +1,33 @@
 #include "nekrs.hpp"
+#include "bcMap.hpp"
 #include "meshNekReader.hpp"
+
+void meshBoxSetupHex3D(int N, mesh_t *mesh);
+void meshNekSetupHex3D(int N, mesh_t *mesh);
+
+mesh_t *meshSetup(MPI_Comm comm, setupAide &options, int buildOnly)
+{
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  mesh_t *mesh = new mesh_t[1];
+  mesh->comm = comm;
+  mesh->rank = rank;
+  mesh->size = size;
+
+  int N;
+  options.getArgs("POLYNOMIAL DEGREE", N);
+
+  if (buildOnly) {
+    meshBoxSetupHex3D(N, mesh);
+  } else {
+    meshNekSetupHex3D(N, mesh);
+    bcMap::check(mesh);
+  }
+
+  return mesh;
+}
 
 void meshBoxSetupHex3D(int N, mesh_t *mesh) {
  

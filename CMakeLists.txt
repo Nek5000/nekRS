@@ -65,12 +65,12 @@ set (CMAKE_CXX_STANDARD 14)
 set(BIN_THIRD_PARTY_DIR "${CMAKE_BINARY_DIR}/3rd_party" CACHE STRING "")
 set(SRC_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rd_party" CACHE STRING "")
 
-set(LIBPDIR "${BIN_THIRD_PARTY_DIR}/libparanumal/")
-set(ELLIPTICDIR "${LIBPDIR}/solvers/elliptic/")
-set(PARALMONDDIR "${LIBPDIR}/libs/parAlmond/")
-set(OGSDIR "${LIBPDIR}/libs/gatherScatter/")
-set(NEKDIR "${BIN_THIRD_PARTY_DIR}/nek5000/")
-set(OCCADIR "${BIN_THIRD_PARTY_DIR}/occa/")
+set(LIBPDIR "${BIN_THIRD_PARTY_DIR}/libparanumal")
+set(ELLIPTICDIR "${LIBPDIR}/solvers/elliptic")
+set(PARALMONDDIR "${LIBPDIR}/libs/parAlmond")
+set(OGSDIR "${LIBPDIR}/libs/gatherScatter")
+set(NEKDIR "${BIN_THIRD_PARTY_DIR}/nek5000")
+set(OCCADIR "${BIN_THIRD_PARTY_DIR}/occa")
 
 set(NEKINTERFACEDIR "${CMAKE_SOURCE_DIR}/src/nekInterface/")
 
@@ -244,11 +244,13 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 # Add nekrs target                                                            #
 ###############################################################################
-set(SRC src/nekrs.cpp
+set(SRC 
+    src/nrs.cpp
+    src/main.cpp
     src/cfl.cpp
     src/filter.cpp
     src/bcMap.cpp
-    src/setup.cpp
+    src/insSetup.cpp
     src/runTime.cpp
     src/tombo.cpp
     src/cds.cpp
@@ -260,7 +262,6 @@ set(SRC src/nekrs.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
     src/tinyexpr.c
-    ## To get fortran flags
     src/dummy.f
 )
 

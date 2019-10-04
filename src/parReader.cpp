@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <string>
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
@@ -14,6 +15,22 @@
 #define ABORT(a)  { if(rank==0) cout << a << endl; MPI_Finalize(); exit(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
+
+std::vector<std::string> serializeString(const std::string sin)
+{
+  std::vector<std::string> slist;
+  string s(sin);
+  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+  std::stringstream ss;
+  ss.str(s);
+  while( ss.good() )
+  {
+      std::string substr;
+      std::getline(ss, substr, ',');
+      slist.push_back(substr);
+  }
+  return slist;
+}
 
 void setDefaultSettings(libParanumal::setupAide &options, string casename, int rank)
 {
@@ -255,10 +272,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
 
   string v_bcMap;
-  if(ini.extract("velocity", "boundarytypemap", v_bcMap))
-    bcMap::setup(v_bcMap, "velocity");
-  else
+  if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
+    std::vector<std::string> sList;
+    sList = serializeString(v_bcMap);
+    bcMap::setup(sList, "velocity");
+  } else {
     ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
+  }
 
   //
   double viscosity;
@@ -299,11 +319,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
  
-    string s_bcMap;
-    if(ini.extract("temperature", "boundarytypemap", s_bcMap))
-      bcMap::setup(s_bcMap, "scalar01");
-    else
-      ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!"); 
+      string s_bcMap;
+      if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+        std::vector<std::string> sList;
+        sList = serializeString(s_bcMap);
+        bcMap::setup(sList, "scalar01");
+      } else {
+        ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
+      } 
     }
 
   }
