@@ -86,7 +86,7 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup0) udf.setup0(comm, options);
 
   // jit compile nek
-  if(rank == 0) buildNekInterface(casename.c_str(), nscal, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, size);
   MPI_Barrier(comm);
 
   // init nek
@@ -177,7 +177,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   // jit compile nek
   int nscal;
   options.getArgs("NUMBER OF SCALARS", nscal);
-  if (rank == 0) buildNekInterface(casename.c_str(), nscal, N, npTarget);
+  if (rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, npTarget);
   MPI_Barrier(comm);
 
   mesh_t *mesh = meshSetup(comm, options, nrsBuildOnly);

@@ -94,7 +94,7 @@ inline void copy()
 
   const dfloat scale = -wbar*sbuf[0] / sbuf[1]; 
   //printf("rescaling inflow: %f\n", scale);
-  scalarMultiplyKernel(ins->NVfields*ins->Nelements, scale, o_wrk);
+  scalarMultiplyKernel(ins->NVfields*ins->Ntotal, scale, o_wrk);
 }
 
 
