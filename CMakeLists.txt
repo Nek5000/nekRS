@@ -246,7 +246,6 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 set(SRC 
     src/nrs.cpp
-    src/main.cpp
     src/cfl.cpp
     src/filter.cpp
     src/bcMap.cpp
@@ -265,11 +264,19 @@ set(SRC
     src/dummy.f
 )
 
-add_executable(nekrs ${SRC})
-set_target_properties(nekrs PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(nekrs ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
-target_include_directories(nekrs PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
-add_dependencies(nekrs occa_build libparanumal_build nek_build)
+add_executable(nekrs-bin src/main.cpp ${SRC})
+set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(nekrs-bin ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
+target_include_directories(nekrs-bin PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
+add_dependencies(nekrs-bin occa_build libparanumal_build nek_build)
+set_target_properties(nekrs-bin PROPERTIES OUTPUT_NAME nekrs)
+
+add_library(nekrs-lib SHARED ${SRC})
+set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(nekrs-lib ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
+target_include_directories(nekrs-lib PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
+add_dependencies(nekrs-lib occa_build libparanumal_build nek_build)
+set_target_properties(nekrs-lib PROPERTIES OUTPUT_NAME nekrs)
 
 #################################################################################
 ### Install                                                                     #
@@ -279,8 +286,9 @@ configure_file(install_script.in.cmake install_script.cmake @ONLY)
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_script.cmake)
 
 #install nekRS
-install(TARGETS nekrs
+install(TARGETS nekrs-lib nekrs-bin
   RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
   PUBLIC_HEADER DESTINATION include
   PRIVATE_HEADER DESTINATION include
 )
