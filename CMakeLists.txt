@@ -265,18 +265,16 @@ set(SRC
 )
 
 add_executable(nekrs-bin src/main.cpp ${SRC})
-set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(nekrs-bin ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
-target_include_directories(nekrs-bin PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
-add_dependencies(nekrs-bin occa_build libparanumal_build nek_build)
-set_target_properties(nekrs-bin PROPERTIES OUTPUT_NAME nekrs)
-
 add_library(nekrs-lib SHARED ${SRC})
-set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(nekrs-bin nekrs-lib PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(nekrs-bin ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
 target_link_libraries(nekrs-lib ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
+target_include_directories(nekrs-bin PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
 target_include_directories(nekrs-lib PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
+add_dependencies(nekrs-bin occa_build libparanumal_build nek_build)
 add_dependencies(nekrs-lib occa_build libparanumal_build nek_build)
-set_target_properties(nekrs-lib PROPERTIES OUTPUT_NAME nekrs)
+set_target_properties(nekrs-bin nekrs-lib PROPERTIES OUTPUT_NAME nekrs)
+
 
 #################################################################################
 ### Install                                                                     #
