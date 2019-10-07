@@ -43,10 +43,13 @@ namespace timer{
   void finalize();
 
   void tic(const std::string tag);
+  void tic(const std::string tag,int ifSync);
   void toc(const std::string tag);
   void hostTic(const std::string tag);
+  void hostTic(const std::string tag,int ifSync);
   void hostToc(const std::string tag);
   void deviceTic(const std::string tag);
+  void deviceTic(const std::string tag,int ifSync);
   void deviceToc(const std::string tag);
 
   double hostElapsed(const std::string tag);

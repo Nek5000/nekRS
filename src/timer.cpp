@@ -26,6 +26,14 @@ void timer::finalize(){
   reset();
 }
 
+void timer::deviceTic(const std::string tag,int ifSync){
+  tagData data={.count=0, .hostElapsed=0, .deviceElapsed=0};
+  m_[tag]=data;
+
+  if(ifSync) MPI_Barrier(comm_);
+  m_[tag].startTag =device_.tagStream();
+}
+
 void timer::deviceTic(const std::string tag){
   tagData data={.count=0, .hostElapsed=0, .deviceElapsed=0};
   m_[tag]=data;
@@ -47,6 +55,14 @@ void timer::deviceToc(const std::string tag){
   it->second.count++;
 }
 
+void timer::hostTic(const std::string tag,int ifSync){
+  tagData data={.count=0, .hostElapsed=0, .deviceElapsed=0};
+  m_[tag]=data;
+
+  if(ifSync) MPI_Barrier(comm_);
+  m_[tag].startTime=MPI_Wtime();
+}
+
 void timer::hostTic(const std::string tag){
   tagData data={.count=0, .hostElapsed=0, .deviceElapsed=0};
   m_[tag]=data;
@@ -66,6 +82,15 @@ void timer::hostToc(const std::string tag){
 
   it->second.hostElapsed+=(stopTime-it->second.startTime);
   it->second.count++;
+}
+
+void timer::tic(const std::string tag,int ifSync){
+  tagData data={.count=0, .hostElapsed=0, .deviceElapsed=0};
+  m_[tag]=data;
+
+  if(ifSync) MPI_Barrier(comm_);
+  m_[tag].startTime=MPI_Wtime();
+  m_[tag].startTag =device_.tagStream();
 }
 
 void timer::tic(const std::string tag){
