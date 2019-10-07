@@ -5,7 +5,6 @@
 #include "mpi.h"
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
-#include "bcMap.hpp"
 
 void meshNekReaderHex3D(int N, mesh_t *mesh){
 

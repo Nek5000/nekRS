@@ -2,7 +2,6 @@
 #define nekrs_meshsetup_hpp_
 
 #include "nekrs.hpp"
-void meshBoxSetupHex3D(int N, mesh_t *mesh);
-void meshNekSetupHex3D(int N, mesh_t *mesh);
+mesh_t *meshSetup(MPI_Comm comm, setupAide &options, int buildOnly);
 
 #endif
