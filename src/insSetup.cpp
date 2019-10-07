@@ -1,22 +1,14 @@
 #include "nekrs.hpp"
 #include "meshSetup.hpp"
+#include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
 
-ins_t *setup(mesh_t *mesh, setupAide &options)
+ins_t *insSetup(mesh_t *mesh, setupAide &options)
 {
-  int N;
-  options.getArgs("POLYNOMIAL DEGREE", N);
-
-  if (buildOnly) { 
-    meshBoxSetupHex3D(N, mesh);
-  } else {
-    meshNekSetupHex3D(N, mesh);
-    bcMap::check(mesh);
-  }
 
   ins_t *ins = new ins_t();
   ins->mesh = mesh;
@@ -168,8 +160,14 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   options.getArgs("FINAL TIME", ins->finalTime);
   options.getArgs("START TIME", ins->startTime);
+  if(ins->startTime > 0.0) {
+    int numSteps;
+    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) 
+      ins->finalTime += ins->startTime; 
+  }
  
   ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps)); 
   if(ins->Nsubsteps) ins->sdt = ins->dt/ins->Nsubsteps;
 
   // Hold some inverses for kernels
@@ -186,7 +184,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   kernelInfo["include_paths"].asArray();
 
   if(ins->dim==3)
-      meshOccaSetup3D(mesh, options, kernelInfo);
+    meshOccaSetup3D(mesh, options, kernelInfo);
   else
     meshOccaSetup2D(mesh, options, kernelInfo);
 
@@ -243,6 +241,20 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   ins->o_U = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
   ins->o_P = mesh->device.malloc(              ins->Nstages*Ntotal*sizeof(dfloat), ins->P);
+
+/*
+  if (mesh->rank==0 && options.compareArgs("VERBOSE","TRUE"))
+    occa::setVerboseCompilation(true);
+  else
+    occa::setVerboseCompilation(false);
+*/
+
+  // jit compile udf kernels
+  if (udf.loadKernels) {
+    if (mesh->rank == 0) cout << "building udf kernels ...";
+    udf.loadKernels(ins);
+    if (mesh->rank == 0) cout << " done" << endl;
+  }  
 
   if(ins->Nsubsteps){
     // Note that resU and resV can be replaced with already introduced buffer
@@ -677,6 +689,11 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
                                     ins->EToB);
 
   ins->computedDh = 0; 
+
+  if(mesh->rank == 0) {
+    size_t dMB = mesh->device.memoryAllocated() / 1e6;
+    cout << "device memory allocation: " << dMB << " MB" << endl;
+  }
    
   return ins;
 }
@@ -797,8 +814,8 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   cds->solver = new elliptic_t();
   cds->solver->mesh = mesh;
   cds->solver->options = cds->options;
-  cds->solver->dim = ins->dim;
-  cds->solver->elementType = ins->elementType;
+  cds->solver->dim = cds->dim;
+  cds->solver->elementType = cds->elementType;
   cds->solver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(cds->solver->BCType,sBCType,(nbrBIDs+1)*sizeof(int));
   ellipticSolveSetup(cds->solver, cds->lambda, kernelInfoH); 
@@ -904,9 +921,9 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   }
 
   // set kernel name suffix
-  if(ins->elementType==QUADRILATERALS)
+  if(cds->elementType==QUADRILATERALS)
      suffix = "Quad2D";
-  if(ins->elementType==HEXAHEDRA)
+  if(cds->elementType==HEXAHEDRA)
      suffix = "Hex3D";
 
   for (int r=0;r<2;r++){

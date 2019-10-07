@@ -22,7 +22,7 @@ namespace {
   static dfloat *tmp1, *tmp2;
   static occa::memory o_tmp1, o_tmp2;
   
-  static occa::kernel setValueBCKernel;
+  static occa::kernel setBCVectorValueKernel;
   static occa::kernel getBCFluxKernel;
   static occa::kernel sumReductionKernel; 
   static occa::kernel scalarMultiplyKernel; 
@@ -49,10 +49,10 @@ inline void buildKernel(ins_t *ins)
   occa::properties& kernelInfo = *ins->kernelInfo;
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
-       setValueBCKernel     =  mesh->device.buildKernel(fileName.c_str(), "setBCVectorValue", kernelInfo);
-       getBCFluxKernel      =  mesh->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
-       sumReductionKernel   =  mesh->device.buildKernel(fileName.c_str(), "sumReduction", kernelInfo);
-       scalarMultiplyKernel =  mesh->device.buildKernel(fileName.c_str(), "scalarMultiply", kernelInfo);
+       setBCVectorValueKernel =  mesh->device.buildKernel(fileName.c_str(), "setBCVectorValue", kernelInfo);
+       getBCFluxKernel        =  mesh->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
+       sumReductionKernel     =  mesh->device.buildKernel(fileName.c_str(), "sumReduction", kernelInfo);
+       scalarMultiplyKernel   =  mesh->device.buildKernel(fileName.c_str(), "scalarMultiply", kernelInfo);
     }
     MPI_Barrier(mesh->comm);
   }
@@ -64,7 +64,7 @@ inline void copy()
 
   // copy recycling plane in interior to inlet
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
-  setValueBCKernel(mesh->Nelements, 0.0, bID, ins->fieldOffset,
+  setBCVectorValueKernel(mesh->Nelements, 0.0, bID, ins->fieldOffset,
                    o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
   ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,

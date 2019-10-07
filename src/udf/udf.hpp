@@ -4,8 +4,6 @@
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-extern int ciMode;
-
 extern "C" {
   void UDF_Setup0(MPI_Comm comm, setupAide &options);
   void UDF_Setup(ins_t *ins);

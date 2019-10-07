@@ -50,30 +50,12 @@ static std::map<int, string> sBcIDToText = {
   {3, "zeroGradient" }  
 };
 
-void v_setup(string s);
-void s_setup(string s);
+static void v_setup(string s);
+static void s_setup(string s);
 
-std::vector<std::string> serializeString(const std::string sin)
+
+static void v_setup(std::vector<std::string> slist)
 {
-  std::vector<std::string> slist;
-  string s(sin);
-  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-  std::stringstream ss;
-  ss.str(s);
-  while( ss.good() )
-  {
-      std::string substr;
-      std::getline(ss, substr, ',');
-      slist.push_back(substr);
-  }
-  return slist;
-}
-
-void v_setup(string s)
-{
-  std::vector<std::string> slist;
-  slist = serializeString(s);
-
   for(int i=0; i < slist.size(); i++){
 
     string key = slist[i];
@@ -110,11 +92,8 @@ void v_setup(string s)
   }
 }
 
-void s_setup(string s)
+static void s_setup(std::vector<std::string> slist)
 {
-  std::vector<std::string> slist;
-  slist = serializeString(s);
-
   for(int i=0; i < slist.size(); i++){
 
     string key = slist[i];
@@ -149,15 +128,16 @@ void s_setup(string s)
 
 namespace bcMap {
  
-  void setup(string s, string field)
+  void setup(std::vector<std::string> slist, string field)
   {
-    if (s.compare("null") == 0) return;
-    if (s.compare("none") == 0) return;
+    if (slist.size() == 0) return;
+    if (slist[0].compare("null") == 0) return;
+    if (slist[0].compare("none") == 0) return;
   
     if (field.compare("velocity") == 0)
-      v_setup(s);
+      v_setup(slist);
     else if (field.compare("scalar01") == 0)
-      s_setup(s);
+      s_setup(slist);
   }
 
   int id(int bid, string field)
