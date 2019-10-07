@@ -5,6 +5,8 @@
 #include <math.h>
 #include "udf.hpp"
 #include "casedata.h"
+
+static int ciMode = 0;
 #include "ethier_ci.h"
 
 /* UDF Functions */   
@@ -27,6 +29,7 @@ void UDF_LoadKernels(ins_t *ins)
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
+  options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 }
 

@@ -558,6 +558,21 @@ void nek_copyTo(ins_t *ins, dfloat &time) {
   if(ins->Nscalar)  memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
 }
 
+void nek_copyRestart(ins_t *ins) {
+  mesh_t *mesh = ins->mesh;
+  dlong Nlocal = mesh->Nelements*mesh->Np;
+  if (*(nekData.ifgetu)) {
+    dfloat *vx = ins->U + 0*ins->fieldOffset;
+    dfloat *vy = ins->U + 1*ins->fieldOffset;
+    dfloat *vz = ins->U + 2*ins->fieldOffset;
+    memcpy(vx, nekData.vx, sizeof(dfloat)*Nlocal);
+    memcpy(vy, nekData.vy, sizeof(dfloat)*Nlocal);
+    memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
+  }
+  if(ins->Nscalar) memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
+  if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
+}
+
 int nek_bcmap(int bid, int ifld) {
   return (*nek_bcmap_ptr)(&bid, &ifld);
 }

@@ -101,5 +101,6 @@ void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep);
 void nek_copyFrom(ins_t *ins, dfloat time);
 void nek_copyTo(ins_t *ins, dfloat &time);
 void nek_ocopyTo(ins_t *ins, dfloat &time);
+void nek_copyRestart(ins_t *ins);
 
 #endif

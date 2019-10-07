@@ -1,0 +1,51 @@
+#!/bin/bash
+
+nfld=0
+sfld=1
+
+if [ $# -eq 0 ] || [ $# -ne 1 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+  echo "usage: ${0##*/} <casename>"
+  exit 0
+fi
+
+base="$1"
+if ! `find $base*[0-9].f*[0-9] >/dev/null 2>&1`; then
+  echo "Cannot find field files!" 
+  exit 1
+fi
+mfile="$base.nek5000"
+
+if [ $nfld -ne -1 ]; then
+
+    if [ -e "A0/${base}0.f00001" ]; then
+        nfld=$(ls -1 A0/"${base}"0.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%01d/${base}%01d.f%05d" > $mfile 
+    elif [ -e "${base}00.f00001" ]; then
+        nfld=$(ls -1 "${base}"00.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%02d.f%05d" > $mfile 
+    elif [ -e "A00/${base}00.f00001" ]; then
+        nfld=$(ls -1 A00/"${base}"00.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%02d/${base}%02d.f%05d" > $mfile
+    elif [ -e "${base}000.f00001" ]; then
+        nfld=$(ls -1 "${base}"000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%03d.f%05d" > $mfile 
+    elif [ -e "A000/${base}000.f00001" ]; then
+        nfld=$(ls -1 A000/"${base}"000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%03d/${base}%03d.f%05d" > $mfile 
+    elif [ -e "A0000/${base}0000.f00001" ]; then
+        nfld=$(ls -1 A0000/"${base}"0000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%04d/${base}%04d.f%05d" > $mfile 
+    else
+        nfld=$(ls -1 "${base}"0.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%01d.f%05d" > $mfile 
+    fi
+fi
+
+echo " Found $nfld field file(s)"
+echo " Generating metadata file $mfile ..."
+
+echo 'firsttimestep: 1'    >> $mfile 
+echo "numtimesteps: $nfld" >> $mfile 
+
+echo
+echo " Now run visit -o $mfile or paraview --data=$mfile"
