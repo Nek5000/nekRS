@@ -250,20 +250,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("pressure", "projection", p_rproj))
     if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
   //
+  string p_amgsolver; 
+  ini.extract("pressure", "amgsolver", p_amgsolver);
+  if (p_amgsolver == "paralmond")
+    options.setArgs("AMG SOLVER", "PARALMOND");
+  //
   string p_preconditioner; 
   ini.extract("pressure", "preconditioner", p_preconditioner);
-  if(p_preconditioner == "semg_amg" || p_preconditioner == "semg_amg_hypre") { 
-    options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-    string p_amgsolver; 
-    ini.extract("pressure", "amgsolver", p_amgsolver);
-    if(p_amgsolver == "boomeramg") 
-      options.setArgs("AMG SOLVER", "BOOMERAMG");
-    else if (p_amgsolver == "paralmond")
-      options.setArgs("AMG SOLVER", "PARALMOND");
-
-  } else if (p_preconditioner == "jacobi") {
+  if(p_preconditioner == "jacobi")
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-  }
   //
   double v_residualTol;
   if(ini.extract("velocity", "residualtol", v_residualTol))
