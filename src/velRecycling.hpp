@@ -61,11 +61,12 @@ inline void buildKernel(ins_t *ins)
 inline void copy()
 {
   mesh_t *mesh = ins->mesh; 
+  const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
   o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
-  setBCVectorValueKernel(mesh->Nelements, 0.0, bID, ins->fieldOffset,
-                   o_wrk, mesh->o_vmapM, mesh->o_EToB);
+  setBCVectorValueKernel(mesh->Nelements, zero, bID, ins->fieldOffset,
+                         o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
   ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, ogs);
@@ -113,15 +114,15 @@ inline void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const i
 
   for (int e=0; e < mesh->Nelements; e++){
     // establish a unique numbering
-    const int eg = nek_lglel(e); // 0-based
+    const hlong eg = nek_lglel(e); // 0-based
 
     for (int n=0; n < mesh->Np; n++)  {
-      ids[e*mesh->Np + n] = eg*mesh->Np + n+1; 
+      ids[e*mesh->Np + n] = eg*mesh->Np + (n+1); 
     }
     
     for (int n=0; n < mesh->Nfp*mesh->Nfaces; n++) {
       const int f = n/mesh->Nfp;
-      const int idM = ins->mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
+      const int idM = mesh->vmapM[e*mesh->Nfp*mesh->Nfaces + n];
       if (mesh->EToB[f + e*mesh->Nfaces] == bID) 
           ids[idM] += eOffset*mesh->Np;
     }
