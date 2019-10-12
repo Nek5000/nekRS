@@ -8,6 +8,7 @@
 
 #include <nekrs.hpp>
 #include <nekInterfaceAdapter.hpp>
+#include "environment.hpp"
 
 // private members
 namespace {
@@ -44,7 +45,7 @@ inline void buildKernel(ins_t *ins)
 
   string fileName;
   int rank = mesh->rank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
+  fileName=env::installDir();
   fileName += "/okl/recycling.okl";
   occa::properties& kernelInfo = *ins->kernelInfo;
   for (int r=0;r<2;r++){

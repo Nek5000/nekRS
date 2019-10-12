@@ -62,8 +62,8 @@ void *udfLoadFunction(const char *fname, int errchk)
 {
   char udfLib[BUFSIZ];
 
-  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
+  std::string cacheDir=env::cacheDir();
+  sprintf(udfLib, "%s/udf/libUDF.so", cacheDir.c_str());
 
   void *h, *fptr;
   h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);

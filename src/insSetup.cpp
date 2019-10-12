@@ -3,6 +3,7 @@
 #include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
+#include "environment.hpp"
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
@@ -18,8 +19,7 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
 
   ins->kernelInfo = new occa::properties();
 
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  string install_dir=env::installDir();
 
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
@@ -706,8 +706,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
 
   cds_t *cds = new cds_t(); 
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  string install_dir=env::installDir();
   
   // set mesh, options
   cds->mesh        = mesh; 
