@@ -12,9 +12,12 @@ namespace os{
   /* private const variables */
   const static std::string separator_(stringify(NEKRS_PATH_SEPARATOR));
 
+  int exist(std::string fname);
+  int readable(std::string fname);
+
   std::string joinPath(std::string root,std::string relative);
   std::string getWorkingDir();
-  int mkDir(std::string dirName);
+  void makeDir(std::string dirName);
 }
 
 namespace env{
@@ -37,13 +40,16 @@ namespace env{
   std::string binDir();
   std::string shareDir();
   std::string nekDir();
-  std::string nekPplist();
+  std::string nekPpList();
   std::string libPDir();
   std::string libPDefines();
   std::string udfDir();
   std::string nekInterfaceDir();
   std::string occaDir();
   std::string cacheDir();
+  void makeCacheDir();
+  std::string occaCacheDir();
+  void makeOccaCacheDir();
 
   std::string cxxCompiler();
   std::string cxxFlags();

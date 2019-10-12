@@ -11,6 +11,16 @@
 #include "environment.hpp"
 
 namespace os{
+  int exist(std::string fname){
+    if(access(fname.c_str(),F_OK)!=-1) return 1;
+    else return 0;
+  }
+
+  int readable(std::string fname){
+    if(access(fname.c_str(),R_OK)!=-1) return 1;
+    else return 0;
+  }
+
   std::string getWorkingDir(){
      char temp[FILENAME_MAX];
      return getcwd(temp,sizeof(temp)) ? std::string(temp) : std::string("");
@@ -20,9 +30,12 @@ namespace os{
     return root+separator_+relative;
   }
 
-  int mkDir(std::string dirName){
-    return mkdir(dirName.c_str(),S_IRWXU);
+  void makeDir(std::string name){
+    std::cout << "os::makeDir(): " << name << std::endl;
+    mkdir(name.c_str(),S_IRWXU);
+    std::cout << "os::makeDir(): " << name << std::endl;
   }
+
 }
 
 namespace env{
@@ -105,14 +118,30 @@ namespace env{
     return occa ? std::string(occa) : os::joinPath(installDir(),"occa");
   }
 
+  void makeCacheDir(){
+    os::makeDir(cacheDir());
+  }
+
   std::string cacheDir(){
     const char *cache=std::getenv("NEKRS_CACHE_DIR");
     if(cache==NULL){
       auto cacheDir_=os::joinPath(os::getWorkingDir(),".cache");
       setenv("NEKRS_CACHE_DIR",cacheDir_.c_str(),1);
-      int rank; MPI_Comm_rank(comm_,&rank);
-      if(rank==0) os::mkDir(cacheDir_);
-      cache=cacheDir_.c_str();
+      return cacheDir_;
+    }
+    return std::string(cache);
+  }
+
+  void makeOccaCacheDir(){
+    os::makeDir(occaCacheDir());
+  }
+
+  std::string occaCacheDir(){
+    const char *cache=std::getenv("OCCA_CACHE_DIR");
+    if(cache==NULL){
+      auto cacheDir_=os::joinPath(cacheDir(),"occa");
+      setenv("OCCA_CACHE_DIR",cacheDir_.c_str(),1);
+      return cacheDir_;
     }
     return std::string(cache);
   }
@@ -121,7 +150,7 @@ namespace env{
     const char *val=std::getenv(key.c_str());
     if(val==NULL){
       auto it=m_.find(key);
-      if(it!=m_.end()) val=it->second.c_str();
+      if(it!=m_.end()) return it->second;
     }
     return std::string(val);
   }
@@ -129,7 +158,9 @@ namespace env{
   std::string cxxCompiler(){ return getConfigValue("NEKRS_CXX"); }
   std::string cxxFlags(){ return getConfigValue("NEKRS_CXXFLAGS"); }
   std::string cCompiler(){ return getConfigValue("NEKRS_CC"); }
-  std::string cFlags(){ return getConfigValue("NEKRS_CFLAGS"); }
+  std::string cFlags(){ return getConfigValue("NEKRS_CXXFLAGS"); }
   std::string fortranCompiler(){ return getConfigValue("NEKRS_FC"); }
-  std::string fortranFlags(){ return getConfigValue("NEKRS_FFLAGS"); }
+  std::string fortranFlags(){ return getConfigValue("NEKRS_CXXFLAGS"); }
+  std::string libPDefines(){ return getConfigValue("NEKRS_LIBP_DEFINES"); }
+  std::string nekPpList() { return getConfigValue("NEKRS_NEK5000_PPLIST"); }
 }
