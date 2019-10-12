@@ -8,7 +8,7 @@
 
 namespace nrs {
   setupAide setup(MPI_Comm comm, int buildOnly, int sizeTarget,
-                  int ciMode, string cacheDir, string setupFile);
+                  int ciMode, string setupFile);
   void runStep(double time, int tstep);
   void copyToNek(double time, int tstep);
   void udfExecuteStep(double time, int tstep, int isOutputStep); 

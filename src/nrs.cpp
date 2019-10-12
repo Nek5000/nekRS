@@ -1,4 +1,5 @@
 #include "nekrs.hpp"
+#include "nrs.hpp"
 #include "meshSetup.hpp"
 #include "insSetup.hpp"
 #include "nekInterfaceAdapter.hpp"
@@ -16,28 +17,30 @@ static libParanumal::setupAide options;
 
 static int ioStep;
 
-int nrsBuildOnly = 0;  // hack for meshPhysicalNodes() 
+int nrsBuildOnly = 0;  // hack for meshPhysicalNodes()
 
-static void setCache(string dir);
 static void setOUDF(libParanumal::setupAide &options);
-static void dryRun(libParanumal::setupAide &options, int npTarget); 
+static void dryRun(libParanumal::setupAide &options, int npTarget);
 
 namespace nrs {
 
-setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
-                int ciMode, string cacheDir, string setupFile)
+setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
+                int ciMode, string setupFile)
 {
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
- 
-  nrsBuildOnly = buildOnly; 
-  setCache(cacheDir);
+
+  nrsBuildOnly = buildOnly;
+
+  env::init(comm);
+  if(rank==0) env::makeCacheDir();
+  if(rank==0) env::makeOccaCacheDir();
 
   if (rank == 0) {
     #include "printHeader.inc"
     cout << "MPI ranks: " << size << endl << endl;
-    cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
+    cout << "using OCCA_CACHE_DIR: " << env::occaCacheDir() << endl << endl;
   }
 
 #ifdef DEBUG
@@ -74,13 +77,13 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   // jit compile udf
   if (!udfFile.empty()){
-    if(rank == 0) udfBuild(udfFile.c_str()); 
+    if(rank==0) udfBuild(udfFile);
     MPI_Barrier(comm);
     udfLoad();
-  } 
+  }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
-  if(rank == 0 && ciMode) 
+  if(rank == 0 && ciMode)
     cout << "enabling continous integration mode\n" << endl;
 
   if(udf.setup0) udf.setup0(comm, options);
@@ -103,7 +106,7 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
-  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);
 
   if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
@@ -111,7 +114,7 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
-    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
+    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl;
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
   }
@@ -151,9 +154,9 @@ void nekOutfld(void)
 
 } // namespace
 
-static void dryRun(libParanumal::setupAide &options, int npTarget) 
+static void dryRun(libParanumal::setupAide &options, int npTarget)
 {
-  if (rank == 0) 
+  if (rank == 0)
     cout << "performing dry-run for "
          << npTarget
          << " MPI ranks ...\n" << endl;
@@ -166,11 +169,11 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
 
   // jit compile udf
   if (!udfFile.empty()) {
-    if(rank == 0) udfBuild(udfFile.c_str()); 
+    if(rank == 0) udfBuild(udfFile);
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-  } 
+  }
 
   if(udf.setup0) udf.setup0(comm, options);
 
@@ -201,11 +204,10 @@ static void setOUDF(libParanumal::setupAide &options)
   }
   free(ptr);
 
-  std::string cache_dir;
-  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+  std::string cache_dir=env::cacheDir();
   string casename;
   options.getArgs("CASENAME", casename);
-  string dataFile = cache_dir + "/" + casename + ".okl";
+  string dataFile = os::joinPath(cache_dir,casename + ".okl");
 
   if (rank == 0) {
 
@@ -220,30 +222,30 @@ static void setOUDF(libParanumal::setupAide &options)
 
     out << buffer.str();
 
-    out << "// automatically added \n" 
+    out << "// automatically added \n"
         << "void insFlowField3D(bcData *bc){}\n"
-        << "void insPressureNeumannConditions3D(bcData *bc){}\n"; 
+        << "void insPressureNeumannConditions3D(bcData *bc){}\n";
 
     std::size_t found;
     found = buffer.str().find("void insVelocityDirichletConditions");
     if (found == std::string::npos)
-      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void insVelocityDirichletConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void insVelocityNeumannConditions");
     if (found == std::string::npos)
-      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n"; 
+      out << "void insVelocityNeumannConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void insPressureDirichletConditions");
     if (found ==std::string::npos)
-      out << "void insPressureDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void insPressureDirichletConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void cdsNeumannConditions");
     if (found == std::string::npos)
-      out << "void cdsNeumannConditions3D(bcData *bc){}\n"; 
+      out << "void cdsNeumannConditions3D(bcData *bc){}\n";
 
     found = buffer.str().find("void cdsDirichletConditions");
     if (found ==std::string::npos)
-      out << "void cdsDirichletConditions3D(bcData *bc){}\n"; 
+      out << "void cdsDirichletConditions3D(bcData *bc){}\n";
 
     out.close();
   }
@@ -251,24 +253,3 @@ static void setOUDF(libParanumal::setupAide &options)
   options.setArgs("DATA FILE", dataFile);
 }
 
-static void setCache(string dir)
-{
-  char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
-  string cwd;
-  cwd.assign(buf);
-
-  if (dir.empty())
-    sprintf(buf,"%s/.cache", cwd.c_str());
-  else
-    sprintf(buf,"%s/%s", cwd.c_str(), dir.c_str());
-
-  setenv("NEKRS_CACHE_DIR", buf, 1);
-  string cache_dir;
-  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-  if (rank == 0) mkdir(cache_dir.c_str(), S_IRWXU);
-  MPI_Barrier(comm);
-
-  if (!getenv("OCCA_CACHE_DIR"))
-      occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
-}
