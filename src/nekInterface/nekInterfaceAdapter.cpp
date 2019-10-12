@@ -2,22 +2,23 @@
 #include <fstream>
 #include "nekrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "environment.hpp"
 
 nekdata_private nekData;
 static int rank;
-static setupAide *options; 
+static setupAide *options;
 
 static void (*usrdat_ptr)(void);
 static void (*usrdat2_ptr)(void);
 static void (*usrdat3_ptr)(void);
-static void (*userchk_ptr)(void); 
-static void (*uservp_ptr)(void); 
-static void (*userf_ptr)(void); 
-static void (*userq_ptr)(void); 
-static void (*userbc_ptr)(void); 
-static void (*useric_ptr)(void); 
-static void (*userqtl_ptr)(void); 
-static void (*usrsetvert_ptr)(void); 
+static void (*userchk_ptr)(void);
+static void (*uservp_ptr)(void);
+static void (*userf_ptr)(void);
+static void (*userq_ptr)(void);
+static void (*userbc_ptr)(void);
+static void (*useric_ptr)(void);
+static void (*userqtl_ptr)(void);
+static void (*usrsetvert_ptr)(void);
 
 static void (*nek_ptr_ptr)(void **, char *, int*);
 static void (*nek_outfld_ptr)(void);
@@ -140,8 +141,8 @@ void set_function_handles(const char *session_in,int verbose) {
   // load lib{session_in}.so
   char lib_session[BUFSIZ], *error;
 
-  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(lib_session, "%s/lib%s.so", cache_dir, session_in);
+  std::string cacheDir = env::cacheDir();
+  sprintf(lib_session, "%s/lib%s.so", cacheDir.c_str(), session_in);
 
   void *handle = dlopen(lib_session,RTLD_NOW|RTLD_GLOBAL);
   if(!handle) {
@@ -157,7 +158,7 @@ void set_function_handles(const char *session_in,int verbose) {
   dlerror();
 
 #define fname(s) (strcpy(func,(s)), strcat(func, us), func)
- 
+
   usrdat_ptr = (void (*)(void)) dlsym(handle, fname("usrdat"));
   check_error(dlerror());
   usrdat2_ptr = (void (*)(void)) dlsym(handle, fname("usrdat2"));
@@ -229,11 +230,11 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
   char line[BUFSIZ];
   char cmd[BUFSIZ];
 
-  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
-  const char *nekrs_nek5000_dir = getenv("NEKRS_NEK5000_DIR");
+  std::string cacheDir = env::cacheDir();
+  std::string nekDir = env::nekDir();
 
   // Read and generate the new size file.
-  sprintf(line,"%s/core/SIZE.template", nekrs_nek5000_dir);
+  sprintf(line,"%s/core/SIZE.template", nekDir.c_str());
   FILE *fp = fopen(line, "r");
   char *sizeFile, *curSizeFile;
   size_t result;
@@ -249,7 +250,7 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
       exit(EXIT_FAILURE);
     }
   } else {
-    fprintf(stderr, "Error opening %s/core/SIZE.template!\n", nekrs_nek5000_dir);
+    fprintf(stderr, "Error opening %s/core/SIZE.template!\n", nekDir.c_str());
     exit(EXIT_FAILURE);
   }
 
@@ -289,9 +290,9 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
 
   // read size if exists
   std::ifstream osize;
-  sprintf(line,"%s/SIZE", cache_dir);
+  sprintf(line,"%s/SIZE", cacheDir.c_str());
 
-  osize.open(line, std::ifstream::in); 
+  osize.open(line, std::ifstream::in);
   if(osize.is_open()) {
     writeSize = 0;
     string line;
@@ -299,11 +300,11 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
     while(getline( osize, line )) {
       if(line.find( "lelg=") != string::npos ) {
           sscanf(line.c_str(), "%*[^=]=%d", &oldval);
-          if(oldval < lelg) writeSize = 1; 
+          if(oldval < lelg) writeSize = 1;
       }
       if(line.find( "lelt=") != string::npos ) {
           sscanf(line.c_str(), "%*[^=]=%d", &oldval);
-          if(oldval < lelt) writeSize = 1; 
+          if(oldval < lelt) writeSize = 1;
       }
       if(line.find( "lx1=") != string::npos ) {
           sscanf(line.c_str(), "%*[^=]=%d", &oldval);
@@ -324,7 +325,7 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
     free(sizeFile);
     //printf("done\n");
   } else {
-    //printf("using existing SIZE file %s/SIZE\n", cache_dir);
+    //printf("using existing SIZE file %s/SIZE\n", cacheDir.c_str());
   }
 
   fflush(stdout);
@@ -336,10 +337,14 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   char buf[BUFSIZ];
   char fflags[BUFSIZ];
   char cflags[BUFSIZ];
-
-  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
-  const char *nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
-  const char *nek5000_dir = getenv("NEKRS_NEK5000_DIR");
+  std::string cacheDir=env::cacheDir();
+  std::string nekInterfaceDir=env::nekInterfaceDir();
+  std::string nekDir=env::nekDir();
+  std::string fFlags=env::fortranFlags();
+  std::string cFlags=env::cxxFlags();
+  std::string fc=env::fortranCompiler();
+  std::string cc=env::cCompiler();
+  std::string pplist=env::nekPpList();
 
   FILE *fp;
   int retval;
@@ -359,44 +364,47 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   int lelt = nelgt/np + 2;
   mkSIZE(N+1, 1, lelt, nelgt, ndim, np, ldimt);
 
-  // Copy case.usr file to cache_dir
+  // Copy case.usr file to cacheDir
   sprintf(buf,"%s.usr",casename);
   if(access(buf,F_OK)!=-1){
-    sprintf(buf, "cp -pf %s.usr %s/ >build.log 2>&1",casename,cache_dir);
+    sprintf(buf, "cp -pf %s.usr %s/ >build.log 2>&1",casename,cacheDir.c_str());
   } else {
-    sprintf(buf, "cp -pf %s/core/zero.usr %s/%s.usr >>build.log 2>&1",nek5000_dir,cache_dir,casename);
+    sprintf(buf, "cp -pf %s/core/zero.usr %s/%s.usr >>build.log 2>&1",nekDir.c_str(),
+                 cacheDir.c_str(),casename);
   }
   retval=system(buf);
   if (retval) goto err;
 
 
-  // Copy Nek5000/core from install_dir to cache_dir
-  sprintf(buf, "cp -pr %s %s/", nek5000_dir, cache_dir);
+  // Copy Nek5000/core from install_dir to cacheDir
+  sprintf(buf, "cp -pr %s %s/", nekDir.c_str(),cacheDir.c_str());
   retval = system(buf);
-  if (retval) goto err; 
+  if (retval) goto err;
 
-  //TODO: Fix hardwired compiler flags 
-  sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../ \"");
-  sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\""); 
+  //TODO: Fix hardwired compiler flags
+  sprintf(fflags, "\"%s -mcmodel=medium -fPIC -fcray-pointer -I../ \"",fFlags.c_str());
+  sprintf(cflags, "\"%s -fPIC -I%s\"",cFlags.c_str(),nekInterfaceDir.c_str());
 
-  sprintf(buf, "cd %s && FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
-      "CFLAGS=%s PPLIST=\"${NEKRS_NEK5000_PPLIST}\" NEK_SOURCE_ROOT=%s/nek5000 "
-      "%s/nek5000/bin/nekconfig %s >>build.log 2>&1", cache_dir, fflags,
-      cflags, cache_dir, cache_dir, casename);
+  sprintf(buf, "cd %s && FC=\"%s\" CC=\"%s\" FFLAGS=%s CFLAGS=%s PPLIST=\"%s\" "
+               "NEK_SOURCE_ROOT=%s/nek5000 %s/nek5000/bin/nekconfig %s >>build.log 2>&1",
+               cacheDir.c_str(),fc.c_str(),cc.c_str(),fflags,cflags,pplist.c_str(),
+               cacheDir.c_str(),cacheDir.c_str(),casename);
   retval = system(buf);
-  if (retval) goto err; 
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile nekInterface "
-      ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
+  if (retval) goto err;
+  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s NEKRS_NEK5000_DIR=%s NEKRS_NEKINTERFACE_DIR=%s "
+               "make -j4 -f %s/Makefile nekInterface >>build.log 2>&1",
+               cacheDir.c_str(),cacheDir.c_str(),nekDir.c_str(),nekInterfaceDir.c_str(),
+               nekInterfaceDir.c_str());
   retval = system(buf);
-  if (retval) goto err; 
+  if (retval) goto err;
 
-  printf("done\n\n"); 
+  printf("done\n\n");
   fflush(stdout);
   sync();
   return 0;
 
 err:
-  printf("\nAn ERROR occured, see %s/build.log for details!\n", cache_dir);
+  printf("\nAn ERROR occured, see %s/build.log for details!\n", cacheDir.c_str());
   exit(EXIT_FAILURE);
 }
 
@@ -433,7 +441,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.nx1 =  *(int *) nek_ptr("nx1");
 
   nekData.vx = (double *) nek_ptr("vx");
-  nekData.vy = (double *) nek_ptr("vy"); 
+  nekData.vy = (double *) nek_ptr("vy");
   nekData.vz = (double *) nek_ptr("vz");
   nekData.pr = (double *) nek_ptr("pr");
   nekData.t  = (double *) nek_ptr("t");
@@ -442,14 +450,14 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.ifgetp = (int *) nek_ptr("ifgetp");
 
   nekData.unx = (double *) nek_ptr("unx");
-  nekData.uny = (double *) nek_ptr("uny"); 
+  nekData.uny = (double *) nek_ptr("uny");
   nekData.unz = (double *) nek_ptr("unz");
- 
+
   nekData.xm1 = (double *) nek_ptr("xm1");
-  nekData.ym1 = (double *) nek_ptr("ym1"); 
+  nekData.ym1 = (double *) nek_ptr("ym1");
   nekData.zm1 = (double *) nek_ptr("zm1");
   nekData.xc = (double *) nek_ptr("xc");
-  nekData.yc = (double *) nek_ptr("yc"); 
+  nekData.yc = (double *) nek_ptr("yc");
   nekData.zc = (double *) nek_ptr("zc");
 
   nekData.ngv = *(long long *) nek_ptr("ngv");
@@ -462,7 +470,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
 
-  nekData.NboundaryIDs = (*nek_nbid_ptr)(); 
+  nekData.NboundaryIDs = (*nek_nbid_ptr)();
 
   dfloat nu;
   options->getArgs("VISCOSITY", nu);
@@ -496,7 +504,7 @@ void nek_copyFrom(ins_t *ins, dfloat time) {
 void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
 
   ins->o_U.copyTo(ins->U);
-  ins->o_P.copyTo(ins->P); 
+  ins->o_P.copyTo(ins->P);
   if(ins->Nscalar) ins->cds->o_S.copyTo(ins->cds->S);
   nek_copyFrom(ins, time, tstep);
 }
@@ -524,7 +532,7 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
   if(ins->Nscalar)  memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
- 
+
 }
 
 void nek_ocopyTo(ins_t *ins, dfloat &time) {
@@ -532,7 +540,7 @@ void nek_ocopyTo(ins_t *ins, dfloat &time) {
   nek_copyTo(ins, time);
   ins->o_P.copyFrom(ins->P);
   ins->o_U.copyFrom(ins->U);
-  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S); 
+  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);
 }
 
 void nek_copyTo(ins_t *ins, dfloat &time) {

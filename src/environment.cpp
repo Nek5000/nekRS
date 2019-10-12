@@ -31,9 +31,7 @@ namespace os{
   }
 
   void makeDir(std::string name){
-    std::cout << "os::makeDir(): " << name << std::endl;
     mkdir(name.c_str(),S_IRWXU);
-    std::cout << "os::makeDir(): " << name << std::endl;
   }
 
 }
