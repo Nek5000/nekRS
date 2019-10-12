@@ -93,14 +93,11 @@ int main(int argc, char **argv)
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  env::init(comm);
- 
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
-  string cacheDir; 
   setupAide options;
   options = nrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
-                       cmdOpt->ciMode, cacheDir, cmdOpt->setupFile);
+                       cmdOpt->ciMode, cmdOpt->setupFile);
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize(); 
