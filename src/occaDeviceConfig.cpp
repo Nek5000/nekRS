@@ -85,7 +85,10 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
 
   if (options.compareArgs("VERBOSE","TRUE"))
     std::cout << deviceConfig << std::endl;
-  mesh->device.setup( (std::string)deviceConfig);
+
+  if(mesh->rank==0) printf("Initializing device...");
+  mesh->device.setup((std::string)deviceConfig);
+  if(mesh->rank==0) printf("done.\n");
 
 #ifdef USE_OCCA_MEM_BYTE_ALIGN 
   occa::env::OCCA_MEM_BYTE_ALIGN = USE_OCCA_MEM_BYTE_ALIGN;

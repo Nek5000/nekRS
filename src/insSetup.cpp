@@ -1,24 +1,14 @@
 #include "nekrs.hpp"
-#include "nekInterfaceAdapter.hpp"
 #include "meshSetup.hpp"
+#include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
-
-#define DIRICHLET 1
-#define NEUMANN 2
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
 extern int buildOnly;
 
-ins_t *setup(mesh_t *mesh, setupAide &options)
+ins_t *insSetup(mesh_t *mesh, setupAide &options)
 {
-  int N;
-  options.getArgs("POLYNOMIAL DEGREE", N);
-
-  if (!buildOnly) 
-    meshNekSetupHex3D(N, mesh);
-  else
-    meshBoxSetupHex3D(N, mesh);
 
   ins_t *ins = new ins_t();
   ins->mesh = mesh;
@@ -170,8 +160,14 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   options.getArgs("FINAL TIME", ins->finalTime);
   options.getArgs("START TIME", ins->startTime);
+  if(ins->startTime > 0.0) {
+    int numSteps;
+    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) 
+      ins->finalTime += ins->startTime; 
+  }
  
   ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps)); 
   if(ins->Nsubsteps) ins->sdt = ins->dt/ins->Nsubsteps;
 
   // Hold some inverses for kernels
@@ -188,7 +184,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   kernelInfo["include_paths"].asArray();
 
   if(ins->dim==3)
-      meshOccaSetup3D(mesh, options, kernelInfo);
+    meshOccaSetup3D(mesh, options, kernelInfo);
   else
     meshOccaSetup2D(mesh, options, kernelInfo);
 
@@ -207,10 +203,7 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
     kernelInfo["defines/" "p_SUBCYCLING"]=  1;
   else
     kernelInfo["defines/" "p_SUBCYCLING"]=  0;
-#if 1
-  kernelInfo["defines/" "p_EXTBDF"]= 0; // will be removed AK
-  kernelInfo["defines/" "p_TOMBO"]= 1;
-#endif
+
   kernelInfo["defines/" "p_blockSize"]= blockSize;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
@@ -248,6 +241,20 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
 
   ins->o_U = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
   ins->o_P = mesh->device.malloc(              ins->Nstages*Ntotal*sizeof(dfloat), ins->P);
+
+/*
+  if (mesh->rank==0 && options.compareArgs("VERBOSE","TRUE"))
+    occa::setVerboseCompilation(true);
+  else
+    occa::setVerboseCompilation(false);
+*/
+
+  // jit compile udf kernels
+  if (udf.loadKernels) {
+    if (mesh->rank == 0) cout << "building udf kernels ...";
+    udf.loadKernels(ins);
+    if (mesh->rank == 0) cout << " done" << endl;
+  }  
 
   if(ins->Nsubsteps){
     // Note that resU and resV can be replaced with already introduced buffer
@@ -300,7 +307,6 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(ins); 
 
-  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
   if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
 
   if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
@@ -326,28 +332,20 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   ins->vOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->vOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  const int velMap[7]  = {0,DIRICHLET,DIRICHLET,NEUMANN,NEUMANN,NEUMANN,NEUMANN};
-  const int prMap[7]   = {0,NEUMANN,NEUMANN,DIRICHLET,NEUMANN,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryIDs;
-
+  const int nbrBIDs = bcMap::size();
   int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
   int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = bcMap::lookup(bID, "velocity");
-    if(mesh->rank == 0 && bcID == -1) {
-      printf("Cannot find velocity bcType for bID %d!", bID); 
-      EXIT(1);
-    }
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
-                               bcMap::IDToText(bcID, "velocity").c_str());
-    uBCType[bID] = vBCType[bID] = wBCType[bID] = velMap[bcID];
-    if (bcID == 4) uBCType[bID] = DIRICHLET; 
-    if (bcID == 5) vBCType[bID] = DIRICHLET; 
-    if (bcID == 6) wBCType[bID] = DIRICHLET;
-    pBCType[bID] = prMap[bcID];;
+    string bcTypeText(bcMap::text(bID, "velocity"));
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
+
+    uBCType[bID] = bcMap::type(bID, "x-velocity");
+    vBCType[bID] = bcMap::type(bID, "y-velocity");
+    wBCType[bID] = bcMap::type(bID, "z-velocity");
+    pBCType[bID] = bcMap::type(bID, "pressure");
   }
  
   //default solver tolerances 
@@ -432,8 +430,8 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      ins->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "velocity");
-      int bc = ins->EToB[cnt];
+      int bc = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "velocity");
+      ins->EToB[cnt] = bc;
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
 	  int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -691,6 +689,11 @@ ins_t *setup(mesh_t *mesh, setupAide &options)
                                     ins->EToB);
 
   ins->computedDh = 0; 
+
+  if(mesh->rank == 0) {
+    size_t dMB = mesh->device.memoryAllocated() / 1e6;
+    cout << "device memory allocation: " << dMB << " MB" << endl;
+  }
    
   return ins;
 }
@@ -699,6 +702,8 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 {
 
   mesh_t *mesh = ins->mesh; 
+
+  if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
 
   cds_t *cds = new cds_t(); 
   string install_dir;
@@ -796,27 +801,21 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
   cds->TOL = 1e-6;
 
-  const int scalMap[4] = {0,DIRICHLET,NEUMANN,NEUMANN};
-  const int nbrBIDs = nekData.NboundaryIDs;
+  const int nbrBIDs = bcMap::size();
 
   int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    int bcID = bcMap::lookup(bID, "scalar01");
-    if(mesh->rank == 0 && bcID == -1) {
-      printf("Cannot find scalar bcType for bID %d!", bID); 
-      EXIT(1);
-    }
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, 
-                               bcMap::IDToText(bcID, "scalar01").c_str());
-    sBCType[bID] = scalMap[bcID];
+    string bcTypeText(bcMap::text(bID, "scalar01"));
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
+    sBCType[bID] = bcMap::type(bID, "scalar01");
   }
 
   cds->solver = new elliptic_t();
   cds->solver->mesh = mesh;
   cds->solver->options = cds->options;
-  cds->solver->dim = ins->dim;
-  cds->solver->elementType = ins->elementType;
+  cds->solver->dim = cds->dim;
+  cds->solver->elementType = cds->elementType;
   cds->solver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(cds->solver->BCType,sBCType,(nbrBIDs+1)*sizeof(int));
   ellipticSolveSetup(cds->solver, cds->lambda, kernelInfoH); 
@@ -833,8 +832,8 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   int cnt = 0;
   for (int e=0;e<mesh->Nelements;e++) {
     for (int f=0;f<mesh->Nfaces;f++) {
-      cds->EToB[cnt] = bcMap::lookup(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
-      int bc = cds->EToB[cnt];
+      int bc = bcMap::id(mesh->EToB[f+e*mesh->Nfaces], "scalar01");
+      cds->EToB[cnt] = bc;
       if (bc>0) {
         for (int n=0;n<mesh->Nfp;n++) {
           int fid = mesh->faceNodes[n+f*mesh->Nfp];
@@ -922,14 +921,14 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   }
 
   // set kernel name suffix
-  if(ins->elementType==QUADRILATERALS)
+  if(cds->elementType==QUADRILATERALS)
      suffix = "Quad2D";
-  if(ins->elementType==HEXAHEDRA)
+  if(cds->elementType==HEXAHEDRA)
      suffix = "Hex3D";
 
-  for (int r=0;r<mesh->size;r++) {
-    if (r==mesh->rank) {
-      
+  for (int r=0;r<2;r++){
+    if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
+
       fileName = install_dir + "/okl/cdsHaloExchange.okl";
       
       kernelName = "cdsHaloGet";

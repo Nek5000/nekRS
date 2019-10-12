@@ -13,8 +13,6 @@
 #define NEKRS_VERSION "0"
 #define NEKRS_SUBVERSION "2"
 
-#define NEKLDIMT 2
-
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
 
 #include "libParanumal.hpp"

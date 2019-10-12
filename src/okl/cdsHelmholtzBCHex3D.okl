@@ -36,7 +36,7 @@
     bc.z   = z[bc.idM]; \
                                                                       \
     const dfloat WsJ = sgeo[sk*p_Nsgeo+p_WSJID];      \
-    bc.sxP=0.f; bc.syP=0.f; bc.szP =0.f; bc.sP=0.f;                                        \
+    bc.sF= 0.f; bc.sP=0.f;                                        \
     bc.id = mapB[bc.idM];                                 \
    if(bc.id==1) {                                                            \
       cdsDirichletConditions3D(&bc);\
@@ -46,7 +46,7 @@
     }                                                                       \
                                                                         \
     s_U  [j][i] =  bc.sP;							\
-    s_ndU[j][i] = -WsJ*(bc.nx*bc.sxP + bc.ny*bc.syP + bc.nz*bc.szP);		\
+    s_ndU[j][i] = -WsJ*(bc.sF);          \
   }
 
 //RHS contributions for continuous solver

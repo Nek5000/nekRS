@@ -14,60 +14,42 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU);
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U);
 
-void runTime(ins_t *ins)
+double etime0 = 0;
+
+void runStep(ins_t *ins, dfloat time, int tstep)
 {
   mesh_t *mesh = ins->mesh;
-  cds_t *cds = ins->cds; 
+  cds_t *cds = ins->cds;
 
-  double etime0 = MPI_Wtime();
-  for(int tstep=0;tstep<ins->NtimeSteps;++tstep){
+  if(tstep<=1){
+    etime0 = MPI_Wtime();
+    extbdfCoefficents(ins,tstep);
+  } else if(tstep<=2 && ins->temporalOrder>=2){ 
+    extbdfCoefficents(ins,tstep);
+  } else if(tstep<=3 && ins->temporalOrder>=3){ 
+    extbdfCoefficents(ins,tstep);
+  }
 
-    if(tstep<1) 
-      extbdfCoefficents(ins,tstep+1);
-    else if(tstep<2 && ins->temporalOrder>=2) 
-      extbdfCoefficents(ins,tstep+1);
-    else if(tstep<3 && ins->temporalOrder>=3) 
-      extbdfCoefficents(ins,tstep+1);
+  if(ins->Nscalar) scalarSolve(ins, time, ins->dt, cds->o_S); 
+  velocitySolve(ins, time, ins->dt, ins->o_U);
 
-    dfloat time = ins->startTime + tstep*ins->dt;
+  dfloat cfl = computeCFL(ins, time+ins->dt, tstep);
+  if (cfl > 20) {
+    if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
+    EXIT(0);
+  }
 
-    ins->isOutputStep = 0;
-    nek_ifoutfld(0);
-    if (ins->outputStep > 0) {
-      if (((tstep+1)%(ins->outputStep))==0 ||  tstep+1 == ins->NtimeSteps) {
-        ins->isOutputStep = 1;
-        nek_ifoutfld(1);
-      }
-    }
-    
-    if(ins->Nscalar) scalarSolve(ins, time, ins->dt, cds->o_S); 
-    velocitySolve(ins, time, ins->dt, ins->o_U);
+  if (mesh->rank==0) {
+    if(ins->Nscalar)
+      printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: %d  tElapsed= %.5e s\n",
+        tstep, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+        ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
+    else
+      printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
+        tstep, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+        ins->NiterP, MPI_Wtime()-etime0);
 
-    dfloat cfl = computeCFL(ins, time+ins->dt, tstep+1);
-    if (cfl > 20) {
-      if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
-      EXIT(0);
-    }
-
-    if (mesh->rank==0) {
-      if(ins->Nscalar)
-        printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: %d  tElapsed= %.5e s\n",
-          tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-          ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
-      else
-        printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
-          tstep+1, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-          ins->NiterP, MPI_Wtime()-etime0);
-
-      if ((tstep+1)%5==0) fflush(stdout);
-    }
-
-    if (ins->isOutputStep) nek_ocopyFrom(ins, time+ins->dt, tstep+1); 
-
-    if (udf.executeStep) udf.executeStep(ins, time+ins->dt, tstep+1);
-
-    if (ins->isOutputStep) nek_outfld(); 
-
+    if (tstep%5==0) fflush(stdout);
   }
 }
 

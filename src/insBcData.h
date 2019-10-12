@@ -58,8 +58,8 @@ struct bcData
 
    dfloat* wrk;
 
-   dfloat sM, sP; 
-   dfloat sxM, syM, szM;
-   dfloat sxP, syP, szP;
+   dfloat sM, sP, sF; 
+   // dfloat sxM, syM, szM;
+   // dfloat sxP, syP, szP;
 
 };
