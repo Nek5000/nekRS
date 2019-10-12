@@ -4,38 +4,48 @@
 #include <stdlib.h>
 
 #include "udf.hpp"
+#include "environment.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
-void udfBuild(const char *udfFile)
+void udfBuild(const std::string udfFile)
 {
-  char cmd[BUFSIZ];
-  char abs_path[BUFSIZ];
-  char *ptr;
   int retval;
-
-  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
-  const char *udf_dir = getenv("NEKRS_UDF_DIR");
+  std::stringstream cmd;
 
   printf("building udf ... "); fflush(stdout);
-  sprintf(cmd, "mkdir -p %s/udf", cache_dir);
-  system(cmd);
+  os::makeDir(os::joinPath(env::cacheDir(),"udf"));
 
-  ptr = realpath(udfFile, abs_path);
-  if(!ptr) {
-    printf("\nERROR: Cannot find %s!\n", udfFile);
+  if(!os::exist(udfFile) || !os::readable(udfFile)) {
+    std::cout << "ERROR: Cannot find or read: " << udfFile << std::endl;
     exit(EXIT_FAILURE);
   }
- 
-  sprintf(cmd,"cp %s/CMakeLists.txt %s/udf", udf_dir, cache_dir);
-  system(cmd);
-  sprintf(cmd,"cd %s/udf && CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-      cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1", cache_dir, udf_dir, abs_path);
-  retval = system(cmd);
+
+  cmd << "cp " << os::joinPath(env::udfDir(),"/CMakeLists.txt") << " "
+      << os::joinPath(env::cacheDir(),"udf");
+  retval=system(cmd.str().c_str());
   if(retval) goto err;
 
-  sprintf(cmd,"cd %s/udf && make >>build.log 2>&1", cache_dir);
-  retval = system(cmd);
+  cmd.str(std::string());
+  cmd << "cp " << udfFile << " " <<os::joinPath(env::cacheDir(),"udf");
+  retval=system(cmd.str().c_str());
+  if(retval) goto err;
+
+  cmd.str(std::string());
+  cmd << "cd "              << env::cacheDir()    <<"/udf && "
+      << "CXX="             << env::cxxCompiler() << " "
+      << "CXXFLAGS=\""      << env::cxxFlags()    << "\" "
+      << "cmake -DUDF_DIR=" << env::udfDir()      << " " << "-DFILENAME=" << udfFile << " "
+      << "-DNEKRS_INSTALL_DIR=" << env::installDir() << " "
+      << "-DNEKRS_LIBP_DEFINES=" << env::libPDefines() << " . "
+      << ". >build.log 2>&1";
+  retval = system(cmd.str().c_str());
+  if(retval) goto err;
+
+  cmd.str(std::string());
+  cmd << "cd " << env::cacheDir() << "/udf && "
+      << "make >>build.log 2>&1";
+  retval = system(cmd.str().c_str());
   if(retval) goto err;
 
   printf("done\n");
@@ -44,7 +54,7 @@ void udfBuild(const char *udfFile)
   return;
 
 err:
-  printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
+  std::cout << "\nAn ERROR occured, see "<<env::cacheDir() << "/udf/build.log for details!\n";
   exit(EXIT_FAILURE);
 }
 

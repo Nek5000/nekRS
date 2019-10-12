@@ -33,7 +33,7 @@ typedef struct
 
 extern UDF udf;
 
-void udfBuild(const char *udfFile);
+void udfBuild(std::string udfFile);
 void udfLoad(void);
 void *udfLoadFunction(const char *fname, int errchk);
 occa::kernel udfBuildKernel(ins_t *ins, const char *function);
