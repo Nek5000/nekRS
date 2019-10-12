@@ -134,8 +134,8 @@ macro(set_shared_lib target_name builddir)
 endmacro()
 
 # switch to add_compile_definitions for cmake>=3.12
-add_definitions(-DNEKRS_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
-add_definitions(-DNEKRS_PATH_SEPARATOR="/")
+add_definitions(-DNEKRS_INSTALL_DIR=${CMAKE_INSTALL_PREFIX})
+add_definitions(-DNEKRS_PATH_SEPARATOR=/)
 
 ###############################################################################
 # Build OCCA                                                                  #

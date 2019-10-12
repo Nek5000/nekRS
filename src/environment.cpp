@@ -50,12 +50,11 @@ namespace env{
 
     buffer=std::stringstream(std::string(buf));
     std::string line;
-    while(std::getline(buffer,line))
-      m_.insert(
-        std::pair<std::string,std::string>(
-          line.substr(0,line.find(delim_)),line.erase(0,line.find(delim_)+delim_.length())
-        )
-      );
+    while(std::getline(buffer,line)){
+      auto key=line.substr(0,line.find(delim_));
+      auto value=line.erase(0,line.find(delim_)+delim_.length());
+      m_.insert(std::pair<std::string,std::string>(key,value));
+    }
 
     if(rank!=0) free(buf);
     return 0;

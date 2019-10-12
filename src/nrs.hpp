@@ -4,6 +4,7 @@
 #include <string>
 #include <mpi.h>
 #include "setupAide.hpp"
+#include "environment.hpp"
 
 namespace nrs {
   setupAide setup(MPI_Comm comm, int buildOnly, int sizeTarget,

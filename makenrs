@@ -128,7 +128,7 @@ fi
 mkdir -p ${NEKRS_INSTALL_DIR}/share > /dev/null 2>&1
 bashFile=${NEKRS_INSTALL_DIR}/share/config
 
-echo "NEKRS_CXX::=${NEKRS_CXX}" >> ${bashFile}
+echo "NEKRS_CXX::=${NEKRS_CXX}" > ${bashFile}
 echo "NEKRS_CC::=${NEKRS_CC}" >> ${bashFile}
 echo "NEKRS_FC::=${NEKRS_FC}" >> ${bashFile}
 echo "NEKRS_CXXFLAGS::=${NEKRS_CXXFLAGS}" >> ${bashFile}
