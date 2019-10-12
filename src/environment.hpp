@@ -5,8 +5,8 @@
 
 #include "mpi.h"
 
-#define stringify(x) stringify_(x)
 #define stringify_(x) #x
+#define stringify(x) stringify_(x)
 
 namespace os{
   /* private const variables */
@@ -20,7 +20,7 @@ namespace os{
 namespace env{
   /* private const variables */
   const static std::string installDir_(stringify(NEKRS_INSTALL_DIR));
-  const static std::string delim_="=";
+  const static std::string delim_="::=";
 
   /* private variables */
   static MPI_Comm comm_;

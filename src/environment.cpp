@@ -1,6 +1,9 @@
 #include <cstdlib>
-#include <fstream>
+#include <cstring>
 #include <cstdio>
+
+#include <fstream>
+#include <sstream>
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -25,24 +28,42 @@ namespace os{
 namespace env{
   static int readConfig(){
     int rank; MPI_Comm_rank(comm_,&rank);
+    int length;
+    std::string configData;
+    std::stringstream buffer;
+
     if(rank==0){
       std::ifstream config(os::joinPath(shareDir(),"config"));
-      std::string line;
       if(config.is_open()){
-        while(std::getline(config,line))
-          m_.insert(
-            std::pair<std::string,std::string>(
-              line.substr(0,line.find(delim_)),line.erase(0,line.find(delim_)+delim_.length())
-            )
-          );
+        buffer<<config.rdbuf();
+        configData=buffer.str();
+        length=configData.size()+1;
       } else return 1;
     }
+
+    MPI_Bcast(&length,1,MPI_INT,0,comm_);
+
+    char *buf=(char *)calloc(length,sizeof(char));
+    if(rank==0) std::strcpy(buf,configData.c_str());
+
+    MPI_Bcast(buf,length,MPI_BYTE,0,comm_);
+
+    buffer=std::stringstream(std::string(buf));
+    std::string line;
+    while(std::getline(buffer,line))
+      m_.insert(
+        std::pair<std::string,std::string>(
+          line.substr(0,line.find(delim_)),line.erase(0,line.find(delim_)+delim_.length())
+        )
+      );
+
+    if(rank!=0) free(buf);
     return 0;
   }
 
   int init(MPI_Comm comm){
     MPI_Comm_dup(comm,&comm_);
-    readConfig();
+    return readConfig();
   }
 
   std::string installDir(){
