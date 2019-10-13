@@ -31,9 +31,7 @@ SOFTWARE.
                            @restrict const  dfloat *  const M,
                            const dlong offset,
                            @restrict const  dfloat *  U,
-                           @restrict dfloat *  Wx,
-                           @restrict dfloat *  Wy,
-                           @restrict dfloat *  Wz){  
+                           @restrict dfloat *  W){
 
 for(dlong e=0;e<Nelements;e++;@outer(0)){  // for all elements
 
@@ -120,9 +118,9 @@ for(dlong e=0;e<Nelements;e++;@outer(0)){  // for all elements
           
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
-          Wx[id+0*offset] = vortx;
-          Wy[id+0*offset] = vorty;
-          Wz[id+0*offset] = vortz;
+          W[id+0*offset] = vortx;
+          W[id+1*offset] = vorty;
+          W[id+2*offset] = vortz;
 
         }
       }

@@ -63,7 +63,7 @@
 
 //RHS contributions for continuous solver
 @kernel void insVelocityBCHex3D(const dlong Nelements,
-        const dlong offset, 
+                                const dlong offset, 
 				@restrict const  dfloat *  ggeo,
 				@restrict const  dfloat *  sgeo,
 				@restrict const  dfloat *  D,
@@ -78,11 +78,9 @@
 				@restrict const  dfloat *  y,
 				@restrict const  dfloat *  z,
 				@restrict const  int    *  mapB,
-        @restrict const  dfloat *  W,
-        @restrict const  dfloat *  U,
-				@restrict dfloat *  rhsU,
-				@restrict dfloat *  rhsV,
-				@restrict dfloat *  rhsW){
+                                @restrict const  dfloat *  W,
+                                @restrict const  dfloat *  U,
+				@restrict dfloat *  rhsU){
 
 
   for(dlong e=0; e<Nelements; ++e; @outer(0)){
@@ -430,9 +428,9 @@
 #pragma unroll p_Nq
 	for(int k = 0; k < p_Nq; k++){
 	  const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
-	  rhsU[id] -= r_rhsU[k];
-	  rhsV[id] -= r_rhsV[k];
-	  rhsW[id] -= r_rhsW[k];
+	  rhsU[id + 0*offset] -= r_rhsU[k];
+	  rhsU[id + 1*offset] -= r_rhsV[k];
+	  rhsU[id + 2*offset] -= r_rhsW[k];
 	}
       }
     }
@@ -453,9 +451,7 @@
                                    @restrict const  int    *  mapB,
                                    @restrict const  dfloat *  W,
                                    @restrict const  dfloat *  U,
-				   @restrict dfloat *  UH,
-				   @restrict dfloat *  VH,
-				   @restrict dfloat *  WH){
+				   @restrict dfloat *  UH){
 
   for(dlong e=0;e<Nelements;e++;@outer(0)){
     for(int f=0; f<p_Nfaces; f++){
@@ -482,7 +478,9 @@
           bc.vM = U[bc.idM + 1*offset]; 
           bc.wM = U[bc.idM + 2*offset]; 
    
-          bc.uP = UH[bc.idM]; bc.vP = VH[bc.idM]; bc.wP = WH[bc.idM]; 
+          bc.uP = UH[bc.idM + 0*offset]; 
+          bc.vP = UH[bc.idM + 1*offset];
+          bc.wP = UH[bc.idM + 2*offset]; 
           bc.pP = 0.f;  bc.wrk = (dfloat *) W;
           bc.fieldOffset = offset; 
 	  
@@ -497,9 +495,9 @@
 	  }else if(bc.id==6){
 	    bc.wP = 0.f; // vP = vM ; uP = uM;           
 	  }
-	  UH[bc.idM] = bc.uP;
-	  VH[bc.idM] = bc.vP;
-	  WH[bc.idM] = bc.wP;
+	  UH[bc.idM + 0*offset] = bc.uP;
+	  UH[bc.idM + 1*offset] = bc.vP;
+	  UH[bc.idM + 2*offset] = bc.wP;
 	}    
       }
     }
