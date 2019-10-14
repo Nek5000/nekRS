@@ -66,42 +66,29 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
 
   // compute samples of q at interpolation nodes
   ins->U     = (dfloat*) calloc(ins->NVfields*ins->Nstages*Ntotal,sizeof(dfloat));
-  ins->P     = (dfloat*) calloc(              ins->Nstages*Ntotal,sizeof(dfloat));
+  ins->P     = (dfloat*) calloc(Ntotal,sizeof(dfloat));
 
   //rhs storage
-  ins->rhsU  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
-  ins->rhsV  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
-  ins->rhsW  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->rhsU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
   ins->rhsP  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
 
   //additional field storage
   ins->NU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
-  ins->LU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
-  ins->GP   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
 
-  ins->GU   = (dfloat*) calloc(ins->NVfields*Ntotal*4,sizeof(dfloat));
-  
-  ins->rkU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-  ins->rkP  = (dfloat*) calloc(              Ntotal,sizeof(dfloat));
   ins->PI   = (dfloat*) calloc(              Ntotal,sizeof(dfloat));
   
   ins->rkNU = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-  ins->rkLU = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-  ins->rkGP = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
 
   ins->FU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
 
-  //extra storage for interpolated fields
-  ins->cU = (dfloat *) calloc(ins->NVfields*mesh->Nelements*mesh->cubNp,sizeof(dfloat));
+  ins->Ue   = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
 
   options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
 
   if(ins->Nsubsteps){
     ins->Ud    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-    ins->Ue    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
     ins->resU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
     ins->rhsUd = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-    ins->cUd   = (dfloat*) calloc(ins->NVfields*mesh->Nelements*mesh->cubNp,sizeof(dfloat));
 
     // Prepare RK stages for Subcycling Part
    
@@ -188,6 +175,12 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   else
     meshOccaSetup2D(mesh, options, kernelInfo);
 
+  // free what is not required
+  mesh->o_cubsgeo.free();
+  mesh->o_cubggeo.free();
+  mesh->o_cubsgeo = (void *) NULL;
+  mesh->o_cubggeo = (void *) NULL;
+
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
@@ -239,8 +232,9 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfo["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-  ins->o_U = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
-  ins->o_P = mesh->device.malloc(              ins->Nstages*Ntotal*sizeof(dfloat), ins->P);
+  ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
+  ins->o_Ue = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
+  ins->o_P  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->P);
 
 /*
   if (mesh->rank==0 && options.compareArgs("VERBOSE","TRUE"))
@@ -258,11 +252,9 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
 
   if(ins->Nsubsteps){
     // Note that resU and resV can be replaced with already introduced buffer
-    ins->o_Ue    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
     ins->o_Ud    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ud);
     ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
     ins->o_rhsUd = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsUd);
-    ins->o_cUd = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cUd);
   }
 
   dfloat rkC[4] = {1.0, 0.0, -1.0, -2.0};
@@ -282,27 +274,17 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   ins->o_Wrk   = mesh->device.malloc(1*sizeof(dfloat), ins->Wrk);
  
   // MEMORY ALLOCATION
-  ins->o_rhsU  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsU);
-  ins->o_rhsV  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsV);
-  ins->o_rhsW  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsW);
+  ins->o_rhsU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsU);
   ins->o_rhsP  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsP);
   //storage for helmholtz solves
-  ins->o_UH = mesh->device.malloc(Ntotal*sizeof(dfloat));
-  ins->o_VH = mesh->device.malloc(Ntotal*sizeof(dfloat));
-  ins->o_WH = mesh->device.malloc(Ntotal*sizeof(dfloat));
+  ins->o_UH    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat));
 
   ins->o_FU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->FU);
   ins->o_NU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->NU);
-  ins->o_GP    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->GP);
-  ins->o_rkGP  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rkGP);
 
-  ins->o_NC = ins->o_GP; // Use GP storage to store curl(curl(u)) history
+  ins->o_NC    = ins->o_UH;
 
-  ins->o_rkU   = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rkU);
-  ins->o_rkP   = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->rkP);
   ins->o_PI    = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->PI);
-
-  ins->o_cU = mesh->device.malloc(ins->NVfields*mesh->Nelements*mesh->cubNp*sizeof(dfloat), ins->cU);
 
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(ins); 
@@ -744,8 +726,6 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   // Use Nsubsteps if INS does to prevent stability issues
   cds->Nsubsteps = ins->Nsubsteps; 
 
-  cds->Ue      = (dfloat*) calloc(cds->NVfields*Ntotal,sizeof(dfloat));
-  
   if(cds->Nsubsteps){
     // This memory can be reduced, check later......!!!!!!!
     cds->Sd      = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
@@ -768,7 +748,9 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   kernelInfo["defines/" "p_NTSfields"]= (cds->NVfields+cds->NSfields + 1);
   kernelInfo["defines/" "p_diff"]      = cds->diff;
  
-  cds->o_U = ins->o_U;
+  cds->o_U  = ins->o_U;
+  cds->o_Ue = ins->o_Ue;
+
   cds->o_S = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
 
   string suffix, fileName, kernelName;
@@ -973,8 +955,6 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
       kernelName = "cdsInvMassMatrix" + suffix;
       cds->invMassMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
 
-      cds->o_Ue     = mesh->device.malloc(cds->NVfields*Ntotal*sizeof(dfloat), cds->Ue);
-      
       if(cds->Nsubsteps){
         // Note that resU and resV can be replaced with already introduced buffer
         cds->o_Sd     = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->Sd);

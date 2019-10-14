@@ -38,7 +38,7 @@
                                 @restrict const  dfloat *  NU,
                                 @restrict const  dfloat *  NC,
                                 @restrict const  dfloat *  FU,
-                                      @restrict dfloat *  rhsU){
+                                @restrict dfloat *  rhsU){
 
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
@@ -58,54 +58,45 @@
               dfloat rhsWn;
 
               if (p_SUBCYCLING) {
-                 // Characteristic Velocity
-                 rhsUn = idt*NU[id+0*fieldOffset]; 
-                 rhsVn = idt*NU[id+1*fieldOffset]; 
-                 rhsWn = idt*NU[id+2*fieldOffset]; 
+                rhsUn = idt*NU[id+0*fieldOffset] - nu*NC[id+0*fieldOffset];
+                rhsVn = idt*NU[id+1*fieldOffset] - nu*NC[id+1*fieldOffset]; 
+                rhsWn = idt*NU[id+2*fieldOffset] - nu*NC[id+2*fieldOffset]; 
 
                 for (int s=0;s<p_Nstages;s++) {
-                  // Curl Curl
-                  const dfloat NCx  = NC[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-                  const dfloat NCy  = NC[id+1*fieldOffset+s*p_NVfields*fieldOffset];               
-                  const dfloat NCz  = NC[id+2*fieldOffset+s*p_NVfields*fieldOffset];               
                   // FU
                   const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
-                  rhsUn += extbdfA[s]*(FUx - nu*NCx);
-                  rhsVn += extbdfA[s]*(FUy - nu*NCy);
-                  rhsWn += extbdfA[s]*(FUz - nu*NCz);
-		           }
+                  rhsUn += extbdfA[s]*FUx;
+                  rhsVn += extbdfA[s]*FUy;
+                  rhsWn += extbdfA[s]*FUz;
+		}
       	      } else {
-            		rhsUn = 0.f;
-            		rhsVn = 0.f;
-            		rhsWn = 0.f;
+                        rhsUn = - nu*NC[id+0*fieldOffset];
+                        rhsVn = - nu*NC[id+1*fieldOffset]; 
+                        rhsWn = - nu*NC[id+2*fieldOffset]; 
 
-            		for (int s=0;s<p_Nstages;s++) {
-            		  //U 
-            		  const dfloat Um   = U[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat Vm   = U[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat Wm   = U[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-            		  // NU
-            		  const dfloat NUm  = NU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat NVm  = NU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat NWm  = NU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-            		  // GP
-            		  const dfloat NCx  = NC[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat NCy  = NC[id+1*fieldOffset+s*p_NVfields*fieldOffset];               
-            		  const dfloat NCz  = NC[id+2*fieldOffset+s*p_NVfields*fieldOffset];               
-            		  // FU
-            		  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-            		  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+           		for (int s=0;s<p_Nstages;s++) {
+           		  //U 
+           		  const dfloat Um   = U[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat Vm   = U[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat Wm   = U[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+           		  // NU
+           		  const dfloat NUm  = NU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat NVm  = NU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat NWm  = NU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+           		  // FU
+           		  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+           		  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
-            		  rhsUn += idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx + nu*NCx);
-            		  rhsVn += idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy + nu*NCy);
-            		  rhsWn += idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz + nu*NCz);
+           		  rhsUn += idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx);
+           		  rhsVn += idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy);
+           		  rhsWn += idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz);
       		        } 
-	             }
-               //
+	      }
+              //
       	      rhsU[id + 0*fieldOffset] = rhsUn;
       	      rhsU[id + 1*fieldOffset] = rhsVn;
       	      rhsU[id + 2*fieldOffset] = rhsWn;

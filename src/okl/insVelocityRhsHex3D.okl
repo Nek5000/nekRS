@@ -38,9 +38,7 @@ SOFTWARE.
                                       @restrict const  dfloat *  NU,
                                       @restrict const  dfloat *  FU,
                                       @restrict const  dfloat *  GP,
-                                            @restrict dfloat *  rhsU,
-                                            @restrict dfloat *  rhsV,
-                                            @restrict dfloat *  rhsW){
+                                      @restrict dfloat *  rhsU){
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
     for(int es=0;es<p_NblockV;++es;@inner(2)){// for all elements in block
@@ -104,9 +102,9 @@ SOFTWARE.
                 }
               }
 
-              rhsU[id] = rhsUn;
-              rhsV[id] = rhsVn;
-              rhsW[id] = rhsWn;
+              rhsU[id + 0*fieldOffset] = rhsUn;
+              rhsU[id + 1*fieldOffset] = rhsVn;
+              rhsU[id + 2*fieldOffset] = rhsWn;
             }
           }
         }

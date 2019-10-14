@@ -1,6 +1,10 @@
 #include "nekrs.hpp"
 
-void getDh(ins_t *ins){
+static int firstTime = 1;
+static dfloat *tmp;
+static occa::memory o_tmp;
+
+void setup(ins_t *ins){
 
   mesh_t *mesh = ins->mesh; 
   
@@ -23,16 +27,18 @@ void getDh(ins_t *ins){
     free(dH); 
   }
 
-  ins->computedDh = 1; 
+  tmp = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
+  o_tmp = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp);
+
+  firstTime = 0; 
 
 }
 
 dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
 
   mesh_t *mesh = ins->mesh; 
-  // create dH i.e. nodal spacing in reference coordinates
-  if(!ins->computedDh)
-    getDh(ins);
+  if(firstTime) setup(ins);
+
   // Compute cfl factors i.e. dt* U / h 
   ins->cflKernel(mesh->Nelements,
                  ins->dt, 
@@ -44,8 +50,6 @@ dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
   
   // find the local maximum of CFL number
   const dlong Ntotal = mesh->Np*mesh->Nelements; 
-  dfloat *tmp        = (dfloat *) calloc(ins->Nblock, sizeof(dfloat));
-  occa::memory o_tmp = mesh->device.malloc(ins->Nblock*sizeof(dfloat), tmp);
   ins->maxKernel(Ntotal, ins->o_rhsU, o_tmp);
   o_tmp.copyTo(tmp);
   
@@ -58,7 +62,6 @@ dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
   dfloat gcfl = 0.f;
   MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, mesh->comm);
   
-  free(tmp);
   return gcfl; 
 }
 

@@ -24,7 +24,6 @@
 
 */
 
-// Trying to find difference between enstrophy generation in libP and Nek5K
 @kernel void insSubCycleStrongCubatureVolumeHex3D(const dlong Nelements,
 					       @restrict const  dfloat *  vgeo,
 					       @restrict const  dfloat *  cubvgeo,
@@ -35,8 +34,6 @@
 					       const dlong offset,
 					       @restrict const  dfloat *  U,
 					       @restrict const  dfloat *  Ud,
-					       @restrict dfloat *  cU, //storage for interpolated fields
-					       @restrict dfloat *  cUd, //storage for interpolated fields
 					       @restrict dfloat *  NU){
   
   // (phi, U.grad Ud)

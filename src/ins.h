@@ -55,11 +55,10 @@ typedef struct {
   dfloat idt, inu; // hold some inverses
   
   dfloat *U, *P;
-  dfloat *NU, *LU, *GP;
-  dfloat *GU;   
-  dfloat *rhsU, *rhsV, *rhsW, *rhsP;   
-  dfloat *rkU, *rkP, *PI;
-  dfloat *rkNU, *rkLU, *rkGP;
+  dfloat *NU, *GP;
+  dfloat *rhsU, *rhsP;   
+  dfloat *PI;
+  dfloat *rkNU;
 
   dfloat *FU; // Additional source terms for explicit contribution
   
@@ -101,9 +100,6 @@ typedef struct {
   dfloat *Ud, *Ue, *resU, *rhsUd, sdt;
   occa::memory o_Ud, o_Ue, o_resU, o_rhsUd;
 
-  dfloat *cU, *cUd;
-  occa::memory o_cU, o_cUd;
-
   dfloat *Wrk;
   occa::memory o_Wrk; 
 
@@ -134,16 +130,15 @@ typedef struct {
   occa::kernel constrainKernel;
   
   occa::memory o_U, o_P;
-  occa::memory o_rhsU, o_rhsV, o_rhsW, o_rhsP; 
+  occa::memory o_rhsU, o_rhsP; 
 
-  occa::memory o_NU, o_LU, o_GP, o_NC;
-  occa::memory o_GU;
+  occa::memory o_NU, o_GP, o_NC;
 
   occa::memory o_FU; 
 
-  occa::memory o_UH, o_VH, o_WH;
-  occa::memory o_rkU, o_rkP, o_PI;
-  occa::memory o_rkNU, o_rkLU, o_rkGP;
+  occa::memory o_UH;
+  occa::memory o_PI;
+  occa::memory o_rkNU;
 
   occa::memory o_Vort, o_Div;
 
