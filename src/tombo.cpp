@@ -226,32 +226,6 @@ void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP)
 {
   mesh_t *mesh = ins->mesh;
 
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.finish();
-    
-    // switch to data stream
-    mesh->device.setStream(mesh->dataStream);
-
-    int one = 1;
-    dlong Ndata = one*mesh->Nfp*mesh->totalHaloPairs;
-
-    ins->haloGetKernel(mesh->totalHaloPairs,
-		       one,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloGetNodeIds,
-		       o_P,
-		       ins->o_pHaloBuffer);   
-    
-    // copy extracted halo to HOST 
-    ins->o_pHaloBuffer.copyTo(ins->pSendBuffer,
-			      Ndata*sizeof(dfloat), 0, "async: true");
-    
-    mesh->device.setStream(mesh->defaultStream);
-  }
-  
   // Compute Volume Contribution
   ins->gradientVolumeKernel(mesh->Nelements,
 			    mesh->o_vgeo,
@@ -260,69 +234,12 @@ void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP)
                             o_P,
                             o_GP);
 
-  // COMPLETE HALO EXCHANGE
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.setStream(mesh->dataStream);
-    mesh->device.finish();
-
-    // start halo exchange
-    meshHaloExchangeStart(mesh,
-			  mesh->Nfp*sizeof(dfloat),
-			  ins->pSendBuffer,
-			  ins->pRecvBuffer);
-    
-    meshHaloExchangeFinish(mesh);
-    
-    int one = 1;
-    dlong Ndata = one*mesh->Nfp*mesh->totalHaloPairs;
-    
-    ins->o_pHaloBuffer.copyFrom(ins->pRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
-    
-    ins->haloPutKernel(mesh->totalHaloPairs,
-		       one,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloPutNodeIds,
-		       ins->o_pHaloBuffer,
-		       o_P);
-
-    mesh->device.finish();
-    mesh->device.setStream(mesh->defaultStream);
-    mesh->device.finish();
-  }
 }
 
 // Compute divergence of the velocity field using physical boundary data at t = time. 
 void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU){
 
   mesh_t *mesh = ins->mesh;
-
-  //  if (ins->vOptions.compareArgs("DISCRETIZATION","IPDG")) {
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.finish();
-    
-    // switch to data stream
-    mesh->device.setStream(mesh->dataStream);
-    
-    ins->haloGetKernel(mesh->totalHaloPairs,
-		       ins->NVfields,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloGetNodeIds,
-		       o_U,
-		       ins->o_vHaloBuffer);
-    
-    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
-    
-    // copy extracted halo to HOST 
-    ins->o_vHaloBuffer.copyTo(ins->vSendBuffer, Ndata*sizeof(dfloat), 0, "async: true");// zero offset             
-
-    mesh->device.setStream(mesh->defaultStream);
-  }
 
   // computes div u^(n+1) volume term
   ins->divergenceVolumeKernel(mesh->Nelements,
@@ -331,35 +248,6 @@ void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU)
                              ins->fieldOffset,
                              o_U,
                              o_DU);
-  
-  if(mesh->totalHaloPairs>0){
-
-    // make sure compute device is ready to perform halo extract
-    mesh->device.setStream(mesh->dataStream);
-    mesh->device.finish();
-    
-    // start halo exchange
-    meshHaloExchangeStart(mesh,
-			  mesh->Nfp*(ins->NVfields)*sizeof(dfloat),
-			  ins->vSendBuffer,
-			  ins->vRecvBuffer);
-        
-    meshHaloExchangeFinish(mesh);
-    
-    dlong Ndata = ins->NVfields*mesh->Nfp*mesh->totalHaloPairs;
-    
-    ins->o_vHaloBuffer.copyFrom(ins->vRecvBuffer, Ndata*sizeof(dfloat), 0);  // zero offset
-    
-    ins->haloPutKernel(mesh->totalHaloPairs,
-		       ins->NVfields,
-		       ins->fieldOffset,
-		       mesh->o_haloElementList,
-		       mesh->o_haloPutNodeIds,
-		       ins->o_vHaloBuffer,
-		       o_U);
-
-    mesh->device.setStream(mesh->defaultStream);
-  }
   
   //computes div u^(n+1) surface term
   const dfloat lambda = -ins->g0*ins->idt; 
