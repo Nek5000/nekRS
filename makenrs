@@ -107,6 +107,11 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
+NEKRS_BUILD_TYPE=None
+if [ ${NEKRS_DEBUG} -ne 0 ]; then
+  NEKRS_BUILD_TYPE=Debug
+fi
+
 ################################################################################
 # See if its just cleaning and if yes, clean and exit
 ################################################################################
@@ -123,56 +128,6 @@ if [ "$#" -eq 1 ]; then
 fi
 
 ################################################################################
-# Install bin/bashrc file
-################################################################################
-mkdir -p ${NEKRS_INSTALL_DIR}/bin > /dev/null 2>&1
-bashFile=${NEKRS_INSTALL_DIR}/bin/nekrs.bashrc
-
-echo "#!/bin/bash" > ${bashFile}
-
-echo ": \${NEKRS_CXX:=${NEKRS_CXX}}" >> ${bashFile}
-echo ": \${NEKRS_CC:=${NEKRS_CC}}" >> ${bashFile}
-echo ": \${NEKRS_FC:=${NEKRS_FC}}" >> ${bashFile}
-echo ": \${NEKRS_CXXFLAGS:=${NEKRS_CXXFLAGS}}" >> ${bashFile}
-echo ": \${NEKRS_CFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
-echo ": \${NEKRS_FFLAGS:=\${NEKRS_CXXFLAGS}}" >> ${bashFile}
-echo ": \${NEKRS_DEBUG:=${NEKRS_DEBUG}}" >> ${bashFile}
-echo ": \${NEKRS_INSTALL_DIR:=${NEKRS_INSTALL_DIR}}" >> ${bashFile}
-echo ": \${NEKRS_NEK5000_DIR:=\${NEKRS_INSTALL_DIR}/nek5000}" >> ${bashFile}
-echo ": \${NEKRS_NEK5000_PPLIST:=${NEKRS_NEK5000_PPLIST}}" >> ${bashFile}
-echo ": \${NEKRS_LIBP_DIR:=\${NEKRS_INSTALL_DIR}/libparanumal}" >> ${bashFile}
-echo ": \${NEKRS_LIBP_DEFINES:=${NEKRS_LIBP_DEFINES}}" >> ${bashFile}
-echo ": \${NEKRS_UDF_DIR:=\${NEKRS_INSTALL_DIR}/udf}" >> ${bashFile}
-echo ": \${NEKRS_NEKINTERFACE_DIR:=\${NEKRS_INSTALL_DIR}/nekInterface}" >> ${bashFile}
-echo ": \${OCCA_CXX:=\${NEKRS_CXX}}" >> ${bashFile}
-echo ": \${OCCA_CXXFLAGS:=\${NEKRS_CXXFLAGS} \${NEKRS_LIBP_DEFINES}}" >> ${bashFile}
-echo ": \${OCCA_DIR:=\${NEKRS_INSTALL_DIR}/occa}" >> ${bashFile}
-
-echo "export NEKRS_CC" >> ${bashFile}
-echo "export NEKRS_CXX" >> ${bashFile}
-echo "export NEKRS_FC" >> ${bashFile}
-echo "export NEKRS_CFLAGS" >> ${bashFile}
-echo "export NEKRS_CXXFLAGS" >> ${bashFile}
-echo "export NEKRS_FFLAGS" >> ${bashFile}
-echo "export NEKRS_DEBUG" >> ${bashFile}
-echo "export NEKRS_INSTALL_DIR" >> ${bashFile}
-echo "export NEKRS_EXAMPLES=${NEKRS_INSTALL_DIR}/examples" >> ${bashFile}
-echo "export NEKRS_NEK5000_DIR" >> ${bashFile}
-echo "export NEKRS_NEK5000_PPLIST" >> ${bashFile}
-echo "export NEKRS_LIBP_DIR" >> ${bashFile}
-echo "export NEKRS_LIBP_DEFINES" >> ${bashFile}
-echo "export NEKRS_UDF_DIR" >> ${bashFile}
-echo "export NEKRS_NEKINTERFACE_DIR" >> ${bashFile}
-echo "export OCCA_CXX" >> ${bashFile}
-echo "export OCCA_CXXFLAGS" >> ${bashFile}
-echo "export OCCA_DIR" >> ${bashFile}
-echo "export PATH=\"\${NEKRS_INSTALL_DIR}/bin:\${OCCA_DIR}/bin:\${PATH}\"" >> ${bashFile}
-
-NEKRS_BUILD_TYPE=None
-if [ ${NEKRS_DEBUG} -ne 0 ]; then
-  NEKRS_BUILD_TYPE=Debug
-fi
-################################################################################
 # Build NekRS 
 ################################################################################
 nekrs_info "Building NekRS ..."
@@ -181,12 +136,17 @@ mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 
 cd "${NEKRS_BUILD_DIR}"
-  FC="${NEKRS_FC}" CC="${NEKRS_CC}" CXX="${NEKRS_CXX}" \
-  FFLAGS="${NEKRS_FFLAGS}" CFLAGS="${NEKRS_CFLAGS}" CXXFLAGS="${NEKRS_CXXFLAGS}" \
-  cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
-        -DCMAKE_INSTALL_PREFIX=${NEKRS_INSTALL_DIR} \
-        -DNEK5000_PPLIST=${NEKRS_NEK5000_PPLIST} \
-        ${NEKRS_DIR} && make install
+cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
+      -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
+      -DCMAKE_C_COMPILER="${NEKRS_CC}" \
+      -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
+      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_INSTALL_PREFIX=${NEKRS_INSTALL_DIR} \
+      -DNEK5000_PPLIST=${NEKRS_NEK5000_PPLIST} \
+      -DLIBP_DEFINES=${NEKRS_LIBP_DEFINES} \
+      ${NEKRS_DIR} && make install
 
 
 if [ $? -ne 0 ]; then

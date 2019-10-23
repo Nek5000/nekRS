@@ -7,6 +7,12 @@ if [ ! -d occa ]; then
   clone_occa 
 fi
 
+export OCCA_DIR
+export OCCA_CUDA_ENABLED
+export OCCA_HIP_ENABLED
+export OCCA_OPENCL_ENABLED
+export OCCA_METAL_ENABLED
+
 cd occa
 make CC="${NEKRS_CC}" \
   CFLAGS="${NEKRS_CFLAGS}" \
