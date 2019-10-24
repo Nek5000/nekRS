@@ -101,7 +101,11 @@ else()
   set(OCCA_OPENCL_ENABLED 0 CACHE BOOL "")
 endif()
 
-set(OCCA_METAL_ENABLED 0 CACHE BOOL "" FORCE)
+if (DEFINED ENV{OCCA_METAL_ENABLED})
+  set(OCCA_METAL_ENABLED "$ENV{OCCA_METAL_ENABLED}" CACHE BOOL "")
+else()
+  set(OCCA_METAL_ENABLED 0 CACHE BOOL "")
+endif()
 
 ###############################################################################
 # Check if installed already                                                  #
