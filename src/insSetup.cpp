@@ -5,7 +5,6 @@
 #include "bcMap.hpp"
 
 cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
-extern int buildOnly;
 
 ins_t *insSetup(mesh_t *mesh, setupAide &options)
 {
@@ -95,15 +94,13 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
     int Sorder; 
     options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder==2){
-      ins->SNrk     = 2; 
+      ins->SNrk = 2; 
       dfloat rka[2] = {0.0,     1.0 };
       dfloat rkb[2] = {0.5,     0.5 };
       dfloat rkc[2] = {0.0,     1.0 };
-      //
       ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      //
       memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
@@ -113,25 +110,36 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
       dfloat rka[3] = {0.0,     -5.0/9.0,  -153.0/128.0};
       dfloat rkb[3] = {1.0/3.0, 15.0/16.0,    8.0/15.0 };
       dfloat rkc[3] = {0.0,      1.0/3.0,     3.0/4.0  };
-      //
       ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      //
       memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
     }else{
-      ins->SNrk     = 5; 
+      ins->SNrk = 5; 
+      dfloat rka[5] = {0.0,
+                      -567301805773.0/1357537059087.0,
+                      -2404267990393.0/2016746695238.0,
+                      -3550918686646.0/2091501179385.0,
+                      -1275806237668.0/842570457699.0};
+      dfloat rkb[5] = {1432997174477.0/9575080441755.0,
+                      5161836677717.0/13612068292357.0,
+                      1720146321549.0/2090206949498.0,
+                      3134564353537.0/4481467310338.0,
+                      2277821191437.0/14882151754819.0};
+      dfloat rkc[6] = {0.0,
+                      1432997174477.0/9575080441755.0,
+                      2526269341429.0/6820363962896.0,
+                      2006345519317.0/3224310063776.0,
+                      2802321613138.0/2924317926251.0,
+                      1.};
       ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      // Asumes initialized in mesh, can be moved here
-      for(int rk=0; rk<ins->SNrk; rk++){
-        ins->Srka[rk] = mesh->rka[rk]; 
-        ins->Srkb[rk] = mesh->rkb[rk]; 
-        ins->Srkc[rk] = mesh->rkc[rk]; 
-      }
+      ins->Srkc = (dfloat*) calloc(ins->SNrk+1, sizeof(dfloat));
+      memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
+      memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
+      memcpy(ins->Srkc, rkc, (ins->SNrk+1)*sizeof(dfloat));
     }
   }
 
