@@ -44,10 +44,6 @@ void runStep(ins_t *ins, dfloat time, int tstep)
   velocitySolve(ins, time, ins->dt, ins->o_U);
 
   dfloat cfl = computeCFL(ins, time+ins->dt, tstep);
-  if (cfl > 20) {
-    if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
-    EXIT(0);
-  }
 
   if (mesh->rank==0) {
     if(ins->Nscalar)
@@ -58,9 +54,14 @@ void runStep(ins_t *ins, dfloat time, int tstep)
       printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
         tstep, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
         ins->NiterP, MPI_Wtime()-etime0);
-
-    if (tstep%5==0) fflush(stdout);
   }
+
+  if (cfl > 20) {
+    if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
+    EXIT(0);
+  }
+
+  if (tstep%5==0) fflush(stdout);
 }
 
 void extbdfCoefficents(ins_t *ins, int order) {
