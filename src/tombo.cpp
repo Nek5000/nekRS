@@ -1,4 +1,4 @@
-#include "nekrs.hpp"
+#include "nrs.hpp"
 
 void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP);
 void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU);

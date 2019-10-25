@@ -1,4 +1,4 @@
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "meshSetup.hpp"
 #include "udf.hpp"
 #include "filter.hpp"

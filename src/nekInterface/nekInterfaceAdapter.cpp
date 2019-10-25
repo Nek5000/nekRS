@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <fstream>
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 nekdata_private nekData;

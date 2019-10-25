@@ -61,11 +61,12 @@ not be used for advertising or product endorsement purposes.
 \*---------------------------------------------------------------------------*/
 
 #include <mpi.h>
+#include <iostream>
 #include <cstdio>
 #include <string>
 #include <cstring>
 #include <getopt.h>
-#include "nrs.hpp"
+#include "nekrs.hpp"
 
 static MPI_Comm comm;
 
@@ -73,7 +74,7 @@ struct cmdOptions {
   int buildOnly = 0;
   int ciMode = 0;
   int sizeTarget = 0;
-  string setupFile;
+  std::string setupFile;
 };
 
 static cmdOptions *processCmdLineOptions(int argc, char **argv); 
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
   int retval;
   retval =  MPI_Init(&argc, &argv);
   if (retval != MPI_SUCCESS) {
-    cout << "FATAL ERROR: Cannot initialize MPI!" << endl;
+    std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
     exit(1);
   }
 
@@ -95,44 +96,41 @@ int main(int argc, char **argv)
  
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
-  string cacheDir; 
-  setupAide options;
-  options = nrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
-                       cmdOpt->ciMode, cacheDir, cmdOpt->setupFile);
+  std::string cacheDir; 
+  nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
+             cmdOpt->ciMode, cacheDir, cmdOpt->setupFile);
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize(); 
-    return 0;
+    return EXIT_SUCCESS;
   }
 
-  int outputStep, isOutputStep; 
-  int NtimeSteps; 
-  double startTime;
-  double dt;
-  options.getArgs("TSTEPS FOR SOLUTION OUTPUT", outputStep);
-  options.getArgs("NUMBER TIMESTEPS", NtimeSteps); 
-  options.getArgs("START TIME", startTime);
-  options.getArgs("DT", dt);
+  const int outputStep = nekrs::outputStep();
+  const int NtimeSteps = nekrs::NtimeSteps(); 
+  const double startTime = nekrs::startTime();
+  const double finalTime = nekrs::finalTime();
 
   if (rank == 0)
-    cout << "\nstarting time loop" << endl;
+    std::cout << "\nstarting time loop" << "\n";
 
   double time = startTime;
+  int tStep = 0;
   MPI_Pcontrol(1);
-  for(int tstep=1; tstep <= NtimeSteps; ++tstep){
+  while (time < finalTime) {
 
-    isOutputStep = 0;
+    ++tStep;
+    const double dt = nekrs::dt();
+    
+    int isOutputStep = 0;
     if (outputStep > 0) {
-      if ((tstep%outputStep)==0 ||  tstep == NtimeSteps) {
-        isOutputStep = 1;
-      }
+      if (tStep%outputStep == 0 || tStep == NtimeSteps) isOutputStep = 1;
     }
 
-    nrs::runStep(time, tstep);
+    nekrs::runStep(time, tStep);
 
-    if (isOutputStep) nrs::copyToNek(time+dt, tstep);
-    nrs::udfExecuteStep(time+dt, tstep, isOutputStep);
-    if (isOutputStep) nrs::nekOutfld();
+    if (isOutputStep) nekrs::copyToNek(time+dt, tStep);
+    nekrs::udfExecuteStep(time+dt, tStep, isOutputStep);
+    if (isOutputStep) nekrs::nekOutfld();
 
     time += dt;
 
@@ -140,9 +138,9 @@ int main(int argc, char **argv)
   MPI_Pcontrol(0);
 
   if(rank == 0)
-    cout << "\nEnd." << endl;
+    std::cout << "\nEnd." << "\n";
   MPI_Finalize();
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 static cmdOptions *processCmdLineOptions(int argc, char **argv) 
@@ -177,7 +175,7 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
               if (const char *ptr = realpath(cmdOpt->setupFile.c_str(), NULL)) 
                 foundSetup = 1;
               else 
-                cout << "ERROR: Cannot find " << cmdOpt->setupFile << "!\n";
+                std::cout << "ERROR: Cannot find " << cmdOpt->setupFile << "!\n";
               break;  
           case 'b':  
               cmdOpt->buildOnly = 1;
@@ -186,7 +184,7 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
            case 'c':  
               cmdOpt->ciMode = atoi(optarg);
               if (cmdOpt->ciMode < 1) {
-                cout << "ERROR: ci test id has to be >0!\n";
+                std::cout << "ERROR: ci test id has to be >0!\n";
                 err = 1;
               }
               break;  
@@ -200,8 +198,8 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
   if (err) {
     if (rank == 0)
-      cout << "usage: ./nekrs --setup <case name> [ --build-only <#procs> ] [ --cimode <id> ]"
-           << endl;
+      std::cout << "usage: ./nekrs --setup <case name> [ --build-only <#procs> ] [ --cimode <id> ]"
+           << "\n";
     MPI_Finalize(); 
     exit(1);
   }
@@ -210,6 +208,7 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   strcpy(buf, cmdOpt->setupFile.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->setupFile.assign(buf);
+  MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
 

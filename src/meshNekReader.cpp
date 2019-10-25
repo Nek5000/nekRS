@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "mpi.h"
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 void meshNekReaderHex3D(int N, mesh_t *mesh){

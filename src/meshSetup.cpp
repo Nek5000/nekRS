@@ -1,4 +1,4 @@
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 

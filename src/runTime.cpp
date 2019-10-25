@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
 #include "tombo.hpp" 

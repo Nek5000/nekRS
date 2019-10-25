@@ -6,7 +6,7 @@
 #include <sstream>
 #include <map>
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 #define NOTBOUNDARY 0

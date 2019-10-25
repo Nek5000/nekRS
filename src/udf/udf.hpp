@@ -1,7 +1,7 @@
 #if !defined(nekrs_udf_hpp_)
 #define nekrs_udf_hpp_
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 extern "C" {

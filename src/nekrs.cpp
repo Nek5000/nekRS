@@ -1,4 +1,4 @@
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "meshSetup.hpp"
 #include "insSetup.hpp"
 #include "nekInterfaceAdapter.hpp"
@@ -22,10 +22,10 @@ static void setCache(string dir);
 static void setOUDF(libParanumal::setupAide &options);
 static void dryRun(libParanumal::setupAide &options, int npTarget); 
 
-namespace nrs {
+namespace nekrs {
 
-setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
-                int ciMode, string cacheDir, string setupFile)
+void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
+           int ciMode, string cacheDir, string setupFile)
 {
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
@@ -67,7 +67,7 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if (nrsBuildOnly){
     dryRun(options, sizeTarget);
-    return options;
+    return;
   }
 
   MPI_Barrier(comm); double t0 = MPI_Wtime();
@@ -81,7 +81,7 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode) 
-    cout << "enabling continous integration mode\n" << endl;
+    cout << "enabling continous integration mode " << ciMode << "\n";
 
   if(udf.setup0) udf.setup0(comm, options);
 
@@ -116,8 +116,6 @@ setupAide setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "device memory allocation: " << dMB << " MB" << endl;
   }
   fflush(stdout);
-
-  return options;
 }
 
 void runStep(double time, int tstep)
@@ -147,6 +145,36 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 void nekOutfld(void)
 {
   nek_outfld();
+}
+
+const double dt(void)
+{
+  return ins->dt;
+}
+
+const int outputStep(void)
+{
+  return ins->outputStep;
+}
+
+const int NtimeSteps(void)
+{
+  return ins->NtimeSteps;
+}
+
+const double startTime(void)
+{
+  return ins->startTime;
+}
+
+const double finalTime(void)
+{
+  return ins->finalTime;
+}
+
+void *nekPtr(const char *id)
+{
+  return nek_ptr(id); 
 }
 
 } // namespace

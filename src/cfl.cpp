@@ -1,4 +1,4 @@
-#include "nekrs.hpp"
+#include "nrs.hpp"
 
 static int firstTime = 1;
 static dfloat *tmp;

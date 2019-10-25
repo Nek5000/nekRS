@@ -1,28 +1,27 @@
-#if !defined(nekrs_nekrs_hpp_)
-#define nekrs_nekrs_hpp_
+#if !defined(nekrs_nrs_hpp_)
+#define nekrs_nrs_hpp_
 
-#include <cstdio>
-#include <cstdlib>
 #include <string>
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <getopt.h>
 #include <mpi.h>
 
-#define NEKRS_VERSION "0"
-#define NEKRS_SUBVERSION "2"
+namespace nekrs {
 
-#define EXIT(a)  { MPI_Finalize(); exit(a); } 
+void setup(MPI_Comm comm, int buildOnly, int sizeTarget,
+           int ciMode, std::string cacheDir, std::string setupFile);
 
-#include "libParanumal.hpp"
-#include "ins.h"
+void runStep(double time, int tstep);
+void copyToNek(double time, int tstep);
+void udfExecuteStep(double time, int tstep, int isOutputStep); 
+void nekOutfld(void);
 
-// std::to_string might be not accurate enough 
-static string to_string_f(double a) {
-  stringstream s;
-  s << std::scientific << a;
-  return s.str();
+const double dt(void);
+const int outputStep(void);
+const int NtimeSteps(void);
+const double startTime(void);
+const double finalTime(void);
+
+void *nekPtr(const char *id);
+
 }
 
 #endif

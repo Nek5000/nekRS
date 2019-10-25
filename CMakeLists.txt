@@ -295,7 +295,7 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 # Add nekrs target                                                            #
 ###############################################################################
 set(SRC 
-    src/nrs.cpp
+    src/nekrs.cpp
     src/cfl.cpp
     src/filter.cpp
     src/bcMap.cpp

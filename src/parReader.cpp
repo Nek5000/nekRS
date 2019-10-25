@@ -9,7 +9,7 @@
 #include "tinyexpr.h"
 #include "inipp.hpp"
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 #include "bcMap.hpp"
 
 #define ABORT(a)  { if(rank==0) cout << a << endl; MPI_Finalize(); exit(1); }
