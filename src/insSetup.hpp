@@ -2,6 +2,6 @@
 #define nekrs_inssetup_hpp_
 
 #include "nekrs.hpp"
-ins_t *insSetup(mesh_t *mesh, setupAide &options);
+ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly);
 
 #endif

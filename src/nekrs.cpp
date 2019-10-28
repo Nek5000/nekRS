@@ -40,15 +40,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-#ifdef DEBUG
-  if (rank == 0) {
-    char str[10];
-    cout << "Press any key to continue" << endl;
-    gets(str);
-  }
-  MPI_Barrier(comm);
-#endif
-
   // read settings
   int N;
   int nscal;
@@ -66,6 +57,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   setOUDF(options);
 
   if (nrsBuildOnly){
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+  printf("here: %d %d", rank, size);
     dryRun(options, sizeTarget);
     return;
   }
@@ -95,8 +90,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nek_userchk();
 
   // init solver
-  mesh_t *mesh = meshSetup(comm, options, nrsBuildOnly);
-  ins = insSetup(mesh, options);
+  ins = insSetup(comm, options, nrsBuildOnly);
 
   // set initial condition
   if(readRestartFile) nek_copyRestart(ins);
@@ -118,9 +112,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   fflush(stdout);
 }
 
-void runStep(double time, int tstep)
+void runStep(double time, double dt, int tstep)
 {
-  runStep(ins, time, tstep);
+  runStep(ins, time, dt, tstep);
 }
 
 void copyToNek(double time, int tstep)
@@ -208,11 +202,10 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   if (rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, npTarget);
   MPI_Barrier(comm);
 
-  mesh_t *mesh = meshSetup(comm, options, nrsBuildOnly);
+  // init solver
+  ins = insSetup(comm, options, nrsBuildOnly);
 
-  ins_t *ins = insSetup(mesh, options);
-
-  if (mesh->rank == 0) cout << "\nBuild successful." << endl;
+  if (rank == 0) cout << "\nBuild successful." << endl;
 }
 
 static void setOUDF(libParanumal::setupAide &options)

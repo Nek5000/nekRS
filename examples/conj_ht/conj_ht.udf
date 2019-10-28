@@ -1,0 +1,40 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+static occa::kernel cFillKernel;
+static occa::memory o_eInfo;
+
+void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  cds_t *cds   = ins->cds;
+  mesh_t *mesh = cds->mesh;
+  const dfloat cValue = 1.0;
+  cFillKernel(mesh->Nelements, cValue, o_eInfo, o_FS);
+}
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  cFillKernel = udfBuildKernel(ins, "cFill");
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+
+  udf.sEqnSource = &userq;
+
+  mesh_t *meshT = ins->cds->mesh;
+  o_eInfo = 
+    meshT->device.malloc(meshT->Nelements * sizeof(hlong), meshT->elementInfo);
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  if (ins->isOutputStep) nek_userchk();
+}

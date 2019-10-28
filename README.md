@@ -11,6 +11,7 @@ Capabilities:
 
 * Incompressible Navier-Stokes + scalar transport 
 * Constant properties
+* Conjugate fluid-solid heat transfer
 * CG-SEM using hexaheadral elements 
 * Fixed timestep 2nd order BDF + OIFS
 * Dealiasing and high-pass filter relaxation term stabilization

@@ -93,6 +93,15 @@ int main(int argc, char **argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+#ifdef DEBUG
+  if (rank == 0) {
+    char str[10];
+    cout << "Press enter to continue" << endl;
+    gets(str);
+  }
+  MPI_Barrier(comm);
+#endif
  
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
@@ -110,35 +119,33 @@ int main(int argc, char **argv)
   const double startTime = nekrs::startTime();
   const double finalTime = nekrs::finalTime();
 
-  if (rank == 0)
-    std::cout << "\nstarting time loop" << "\n";
-
-  double time = startTime;
-  int tStep = 0;
-  MPI_Pcontrol(1);
-  while (time < finalTime) {
-
-    ++tStep;
-    const double dt = nekrs::dt();
+  if (rank == 0) std::cout << "\nstarting time loop" << "\n";
     
+  double time = startTime;
+  int tStep = 1;
+  MPI_Pcontrol(1);
+  while (finalTime-time > 1e-10) {
+
+    const double dt = nekrs::dt();
+
+    nekrs::runStep(time, dt, tStep);
+    time += dt;
+
     int isOutputStep = 0;
     if (outputStep > 0) {
       if (tStep%outputStep == 0 || tStep == NtimeSteps) isOutputStep = 1;
     }
 
-    nekrs::runStep(time, tStep);
-
-    if (isOutputStep) nekrs::copyToNek(time+dt, tStep);
-    nekrs::udfExecuteStep(time+dt, tStep, isOutputStep);
+    if (isOutputStep) nekrs::copyToNek(time, tStep);
+    nekrs::udfExecuteStep(time, tStep, isOutputStep);
     if (isOutputStep) nekrs::nekOutfld();
 
-    time += dt;
-
+    ++tStep;
   }
   MPI_Pcontrol(0);
 
-  if(rank == 0)
-    std::cout << "\nEnd." << "\n";
+  if(rank == 0) std::cout << "\nEnd." << "\n";
+
   MPI_Finalize();
   return EXIT_SUCCESS;
 }

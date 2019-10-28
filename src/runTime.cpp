@@ -18,11 +18,12 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
 
 double etime0 = 0;
 
-void runStep(ins_t *ins, dfloat time, int tstep)
+void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 {
   mesh_t *mesh = ins->mesh;
   cds_t *cds = ins->cds;
 
+  ins->dt = dt;
   if(tstep<=1){
     etime0 = MPI_Wtime();
     extbdfCoefficents(ins,tstep);
@@ -40,19 +41,19 @@ void runStep(ins_t *ins, dfloat time, int tstep)
                          ins->o_U,
                          ins->o_Ue);
 
-  if(ins->Nscalar) scalarSolve(ins, time, ins->dt, cds->o_S); 
-  velocitySolve(ins, time, ins->dt, ins->o_U);
+  if(ins->Nscalar) scalarSolve(ins, time, dt, cds->o_S); 
+  velocitySolve(ins, time, dt, ins->o_U);
 
-  dfloat cfl = computeCFL(ins, time+ins->dt, tstep);
+  dfloat cfl = computeCFL(ins, time+dt, tstep);
 
   if (mesh->rank==0) {
     if(ins->Nscalar)
       printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: %d  tElapsed= %.5e s\n",
-        tstep, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+        tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
         ins->NiterP, cds->Niter, MPI_Wtime()-etime0);
     else
       printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
-        tstep, time+ins->dt, ins->dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+        tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
         ins->NiterP, MPI_Wtime()-etime0);
   }
 
@@ -150,7 +151,6 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
 void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
   cds_t *cds   = ins->cds; 
-  mesh_t *mesh = ins->mesh;
 
   if(cds->Nsubsteps)
     scalarStrongSubCycle(cds, time, cds->Nstages, cds->o_U, cds->o_S, o_NS);
@@ -163,7 +163,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
     udf.sEqnSource(ins, time, cds->o_S, o_FS);
 
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->SFilterKernel(mesh->Nelements,
+    ins->SFilterKernel(cds->meshV->Nelements,
                        ins->o_filterMT,
                        ins->filterS,
                        cds->sOffset,
@@ -351,7 +351,7 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
             mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
             mesh->o_cubInterpT,
             mesh->o_cubProjectT,
-            ins->o_invLumpedMassMatrix,
+            ins->o_InvM,
             ins->fieldOffset,
             ins->o_Ue,
             o_Ud,
@@ -394,12 +394,12 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
 void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U, occa::memory o_S, occa::memory o_Sd){
 
   mesh_t *mesh = cds->mesh;
-  const dlong NtotalElements = (mesh->Nelements+mesh->totalHaloPairs);  
 
   const dfloat tn0 = time - 0*cds->dt;
   const dfloat tn1 = time - 1*cds->dt;
   const dfloat tn2 = time - 2*cds->dt;
 
+  const dlong Nelements = cds->meshV->Nelements;
 
   dfloat zero = 0.0, one = 1.0;
   int izero = 0;
@@ -449,7 +449,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
         cds->o_extC.copyFrom(cds->extC);
 
         //compute advective velocity fields at time t
-        cds->subCycleExtKernel(NtotalElements,
+        cds->subCycleExtKernel(Nelements,
                                Nstages,
                                cds->vOffset,
                                cds->o_extC,
@@ -459,7 +459,8 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
      
         // Compute Volume Contribution
         if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE")){
-          cds->subCycleStrongCubatureVolumeKernel(mesh->Nelements,
+          cds->subCycleStrongCubatureVolumeKernel(
+                                            Nelements,
                                             mesh->o_vgeo,
                                             mesh->o_cubvgeo,
                                             mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
@@ -471,7 +472,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
                                                  o_Sd,
                                             cds->o_rhsSd);
         } else{
-          cds->subCycleStrongVolumeKernel(mesh->Nelements,
+          cds->subCycleStrongVolumeKernel(Nelements,
                                     mesh->o_vgeo,
                                     mesh->o_Dmatrices,
                                     cds->vOffset,
@@ -485,7 +486,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
         ogsGatherScatter(cds->o_rhsSd, ogsDfloat, ogsAdd, mesh->ogs);
 
         // int nfield = ins->dim==2 ? 2:3; 
-        cds->invMassMatrixKernel(mesh->Nelements,
+        cds->invMassMatrixKernel(Nelements,
                                  cds->sOffset,
                                  cds->NSfields,
                                  mesh->o_vgeo,
@@ -493,7 +494,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
                                  cds->o_rhsSd);
 
         // Update Kernel
-        cds->subCycleRKUpdateKernel(mesh->Nelements,
+        cds->subCycleRKUpdateKernel(Nelements,
                                     cds->sdt,
                                     cds->Srka[rk],
                                     cds->Srkb[rk],

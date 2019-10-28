@@ -37,13 +37,15 @@ typedef struct {
   double *cbscnrs;
 
   /* global vertex ids */
-  long long *glo_num, ngv;
+  long long *glo_num;
 
   /* Boundary data */
   char *cbc;
   int *boundaryID;
+  int *boundaryIDt;
 
-  int NboundaryIDs;
+  int NboundaryID;
+  int NboundaryIDt;
 
   /* id to face mapping */
   int *eface1, *eface, *icface; 
@@ -103,5 +105,6 @@ void nek_copyFrom(ins_t *ins, dfloat time);
 void nek_copyTo(ins_t *ins, dfloat &time);
 void nek_ocopyTo(ins_t *ins, dfloat &time);
 void nek_copyRestart(ins_t *ins);
+long long nek_set_glo_num(int npts, int isTMesh);
 
 #endif

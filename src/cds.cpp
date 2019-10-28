@@ -97,7 +97,7 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
 
   if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     cds->advectionStrongCubatureVolumeKernel(
-           mesh->Nelements,
+           cds->meshV->Nelements,
            mesh->o_vgeo,
            mesh->o_cubvgeo,
            mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
@@ -110,7 +110,7 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
            o_NS);
   else
     cds->advectionStrongVolumeKernel(
-           mesh->Nelements,
+           cds->meshV->Nelements,
            mesh->o_vgeo,
            mesh->o_Dmatrices,
            cds->vOffset,
