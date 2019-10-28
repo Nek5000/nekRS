@@ -2,9 +2,8 @@
 
 #include <math.h>
 #include <stdio.h>
-//
-// Orthogonalize by 1-vector (vector of all 1's)
-//
+
+/* Orthogonalize by 1-vector (vector of all 1's) */
 int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
                                    GenmapVector q1, GenmapLong n) {
   GenmapInt i;
@@ -21,9 +20,7 @@ int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
 
   return 0;
 }
-//
-// Lanczos version used in Paul's original genmap code.
-//
+
 int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
                            GenmapInt niter, GenmapVector **rr, GenmapVector diag,
                            GenmapVector upper) {
@@ -47,13 +44,11 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   GenmapScalar tmp;
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  // Store Local Laplacian weights
   GenmapCreateVector(&weights, lelt);
   GenmapCreateZerosVector(&p, lelt);
   GenmapCreateVector(&w, lelt);
   GenmapInitLaplacian(h, c, weights);
 
-  // Create vector r orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&r, lelt);
   GenmapCopyVector(r, f);
   GenmapOrthogonalizebyOneVector(h, c, r, GenmapGetNGlobalElements(h));
@@ -63,7 +58,6 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
   rtol = rnorm * eps;
   rni = 1.0 / rnorm;
 
-  // Allocate memory for q-vectors
   if(*rr == NULL) {
     GenmapMalloc((size_t)(niter + 1), rr);
     GenmapInt i;
@@ -83,7 +77,6 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
     GenmapAxpbyVector(p, p, beta, r, 1.0);
     GenmapOrthogonalizebyOneVector(h, c, p, GenmapGetNGlobalElements(h));
 
-    // Multiplication by the laplacian
     GenmapLaplacian(h, c, p, weights, w);
     GenmapScaleVector(w, w, -1.0);
 
@@ -133,9 +126,7 @@ int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
 
   return iter;
 }
-//
-// Lanczos version in Introduction to Sci. Comp by Prof. Heath.
-//
+
 int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
                   GenmapInt iter, GenmapVector **q, GenmapVector alpha,
                   GenmapVector beta) {
@@ -154,7 +145,6 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
 
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  // Create vector q1 orthogonalizing init in 1-norm to (1,1,1...)
   GenmapCreateVector(&q1, lelt);
   GenmapCopyVector(q1, init);
   GenmapOrthogonalizebyOneVector(h, c, q1, GenmapGetNGlobalElements(h));
@@ -163,14 +153,12 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
   normq1 = sqrt(normq1);
   GenmapScaleVector(q1, q1, 1. / normq1);
 
-  // Create vector u
   GenmapCreateVector(&u, lelt);
 
-  // Set q_0 and beta_0 to zero (both uses 0-indexing)
+  /* Set q_0 and beta_0 to zero (both uses 0-indexing) */
   GenmapCreateZerosVector(&q0, lelt);
   beta->data[0] = 0.;
 
-  // Allocate memory for q-vectors
   if(*q == NULL) {
     GenmapMalloc((size_t)iter, q);
     GenmapInt i;
@@ -178,18 +166,15 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
       (*q)[i] = NULL;
   }
 
-  // Store Local Laplacian weights
   GenmapVector weights;
   GenmapCreateVector(&weights, lelt);
   GenmapInitLaplacian(h, c, weights);
 
   int k;
   for(k = 0; k < iter; k++) {
-    // Store q1
     GenmapCreateVector(&(*q)[k], lelt);
     GenmapCopyVector((*q)[k], q1);
 
-    // Multiplication by the laplacian
     GenmapLaplacian(h, c, q1, weights, u);
 
     alpha->data[k] = GenmapDotVector(q1, u);

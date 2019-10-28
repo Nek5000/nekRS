@@ -1,17 +1,6 @@
 #ifndef _GENMAP_GSLIB_H_
 #define _GENMAP_GSLIB_H_
 
-// Data type sint/uint
-// (defualt) int
-// #define USE_LONG long
-// #define USE_LONG_LONG long long
-
-// Data type slong/ulong
-// (default) int
-// #define GLOBAL_LONG long
-// #define GLOBAL_LONG_LONG long long
-// #define GLOBAL_LONG_LONG
-
 #include "gslib.h"
 
 #if !defined(MPI)

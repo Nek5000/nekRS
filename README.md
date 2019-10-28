@@ -14,7 +14,7 @@ make CC=mpicc GSLIBPATH=<path to gslib>/build  all
 ```sh
 
 cd example
-mpirun -np 4 ./example case01.co2
+mpirun -np 4 ./example 2 case01.co2
 ```
 
 ## C Interface
@@ -36,4 +36,4 @@ opt     (in)    ... Additional parameters (to use defaults set opt[0] = 0).
 comm    (in)    ... MPI Communicator (size determines number of partitions).
 ```
 
-Note, any initial distribution of mesh elements is valid but only MPI ranks with nel>0 will participate. 
+Note, any initial distribution of mesh elements is valid.

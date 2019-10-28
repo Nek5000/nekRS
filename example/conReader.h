@@ -1,5 +1,7 @@
 struct con {
-  int nv, nelg, nel;
+  int nv;
+  int nelg;
+  int nel;
   long long *el, *vl;
 };
 
@@ -35,7 +37,7 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
   }
 
   int nelr = nelgt / np;
-  for(i = 0; i < nelgt % np; ++i) if(np - i == myid) nelr++;
+  for(i = 0; i < nelgt % np; ++i) if(np-i == myid) nelr++;
 
   int nelr_;
   MPI_Scan(&nelr, &nelr_, 1, MPI_INT, MPI_SUM, comm);

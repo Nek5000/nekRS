@@ -1,7 +1,5 @@
 #include "genmap-impl.h"
-//
-// GenmapComm
-//
+
 int GenmapCreateComm(GenmapComm *c, GenmapCommExternal ce) {
   GenmapMalloc(1, c);
   comm_init(&(*c)->gsComm, ce);

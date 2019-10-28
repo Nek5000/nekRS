@@ -6,7 +6,6 @@
 #include <limits.h>
 
 int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
-  // 1. Do lanczos in local communicator.
   GenmapInt lelt = GenmapGetNLocalElements(h);
   GenmapVector initVec, alphaVec, betaVec;
 
@@ -17,10 +16,12 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
 #if defined(GENMAP_PAUL)
   if(global > 0) {
     for(i = 0;  i < lelt; i++) {
-      //if(GenmapGetLocalStartIndex(h) + i + 1  < GenmapGetNGlobalElements(h) / 2)
-      //  initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1 + 1000. *
-      //                     GenmapGetNGlobalElements(h);
-      //else
+/*
+      if(GenmapGetLocalStartIndex(h) + i + 1  < GenmapGetNGlobalElements(h) / 2)
+        initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1 + 1000. *
+                           GenmapGetNGlobalElements(h);
+      else
+*/
       initVec->data[i] = GenmapGetLocalStartIndex(h) + i + 1;
     }
   } else {
@@ -59,7 +60,7 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapCreateVector(&evTriDiag, iter);
 
 #if defined(GENMAP_PAUL)
-  // Use TQLI and find the minimum eigenvalue and associated vector
+  /* Use TQLI and find the minimum eigenvalue and associated vector */
   GenmapVector *eVectors, eValues;
   GenmapTQLI(h, alphaVec, betaVec, &eVectors, &eValues);
 
@@ -92,7 +93,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
   GenmapDestroyVector(init);
 #endif
 
-  // Multiply tri-diagonal matrix by [q1, q2, ...q_{iter}]
   GenmapInt j;
   GenmapCreateZerosVector(&evLanczos, lelt);
   for(i = 0; i < lelt; i++) {
@@ -121,7 +121,6 @@ int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global) {
     elements[i].fiedler = evLanczos->data[i];
   }
 
-  // n. Destory the data structures
   GenmapDestroyVector(initVec);
   GenmapDestroyVector(alphaVec);
   GenmapDestroyVector(betaVec);
@@ -173,13 +172,15 @@ void GenmapRSB(GenmapHandle h) {
 
 #if defined(GENMAP_PAUL)
     int global = 1;
-    //int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
-    //              GenmapGetGlobalComm(h)));
-    //GenmapElements e = GenmapGetElements(h);
-    //GenmapScan(h, GenmapGetLocalComm(h));
-    //for(i = 0; i < GenmapGetNLocalElements(h); i++) {
-    //  e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
-    //}
+/*
+    int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
+                  GenmapGetGlobalComm(h)));
+    GenmapElements e = GenmapGetElements(h);
+    GenmapScan(h, GenmapGetLocalComm(h));
+    for(i = 0; i < GenmapGetNLocalElements(h); i++) {
+      e[i].globalId0 = GenmapGetLocalStartIndex(h) + i + 1;
+    }
+*/
 #else
     int global = (GenmapCommSize(GenmapGetLocalComm(h)) == GenmapCommSize(
                     GenmapGetGlobalComm(h)));

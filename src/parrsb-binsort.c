@@ -99,19 +99,13 @@ void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0) {
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  if(field == GENMAP_FIEDLER) { // Fiedler
-    // sort locally according to Fiedler vector
+  if(field == GENMAP_FIEDLER) {
     sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                 TYPE_DOUBLE, buf0);
-    //sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
-    //            TYPE_DOUBLE, globalId, TYPE_LONG, buf0);
-    // set the bin based on Fiedler vector
     GenmapSetFiedlerBin(h);
   } else if(GENMAP_GLOBALID) {
-    // sort locally according to globalId
     sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt,
                 globalId0, TYPE_LONG, buf0);
-    // set the bin based on globalId
     GenmapSetGlobalIdBin(h);
   }
 }
@@ -120,7 +114,7 @@ void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
   GenmapElements elements = GenmapGetElements(h);
   GenmapInt lelt = GenmapGetNLocalElements(h);
 
-  if(field == GENMAP_FIEDLER) { // Fiedler
+  if(field == GENMAP_FIEDLER) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));
     GenmapScan(h, GenmapGetLocalComm(h));
@@ -128,8 +122,10 @@ void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0) {
     lelt = GenmapGetNLocalElements(h);
     sarray_sort(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
                 TYPE_DOUBLE, buf0);
-    //sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
-    //            TYPE_DOUBLE, globalId0, TYPE_LONG, buf0);
+/*
+    sarray_sort_2(struct GenmapElement_private, elements, (GenmapUInt)lelt, fiedler,
+                  TYPE_DOUBLE, globalId0, TYPE_LONG, buf0);
+*/
   } else if(field == GENMAP_GLOBALID) {
     sarray_transfer(struct GenmapElement_private, &(h->elementArray), proc, 0,
                     &(h->cr));

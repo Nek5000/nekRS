@@ -7,6 +7,14 @@
 #include "genmap-impl.h"
 #include "parRSB.h"
 
+#define MAXNV 8 /* maximum number of vertices per element */
+typedef struct {
+  int proc;
+  GenmapLong id;
+  int part;
+  long long vtx[MAXNV];
+} elm_data;
+
 void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
                       int *options, int *comm, int *err) {
   *err = 1;
@@ -18,14 +26,52 @@ void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
 
 int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
                     MPI_Comm comm) {
-  int bin = nel > 0;
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-  MPI_Comm commRSB;
-  MPI_Comm_split(comm, bin, rank, &commRSB);
+  int rank,size;
+  MPI_Comm_rank(comm,&rank);
+  MPI_Comm_size(comm,&size);
 
-  if(bin > 0) {
+  /* load balance input data */
+  GenmapLong nelg;
+  GenmapLong nell = nel;
+  MPI_Allreduce(&nell,&nelg,1,MPI_LONG_LONG_INT,MPI_SUM,comm);
+  GenmapLong nstar = nelg/size;
+  if(nstar == 0) nstar = 1;
+
+  GenmapLong nelg_start;
+  MPI_Scan(&nell,&nelg_start,1,MPI_LONG_LONG_INT,MPI_SUM,comm);
+  nelg_start-=nel;
+
+  struct array eList;
+  elm_data *data;
+
+  array_init(elm_data,&eList,nel), eList.n=nel;
+  int e, n;
+  for(data=eList.ptr,e=0; e<nel; ++e) {
+    data[e].id=nelg_start+(e+1);
+    const GenmapLong eg=data[e].id;
+
+    data[e].proc=(int) ((eg-1)/nstar);
+    if(eg>size*nstar) data[e].proc= (eg%size)-1; 
+
+    for(n=0; n<nve; ++n) {
+      data[e].vtx[n]=vtx[e*nve+n];
+    }
+  }
+
+  struct comm c; comm_init(&c,comm);
+  struct crystal cr; crystal_init(&cr,&c);
+  buffer buf; buffer_init(&buf, 1024);
+
+  sarray_transfer(elm_data,&eList,proc,1,&cr);
+  data=eList.ptr;
+  nel =eList.n;
+
+  sarray_sort(elm_data,data,(unsigned int)nel,id,TYPE_LONG,&buf);
+
+  MPI_Comm commRSB;
+  MPI_Comm_split(comm, nel>0, rank, &commRSB);
+
+  if(nel>0) {
     double time0 = comm_time();
     GenmapHandle h;
     GenmapInit(&h, commRSB);
@@ -55,7 +101,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     for(i = 0; i < nel; i++) {
       e[i].origin = id;
       for(j = 0; j < nve; j++) {
-        e[i].vertices[j] = vtx[i * nve + j];
+        e[i].vertices[j] = data[i].vtx[j];
       }
     }
 
@@ -70,17 +116,14 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     GenmapCrystalTransfer(h, GENMAP_ORIGIN);
     GenmapCrystalFinalize(h);
 
-    // This should hold true
     assert(GenmapGetNLocalElements(h) == nel);
 
     e = GenmapGetElements(h);
-    buffer buf; buffer_init(&buf, 1024);
     sarray_sort(struct GenmapElement_private, e, (unsigned int)nel, globalId,
                 TYPE_LONG, &buf);
-    buffer_free(&buf);
 
     for(i = 0; i < nel; i++) {
-      part[i] = e[i].proc;
+      data[i].part = e[i].proc;
     }
 
     if(id == 0 && h->dbgLevel > 0)
@@ -91,6 +134,22 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
   }
 
   MPI_Comm_free(&commRSB);
+
+  /* restore original input */
+  sarray_transfer(elm_data,&eList,proc,0,&cr);
+  data=eList.ptr;
+  nel =eList.n;
+  sarray_sort(elm_data,data,(unsigned int)nel,id,TYPE_LONG,&buf);
+  MPI_Barrier(comm);
+
+  for(e = 0; e < nel; e++) {
+    part[e]=data[e].part;
+  }
+
+  array_free(&eList);
+  buffer_free(&buf);
+  crystal_free(&cr);
+  comm_free(&c);
 
   return 0;
 }

@@ -25,13 +25,13 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   if(np == 1) return;
 
   numPoints = nel * nv;
-  data = (long long*) malloc(numPoints * sizeof(long long));
+  data = (long long*) malloc((numPoints+1) * sizeof(long long));
   for(i = 0; i < numPoints; i++) data[i] = vtx[i];
 
   gsh = gs_setup(data, numPoints, &comm, 0, gs_pairwise, 0);
 
   pw_data_nmsg(gsh, &Nmsg);
-  Ncomm = (int *) malloc(Nmsg * sizeof(int));
+  Ncomm = (int *) malloc((Nmsg+1) * sizeof(int));
   pw_data_size(gsh, Ncomm);
 
   gs_free(gsh);
@@ -62,7 +62,8 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   comm_allreduce(&comm, gs_int, gs_min, &nssMin, 1, &b);
   comm_allreduce(&comm, gs_int, gs_add, &nssSum, 1, &b);
 
-  nsSum = nsSum / Nmsg;
+  if(Nmsg) nsSum = nsSum / Nmsg;
+  else nsSum=0;
   comm_allreduce(&comm, gs_int, gs_add, &nsSum, 1, &b);
 
   nelMax = nel;
@@ -81,10 +82,11 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
       " Max volume: %d | Min volume: %d | Avg volume: %lf\n",
       nssMax, nssMin, (double)nssSum / np);
     printf(
-      " Max elements: %d | Min elements: %d | Balance: %lf\n",
-      nelMax, nelMin, (double)nelMax / nelMin);
+      " Max elements: %d | Min elements: %d\n",
+      nelMax, nelMin);
     fflush(stdout);
   }
-
+ 
+  free(Ncomm);
   comm_free(&comm);
 }

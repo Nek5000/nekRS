@@ -29,7 +29,6 @@ CSRCS:= $(SRCDIR)/genmap.c \
 	$(SRCDIR)/genmap-eigen.c $(SRCDIR)/genmap-laplacian.c $(SRCDIR)/genmap-lanczos.c \
 	$(SRCDIR)/genmap-rsb.c \
 	$(SRCDIR)/parrsb-binsort.c \
-	$(SRCDIR)/parrsb-histogram.c \
 	$(SRCDIR)/genmap-chelpers.c \
 	$(SRCDIR)/parRSB.c 
 COBJS:=$(CSRCS:.c=.o)

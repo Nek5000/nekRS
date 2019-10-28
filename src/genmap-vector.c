@@ -5,9 +5,6 @@
 #include <math.h>
 #include <float.h>
 
-//
-// Vector operations
-//
 int GenmapCreateVector(GenmapVector *x, GenmapInt size) {
   /* Asserts:
        - size > 0

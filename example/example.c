@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
   struct crystal cr;
   struct array eList;
   elm_data *data;
-  struct con con;
 
   int ierr;
   int e, n, nel, nv;
@@ -33,10 +32,27 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   comm_init(&comm, MPI_COMM_WORLD);
 
-  ierr = conRead(argv[1], &con, comm.c);
+  int color = MPI_UNDEFINED;
+
+  if (argc != 3) {
+    if(comm.id) printf("usage: ./example <#nread> <co2 file>\n");
+    return EXIT_FAILURE;
+  } 
+
+  int nRead = atoi(argv[1]);
+  char* conFile = argv[2];
+
+  if (comm.id < nRead) color = 1;
+  MPI_Comm comm_read;
+  MPI_Comm_split(comm.c, color, 0, &comm_read);
+
+  ierr = 0;
+  struct con con = {};
+  if (color != MPI_UNDEFINED) ierr = conRead(conFile, &con, comm_read);
   if(ierr) goto quit;
 
-  nv  = con.nv;
+  comm_bcast(&comm, &con.nv, sizeof(int), 0);
+  nv = con.nv;
   nel = con.nel;
   int *part = (int*) malloc(nel * sizeof(int));
 
@@ -52,7 +68,7 @@ int main(int argc, char *argv[]) {
   for(data = eList.ptr, e = 0; e < nel; ++e) {
     data[e].proc = part[e];
     data[e].id   = con.el[e];
-    for(int n = 0; n < nv; ++n) {
+    for(n = 0; n < nv; ++n) {
       data[e].vtx[n] = con.vl[e * nv + n];
     }
   }

@@ -2,9 +2,7 @@
 #define _GENMAP_TYPES_H_
 
 #include <genmap-gslib.h>
-//
-// Genmap types
-//
+
 typedef long long GenmapLong;
 typedef unsigned long long GenmapULong;
 #define GenmapLongFormat "%lld"

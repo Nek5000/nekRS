@@ -2,12 +2,7 @@
 
 #include <math.h>
 #include <stdio.h>
-//
-// Routines to calculate Eigenvalues/vectors.
-//
-//
-// Linear solve for Symmetric Tridiagonal Matrix
-//
+
 int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
                           GenmapVector alpha,
                           GenmapVector beta) {
@@ -39,9 +34,7 @@ int GenmapSymTriDiagSolve(GenmapVector x, GenmapVector b,
   GenmapDestroyVector(diag);
   return 0;
 }
-//
-// Inverse power iterations
-//
+
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, GenmapInt iter) {
   assert(alpha->size == beta->size + 1);
@@ -61,10 +54,10 @@ int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
     GenmapCopyVector(x, init);
     GenmapInt j;
     for(j = 0; j < iter; j++) {
-      // Ay = x
+      /* Ay = x */
       GenmapSymTriDiagSolve(y, x, alpha, beta);
 
-      // Normalize by inf-norm(y)
+      /* Normalize by inf-norm(y) */
       if(j != iter - 1) {
         GenmapScalar lambda = 1.0 / GenmapNormVector(y, -1);
         GenmapScaleVector(y, y, lambda);
@@ -81,16 +74,12 @@ int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
 
   return 0;
 }
-//
-// Sign routine
-//
+
 GenmapScalar GenmapSign(GenmapScalar a, GenmapScalar b) {
   GenmapScalar m = 1.0 ? b >= 0. : -1.0;
   return fabs(a) * m;
 }
-//
-// Routine to find eigenvectors and values of tri-diagonal matrix
-//
+
 int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
                GenmapVector **eVectors, GenmapVector *eValues) {
   assert(diagonal->size == upper->size + 1);
@@ -104,9 +93,9 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
   GenmapCopyVector(e, upper);
   e->data[n - 1] = 0.0;
 
-  // Create the vector to store eigenvalues
+  /* Create the vector to store eigenvalues */
   GenmapCreateVector(eValues, n);
-  // Init to identity
+  /* Init to identity */
   GenmapMalloc(n, eVectors);
   GenmapInt i;
   for(i = 0; i < n; i++) {
@@ -121,7 +110,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
     do {
       for(m = l; m < n - 1; m++) {
         GenmapScalar dd = fabs(d->data[m]) + fabs(d->data[m + 1]);
-        // Should use a tolerance for this check
+        /* Should use a tolerance for this check */
         if(fabs(e->data[m]) / dd < GENMAP_DP_TOL) break;
       }
 
@@ -172,13 +161,13 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
           p = s * r;
           d->data[i + 1] = g + p;
           g = c * r - b;
-          // Find eigenvectors
+          /* Find eigenvectors */
           for(k = 0; k < n; k++) {
             f = (*eVectors)[k]->data[i + 1];
             (*eVectors)[k]->data[i + 1] = s * (*eVectors)[k]->data[i] + c * f;
             (*eVectors)[k]->data[i] = c * (*eVectors)[k]->data[i] - s * f;
           }
-          // Done with eigenvectors
+          /* Done with eigenvectors */
         }
 
         if(r < GENMAP_DP_TOL && i >= l) continue;
@@ -190,7 +179,7 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
     } while(m != l);
   }
 
-  // Orthnormalize eigenvectors -- Just normalize?
+  /* Orthnormalize eigenvectors -- Just normalize? */
   for(i = 0; i < n; i++) {
     for(j = 0; j < i; j++) {
       GenmapScalar tmp = (*eVectors)[i]->data[j];

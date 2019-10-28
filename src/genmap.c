@@ -3,9 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-//
-// GenmapInit
-//
+
 int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
   GenmapMalloc(1, h);
   GenmapHandle h_ = *h;
@@ -22,9 +20,7 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
   GenmapMalloc(1,&h_->histogram);
   return 0;
 }
-//
-// GenmapFinalize
-//
+
 int GenmapFinalize(GenmapHandle h) {
   if(GenmapGetGlobalComm(h))
     GenmapDestroyComm(GenmapGetGlobalComm(h));
@@ -39,9 +35,7 @@ int GenmapFinalize(GenmapHandle h) {
 
   return 0;
 }
-//
-// GenmapMalloc, Realloc, Calloc and Free
-//
+
 int GenmapMallocArray(size_t n, size_t unit, void *p) {
   int ierr = posix_memalign((void **)p, GENMAP_ALIGN, n * unit);
   if(ierr)

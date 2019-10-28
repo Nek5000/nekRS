@@ -1,7 +1,5 @@
 #include "genmap-impl.h"
-//
-// GenmapHandle
-//
+
 GenmapElements GenmapGetElements(GenmapHandle h) {
   return (GenmapElements) h->elementArray.ptr;
 }
