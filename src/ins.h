@@ -12,6 +12,8 @@ typedef struct {
   int dim, elementType;
 
   mesh_t *mesh;
+  mesh_t *meshT;
+
   elliptic_t *uSolver;
   elliptic_t *vSolver;
   elliptic_t *wSolver;
@@ -104,7 +106,6 @@ typedef struct {
   occa::memory o_Wrk; 
 
   // Cfl related
-  int computedDh; 
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
 
   int readRestartFile,writeRestartFile, restartedFromFile;

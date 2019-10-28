@@ -1,0 +1,32 @@
+#!/bin/bash
+
+genbox << EOF
+fluid.box
+EOF
+mv box.rea v.rea
+
+genbox << EOF
+solid.box
+EOF
+mv box.rea t.rea
+
+pretex << EOF
+vt
+   3 CONJ. HEAT TRANSFER MERGE
+v
+t
+EOF
+
+reatore2 << EOF
+vt
+conj_ht
+EOF
+rm -rf conj_ht.rea
+
+gencon << EOF
+conj_ht
+0.02
+EOF
+
+rm -rf v.rea t.rea *.dra fort.* *.jou session.name
+rm -rf vt.rea 

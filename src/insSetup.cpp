@@ -1,28 +1,58 @@
 #include "nrs.hpp"
 #include "meshSetup.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
 
-cds_t *cdsSetup(ins_t *ins, setupAide &options,occa::properties &kernelInfoH);
+cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &kernelInfoH);
 
-ins_t *insSetup(mesh_t *mesh, setupAide &options)
+ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 {
 
   ins_t *ins = new ins_t();
-  ins->mesh = mesh;
   ins->options = options;
-
-  options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
-
   ins->kernelInfo = new occa::properties();
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  kernelInfo["defines"].asObject();
+  kernelInfo["includes"].asArray();
+  kernelInfo["header"].asArray();
+  kernelInfo["flags"].asObject();
+  kernelInfo["include_paths"].asArray();
 
+  int N;
   string install_dir;
+  options.getArgs("POLYNOMIAL DEGREE", N);
+  options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
-  
+
+  int cht = 0;
+  if (nekData.nelv != nekData.nelt) cht = 1;
+
+  if (buildOnly) {
+    ins->meshT = createMeshDummy(comm, N);
+    ins->mesh = ins->meshT;
+  } else {
+    ins->meshT = createMeshT(comm, N, cht);
+    bcMap::check(ins->meshT);
+    meshOccaSetup3D(ins->meshT, options, kernelInfo);
+    // free what is not required
+    ins->meshT->o_cubsgeo.free();
+    ins->meshT->o_cubggeo.free();
+    ins->meshT->o_cubsgeo = (void *) NULL;
+    ins->meshT->o_cubggeo = (void *) NULL;
+
+    ins->mesh = ins->meshT;
+    if (cht) {
+      ins->mesh = createMeshV(comm, N, ins->meshT);
+      bcMap::check(ins->mesh);
+      meshVOccaSetup3D(ins->mesh, options, kernelInfo);
+    }
+  }
+  mesh_t *mesh = ins->mesh;
+
   ins->NVfields = (ins->dim==3) ? 3:2; //  Total Number of Velocity Fields
   ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
 
@@ -149,9 +179,7 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
 
   dfloat dt; 
   options.getArgs("DT", dt);
-  // MPI_Allreduce to get global minimum dt
-  MPI_Allreduce(&dt, &(ins->dti), 1, MPI_DFLOAT, MPI_MIN, mesh->comm);
-  ins->dt = ins->dti; 
+  ins->dt = dt; 
 
   options.getArgs("FINAL TIME", ins->finalTime);
   options.getArgs("START TIME", ins->startTime);
@@ -170,24 +198,6 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   ins->idt = 1.0/ins->dt;
   ins->lambda = ins->g0 / (ins->dt * ins->nu);
   options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
-
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  kernelInfo["defines"].asObject();
-  kernelInfo["includes"].asArray();
-  kernelInfo["header"].asArray();
-  kernelInfo["flags"].asObject();
-  kernelInfo["include_paths"].asArray();
-
-  if(ins->dim==3)
-    meshOccaSetup3D(mesh, options, kernelInfo);
-  else
-    meshOccaSetup2D(mesh, options, kernelInfo);
-
-  // free what is not required
-  mesh->o_cubsgeo.free();
-  mesh->o_cubggeo.free();
-  mesh->o_cubsgeo = (void *) NULL;
-  mesh->o_cubggeo = (void *) NULL;
 
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
@@ -297,7 +307,11 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(ins); 
 
-  if(ins->Nscalar) ins->cds = cdsSetup(ins, options, kernelInfoS); 
+  if(ins->Nscalar) {
+   mesh_t *m;
+   (cht) ? m = ins->meshT : m = ins->mesh;
+   ins->cds = cdsSetup(ins, m, options, kernelInfoS); 
+  }
 
   if (mesh->rank==0) printf("==================VELOCITY SOLVE SETUP=========================\n");
 
@@ -450,23 +464,15 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
     printf("Np: %d \t Ncub: %d \n", mesh->Np, mesh->cubNp);
   }
   
-  // build lumped mass matrix for NEK
-  dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
-  dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
-
-  for(hlong e=0;e<mesh->Nelements;++e){
-    for(int n=0;n<mesh->Np;++n){
-      lumpedMassMatrix[e*mesh->Np+n]     = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
-      copyLumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
-    }
-  }
-
+  dfloat *lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
+  for(hlong e=0;e<mesh->Nelements;++e)
+    for(int n=0;n<mesh->Np;++n)
+      lumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-
   for(int n=0;n<mesh->Np*mesh->Nelements;++n)
     lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
-
-  ins->o_invLumpedMassMatrix = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
+  ins->o_invLumpedMassMatrix = 
+    mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
   ins->o_InvM = ins->o_invLumpedMassMatrix; 
  
   // halo setup
@@ -678,29 +684,21 @@ ins_t *insSetup(mesh_t *mesh, setupAide &options)
   ins->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),
                                     ins->EToB);
 
-  ins->computedDh = 0; 
-
-  if(mesh->rank == 0) {
-    size_t dMB = mesh->device.memoryAllocated() / 1e6;
-    cout << "device memory allocation: " << dMB << " MB" << endl;
-  }
-   
   return ins;
 }
 
-cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
+cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &kernelInfoH)
 {
-
-  mesh_t *mesh = ins->mesh; 
+  cds_t *cds = new cds_t(); 
+  cds->mesh = mesh;
 
   if (mesh->rank==0) printf("==================SCALAR SOLVE SETUP===========================\n");
 
-  cds_t *cds = new cds_t(); 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   
   // set mesh, options
-  cds->mesh        = mesh; 
+  cds->meshV       = ins->mesh; 
   cds->elementType = ins->elementType; 
   cds->dim         = ins->dim; 
   cds->NVfields    = ins->NVfields;
@@ -719,7 +717,7 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
 
   cds->Ntotal      = Ntotal;
-  cds->vOffset     = Ntotal; // keep it different for now.....b
+  cds->vOffset     = ins->fieldOffset;
   cds->sOffset     = Ntotal;
   cds->Nblock      = (Nlocal+blockSize-1)/blockSize;
 
@@ -846,24 +844,17 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
   cds->o_mapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), cds->mapB);
 
   // mass lumping
-  dfloat *lumpedMassMatrix     = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
-  dfloat *copyLumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
-
+  dfloat *lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
   for(hlong e=0;e<mesh->Nelements;++e){
     for(int n=0;n<mesh->Np;++n){
-      lumpedMassMatrix[e*mesh->Np+n]     = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
-      copyLumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
+      lumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
     }
   }
-
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-
   for(int n=0;n<mesh->Np*mesh->Nelements;++n)
     lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
-
-  cds->o_invLumpedMassMatrix = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
-
-  // Need to be revised for Tet/Tri
+  cds->o_invLumpedMassMatrix = 
+    mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
   cds->o_InvM = cds->o_invLumpedMassMatrix; 
 
   // time stepper
@@ -996,5 +987,3 @@ cds_t *cdsSetup(ins_t *ins, setupAide &options, occa::properties &kernelInfoH)
 
   return cds;
 }
-
-

@@ -69,6 +69,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("SCALAR01 BASIS", "NODAL");
   options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
   options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
+  options.setArgs("SCALAR01 CONJUGATEHEATTRANSFER", "0");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
@@ -299,7 +300,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.sections.count("temperature")) nscal = 1; // fixed for now
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
-  if (nscal) {
+  if(nscal) {
 
     double s_residualTol;
     if(ini.extract("temperature", "residualtol", s_residualTol)) {
@@ -313,16 +314,16 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) ABORT("Invalid expression for conductivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
- 
-      string s_bcMap;
-      if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
-        std::vector<std::string> sList;
-        sList = serializeString(s_bcMap);
-        bcMap::setup(sList, "scalar01");
-      } else {
-        ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
-      } 
     }
+
+    string s_bcMap;
+    if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(s_bcMap);
+      bcMap::setup(sList, "scalar01");
+    } else {
+      ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
+    } 
 
   }
 
