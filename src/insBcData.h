@@ -1,3 +1,4 @@
+// used in boundary device functions
 struct bcData
 {
    int idM;
