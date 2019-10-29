@@ -745,13 +745,33 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     cds->Srkc = ins->Srkc; 
   }
 
+  cds->startTime =ins->startTime;
+  cds->dt  = ins->dt; 
+  cds->idt = 1.0/cds->dt;
+  cds->sdt = ins->sdt; 
+  cds->NtimeSteps = ins->NtimeSteps; 
+
+  cds->var_coeff = 1; // use always var coeff elliptic
+
+  cds->prop  = (dfloat*) calloc(cds->NSfields*               2*Ntotal,sizeof(dfloat));
+  cds->coeff = (dfloat*) calloc(cds->NSfields*               2*Ntotal,sizeof(dfloat));
+
   options.getArgs("SCALAR01 DIFFUSIVITY", cds->diff);
   cds->idiff   = 1.0/cds->diff;
 
+  options.getArgs("SCALAR01 DENSITY", cds->rho);
+
+  for (int e=0;e<mesh->Nelements;e++) { 
+    for (int n=0;n<mesh->Np;n++) { 
+      cds->prop[0*cds->sOffset + n+e*mesh->Np] = cds->diff;
+      cds->prop[1*cds->sOffset + n+e*mesh->Np] = cds->rho;
+    }
+  }
+
   occa::properties& kernelInfo  = *ins->kernelInfo; 
   // ADD-DEFINES
-  kernelInfo["defines/" "p_NSfields"] = cds->NSfields;
-  kernelInfo["defines/" "p_NTSfields"]= (cds->NVfields+cds->NSfields + 1);
+  kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
+  kernelInfo["defines/" "p_NTSfields"] = (cds->NVfields+cds->NSfields + 1);
   kernelInfo["defines/" "p_diff"]      = cds->diff;
  
   cds->o_U  = ins->o_U;
@@ -759,14 +779,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
   cds->o_S = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
 
-  string suffix, fileName, kernelName;
-  cds->startTime =ins->startTime;
-  cds->dt  = ins->dt; 
-  cds->sdt = ins->sdt; 
-  cds->NtimeSteps = ins->NtimeSteps; 
-
-  cds->idt     = 1.0/cds->dt;
-  cds->lambda  = cds->g0 / (cds->dt * cds->diff);
+  cds->o_prop  = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  
+  cds->o_coeff = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->coeff);  
 
   //make option objects for elliptc solvers
   cds->options = options;
@@ -806,8 +820,12 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->solver->elementType = cds->elementType;
   cds->solver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(cds->solver->BCType,sBCType,(nbrBIDs+1)*sizeof(int));
-  ellipticSolveSetup(cds->solver, cds->lambda, kernelInfoH); 
 
+  cds->solver->var_coeff = cds->var_coeff;
+  cds->solver->coeff = cds->coeff; 
+  cds->solver->o_coeff = cds->o_coeff; 
+  const dfloat lambda = 1; // not used if var_coeff
+  ellipticSolveSetup(cds->solver, lambda, kernelInfoH); 
 
   dfloat largeNumber = 1<<20;
   cds->mapB = (int *) calloc(mesh->Nelements*mesh->Np,sizeof(int));
@@ -902,6 +920,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   }
 
   // set kernel name suffix
+  string suffix, fileName, kernelName;
   if(cds->elementType==QUADRILATERALS)
      suffix = "Quad2D";
   if(cds->elementType==HEXAHEDRA)
@@ -946,6 +965,10 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
       kernelName = "cdsHelmholtzAddBC" + suffix;
       cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = install_dir + "/okl/setHelmholtzCoeff.okl"; 
+      kernelName = "setHelmholtzCoeff";
+      cds->setHelmholtzCoeffKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = install_dir + "/okl/cdsMassMatrix.okl"; 
       kernelName = "cdsMassMatrix" + suffix;

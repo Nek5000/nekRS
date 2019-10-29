@@ -9,7 +9,6 @@
 static int rank, size;
 static MPI_Comm comm;
 
-static double timeLast = -1;
 static ins_t *ins;
 
 static libParanumal::setupAide options;
@@ -99,8 +98,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   ins->o_P.copyFrom(ins->P);
   if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
 
-  if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
+  if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
+
+  if(udf.variableProperties)
+    udf.variableProperties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
+                           ins->o_prop, ins->cds->o_prop);
 
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
@@ -120,7 +123,6 @@ void runStep(double time, double dt, int tstep)
 void copyToNek(double time, int tstep)
 {
   nek_ocopyFrom(ins, time, tstep);
-  timeLast = time;
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)

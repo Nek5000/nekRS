@@ -306,6 +306,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("temperature", "residualtol", s_residualTol)) {
       options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
+
+    /*
+    bool variableProperties = false;
+    ini.extract("temperature", "variableproperties", variableProperties);
+    if(variableProperties) 
+      options.setArgs("SCALAR01 VARIABLEPROPERTIES", "YES");
+    */
  
     double diffusivity; 
     if(ini.extract("temperature", "conductivity", sbuf)) {
@@ -314,6 +321,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) ABORT("Invalid expression for conductivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+    }
+
+    double rho; 
+    if(ini.extract("temperature", "rhocp", sbuf)) {
+      int err = 0;
+      rho = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for conductivity!");
+      options.setArgs("SCALAR01 DENSITY", to_string_f(rho));
     }
 
     string s_bcMap;

@@ -102,6 +102,9 @@ typedef struct {
   dfloat *Ud, *Ue, *resU, *rhsUd, sdt;
   occa::memory o_Ud, o_Ue, o_resU, o_rhsUd;
 
+  dfloat *prop;
+  occa::memory o_prop;
+
   dfloat *Wrk;
   occa::memory o_Wrk; 
 
