@@ -11,8 +11,26 @@ void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = ins->cds;
   mesh_t *mesh = cds->mesh;
-  const dfloat cValue = 1.0;
-  cFillKernel(mesh->Nelements, cValue, o_eInfo, o_FS);
+  const dfloat qvolFluid = 0.0;
+  const dfloat qvolSolid = 1.0;
+  cFillKernel(mesh->Nelements, qvolFluid, qvolSolid, o_eInfo, o_FS);
+}
+
+void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  cds_t *cds   = ins->cds;
+  mesh_t *mesh = cds->mesh;
+  occa::memory o_con   = o_SProp.slice(0*cds->sOffset*sizeof(dfloat));
+  occa::memory o_rhoCp = o_SProp.slice(1*cds->sOffset*sizeof(dfloat));
+
+  const dfloat rhoCpFluid = 1.0;
+  const dfloat rhoCpSolid = 0.2;
+  cFillKernel(mesh->Nelements, rhoCpFluid, rhoCpSolid, o_eInfo, o_rhoCp);
+
+  const dfloat conFluid = ins->nu; // change later to ins->mue
+  const dfloat conSolid = 5*conFluid;
+  cFillKernel(mesh->Nelements, conFluid, conSolid, o_eInfo, o_con);
 }
 
 /* UDF Functions */                                                      
@@ -28,6 +46,7 @@ void UDF_Setup(ins_t *ins)
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
 
   udf.sEqnSource = &userq;
+  udf.variableProperties = &uservp;
 
   mesh_t *meshT = ins->cds->mesh;
   o_eInfo = 

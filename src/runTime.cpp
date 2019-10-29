@@ -41,7 +41,11 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
                          ins->o_U,
                          ins->o_Ue);
 
-  if(ins->Nscalar) scalarSolve(ins, time, dt, cds->o_S); 
+  if(ins->Nscalar) scalarSolve(ins, time, dt, cds->o_S);
+
+  if(udf.variableProperties)
+    udf.variableProperties(ins, time, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
+ 
   velocitySolve(ins, time, dt, ins->o_U);
 
   dfloat cfl = computeCFL(ins, time+dt, tstep);
@@ -68,7 +72,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 void extbdfCoefficents(ins_t *ins, int order) {
 
   if(order==1) {
-     //advection, first order in time, increment
+
     ins->g0 =  1.0f;
     dfloat extbdfB[3] = {1.0f, 0.0f, 0.0f};
     dfloat extbdfA[3] = {1.0f, 0.0f, 0.0f};
@@ -84,18 +88,8 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->ExplicitOrder = 1;
 
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
-
-     if(ins->Nscalar){
-       ins->cds->ExplicitOrder = ins->ExplicitOrder;  
-       ins->cds->g0 = ins->g0;    
-       ins->cds->lambda = ins->cds->g0 / (ins->dt * ins->cds->diff);
-       ins->cds->ig0 = 1.0/ins->cds->g0; 
-    }
-
   } else if(order==2) {
-    //advection, second order in time, increment
+
     ins->g0 =  1.5f;
     dfloat extbdfB[3] = {2.0f,-0.5f, 0.0f};
     dfloat extbdfA[3] = {2.0f,-1.0f, 0.0f};
@@ -111,17 +105,8 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->ExplicitOrder=2;
 
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
-
-     if(ins->Nscalar){
-      ins->cds->ExplicitOrder = ins->ExplicitOrder=2;  
-      ins->cds->g0 = ins->g0;  
-      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->diff);
-      ins->cds->ig0 = 1.0/ins->cds->g0; 
-    }
   } else if(order==3) {
-    //advection, third order in time, increment
+
     ins->g0 =  11.f/6.f;
     dfloat extbdfB[3] = {3.0f,-1.5f, 1.0f/3.0f};
     dfloat extbdfA[3] = {3.0f,-3.0f, 1.0f};
@@ -137,15 +122,15 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
     ins->ExplicitOrder=3;
 
-    ins->lambda = ins->g0 / (ins->dt * ins->nu);
-    ins->ig0 = 1.0/ins->g0;
+  }
 
-    if(ins->Nscalar){
-      ins->cds->ExplicitOrder = ins->ExplicitOrder=3;  
-      ins->cds->g0 = ins->g0;  
-      ins->cds->lambda = ins->cds->g0 / (ins->cds->dt * ins->cds->diff);
-      ins->cds->ig0 = 1.0/ins->cds->g0; 
-    }
+  ins->lambda = ins->g0 / (ins->dt * ins->nu);
+  ins->ig0 = 1.0/ins->g0;
+
+  if (ins->Nscalar) {
+    ins->cds->ExplicitOrder = ins->ExplicitOrder;  
+    ins->cds->g0 = ins->g0;    
+    ins->cds->ig0 = 1.0/ins->cds->g0; 
   }
 }
 
@@ -157,8 +142,6 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
   else
     cdsAdvection(cds, time, cds->o_Ue, cds->o_S, o_NS);
 
-  ins->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, o_FS);
-  
   if(udf.sEqnSource)
     udf.sEqnSource(ins, time, cds->o_S, o_FS);
 
@@ -391,8 +374,9 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
   }
 }
 
-void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U, occa::memory o_S, occa::memory o_Sd){
-
+void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U, 
+                          occa::memory o_S, occa::memory o_Sd)
+{
   mesh_t *mesh = cds->mesh;
 
   const dfloat tn0 = time - 0*cds->dt;

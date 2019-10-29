@@ -49,7 +49,8 @@ typedef struct {
   
   setupAide options;
   // INS SOLVER OCCA VARIABLES
-  dfloat k, cp, rho, idiff, diff;
+  dfloat rho, idiff, diff;
+  int var_coeff;
   dlong vOffset;
   dlong sOffset;
   dlong Ntotal;
@@ -58,7 +59,7 @@ typedef struct {
   dfloat dtMIN;         
   dfloat time;
   int tstep, frame;
-  dfloat g0, ig0, lambda;      // helmhotz solver -lap(u) + lamda u
+  dfloat g0, ig0;
   dfloat startTime;   
   dfloat finalTime;   
 
@@ -75,8 +76,6 @@ typedef struct {
   //solver tolerances
   dfloat TOL;
 
-  dfloat icp, irho; // hold some inverses
-  
   dfloat *U, *S;
   dfloat *NS, *rkNS;
   //  dfloat *rhsS;   
@@ -115,6 +114,9 @@ typedef struct {
   dfloat sdt; 
   dfloat *Sd, *Ue, *resS, *rhsS, *rhsSd;
   occa::memory o_Sd, o_Ue, o_resS, o_rhsS, o_rhsSd;
+
+  dfloat *prop, *coeff; 
+  occa::memory o_prop, o_coeff;
 
   dfloat *cU, *cSd, *cS, *FS; 
   occa::memory o_cU, o_cSd, o_cS, o_FS;
@@ -178,6 +180,7 @@ typedef struct {
   occa::kernel helmholtzRhsIpdgBCKernel;
   occa::kernel helmholtzRhsBCKernel;
   occa::kernel helmholtzAddBCKernel;
+  occa::kernel setHelmholtzCoeffKernel;
 
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 

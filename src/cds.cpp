@@ -31,7 +31,13 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
   
   mesh_t     *mesh   = cds->mesh; 
   elliptic_t *solver = cds->solver;
-  
+ 
+  cds->setHelmholtzCoeffKernel(mesh->Np*mesh->Nelements,
+                               cds->g0*cds->idt,
+                               cds->sOffset,
+                               cds->o_prop,
+                               cds->o_coeff);
+ 
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
                             mesh->o_sgeo,
@@ -41,12 +47,13 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
                             mesh->o_vmapM,
                             cds->o_EToB,
                             mesh->o_sMT,
-                            cds->lambda,
                             time,
+                            cds->sOffset,
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,
                             cds->o_mapB,
+                            cds->o_coeff,
                             o_rhsS);
 
   ogsGatherScatter(o_rhsS, ogsDfloat, ogsAdd, mesh->ogs);
@@ -57,8 +64,9 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
   o_Shat.copyFrom(cds->o_S,Ntotal*sizeof(dfloat),0,0*cds->sOffset*sizeof(dfloat)); 
  
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_Shat);
-  
-  cds->Niter = ellipticSolve(solver, cds->lambda, cds->TOL, o_rhsS, o_Shat);
+
+  const dfloat lambda = 1; // only used if coeff is not variable
+  cds->Niter = ellipticSolve(solver, lambda, cds->TOL, o_rhsS, o_Shat);
 
   cds->helmholtzAddBCKernel(mesh->Nelements,
                             time,
@@ -80,7 +88,6 @@ void cdsHelmholtzRhs(cds_t *cds, dfloat time, int stage, occa::memory o_rhsS){
                           mesh->o_vgeo,
                           mesh->o_MM,
                           cds->idt,
-                          cds->idiff,
                           cds->o_extbdfA,
                           cds->o_extbdfB,
                           cds->o_extbdfC,
@@ -88,6 +95,7 @@ void cdsHelmholtzRhs(cds_t *cds, dfloat time, int stage, occa::memory o_rhsS){
                           cds->o_S,
                           cds->o_NS,
                           cds->o_FS,
+                          cds->o_prop,
                           o_rhsS);
 }
 
@@ -107,6 +115,7 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
            cds->sOffset,
            o_U,
            o_S,
+           cds->o_prop,
            o_NS);
   else
     cds->advectionStrongVolumeKernel(
@@ -117,6 +126,7 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
            cds->sOffset,
            o_U,
            o_S,
+           cds->o_prop,
            o_NS);
 
 }

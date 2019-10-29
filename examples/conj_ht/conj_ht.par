@@ -14,12 +14,12 @@ residualProj = no
 [VELOCITY]
 boundaryTypeMap = v, O, W
 residualTol = 1e-06
-#density = 1
+#density = 1.0
 viscosity = 1/100.
 
 [TEMPERATURE]
 boundaryTypeMap = t, O, I
-#rhoCp = 1.0
-conductivity = 1/(10.*100) 
+rhoCp = 1.0
+conductivity = 1/100. 
 residualTol = 1e-06
 residualProj = yes
