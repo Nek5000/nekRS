@@ -21,15 +21,16 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   cds_t *cds   = ins->cds;
   mesh_t *mesh = cds->mesh;
-  occa::memory o_con   = o_SProp.slice(0*cds->sOffset*sizeof(dfloat));
-  occa::memory o_rhoCp = o_SProp.slice(1*cds->sOffset*sizeof(dfloat));
+
+  const occa::memory o_con   = o_SProp.slice(0*cds->sOffset*sizeof(dfloat));
+  const occa::memory o_rhoCp = o_SProp.slice(1*cds->sOffset*sizeof(dfloat));
 
   const dfloat rhoCpFluid = 1.0;
-  const dfloat rhoCpSolid = 0.2;
+  const dfloat rhoCpSolid = rhoCpFluid*0.6;
   cFillKernel(mesh->Nelements, rhoCpFluid, rhoCpSolid, o_eInfo, o_rhoCp);
 
   const dfloat conFluid = ins->nu; // change later to ins->mue
-  const dfloat conSolid = 5*conFluid;
+  const dfloat conSolid = 400*conFluid;
   cFillKernel(mesh->Nelements, conFluid, conSolid, o_eInfo, o_con);
 }
 

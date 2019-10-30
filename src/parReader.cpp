@@ -327,7 +327,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("temperature", "rhocp", sbuf)) {
       int err = 0;
       rho = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for conductivity!");
+      if(err) ABORT("Invalid expression for rhoCp!");
       options.setArgs("SCALAR01 DENSITY", to_string_f(rho));
     }
 
