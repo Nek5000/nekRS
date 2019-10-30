@@ -1,9 +1,10 @@
-#
-# nek parameter file
-#
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
 [GENERAL] 
 polynomialOrder = 7
-numSteps = 500 
+numSteps = 1500 
 dt = 2e-02
 writeInterval = 100
 
@@ -15,11 +16,10 @@ residualProj = no
 boundaryTypeMap = v, O, W
 residualTol = 1e-06
 #density = 1.0
-viscosity = 1/100.
+viscosity = -1000
 
 [TEMPERATURE]
 boundaryTypeMap = t, O, I
 rhoCp = 1.0
-conductivity = 1/100. 
+conductivity = -1000 
 residualTol = 1e-06
-residualProj = yes
