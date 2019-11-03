@@ -156,7 +156,7 @@
         s_FT[0][id] = fMT[id];
         
 #pragma unroll p_Nq
-        for(int k=0;k<p_cubNq;++k){         
+        for(int k=0;k<p_Nq;++k){         
           r_Un[k] = 0.f;
           r_Vn[k] = 0.f;
           r_Wn[k] = 0.f;
@@ -288,7 +288,7 @@
         s_FT[0][id] = fMT[id];
         
 #pragma unroll p_Nq
-        for(int k=0;k<p_cubNq;++k){         
+        for(int k=0;k<p_Nq;++k){         
           r_Un[k] = 0.f;
         }
       }
