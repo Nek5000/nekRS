@@ -12,9 +12,12 @@ void extbdfCoefficents(ins_t *ins, int order);
 void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS);
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU);
+void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl);
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U);
-void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, occa::memory o_Ud);
-void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U, occa::memory o_S, occa::memory o_Sd);
+void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, 
+                            occa::memory o_Ud);
+void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U, 
+                          occa::memory o_S, occa::memory o_Sd);
 
 double etime0 = 0;
 
@@ -41,14 +44,18 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
                          ins->o_U,
                          ins->o_Ue);
 
-  if(ins->Nscalar) scalarSolve(ins, time, dt, cds->o_S);
+  if(ins->Nscalar) 
+    scalarSolve(ins, time, dt, cds->o_S);
 
   if(udf.variableProperties)
     udf.variableProperties(ins, time, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
+
+  if(ins->lowMach)
+    qthermal(ins, time+dt, ins->o_qtl); 
  
   velocitySolve(ins, time, dt, ins->o_U);
 
-  dfloat cfl = computeCFL(ins, time+dt, tstep);
+  const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
   if (mesh->rank==0) {
     if(ins->Nscalar)
@@ -124,7 +131,7 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
   }
 
-  ins->lambda = ins->g0 / (ins->dt * ins->nu);
+  ins->lambda = ins->g0 / (ins->dt * ins->mue/ins->rho);
   ins->ig0 = 1.0/ins->g0;
 
   if (ins->Nscalar) {
@@ -158,14 +165,20 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
 
   cds_t *cds   = ins->cds;
   mesh_t *mesh = cds->mesh;
-  
-  hlong offset = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+
+  occa::memory &o_wrk = cds->o_rkS;
+
+  ins->setEllipticCoeffKernel(
+       mesh->Np*mesh->Nelements,
+       ins->g0*ins->idt,
+       cds->sOffset,
+       cds->o_diff,
+       cds->o_rho,
+       cds->o_ellipticCoeff);
 
   makeq(ins, time, cds->o_NS, cds->o_FS); 
-
   cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
-
-  cdsHelmholtzSolve(cds, time+dt, cds->Nstages, cds->o_rhsS, cds->o_rkS);
+  cdsHelmholtzSolve(cds, time+dt, cds->Nstages, cds->o_rhsS, o_wrk);
 
   for (int s=cds->Nstages;s>1;s--) {
     o_S.copyFrom( o_S, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
@@ -174,7 +187,7 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
   }
 
   //copy updated scalar
-  o_S.copyFrom(cds->o_rkS, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
+  o_S.copyFrom(o_wrk, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
    
   for (int s=cds->Nstages;s>1;s--) {
     cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
@@ -229,17 +242,23 @@ void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU)
 
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
 {
+  mesh_t *mesh = ins->mesh;
+  occa::memory &o_wrk = ins->o_scratch;
+
   makef(ins, time, ins->o_NU, ins->o_FU);
 
-  tombo::curlCurl(ins, time, ins->o_Ue, ins->o_NC);
-
-  occa::memory &o_wrk = ins->o_UH;
-
-  tombo::pressureRhs  (ins, time+dt, ins->o_rhsP);
+  tombo::pressureRhs(ins, time+dt, ins->o_rhsP);
   tombo::pressureSolve(ins, time+dt, ins->o_rhsP, o_wrk); 
   ins->o_P.copyFrom(o_wrk, ins->Ntotal*sizeof(dfloat)); 
 
-  tombo::velocityRhs  (ins, time+dt, ins->o_rhsU);
+  ins->setEllipticCoeffKernel(
+       mesh->Np*mesh->Nelements,
+       ins->g0*ins->idt,
+       ins->fieldOffset,
+       ins->o_mue,
+       ins->o_rho,
+       ins->o_ellipticCoeff);
+  tombo::velocityRhs(ins, time+dt, ins->o_rhsU);
   tombo::velocitySolve(ins, time+dt, ins->o_rhsU, o_wrk);
 
   for (int s=ins->Nstages;s>1;s--)
@@ -489,4 +508,32 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
       }
     }
   }
+}
+
+// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
+void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
+{
+  cds_t *cds = ins->cds;
+  mesh_t *mesh = ins->mesh;
+
+  if(udf.qtl){
+    udf.qtl(ins, time, o_qtl);
+    return;
+  }
+
+  occa::memory &o_src = cds->o_rkS;
+  if(udf.sEqnSource)
+    udf.sEqnSource(ins, time, cds->o_S, o_src);
+  else
+    ins->setScalarKernel(mesh->Nelements*mesh->Np, 0.0, o_src);
+
+  ins->qtlKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       cds->o_S,
+       cds->o_diff,
+       cds->o_rho,
+       o_src,
+       o_qtl);
 }

@@ -20,7 +20,24 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      real  wrk(lx1,ly1,lz1,lelt)
+
       nt = nx1*ny1*nz1*nelt
+
+      call copy(wrk,t,nt)
+      call load_fld('nek.fld')
+      call sub2(wrk,t,nt)
+      err_t = gl2norm(wrk,nt)     
+      if(nid.eq.0) write(6,*) 'L2 error:', err_t
+
+      err_inf = glamax(wrk,nt)
+      if(nid.eq.0) write(6,*) 'inf error:', err_inf
+
+      call invcol2(wrk,t,nt)
+      err_inf = glamax(wrk,nt)
+      if(nid.eq.0) write(6,*) 'realtive inf error:', err_inf
+
+      call exitt 
 
       if (mod(istep,100).eq.0) then
          tmax = glmax(t ,nt)

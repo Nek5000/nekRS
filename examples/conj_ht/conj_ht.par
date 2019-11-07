@@ -3,6 +3,7 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
+startFrom = nekrs.fld
 polynomialOrder = 7
 numSteps = 1500 
 dt = 2e-02
