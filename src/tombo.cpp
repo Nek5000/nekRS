@@ -1,44 +1,100 @@
 #include "nrs.hpp"
 
-void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP);
-void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU);
+void insGradient(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_GU);
+void curlCurl(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_U, 
+              occa::memory o_NC);
 
 namespace tombo {
 
 void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
 {
   mesh_t *mesh = ins->mesh;
-  occa::memory &o_wrk = ins->o_UH;
+  occa::memory o_wrk = ins->o_scratch;
 
-  ins->pressureRhsKernel(mesh->Nelements,
-                         mesh->o_vgeo,
-                         mesh->o_MM,
-                         ins->idt,
-                         ins->nu,
-                         ins->g0,
-                         ins->o_extbdfA,
-                         ins->o_extbdfB,
-                         ins->fieldOffset,
-                         ins->o_U,
-                         ins->o_NU,
-                         ins->o_NC,
-                         ins->o_FU,
-                         o_wrk);
+  ins->setEllipticCoeffPressureKernel(
+       mesh->Np*mesh->Nelements,
+       ins->fieldOffset,
+       ins->o_rho,
+       ins->o_ellipticCoeff);
 
-  // weak divergence term (not that no boundary contribution) 
-  // -> (F, grad(phi))_sigma - g_0/dt*(n*U^n+1)_del_sigma
-  insDivergence(ins, time, o_wrk, o_rhsP);
+  // o_NC = nu*( curl(curl(v)) - 4/3*grad(qtl) ) 
+  insGradient(ins, time, ins->o_qtl, o_wrk);
+  occa::memory o_irho = ins->o_ellipticCoeff.slice(0*ins->fieldOffset*sizeof(dfloat));
+  occa::memory o_NC   = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
+  curlCurl(ins, time, o_wrk, ins->o_Ue, o_NC);
+  ins->ncKernel(
+       mesh->Np*mesh->Nelements,
+       ins->fieldOffset,
+       ins->o_mue,
+       o_irho,
+       o_wrk,
+       o_NC);
 
-  // Add  -(grad P, grad phi) to rhsP
-  const dfloat lambda = 0.0;
-  ins->pressureAxKernel(mesh->Nelements,
-                        mesh->o_ggeo,
-                        mesh->o_Dmatrices,
-                        mesh->o_Smatrices,
-                        mesh->o_MM,
-                        lambda,
-                        ins->o_P,
-                        o_rhsP);
+  // o_wrk = f - o_NC
+  ins->pressureRhsKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_MM,
+       ins->idt,
+       ins->g0,
+       ins->o_extbdfA,
+       ins->o_extbdfB,
+       ins->fieldOffset,
+       ins->o_U,
+       ins->o_NU,
+       o_NC,
+       ins->o_FU,
+       o_wrk);
+
+  // TODO: dssum o_wrk
+
+  // weak divergence term (no boundary contribution) 
+  ins->divergenceVolumeKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       ins->fieldOffset,
+       o_wrk,
+       o_rhsP);
+
+  // we solve for delta p => o_rhsP -= (grad P, grad phi)
+  ins->AxKernel(
+       mesh->Nelements,
+       mesh->o_ggeo,
+       mesh->o_Dmatrices,
+       mesh->o_Smatrices,
+       mesh->o_MM,
+       ins->o_P,
+       ins->o_ellipticCoeff,
+       o_rhsP);
+ 
+  // o_rhsP += lambda*qtl
+  const dfloat lambda = ins->g0*ins->idt; 
+  ins->scaledAddKernel(
+       mesh->Nelements*mesh->Np,
+       lambda,
+       ins->qtl,
+       1.0,
+       o_rhsP);
+
+  // o_rho += surface term
+  ins->divergenceSurfaceKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_sgeo,
+       mesh->o_LIFTT,
+       mesh->o_vmapM,
+       mesh->o_vmapP,
+       ins->o_EToB,
+       time,
+       lambda, 
+       mesh->o_x,
+       mesh->o_y,
+       mesh->o_z,
+       ins->fieldOffset,
+       ins->o_usrwrk,
+       o_wrk,
+       o_rhsP);
 }
 
 
@@ -64,7 +120,7 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_rhsP, occa::memory o_
                            mesh->o_vmapM,
                            ins->o_PmapB,
                            ins->o_EToB,
-                           ins->o_Wrk,
+                           ins->o_usrwrk,
                            ins->o_U,
                            ins->o_PI);
 
@@ -80,16 +136,22 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_rhsP, occa::memory o_
 void velocityRhs(ins_t *ins, dfloat time, occa::memory o_rhsU) 
 {
   mesh_t *mesh = ins->mesh;
-  occa::memory &o_wrk = ins->o_UH;
+  occa::memory o_wrk = ins->o_scratch;
+  occa::memory o_PQ  = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
 
-  insGradient (ins, time, ins->o_P, o_wrk);
+  // grad(p - 1/3*mue*qtl)
+  ins->pqKernel(
+       mesh->Nelements*mesh->Np,
+       ins->o_mue,
+       ins->o_qtl,
+       ins->o_P,
+       o_PQ);  
+  insGradient (ins, time, o_PQ, o_wrk);
 
   ins->velocityRhsKernel(mesh->Nelements,
                          mesh->o_vgeo,
                          mesh->o_MM,
                          ins->idt,
-                         ins->inu,
-                         ins->g0,
                          ins->o_extbdfA,
                          ins->o_extbdfB,
                          ins->fieldOffset,
@@ -97,6 +159,7 @@ void velocityRhs(ins_t *ins, dfloat time, occa::memory o_rhsU)
                          ins->o_NU,
                          ins->o_FU,
                          o_wrk,
+                         ins->o_rho,
                          o_rhsU);
 }
 
@@ -117,25 +180,26 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
   occa::memory o_vh = o_UH.slice(1*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_wh = o_UH.slice(2*ins->fieldOffset*sizeof(dfloat));
 
-  ins->velocityRhsBCKernel(mesh->Nelements,
-                           ins->fieldOffset,
-                           mesh->o_ggeo,
-                           mesh->o_sgeo,
-                           mesh->o_Dmatrices,
-                           mesh->o_Smatrices,
-                           mesh->o_MM,
-                           mesh->o_vmapM,
-                           ins->o_EToB,
-                           mesh->o_sMT,
-                           ins->lambda,
-                           time,
-                           mesh->o_x,
-                           mesh->o_y,
-                           mesh->o_z,
-                           ins->o_VmapB,
-                           ins->o_Wrk,
-                           ins->o_U,
-                           o_rhsU);
+  ins->velocityRhsBCKernel(
+       mesh->Nelements,
+       ins->fieldOffset,
+       mesh->o_ggeo,
+       mesh->o_sgeo,
+       mesh->o_Dmatrices,
+       mesh->o_Smatrices,
+       mesh->o_MM,
+       mesh->o_vmapM,
+       ins->o_EToB,
+       mesh->o_sMT,
+       time,
+       mesh->o_x,
+       mesh->o_y,
+       mesh->o_z,
+       ins->o_VmapB,
+       ins->o_usrwrk,
+       ins->o_U,
+       ins->o_ellipticCoeff,
+       o_rhsU);
 
   ogsGatherScatterMany(o_rhsU, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
@@ -154,10 +218,11 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
   if (ins->dim==3 && wsolver->Nmasked)
     mesh->maskKernel(wsolver->Nmasked, wsolver->o_maskIds, o_rhsw);
 
-  ins->NiterU = ellipticSolve(usolver, ins->lambda, ins->velTOL, o_rhsu, o_uh);
-  ins->NiterV = ellipticSolve(vsolver, ins->lambda, ins->velTOL, o_rhsv, o_vh);
+  const dfloat lambda = 1; // dummy
+  ins->NiterU = ellipticSolve(usolver, lambda, ins->velTOL, o_rhsu, o_uh);
+  ins->NiterV = ellipticSolve(vsolver, lambda, ins->velTOL, o_rhsv, o_vh);
   if (ins->dim==3) 
-    ins->NiterW = ellipticSolve(wsolver, ins->lambda, ins->velTOL, o_rhsw, o_wh);
+    ins->NiterW = ellipticSolve(wsolver, lambda, ins->velTOL, o_rhsw, o_wh);
   
   ins->velocityAddBCKernel(mesh->Nelements,
                            ins->fieldOffset,
@@ -168,16 +233,17 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
                            mesh->o_z,
                            mesh->o_vmapM,
                            ins->o_VmapB,
-                           ins->o_Wrk,
+                           ins->o_usrwrk,
                            ins->o_U,
                            o_UH);
 }
 
-void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
+} // namespace
+
+void curlCurl(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_U, 
+              occa::memory o_NC)
 {
   mesh_t *mesh = ins->mesh;
-
-  occa::memory &o_wrk = ins->o_UH;
 
   ins->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
@@ -191,12 +257,12 @@ void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
                        ogsDfloat, ogsAdd, mesh->ogs);
 
   ins->invMassMatrixKernel(
-    mesh->Nelements,
-    ins->fieldOffset,
-    ins->NVfields,
-    mesh->o_vgeo,
-    ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
-    o_wrk);
+       mesh->Nelements,
+       ins->fieldOffset,
+       ins->NVfields,
+       mesh->o_vgeo,
+       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       o_wrk);
 
   ins->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
@@ -210,63 +276,23 @@ void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC)
                        ogsDfloat, ogsAdd, mesh->ogs);
 
   ins->invMassMatrixKernel(
-    mesh->Nelements,
-    ins->fieldOffset,
-    ins->NVfields,
-    mesh->o_vgeo,
-    ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
-    o_NC);
+       mesh->Nelements,
+       ins->fieldOffset,
+       ins->NVfields,
+       mesh->o_vgeo,
+       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       o_NC);
 }
 
-
-
-} // namespace
-
-void insGradient(ins_t *ins, dfloat time, occa::memory o_P, occa::memory o_GP)
+void insGradient(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_GU)
 {
   mesh_t *mesh = ins->mesh;
 
-  // Compute Volume Contribution
-  ins->gradientVolumeKernel(mesh->Nelements,
-			    mesh->o_vgeo,
-			    mesh->o_Dmatrices,
-                            ins->fieldOffset,
-                            o_P,
-                            o_GP);
-
+  ins->gradientVolumeKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       ins->fieldOffset,
+       o_U,
+       o_GU);
 }
-
-// Compute divergence of the velocity field using physical boundary data at t = time. 
-void insDivergence(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_DU){
-
-  mesh_t *mesh = ins->mesh;
-
-  // computes div u^(n+1) volume term
-  ins->divergenceVolumeKernel(mesh->Nelements,
-                             mesh->o_vgeo,
-                             mesh->o_Dmatrices,
-                             ins->fieldOffset,
-                             o_U,
-                             o_DU);
-  
-  //computes div u^(n+1) surface term
-  const dfloat lambda = -ins->g0*ins->idt; 
-  ins->divergenceSurfaceKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_sgeo,
-    mesh->o_LIFTT,
-    mesh->o_vmapM,
-    mesh->o_vmapP,
-    ins->o_EToB,
-    time,
-    lambda, 
-    mesh->o_x,
-    mesh->o_y,
-    mesh->o_z,
-    ins->fieldOffset,
-    ins->o_Wrk,
-    o_U,
-    o_DU);
-}
-

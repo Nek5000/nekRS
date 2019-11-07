@@ -24,6 +24,7 @@ void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 
 void UDF_LoadKernels(ins_t *ins)
 {
+  ins->kernelInfo["defines/" "p_nu"] = ins->mue/ins->rho;
   dpdxKernel = udfBuildKernel(ins, "dpdx");
 }
 

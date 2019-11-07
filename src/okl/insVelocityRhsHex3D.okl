@@ -24,13 +24,10 @@ SOFTWARE.
 
 */
 
-// rhsU^s = MM*(U^n - \sum^s-1 ea_si N(U^i) + \sum^s-1 ia_si LU^i - \sum^s-1 pa_si GP^i)/ia_ss nu dt
 @kernel void insVelocityRhsTOMBOHex3D(const dlong Nelements,
                                       @restrict const  dfloat *  vgeo,
                                       @restrict const  dfloat *  MM,
                                       const dfloat idt,
-                                      const dfloat inu,
-                                      const dfloat g0,
                                       @restrict const  dfloat *  extbdfA,
                                       @restrict const  dfloat *  extbdfB,
                                       const dlong fieldOffset,
@@ -38,6 +35,7 @@ SOFTWARE.
                                       @restrict const  dfloat *  NU,
                                       @restrict const  dfloat *  FU,
                                       @restrict const  dfloat *  GP,
+                                      @restrict const  dfloat *  RHO,
                                       @restrict dfloat *  rhsU){
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
@@ -56,15 +54,16 @@ SOFTWARE.
               dfloat rhsVn;
               dfloat rhsWn;
 
-              if (p_SUBCYCLING) {
               // Gradient P
-              rhsUn = -JW*inu*GP[id+0*fieldOffset];
-              rhsVn = -JW*inu*GP[id+1*fieldOffset];
-              rhsWn = -JW*inu*GP[id+2*fieldOffset];
-              // Characteristic Velocity
-              rhsUn += JW*inu*idt*NU[id+0*fieldOffset];
-              rhsVn += JW*inu*idt*NU[id+1*fieldOffset];
-              rhsWn += JW*inu*idt*NU[id+2*fieldOffset];
+              rhsUn = -JW*GP[id+0*fieldOffset];
+              rhsVn = -JW*GP[id+1*fieldOffset];
+              rhsWn = -JW*GP[id+2*fieldOffset];
+
+              if (p_SUBCYCLING) {
+                // Characteristic Velocity
+                rhsUn += JW*idt*NU[id+0*fieldOffset];
+                rhsVn += JW*idt*NU[id+1*fieldOffset];
+                rhsWn += JW*idt*NU[id+2*fieldOffset];
 
                 for (int s=0;s<p_Nstages;s++) {
                   // FU
@@ -72,15 +71,11 @@ SOFTWARE.
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
                   // 
-                  rhsUn += JW*inu*extbdfA[s]*FUx;
-                  rhsVn += JW*inu*extbdfA[s]*FUy;
-                  rhsWn += JW*inu*extbdfA[s]*FUz;
+                  rhsUn += JW*extbdfA[s]*FUx;
+                  rhsVn += JW*extbdfA[s]*FUy;
+                  rhsWn += JW*extbdfA[s]*FUz;
                 }
               } else {
-                rhsUn = -JW*inu*GP[id+0*fieldOffset];
-                rhsVn = -JW*inu*GP[id+1*fieldOffset];
-                rhsWn = -JW*inu*GP[id+2*fieldOffset];
-
                 for (int s=0;s<p_Nstages;s++) {
                   //U 
                   const dfloat Um  = U[id+0*fieldOffset+s*p_NVfields*fieldOffset];
@@ -96,15 +91,17 @@ SOFTWARE.
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
 
-                  rhsUn += JW*inu*(idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx));
-                  rhsVn += JW*inu*(idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy));
-                  rhsWn += JW*inu*(idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz));
+                  rhsUn += JW*(idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx));
+                  rhsVn += JW*(idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy));
+                  rhsWn += JW*(idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz));
                 }
               }
 
-              rhsU[id + 0*fieldOffset] = rhsUn;
-              rhsU[id + 1*fieldOffset] = rhsVn;
-              rhsU[id + 2*fieldOffset] = rhsWn;
+              // multiply last available rho (assumes rho = f(S)) 
+              const dfloat rhoM =  RHO[id];
+              rhsU[id + 0*fieldOffset] = rhoM*rhsUn;
+              rhsU[id + 1*fieldOffset] = rhoM*rhsVn;
+              rhsU[id + 2*fieldOffset] = rhoM*rhsWn;
             }
           }
         }

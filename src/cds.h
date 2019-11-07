@@ -1,28 +1,3 @@
-/*
-
-  The MIT License (MIT)
-
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
 #ifndef CDS_H
 #define CDS_H
 
@@ -50,7 +25,6 @@ typedef struct {
   setupAide options;
   // INS SOLVER OCCA VARIABLES
   dfloat rho, idiff, diff;
-  int var_coeff;
   dlong vOffset;
   dlong sOffset;
   dlong Ntotal;
@@ -115,8 +89,10 @@ typedef struct {
   dfloat *Sd, *Ue, *resS, *rhsS, *rhsSd;
   occa::memory o_Sd, o_Ue, o_resS, o_rhsS, o_rhsSd;
 
-  dfloat *prop, *coeff; 
-  occa::memory o_prop, o_coeff;
+  int var_coeff;
+  dfloat *prop, *ellipticCoeff; 
+  occa::memory o_prop, o_ellipticCoeff;
+  occa::memory o_rho, o_diff;
 
   dfloat *cU, *cSd, *cS, *FS; 
   occa::memory o_cU, o_cSd, o_cS, o_FS;
@@ -180,7 +156,7 @@ typedef struct {
   occa::kernel helmholtzRhsIpdgBCKernel;
   occa::kernel helmholtzRhsBCKernel;
   occa::kernel helmholtzAddBCKernel;
-  occa::kernel setHelmholtzCoeffKernel;
+  occa::kernel setEllipticCoeffKernel;
 
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 

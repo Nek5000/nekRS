@@ -25,14 +25,14 @@
 */
 
 // Computes local [lap(u) + lambda*u] = [-(grad(u), grad(phi)) + lambda*u] operation
-@kernel void insPressureAxHex3D(const dlong Nelements,
-			     @restrict const  dfloat *  ggeo,
-			     @restrict const  dfloat *  D,
-			     @restrict const  dfloat *  S,
-			     @restrict const  dfloat *  MM,
-			     const dfloat lambda,
-			     @restrict const  dfloat *  q,
-			     @restrict dfloat *  Aq){
+@kernel void insAxHex3D(const dlong Nelements,
+		        @restrict const  dfloat *  ggeo,
+		        @restrict const  dfloat *  D,
+		        @restrict const  dfloat *  S,
+		        @restrict const  dfloat *  MM,
+		        @restrict const  dfloat *  q,
+		        @restrict const  dfloat *  lambda,
+		        @restrict dfloat *  Aq){
   
   for(dlong e=0; e<Nelements; ++e; @outer(0)){
 
@@ -47,6 +47,7 @@
     @exclusive dfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
 
     @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat lambda0, lambda1;
 
     // array of threads
     for(int j=0;j<p_Nq;++j;@inner(1)){
@@ -82,6 +83,10 @@
             r_G22 = ggeo[gbase+p_G22ID*p_Np];
 
             r_GwJ = ggeo[gbase+p_GWJID*p_Np];
+
+            const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+            lambda0 = lambda[0*offset + id];
+            lambda1 = lambda[1*offset + id];
           }
         }
 
@@ -116,13 +121,13 @@
                 qs += s_D[j][m]*s_q[m][i];
               }
 
-            s_Gqs[j][i] = (r_G01*qr + r_G11*qs + r_G12*r_qt);
-            s_Gqr[j][i] = (r_G00*qr + r_G01*qs + r_G02*r_qt);
+            s_Gqs[j][i] = lambda0*(r_G01*qr + r_G11*qs + r_G12*r_qt);
+            s_Gqr[j][i] = lambda0*(r_G00*qr + r_G01*qs + r_G02*r_qt);
 
             // put this here for a performance bump
-            r_Gqt = (r_G02*qr + r_G12*qs + r_G22*r_qt);
+            r_Gqt = lambda0*(r_G02*qr + r_G12*qs + r_G22*r_qt);
             // note the change in sign !!!!
-            r_Auk = -r_GwJ*lambda*r_q[k];
+            r_Auk = -r_GwJ*lambda1*r_q[k];
           }
         }
 
@@ -150,7 +155,6 @@
 //        #pragma unroll p_Nq
           for(int k = 0; k < p_Nq; k++){
             const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
-//            Aq[id] = r_Aq[k];
             Aq[id] += (-r_Aq[k]); // Add to Rhs
           }
       }

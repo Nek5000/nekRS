@@ -25,7 +25,7 @@ typedef struct {
   setupAide vOptions, pOptions; 	
 
   // INS SOLVER OCCA VARIABLES
-  dfloat nu, Re;
+  dfloat rho, mue, Re;
   int NVfields, NTfields;
   dlong fieldOffset;
   dlong Ntotal;
@@ -47,14 +47,12 @@ typedef struct {
   int   isOutputStep;
   int   outputForceStep; 
 
-  int ARKswitch;
-  
   int NiterU, NiterV, NiterW, NiterP;
 
   //solver tolerances
   dfloat presTOL, velTOL;
 
-  dfloat idt, inu; // hold some inverses
+  dfloat idt, imue; // hold some inverses
   
   dfloat *U, *P;
   dfloat *NU, *GP;
@@ -98,15 +96,20 @@ typedef struct {
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
 
+  occa::memory o_scratch;
+
   int Nsubsteps;  
   dfloat *Ud, *Ue, *resU, *rhsUd, sdt;
   occa::memory o_Ud, o_Ue, o_resU, o_rhsUd;
 
-  dfloat *prop;
-  occa::memory o_prop;
+  int lowMach;
+  dfloat *qtl;
+  occa::memory o_qtl;
 
-  dfloat *Wrk;
-  occa::memory o_Wrk; 
+  occa::memory o_rho, o_mue;
+
+  dfloat *usrwrk;
+  occa::memory o_usrwrk; 
 
   // Cfl related
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
@@ -119,6 +122,11 @@ typedef struct {
   occa::memory o_filterMT; // transpose of filter matrix 
   occa::kernel VFilterKernel; // Relaxation-Term based filtering
   occa::kernel SFilterKernel; // Relaxation-Term based filtering
+
+  occa::kernel qtlKernel;
+
+  occa::kernel pqKernel;
+  occa::kernel ncKernel;
 
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
@@ -136,9 +144,12 @@ typedef struct {
   occa::memory o_U, o_P;
   occa::memory o_rhsU, o_rhsP; 
 
-  occa::memory o_NU, o_GP, o_NC;
-
+  occa::memory o_NU;
   occa::memory o_FU; 
+
+  int var_coeff;
+  dfloat *prop, *ellipticCoeff;
+  occa::memory o_prop, o_ellipticCoeff;
 
   occa::memory o_UH;
   occa::memory o_PI;
@@ -202,9 +213,11 @@ typedef struct {
   occa::kernel cflKernel; 
   occa::kernel maxKernel; 
 
+  occa::kernel setEllipticCoeffKernel;
+  occa::kernel setEllipticCoeffPressureKernel;
+
   int TOMBO;  
-  occa::kernel pressureAxKernel; 
-  occa::kernel velocityAxKernel; 
+  occa::kernel AxKernel; 
   occa::kernel curlKernel; 
   occa::kernel curlBKernel; // needed for 2D
   occa::kernel invMassMatrixKernel; 
