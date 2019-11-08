@@ -96,14 +96,21 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
-  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
+  ins->o_prop.copyFrom(ins->prop); 
+  if(ins->Nscalar) {
+    ins->cds->o_S.copyFrom(ins->cds->S);  
+    ins->cds->o_prop.copyFrom(ins->cds->prop); 
+  } 
+
+  if(udf.variableProperties) {
+    udf.variableProperties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
+                           ins->o_prop, ins->cds->o_prop);
+    ins->o_prop.copyTo(ins->prop); 
+    if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
+  }
 
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
-
-  if(udf.variableProperties)
-    udf.variableProperties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
-                           ins->o_prop, ins->cds->o_prop);
 
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;

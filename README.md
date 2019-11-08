@@ -9,7 +9,7 @@
 
 Capabilities:
 
-* Incompressible Navier-Stokes + scalar transport 
+* Incompressible and low Mach-number Navier-Stokes + scalar transport 
 * Variable properties (but constant dynamic viscosity)
 * Conjugate fluid-solid heat transfer
 * CG-SEM using hexaheadral elements 

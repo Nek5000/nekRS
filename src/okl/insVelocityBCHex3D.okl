@@ -381,12 +381,12 @@
 	    ws += Ds*s_W[m][i];
 	  }
 
-	  s_Gus[j][i] = (r_G01*ur + r_G11*us + r_G12*r_ut);
-	  s_Gur[j][i] = (r_G00*ur + r_G01*us + r_G02*r_ut);
-	  s_Gvs[j][i] = (r_G01*vr + r_G11*vs + r_G12*r_vt);
-	  s_Gvr[j][i] = (r_G00*vr + r_G01*vs + r_G02*r_vt);
-	  s_Gws[j][i] = (r_G01*wr + r_G11*ws + r_G12*r_wt);
-	  s_Gwr[j][i] = (r_G00*wr + r_G01*ws + r_G02*r_wt);
+	  s_Gus[j][i] = lambda0*(r_G01*ur + r_G11*us + r_G12*r_ut);
+	  s_Gur[j][i] = lambda0*(r_G00*ur + r_G01*us + r_G02*r_ut);
+	  s_Gvs[j][i] = lambda0*(r_G01*vr + r_G11*vs + r_G12*r_vt);
+	  s_Gvr[j][i] = lambda0*(r_G00*vr + r_G01*vs + r_G02*r_vt);
+	  s_Gws[j][i] = lambda0*(r_G01*wr + r_G11*ws + r_G12*r_wt);
+	  s_Gwr[j][i] = lambda0*(r_G00*wr + r_G01*ws + r_G02*r_wt);
 
 	  // put this here for a performance bump
 	  r_Gut = lambda0*(r_G02*ur + r_G12*us + r_G22*r_ut);

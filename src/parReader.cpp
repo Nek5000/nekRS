@@ -275,7 +275,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   } else {
     ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
   }
-
+  //
+  double rho;
+  if(ini.extract("velocity", "density", rho)) {
+    options.setArgs("DENSITY", to_string_f(rho));
+  } else {
+    ABORT("Cannot find mandatory parameter VELOCITY::density!"); 
+  }
   //
   double viscosity;
   if(ini.extract("velocity", "viscosity", sbuf)) {
@@ -285,7 +291,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(viscosity < 0) viscosity = fabs(1/viscosity);
     options.setArgs("VISCOSITY", to_string_f(viscosity));
   } else {
-    ABORT("Cannot find mandatory parameter VELOCITY::vicosity!"); 
+    ABORT("Cannot find mandatory parameter VELOCITY::viscosity!"); 
   }
 
   bool stressFormulation; 
@@ -323,12 +329,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
     }
 
-    double rho; 
+    double rhoCp; 
     if(ini.extract("temperature", "rhocp", sbuf)) {
       int err = 0;
-      rho = te_interp(sbuf.c_str(), &err);
+      rhoCp = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rhoCp!");
-      options.setArgs("SCALAR01 DENSITY", to_string_f(rho));
+      options.setArgs("SCALAR01 DENSITY", to_string_f(rhoCp));
     }
 
     string s_bcMap;

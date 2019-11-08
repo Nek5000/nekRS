@@ -430,7 +430,7 @@
         bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;         \
       }                 \
     }                 \
-    dfloat scale = -coef;						\
+    dfloat scale = coef;						\
     if(bc.id==4 || bc.id==5 || bc.id==6 ){					\
       scale = -1.f;							\
     }									\

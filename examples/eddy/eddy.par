@@ -17,4 +17,5 @@ residualTol = 1e-09
 [VELOCITY]
 boundaryTypeMap = inlet
 residualTol = 1e-12
+density = 1.0
 viscosity = 0.05 

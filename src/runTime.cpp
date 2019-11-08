@@ -251,13 +251,6 @@ void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   tombo::pressureSolve(ins, time+dt, ins->o_rhsP, o_wrk); 
   ins->o_P.copyFrom(o_wrk, ins->Ntotal*sizeof(dfloat)); 
 
-  ins->setEllipticCoeffKernel(
-       mesh->Np*mesh->Nelements,
-       ins->g0*ins->idt,
-       ins->fieldOffset,
-       ins->o_mue,
-       ins->o_rho,
-       ins->o_ellipticCoeff);
   tombo::velocityRhs(ins, time+dt, ins->o_rhsU);
   tombo::velocitySolve(ins, time+dt, ins->o_rhsU, o_wrk);
 
@@ -265,7 +258,6 @@ void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     o_U.copyFrom(o_U, ins->Ntotal*ins->NVfields*sizeof(dfloat), 
      (s-1)*ins->Ntotal*ins->NVfields*sizeof(dfloat), 
      (s-2)*ins->Ntotal*ins->NVfields*sizeof(dfloat));
-
   o_U.copyFrom(o_wrk, ins->NVfields*ins->Ntotal*sizeof(dfloat)); 
 
   for (int s=ins->Nstages;s>1;s--) {
