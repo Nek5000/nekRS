@@ -50,14 +50,11 @@ SOFTWARE.
               const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
               const dfloat JW = vgeo[gid + p_JWID*p_Np];
 
-              dfloat rhsUn;
-              dfloat rhsVn;
-              dfloat rhsWn;
+              const dfloat rhoM =  RHO[id];
 
-              // Gradient P
-              rhsUn = -JW*GP[id+0*fieldOffset];
-              rhsVn = -JW*GP[id+1*fieldOffset];
-              rhsWn = -JW*GP[id+2*fieldOffset];
+              dfloat rhsUn = -JW*GP[id+0*fieldOffset];
+              dfloat rhsVn = -JW*GP[id+1*fieldOffset];
+              dfloat rhsWn = -JW*GP[id+2*fieldOffset];
 
               if (p_SUBCYCLING) {
                 // Characteristic Velocity
@@ -97,8 +94,7 @@ SOFTWARE.
                 }
               }
 
-              // multiply last available rho (assumes rho = f(S)) 
-              const dfloat rhoM =  RHO[id];
+              // multiply by last available rho
               rhsU[id + 0*fieldOffset] = rhoM*rhsUn;
               rhsU[id + 1*fieldOffset] = rhoM*rhsVn;
               rhsU[id + 2*fieldOffset] = rhoM*rhsWn;

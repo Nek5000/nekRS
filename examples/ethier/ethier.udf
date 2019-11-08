@@ -24,12 +24,15 @@ void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 
 void UDF_LoadKernels(ins_t *ins)
 {
-  ins->kernelInfo["defines/" "p_nu"] = ins->mue/ins->rho;
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  kernelInfo["defines/p_nu"] = ins->mue/ins->rho;
   dpdxKernel = udfBuildKernel(ins, "dpdx");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
+
+  //options.setArgs("VERBOSE", "TRUE");
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 }

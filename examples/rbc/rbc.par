@@ -32,4 +32,5 @@ residualTol = 1e-06
 [TEMPERATURE]
 boundaryTypeMap = inlet, insulated
 conductivity = 1/sqrt(7*1e8) # 1/sqrt(RA*PRA)
+density = 1.0
 residualTol = 1e-06

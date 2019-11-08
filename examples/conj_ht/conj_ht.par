@@ -16,7 +16,7 @@ residualProj = no
 [VELOCITY]
 boundaryTypeMap = v, O, W
 residualTol = 1e-06
-#density = 1.0
+density = 1.0
 viscosity = -1000
 
 [TEMPERATURE]

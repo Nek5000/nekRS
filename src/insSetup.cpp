@@ -86,6 +86,32 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->writeRestartFile = 0; 
   options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
 
+  options.getArgs("VISCOSITY", ins->mue);
+  ins->imue   = 1.0/ins->mue;
+  options.getArgs("DENSITY", ins->rho);
+
+  options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
+
+  dfloat dt; 
+  options.getArgs("DT", dt);
+  ins->dt = dt; 
+
+  options.getArgs("FINAL TIME", ins->finalTime);
+  options.getArgs("START TIME", ins->startTime);
+  if(ins->startTime > 0.0) {
+    int numSteps;
+    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) 
+      ins->finalTime += ins->startTime; 
+  }
+ 
+  ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
+  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps)); 
+  if(ins->Nsubsteps) ins->sdt = ins->dt/ins->Nsubsteps;
+
+  // Hold some inverses for kernels
+  ins->idt = 1.0/ins->dt;
+  options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
+
   dlong Nlocal = mesh->Np*mesh->Nelements;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
   
@@ -111,8 +137,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->FU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
 
   ins->Ue   = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-
-  options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
 
   if(ins->Nsubsteps){
     ins->Ud    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
@@ -174,26 +198,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   }
 
 
-  dfloat dt; 
-  options.getArgs("DT", dt);
-  ins->dt = dt; 
-
-  options.getArgs("FINAL TIME", ins->finalTime);
-  options.getArgs("START TIME", ins->startTime);
-  if(ins->startTime > 0.0) {
-    int numSteps;
-    if(options.getArgs("NUMBER TIMESTEPS", numSteps)) 
-      ins->finalTime += ins->startTime; 
-  }
- 
-  ins->NtimeSteps = ceil((ins->finalTime-ins->startTime)/ins->dt);
-  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps)); 
-  if(ins->Nsubsteps) ins->sdt = ins->dt/ins->Nsubsteps;
-
-  // Hold some inverses for kernels
-  ins->idt = 1.0/ins->dt;
-  options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
-
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
@@ -251,35 +255,26 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_Ue = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
   ins->o_P  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->P);
 
-  ins->var_coeff = 1; // use always var coeff elliptic
 
   ins->prop   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
-  ins->o_prop = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->prop);  
-
-  ins->o_mue = ins->o_prop.slice(0*ins->fieldOffset*sizeof(dfloat));
-  ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
-
-  ins->ellipticCoeff   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
-  ins->o_ellipticCoeff = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->ellipticCoeff);  
-
-  options.getArgs("VISCOSITY", ins->mue);
-  ins->imue   = 1.0/ins->mue;
-
-  options.getArgs("DENSITY", ins->rho);
-
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
       ins->prop[0*ins->fieldOffset + n+e*mesh->Np] = ins->mue;
       ins->prop[1*ins->fieldOffset + n+e*mesh->Np] = ins->rho;
     }
   }
+  ins->o_prop = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->prop);  
+  ins->o_mue = ins->o_prop.slice(0*ins->fieldOffset*sizeof(dfloat));
+  ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
+
+  ins->var_coeff = 1; // use always var coeff elliptic
+  ins->ellipticCoeff   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
+  ins->o_ellipticCoeff = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->ellipticCoeff);  
 
   ins->lowMach = 0;
-  if(ins->options.compareArgs("LOWMACH", "TRUE")){
-    ins->lowMach = 1;
-    ins->qtl   = (dfloat*) calloc(Ntotal,sizeof(dfloat));
-    ins->o_qtl = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->qtl);  
-  }
+  if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
+  ins->qtl   = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->o_qtl = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->qtl);  
 
   if(ins->Nsubsteps){
     // Note that resU and resV can be replaced with already introduced buffer
@@ -444,9 +439,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
  
-  ins->pSolver->var_coeff = 1; 
+  ins->pSolver->var_coeff = 0;
+/* 
   ins->pSolver->coeff = ins->ellipticCoeff; 
-  ins->pSolver->o_coeff = ins->o_ellipticCoeff; 
+  ins->pSolver->o_coeff = ins->o_ellipticCoeff;
+*/ 
  
   ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
 
@@ -804,28 +801,25 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
 
-  cds->var_coeff = 1; // use always var coeff elliptic
-
-  cds->prop   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
-  cds->o_prop = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  
-
-  cds->o_diff = cds->o_prop.slice(0*cds->sOffset*sizeof(dfloat));
-  cds->o_rho  = cds->o_prop.slice(1*cds->sOffset*sizeof(dfloat));
-
-  cds->ellipticCoeff   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
-  cds->o_ellipticCoeff = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->ellipticCoeff);  
-
   options.getArgs("SCALAR01 DIFFUSIVITY", cds->diff);
   cds->idiff   = 1.0/cds->diff;
 
   options.getArgs("SCALAR01 DENSITY", cds->rho);
 
+  cds->prop   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
       cds->prop[0*cds->sOffset + n+e*mesh->Np] = cds->diff;
       cds->prop[1*cds->sOffset + n+e*mesh->Np] = cds->rho;
     }
   }
+  cds->o_prop = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  
+  cds->o_diff = cds->o_prop.slice(0*cds->sOffset*sizeof(dfloat));
+  cds->o_rho  = cds->o_prop.slice(1*cds->sOffset*sizeof(dfloat));
+
+  cds->var_coeff = 1; // use always var coeff elliptic
+  cds->ellipticCoeff   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
+  cds->o_ellipticCoeff = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->ellipticCoeff);  
 
   occa::properties& kernelInfo  = *ins->kernelInfo; 
   // ADD-DEFINES

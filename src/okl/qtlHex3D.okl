@@ -24,19 +24,6 @@
 
 */
 
-
-
-
-  ins->qtlKernel(
-       mesh->Nelements,
-       mesh->o_vgeo
-       mesh->o_Dmatrices
-       cds->o_S,
-       cds->o_diff,
-       cds->o_rho,
-       o_src;
-       o_qtl);
-
 // QTL : = 1/(rho*cp*q) * (div[k*grad[q] ] + qvol)
 @kernel void qtlHex3D(const dlong Nelements,
                       @restrict const  dfloat *  vgeo,
@@ -148,7 +135,7 @@
        	    div += s_D[j][n]*s_qy[k][n][i];
        	    div += s_D[k][n]*s_qz[n][j][i];
        	  }       
-          QTL[id] = iRhoCpTdiv*(div + qvol);     
+          QTL[id] = iRhoCpT*(div + qvol);     
         }
       }
     } 
