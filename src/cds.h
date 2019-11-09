@@ -24,7 +24,6 @@ typedef struct {
   
   setupAide options;
   // INS SOLVER OCCA VARIABLES
-  dfloat rho, idiff, diff;
   dlong vOffset;
   dlong sOffset;
   dlong Ntotal;

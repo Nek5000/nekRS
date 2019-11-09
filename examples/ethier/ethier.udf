@@ -32,7 +32,7 @@ void UDF_LoadKernels(ins_t *ins)
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
 
-  //options.setArgs("VERBOSE", "TRUE");
+  options.setArgs("VERBOSE", "TRUE");
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 }

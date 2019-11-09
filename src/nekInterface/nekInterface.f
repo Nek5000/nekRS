@@ -89,6 +89,8 @@ c-----------------------------------------------------------------------
          ptr = loc(pr(1,1,1,1)) 
       elseif (id .eq. 't') then
          ptr = loc(t(1,1,1,1,1)) 
+      elseif (id .eq. 'qtl') then
+         ptr = loc(qtl(1,1,1,1)) 
       elseif (id .eq. 'time') then
          ptr = loc(time)
       elseif (id .eq. 'ifgetu') then

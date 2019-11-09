@@ -71,6 +71,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
   options.setArgs("SCALAR01 CONJUGATEHEATTRANSFER", "0");
 
+  options.setArgs("LOWMACH", "FALSE");
+
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
@@ -210,11 +212,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   } 
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(int (writeInterval)));
   //
-  bool variableProperties = false;
-  ini.extract("general", "variableproperties", variableProperties);
-  if(variableProperties) 
-    ABORT("GENERAL::variableProperties = Yes not supported!");
-  //
   bool dealiasing; 
   if(ini.extract("general", "dealiasing", dealiasing))
     if(dealiasing) 
@@ -294,14 +291,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT("Cannot find mandatory parameter VELOCITY::viscosity!"); 
   }
 
-  bool stressFormulation; 
-  if(ini.extract("problemtype", "stressformulation", stressFormulation))
-    if(stressFormulation) ABORT("PROBLEMTYPE::stressFormulation = Yes not supported!");
-
-  string equation; 
-  if(ini.extract("problemtype", "equation", equation))
-    if(equation != "incompNS") ABORT("Only PROBLEMTYPE::equation = incompNS is supported!");
-
   int nscal = 0;
   if(ini.sections.count("temperature")) nscal = 1; // fixed for now
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
@@ -313,13 +302,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
-    /*
-    bool variableProperties = false;
-    ini.extract("temperature", "variableproperties", variableProperties);
-    if(variableProperties) 
-      options.setArgs("SCALAR01 VARIABLEPROPERTIES", "YES");
-    */
- 
     double diffusivity; 
     if(ini.extract("temperature", "conductivity", sbuf)) {
       int err = 0;
@@ -347,6 +329,19 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     } 
 
   }
+
+  bool stressFormulation; 
+  if(ini.extract("problemtype", "stressformulation", stressFormulation))
+    if(stressFormulation) ABORT("PROBLEMTYPE::stressFormulation = Yes not supported!");
+
+  string equation; 
+  if(ini.extract("problemtype", "equation", equation)) {
+    if(equation == "lowmachns") {
+      options.setArgs("LOWMACH", "TRUE");
+      if(!nscal) ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
+    }
+  }
+
 
   return options;
 }
