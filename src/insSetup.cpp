@@ -86,9 +86,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->writeRestartFile = 0; 
   options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
 
-  options.getArgs("VISCOSITY", ins->mue);
-  ins->imue   = 1.0/ins->mue;
-  options.getArgs("DENSITY", ins->rho);
+  dfloat mue, rho;
+  options.getArgs("VISCOSITY", mue);
+  options.getArgs("DENSITY", rho);
 
   options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
 
@@ -259,8 +259,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->prop   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
-      ins->prop[0*ins->fieldOffset + n+e*mesh->Np] = ins->mue;
-      ins->prop[1*ins->fieldOffset + n+e*mesh->Np] = ins->rho;
+      ins->prop[0*ins->fieldOffset + n+e*mesh->Np] = mue;
+      ins->prop[1*ins->fieldOffset + n+e*mesh->Np] = rho;
     }
   }
   ins->o_prop = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->prop);  
@@ -439,11 +439,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
  
-  ins->pSolver->var_coeff = 0;
-/* 
+  ins->pSolver->var_coeff = 1;
   ins->pSolver->coeff = ins->ellipticCoeff; 
   ins->pSolver->o_coeff = ins->o_ellipticCoeff;
-*/ 
  
   ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
 
@@ -635,12 +633,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->velocityAddBCKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "insVelocityUpdate" + ".okl";
-      kernelName = "insVelocityUpdate";
-      ins->velocityUpdateKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);   
-
-
       fileName = oklpath + "insSubCycle" + suffix + ".okl";
       kernelName = "insSubCycleStrongCubatureVolume" + suffix;
       ins->subCycleStrongCubatureVolumeKernel = 
@@ -801,16 +793,15 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
 
-  options.getArgs("SCALAR01 DIFFUSIVITY", cds->diff);
-  cds->idiff   = 1.0/cds->diff;
-
-  options.getArgs("SCALAR01 DENSITY", cds->rho);
+  dfloat diff, rho;
+  options.getArgs("SCALAR01 DIFFUSIVITY", diff);
+  options.getArgs("SCALAR01 DENSITY", rho);
 
   cds->prop   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
-      cds->prop[0*cds->sOffset + n+e*mesh->Np] = cds->diff;
-      cds->prop[1*cds->sOffset + n+e*mesh->Np] = cds->rho;
+      cds->prop[0*cds->sOffset + n+e*mesh->Np] = diff;
+      cds->prop[1*cds->sOffset + n+e*mesh->Np] = rho;
     }
   }
   cds->o_prop = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  

@@ -47,8 +47,8 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   if(ins->Nscalar) 
     scalarSolve(ins, time, dt, cds->o_S);
 
-  if(udf.variableProperties)
-    udf.variableProperties(ins, time, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
+  if(udf.properties)
+    udf.properties(ins, time, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
 
   if(ins->lowMach)
     qthermal(ins, time+dt, ins->o_qtl); 
@@ -131,13 +131,12 @@ void extbdfCoefficents(ins_t *ins, int order) {
 
   }
 
-  ins->lambda = ins->g0 / (ins->dt * ins->mue/ins->rho);
   ins->ig0 = 1.0/ins->g0;
 
   if (ins->Nscalar) {
     ins->cds->ExplicitOrder = ins->ExplicitOrder;  
     ins->cds->g0 = ins->g0;    
-    ins->cds->ig0 = 1.0/ins->cds->g0; 
+    ins->cds->ig0 = ins->ig0; 
   }
 }
 
@@ -149,6 +148,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
   else
     cdsAdvection(cds, time, cds->o_Ue, cds->o_S, o_NS);
 
+  ins->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, o_FS);
   if(udf.sEqnSource)
     udf.sEqnSource(ins, time, cds->o_S, o_FS);
 
@@ -167,14 +167,6 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
   mesh_t *mesh = cds->mesh;
 
   occa::memory &o_wrk = cds->o_rkS;
-
-  ins->setEllipticCoeffKernel(
-       mesh->Np*mesh->Nelements,
-       ins->g0*ins->idt,
-       cds->sOffset,
-       cds->o_diff,
-       cds->o_rho,
-       cds->o_ellipticCoeff);
 
   makeq(ins, time, cds->o_NS, cds->o_FS); 
   cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
@@ -502,7 +494,6 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
   }
 }
 
-// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
 void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
 {
   cds_t *cds = ins->cds;
@@ -519,6 +510,8 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
   else
     ins->setScalarKernel(mesh->Nelements*mesh->Np, 0.0, o_src);
 
+  // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
+  // TODO: split div/grad and smooth in between
   ins->qtlKernel(
        mesh->Nelements,
        mesh->o_vgeo,

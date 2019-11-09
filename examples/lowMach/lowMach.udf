@@ -1,0 +1,81 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+static occa::kernel userQKernel;
+static occa::kernel userVpKernel;
+
+void userqtl(ins_t *ins, dfloat time, occa::memory o_qtl)
+{
+  cds_t *cds = ins->cds;
+  mesh_t *mesh = ins->mesh;
+
+  for (int e=0;e<mesh->Nelements;e++) {
+    for (int n=0;n<mesh->Np;n++) {
+      const dlong id = n+e*mesh->Np;
+      const dfloat DELTA = 0.2;
+      const dfloat XD = mesh->x[id]/DELTA;
+      ins->qtl[id] = 0.0; //0.5/DELTA*(1. - (tanh(XD)*tanh(XD)));
+    }
+  }
+  ins->o_qtl.copyFrom(ins->qtl);
+}
+
+void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  cds_t *cds   = ins->cds;
+  mesh_t *mesh = cds->mesh;
+  userQKernel(mesh->Nelements, mesh->o_x, o_FS);
+}
+
+void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  mesh_t *mesh = ins->mesh;
+
+  userVpKernel(mesh->Nelements, ins->fieldOffset, ins->cds->sOffset, 
+               o_S, o_UProp, o_SProp);
+}
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  userQKernel = udfBuildKernel(ins, "userQ");
+  userVpKernel = udfBuildKernel(ins, "userVp");
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  //options.setArgs("VERBOSE", "TRUE");
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+
+  udf.sEqnSource = &userq;
+  udf.properties = &uservp;
+  udf.qtl        = &userqtl;
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  mesh_t *mesh = ins->mesh;
+
+/*
+  qthermal(ins, time, ins->o_qtl);
+  ins->o_qtl.copyTo(ins->qtl);
+
+  dlong Nlocal = mesh->Nelements * mesh->Np;
+  memcpy(nekData.qtl, ins->qtl, sizeof(dfloat)*Nlocal); 
+
+  nek_ocopyFrom(ins, time, 0);
+  nek_userchk();
+
+*/
+  if (ins->isOutputStep) nek_userchk();
+}

@@ -47,8 +47,7 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        ins->o_FU,
        o_wrk);
 
-  //TODO
-  //dsAvg(mesh, ins->fieldOffset, ins->NVfields, o_wrk);
+  //TODO: dsavg o_wrk
 
   // o_rhsP = div(o_wrk)
   ins->divergenceVolumeKernel(
@@ -152,7 +151,8 @@ void velocityRhs(ins_t *ins, dfloat time, occa::memory o_rhsU)
        ins->o_qtl,
        ins->o_P,
        o_PQ);  
-  insGradient (ins, o_PQ, o_wrk);
+  //insGradient (ins, o_PQ, o_wrk);
+  insGradient (ins, ins->o_P, o_wrk);
 
   ins->velocityRhsKernel(mesh->Nelements,
                          mesh->o_vgeo,
@@ -310,27 +310,3 @@ void insGradient(ins_t *ins, occa::memory o_U, occa::memory o_GU)
        o_U,
        o_GU);
 }
-
-/*
-void dsAvg(mesh_t *mesh, dlong fieldOffset, dlong Nfields, occa::memory o_wrk)
-{
-  ins->MassMatrixKernel(
-    mesh->Nelements,
-    fieldOffset,
-    Nfields,
-    mesh->o_vgeo,
-    mesh->o_MM,
-    o_wrk);
-
-  ogsGatherScatterMany(o_wrk, Nfields, fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
-
-  ins->invMassMatrixKernel(
-    mesh->Nelements,
-    fieldOffset,
-    Nfields,
-    mesh->o_vgeo,
-    ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
-    o_wrk);
-}
-*/

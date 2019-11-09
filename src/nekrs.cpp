@@ -102,8 +102,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     ins->cds->o_prop.copyFrom(ins->cds->prop); 
   } 
 
-  if(udf.variableProperties) {
-    udf.variableProperties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
+  if(udf.properties) {
+    udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
                            ins->o_prop, ins->cds->o_prop);
     ins->o_prop.copyTo(ins->prop); 
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);

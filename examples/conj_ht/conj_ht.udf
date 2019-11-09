@@ -47,7 +47,7 @@ void UDF_Setup(ins_t *ins)
   if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
 
   udf.sEqnSource = &userq;
-  udf.variableProperties = &uservp;
+  udf.properties = &uservp;
 
   mesh_t *meshT = ins->cds->mesh;
   o_eInfo = 

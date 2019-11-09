@@ -441,6 +441,8 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.pr = (double *) nek_ptr("pr");
   nekData.t  = (double *) nek_ptr("t");
 
+  nekData.qtl = (double *) nek_ptr("qtl");
+
   nekData.ifgetu = (int *) nek_ptr("ifgetu");
   nekData.ifgetp = (int *) nek_ptr("ifgetp");
 

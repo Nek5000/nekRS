@@ -5,6 +5,14 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
   mesh_t     *mesh   = cds->mesh; 
   elliptic_t *solver = cds->solver;
 
+  cds->setEllipticCoeffKernel(
+       mesh->Np*mesh->Nelements,
+       cds->g0*cds->idt,
+       cds->sOffset,
+       cds->o_diff,
+       cds->o_rho,
+       cds->o_ellipticCoeff);
+
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
                             mesh->o_sgeo,

@@ -32,6 +32,8 @@ typedef struct {
   double *pr;
   double *t;
 
+  double *qtl;
+
   int *ifgetu, *ifgetp;
 
   double *cbscnrs;

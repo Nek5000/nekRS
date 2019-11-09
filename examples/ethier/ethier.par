@@ -5,8 +5,8 @@ deviceNumber = LOCAL-RANK
 [GENERAL] 
 polynomialOrder = 7
 #startFrom = restart.fld
-stopAt = endTime
-endTime = 1.0 
+stopAt = numSteps
+numSteps = 2 
 dt = 2e-04
 timeStepper = bdf2
 writeControl = runTime
@@ -14,6 +14,7 @@ writeInterval = 0.1
 
 [PRESSURE]
 preconditioner = semg_amg
+amgSolver = parAlmond
 residualTol = 1e-08
 
 [VELOCITY]

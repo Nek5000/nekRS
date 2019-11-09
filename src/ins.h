@@ -25,7 +25,6 @@ typedef struct {
   setupAide vOptions, pOptions; 	
 
   // INS SOLVER OCCA VARIABLES
-  dfloat rho, mue, Re;
   int NVfields, NTfields;
   dlong fieldOffset;
   dlong Ntotal;
@@ -35,7 +34,7 @@ typedef struct {
   dfloat dt, dti;          // time step
   dfloat time;
   int tstep;
-  dfloat g0, ig0, lambda;      // helmhotz solver -lap(u) + lamda u
+  dfloat g0, ig0;
   dfloat startTime;   
   dfloat finalTime;   
 
@@ -52,7 +51,7 @@ typedef struct {
   //solver tolerances
   dfloat presTOL, velTOL;
 
-  dfloat idt, imue; // hold some inverses
+  dfloat idt; 
   
   dfloat *U, *P;
   dfloat *NU, *GP;
@@ -106,6 +105,7 @@ typedef struct {
   dfloat *qtl;
   occa::memory o_qtl;
 
+  dfloat rho, mue;
   occa::memory o_rho, o_mue;
 
   dfloat *usrwrk;
@@ -206,7 +206,6 @@ typedef struct {
   occa::kernel velocityRhsKernel;
   occa::kernel velocityRhsBCKernel;
   occa::kernel velocityAddBCKernel;
-  occa::kernel velocityUpdateKernel;  
   
   occa::kernel setScalarKernel; 
 
