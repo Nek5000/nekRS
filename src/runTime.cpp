@@ -510,6 +510,8 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
   else
     ins->setScalarKernel(mesh->Nelements*mesh->Np, 0.0, o_src);
 
+#if 0
+
   // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
   // TODO: split div/grad and smooth in between
   ins->qtlKernel(
@@ -521,4 +523,58 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
        cds->o_rho,
        o_src,
        o_qtl);
+#else
+  // Do strong div (k grad q)
+  occa::memory o_wrk = ins->o_scratch;
+  
+  // k*grad(q)
+  ins->divGradGradientKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       cds->sOffset,
+       cds->o_S,
+       cds->o_diff,
+       o_wrk); 
+       
+  // average 
+  ogsGatherScatterMany(o_wrk, cds->NVfields, cds->sOffset,
+                       ogsDfloat, ogsAdd, mesh->ogs);
+
+   ins->invMassMatrixKernel(
+       mesh->Nelements,
+       cds->sOffset,
+       cds->NVfields,
+       mesh->o_vgeo,
+       cds->o_InvM, 
+       o_wrk);
+
+
+   // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
+   ins->divGradDivergenceKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       cds->sOffset,
+       o_wrk,
+       cds->o_S,
+       cds->o_rho,
+       o_src,
+       o_qtl);
+
+
+   ogsGatherScatter(o_qtl, ogsDfloat, ogsAdd, mesh->ogs);
+   
+
+   const int Nfield = 1; // hard coded to one
+    ins->invMassMatrixKernel(
+       mesh->Nelements,
+       cds->sOffset, // zero
+       Nfield,
+       mesh->o_vgeo,
+       cds->o_InvM, 
+       o_qtl);
+
+#endif
+
 }
