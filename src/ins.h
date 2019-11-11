@@ -221,6 +221,10 @@ typedef struct {
   occa::kernel curlBKernel; // needed for 2D
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
+  
+  // div-grad operation
+  occa::kernel divGradGradientKernel; 
+  occa::kernel divGradDivergenceKernel; 
 
   int *EToB;
   occa::memory o_EToB;

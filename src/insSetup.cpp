@@ -709,7 +709,17 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       // ===========================================================================
- 
+      if(ins->lowMach){
+        fileName = oklpath + "insDivGrad" + suffix + ".okl"; 
+        kernelName = "insDivGradGradient" + suffix; 
+        ins->divGradGradientKernel =  
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+        kernelName = "insDivGradDivergence" + suffix; 
+        ins->divGradDivergenceKernel =  
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      }
+      // ===========================================================================
       fileName = oklpath + "insHalo.okl";
       kernelName = "insHaloGet";
       ins->haloGetKernel =
