@@ -7,25 +7,6 @@
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
 
-void userqtl(ins_t *ins, dfloat time, occa::memory o_qtl)
-{
-  cds_t *cds = ins->cds;
-  mesh_t *mesh = ins->mesh;
-
-  for (int e=0;e<mesh->Nelements;e++) {
-    for (int n=0;n<mesh->Np;n++) {
-      const dlong id = n+e*mesh->Np;
-      const dfloat DELTA = 0.2;
-      const dfloat XD = mesh->x[id]/DELTA;
-      ins->qtl[id] = 0.5/DELTA*(1. - (tanh(XD)*tanh(XD)));
-    }
-  }
-  ins->o_qtl.copyFrom(ins->qtl);
-
-  dlong Nlocal = mesh->Nelements * mesh->Np;
-  memcpy(nekData.qtl, ins->qtl, sizeof(dfloat)*Nlocal); 
-}
-
 void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = ins->cds;
@@ -68,7 +49,7 @@ void UDF_Setup(ins_t *ins)
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
 {
   if (ins->isOutputStep) {
-    ins->o_qtl.copyFrom(ins->qtl);
+    ins->o_qtl.copyTo(ins->qtl);
     dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
     memcpy(nekData.qtl, ins->qtl, sizeof(dfloat)*Nlocal); 
     nek_userchk();

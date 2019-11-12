@@ -313,7 +313,7 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
         o_src,
         o_qtl);
 
-  ogsGatherScatterMany(o_qtl, 1, ins->fieldOffset,
+   ogsGatherScatterMany(o_qtl, 1, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
 
    ins->invMassMatrixKernel(
