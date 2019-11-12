@@ -1,9 +1,8 @@
 #include "nrs.hpp"
+#include "udf.hpp"
 
-void insGradient(ins_t *ins, occa::memory o_U, occa::memory o_GU);
 void curlCurl(ins_t *ins, occa::memory o_wrk, occa::memory o_U, 
               occa::memory o_NC);
-void dsAvg(const dlong fieldOffset, const dlong Nfields, occa::memory o_wrk);
 
 namespace tombo {
 
@@ -18,11 +17,17 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        ins->o_rho,
        ins->o_ellipticCoeff);
 
-  // o_NC = nu*( curl(curl(v)) - 4/3*grad(qtl) ) 
-  occa::memory o_NC   = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
-  occa::memory o_irho = ins->o_ellipticCoeff.slice(0*ins->fieldOffset*sizeof(dfloat));
+  // o_NC = nu*( JW*curl(curl(v)) - 4/3*JW*grad(qtl) ) 
+  occa::memory o_NC = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
   curlCurl(ins, o_wrk, ins->o_Ue, o_NC);
-  insGradient(ins, ins->o_qtl, o_wrk);
+  ins->gradientVolumeKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       ins->fieldOffset,
+       ins->o_qtl,
+       o_wrk);
+  occa::memory o_irho = ins->o_ellipticCoeff.slice(0*ins->fieldOffset*sizeof(dfloat));
   ins->ncKernel(
        mesh->Np*mesh->Nelements,
        ins->fieldOffset,
@@ -31,7 +36,7 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        o_wrk,
        o_NC);
 
-  // o_wrk = f - o_NC
+  // o_wrk = JW*f - o_NC
   ins->pressureRhsKernel(
        mesh->Nelements,
        mesh->o_vgeo,
@@ -47,7 +52,16 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        ins->o_FU,
        o_wrk);
 
-  //TODO: dsavg o_wrk
+  ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
+                       ogsDfloat, ogsAdd, mesh->ogs);
+
+  ins->invMassMatrixKernel(
+       mesh->Nelements,
+       ins->fieldOffset,
+       ins->NVfields,
+       mesh->o_vgeo,
+       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       o_wrk);
 
   // o_rhsP = div(o_wrk)
   ins->divergenceVolumeKernel(
@@ -58,7 +72,7 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        o_wrk,
        o_rhsP);
 
-  // o_rho += surface term
+  // o_rhsP += surface term
   const dfloat lambda = ins->g0*ins->idt;
   ins->divergenceSurfaceKernel(
        mesh->Nelements,
@@ -79,7 +93,7 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        o_rhsP);
 
 
-  // we solve for delta p => o_rhsP -= (grad P, grad phi)
+  // we solve for delta p => o_rhsP += -(grad P, grad phi)
   ins->AxKernel(
        mesh->Nelements,
        ins->fieldOffset,
@@ -92,13 +106,11 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
        o_rhsP);
 
   // o_rhsP += g0/dt*qtl
-  ins->scaledAddKernel(
-       mesh->Nelements*mesh->Np,
+  ins->pressureAddQtlKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
        lambda,
-       0,
        ins->o_qtl,
-       1.0,
-       0,
        o_rhsP);
 }
 
@@ -150,9 +162,14 @@ void velocityRhs(ins_t *ins, dfloat time, occa::memory o_rhsU)
        ins->o_mue,
        ins->o_qtl,
        ins->o_P,
-       o_PQ);  
-  //insGradient (ins, o_PQ, o_wrk);
-  insGradient (ins, ins->o_P, o_wrk);
+       o_PQ); 
+  ins->gradientVolumeKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       ins->fieldOffset,
+       o_PQ,
+       o_wrk);
 
   ins->velocityRhsKernel(mesh->Nelements,
                          mesh->o_vgeo,
@@ -221,7 +238,6 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
   // Use old velocity for velocity solver initial condition
   o_UH.copyFrom(ins->o_U,ins->NVfields*Ntotal*sizeof(dfloat));
 
-  // TODO: fuse with rhs into single kernel 
   if (usolver->Nmasked) mesh->maskKernel(usolver->Nmasked, usolver->o_maskIds, o_uh);
   if (vsolver->Nmasked) mesh->maskKernel(vsolver->Nmasked, vsolver->o_maskIds, o_vh);
   if (ins->dim==3 && wsolver->Nmasked)
@@ -250,6 +266,63 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
                            ins->o_usrwrk,
                            ins->o_U,
                            o_UH);
+}
+
+// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
+void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
+{
+  cds_t *cds = ins->cds;
+  mesh_t *mesh = ins->mesh;
+
+  occa::memory o_gradS = ins->o_scratch;
+  
+  ins->gradientVolumeKernel(
+       mesh->Nelements,
+       mesh->o_vgeo,
+       mesh->o_Dmatrices,
+       ins->fieldOffset,
+       cds->o_S,
+       o_gradS);
+
+  ogsGatherScatterMany(o_gradS, ins->NVfields, ins->fieldOffset,
+                       ogsDfloat, ogsAdd, mesh->ogs);
+
+   ins->invMassMatrixKernel(
+        mesh->Nelements,
+        ins->fieldOffset,
+        ins->NVfields,
+        mesh->o_vgeo,
+        ins->o_InvM, 
+        o_gradS);
+
+   occa::memory o_src = cds->o_rkS;
+   if(udf.sEqnSource)
+     udf.sEqnSource(ins, time, cds->o_S, o_src);
+   else
+     ins->setScalarKernel(mesh->Nelements*mesh->Np, 0.0, o_src);
+
+   ins->qtlKernel(
+        mesh->Nelements,
+        mesh->o_vgeo,
+        mesh->o_Dmatrices,
+        ins->fieldOffset,
+        o_gradS,
+        cds->o_S,
+        cds->o_diff,
+        cds->o_rho,
+        o_src,
+        o_qtl);
+
+  ogsGatherScatterMany(o_qtl, 1, ins->fieldOffset,
+                       ogsDfloat, ogsAdd, mesh->ogs);
+
+   ins->invMassMatrixKernel(
+        mesh->Nelements,
+        ins->fieldOffset,
+        1,
+        mesh->o_vgeo,
+        ins->o_InvM, 
+        o_qtl);
 }
 
 } // namespace
@@ -286,6 +359,7 @@ void curlCurl(ins_t *ins, occa::memory o_wrk, occa::memory o_U,
                   o_wrk,
                   o_NC);
 
+/*
   ogsGatherScatterMany(o_NC, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
 
@@ -296,17 +370,5 @@ void curlCurl(ins_t *ins, occa::memory o_wrk, occa::memory o_U,
        mesh->o_vgeo,
        ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
        o_NC);
-}
-
-void insGradient(ins_t *ins, occa::memory o_U, occa::memory o_GU)
-{
-  mesh_t *mesh = ins->mesh;
-
-  ins->gradientVolumeKernel(
-       mesh->Nelements,
-       mesh->o_vgeo,
-       mesh->o_Dmatrices,
-       ins->fieldOffset,
-       o_U,
-       o_GU);
+*/
 }

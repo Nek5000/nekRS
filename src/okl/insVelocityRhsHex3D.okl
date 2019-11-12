@@ -49,18 +49,17 @@ SOFTWARE.
               const dlong id = i + j*p_Nq + k*p_Nq*p_Nq + p_Np*e;
               const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
               const dfloat JW = vgeo[gid + p_JWID*p_Np];
+              const dfloat rhoM = RHO[id];
 
-              const dfloat rhoM =  RHO[id];
-
-              dfloat rhsUn = -JW*GP[id+0*fieldOffset];
-              dfloat rhsVn = -JW*GP[id+1*fieldOffset];
-              dfloat rhsWn = -JW*GP[id+2*fieldOffset];
+              dfloat bfx = 0;
+              dfloat bfy = 0;
+              dfloat bfz = 0;
 
               if (p_SUBCYCLING) {
                 // Characteristic Velocity
-                rhsUn += JW*idt*NU[id+0*fieldOffset];
-                rhsVn += JW*idt*NU[id+1*fieldOffset];
-                rhsWn += JW*idt*NU[id+2*fieldOffset];
+                bfx += idt*NU[id+0*fieldOffset];
+                bfy += idt*NU[id+1*fieldOffset];
+                bfz += idt*NU[id+2*fieldOffset];
 
                 for (int s=0;s<p_Nstages;s++) {
                   // FU
@@ -68,9 +67,9 @@ SOFTWARE.
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
                   // 
-                  rhsUn += JW*extbdfA[s]*FUx;
-                  rhsVn += JW*extbdfA[s]*FUy;
-                  rhsWn += JW*extbdfA[s]*FUz;
+                  bfx += extbdfA[s]*FUx;
+                  bfy += extbdfA[s]*FUy;
+                  bfz += extbdfA[s]*FUz;
                 }
               } else {
                 for (int s=0;s<p_Nstages;s++) {
@@ -87,17 +86,15 @@ SOFTWARE.
                   const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
                   const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
 
-
-                  rhsUn += JW*(idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx));
-                  rhsVn += JW*(idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy));
-                  rhsWn += JW*(idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz));
+                  bfx += (idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx));
+                  bfy += (idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy));
+                  bfz += (idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz));
                 }
               }
 
-              // multiply by last available rho
-              rhsU[id + 0*fieldOffset] = rhoM*rhsUn;
-              rhsU[id + 1*fieldOffset] = rhoM*rhsVn;
-              rhsU[id + 2*fieldOffset] = rhoM*rhsWn;
+              rhsU[id+0*fieldOffset] = JW*rhoM*bfx - GP[id+0*fieldOffset];
+              rhsU[id+1*fieldOffset] = JW*rhoM*bfy - GP[id+1*fieldOffset];
+              rhsU[id+2*fieldOffset] = JW*rhoM*bfz - GP[id+2*fieldOffset];
             }
           }
         }

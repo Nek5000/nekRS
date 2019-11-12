@@ -12,7 +12,6 @@ void extbdfCoefficents(ins_t *ins, int order);
 void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS);
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU);
-void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl);
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U);
 void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_U, 
                             occa::memory o_Ud);
@@ -48,10 +47,14 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     scalarSolve(ins, time, dt, cds->o_S);
 
   if(udf.properties)
-    udf.properties(ins, time, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
+    udf.properties(ins, time+dt, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
 
-  if(ins->lowMach)
-    qthermal(ins, time+dt, ins->o_qtl); 
+  if(ins->lowMach){
+    if(udf.qtl)
+      udf.qtl(ins, time+dt, ins->o_qtl);
+    else
+      tombo::qthermal(ins, time+dt, ins->o_qtl);
+  }
  
   velocitySolve(ins, time, dt, ins->o_U);
 
@@ -177,10 +180,9 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
       (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
       (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
   }
-
   //copy updated scalar
   o_S.copyFrom(o_wrk, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
-   
+
   for (int s=cds->Nstages;s>1;s--) {
     cds->o_NS.copyFrom(cds->o_NS, cds->Ntotal*cds->NSfields*sizeof(dfloat), 
            (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
@@ -242,6 +244,23 @@ void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   tombo::pressureRhs(ins, time+dt, ins->o_rhsP);
   tombo::pressureSolve(ins, time+dt, ins->o_rhsP, o_wrk); 
   ins->o_P.copyFrom(o_wrk, ins->Ntotal*sizeof(dfloat)); 
+
+/*
+  for (int e=0;e<mesh->Nelements;e++) {
+    for (int n=0;n<mesh->Np;n++) {
+      const dlong id = n+e*mesh->Np;
+      const dfloat DELTA = 0.2;
+      const dfloat XD = mesh->x[id]/DELTA;
+
+      const dfloat aa = 3./2 - (tanh(1.0) - tanh(-1.0))/3.;
+      const dfloat qtlExact = 0.5/DELTA*(1. - (tanh(XD)*tanh(XD)));
+
+      const dfloat uExact = 0.5*(3 + tanh(XD));
+      ins->P[id] = 4./3 * qtlExact - uExact + aa;
+    }
+  }
+  ins->o_P.copyFrom(ins->P);
+*/
 
   tombo::velocityRhs(ins, time+dt, ins->o_rhsU);
   tombo::velocitySolve(ins, time+dt, ins->o_rhsU, o_wrk);
@@ -492,89 +511,4 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
       }
     }
   }
-}
-
-void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
-{
-  cds_t *cds = ins->cds;
-  mesh_t *mesh = ins->mesh;
-
-  if(udf.qtl){
-    udf.qtl(ins, time, o_qtl);
-    return;
-  }
-
-  occa::memory &o_src = cds->o_rkS;
-  if(udf.sEqnSource)
-    udf.sEqnSource(ins, time, cds->o_S, o_src);
-  else
-    ins->setScalarKernel(mesh->Nelements*mesh->Np, 0.0, o_src);
-
-#if 0
-
-  // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-  // TODO: split div/grad and smooth in between
-  ins->qtlKernel(
-       mesh->Nelements,
-       mesh->o_vgeo,
-       mesh->o_Dmatrices,
-       cds->o_S,
-       cds->o_diff,
-       cds->o_rho,
-       o_src,
-       o_qtl);
-#else
-  // Do strong div (k grad q)
-  occa::memory o_wrk = ins->o_scratch;
-  
-  // k*grad(q)
-  ins->divGradGradientKernel(
-       mesh->Nelements,
-       mesh->o_vgeo,
-       mesh->o_Dmatrices,
-       cds->sOffset,
-       cds->o_S,
-       cds->o_diff,
-       o_wrk); 
-       
-  // average 
-  ogsGatherScatterMany(o_wrk, cds->NVfields, cds->sOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
-
-   ins->invMassMatrixKernel(
-       mesh->Nelements,
-       cds->sOffset,
-       cds->NVfields,
-       mesh->o_vgeo,
-       cds->o_InvM, 
-       o_wrk);
-
-
-   // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-   ins->divGradDivergenceKernel(
-       mesh->Nelements,
-       mesh->o_vgeo,
-       mesh->o_Dmatrices,
-       cds->sOffset,
-       o_wrk,
-       cds->o_S,
-       cds->o_rho,
-       o_src,
-       o_qtl);
-
-
-   ogsGatherScatter(o_qtl, ogsDfloat, ogsAdd, mesh->ogs);
-   
-
-   const int Nfield = 1; // hard coded to one
-    ins->invMassMatrixKernel(
-       mesh->Nelements,
-       cds->sOffset, // zero
-       Nfield,
-       mesh->o_vgeo,
-       cds->o_InvM, 
-       o_qtl);
-
-#endif
-
 }
