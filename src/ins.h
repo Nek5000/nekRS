@@ -124,6 +124,7 @@ typedef struct {
   occa::kernel SFilterKernel; // Relaxation-Term based filtering
 
   occa::kernel qtlKernel;
+  occa::kernel pressureAddQtlKernel;
 
   occa::kernel pqKernel;
   occa::kernel ncKernel;
@@ -190,7 +191,6 @@ typedef struct {
   occa::kernel velocityGradientKernel;
 
   occa::kernel gradientVolumeKernel;
-  occa::kernel gradientSurfaceKernel;
 
   occa::kernel divergenceVolumeKernel;
   occa::kernel divergenceSurfaceKernel;
@@ -198,7 +198,6 @@ typedef struct {
   occa::kernel divergenceStrongVolumeKernel;
   
   occa::kernel pressureRhsKernel;
-  occa::kernel pressureRhsBCKernel;
   occa::kernel pressureAddBCKernel;
   occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
@@ -222,10 +221,6 @@ typedef struct {
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
   
-  // div-grad operation
-  occa::kernel divGradGradientKernel; 
-  occa::kernel divGradDivergenceKernel; 
-
   int *EToB;
   occa::memory o_EToB;
 

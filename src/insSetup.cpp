@@ -588,9 +588,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       kernelName = "insGradientVolume" + suffix;
       ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      kernelName = "insGradientSurface" + suffix;
-      ins->gradientSurfaceKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
       fileName = oklpath + "insDivergence" + suffix + ".okl";
       kernelName = "insDivergenceVolumeTOMBO" + suffix;
       ins->divergenceVolumeKernel = 
@@ -605,12 +602,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->pressureRhsKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
-      kernelName = "insPressureBC" + suffix;
-      ins->pressureRhsBCKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       kernelName = "insPressureAddBCTOMBO" + suffix;
       ins->pressureAddBCKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -684,9 +676,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->cflKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "qtl" + suffix + ".okl";
-      kernelName = "qtl" + suffix;
+      fileName = oklpath + "insQtl" + suffix + ".okl";
+      kernelName = "insQtl" + suffix;
       ins->qtlKernel = 
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insPressureAddQtl" + ".okl";
+      kernelName = "insPressureAddQtl";
+      ins->pressureAddQtlKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "setEllipticCoeff.okl"; 
@@ -708,17 +705,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->ncKernel =  
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      // ===========================================================================
-      if(ins->lowMach){
-        fileName = oklpath + "insDivGrad" + suffix + ".okl"; 
-        kernelName = "insDivGradGradient" + suffix; 
-        ins->divGradGradientKernel =  
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-        kernelName = "insDivGradDivergence" + suffix; 
-        ins->divGradDivergenceKernel =  
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-      }
       // ===========================================================================
       fileName = oklpath + "insHalo.okl";
       kernelName = "insHaloGet";

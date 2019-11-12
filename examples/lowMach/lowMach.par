@@ -5,7 +5,7 @@ deviceNumber = LOCAL-RANK
 [GENERAL] 
 polynomialOrder = 9
 stopAt = numSteps
-numSteps = 1
+numSteps = 2
 dt = 1e-03
 timeStepper = bdf2
 writeInterval = 1
@@ -15,16 +15,16 @@ equation = lowMachNS
 
 [PRESSURE]
 preconditioner = semg_amg
-residualTol = 1e-06
+residualTol = 1e-08
 
 [VELOCITY]
-boundaryTypeMap = inlet, outlet
-residualTol = 1e-08
+boundaryTypeMap = fixedValue
+residualTol = 1e-10
 density = 1
 viscosity = 1
 
 [TEMPERATURE] 
-boundaryTypeMap = inlet, outlet
-residualTol = 1e-12
+boundaryTypeMap = fixedValue
+residualTol = 1e-10
 rhoCp = 1
 conductivity = 1 
