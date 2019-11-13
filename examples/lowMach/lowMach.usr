@@ -16,9 +16,12 @@ c-----------------------------------------------------------------------
      $              ,pr_err (LX1,LY1,LZ1,LELT)
       real pre,vT_err,VX_err,QTL_err, pr_err
 
-      integer i,j,k,iel,ntot
-      real glsc3,glmax
       real sumqw,l2_err,exact,max_err,XD,sech
+      common /SCNRS/ wrk(3)
+
+      if (istep.lt.1) return
+
+      call printdiverr
 
       ntot = nx1*ny1*nz1*nelv
 
@@ -40,27 +43,27 @@ c-----------------------------------------------------------------------
  100  continue 
 
       max_err = glmax(VX_err,ntot)
-      vy_max_err = glamax(VY,ntot)
-      vz_max_err = glamax(VZ,ntot)
+      wrk(1) = max_err
       l2_err  = glsc3(VX_err,bm1,VX_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)
-     & write(6,1) istep,time,max_err,l2_err, vy_max_err, vz_max_err
-    1 format(i8,1p5e12.4,' ERROR VX: MAX/L2')
+     & write(6,1) istep,time,max_err,l2_err
+    1 format(i8,1p3e12.4,' ERROR VX: MAX/L2')
 
       max_err = glmax(T_err,ntot)
+      wrk(3) = max_err
       l2_err  = glsc3(T_err,bm1,T_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)
      & write(6,2) istep,time,max_err,l2_err
     2 format(i8,1p3e12.4,' ERROR T: MAX/L2')
 
-      max_err = glmax(QTL_err,ntot)
-      l2_err  = glsc3(QTL_err,bm1,QTL_err,ntot)/VOLVM1
-      if (l2_err.gt.0) l2_err = sqrt(l2_err)
-      if(nid.eq.0)
-     & write(6,3) istep,time,max_err,l2_err
-    3 format(i8,1p3e12.4,' ERROR QTL: MAX/L2')
+c      max_err = glmax(QTL_err,ntot)
+c      l2_err  = glsc3(QTL_err,bm1,QTL_err,ntot)/VOLVM1
+c      if (l2_err.gt.0) l2_err = sqrt(l2_err)
+c      if(nid.eq.0)
+c     & write(6,3) istep,time,max_err,l2_err
+c    3 format(i8,1p3e12.4,' ERROR QTL: MAX/L2')
 
       pbar  = glsc2(pr ,bm2,ntot)/volvm1
       pbre  = glsc2(pre,bm2,ntot)/volvm1
@@ -69,6 +72,7 @@ c-----------------------------------------------------------------------
       call sub3(pr_err,PR,pre,ntot)
 
       max_err = glamax(pr_err,ntot)
+      wrk(2) = max_err
       l2_err  = glsc3(pr_err,bm1,pr_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)

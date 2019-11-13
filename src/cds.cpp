@@ -5,14 +5,6 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
   mesh_t     *mesh   = cds->mesh; 
   elliptic_t *solver = cds->solver;
 
-  cds->setEllipticCoeffKernel(
-       mesh->Np*mesh->Nelements,
-       cds->g0*cds->idt,
-       cds->sOffset,
-       cds->o_diff,
-       cds->o_rho,
-       cds->o_ellipticCoeff);
-
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
                             mesh->o_sgeo,
@@ -23,7 +15,7 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
                             cds->o_EToB,
                             mesh->o_sMT,
                             time,
-                            cds->sOffset,
+                            cds->fieldOffset,
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,
@@ -36,7 +28,7 @@ void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage,occa::memory o_rhsS,oc
 
   //copy current solution fields as initial guess
   dlong Ntotal = (mesh->Nelements+mesh->totalHaloPairs)*mesh->Np;
-  o_Shat.copyFrom(cds->o_S,Ntotal*sizeof(dfloat),0,0*cds->sOffset*sizeof(dfloat)); 
+  o_Shat.copyFrom(cds->o_S,Ntotal*sizeof(dfloat),0,0*cds->fieldOffset*sizeof(dfloat)); 
  
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_Shat);
 
@@ -65,7 +57,7 @@ void cdsHelmholtzRhs(cds_t *cds, dfloat time, int stage, occa::memory o_rhsS){
                           cds->o_extbdfA,
                           cds->o_extbdfB,
                           cds->o_extbdfC,
-                          cds->sOffset,
+                          cds->fieldOffset,
                           cds->o_S,
                           cds->o_NS,
                           cds->o_FS,
@@ -85,8 +77,8 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
            mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
            mesh->o_cubInterpT,
            mesh->o_cubProjectT,
-           cds->vOffset,
-           cds->sOffset,
+           cds->vFieldOffset,
+           cds->fieldOffset,
            o_U,
            o_S,
            cds->o_rho,
@@ -96,8 +88,8 @@ void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, o
            cds->meshV->Nelements,
            mesh->o_vgeo,
            mesh->o_Dmatrices,
-           cds->vOffset,
-           cds->sOffset,
+           cds->vFieldOffset,
+           cds->fieldOffset,
            o_U,
            o_S,
            cds->o_rho,

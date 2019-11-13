@@ -3,9 +3,9 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
-polynomialOrder = 9
+polynomialOrder = 11 
 stopAt = numSteps
-numSteps = 500
+numSteps = 300
 dt = 1e-03
 timeStepper = bdf2
 writeInterval = 100

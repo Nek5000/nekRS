@@ -27,11 +27,11 @@ typedef struct {
   // INS SOLVER OCCA VARIABLES
   int NVfields, NTfields;
   dlong fieldOffset;
-  dlong Ntotal;
+  dlong Nlocal, Ntotal;
 
   int Nblock;
 
-  dfloat dt, dti;          // time step
+  dfloat dt, idt;
   dfloat time;
   int tstep;
   dfloat g0, ig0;
@@ -47,21 +47,13 @@ typedef struct {
   int   outputForceStep; 
 
   int NiterU, NiterV, NiterW, NiterP;
-
-  //solver tolerances
   dfloat presTOL, velTOL;
 
-  dfloat idt; 
-  
   dfloat *U, *P;
-  dfloat *NU, *GP;
+  dfloat *NU, *FU;
   dfloat *rhsU, *rhsP;   
   dfloat *PI;
   dfloat *rkNU;
-
-  dfloat *FU; // Additional source terms for explicit contribution
-  
-  dfloat *Vort, *Div;
 
   //RK Subcycle Data
   int SNrk;
@@ -111,17 +103,14 @@ typedef struct {
   dfloat *usrwrk;
   occa::memory o_usrwrk; 
 
-  // Cfl related
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
 
   int readRestartFile,writeRestartFile, restartedFromFile;
 
-  // Filter Stabilization Matrix
   int filterNc; // filter cut modes i.e. below is not touched
   dfloat *filterM, filterS; 
   occa::memory o_filterMT; // transpose of filter matrix 
-  occa::kernel VFilterKernel; // Relaxation-Term based filtering
-  occa::kernel SFilterKernel; // Relaxation-Term based filtering
+  occa::kernel filterRTKernel; // Relaxation-Term based filtering
 
   occa::kernel qtlKernel;
   occa::kernel pressureAddQtlKernel;
@@ -133,7 +122,7 @@ typedef struct {
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;;
   occa::kernel subCycleRKUpdateKernel;
-  occa::kernel subCycleExtKernel;
+  occa::kernel velocityExtKernel;
 
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
@@ -155,8 +144,6 @@ typedef struct {
   occa::memory o_UH;
   occa::memory o_PI;
   occa::memory o_rkNU;
-
-  occa::memory o_Vort, o_Div;
 
   occa::memory o_vHaloBuffer, o_pHaloBuffer; 
   occa::memory o_velocityHaloGatherTmp;
@@ -217,7 +204,6 @@ typedef struct {
   int TOMBO;  
   occa::kernel AxKernel; 
   occa::kernel curlKernel; 
-  occa::kernel curlBKernel; // needed for 2D
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
   

@@ -36,7 +36,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   }
 
   // First extrapolate velocity to t^(n+1)
-  ins->subCycleExtKernel(mesh->Nelements,
+  ins->velocityExtKernel(mesh->Nelements,
                          ins->ExplicitOrder,
                          ins->fieldOffset,
                          ins->o_extbdfC,
@@ -156,12 +156,14 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_NS, occa::memory o_FS){
     udf.sEqnSource(ins, time, cds->o_S, o_FS);
 
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->SFilterKernel(cds->meshV->Nelements,
-                       ins->o_filterMT,
-                       ins->filterS,
-                       cds->sOffset,
-                       cds->o_S,
-                       o_FS);
+    cds->filterRTKernel(
+         cds->meshV->Nelements,
+         ins->o_filterMT,
+         ins->filterS,
+         0*cds->fieldOffset,
+         cds->o_rho,
+         cds->o_S,
+         o_FS);
 }
 
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
@@ -170,6 +172,14 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
   mesh_t *mesh = cds->mesh;
 
   occa::memory &o_wrk = cds->o_rkS;
+
+  cds->setEllipticCoeffKernel(
+       cds->Nlocal,
+       cds->g0*cds->idt,
+       cds->fieldOffset,
+       cds->o_diff,
+       cds->o_rho,
+       cds->o_ellipticCoeff);
 
   makeq(ins, time, cds->o_NS, cds->o_FS); 
   cdsHelmholtzRhs(cds, time+dt, cds->Nstages, cds->o_rhsS);
@@ -226,12 +236,13 @@ void makef(ins_t *ins, dfloat time, occa::memory o_NU, occa::memory o_FU)
   if(udf.uEqnSource) udf.uEqnSource(ins, time, ins->o_U, o_FU);
   
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    ins->VFilterKernel(mesh->Nelements,
-                       ins->o_filterMT,
-                       ins->filterS,
-                       ins->fieldOffset,
-                       ins->o_U,
-                       o_FU);
+    ins->filterRTKernel(
+         mesh->Nelements,
+         ins->o_filterMT,
+         ins->filterS,
+         ins->fieldOffset,
+         ins->o_U,
+         o_FU);
 }
 
 void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
@@ -239,28 +250,25 @@ void velocitySolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   mesh_t *mesh = ins->mesh;
   occa::memory &o_wrk = ins->o_scratch;
 
+  ins->setEllipticCoeffPressureKernel(
+       ins->Nlocal,
+       ins->fieldOffset,
+       ins->o_rho,
+       ins->o_ellipticCoeff);
+
   makef(ins, time, ins->o_NU, ins->o_FU);
 
   tombo::pressureRhs(ins, time+dt, ins->o_rhsP);
   tombo::pressureSolve(ins, time+dt, ins->o_rhsP, o_wrk); 
   ins->o_P.copyFrom(o_wrk, ins->Ntotal*sizeof(dfloat)); 
 
-/*
-  for (int e=0;e<mesh->Nelements;e++) {
-    for (int n=0;n<mesh->Np;n++) {
-      const dlong id = n+e*mesh->Np;
-      const dfloat DELTA = 0.2;
-      const dfloat XD = mesh->x[id]/DELTA;
-
-      const dfloat aa = 3./2 - (tanh(1.0) - tanh(-1.0))/3.;
-      const dfloat qtlExact = 0.5/DELTA*(1. - (tanh(XD)*tanh(XD)));
-
-      const dfloat uExact = 0.5*(3 + tanh(XD));
-      ins->P[id] = 4./3 * qtlExact - uExact + aa;
-    }
-  }
-  ins->o_P.copyFrom(ins->P);
-*/
+  ins->setEllipticCoeffKernel(
+       ins->Nlocal,
+       ins->g0*ins->idt,
+       ins->fieldOffset,
+       ins->o_mue,
+       ins->o_rho,
+       ins->o_ellipticCoeff);
 
   tombo::velocityRhs(ins, time+dt, ins->o_rhsU);
   tombo::velocitySolve(ins, time+dt, ins->o_rhsU, o_wrk);
@@ -340,7 +348,7 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
         ins->o_extC.copyFrom(ins->extC);
 
         //compute advective velocity fields at time t
-        ins->subCycleExtKernel(NtotalElements,
+        ins->velocityExtKernel(NtotalElements,
                                Nstages,
                                ins->fieldOffset,
                                ins->o_extC,
@@ -455,9 +463,9 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
         cds->o_extC.copyFrom(cds->extC);
 
         //compute advective velocity fields at time t
-        cds->subCycleExtKernel(Nelements,
+        cds->velocityExtKernel(Nelements,
                                Nstages,
-                               cds->vOffset,
+                               cds->vFieldOffset,
                                cds->o_extC,
                                o_U,
                                cds->o_Ue);
@@ -472,8 +480,8 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
                                             mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
                                             mesh->o_cubInterpT,
                                             mesh->o_cubProjectT,
-                                            cds->vOffset,
-                                            cds->sOffset,             
+                                            cds->vFieldOffset,
+                                            cds->fieldOffset,             
                                             cds->o_Ue,
                                                  o_Sd,
                                             cds->o_rhsSd);
@@ -481,8 +489,8 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
           cds->subCycleStrongVolumeKernel(Nelements,
                                     mesh->o_vgeo,
                                     mesh->o_Dmatrices,
-                                    cds->vOffset,
-                                    cds->sOffset,           
+                                    cds->vFieldOffset,
+                                    cds->fieldOffset,           
                                     cds->o_Ue,
                                     o_Sd,
                                     cds->o_rhsSd);
@@ -493,7 +501,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
 
         // int nfield = ins->dim==2 ? 2:3; 
         cds->invMassMatrixKernel(Nelements,
-                                 cds->sOffset,
+                                 cds->fieldOffset,
                                  cds->NSfields,
                                  mesh->o_vgeo,
                                  cds->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
@@ -504,7 +512,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_U
                                     cds->sdt,
                                     cds->Srka[rk],
                                     cds->Srkb[rk],
-                                    cds->sOffset,
+                                    cds->fieldOffset,
                                     cds->o_rhsSd,
                                     cds->o_resS, 
                                          o_Sd);

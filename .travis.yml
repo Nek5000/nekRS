@@ -29,8 +29,15 @@ jobs:
      name: "ethier default"
      script: $before_test && cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 1 
    - stage: test
-     name: "ethier oifs"
+     name: "ethier subcycle"
      script: $before_test && cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 2 
+   - stage: test
+     name: "lowMach default"
+     script: $before_test && cd lowMach && mpirun -np 2 nekrs --setup lowMach --cimode 1 
+   - stage: test
+     name: "conj_ht"
+     script: $before_test && cd conj_ht && mpirun -np 2 nekrs --setup conj_ht --cimode 1 
+
 
 before_install:
   - sudo apt-get update -qq

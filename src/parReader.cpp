@@ -56,6 +56,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VERBOSE", "FALSE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
   options.setArgs("RESTART FROM FILE", "0");
+  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
   options.setArgs("FILTER STABILIZATION", "NONE");
 
   options.setArgs("START TIME", "0.0");
