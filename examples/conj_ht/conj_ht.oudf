@@ -1,5 +1,4 @@
 // Boundary conditions
-/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
   bc->uP = 4.0*bc->y*(1. - bc->y); 

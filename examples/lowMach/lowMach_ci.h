@@ -7,19 +7,17 @@
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("7"));
+  options.setArgs("POLYNOMIAL DEGREE", string("9"));
   options.setArgs("RESTART FROM FILE", string("0"));
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
-  options.setArgs("VISCOSITY", string("0.01"));
-  options.setArgs("DENSITY", string("1"));
-  options.setArgs("FINAL TIME", string("1.0"));
-  options.setArgs("DT", string("2e-4"));
+  options.setArgs("FINAL TIME", string("0.3"));
+  options.setArgs("DT", string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", string("1"));
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-09"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
 }
 
 void ciTestErrors(ins_t *ins, dfloat time, int tstep)
@@ -27,6 +25,10 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   if (tstep != ins->NtimeSteps) return;
  
   const int rank = ins->mesh->rank;
+
+  ins->o_qtl.copyTo(ins->qtl);
+  dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
+  memcpy(nekData.qtl, ins->qtl, sizeof(dfloat)*Nlocal);
  
   nek_ocopyFrom(ins, time, tstep);
   nek_userchk();
@@ -35,13 +37,13 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   double vxErr, prErr, sErr;
 
   switch (ciMode) {
-    case 1: vxErr = abs((err[0] - 1.013456E-04)/err[0]);
-            prErr = abs((err[1] - 5.122467E-04)/err[1]);
-            sErr  = abs((err[2] - 1.383208E-04)/err[2]);
+    case 1: vxErr = abs((err[0] - 2.0591E-06)/err[0]);
+            prErr = abs((err[1] - 5.4624E-04)/err[1]);
+            sErr  = abs((err[2] - 5.0447E-09)/err[2]);
             break;
-    case 2: vxErr = abs((err[0] - 1.014353E-04)/err[0]);
-            prErr = abs((err[1] - 5.127882E-04)/err[1]);
-            sErr  = abs((err[2] - 1.390466E-04)/err[2]);
+    case 2: vxErr = abs((err[0] - 8.8508E-06)/err[0]);
+            prErr = abs((err[1] - 5.8382E-04)/err[1]);
+            sErr  = abs((err[2] - 1.0481E-06)/err[2]);
             break;
   }
 

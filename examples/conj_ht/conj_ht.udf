@@ -22,8 +22,8 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
   cds_t *cds   = ins->cds;
   mesh_t *mesh = cds->mesh;
 
-  const occa::memory o_con   = o_SProp.slice(0*cds->sOffset*sizeof(dfloat));
-  const occa::memory o_rhoCp = o_SProp.slice(1*cds->sOffset*sizeof(dfloat));
+  const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset*sizeof(dfloat));
+  const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset*sizeof(dfloat));
 
   const dfloat rhoCpFluid = 1.0;
   const dfloat rhoCpSolid = rhoCpFluid*0.6;

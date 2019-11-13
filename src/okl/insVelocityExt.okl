@@ -24,36 +24,30 @@ SOFTWARE.
 
 */
 
-#define WALL 1
-#define INLET 2
-#define OUTLET 3
-#define XSLIP 4
-#define YSLIP 5
-#define ZSLIP 6
+@kernel void insVelocityExt(const dlong Nelements,
+                            const int Nstages,
+                            const dlong fieldOffset,
+                            @restrict const  dfloat *  c,
+                            @restrict const  dfloat *  U,
+                            @restrict dfloat *  Ue){
 
-struct bcData
-{
-   int idM;
-   int fieldOffset;
-   int id;
+  // Low storage Runge Kutta time step update
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = n+p_Np*e;
+      
+      #pragma unroll p_NVfields
+      for (int i=0;i<p_NVfields;i++) {
+        dfloat Un = 0.;
 
-   dfloat time;
-   dfloat x, y, z;
-   dfloat nx, ny, nz;
+        for (int s=0;s<Nstages;s++) {
+          const dlong idm = id+i*fieldOffset+s*p_NVfields*fieldOffset;
+          const dfloat Um = U[idm];
+          Un += c[s]*Um;
+        }
 
-   dfloat uM, vM, wM;
-   dfloat uP, vP, wP;
-   dfloat uxM, uyM, uzM;
-   dfloat vxM, vyM, vzM;
-   dfloat wxM, wyM, wzM;
-   dfloat uxP, uyP, uzP;
-   dfloat vxP, vyP, vzP;
-   dfloat wxP, wyP, wzP;
-
-   dfloat pM;
-   dfloat pP, pxP, pyP, pzP;
-
-   dfloat* wrk;
-
-   dfloat sM, sP, sF; 
-};
+        Ue[id+i*fieldOffset] = Un;
+      }
+    }
+  }
+}

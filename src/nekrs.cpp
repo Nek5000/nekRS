@@ -39,19 +39,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-  // read settings
-  int N;
-  int nscal;
-  string udfFile, casename;
-  int readRestartFile;
-
   options = parRead(setupFile, comm);
-
-  options.getArgs("POLYNOMIAL DEGREE", N);
-  options.getArgs("UDF FILE", udfFile);
-  options.getArgs("CASENAME", casename);
-  options.getArgs("RESTART FROM FILE", readRestartFile);
-  options.getArgs("NUMBER OF SCALARS", nscal);
 
   setOUDF(options);
 
@@ -59,7 +47,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-  printf("here: %d %d", rank, size);
     dryRun(options, sizeTarget);
     return;
   }
@@ -67,11 +54,13 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   MPI_Barrier(comm); double t0 = MPI_Wtime();
 
   // jit compile udf
+  string udfFile;
+  options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()){
     if(rank == 0) udfBuild(udfFile.c_str()); 
     MPI_Barrier(comm);
     udfLoad();
-  } 
+  }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode) 
@@ -79,7 +68,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
+  int nscal;
+  options.getArgs("NUMBER OF SCALARS", nscal);
+
   // jit compile nek
+  int N;
+  string casename;
+  options.getArgs("CASENAME", casename);
+  options.getArgs("POLYNOMIAL DEGREE", N);
   if(rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, size);
   MPI_Barrier(comm);
 
@@ -92,6 +88,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   ins = insSetup(comm, options, nrsBuildOnly);
 
   // set initial condition
+  int readRestartFile;
+  options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart(ins);
   if(udf.setup) udf.setup(ins);
   ins->o_U.copyFrom(ins->U);
@@ -189,11 +187,8 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
          << npTarget
          << " MPI ranks ...\n" << endl;
 
-  int N;
-  string udfFile, casename;
+  string udfFile;
   options.getArgs("UDF FILE", udfFile);
-  options.getArgs("CASENAME", casename);
-  options.getArgs("POLYNOMIAL DEGREE", N);
 
   // jit compile udf
   if (!udfFile.empty()) {
@@ -204,6 +199,11 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   } 
 
   if(udf.setup0) udf.setup0(comm, options);
+
+  int N;
+  string casename;
+  options.getArgs("CASENAME", casename);
+  options.getArgs("POLYNOMIAL DEGREE", N);
 
   // jit compile nek
   int nscal;

@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-// rhsU^s = MM*(U^n - \sum^s-1 ea_si N(U^i) + \sum^s-1 ia_si LU^i - \sum^s-1 pa_si GP^i)/ia_ss nu dt
+// non-linear terms are multiplied by rho already
 @kernel void cdsHelmholtzRhsEXTBDFHex3D(const dlong Nelements,
                                 @restrict const  dfloat *  vgeo,
                                 @restrict const  dfloat *  MM,
@@ -59,22 +59,24 @@ SOFTWARE.
               if (p_SUBCYCLING) {
                 //NU holds \hat{U} after subcycling
                 const dfloat NSm = NS[id+0*sOffset];
-                rhsSn = JW*idt*NSm;
+                rhsSn = idt*rhoM*NSm;
                  for (int s=0;s<p_Nstages;s++) {
-                  rhsSn += JW*extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  rhsSn += extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
                 }
               }else {
                  rhsSn = 0.f;
                  for (int s=0;s<p_Nstages;s++) {
                   // S 
                   const dfloat Sm  = S[id+0*sOffset+s*p_NSfields*sOffset];
-                  // NS (already multiplied by rho)
+                  // NS
                   const dfloat NSm = NS[id+0*sOffset+s*p_NSfields*sOffset];
                   const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
-                  rhsSn += JW*(rhoM*idt*extbdfB[s]*Sm - extbdfA[s]*(NSm - FSm));
+
+                  // non-linear terms are multiplied by rho already
+                  rhsSn += (rhoM*idt*extbdfB[s]*Sm - extbdfA[s]*(NSm - FSm));
                   }
               }
-              rhsS[id] = rhsSn;
+              rhsS[id] = JW*rhsSn;
             }
           }
         }

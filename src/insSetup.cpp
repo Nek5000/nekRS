@@ -34,9 +34,12 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (buildOnly) {
     ins->meshT = createMeshDummy(comm, N);
     ins->mesh = ins->meshT;
+    // init device
+    meshOccaSetup3D(ins->mesh, options, kernelInfo);
   } else {
     ins->meshT = createMeshT(comm, N, cht);
     bcMap::check(ins->meshT);
+    // init device
     meshOccaSetup3D(ins->meshT, options, kernelInfo);
     // free what is not required
     ins->meshT->o_cubsgeo.free();
@@ -113,9 +116,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
+  ins->Nlocal  = Nlocal;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
-  
   ins->Ntotal = Ntotal;
+
   ins->fieldOffset = Ntotal;
   ins->Nblock = (Nlocal+blockSize-1)/blockSize;
 
@@ -295,7 +299,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_prkA = ins->o_extbdfC;
   ins->o_prkB = ins->o_extbdfC;
 
-  // dummy decleration for scratch space 
+  // dummy decleration for user work space 
   ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
   ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
  
@@ -569,11 +573,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       kernelName = "insCurl" + suffix;
       ins->curlKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);  
-      if(ins->dim==2){
-        kernelName = "insCurlB" + suffix;
-        ins->curlBKernel = 
-          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo); 
-      }
 
       fileName = oklpath + "insMassMatrix" + ".okl";
       kernelName = "insMassMatrix" + suffix;
@@ -635,13 +634,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
 
-      fileName = oklpath + "insSubCycle" + ".okl";
+      fileName = oklpath + "insSubCycleRKUpdate" + ".okl";
       kernelName = "insSubCycleRKUpdate";
       ins->subCycleRKUpdateKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      kernelName = "insSubCycleExt";
-      ins->subCycleExtKernel = 
+      fileName = oklpath + "insVelocityExt" + ".okl";
+      kernelName = "insVelocityExt";
+      ins->velocityExtKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
@@ -663,12 +663,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
       // ===========================================================================
 
-      fileName = oklpath + "insFilter" + ".okl";
-      kernelName = "insVFilterRT" + suffix;
-      ins->VFilterKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "insSFilterRT" + suffix;
-      ins->SFilterKernel = 
+      fileName = oklpath + "insFilterRT" + suffix + ".okl";
+      kernelName = "insFilterRT" + suffix;
+      ins->filterRTKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insCfl" + suffix + ".okl";
@@ -752,12 +749,13 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->g0            = ins->g0; 
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
+  cds->Nlocal  = Nlocal;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+  cds->Ntotal  = Ntotal;
 
-  cds->Ntotal      = Ntotal;
-  cds->vOffset     = ins->fieldOffset;
-  cds->sOffset     = Ntotal;
-  cds->Nblock      = (Nlocal+blockSize-1)/blockSize;
+  cds->vFieldOffset = ins->fieldOffset;
+  cds->fieldOffset  = Ntotal;
+  cds->Nblock       = (Nlocal+blockSize-1)/blockSize;
 
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
@@ -796,13 +794,13 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->prop   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
-      cds->prop[0*cds->sOffset + n+e*mesh->Np] = diff;
-      cds->prop[1*cds->sOffset + n+e*mesh->Np] = rho;
+      cds->prop[0*cds->fieldOffset + n+e*mesh->Np] = diff;
+      cds->prop[1*cds->fieldOffset + n+e*mesh->Np] = rho;
     }
   }
   cds->o_prop = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  
-  cds->o_diff = cds->o_prop.slice(0*cds->sOffset*sizeof(dfloat));
-  cds->o_rho  = cds->o_prop.slice(1*cds->sOffset*sizeof(dfloat));
+  cds->o_diff = cds->o_prop.slice(0*cds->fieldOffset*sizeof(dfloat));
+  cds->o_rho  = cds->o_prop.slice(1*cds->fieldOffset*sizeof(dfloat));
 
   cds->var_coeff = 1; // use always var coeff elliptic
   cds->ellipticCoeff   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
@@ -995,16 +993,17 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
       kernelName = "cdsHelmholtzRhsEXTBDF" + suffix;
       cds->helmholtzRhsKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       
-      fileName = install_dir + "/okl/cdsHelmholtzBC" +suffix + ".okl"; 
+      fileName = install_dir + "/okl/cdsHelmholtzBC" + suffix + ".okl"; 
       kernelName = "cdsHelmholtzBC" + suffix; 
       cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       kernelName = "cdsHelmholtzAddBC" + suffix;
       cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = install_dir + "/okl/setEllipticCoeff.okl"; 
+      fileName = install_dir+ "/okl/setEllipticCoeff.okl"; 
       kernelName = "setEllipticCoeff";
-      cds->setEllipticCoeffKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      cds->setEllipticCoeffKernel =  
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = install_dir + "/okl/cdsMassMatrix.okl"; 
       kernelName = "cdsMassMatrix" + suffix;
@@ -1012,6 +1011,11 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
       kernelName = "cdsInvMassMatrix" + suffix;
       cds->invMassMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
+
+      fileName = install_dir + "/okl/cdsFilterRT" + suffix + ".okl"; 
+      kernelName = "cdsFilterRT" + suffix;
+      cds->filterRTKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps){
         // Note that resU and resV can be replaced with already introduced buffer
@@ -1021,7 +1025,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
         fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
         kernelName = "scaledAddwOffset";
-        cds->scaledAddKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->scaledAddKernel = 
+          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
         fileName = install_dir + "/okl/cdsSubCycle" + suffix + ".okl"; 
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
@@ -1035,11 +1040,12 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       }
-        // this is also required if Nstages =0 !!!
-        fileName = install_dir + "/okl/cdsSubCycle.okl";
-        kernelName = "cdsSubCycleExt";
-        cds->subCycleExtKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-   
+        fileName = install_dir + "/okl/insVelocityExt" + ".okl";
+        kernelName = "insVelocityExt";
+        cds->velocityExtKernel = 
+          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+  
     }
     MPI_Barrier(mesh->comm);
   }

@@ -23,15 +23,14 @@ typedef struct {
   int NSfields;            // Number of scalar fields
   
   setupAide options;
-  // INS SOLVER OCCA VARIABLES
-  dlong vOffset;
-  dlong sOffset;
-  dlong Ntotal;
+
+  dlong vFieldOffset;
+  dlong fieldOffset;
+  dlong Nlocal, Ntotal;
   int Nblock;
   dfloat dt, idt, cfl, dti;          // time step
-  dfloat dtMIN;         
   dfloat time;
-  int tstep, frame;
+  int tstep;
   dfloat g0, ig0;
   dfloat startTime;   
   dfloat finalTime;   
@@ -100,10 +99,11 @@ typedef struct {
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;;
   occa::kernel subCycleRKUpdateKernel;
-  occa::kernel subCycleExtKernel;
+  occa::kernel velocityExtKernel;
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
-
+  
+  occa::kernel filterRTKernel; // Relaxation-Term based filtering
   // occa::kernel constrainKernel;
   
   occa::memory o_U; 

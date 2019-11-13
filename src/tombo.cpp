@@ -11,12 +11,6 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP)
   mesh_t *mesh = ins->mesh;
   occa::memory o_wrk = ins->o_scratch;
 
-  ins->setEllipticCoeffPressureKernel(
-       mesh->Np*mesh->Nelements,
-       ins->fieldOffset,
-       ins->o_rho,
-       ins->o_ellipticCoeff);
-
   // o_NC = nu*( JW*curl(curl(v)) - 4/3*JW*grad(qtl) ) 
   occa::memory o_NC = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
   curlCurl(ins, o_wrk, ins->o_Ue, o_NC);
@@ -202,14 +196,6 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_
   occa::memory o_uh = o_UH.slice(0*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_vh = o_UH.slice(1*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_wh = o_UH.slice(2*ins->fieldOffset*sizeof(dfloat));
-
-  ins->setEllipticCoeffKernel(
-       mesh->Np*mesh->Nelements,
-       ins->g0*ins->idt,
-       ins->fieldOffset,
-       ins->o_mue,
-       ins->o_rho,
-       ins->o_ellipticCoeff);
 
   ins->velocityRhsBCKernel(
        mesh->Nelements,

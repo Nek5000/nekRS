@@ -1,5 +1,4 @@
 // Boundary conditions
-/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
   const dfloat arg = bc->z * M_PI * 0.5/0.6;
@@ -10,10 +9,6 @@ void insVelocityDirichletConditions3D(bcData *bc)
 
   bc->vP = 0.0;
   bc->wP = 0.0;
-}
-
-void insVelocityNeumannConditions3D(bcData *bc)
-{
 }
 
 // Stabilized outflow (Dong et al)
