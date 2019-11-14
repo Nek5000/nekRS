@@ -3,22 +3,22 @@
 #define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
 #define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
 
-#define EPS 1e-3
+#define EPS 1e-4
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("9"));
+  options.setArgs("POLYNOMIAL DEGREE", string("5"));
   options.setArgs("RESTART FROM FILE", string("0"));
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
-  options.setArgs("FINAL TIME", string("0.3"));
-  options.setArgs("DT", string("1e-3"));
+  options.setArgs("FINAL TIME", string("20"));
+  options.setArgs("DT", string("2e-2"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", string("1"));
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
-  options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-08"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-06"));
+  options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-08"));
   options.setArgs("VARIABLEPROPERTIES", "TRUE");
 }
 
@@ -35,22 +35,18 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_ocopyFrom(ins, time, tstep);
   nek_userchk();
 
-  double *err = nekData.cbscnrs;
-  double vxErr, prErr, sErr;
+  double *norm = nekData.cbscnrs;
+  double vxErr, sErr;
 
   switch (ciMode) {
-    case 1: vxErr = abs((err[0] - 2.0591E-06)/err[0]);
-            prErr = abs((err[1] - 5.4624E-04)/err[1]);
-            sErr  = abs((err[2] - 5.0447E-09)/err[2]);
-            break;
-    case 2: vxErr = abs((err[0] - 8.8508E-06)/err[0]);
-            prErr = abs((err[1] - 5.8382E-04)/err[1]);
-            sErr  = abs((err[2] - 1.0481E-06)/err[2]);
+    // cross compare solution to nek5000
+    case 1: vxErr = abs((norm[0] - 2.06559111)/norm[0]);
+            sErr  = abs((norm[1] - 17.4570038)/norm[1]);
             break;
   }
 
   if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g s=%g\n", vxErr, prErr, sErr);
+    printf("relative error to target: vx=%g s=%g\n", vxErr, sErr);
 
-  (vxErr < EPS && prErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
 }

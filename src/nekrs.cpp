@@ -92,6 +92,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart(ins);
   if(udf.setup) udf.setup(ins);
+  if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
+    if(!udf.properties) {
+      if (rank ==0) cout << "ERROR: variableProperties requires udf.properties function handle" << "!\n";
+      EXIT(-1);
+    } 
+  }
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
   ins->o_prop.copyFrom(ins->prop); 

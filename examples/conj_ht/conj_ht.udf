@@ -4,8 +4,13 @@
 #include <math.h>
 #include "udf.hpp"
 
+static int ciMode = 0;
+#include "conj_ht_ci.h"
+
 static occa::kernel cFillKernel;
 static occa::memory o_eInfo;
+
+static int updateProperties = 1;
 
 void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
@@ -20,18 +25,28 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
   cds_t *cds   = ins->cds;
-  mesh_t *mesh = cds->mesh;
 
-  const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset*sizeof(dfloat));
-  const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset*sizeof(dfloat));
+  if(updateProperties) {
+    if(ins->mesh->rank == 0) cout << "updating properties" << "\n";
+    const dfloat rho = 1.0;
+    const dfloat mue = 1/1000.0;
+    const dfloat rhoCpFluid = rho*1.0;
+    const dfloat conFluid = mue;
+    const dfloat rhoCpSolid = rhoCpFluid*0.6;
+    const dfloat conSolid = 400*conFluid;
 
-  const dfloat rhoCpFluid = 1.0;
-  const dfloat rhoCpSolid = rhoCpFluid*0.6;
-  cFillKernel(mesh->Nelements, rhoCpFluid, rhoCpSolid, o_eInfo, o_rhoCp);
-
-  const dfloat conFluid = ins->nu; // change later to ins->mue
-  const dfloat conSolid = 400*conFluid;
-  cFillKernel(mesh->Nelements, conFluid, conSolid, o_eInfo, o_con);
+    // velocity 
+    const occa::memory o_mue = o_UProp.slice(0*ins->fieldOffset*sizeof(dfloat));
+    const occa::memory o_rho = o_UProp.slice(1*ins->fieldOffset*sizeof(dfloat));
+    cFillKernel(ins->mesh->Nelements, mue, 0, o_eInfo, o_mue);
+    cFillKernel(ins->mesh->Nelements, rho, 0, o_eInfo, o_rho);
+    // temperature 
+    const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset*sizeof(dfloat));
+    const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset*sizeof(dfloat));
+    cFillKernel(cds->mesh->Nelements, conFluid, conSolid, o_eInfo, o_con);
+    cFillKernel(cds->mesh->Nelements, rhoCpFluid, rhoCpSolid, o_eInfo, o_rhoCp);
+    updateProperties = 0;
+  }
 }
 
 /* UDF Functions */                                                      
@@ -39,6 +54,12 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
 void UDF_LoadKernels(ins_t *ins)
 {
   cFillKernel = udfBuildKernel(ins, "cFill");
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
 }
 
 void UDF_Setup(ins_t *ins)
@@ -57,4 +78,5 @@ void UDF_Setup(ins_t *ins)
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
 {
   if (ins->isOutputStep) nek_userchk();
+  if (ciMode) ciTestErrors(ins, time, tstep);
 }
