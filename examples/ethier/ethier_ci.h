@@ -23,7 +23,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-09"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
-  options.setArgs("VARIABLEPROPERTIES", "TRUE");
+  options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
 
 void ciTestErrors(ins_t *ins, dfloat time, int tstep)

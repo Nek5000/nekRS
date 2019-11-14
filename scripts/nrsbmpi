@@ -1,12 +1,23 @@
 #!/bin/bash
 
-if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
-  echo "usage: ${0##*/} <casename> <#procs>"
-  exit 0
-fi
-
 rm -f logfile
 mv $1.log.$2 $1.log1.$2 2>/dev/null
-mpirun -np $2 nekrs --setup $1 >$1.log.$2 2>&1 &
+
+: ${TRAVIS:="false"}
+
+if [ "$TRAVIS" == "true" ]; then
+  if [ $# -eq 0 ] || [ $# -ne 3 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+    echo "usage: ${0##*/} <casename> <#procs> <ciMode>"
+    exit 1
+  fi
+  mpirun -np $2 nekrs --setup $1 --cimode $3 >$1.log.$2 2>&1 &
+else
+  if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+    echo "usage: ${0##*/} <casename> <#procs>"
+    exit 1
+  fi
+  mpirun -np $2 nekrs --setup $1 >$1.log.$2 2>&1 &
+fi
+
 ln -sf $1.log.$2 logfile
 echo "started job in background, redirecting output to ./logfile ..."

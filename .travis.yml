@@ -6,9 +6,9 @@ env:
   - before_test='source $HOME/.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_INSTALL_DIR'
 
 cache:
+  timeout: 3600
   directories:
     - $HOME/.local/nekrs
-    - $HOME/.occa
 
 sudo: required
 
@@ -27,16 +27,16 @@ jobs:
      script: $before_test && cd ethier && nrspre ethier 1  
    - stage: test
      name: "ethier default"
-     script: $before_test && cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 1 
+     script: $before_test && cd ethier && nrsmpi ethier 2 1 
    - stage: test
      name: "ethier subcycle"
-     script: $before_test && cd ethier && mpirun -np 2 nekrs --setup ethier --cimode 2 
+     script: $before_test && cd ethier && nrsmpi ethier 2 2 
    - stage: test
      name: "lowMach default"
-     script: $before_test && cd lowMach && mpirun -np 2 nekrs --setup lowMach --cimode 1 
+     script: $before_test && cd lowMach && nrsmpi lowMach 2 1 
    - stage: test
      name: "conj_ht"
-     script: $before_test && cd conj_ht && mpirun -np 2 nekrs --setup conj_ht --cimode 1 
+     script: $before_test && cd conj_ht && nrsmpi conj_ht 2 1
 
 
 before_install:
