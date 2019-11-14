@@ -10,12 +10,3 @@
     }
   }
 }
-
-// Boundary conditions
-void insVelocityDirichletConditions3D(bcData *bc)
-{                                                                        
-}
-
-void insPressureDirichletConditions3D(bcData *bc)
-{
-}

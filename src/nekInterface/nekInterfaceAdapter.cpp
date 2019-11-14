@@ -474,12 +474,21 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   isTMesh = 1;
   nekData.NboundaryIDt = (*nek_nbid_ptr)(&isTMesh); 
 
-  dfloat nu;
-  options->getArgs("VISCOSITY", nu);
-  nekData.param[1] = nu;
+  dfloat rho;
+  options->getArgs("DENSITY", rho);
+  nekData.param[0] = rho;
 
-  options->getArgs("SCALAR01 DIFFUSIVITY", nu);
-  nekData.param[7] = nu;
+  dfloat mue;
+  options->getArgs("VISCOSITY", mue);
+  nekData.param[1] = mue;
+ 
+  dfloat rhoCp;
+  options->getArgs("SCALAR01 DENSITY", rhoCp);
+  nekData.param[6] = rhoCp;
+
+  dfloat diff;
+  options->getArgs("SCALAR01 DIFFUSIVITY", diff);
+  nekData.param[7] = diff;
 
   return 0;
 }
