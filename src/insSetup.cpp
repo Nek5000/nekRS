@@ -89,7 +89,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->writeRestartFile = 0; 
   options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
 
-  dfloat mue, rho;
+  dfloat mue = 1;
+  dfloat rho = 1;
   options.getArgs("VISCOSITY", mue);
   options.getArgs("DENSITY", rho);
 
@@ -787,7 +788,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
 
-  dfloat diff, rho;
+  dfloat diff = 1;
+  dfloat rho = 1;
   options.getArgs("SCALAR01 DIFFUSIVITY", diff);
   options.getArgs("SCALAR01 DENSITY", rho);
 

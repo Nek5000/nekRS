@@ -3,11 +3,14 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
-startFrom = nekrs.fld
-polynomialOrder = 7
-numSteps = 1500 
+#startFrom = restart.fld
+polynomialOrder = 5
+numSteps = 1000 
 dt = 2e-02
 writeInterval = 100
+
+[PROBLEMTYPE]
+variableProperties = yes
 
 [PRESSURE]
 residualTol = 1e-06
@@ -15,12 +18,8 @@ residualProj = no
 
 [VELOCITY]
 boundaryTypeMap = v, O, W
-residualTol = 1e-06
-density = 1.0
-viscosity = -1000
+residualTol = 1e-08
 
 [TEMPERATURE]
 boundaryTypeMap = t, O, I
-rhoCp = 1.0
-conductivity = -1000 
-residualTol = 1e-06
+residualTol = 1e-08

@@ -12,6 +12,8 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
   options.setArgs("VISCOSITY", string("0.01"));
   options.setArgs("DENSITY", string("1"));
+  options.setArgs("SCALAR01 DIFFUSIVITY", string("0.01"));
+  options.setArgs("SCALAR01 DENSITY", string("1"));
   options.setArgs("FINAL TIME", string("1.0"));
   options.setArgs("DT", string("2e-4"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
@@ -20,6 +22,8 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-09"));
+  options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("VARIABLEPROPERTIES", "TRUE");
 }
 
 void ciTestErrors(ins_t *ins, dfloat time, int tstep)
