@@ -87,6 +87,7 @@ SOFTWARE.
     dfloat dudr = 0, duds = 0, dudt = 0;
     dfloat dvdr = 0, dvds = 0, dvdt = 0;
     dfloat dwdr = 0, dwds = 0, dwdt = 0;
+    dfloat div = 0;
 #pragma unroll p_Nq
     for (int n=0;n<p_Nq;n++) {
       const dfloat Dr = s_D[i][n];
