@@ -260,6 +260,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(p_preconditioner == "jacobi")
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
   //
+  string p_coarsematrix; 
+  ini.extract("pressure", "galerkincoarsematrix", p_coarsematrix);
+  if(p_coarsematrix == "yes")
+    options.setArgs("GALERKIN COARSE MATRIX", "YES");
+  else
+    options.setArgs("GALERKIN COARSE MATRIX", "NO");
+  //
   double v_residualTol;
   if(ini.extract("velocity", "residualtol", v_residualTol))
     options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
