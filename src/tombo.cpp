@@ -116,6 +116,8 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_rhsP, occa::memory o_
 
   ogsGatherScatter(o_rhsP, ogsDfloat, ogsAdd, mesh->ogs);
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_rhsP);
+
+  ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_PI);
 
   ins->NiterP = ellipticSolve(solver, 0.0, ins->presTOL, o_rhsP, ins->o_PI);
