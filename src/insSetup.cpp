@@ -443,7 +443,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->elementType = ins->elementType;
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
- 
+
   ins->pSolver->var_coeff = 1;
   ins->pSolver->coeff = ins->ellipticCoeff; 
   ins->pSolver->o_coeff = ins->o_ellipticCoeff;

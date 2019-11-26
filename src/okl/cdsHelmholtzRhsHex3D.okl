@@ -24,8 +24,6 @@ SOFTWARE.
 
 */
 
-
-// non-linear terms are multiplied by rho already
 @kernel void cdsHelmholtzRhsEXTBDFHex3D(const dlong Nelements,
                                 @restrict const  dfloat *  vgeo,
                                 @restrict const  dfloat *  MM,
@@ -54,17 +52,16 @@ SOFTWARE.
               const dfloat JW = vgeo[gid + p_JWID*p_Np];
               const dfloat rhoM = RHO[id];
 
-              dfloat rhsSn;
+              dfloat rhsSn = 0;
 
               if (p_SUBCYCLING) {
                 //NU holds \hat{U} after subcycling
                 const dfloat NSm = NS[id+0*sOffset];
-                rhsSn = idt*rhoM*NSm;
+                rhsSn += idt*rhoM*NSm;
                  for (int s=0;s<p_Nstages;s++) {
                   rhsSn += extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
                 }
               }else {
-                 rhsSn = 0.f;
                  for (int s=0;s<p_Nstages;s++) {
                   // S 
                   const dfloat Sm  = S[id+0*sOffset+s*p_NSfields*sOffset];

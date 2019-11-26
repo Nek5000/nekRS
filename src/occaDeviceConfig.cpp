@@ -51,14 +51,8 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
   }
   else{
     sprintf(deviceConfig, "mode: 'Serial' ");
+    options.setArgs("THREAD MODEL", "SERIAL");
   }
-
-  int Nthreads = 1;
-  omp_set_num_threads(Nthreads);
-  if(mesh->rank==0) printf("Number of OMP threads: %d\n", omp_get_num_threads());
-
-  if (options.compareArgs("VERBOSE","TRUE"))
-    std::cout << deviceConfig << std::endl;
 
   if(mesh->rank==0) printf("Initializing device...");
   mesh->device.setup((std::string)deviceConfig);
@@ -67,6 +61,11 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
 #ifdef USE_OCCA_MEM_BYTE_ALIGN 
   occa::env::OCCA_MEM_BYTE_ALIGN = USE_OCCA_MEM_BYTE_ALIGN;
 #endif
+
+  int Nthreads = 1;
+  omp_set_num_threads(Nthreads);
+  if(mesh->rank==0)
+    printf("Number of OMP threads: %d\n", omp_get_num_threads());
 
   occa::initTimer(mesh->device);
 }

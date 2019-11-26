@@ -66,12 +66,6 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
-  options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
-  options.setArgs("SCALAR01 BASIS", "NODAL");
-  options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
-  options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
-  options.setArgs("SCALAR01 CONJUGATEHEATTRANSFER", "0");
-
   options.setArgs("LOWMACH", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
@@ -194,15 +188,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   
   string extrapolation;
   ini.extract("general", "extrapolation", extrapolation);
-  if(extrapolation == "oifs") {
+  if(extrapolation == "oifs" || extrapolation == "subcycling") {
     double targetCFL;
+    int NSubCycles = 0;
 
-    if(ini.extract("general", "targetcfl", targetCFL)) {
-      int subCycles = round(targetCFL/2);
-      options.setArgs("SUBCYCLING STEPS", std::to_string(subCycles));
-    } else {
-      ABORT("Cannot find mandatory parameter GENERAL::targetCFL!"); 
-    }
+    if(ini.extract("general", "targetcfl", targetCFL))
+      NSubCycles = round(targetCFL/2);
+    if(ini.extract("general", "subcyclingsteps", NSubCycles)); 
+    if(!NSubCycles) NSubCycles = 1;  
+    options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
   }
    
   double writeInterval = 0;
@@ -227,15 +221,16 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("FILTER STABILIZATION", "RELAXATION");
     double filterWeight;
     if(ini.extract("general", "filterweight", filterWeight))
-      options.setArgs("FILTER STRENGTH", to_string_f(filterWeight));
+      options.setArgs("HPFRT STRENGTH", to_string_f(filterWeight));
     else
       ABORT("Cannot find mandatory parameter GENERAL:filterWeight!");
     double filterCutoffRatio;
-    if(ini.extract("general", "filtercutoffratio", filterCutoffRatio)) {
-      options.setArgs("FILTER CUTOFF RATIO", to_string_f(filterCutoffRatio));
-    } else {
-      ABORT("Cannot find mandatory parameter GENERAL:filterCutoffRatio!");
-    }
+    int NFilterModes;
+    if(ini.extract("general", "filtercutoffratio", filterCutoffRatio))
+      NFilterModes = round((N+1)*(1 - filterCutoffRatio));
+    if(ini.extract("general", "filtermodes", NFilterModes))
+    if(NFilterModes < 1) NFilterModes = 1; 
+    options.setArgs("HPFRT MODES", to_string_f(NFilterModes));
   } else if(filtering == "explicit") {
     ABORT("GENERAL::filtering = explicit not supported!");
   }
@@ -318,6 +313,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
   if(nscal) {
+    options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
+    options.setArgs("SCALAR01 BASIS", "NODAL");
+    options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
+    options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
 
     double s_residualTol;
     if(ini.extract("temperature", "residualtol", s_residualTol)) {

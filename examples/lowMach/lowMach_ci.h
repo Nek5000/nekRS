@@ -39,13 +39,13 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   double vxErr, prErr, sErr;
 
   switch (ciMode) {
-    case 1: vxErr = abs((err[0] - 2.0591E-06)/err[0]);
-            prErr = abs((err[1] - 5.4624E-04)/err[1]);
-            sErr  = abs((err[2] - 5.0447E-09)/err[2]);
+    case 1: vxErr = abs((err[0] - 2.05E-06)/err[0]);
+            prErr = abs((err[1] - 5.46E-04)/err[1]);
+            sErr  = abs((err[2] - 5.04E-09)/err[2]);
             break;
-    case 2: vxErr = abs((err[0] - 8.8508E-06)/err[0]);
-            prErr = abs((err[1] - 5.8382E-04)/err[1]);
-            sErr  = abs((err[2] - 1.0481E-06)/err[2]);
+    case 2: vxErr = abs((err[0] - 8.85E-06)/err[0]);
+            prErr = abs((err[1] - 5.83E-04)/err[1]);
+            sErr  = abs((err[2] - 1.04E-06)/err[2]);
             break;
   }
 
