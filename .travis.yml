@@ -21,7 +21,7 @@ jobs:
   include:
    - stage: prepare
      name: "install"
-     script: rm -rf $HOME/.local/nekrs && cd $TRAVIS_BUILD_DIR && OCCA_CUDA_ENABLED=0 ./makenrs 
+     script: rm -rf $HOME/.local/nekrs && cd $TRAVIS_BUILD_DIR && OCCA_CUDA_ENABLED=0  
    - stage: warmup
      name: "warm-up"
      script: $before_test && cd ethier && nrspre ethier 1  
