@@ -2,9 +2,9 @@ language: python
 dist: bionic
 
 env:
-  - OCCA_CACHE_DIR=$HOME/.local/nekrs/occa_cache
   global:
   - before_test='source $HOME/.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_EXAMPLES'
+  - OCCA_CACHE_DIR=$HOME/.local/nekrs/occa_cache
 
 cache:
   timeout: 3600
