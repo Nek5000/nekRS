@@ -58,6 +58,9 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
   mesh->device.setup((std::string)deviceConfig);
   if(mesh->rank==0) printf("done.\n");
 
+  if (mesh->device.mode() == "Serial")
+    options.setArgs("THREAD MODEL", "SERIAL");
+
 #ifdef USE_OCCA_MEM_BYTE_ALIGN 
   occa::env::OCCA_MEM_BYTE_ALIGN = USE_OCCA_MEM_BYTE_ALIGN;
 #endif
