@@ -3,12 +3,12 @@ dist: bionic
 
 env:
   global:
-  - before_test='source $HOME/.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_INSTALL_DIR'
+  - before_test='source $TRAVIS_BUILD_DIR/../.local/nekrs/bin/nekrs.bashrc && cd $NEKRS_INSTALL_DIR'
 
 cache:
   timeout: 3600
   directories:
-    - $HOME/.local/nekrs
+    - $TRAVIS_BUILD_DIR/../.local/nekrs
 
 sudo: required
 
@@ -21,7 +21,7 @@ jobs:
   include:
    - stage: prepare
      name: "install"
-     script: rm -rf $HOME/.occa $HOME/.local/nekrs && cd ${TRAVIS_BUILD_DIR} && OCCA_CUDA_ENABLED=0 ./makenrs 
+     script: rm -rf $TRAVIS_BUILD_DIR/../.occa $TRAVIS_BUILD_DIR/../.local/nekrs && cd $TRAVIS_BUILD_DIR && OCCA_CUDA_ENABLED=0 ./makenrs 
    - stage: warmup
      name: "warm-up"
      script: $before_test && cd ethier && nrspre ethier 1  
