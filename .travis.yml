@@ -5,6 +5,7 @@ env:
   global:
   - before_test="source /home/travis/.local/nekrs/bin/nekrs.bashrc"
   - OCCA_CACHE_DIR=$HOME/.local/nekrs/occa_cache
+  - MAKEFLAGS="-j 8"
 
 cache:
   timeout: 3600
