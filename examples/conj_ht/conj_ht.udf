@@ -32,8 +32,8 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
     const dfloat mue = 1/1000.0;
     const dfloat rhoCpFluid = rho*1.0;
     const dfloat conFluid = mue;
-    const dfloat rhoCpSolid = rhoCpFluid*0.6;
-    const dfloat conSolid = 400*conFluid;
+    const dfloat rhoCpSolid = rhoCpFluid*0.1;
+    const dfloat conSolid = 10*conFluid;
 
     // velocity 
     const occa::memory o_mue = o_UProp.slice(0*ins->fieldOffset*sizeof(dfloat));
