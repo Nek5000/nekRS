@@ -3,7 +3,7 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
-polynomialOrder = 9 
+polynomialOrder = 7 
 stopAt = numSteps
 numSteps = 300
 dt = 1e-03
