@@ -5,20 +5,17 @@
 [![Build Status](https://travis-ci.org/Nek5000/nekRS.svg?branch=next)](https://travis-ci.org/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-**nekRS** is an open-source based Navier Stokes solver using the spectral element method. It is build on top of the discretization library [libParanumal](https://github.com/paranumal/libparanumal) targeting modern processors and accelerators including multi/many-core CPU and GPU platforms using [OCCA](https://github.com/libocca/occa).
+**nekRS** is an open-source Navier Stokes solver based on the spectral element method. It is build on top of the discretization library [libParanumal](https://github.com/paranumal/libparanumal) targeting modern processors and accelerators including multi/many-core CPU and GPU platforms using [OCCA](https://github.com/libocca/occa).
 
 Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
-* Variable properties (but constant dynamic viscosity)
 * Conjugate fluid-solid heat transfer
 * CG-SEM using hexaheadral elements 
-* Fixed timestep 2nd order BDF + OIFS
+* 2nd order BDF + OIFS
 * Dealiasing and high-pass filter relaxation term stabilization
 * MPI+X hybrid parallelism supporting serial (CPU), CUDA, OPENCL and HIP 
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
-* Reads mesh files (.re2) and outputs solution field files (.f%05d) 
-
 
 Note, the code is an early prototype so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
 
