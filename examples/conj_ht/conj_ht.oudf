@@ -1,0 +1,29 @@
+// Boundary conditions
+void insVelocityDirichletConditions3D(bcData *bc)
+{                                                                        
+  bc->uP = 4.0*bc->y*(1. - bc->y); 
+  bc->vP = 0.0; 
+  bc->wP = 0.0;
+}
+
+void cdsDirichletConditions3D(bcData *bc)
+{
+  bc->sP = 0.0;
+}
+
+
+#define SOLID 1
+@kernel void cFill(const dlong Nelements,
+                   const dfloat CONST1,
+                   const dfloat CONST2,
+                   @restrict const long long * eInfo,
+                   @restrict dfloat * QVOL)
+{
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const int id = e*p_Np + n;
+      QVOL[id] = CONST1;
+      if (eInfo[e] == SOLID) QVOL[id] = CONST2; 
+    }
+  }
+}

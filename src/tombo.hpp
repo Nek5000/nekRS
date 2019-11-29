@@ -9,7 +9,7 @@ void pressureRhs(ins_t *ins, dfloat time, occa::memory o_rhsP);
 void pressureSolve(ins_t *ins, dfloat time, occa::memory o_rhsP, occa::memory o_rkP);
 void velocityRhs(ins_t *ins, dfloat time, occa::memory o_rhsU);
 void velocitySolve(ins_t *ins, dfloat time, occa::memory o_rhsU, occa::memory o_Uhat);
-void curlCurl(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_NC);
+void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl);
 
 }
 

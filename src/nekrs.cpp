@@ -9,7 +9,6 @@
 static int rank, size;
 static MPI_Comm comm;
 
-static double timeLast = -1;
 static ins_t *ins;
 
 static libParanumal::setupAide options;
@@ -40,32 +39,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-#ifdef DEBUG
-  if (rank == 0) {
-    char str[10];
-    cout << "Press any key to continue" << endl;
-    gets(str);
-  }
-  MPI_Barrier(comm);
-#endif
-
-  // read settings
-  int N;
-  int nscal;
-  string udfFile, casename;
-  int readRestartFile;
-
   options = parRead(setupFile, comm);
-
-  options.getArgs("POLYNOMIAL DEGREE", N);
-  options.getArgs("UDF FILE", udfFile);
-  options.getArgs("CASENAME", casename);
-  options.getArgs("RESTART FROM FILE", readRestartFile);
-  options.getArgs("NUMBER OF SCALARS", nscal);
 
   setOUDF(options);
 
   if (nrsBuildOnly){
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
     dryRun(options, sizeTarget);
     return;
   }
@@ -73,11 +54,13 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   MPI_Barrier(comm); double t0 = MPI_Wtime();
 
   // jit compile udf
+  string udfFile;
+  options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()){
     if(rank == 0) udfBuild(udfFile.c_str()); 
     MPI_Barrier(comm);
     udfLoad();
-  } 
+  }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode) 
@@ -85,7 +68,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
+  int nscal;
+  options.getArgs("NUMBER OF SCALARS", nscal);
+
   // jit compile nek
+  int N;
+  string casename;
+  options.getArgs("CASENAME", casename);
+  options.getArgs("POLYNOMIAL DEGREE", N);
   if(rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, size);
   MPI_Barrier(comm);
 
@@ -95,17 +85,35 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nek_userchk();
 
   // init solver
-  mesh_t *mesh = meshSetup(comm, options, nrsBuildOnly);
-  ins = insSetup(mesh, options);
+  ins = insSetup(comm, options, nrsBuildOnly);
 
   // set initial condition
+  int readRestartFile;
+  options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart(ins);
   if(udf.setup) udf.setup(ins);
+  if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
+    if(!udf.properties) {
+      if (rank ==0) cout << "ERROR: variableProperties requires udf.properties function handle" << "!\n";
+      EXIT(-1);
+    } 
+  }
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
-  if(ins->Nscalar) ins->cds->o_S.copyFrom(ins->cds->S);    
+  ins->o_prop.copyFrom(ins->prop); 
+  if(ins->Nscalar) {
+    ins->cds->o_S.copyFrom(ins->cds->S);  
+    ins->cds->o_prop.copyFrom(ins->cds->prop); 
+  } 
 
-  if (udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
+  if(udf.properties) {
+    udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
+                           ins->o_prop, ins->cds->o_prop);
+    ins->o_prop.copyTo(ins->prop); 
+    if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
+  }
+
+  if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
 
   if(rank == 0) {
@@ -118,15 +126,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   fflush(stdout);
 }
 
-void runStep(double time, int tstep)
+void runStep(double time, double dt, int tstep)
 {
-  runStep(ins, time, tstep);
+  runStep(ins, time, dt, tstep);
 }
 
 void copyToNek(double time, int tstep)
 {
   nek_ocopyFrom(ins, time, tstep);
-  timeLast = time;
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
@@ -186,11 +193,8 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
          << npTarget
          << " MPI ranks ...\n" << endl;
 
-  int N;
-  string udfFile, casename;
+  string udfFile;
   options.getArgs("UDF FILE", udfFile);
-  options.getArgs("CASENAME", casename);
-  options.getArgs("POLYNOMIAL DEGREE", N);
 
   // jit compile udf
   if (!udfFile.empty()) {
@@ -202,17 +206,21 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
 
   if(udf.setup0) udf.setup0(comm, options);
 
+  int N;
+  string casename;
+  options.getArgs("CASENAME", casename);
+  options.getArgs("POLYNOMIAL DEGREE", N);
+
   // jit compile nek
   int nscal;
   options.getArgs("NUMBER OF SCALARS", nscal);
   if (rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, npTarget);
   MPI_Barrier(comm);
 
-  mesh_t *mesh = meshSetup(comm, options, nrsBuildOnly);
+  // init solver
+  ins = insSetup(comm, options, nrsBuildOnly);
 
-  ins_t *ins = insSetup(mesh, options);
-
-  if (mesh->rank == 0) cout << "\nBuild successful." << endl;
+  if (rank == 0) cout << "\nBuild successful." << endl;
 }
 
 static void setOUDF(libParanumal::setupAide &options)

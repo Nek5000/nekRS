@@ -1,14 +1,9 @@
 // Boundary conditions
-/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
   bc->uP = bc->wrk[bc->idM + 0*bc->fieldOffset];
   bc->vP = bc->wrk[bc->idM + 1*bc->fieldOffset];
   bc->wP = bc->wrk[bc->idM + 2*bc->fieldOffset];
-}
-
-void insVelocityNeumannConditions3D(bcData *bc)
-{
 }
 
 // Stabilized outflow (Dong et al)

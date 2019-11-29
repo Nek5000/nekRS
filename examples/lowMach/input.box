@@ -1,0 +1,19 @@
+one3d.rea
+-3                     spatial dimension
+1                     number of fields
+#========================================================
+#
+#    This gives a 9 x 1 box, periodic in x,
+#    here used for Rayleigh Benard convection.
+#
+#    Note that number of fields < 0 implies that box.rea
+#    will be ascii.
+#
+#========================================================
+#
+Box
+-8 -8 -1            nelx,nely,nelz for Box)
+0 1 1               x0 x1 ratio  !! Rescaled in usrdat2().
+0 1 1               y0 y1 ratio 
+0 1 1               z0 z1 ratio 
+v  ,v  ,P  ,P  ,v  ,v   BCs (3 characters each!)

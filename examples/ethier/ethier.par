@@ -5,8 +5,8 @@ deviceNumber = LOCAL-RANK
 [GENERAL] 
 polynomialOrder = 7
 #startFrom = restart.fld
-stopAt = endTime
-endTime = 1.0 
+stopAt = numSteps
+numSteps = 1000 
 dt = 2e-04
 timeStepper = bdf2
 writeControl = runTime
@@ -14,14 +14,17 @@ writeInterval = 0.1
 
 [PRESSURE]
 preconditioner = semg_amg
+amgSolver = parAlmond
 residualTol = 1e-08
 
 [VELOCITY]
 boundaryTypeMap = inlet 
 residualTol = 1e-12
+density = 1.0
 viscosity = -100
 
 [TEMPERATURE]
 boundaryTypeMap = inlet 
 residualTol = 1e-12
+rhoCp = 1.0
 conductivity = -100

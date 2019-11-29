@@ -5,9 +5,6 @@ struct bcData
    int fieldOffset;
    int id;
 
-   int voffset;
-   int soffset;
-
    dfloat time;
    dfloat x, y, z;
    dfloat nx, ny, nz;

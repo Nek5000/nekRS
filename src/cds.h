@@ -1,28 +1,3 @@
-/*
-
-  The MIT License (MIT)
-
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
 #ifndef CDS_H
 #define CDS_H
 
@@ -41,23 +16,22 @@ typedef struct {
   int dim, elementType;
   
   mesh_t     *mesh;
+  mesh_t     *meshV;
   elliptic_t *solver;
   
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields
   
   setupAide options;
-  // INS SOLVER OCCA VARIABLES
-  dfloat k, cp, rho, idiff, diff;
-  dlong vOffset;
-  dlong sOffset;
-  dlong Ntotal;
+
+  dlong vFieldOffset;
+  dlong fieldOffset;
+  dlong Nlocal, Ntotal;
   int Nblock;
   dfloat dt, idt, cfl, dti;          // time step
-  dfloat dtMIN;         
   dfloat time;
-  int tstep, frame;
-  dfloat g0, ig0, lambda;      // helmhotz solver -lap(u) + lamda u
+  int tstep;
+  dfloat g0, ig0;
   dfloat startTime;   
   dfloat finalTime;   
 
@@ -74,8 +48,6 @@ typedef struct {
   //solver tolerances
   dfloat TOL;
 
-  dfloat icp, irho; // hold some inverses
-  
   dfloat *U, *S;
   dfloat *NS, *rkNS;
   //  dfloat *rhsS;   
@@ -115,6 +87,11 @@ typedef struct {
   dfloat *Sd, *Ue, *resS, *rhsS, *rhsSd;
   occa::memory o_Sd, o_Ue, o_resS, o_rhsS, o_rhsSd;
 
+  int var_coeff;
+  dfloat *prop, *ellipticCoeff; 
+  occa::memory o_prop, o_ellipticCoeff;
+  occa::memory o_rho, o_diff;
+
   dfloat *cU, *cSd, *cS, *FS; 
   occa::memory o_cU, o_cSd, o_cS, o_FS;
 
@@ -122,10 +99,11 @@ typedef struct {
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;;
   occa::kernel subCycleRKUpdateKernel;
-  occa::kernel subCycleExtKernel;
+  occa::kernel velocityExtKernel;
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
-
+  
+  occa::kernel filterRTKernel; // Relaxation-Term based filtering
   // occa::kernel constrainKernel;
   
   occa::memory o_U; 
@@ -177,6 +155,7 @@ typedef struct {
   occa::kernel helmholtzRhsIpdgBCKernel;
   occa::kernel helmholtzRhsBCKernel;
   occa::kernel helmholtzAddBCKernel;
+  occa::kernel setEllipticCoeffKernel;
 
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 

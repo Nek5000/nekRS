@@ -1,0 +1,12 @@
+@kernel void insPQ(const dlong N,
+                   @restrict const  dfloat *  MUE,
+                   @restrict const  dfloat *  QTL,
+                   @restrict const  dfloat *  P,
+                   @restrict dfloat *  PQ)
+{
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      PQ[n] = P[n] - 1/3.f*MUE[n]*QTL[n];
+    }
+  }
+}

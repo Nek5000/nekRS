@@ -79,7 +79,6 @@ void exact(dfloat *u, dfloat *v, dfloat *w,
 }   
 
 // Boundary conditions
-/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, z-slip 6 */
 void insVelocityDirichletConditions3D(bcData *bc)
 {                                                                        
   dfloat u, v, w;
@@ -89,22 +88,9 @@ void insVelocityDirichletConditions3D(bcData *bc)
   bc->wP = w;
 }
 
-void insVelocityNeumannConditions3D(bcData *bc)
-{                                                           
-}
-
-void insPressureDirichletConditions3D(bcData *bc)
-{
-}
-
 void cdsDirichletConditions3D(bcData *bc)
 {                                                                        
   dfloat u, v, w;
   exact(&u, &v, &w, bc->x, bc->y, bc->z, bc->time, p_nu);
   bc->sP = u;
 }
-
-void cdsNeumannConditions3D(bcData *bc)
-{                                                           
-}
-

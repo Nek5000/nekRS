@@ -1,8 +1,17 @@
 #!/bin/bash
 
-if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
-  echo "usage: ${0##*/} <casename> <#procs>"
-  exit 0
-fi
+: ${TRAVIS:="false"}
 
-mpirun -np $2 nekrs --setup $1
+if [ "$TRAVIS" == "true" ]; then
+  if [ $# -eq 0 ] || [ $# -ne 3 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+    echo "usage: ${0##*/} <casename> <#procs> <ciMode>"
+    exit 1
+  fi
+  mpirun -np $2 nekrs --setup $1 --cimode $3
+else
+  if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
+    echo "usage: ${0##*/} <casename> <#procs>"
+    exit 1
+  fi
+  mpirun -np $2 nekrs --setup $1
+fi

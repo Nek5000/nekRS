@@ -39,8 +39,6 @@ c-----------------------------------------------------------------------
          ptr = loc(sc_nrs(1)) 
       elseif (id .eq. 'glo_num') then
          ptr = loc(glo_num(1)) 
-      elseif (id .eq. 'ngv') then
-         ptr = loc(ngv) 
       elseif (id .eq. 'xc') then
          ptr = loc(XC(1,1)) 
       elseif (id .eq. 'yc') then
@@ -78,7 +76,9 @@ c-----------------------------------------------------------------------
       elseif (id .eq. 'wxm2') then
          ptr = loc(wxm2(1)) 
       elseif (id .eq. 'boundaryID') then
-         ptr = loc(boundaryID(1,1)) 
+         ptr = loc(boundaryID(1,1))
+       elseif (id .eq. 'boundaryIDt') then
+         ptr = loc(boundaryIDt(1,1)) 
       elseif (id .eq. 'vx') then
          ptr = loc(vx(1,1,1,1)) 
       elseif (id .eq. 'vy') then
@@ -89,6 +89,8 @@ c-----------------------------------------------------------------------
          ptr = loc(pr(1,1,1,1)) 
       elseif (id .eq. 't') then
          ptr = loc(t(1,1,1,1,1)) 
+      elseif (id .eq. 'qtl') then
+         ptr = loc(qtl(1,1,1,1)) 
       elseif (id .eq. 'time') then
          ptr = loc(time)
       elseif (id .eq. 'ifgetu') then
@@ -103,19 +105,17 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in, session_in, npscal_in)
+      subroutine nekf_setup(comm_in,path_in, session_in, npscal_in) 
 
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in
+      integer comm_in, iftmsh_in
       character session_in*(*),path_in*(*)
 
       common /rdump/ ntdump
-      common /ivrtx/ vertex ((2**ldim),lelt)
-      integer vertex
 
       real rtest
       integer itest
@@ -143,9 +143,11 @@ c-----------------------------------------------------------------------
       etimes = dnekclock()
       istep  = 0
 
-      call initdim         ! Initialize / set default values.
+      call initdim ! Initialize / set default values.
       call initdat
       call files
+
+      call read_re2_hdr(ifbswap)
 
       call setDefaultParam
       param(1)  = 1.0
@@ -164,6 +166,10 @@ c-----------------------------------------------------------------------
 
       if (npscal_in .gt. 0) then
         ifheat = .true.
+        if(nelgt.ne.nelgv) then
+          param(32) = 2
+          iftmsh(2) = .true.
+        endif
         npscal = npscal_in - 1
         ifto   = .true.       
         do i = 1,npscal
@@ -175,15 +181,24 @@ c-----------------------------------------------------------------------
 
       call usrdat0
 
-      call read_re2_hdr(ifbswap)
       call chkParam
       call mapelpr 
       call read_re2_data(ifbswap)
-      do iel = 1,nelt
+
+      call izero(boundaryID, size(boundaryID))
+      do iel = 1,nelv
       do ifc = 1,2*ndim
          boundaryID(ifc,iel) = bc(5,ifc,iel,1)
       enddo
       enddo
+      call izero(boundaryIDt, size(boundaryIDt))
+      if(nelgt.ne.nelgv) then 
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
+        enddo
+        enddo
+      endif
 
       call setvar          ! Initialize most variables
 
@@ -212,8 +227,6 @@ c-----------------------------------------------------------------------
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
       call findSYMOrient
-
-      call set_vert(glo_num,ngv,2,nelv,vertex,.false.)
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3
@@ -401,18 +414,50 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer function nekf_nbid()
+      integer function nekf_nbid(isTmsh)
 
       include 'SIZE'
       include 'TOTAL'
 
       n = 0
-      do iel = 1,nelt
-      do ifc = 1,2*ndim
-         n = max(n,boundaryID(ifc,iel))
-      enddo
-      enddo
+      if(isTmsh.eq.1) then
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           n = max(n,boundaryIDt(ifc,iel))
+        enddo
+        enddo
+      else
+        do iel = 1,nelv
+        do ifc = 1,2*ndim
+           n = max(n,boundaryID(ifc,iel))
+        enddo
+        enddo
+      endif
+
       nekf_nbid = iglmax(n,1)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      integer*8 function nekf_set_vert(npts, isTmsh)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      integer npts, isTmsh
+
+      common /ivrtx/ vertex ((2**ldim),lelt)
+      integer vertex
+
+      integer*8 ngv
+
+      nx  = npts**(1./ndim)
+      nel = nelt
+      if (isTmsh.eq.0) nel = nelv
+      call set_vert(glo_num,ngv,nx,nel,vertex,.false.)
+
+      nekf_set_vert = ngv
 
       return
       end

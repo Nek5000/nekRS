@@ -2,41 +2,24 @@
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 
-void meshBoxSetupHex3D(int N, mesh_t *mesh);
-void meshNekSetupHex3D(int N, mesh_t *mesh);
+mesh_t *createMeshDummy(MPI_Comm comm, int N) {
 
-mesh_t *meshSetup(MPI_Comm comm, setupAide &options, int buildOnly)
-{
+  mesh_t *mesh = new mesh_t[1];
+
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-
-  mesh_t *mesh = new mesh_t[1];
+  
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
-
-  int N;
-  options.getArgs("POLYNOMIAL DEGREE", N);
-
-  if (buildOnly) {
-    meshBoxSetupHex3D(N, mesh);
-  } else {
-    meshNekSetupHex3D(N, mesh);
-    bcMap::check(mesh);
-  }
-
-  return mesh;
-}
-
-void meshBoxSetupHex3D(int N, mesh_t *mesh) {
  
   mesh->Nfields = 1;
   mesh->dim = 3;
   mesh->Nverts = 8; // number of vertices per element
   mesh->Nfaces = 6;
   mesh->NfaceVertices = 4;
-  
+
   // vertices on each face
   int faceVertices[6][4] =
     {{0,1,2,3},{0,1,5,4},{1,2,6,5},{2,3,7,6},{3,0,4,7},{4,5,6,7}};
@@ -149,12 +132,25 @@ void meshBoxSetupHex3D(int N, mesh_t *mesh) {
   libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
   
   // global nodes
-  libParanumal::meshParallelConnectNodes(mesh); 
+  libParanumal::meshParallelConnectNodes(mesh);
+
+  return mesh; 
 }
 
-void meshNekSetupHex3D(int N, mesh_t *mesh) {
+mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT) 
+{
+  mesh_t *mesh = new mesh_t[1];
+
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  mesh->comm = comm;
+  mesh->rank = rank;
+  mesh->size = size;
+
   // get mesh from nek
-  meshNekReaderHex3D(N, mesh);
+  meshNekReaderHex3D(N, mesh, isMeshT);
 
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
   
@@ -184,4 +180,118 @@ void meshNekSetupHex3D(int N, mesh_t *mesh) {
 
   // global nodes
   libParanumal::meshParallelConnectNodes(mesh); 
+
+  return mesh;
+}
+
+mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT)
+{
+  mesh_t *mesh = new mesh_t[1];
+
+  // shallow copy
+  memcpy(mesh, meshT, sizeof(*meshT)); 
+
+  // find EToV and boundaryInfo
+  meshNekReaderHex3D(N, mesh, 0);
+  free(mesh->elementInfo); mesh->elementInfo = meshT->elementInfo;
+
+  mesh->Nfields = 1; // temporary patch (halo exchange depends on nfields)
+
+  // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
+  libParanumal::meshParallelConnect(mesh);
+
+  // find mesh->EToB, required mesh->EToV and mesh->boundaryInfo
+  libParanumal::meshConnectBoundary(mesh);
+
+  // load reference (r,s,t) element nodes
+  //libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+
+  // compute physical (x,y) locations of the element nodes
+  // mesh->x ...
+  meshPhysicalNodesHex3D(mesh);
+
+  // compute geometric factors
+  // note: we only need vgeo because elliptic performs helo change
+  libParanumal::meshGeometricFactorsHex3D(mesh);
+  free(mesh->cubvgeo); mesh->cubvgeo = meshT->cubvgeo;
+  free(mesh->ggeo); mesh->ggeo = meshT->ggeo;
+  free(mesh->cubggeo); mesh->cubggeo = meshT->cubggeo;
+
+  // set up halo exchange info for MPI (do before connect face nodes)
+  // note: realloc mesh->X and mesh->EX ...
+  libParanumal::meshHaloSetup(mesh);
+
+  // connect face nodes (find trace indices)
+  // find vmapM, vmapP, mapP based on EToE and EToF
+  libParanumal::meshConnectFaceNodes3D(mesh);
+
+  // compute surface geofacs
+  // assumption: no halo exchange required! 
+  //libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
+
+  // uniquely label each node with a global index, used for gatherScatter
+  // mesh->globalIds
+  libParanumal::meshParallelConnectNodes(mesh);
+
+  return mesh;
+}
+
+void meshVOccaSetup3D(mesh_t *mesh, setupAide &options, occa::properties &kernelInfo)
+{
+  // find elements that have all neighbors on this process
+  dlong *internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
+  dlong *notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
+
+  dlong Ninterior = 0, NnotInterior = 0;
+  for(dlong e=0;e<mesh->Nelements;++e){
+    int flag = 0;
+    for(int f=0;f<mesh->Nfaces;++f)
+      if(mesh->EToP[e*mesh->Nfaces+f]!=-1)
+        flag = 1;
+    if(!flag)
+      internalElementIds[Ninterior++] = e;
+    else
+      notInternalElementIds[NnotInterior++] = e;
+  }
+
+  mesh->NinternalElements = Ninterior;
+  mesh->NnotInternalElements = NnotInterior;
+  if(Ninterior)
+    mesh->o_internalElementIds    = mesh->device.malloc(Ninterior*sizeof(dlong), internalElementIds);
+  if(NnotInterior>0)
+    mesh->o_notInternalElementIds = mesh->device.malloc(NnotInterior*sizeof(dlong), notInternalElementIds);
+
+
+  if(mesh->totalHaloPairs>0){
+    // copy halo element list to DEVICE
+    mesh->o_haloElementList =
+      mesh->device.malloc(mesh->totalHaloPairs*sizeof(dlong), mesh->haloElementList);
+
+    // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
+    mesh->o_haloBuffer =
+      mesh->device.malloc(mesh->totalHaloPairs*mesh->Np*mesh->Nfields*sizeof(dfloat));
+
+    // node ids
+    mesh->o_haloGetNodeIds =
+      mesh->device.malloc(mesh->Nfp*mesh->totalHaloPairs*sizeof(dlong), mesh->haloGetNodeIds);
+    mesh->o_haloPutNodeIds =
+      mesh->device.malloc(mesh->Nfp*mesh->totalHaloPairs*sizeof(dlong), mesh->haloPutNodeIds);
+
+  }
+
+  mesh->o_internalElementIds = 
+    mesh->device.malloc(Ninterior*sizeof(dlong), internalElementIds);
+
+  mesh->o_notInternalElementIds = 
+    mesh->device.malloc(NnotInterior*sizeof(dlong), notInternalElementIds);
+
+  mesh->o_EToB =
+    mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),
+                        mesh->EToB);
+  mesh->o_vmapM =
+    mesh->device.malloc(mesh->Nelements*mesh->Nfp*mesh->Nfaces*sizeof(dlong),
+                        mesh->vmapM);
+  mesh->o_vmapP =
+    mesh->device.malloc(mesh->Nelements*mesh->Nfp*mesh->Nfaces*sizeof(dlong),
+                        mesh->vmapP);
 }

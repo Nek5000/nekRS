@@ -12,6 +12,8 @@ typedef struct {
   int dim, elementType;
 
   mesh_t *mesh;
+  mesh_t *meshT;
+
   elliptic_t *uSolver;
   elliptic_t *vSolver;
   elliptic_t *wSolver;
@@ -23,17 +25,16 @@ typedef struct {
   setupAide vOptions, pOptions; 	
 
   // INS SOLVER OCCA VARIABLES
-  dfloat nu, Re;
   int NVfields, NTfields;
   dlong fieldOffset;
-  dlong Ntotal;
+  dlong Nlocal, Ntotal;
 
   int Nblock;
 
-  dfloat dt, dti;          // time step
+  dfloat dt, idt;
   dfloat time;
   int tstep;
-  dfloat g0, ig0, lambda;      // helmhotz solver -lap(u) + lamda u
+  dfloat g0, ig0;
   dfloat startTime;   
   dfloat finalTime;   
 
@@ -45,24 +46,14 @@ typedef struct {
   int   isOutputStep;
   int   outputForceStep; 
 
-  int ARKswitch;
-  
   int NiterU, NiterV, NiterW, NiterP;
-
-  //solver tolerances
   dfloat presTOL, velTOL;
 
-  dfloat idt, inu; // hold some inverses
-  
   dfloat *U, *P;
-  dfloat *NU, *GP;
+  dfloat *NU, *FU;
   dfloat *rhsU, *rhsP;   
   dfloat *PI;
   dfloat *rkNU;
-
-  dfloat *FU; // Additional source terms for explicit contribution
-  
-  dfloat *Vort, *Div;
 
   //RK Subcycle Data
   int SNrk;
@@ -96,31 +87,42 @@ typedef struct {
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
 
+  occa::memory o_scratch;
+
   int Nsubsteps;  
   dfloat *Ud, *Ue, *resU, *rhsUd, sdt;
   occa::memory o_Ud, o_Ue, o_resU, o_rhsUd;
 
-  dfloat *Wrk;
-  occa::memory o_Wrk; 
+  int lowMach;
+  dfloat *qtl;
+  occa::memory o_qtl;
 
-  // Cfl related
-  int computedDh; 
+  dfloat rho, mue;
+  occa::memory o_rho, o_mue;
+
+  dfloat *usrwrk;
+  occa::memory o_usrwrk; 
+
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
 
   int readRestartFile,writeRestartFile, restartedFromFile;
 
-  // Filter Stabilization Matrix
   int filterNc; // filter cut modes i.e. below is not touched
   dfloat *filterM, filterS; 
   occa::memory o_filterMT; // transpose of filter matrix 
-  occa::kernel VFilterKernel; // Relaxation-Term based filtering
-  occa::kernel SFilterKernel; // Relaxation-Term based filtering
+  occa::kernel filterRTKernel; // Relaxation-Term based filtering
+
+  occa::kernel qtlKernel;
+  occa::kernel pressureAddQtlKernel;
+
+  occa::kernel pqKernel;
+  occa::kernel ncKernel;
 
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;;
   occa::kernel subCycleRKUpdateKernel;
-  occa::kernel subCycleExtKernel;
+  occa::kernel velocityExtKernel;
 
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
@@ -132,15 +134,16 @@ typedef struct {
   occa::memory o_U, o_P;
   occa::memory o_rhsU, o_rhsP; 
 
-  occa::memory o_NU, o_GP, o_NC;
-
+  occa::memory o_NU;
   occa::memory o_FU; 
+
+  int var_coeff;
+  dfloat *prop, *ellipticCoeff;
+  occa::memory o_prop, o_ellipticCoeff;
 
   occa::memory o_UH;
   occa::memory o_PI;
   occa::memory o_rkNU;
-
-  occa::memory o_Vort, o_Div;
 
   occa::memory o_vHaloBuffer, o_pHaloBuffer; 
   occa::memory o_velocityHaloGatherTmp;
@@ -175,7 +178,6 @@ typedef struct {
   occa::kernel velocityGradientKernel;
 
   occa::kernel gradientVolumeKernel;
-  occa::kernel gradientSurfaceKernel;
 
   occa::kernel divergenceVolumeKernel;
   occa::kernel divergenceSurfaceKernel;
@@ -183,7 +185,6 @@ typedef struct {
   occa::kernel divergenceStrongVolumeKernel;
   
   occa::kernel pressureRhsKernel;
-  occa::kernel pressureRhsBCKernel;
   occa::kernel pressureAddBCKernel;
   occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
@@ -191,21 +192,21 @@ typedef struct {
   occa::kernel velocityRhsKernel;
   occa::kernel velocityRhsBCKernel;
   occa::kernel velocityAddBCKernel;
-  occa::kernel velocityUpdateKernel;  
   
   occa::kernel setScalarKernel; 
 
   occa::kernel cflKernel; 
   occa::kernel maxKernel; 
 
+  occa::kernel setEllipticCoeffKernel;
+  occa::kernel setEllipticCoeffPressureKernel;
+
   int TOMBO;  
-  occa::kernel pressureAxKernel; 
-  occa::kernel velocityAxKernel; 
+  occa::kernel AxKernel; 
   occa::kernel curlKernel; 
-  occa::kernel curlBKernel; // needed for 2D
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
-
+  
   int *EToB;
   occa::memory o_EToB;
 

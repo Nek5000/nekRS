@@ -5,7 +5,6 @@
 #include "udf.hpp"
 
 #define RE_TAU 550.0
-#define RE_B (1/ins->nu)
 
 /* User Functions */
 
@@ -13,20 +12,12 @@ occa::kernel userfKernel;
 
 void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
+  dfloat mue, rho;
+  ins->options.getArgs("VISCOSITY", mue);
+  ins->options.getArgs("DENSITY", rho);
+  const dfloat RE_B = rho/mue; 
   const dfloat DPDZ = -4*pow(RE_TAU/(0.5*RE_B), 2);
-  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  userfKernel(Nlocal, ins->fieldOffset, DPDZ, o_FU);
-
-/*
-  ins->o_U.copyTo(ins->U);
-  ins->o_P.copyTo(ins->P);
-  nek_copyFrom(ins, time, 0);
-  dfloat *ffx = ins->FU + 0*ins->fieldOffset;
-  dfloat *ffy = ins->FU + 1*ins->fieldOffset;
-  dfloat *ffz = ins->FU + 2*ins->fieldOffset;
-  nek_uf(ffx, ffy, ffz);
-  o_FU.copyFrom(ins->FU, ins->NVfields*ins->Ntotal*sizeof(dfloat));
-*/
+  userfKernel(ins->Nlocal, ins->fieldOffset, DPDZ, o_FU);
 }
 
 

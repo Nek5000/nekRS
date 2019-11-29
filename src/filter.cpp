@@ -1,39 +1,9 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the SoftwarfilterV is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
-
 #include "ins.h"
 
 void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A); 
-void filterFunctionRelaxationTri2D(int N, int Nc, dfloat *A); 
-void filterFunctionRelaxationTet3D(int N, int Nc, dfloat *A); 
 
 void filterVandermonde1D(int N, int Np, dfloat *r, dfloat *V);
-void filterVandermondeTri2D(int N, int Np, dfloat *r, dfloat *s, dfloat *V);
-void filterVandermondeTet3D(int N, int Np, dfloat *r, dfloat *s, dfloat *t, dfloat *V);
 
-dfloat filterSimplex2D(dfloat a, dfloat b, int i, int j);
 dfloat filterSimplex3D(dfloat a, dfloat b, dfloat c, int i, int j, int k);
 dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N);
 
@@ -45,23 +15,12 @@ void filterSetup(ins_t* ins){
 
   // First construct filter function
   ins->filterS = 10.0; // filter Weight...  
-  dfloat filterC = 0.90; // Nc/N i.e. percentage of modes that is not touched 
-  ins->options.getArgs("FILTER STRENGTH", ins->filterS); 
-  ins->options.getArgs("FILTER CUTOFF RATIO", filterC); 
+  ins->options.getArgs("HPFRT STRENGTH", ins->filterS); 
+  ins->options.getArgs("HPFRT MODES", ins->filterNc); 
   ins->filterS = -1.0*fabs(ins->filterS);
 
-  // Construc Filter Function
-  int Nmodes = 1; 
-  // Constructing Dense Operators
-  if(ins->elementType==TRIANGLES || ins->elementType==TETRAHEDRA){
-    Nmodes = mesh->Np; 
-    ins->filterNc = (mesh->N - mymax( (int)round(mesh->N*(1.0-filterC)) -1, 0)) -1;
-  }
-  else if(ins->elementType==QUADRILATERALS || ins->elementType==HEXAHEDRA){
-    Nmodes = mesh->N+1; // N+1, 1D GLL points 
-    // Approximate cutoff order from percentage 
-    ins->filterNc = (Nmodes - mymax( (int)round(Nmodes*(1.0-filterC)) -1, 0)) -1;
-  }
+  // Construct Filter Function
+  int Nmodes = mesh->N+1; // N+1, 1D GLL points 
   
   // Vandermonde matrix
   dfloat *V = (dfloat *) calloc(Nmodes*Nmodes, sizeof(dfloat));
@@ -69,20 +28,10 @@ void filterSetup(ins_t* ins){
   dfloat *A = (dfloat *) calloc(Nmodes*Nmodes, sizeof(dfloat));
 
   // Construct Filter Function
-  if(ins->elementType==QUADRILATERALS || ins->elementType==HEXAHEDRA)
   filterFunctionRelaxation1D(Nmodes, ins->filterNc, A); 
-  else if(ins->elementType==TRIANGLES)
-  filterFunctionRelaxationTri2D(mesh->N, ins->filterNc, A); 
-  else if(ins->elementType==TETRAHEDRA)
-  filterFunctionRelaxationTet3D(mesh->N, ins->filterNc, A); 
 
   // Construct Vandermonde Matrix
-  if(ins->elementType==TRIANGLES)
-    filterVandermondeTri2D(mesh->N, Nmodes, mesh->r, mesh->s, V); 
-  else if(ins->elementType==TETRAHEDRA)
-    filterVandermondeTet3D(mesh->N, Nmodes, mesh->r, mesh->s, mesh->t, V); 
-  else if(ins->elementType==QUADRILATERALS || ins->elementType==HEXAHEDRA)
-    filterVandermonde1D(mesh->N, Nmodes, mesh->r, V); 
+  filterVandermonde1D(mesh->N, Nmodes, mesh->r, V); 
 
 
   // Invert the Vandermonde 
@@ -137,8 +86,8 @@ void filterSetup(ins_t* ins){
   ins->o_filterMT =  mesh->device.malloc(Nmodes*Nmodes*sizeof(dfloat), A); // copy Tranpose
 
   if(mesh->rank==0)
-    printf("High pass filter relaxation: chi = %.4f using %d mode\n", 
-           fabs(ins->filterS), Nmodes - ins->filterNc);
+    printf("High pass filter relaxation: chi = %.4f using %d mode(s)\n", 
+           fabs(ins->filterS), ins->filterNc);
 
   free(A); 
   free(C); 
@@ -156,169 +105,11 @@ void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A){
   for(int n=0; n<Nmodes; n++)
     A[n*Nmodes + n] = 1.0; 
 
-  // use quadratic damping as Nek, exponential could be better...
-  for (int k=Nc; k<Nmodes; k++){
-    dfloat amp = ((k-Nc+1.0)*(k-Nc+1.0))/((Nmodes-Nc)*(Nmodes-Nc));
+  int k0 = Nmodes - Nc;
+  for (int k=k0; k<Nmodes; k++){
+    dfloat amp = ((k+1.0 - k0)*(k+1.0 - k0))/(Nc*Nc);
     A[k + Nmodes*k] = 1.0 - amp; 
   }
-}
-
-// low Pass
-void filterFunctionRelaxationTri2D(int N, int Nc, dfloat *A){
-  
-  int Np = (N+1)*(N+2)/2; 
-  // Set all diagonal to 1 
-  for(int n=0; n<Np; n++)
-    A[n*Np + n] = 1.0; 
-  
-#if 0
-  // Quadratic, could be too agressive, need to be tested
-  int sk = 0; 
-  for(int i=0; i<=N; i++){
-    for(int j=0; j<=(N-i); j++){
-      if((i+j)>=Nc){
-        int k = i+j; 
-        A[sk*Np + sk] = 1.0- ((k-Nc+0.0)*(k-Nc+0.0))/( (N-Nc)*(N-Nc) ); 
-      }
-      sk++; 
-      printf("sk:%d\n", sk);
-    } 
-  }
-#else
- // exponential
-  dfloat eps = 1.e-16; // hard coded now, AK.
-  // dfloat eps = 2.220446049250313e-16;
-  dfloat sp = 32.0; // hard coded now, AK.
-  dfloat alpha = -log(eps); 
-
-  int sk = 0; 
-  for(int i=0; i<=N; i++){
-    for(int j=0; j<=(N-i); j++){
-      if((i+j)>=Nc){
-        int k = i+j; 
-        A[sk*Np + sk] = exp(-alpha*pow( (double)(k - Nc)/(N-Nc),sp));
-      }
-      sk++; 
-    } 
-  }
-#endif
-}
-
-// low Pass
-void filterFunctionRelaxationTet3D(int N, int Nc, dfloat *A){
-  
-  int Np = (N+1)*(N+2)*(N+3)/6; 
-  // Set all diagonal to 1 
-  for(int n=0; n<Np; n++)
-    A[n*Np + n] = 1.0; 
-  
-#if 0
-  // Quadratic, could be too agressive, need to be tested
-  int sk = 0; 
-  for(int i=0; i<=N; i++){
-    for(int j=0; j<=(N-i); j++){
-      for(int k=0; k<=(N-i-j); k++){
-      if((i+j+k)>=Nc){
-        int k = i+j+k; 
-        A[sk*Np + sk] = 1.0- ((k-Nc+0.0)*(k-Nc+0.0))/( (N-Nc)*(N-Nc) ); 
-      }
-      sk++; 
-      } 
-    }
-  }
-#else
-  // exponential
-  dfloat eps = 1.e-16; // hard coded now, AK.
-  // dfloat eps = 2.220446049250313e-16;
-  dfloat sp = 16.0; // hard coded now, AK.
-  dfloat alpha = -log(eps); 
-
-  int sk = 0; 
-   for(int i=0; i<=N; i++){
-    for(int j=0; j<=N-i; j++){
-      for(int k=0; k<=(N-i-j); k++){
-      if((i+j+k)>=Nc){
-        A[sk*Np + sk] = exp(-alpha*pow( (double)((i+j+k) - Nc)/(N-Nc),sp));
-      }
-      sk++; 
-    } 
-  }
-  }
-#endif
-}
-
-void filterVandermondeTet3D(int N, int Np, dfloat *r, dfloat *s, dfloat *t, dfloat *V){
-
-  // First convert to ab coordinates
-  dfloat *a = (dfloat *) calloc(Np, sizeof(dfloat));
-  dfloat *b = (dfloat *) calloc(Np, sizeof(dfloat));
-  dfloat *c = (dfloat *) calloc(Np, sizeof(dfloat));
-
-  dfloat TOL = 1e-8; 
-  // Duffy Transform
-  for(int n=0; n<Np; n++){
-    if((fabs(s[n]+t[n])>TOL)){
-      a[n] = 2*(1+r[n])/(-s[n]-t[n])-1.0;
-    }else{
-      a[n] = -1.0; 
-    }
-    if((fabs(t[n]-1.0)>TOL)){
-      b[n] = 2.0*(1.0+s[n])/(1.0-t[n])-1.0;
-    }else{
-      b[n] = -1.0; 
-    }
-    //
-    c[n] = t[n]; 
-  }
-  
-  int sk=0;
-  for(int i=0; i<=N; i++){
-    for(int j=0; j<=N-i; j++){
-      for(int k=0; k<=(N-i-j); k++){
-      	for(int n=0; n<Np; n++){
-      	  V[n*Np + sk] = filterSimplex3D(a[n], b[n], c[n], i, j, k);
-      	}
-	     sk++;
-      }
-    }
-  }
-
-  free(a);
-  free(b); 
-  free(c); 
-}
-
-
-
-void filterVandermondeTri2D(int N, int Np, dfloat *r, dfloat *s, dfloat *V){
-
-  // First convert to ab coordinates
-  dfloat *a = (dfloat *) calloc(Np, sizeof(dfloat));
-  dfloat *b = (dfloat *) calloc(Np, sizeof(dfloat));
-  for(int n=0; n<Np; n++){
-
-    if(fabs(s[n]-1.0)>1e-8)
-      a[n] = 2.0*(1.+r[n])/(1.0-s[n])-1.0;
-    else
-      a[n] = -1.0; 
-
-    b[n] = s[n];
-
-  }
-  
-  int sk=0;
-
-  for(int i=0; i<=N; i++){
-    for(int j=0; j<=N-i; j++){
-      for(int n=0; n<Np; n++){
-        V[n*Np + sk] = filterSimplex2D(a[n], b[n], i, j);
-      }
-      sk++;
-    }
-  }
-
-  free(a);
-  free(b); 
 }
 
 void filterVandermonde1D(int N, int Np, dfloat *r, dfloat *V){
@@ -329,15 +120,6 @@ void filterVandermonde1D(int N, int Np, dfloat *r, dfloat *V){
     }
     sk++;
   }
-}
-
-
-dfloat filterSimplex2D(dfloat a, dfloat b, int i, int j){
-  // 
-  dfloat p1 = filterJacobiP(a,0,0,i);
-  dfloat p2 = filterJacobiP(b,2*i+1,0,j);
-  dfloat P = sqrt(2.0)*p1*p2*pow(1-b,i);
-  return P; 
 }
 
 dfloat filterSimplex3D(dfloat a, dfloat b, dfloat c, int i, int j, int k){

@@ -9,12 +9,13 @@
 
 Capabilities:
 
-* Incompressible Navier-Stokes + scalar transport 
-* Constant properties
+* Incompressible and low Mach-number Navier-Stokes + scalar transport 
+* Variable properties (but constant dynamic viscosity)
+* Conjugate fluid-solid heat transfer
 * CG-SEM using hexaheadral elements 
 * Fixed timestep 2nd order BDF + OIFS
 * Dealiasing and high-pass filter relaxation term stabilization
-* MPI+X hybrid parallelism supporting serial (CPU) and CUDA 
+* MPI+X hybrid parallelism supporting serial (CPU), CUDA, OPENCL and HIP 
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 * Reads mesh files (.re2) and outputs solution field files (.f%05d) 
 

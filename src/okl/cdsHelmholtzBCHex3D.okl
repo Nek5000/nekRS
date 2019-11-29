@@ -59,12 +59,13 @@
 				@restrict const  dlong  *  vmapM,
 				@restrict const  int    *  EToB,
 				@restrict const  dlong  *  sMT,
-				const dfloat lambda,
 				const dfloat time,
+				const dlong offset,
 				@restrict const  dfloat *  x,
 				@restrict const  dfloat *  y,
 				@restrict const  dfloat *  z,
 				@restrict const  int    *  mapB,
+				@restrict const  dfloat *  lambda,
 				@restrict dfloat *  rhsU){
 
 
@@ -82,6 +83,7 @@
     @exclusive dfloat r_rhsU[p_Nq]; // array  for results Au(i,j,0:N)
 
     @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat lambda0, lambda1;
 
     // for all face nodes of all elements
     // face 0
@@ -266,6 +268,10 @@
 	  r_G22 = ggeo[gbase+p_G22ID*p_Np];
 	    
 	  r_GwJ = ggeo[gbase+p_GWJID*p_Np];
+
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+          lambda0 = lambda[0*offset + id]; 
+          lambda1 = lambda[1*offset + id]; 
 	}
       }
 
@@ -299,11 +305,11 @@
 	    us += Ds*s_U[m][i];
 	  }
 
-	  s_Gus[j][i] = (r_G01*ur + r_G11*us + r_G12*r_ut);
-	  s_Gur[j][i] = (r_G00*ur + r_G01*us + r_G02*r_ut);
+	  s_Gus[j][i] = lambda0*(r_G01*ur + r_G11*us + r_G12*r_ut);
+	  s_Gur[j][i] = lambda0*(r_G00*ur + r_G01*us + r_G02*r_ut);
 	  // put this here for a performance bump
-	  r_Gut = (r_G02*ur + r_G12*us + r_G22*r_ut);
-	  r_Auk = r_GwJ*lambda*r_U[k];
+	  r_Gut = lambda0*(r_G02*ur + r_G12*us + r_G22*r_ut);
+	  r_Auk = r_GwJ*lambda1*r_U[k];
 	}
       }
 
@@ -354,8 +360,8 @@
     for(int f=0; f<p_Nfaces; f++){
       @barrier("global");
       for(int m=0;m<p_Nfp;++m;@inner(0)){
-         struct bcData bc;
-         const int n = m + f*p_Nfp;         
+        struct bcData bc;
+        const int n = m + f*p_Nfp;         
         const dlong idM = vmapM[e*p_Nfp*p_Nfaces + n];
         bc.id = mapB[idM];
 

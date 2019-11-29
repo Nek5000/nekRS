@@ -17,7 +17,7 @@ writeControl = runTime
 writeInterval = 20
 
 filtering = hpfrt
-filterWeight = 2
+filterWeight = 8
 filterCutoffRatio = 0.9 
 
 [PRESSURE]
@@ -26,4 +26,5 @@ residualTol = 1e-04
 [VELOCITY]
 boundaryTypeMap = wall
 viscosity = -19000
+density = 1.0
 residualTol = 1e-06
