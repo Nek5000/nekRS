@@ -1,0 +1,98 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void insSumMakefHex3D(const dlong Nelements,
+                              @restrict const  dfloat *  vgeo,
+                              @restrict const  dfloat *  MM,
+                              const dfloat idt,
+                              @restrict const  dfloat *  extbdfA,
+                              @restrict const  dfloat *  extbdfB,
+                              const dlong fieldOffset,
+                              @restrict const  dfloat *  U,
+                              @restrict const  dfloat *  NU,
+                              @restrict const  dfloat *  FU,
+                              @restrict dfloat *  BF){
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+    for(int es=0;es<p_NblockV;++es;@inner(2)){// for all elements in block
+      for(int j=0;j<p_Nq;++j;@inner(1)){ 
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          const dlong e = eo+es; // element in block
+          if(e<Nelements){
+            #pragma unroll p_Nq
+            for(int k=0;k<p_Nq;++k){
+              const dlong id = i + j*p_Nq + k*p_Nq*p_Nq + p_Np*e;
+              const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
+              const dfloat JW = vgeo[gid + p_JWID*p_Np];
+
+              dfloat bfx = 0;
+              dfloat bfy = 0;
+              dfloat bfz = 0;
+
+              if (p_SUBCYCLING) {
+                const dfloat NUx = NU[id+0*fieldOffset];
+                const dfloat NUy = NU[id+1*fieldOffset];
+                const dfloat NUz = NU[id+2*fieldOffset];
+                bfx += idt*NUx;
+                bfy += idt*NUy;
+                bfz += idt*NUz;
+
+                for (int s=0;s<p_Nstages;s++) {
+                  // FU
+                  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+                  bfx += extbdfA[s]*FUx;
+                  bfy += extbdfA[s]*FUy;
+                  bfz += extbdfA[s]*FUz;
+                }
+              } else {
+                for (int s=0;s<p_Nstages;s++) {
+                  //U 
+                  const dfloat Um  = U[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat Vm  = U[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat Wm  = U[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+                  // FU
+                  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
+                  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
+
+                  bfx += idt*extbdfB[s]*Um + extbdfA[s]*FUx;
+                  bfy += idt*extbdfB[s]*Vm + extbdfA[s]*FUy;
+                  bfz += idt*extbdfB[s]*Wm + extbdfA[s]*FUz;
+                }
+              }
+
+              BF[id+0*fieldOffset] = JW*bfx;
+              BF[id+1*fieldOffset] = JW*bfy;
+              BF[id+2*fieldOffset] = JW*bfz;
+            }
+          }
+        }
+      }
+    }
+  }
+}

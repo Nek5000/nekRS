@@ -84,17 +84,18 @@ typedef struct {
 
   int Nsubsteps;
   dfloat sdt; 
-  dfloat *Sd, *Ue, *resS, *rhsS, *rhsSd;
-  occa::memory o_Sd, o_Ue, o_resS, o_rhsS, o_rhsSd;
+  dfloat *Ue, *resS;
+  occa::memory o_Ue, o_resS;
 
   int var_coeff;
   dfloat *prop, *ellipticCoeff; 
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 
-  dfloat *cU, *cSd, *cS, *FS; 
-  occa::memory o_cU, o_cSd, o_cS, o_FS;
+  dfloat *cU, *cSd, *cS, *FS, *BF; 
+  occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF;
 
+  occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;;
@@ -107,8 +108,7 @@ typedef struct {
   // occa::kernel constrainKernel;
   
   occa::memory o_U; 
-  occa::memory o_S, o_SH, o_NS;
-  occa::memory o_rkS, o_rkNS; 
+  occa::memory o_S;
   
   // occa::memory o_Vort, o_Div; // Not sure to keep it
   occa::memory o_haloBuffer;
@@ -151,7 +151,6 @@ typedef struct {
   occa::kernel advectionStrongVolumeKernel; 
   occa::kernel advectionStrongCubatureVolumeKernel; 
 
-  occa::kernel helmholtzRhsKernel;
   occa::kernel helmholtzRhsIpdgBCKernel;
   occa::kernel helmholtzRhsBCKernel;
   occa::kernel helmholtzAddBCKernel;
@@ -166,10 +165,7 @@ typedef struct {
 
 void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, occa::memory o_NS);
 
-void cdsHelmholtzRhs(cds_t *cds, dfloat time, int stage, occa::memory o_rhsS);
-void cdsHelmholtzSolve(cds_t *cds, dfloat time, int stage, occa::memory o_rhsS,occa::memory o_rkS);
-
-void cdsSolveStep(cds_t *cds, dfloat time, dfloat dt, occa::memory o_U, occa::memory o_S);
+void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk,occa::memory o_Snew);
 
 } // end C Linkage
 

@@ -154,14 +154,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
  
   string timeStepper;
   ini.extract("general", "timestepper", timeStepper);
-  if(timeStepper == "bdf3") { 
+  if(timeStepper == "bdf3" || timeStepper == "tombo3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
     ABORT("No support for bdf3!"); 
   } 
-  if(timeStepper == "bdf2") { 
+  if(timeStepper == "bdf2" || timeStepper == "tombo3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
   } 
-  if(timeStepper == "bdf1") { 
+  if(timeStepper == "bdf1" || timeStepper == "tombo3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   } 
   
@@ -197,6 +197,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("general", "subcyclingsteps", NSubCycles)); 
     if(!NSubCycles) NSubCycles = 1;  
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
+
+    int Sorder;
+    if(ini.extract("general", "subcyclingorder", Sorder)) 
+      options.setArgs("SUBCYCLING TIME ORDER", std::to_string(Sorder));
   }
    
   double writeInterval = 0;

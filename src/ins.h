@@ -50,10 +50,8 @@ typedef struct {
   dfloat presTOL, velTOL;
 
   dfloat *U, *P;
-  dfloat *NU, *FU;
-  dfloat *rhsU, *rhsP;   
+  dfloat *BF, *FU;
   dfloat *PI;
-  dfloat *rkNU;
 
   //RK Subcycle Data
   int SNrk;
@@ -86,12 +84,13 @@ typedef struct {
   occa::memory o_pSendBuffer,h_pSendBuffer;
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
-
+  
+  dfloat *scratch;
   occa::memory o_scratch;
 
   int Nsubsteps;  
-  dfloat *Ud, *Ue, *resU, *rhsUd, sdt;
-  occa::memory o_Ud, o_Ue, o_resU, o_rhsUd;
+  dfloat *Ue, *resU, sdt;
+  occa::memory o_Ue, o_resU;
 
   int lowMach;
   dfloat *qtl;
@@ -132,9 +131,8 @@ typedef struct {
   occa::kernel constrainKernel;
   
   occa::memory o_U, o_P;
-  occa::memory o_rhsU, o_rhsP; 
 
-  occa::memory o_NU;
+  occa::memory o_BF;
   occa::memory o_FU; 
 
   int var_coeff;
@@ -143,7 +141,6 @@ typedef struct {
 
   occa::memory o_UH;
   occa::memory o_PI;
-  occa::memory o_rkNU;
 
   occa::memory o_vHaloBuffer, o_pHaloBuffer; 
   occa::memory o_velocityHaloGatherTmp;
@@ -183,7 +180,7 @@ typedef struct {
   occa::kernel divergenceSurfaceKernel;
 
   occa::kernel divergenceStrongVolumeKernel;
-  
+  occa::kernel sumMakefKernel; 
   occa::kernel pressureRhsKernel;
   occa::kernel pressureAddBCKernel;
   occa::kernel pressurePenaltyKernel;

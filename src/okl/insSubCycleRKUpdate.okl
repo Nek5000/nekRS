@@ -43,10 +43,10 @@ SOFTWARE.
       #pragma unroll p_NVfields
       for (int i=0;i<p_NVfields;i++) {
         dfloat resu =  resU[id+i*offset];
-        dfloat rhsu = -rhsU[id+i*offset];// -Nu
+        dfloat rhsu =  rhsU[id+i*offset];
         dfloat u    =     U[id+i*offset];
 
-        resu = rka*resu + dt*rhsu;
+        resu = rka*resu - dt*rhsu;
         u += rkb*resu;
 
         resU[id+i*offset] = resu;

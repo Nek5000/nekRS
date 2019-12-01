@@ -34,7 +34,7 @@
                                 @restrict const  dfloat *  extbdfB,
                                 const dlong fieldOffset,
                                 @restrict const  dfloat *  U,
-                                @restrict const  dfloat *  NU,
+                                @restrict const  dfloat *  BF,
                                 @restrict const  dfloat *  NC,
                                 @restrict const  dfloat *  FU,
                                 @restrict dfloat *  rhsU){
@@ -49,53 +49,18 @@
 #pragma unroll p_Nq
             for(int k=0;k<p_Nq;++k){
               const dlong id = i + j*p_Nq + k*p_Nq*p_Nq + p_Np*e;
-              const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
 
-              const dfloat JW = vgeo[gid + p_JWID*p_Np];
+              const dfloat NCx = NC[id+0*fieldOffset];
+              const dfloat NCy = NC[id+1*fieldOffset];
+              const dfloat NCz = NC[id+2*fieldOffset];
 
-              dfloat bfx = 0;
-              dfloat bfy = 0; 
-              dfloat bfz = 0; 
+              const dfloat BFx = BF[id+0*fieldOffset];
+              const dfloat BFy = BF[id+1*fieldOffset];
+              const dfloat BFz = BF[id+2*fieldOffset];
 
-              if (p_SUBCYCLING) {
-                bfx += idt*NU[id+0*fieldOffset];
-                bfy += idt*NU[id+1*fieldOffset];
-                bfz += idt*NU[id+2*fieldOffset];
-
-                for (int s=0;s<p_Nstages;s++) {
-                  // FU
-                  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-                  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-                  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-
-                  bfx += extbdfA[s]*FUx;
-                  bfy += extbdfA[s]*FUy;
-                  bfz += extbdfA[s]*FUz;
-		}
-      	      } else {
-           		for (int s=0;s<p_Nstages;s++) {
-           		  //U 
-           		  const dfloat Um   = U[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat Vm   = U[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat Wm   = U[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-           		  // NU
-           		  const dfloat NUm  = NU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat NVm  = NU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat NWm  = NU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-           		  // FU
-           		  const dfloat FUx  = FU[id+0*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat FUy  = FU[id+1*fieldOffset+s*p_NVfields*fieldOffset];
-           		  const dfloat FUz  = FU[id+2*fieldOffset+s*p_NVfields*fieldOffset];
-
-           		  bfx += idt*extbdfB[s]*Um - extbdfA[s]*(NUm - FUx);
-           		  bfy += idt*extbdfB[s]*Vm - extbdfA[s]*(NVm - FUy);
-           		  bfz += idt*extbdfB[s]*Wm - extbdfA[s]*(NWm - FUz);
-      		        } 
-	      }
-
-      	      rhsU[id + 0*fieldOffset] = JW*bfx - NC[id+0*fieldOffset];
-      	      rhsU[id + 1*fieldOffset] = JW*bfy - NC[id+1*fieldOffset];
-      	      rhsU[id + 2*fieldOffset] = JW*bfz - NC[id+2*fieldOffset];;
+      	      rhsU[id + 0*fieldOffset] = BFx- NCx;
+      	      rhsU[id + 1*fieldOffset] = BFy- NCy;
+      	      rhsU[id + 2*fieldOffset] = BFz- NCz;
 	          }
 	        }
 	      }

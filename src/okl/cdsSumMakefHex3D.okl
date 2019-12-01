@@ -24,19 +24,19 @@ SOFTWARE.
 
 */
 
-@kernel void cdsHelmholtzRhsEXTBDFHex3D(const dlong Nelements,
-                                @restrict const  dfloat *  vgeo,
-                                @restrict const  dfloat *  MM,
-                                const dfloat idt,
-                                @restrict const  dfloat *  extbdfA,
-                                @restrict const  dfloat *  extbdfB,
-                                @restrict const  dfloat *  extbdfC,
-                                const dlong sOffset,
-                                @restrict const  dfloat *  S,
-                                @restrict const  dfloat *  NS,
-                                @restrict const  dfloat *  FS,
-                                @restrict const  dfloat *  RHO,
-                                @restrict dfloat *  rhsS){
+@kernel void cdsSumMakefHex3D(const dlong Nelements,
+                              @restrict const  dfloat *  vgeo,
+                              @restrict const  dfloat *  MM,
+                              const dfloat idt,
+                              @restrict const  dfloat *  extbdfA,
+                              @restrict const  dfloat *  extbdfB,
+                              @restrict const  dfloat *  extbdfC,
+                              const dlong sOffset,
+                              @restrict const  dfloat *  S,
+                              @restrict const  dfloat *  NS,
+                              @restrict const  dfloat *  FS,
+                              @restrict const  dfloat *  RHO,
+                              @restrict dfloat *  BF){
 
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
@@ -51,29 +51,25 @@ SOFTWARE.
               const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
               const dfloat JW = vgeo[gid + p_JWID*p_Np];
               const dfloat rhoM = RHO[id];
-
-              dfloat rhsSn = 0;
+              dfloat sum = 0;
 
               if (p_SUBCYCLING) {
-                //NU holds \hat{U} after subcycling
                 const dfloat NSm = NS[id+0*sOffset];
-                rhsSn += idt*rhoM*NSm;
+                sum += rhoM * idt*NSm;
                  for (int s=0;s<p_Nstages;s++) {
-                  rhsSn += extbdfA[s]*FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  sum += extbdfA[s]*FSm;
                 }
               }else {
                  for (int s=0;s<p_Nstages;s++) {
-                  // S 
                   const dfloat Sm  = S[id+0*sOffset+s*p_NSfields*sOffset];
-                  // NS
                   const dfloat NSm = NS[id+0*sOffset+s*p_NSfields*sOffset];
                   const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
-
                   // non-linear terms are multiplied by rho already
-                  rhsSn += (rhoM*idt*extbdfB[s]*Sm - extbdfA[s]*(NSm - FSm));
+                  sum += rhoM*idt*extbdfB[s]*Sm + extbdfA[s]*FSm;
                   }
               }
-              rhsS[id] = JW*rhsSn;
+              BF[id] = JW*sum;
             }
           }
         }

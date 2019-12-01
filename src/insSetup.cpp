@@ -116,37 +116,28 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->idt = 1.0/ins->dt;
   options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
 
-  dlong Nlocal = mesh->Np*mesh->Nelements;
+  const dlong Nlocal = mesh->Np*mesh->Nelements;
   ins->Nlocal  = Nlocal;
-  dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+  const dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
   ins->Ntotal = Ntotal;
+
+  const dlong NtotalT = ins->meshT->Np*(ins->meshT->Nelements+ins->meshT->totalHaloPairs);
+  const dlong NtotalMax = mymax(Ntotal, NtotalT);
 
   ins->fieldOffset = Ntotal;
   ins->Nblock = (Nlocal+blockSize-1)/blockSize;
 
-  // compute samples of q at interpolation nodes
-  ins->U     = (dfloat*) calloc(ins->NVfields*ins->Nstages*Ntotal,sizeof(dfloat));
-  ins->P     = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->U  = (dfloat*) calloc(ins->NVfields*ins->Nstages*Ntotal,sizeof(dfloat));
+  ins->Ue = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
 
-  //rhs storage
-  ins->rhsU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-  ins->rhsP  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->P  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->PI = (dfloat*) calloc(Ntotal,sizeof(dfloat));
 
-  //additional field storage
-  ins->NU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
-
-  ins->PI   = (dfloat*) calloc(              Ntotal,sizeof(dfloat));
-  
-  ins->rkNU = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-
-  ins->FU   = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
-
-  ins->Ue   = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
+  ins->BF = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
+  ins->FU = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
 
   if(ins->Nsubsteps){
-    ins->Ud    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
     ins->resU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-    ins->rhsUd = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
 
     // Prepare RK stages for Subcycling Part
    
@@ -202,7 +193,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     }
   }
 
-
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
@@ -256,12 +246,27 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     if (mesh->rank == 0) cout << " done" << endl;
   }  
 
+  // setup scratch space
+  ins->scratch   = (dfloat*) calloc(7*NtotalMax,sizeof(dfloat)); 
+  ins->o_scratch = mesh->device.malloc(7*NtotalMax*sizeof(dfloat), ins->scratch);
+
+  // dummy decleration for user work space 
+  ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
+  ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
+
   ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
   ins->o_P  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->P);
+  ins->o_PI = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->PI);
 
+  ins->o_FU = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->FU);
+  ins->o_BF = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->BF);
 
-  ins->prop   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
+  ins->var_coeff = 1; // use always var coeff elliptic
+  ins->ellipticCoeff   = (dfloat*) calloc(2*NtotalMax,sizeof(dfloat));
+  ins->o_ellipticCoeff = mesh->device.malloc(2*NtotalMax*sizeof(dfloat), ins->ellipticCoeff);  
+
+  ins->prop = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) { 
       ins->prop[0*ins->fieldOffset + n+e*mesh->Np] = mue;
@@ -272,52 +277,26 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_mue = ins->o_prop.slice(0*ins->fieldOffset*sizeof(dfloat));
   ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
 
-  ins->var_coeff = 1; // use always var coeff elliptic
-  ins->ellipticCoeff   = (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
-  ins->o_ellipticCoeff = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->ellipticCoeff);  
-
   ins->lowMach = 0;
   if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
   ins->qtl   = (dfloat*) calloc(Ntotal,sizeof(dfloat));
   ins->o_qtl = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->qtl);  
 
-  if(ins->Nsubsteps){
-    // Note that resU and resV can be replaced with already introduced buffer
-    ins->o_Ud    = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ud);
+  if(ins->Nsubsteps)
     ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
-    ins->o_rhsUd = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsUd);
-  }
 
-  dfloat rkC[4] = {1.0, 0.0, -1.0, -2.0};
-
-  ins->o_rkC  = mesh->device.malloc(4*sizeof(dfloat),rkC);
+  dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
+  ins->o_rkC     = mesh->device.malloc(4*sizeof(dfloat),rkC);
   ins->o_extbdfA = mesh->device.malloc(3*sizeof(dfloat));
   ins->o_extbdfB = mesh->device.malloc(3*sizeof(dfloat));
   ins->o_extbdfC = mesh->device.malloc(3*sizeof(dfloat)); 
-
-  ins->o_extC = mesh->device.malloc(3*sizeof(dfloat)); 
-
-  ins->o_prkA = ins->o_extbdfC;
-  ins->o_prkB = ins->o_extbdfC;
-
-  // dummy decleration for user work space 
-  ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
-  ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
+  ins->o_extC    = mesh->device.malloc(3*sizeof(dfloat)); 
+  ins->o_prkA    = ins->o_extbdfC;
+  ins->o_prkB    = ins->o_extbdfC;
  
-  // MEMORY ALLOCATION
-  ins->o_rhsU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->rhsU);
-  ins->o_rhsP  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->rhsP);
-  //storage for helmholtz solves
-  ins->o_scratch = mesh->device.malloc(2*ins->NVfields*Ntotal*sizeof(dfloat));
-
-  ins->o_FU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->FU);
-  ins->o_NU    = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->NU);
-
-  ins->o_PI    = mesh->device.malloc(              Ntotal*sizeof(dfloat), ins->PI);
-
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    filterSetup(ins); 
-
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) filterSetup(ins); 
+    
+  // setup scalar solve
   if(ins->Nscalar) {
    mesh_t *m;
    (cht) ? m = ins->meshT : m = ins->mesh;
@@ -450,8 +429,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
  
   ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
 
-  // TW: this code needs to be re-evaluated from here ====>
-  //make node-wise boundary flags
+  // boundary mapping
   dfloat largeNumber = 1<<20;
   ins->VmapB = (int *) calloc(mesh->Nelements*mesh->Np,sizeof(int));
   ins->PmapB = (int *) calloc(mesh->Nelements*mesh->Np,sizeof(int));
@@ -477,7 +455,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     }
   }
 
-  // this is potentially not good for Neumann (since it will )
   ogsGatherScatter(ins->VmapB, ogsInt, ogsMin, mesh->ogs); 
   ogsGatherScatter(ins->PmapB, ogsInt, ogsMax, mesh->ogs); 
   for (int n=0;n<mesh->Nelements*mesh->Np;n++) {
@@ -587,6 +564,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       fileName = oklpath + "insGradient" + suffix + ".okl";
       kernelName = "insGradientVolume" + suffix;
       ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = oklpath + "insSumMakef" + suffix + ".okl";
+      kernelName = "insSumMakef" + suffix;
+      ins->sumMakefKernel = 
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insDivergence" + suffix + ".okl";
       kernelName = "insDivergenceVolumeTOMBO" + suffix;
@@ -761,19 +743,15 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
   cds->S     = (dfloat*) calloc(cds->NSfields*(cds->Nstages+0)*Ntotal,sizeof(dfloat));
-  cds->NS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
+  cds->NS    = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
   cds->FS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
-  cds->rkS   = (dfloat*) calloc(cds->NSfields                 *Ntotal,sizeof(dfloat));
-  cds->rhsS  = (dfloat*) calloc(cds->NSfields                 *Ntotal,sizeof(dfloat));
 
   // Use Nsubsteps if INS does to prevent stability issues
   cds->Nsubsteps = ins->Nsubsteps; 
 
   if(cds->Nsubsteps){
     // This memory can be reduced, check later......!!!!!!!
-    cds->Sd      = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
     cds->resS    = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
-    cds->rhsSd   = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));        
     // 
     cds->SNrk    = ins->SNrk;  
     //
@@ -805,8 +783,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_rho  = cds->o_prop.slice(1*cds->fieldOffset*sizeof(dfloat));
 
   cds->var_coeff = 1; // use always var coeff elliptic
-  cds->ellipticCoeff   = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
-  cds->o_ellipticCoeff = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->ellipticCoeff);  
+  cds->ellipticCoeff   = ins->ellipticCoeff;
+  cds->o_ellipticCoeff = ins->o_ellipticCoeff;  
 
   occa::properties& kernelInfo  = *ins->kernelInfo; 
   // ADD-DEFINES
@@ -815,8 +793,9 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
  
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
-
-  cds->o_S = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
+  cds->o_S  = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
+  cds->o_BF = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->NS);
+  cds->o_FS = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->FS);
 
   //make option objects for elliptc solvers
   cds->options = options;
@@ -912,22 +891,14 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_InvM = cds->o_invLumpedMassMatrix; 
 
   // time stepper
-  dfloat rkC[4] = {1.0, 0.0, -1.0, -2.0};
-
+  dfloat rkC[4]   = {1.0, 0.0, -1.0, -2.0};
   cds->o_rkC     = ins->o_rkC    ;
   cds->o_extbdfA = ins->o_extbdfA;
   cds->o_extbdfB = ins->o_extbdfB;
   cds->o_extbdfC = ins->o_extbdfC; 
-
-  cds->o_extC = ins->o_extC;
-  cds->o_prkA = ins->o_extbdfC;
-  cds->o_prkB = ins->o_extbdfC;
-
-  // MEMORY ALLOCATION
-  cds->o_rhsS  = mesh->device.malloc(cds->NSfields*                 Ntotal*sizeof(dfloat), cds->rhsS);
-  cds->o_NS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->NS);
-  cds->o_FS    = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->FS);
-  cds->o_rkS   = mesh->device.malloc(cds->NSfields*                 Ntotal*sizeof(dfloat), cds->rkS);  
+  cds->o_extC    = ins->o_extC;
+  cds->o_prkA    = ins->o_extbdfC;
+  cds->o_prkB    = ins->o_extbdfC;
 
   if(mesh->totalHaloPairs){//halo setup
     // Define new variable nodes per element (npe) to test thin halo; 
@@ -991,9 +962,9 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
       // ===========================================================================
       
-      fileName   = install_dir + "/okl/cdsHelmholtzRhs" + suffix + ".okl"; 
-      kernelName = "cdsHelmholtzRhsEXTBDF" + suffix;
-      cds->helmholtzRhsKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      fileName   = install_dir + "/okl/cdsSumMakef" + suffix + ".okl"; 
+      kernelName = "cdsSumMakef" + suffix;
+      cds->sumMakefKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       
       fileName = install_dir + "/okl/cdsHelmholtzBC" + suffix + ".okl"; 
       kernelName = "cdsHelmholtzBC" + suffix; 
@@ -1020,10 +991,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps){
-        // Note that resU and resV can be replaced with already introduced buffer
-        cds->o_Sd     = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->Sd);
-        cds->o_resS   = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);
-        cds->o_rhsSd  = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->rhsSd);
+        cds->o_resS = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);
 
         fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
         kernelName = "scaledAddwOffset";

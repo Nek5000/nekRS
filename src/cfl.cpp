@@ -39,6 +39,8 @@ dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
   mesh_t *mesh = ins->mesh; 
   if(firstTime) setup(ins);
 
+  occa::memory o_wrk = ins->o_scratch;
+
   // Compute cfl factors i.e. dt* U / h 
   ins->cflKernel(mesh->Nelements,
                  ins->dt, 
@@ -46,11 +48,10 @@ dfloat computeCFL(ins_t *ins, dfloat time, int tstep){
                  ins->o_idH,
                  ins->fieldOffset,
                  ins->o_U,
-                 ins->o_rhsU);  
+                 o_wrk);  
   
   // find the local maximum of CFL number
-  const dlong Ntotal = mesh->Np*mesh->Nelements; 
-  ins->maxKernel(Ntotal, ins->o_rhsU, o_tmp);
+  ins->maxKernel(ins->Nlocal, o_wrk, o_tmp);
   o_tmp.copyTo(tmp);
   
   // finish reduction
