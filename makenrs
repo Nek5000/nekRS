@@ -3,15 +3,14 @@
 
 ###############################################################################
 # USER SETTINGS
-# (uncomment to overwrite default)
 ###############################################################################
 
-#NEKRS_INSTALL_DIR=${HOME}/.local/nekrs
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
 
-#NEKRS_CC="mpicc"
-#NEKRS_CXX="mpic++"
-#NEKRS_FC="mpif77"
-NEKRS_CXXFLAGS="-O3 -DUSE_OCCA_MEM_BYTE_ALIGN=32 -march=native -mtune=native"
+: ${NEKRS_CC:="mpicc"}
+: ${NEKRS_CXX:="mpic++"}
+: ${NEKRS_FC:="mpif77"}
+: ${NEKRS_CXXFLAGS:="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"}
 
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
@@ -34,13 +33,6 @@ if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
-
-: ${NEKRS_CC:="mpicc"}
-: ${NEKRS_CXX:="mpic++"}
-: ${NEKRS_FC:="mpif77"}
-: ${NEKRS_CXXFLAGS:="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"}
-
 : ${OCCA_METAL_ENABLED:=0}
 
 NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
@@ -54,7 +46,6 @@ export OCCA_HIP_ENABLED
 export OCCA_OPENCL_ENABLED
 export OCCA_METAL_ENABLED
 export OCCA_LDFLAGS
-
 
 export NEKRS_CC
 export NEKRS_CXX
