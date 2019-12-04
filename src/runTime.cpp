@@ -394,10 +394,10 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
     for(int ststep = 0; ststep<ins->Nsubsteps;++ststep){
       const dfloat tstage = tsub + ststep*ins->sdt;     
 
-      if(ins->SNrk==4){
+      if(ins->SNrk==4)
         ins->o_Us.copyFrom(o_Ud, ins->NVfields*ins->fieldOffset*sizeof(dfloat));   
-      }
       
+
       for(int rk=0;rk<ins->SNrk;++rk){// LSERK4 stages
         // Extrapolate velocity to subProblem stage time
         dfloat t = tstage +  ins->sdt*ins->Srkc[rk]; 
@@ -524,9 +524,9 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
     // Advance SubProblem to t^(n-torder+1) 
     for(int ststep = 0; ststep<cds->Nsubsteps;++ststep){
 
-      if(cds->SNrk==4){
-      cds->o_Ss.copyFrom(o_Sd, cds->NSfields*cds->fieldOffset*sizeof(dfloat));   
-    }    
+      if(cds->SNrk==4)
+        cds->o_Ss.copyFrom(o_Sd, cds->NSfields*cds->fieldOffset*sizeof(dfloat));   
+
      
       const dfloat tstage = tsub + ststep*cds->sdt;     
      

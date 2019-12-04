@@ -202,6 +202,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     int Sorder;
     if(ini.extract("general", "subcyclingorder", Sorder)) 
       options.setArgs("SUBCYCLING TIME ORDER", std::to_string(Sorder));
+
+    int SNrk;
+    if(ini.extract("general", "subcyclingstages", SNrk)) 
+      options.setArgs("SUBCYCLING TIME STAGE NUMBER", std::to_string(SNrk));
   }
    
   double writeInterval = 0;

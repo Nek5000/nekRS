@@ -7,11 +7,12 @@ polynomialOrder = 7
 #startFrom = restart.fld
 stopAt = endTime
 
-endTime = 0.1 
+endTime = 1.0 
 dt = 2e-04
 timeStepper = bdf2
-extrapolation = OIFS
-targetCFL = 2.0
+
+#extrapolation = OIFS
+#targetCFL = 2.0
 
 writeControl = runTime
 writeInterval = 0.1
