@@ -137,37 +137,29 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->FU = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
 
   if(ins->Nsubsteps){
-    ins->resU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-
-    // Prepare RK stages for Subcycling Part
-   
+    // Prepare RK stages for Subcycling Part   
     int Sorder; 
     options.getArgs("SUBCYCLING TIME ORDER", Sorder);
-    if(Sorder==2){
-      ins->SNrk = 2; 
-      dfloat rka[2] = {0.0,     1.0 };
-      dfloat rkb[2] = {0.5,     0.5 };
-      dfloat rkc[2] = {0.0,     1.0 };
+    options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
+
+     if(ins->SNrk==4){ // ERK(4,4)
+      ins->resU  = (dfloat*) calloc((ins->SNrk-1)*ins->NVfields*Ntotal,sizeof(dfloat));
+      ins->Us    = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
+      // This storage benefits from  specific structure of classical RK4 
+      // So not aplicable to general full storage ERK
+      dfloat rka[4] = {0.0, 1.0/2.0, 1.0/2.0, 1.0}; 
+      dfloat rkb[4] = {1.0/6.0, 1.0/3.0, 1.0/3.0, 1.0/6.0}; 
+      dfloat rkc[4] = {0.0, 1.0/2.0, 1.0/2.0, 1.0}; 
       ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
       memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
-    }else if(Sorder ==3){
-      // Using Williamson 3rd order scheme converted to low storage since the better truncation 
-      ins->SNrk     = 3; 
-      dfloat rka[3] = {0.0,     -5.0/9.0,  -153.0/128.0};
-      dfloat rkb[3] = {1.0/3.0, 15.0/16.0,    8.0/15.0 };
-      dfloat rkc[3] = {0.0,      1.0/3.0,     3.0/4.0  };
-      ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
-    }else{
-      ins->SNrk = 5; 
+
+    }else if(ins->SNrk==5){ // LSERK(4,5)
+      ins->resU  = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
+
       dfloat rka[5] = {0.0,
                       -567301805773.0/1357537059087.0,
                       -2404267990393.0/2016746695238.0,
@@ -190,6 +182,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkc, rkc, (ins->SNrk+1)*sizeof(dfloat));
+    }else{
+     if(mesh->rank==0) printf("Only LSERK(4,5) and ERK(4,4) are implemented, aborting....");
+      exit(1); 
     }
   }
 
@@ -282,8 +277,18 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->qtl   = (dfloat*) calloc(Ntotal,sizeof(dfloat));
   ins->o_qtl = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->qtl);  
 
-  if(ins->Nsubsteps)
-    ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
+  if(ins->Nsubsteps){
+    if(ins->SNrk==4){
+     ins->o_resU  = mesh->device.malloc((ins->SNrk-1)*ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
+     ins->o_Us    = mesh->device.malloc(              ins->NVfields*Ntotal*sizeof(dfloat), ins->Us);
+     //
+     ins->o_Srka = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srka); 
+     ins->o_Srkb = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srkb); 
+
+    }else{
+     ins->o_resU  = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->resU);
+    }
+  }
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   ins->o_rkC     = mesh->device.malloc(4*sizeof(dfloat),rkC);
@@ -618,9 +623,15 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
 
       fileName = oklpath + "insSubCycleRKUpdate" + ".okl";
-      kernelName = "insSubCycleRKUpdate";
-      ins->subCycleRKUpdateKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      if(ins->SNrk==4){
+        kernelName = "insSubCycleERKUpdate";
+        ins->subCycleRKUpdateKernel = 
+          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);        
+      }else{
+        kernelName = "insSubCycleLSERKUpdate";
+        ins->subCycleRKUpdateKernel = 
+          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);        
+      }
 
       fileName = oklpath + "insVelocityExt" + ".okl";
       kernelName = "insVelocityExt";
@@ -750,14 +761,17 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->Nsubsteps = ins->Nsubsteps; 
 
   if(cds->Nsubsteps){
-    // This memory can be reduced, check later......!!!!!!!
-    cds->resS    = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
-    // 
     cds->SNrk    = ins->SNrk;  
-    //
     cds->Srka = ins->Srka; 
     cds->Srkb = ins->Srkb; 
     cds->Srkc = ins->Srkc; 
+    //
+    if(cds->SNrk==4){ // ERK(4,4)
+      cds->resS    = (dfloat*) calloc((cds->SNrk-1)*cds->NSfields*Ntotal,sizeof(dfloat));
+      cds->Ss      = (dfloat*) calloc(              cds->NSfields*Ntotal,sizeof(dfloat));
+    }else{
+      cds->resS    = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
+    }
   }
 
   cds->startTime =ins->startTime;
@@ -991,8 +1005,22 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps){
-        cds->o_resS = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);
+          fileName = install_dir + "/okl/cdsSubCycle.okl";
+        if(cds->SNrk==5){
+          cds->o_resS = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);        
+          kernelName = "cdsSubCycleLSERKUpdate";
+          cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        }else{
+          cds->o_Ss = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->Ss);
+          cds->o_resS = mesh->device.malloc((cds->SNrk-1)*cds->NSfields*Ntotal*sizeof(dfloat), cds->resS);
 
+          cds->o_Srka = ins->o_Srka;
+          cds->o_Srkb = ins->o_Srkb;
+
+          kernelName = "cdsSubCycleERKUpdate";
+          cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        }
+        
         fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
         kernelName = "scaledAddwOffset";
         cds->scaledAddKernel = 
@@ -1004,11 +1032,6 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
         kernelName = "cdsSubCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-        fileName = install_dir + "/okl/cdsSubCycle.okl";
-        kernelName = "cdsSubCycleRKUpdate";
-        cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
       }
         fileName = install_dir + "/okl/insVelocityExt" + ".okl";
         kernelName = "insVelocityExt";

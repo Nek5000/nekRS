@@ -385,14 +385,19 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
       ins->scaledAddKernel(ins->NVfields*ins->Ntotal, b, toffset, o_U, zero, izero, o_Ud);
     } else { //add the next field
       ins->scaledAddKernel(ins->NVfields*ins->Ntotal, b, toffset, o_U,  one, izero, o_Ud);
-    }     
+    }   
 
+    
     // SubProblem  starts from here from t^(n-torder)
     const dfloat tsub = time - torder*ins->dt;
     // Advance SubProblem to t^(n-torder+1) 
     for(int ststep = 0; ststep<ins->Nsubsteps;++ststep){
       const dfloat tstage = tsub + ststep*ins->sdt;     
 
+      if(ins->SNrk==4){
+        ins->o_Us.copyFrom(o_Ud, ins->NVfields*ins->fieldOffset*sizeof(dfloat));   
+      }
+      
       for(int rk=0;rk<ins->SNrk;++rk){// LSERK4 stages
         // Extrapolate velocity to subProblem stage time
         dfloat t = tstage +  ins->sdt*ins->Srkc[rk]; 
@@ -455,17 +460,30 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
 				 ins->fieldOffset,
 				 nfield,
 				 mesh->o_vgeo,
-				 ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+				 ins->o_InvM, // mesh->o_MM, 
 				 o_wrk);
-
-        ins->subCycleRKUpdateKernel(mesh->Nelements,
-				    ins->sdt,
-				    ins->Srka[rk],
-				    ins->Srkb[rk],
-				    ins->fieldOffset,
-				    o_wrk,
-				    ins->o_resU, 
-				    o_Ud);
+        
+        if(ins->SNrk==5){ // LSERK
+          ins->subCycleRKUpdateKernel(mesh->Nelements,
+  				    ins->sdt,
+  				    ins->Srka[rk],
+  				    ins->Srkb[rk],
+  				    ins->fieldOffset,
+  				    o_wrk,
+  				    ins->o_resU, 
+  				    o_Ud);
+        }else{ // ERK
+          ins->subCycleRKUpdateKernel(mesh->Nelements,
+              rk,
+              ins->sdt,
+              ins->fieldOffset,
+              ins->o_Srka,
+              ins->o_Srkb,
+              o_wrk,
+              ins->o_Us,
+              ins->o_resU, 
+              o_Ud);
+        }
       }
     }
   }
@@ -499,12 +517,16 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
       cds->scaledAddKernel(cds->NSfields*cds->Ntotal, b, toffset, o_S, zero, izero, o_Sd);
     } else { //add the next field
       cds->scaledAddKernel(cds->NSfields*cds->Ntotal, b, toffset, o_S,  one, izero, o_Sd);
-    }     
+    } 
 
     // SubProblem  starts from here from t^(n-torder)
     const dfloat tsub = time - torder*cds->dt;
     // Advance SubProblem to t^(n-torder+1) 
     for(int ststep = 0; ststep<cds->Nsubsteps;++ststep){
+
+      if(cds->SNrk==4){
+      cds->o_Ss.copyFrom(o_Sd, cds->NSfields*cds->fieldOffset*sizeof(dfloat));   
+    }    
      
       const dfloat tstage = tsub + ststep*cds->sdt;     
      
@@ -575,14 +597,27 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
                                  o_wrk);
 
         // Update Kernel
-        cds->subCycleRKUpdateKernel(Nelements,
-                                    cds->sdt,
-                                    cds->Srka[rk],
-                                    cds->Srkb[rk],
-                                    cds->fieldOffset,
-                                    o_wrk,
-                                    cds->o_resS, 
-                                         o_Sd);
+        if(cds->SNrk==5){
+          cds->subCycleRKUpdateKernel(Nelements,
+                                      cds->sdt,
+                                      cds->Srka[rk],
+                                      cds->Srkb[rk],
+                                      cds->fieldOffset,
+                                      o_wrk,
+                                      cds->o_resS, 
+                                           o_Sd);
+      }else{
+           cds->subCycleRKUpdateKernel(Nelements,
+                                      rk,
+                                      cds->sdt,
+                                      cds->fieldOffset,
+                                      cds->o_Srka,
+                                      cds->o_Srkb,
+                                      o_wrk,
+                                      cds->o_Ss,
+                                      cds->o_resS, 
+                                           o_Sd);
+        }
       }
     }
   }

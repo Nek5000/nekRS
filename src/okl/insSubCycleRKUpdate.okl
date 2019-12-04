@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void insSubCycleRKUpdate(const dlong Nelements,
+@kernel void insSubCycleLSERKUpdate(const dlong Nelements,
                                 const dfloat dt,  
                                 const dfloat rka,
                                 const dfloat rkb,
@@ -55,6 +55,50 @@ SOFTWARE.
     }
   }
 }
+
+
+@kernel void insSubCycleERKUpdate(const dlong Nelements,
+                                const int stage,
+                                const dfloat dt,  
+                                const dlong offset,
+                                @restrict const dfloat * rka,
+                                @restrict const dfloat * rkb,
+                                @restrict const dfloat * rhsU,
+                                @restrict dfloat  *  Us, // U0 at Tn                                 
+                                @restrict dfloat  *  resU,
+                                @restrict dfloat  *  U){
+
+  // Low storage Runge Kutta time step update
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = n + e*p_Np;
+      if(stage==3){ // Final stage, hard coded
+         #pragma unroll p_NVfields
+         for (int fld=0;fld<p_NVfields;fld++){
+            dfloat un = Us[id + fld*offset]; 
+            for(int st =0; st<stage; st++){
+              un += dt*rkb[st]*resU[id + fld*offset + st*p_NVfields*offset]; // k0,k1,k2
+            }
+           un                += dt*rkb[stage]*rhsU[id + fld*offset]; // k3
+           U[id + fld*offset] = un; 
+         }
+      }
+      else{
+      #pragma unroll p_NVfields
+        for (int fld=0;fld<p_NVfields;fld++) {
+          const dlong stride = id+fld*offset; 
+           dfloat rhsu =  rhsU[stride];
+           dfloat un   =  Us[stride]; 
+           // Intermediate stage Update
+           U[stride]                             = un + dt*rka[stage+1]*rhsu;
+           resU[stride+ stage*p_NVfields*offset] = rhsu; // k0, k1, k2  
+        }
+      }
+    }
+  }
+}
+
+
 
 
 @kernel void insSubCycleExt(const dlong Nelements,

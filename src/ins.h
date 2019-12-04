@@ -56,6 +56,7 @@ typedef struct {
   //RK Subcycle Data
   int SNrk;
   dfloat *Srka, *Srkb, *Srkc; 
+  occa::memory o_Srka, o_Srkb;
 
   //ARK data
   int Nrk;
@@ -77,7 +78,7 @@ typedef struct {
   dfloat *vRecvBuffer;
   dfloat *pSendBuffer;
   dfloat *pRecvBuffer;
-  dfloat * velocityHaloGatherTmp;
+  dfloat *velocityHaloGatherTmp;
 
   occa::memory o_vSendBuffer,h_vSendBuffer;
   occa::memory o_vRecvBuffer,h_vRecvBuffer;
@@ -89,8 +90,8 @@ typedef struct {
   occa::memory o_scratch;
 
   int Nsubsteps;  
-  dfloat *Ue, *resU, sdt;
-  occa::memory o_Ue, o_resU;
+  dfloat *Ue, *resU, sdt, *Us;
+  occa::memory o_Ue, o_resU, o_Us;
 
   int lowMach;
   dfloat *qtl;

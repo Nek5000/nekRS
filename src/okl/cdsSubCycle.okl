@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void cdsSubCycleRKUpdate(const dlong Nelements,
+@kernel void cdsSubCycleLSERKUpdate(const dlong Nelements,
                                 const dfloat dt,  
                                 const dfloat rka,
                                 const dfloat rkb,
@@ -51,6 +51,47 @@ SOFTWARE.
 
         resS[id+i*soffset] = ress;
         S[id+i*soffset]    = sn;
+      }
+    }
+  }
+}
+
+
+@kernel void cdsSubCycleERKUpdate(const dlong Nelements,
+                                const int stage,
+                                const dfloat dt,  
+                                const dlong soffset,
+                                @restrict const dfloat * rka,
+                                @restrict const dfloat * rkb,
+                                @restrict const dfloat * rhsS,
+                                @restrict dfloat  *  Ss, // U0 at Tn                                 
+                                @restrict dfloat  *  resS,
+                                @restrict dfloat  *  S){
+
+  // Low storage Runge Kutta time step update
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = n + e*p_Np;
+      if(stage==3){ // Final stage, hard coded
+         #pragma unroll p_NSfields
+         for (int fld=0;fld<p_NSfields;fld++){
+            dfloat sn = Ss[id + fld*soffset]; 
+            for(int st =0; st<stage; st++){
+              sn += dt*rkb[st]*resS[id + fld*soffset + st*p_NSfields*soffset];
+            }
+           sn                += dt*rkb[stage]*rhsS[id + fld*soffset]; 
+           S[id + fld*soffset] = sn; 
+         }
+      }
+      else{
+      #pragma unroll p_NSfields
+        for (int fld=0;fld<p_NSfields;fld++) {
+           dfloat rhss =  rhsS[id+fld*soffset];
+           dfloat sn   =  Ss[id + fld*soffset]; 
+           // Intermediate stage Update
+           S[id + fld*soffset]                              = sn + dt*rka[stage+1]*rhss;
+           resS[id + fld*soffset + stage*p_NSfields*soffset] = rhss;  
+        }
       }
     }
   }

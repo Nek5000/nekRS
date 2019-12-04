@@ -45,6 +45,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
+  options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
 
   options.setArgs("CASENAME", casename);
   options.setArgs("UDF OKL FILE", casename + ".oudf");
