@@ -79,7 +79,7 @@ SOFTWARE.
             for(int st =0; st<stage; st++){
               un += dt*rkb[st]*resU[id + fld*offset + st*p_NVfields*offset]; // k0,k1,k2
             }
-           un                += dt*rkb[stage]*rhsU[id + fld*offset]; // k3
+           un                -= dt*rkb[stage]*rhsU[id + fld*offset]; // k3
            U[id + fld*offset] = un; 
          }
       }
@@ -87,11 +87,11 @@ SOFTWARE.
       #pragma unroll p_NVfields
         for (int fld=0;fld<p_NVfields;fld++) {
           const dlong stride = id+fld*offset; 
-           dfloat rhsu =  rhsU[stride];
-           dfloat un   =  Us[stride]; 
+           dfloat rhsu =  -rhsU[stride];
+           dfloat un   =   Us[stride]; 
            // Intermediate stage Update
            U[stride]                             = un + dt*rka[stage+1]*rhsu;
-           resU[stride+ stage*p_NVfields*offset] = rhsu; // k0, k1, k2  
+           resU[stride+stage*p_NVfields*offset] = rhsu; // k0, k1, k2  
         }
       }
     }

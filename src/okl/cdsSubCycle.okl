@@ -79,14 +79,14 @@ SOFTWARE.
             for(int st =0; st<stage; st++){
               sn += dt*rkb[st]*resS[id + fld*soffset + st*p_NSfields*soffset];
             }
-           sn                += dt*rkb[stage]*rhsS[id + fld*soffset]; 
+           sn                -= dt*rkb[stage]*rhsS[id + fld*soffset]; 
            S[id + fld*soffset] = sn; 
          }
       }
       else{
       #pragma unroll p_NSfields
         for (int fld=0;fld<p_NSfields;fld++) {
-           dfloat rhss =  rhsS[id+fld*soffset];
+           dfloat rhss =  -rhsS[id+fld*soffset];
            dfloat sn   =  Ss[id + fld*soffset]; 
            // Intermediate stage Update
            S[id + fld*soffset]                              = sn + dt*rka[stage+1]*rhss;
