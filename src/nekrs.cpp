@@ -116,6 +116,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
 
+  timer::init(ins->mesh->comm, ins->mesh->device, 0);
+
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
@@ -182,6 +184,11 @@ const double finalTime(void)
 void *nekPtr(const char *id)
 {
   return nek_ptr(id); 
+}
+
+void printRuntimeStatistics()
+{
+  timer::printStat();
 }
 
 } // namespace
@@ -308,4 +315,4 @@ static void setCache(string dir)
   if (!getenv("OCCA_CACHE_DIR"))
       occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 }
-
+ 

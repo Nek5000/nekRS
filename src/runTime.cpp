@@ -49,8 +49,11 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
                          ins->o_U,
                          ins->o_Ue);
 
-  if(ins->Nscalar) 
+  if(ins->Nscalar) { 
+    timer::tic("scalarSolve"); 
     scalarSolve(ins, time, dt, cds->o_S);
+    timer::toc("scalarSolve"); 
+  }
 
   if(udf.properties)
     udf.properties(ins, time+dt, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
@@ -61,8 +64,10 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     else
       qthermal(ins, time+dt, ins->o_qtl);
   }
- 
+
+  timer::tic("fluidSolve"); 
   fluidSolve(ins, time, dt, ins->o_U);
+  timer::toc("fluidSolve"); 
 
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
@@ -224,7 +229,9 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
        cds->o_rho,
        cds->o_ellipticCoeff);
 
+  timer::tic("makeq");
   makeq(ins, time, o_wrk, cds->o_BF); 
+  timer::toc("makeq");
 
   cdsSolve(cds, time+dt, o_wrk, o_Snew);
 
@@ -235,12 +242,13 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S){
       (s-1)*cds->Ntotal*cds->NSfields*sizeof(dfloat), 
       (s-2)*cds->Ntotal*cds->NSfields*sizeof(dfloat));
   }
-  o_S.copyFrom(o_Snew, cds->NSfields*cds->Ntotal*sizeof(dfloat)); 
+  o_S.copyFrom(o_Snew, cds->NSfields*cds->Ntotal*sizeof(dfloat));
 }
 
 void makef(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_BF)
 {
   mesh_t *mesh = ins->mesh;
+
 
   for (int s=ins->Nstages;s>1;s--) {
     ins->o_FU.copyFrom(
@@ -316,7 +324,9 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
 {
   mesh_t *mesh = ins->mesh;
 
+  timer::tic("makef");
   makef(ins, time, ins->o_scratch, ins->o_BF);
+  timer::toc("makef");
 
   {
     ins->setEllipticCoeffPressureKernel(
@@ -328,8 +338,10 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     occa::memory o_wrk  = ins->o_scratch;
     occa::memory o_Pnew = ins->o_scratch.slice(6*ins->fieldOffset*sizeof(dfloat));
 
-    tombo::pressureSolve(ins, time+dt, o_wrk, o_Pnew); 
-    ins->o_P.copyFrom(o_Pnew, ins->Ntotal*sizeof(dfloat)); 
+    timer::tic("pressureSolve");
+    tombo::pressureSolve(ins, time+dt, o_wrk, o_Pnew);
+    timer::toc("pressureSolve");
+    ins->o_P.copyFrom(o_Pnew, ins->Ntotal*sizeof(dfloat));
   }
 
   {
@@ -344,7 +356,9 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     occa::memory o_wrk  = ins->o_scratch;
     occa::memory o_Unew = ins->o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
 
+    timer::tic("velocitySolve");
     tombo::velocitySolve(ins, time+dt, o_wrk, o_Unew);
+    timer::toc("velocitySolve");
     for (int s=ins->Nstages;s>1;s--) {
       o_U.copyFrom(
         o_U, 
