@@ -144,6 +144,8 @@ int main(int argc, char **argv)
   }
   MPI_Pcontrol(0);
 
+  nekrs::printRuntimeStatistics();
+
   if(rank == 0) std::cout << "\nEnd." << "\n";
 
   MPI_Finalize();
