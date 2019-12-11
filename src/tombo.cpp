@@ -54,7 +54,7 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_P
        ins->fieldOffset,
        ins->NVfields,
        mesh->o_vgeo,
-       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       ins->o_InvM,
        o_wrk1);
 
   // o_wrk2 = div(o_wrk)
@@ -126,15 +126,17 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_P
                            mesh->o_y,
                            mesh->o_z,
                            mesh->o_vmapM,
-                           ins->o_PmapB,
+                           mesh->o_EToB,
                            ins->o_EToB,
                            ins->o_usrwrk,
                            ins->o_U,
+                           ins->o_P,
                            ins->o_PI);
 
+  // update (increment) all points but not Dirichlet
   ins->pressureUpdateKernel(mesh->Nelements,
                             ins->fieldOffset,
-                            ins->o_PmapB,
+                            solver->o_mapB,
                             ins->o_PI,
                             ins->o_P,
                             o_Pnew);
@@ -187,7 +189,7 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_wrk1, occa::memory o_
        mesh->o_Smatrices,
        mesh->o_MM,
        mesh->o_vmapM,
-       ins->o_EToB,
+       mesh->o_EToB,
        mesh->o_sMT,
        time,
        mesh->o_x,
@@ -232,6 +234,7 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_wrk1, occa::memory o_
                            mesh->o_y,
                            mesh->o_z,
                            mesh->o_vmapM,
+                           mesh->o_EToB,
                            ins->o_VmapB,
                            ins->o_usrwrk,
                            ins->o_U,
@@ -262,7 +265,7 @@ void curlCurl(ins_t *ins, occa::memory o_wrk, occa::memory o_U,
        ins->fieldOffset,
        ins->NVfields,
        mesh->o_vgeo,
-       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       ins->o_InvM,
        o_wrk);
 
   ins->curlKernel(mesh->Nelements,
@@ -282,7 +285,7 @@ void curlCurl(ins_t *ins, occa::memory o_wrk, occa::memory o_U,
        ins->fieldOffset,
        ins->NVfields,
        mesh->o_vgeo,
-       ins->o_InvM, // mesh->o_MM, // should be invMM for tri/tet
+       ins->o_InvM,
        o_NC);
 */
 }

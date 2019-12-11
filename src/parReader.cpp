@@ -313,18 +313,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   // SCALARS
   int nscal = 0;
-  if(ini.sections.count("temperature")) nscal = 1; // fixed for now
-  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+  if(ini.sections.count("temperature")) {
+    nscal++;
 
-  if(nscal) {
-    options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
-    options.setArgs("SCALAR01 BASIS", "NODAL");
-    options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
-    options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
+    options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
     if(ini.extract("temperature", "residualtol", s_residualTol)) {
-      options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
+      options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
     double diffusivity; 
@@ -333,7 +329,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for conductivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
-      options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+      options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
     } else {
       if(!variableProperties)
         ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
@@ -344,7 +340,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       int err = 0;
       rhoCp = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rhoCp!");
-      options.setArgs("SCALAR01 DENSITY", to_string_f(rhoCp));
+      options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
     } else {
       if(!variableProperties)
         ABORT("Cannot find mandatory parameter TEMPERATURE::rhoCp!"); 
@@ -354,7 +350,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
-      bcMap::setup(sList, "scalar01");
+      bcMap::setup(sList, "scalar00");
     } else {
       ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
     } 
@@ -363,7 +359,61 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") 
       ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
   }
+  //
+  for (auto & sec : ini.sections) {
+    string key = sec.first;
+    if(key.compare(0, 6, "scalar") == 0) nscal++;
+  }
+  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+  for (int i = 1; i<nscal; i++) {
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(2) << i;
+    string sid = ss.str();
+ 
+    options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
+    double s_residualTol;
+    if(ini.extract("scalar" + sid, + "residualtol", s_residualTol)) {
+      options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
+    }
+
+    double diffusivity; 
+    if(ini.extract("scalar" + sid, "diffusivity", sbuf)) {
+      int err = 0;
+      diffusivity = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for diffusivity!");
+      if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
+      options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter SCALAR" + sid + "::diffusivity!"); 
+    }
+
+    double rho; 
+    if(ini.extract("scalar" + sid, "rho", sbuf)) {
+      int err = 0;
+      rho = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for rho!");
+      options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter SCALAR" + sid + "::rho!"); 
+    }
+
+    string s_bcMap;
+    if(ini.extract("scalar" + sid, "boundarytypemap", s_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(s_bcMap);
+      bcMap::setup(sList, "scalar" + sid);
+    } else {
+      ABORT("Cannot find mandatory parameter SCALAR" + sid + "::boundaryTypeMap!");
+    } 
+  }
+  if(nscal) {
+    options.setArgs("SCALAR KRYLOV SOLVER", "PCG");
+    options.setArgs("SCALAR BASIS", "NODAL");
+    options.setArgs("SCALAR DISCRETIZATION", "CONTINUOUS");
+  }
 
   return options;
 }
