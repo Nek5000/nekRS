@@ -1,11 +1,15 @@
 #include "cds.h"
 
-void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk, occa::memory o_Shat){
+void cdsSolve(const int is, cds_t *cds, dfloat time, occa::memory o_wrk, occa::memory o_Shat){
   
-  mesh_t     *mesh   = cds->mesh; 
-  elliptic_t *solver = cds->solver;
+  mesh_t *mesh; 
+  (is) ? mesh = cds->meshV : mesh = cds->mesh;
+  elliptic_t *solver = cds->solver[is];
 
-  o_wrk.copyFrom(cds->o_BF, cds->Ntotal*sizeof(dfloat)); 
+  occa::memory o_BFi = cds->o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
+  occa::memory o_Si  = cds->o_S.slice (is*cds->fieldOffset*sizeof(dfloat));
+
+  o_wrk.copyFrom(o_BFi, cds->Ntotal*sizeof(dfloat)); 
 
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
@@ -14,14 +18,15 @@ void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk, occa::memory o_Shat){
                             mesh->o_Smatrices,
                             mesh->o_MM,
                             mesh->o_vmapM,
-                            cds->o_EToB,
+                            mesh->o_EToB,
                             mesh->o_sMT,
+                            is,
                             time,
                             cds->fieldOffset,
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,
-                            cds->o_mapB,
+                            cds->o_mapB[is],
                             cds->o_ellipticCoeff,
                             o_wrk);
 
@@ -29,52 +34,21 @@ void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk, occa::memory o_Shat){
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_wrk);
 
   //copy current solution fields as initial guess
-  o_Shat.copyFrom(cds->o_S, cds->Ntotal*sizeof(dfloat)); 
- 
+  o_Shat.copyFrom(o_Si, cds->Ntotal*sizeof(dfloat)); 
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_Shat);
 
   const dfloat lambda = 1; // dummy value not used if coeff is variable
-  cds->Niter = ellipticSolve(solver, lambda, cds->TOL, o_wrk, o_Shat);
+  cds->Niter[is] = ellipticSolve(solver, lambda, cds->TOL, o_wrk, o_Shat);
 
   cds->helmholtzAddBCKernel(mesh->Nelements,
+                            is,
                             time,
                             mesh->o_sgeo,
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,
                             mesh->o_vmapM,
-                            cds->o_mapB,
+                            mesh->o_EToB,
+                            cds->o_mapB[is],
                             o_Shat);
-}
-
-void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, occa::memory o_NS){
-
-  mesh_t *mesh = cds->mesh;
-
-  if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-    cds->advectionStrongCubatureVolumeKernel(
-           cds->meshV->Nelements,
-           mesh->o_vgeo,
-           mesh->o_cubvgeo,
-           mesh->o_cubDiffInterpT, // mesh->o_cubDWmatrices,
-           mesh->o_cubInterpT,
-           mesh->o_cubProjectT,
-           cds->vFieldOffset,
-           cds->fieldOffset,
-           o_U,
-           o_S,
-           cds->o_rho,
-           o_NS);
-  else
-    cds->advectionStrongVolumeKernel(
-           cds->meshV->Nelements,
-           mesh->o_vgeo,
-           mesh->o_Dmatrices,
-           cds->vFieldOffset,
-           cds->fieldOffset,
-           o_U,
-           o_S,
-           cds->o_rho,
-           o_NS);
-
 }

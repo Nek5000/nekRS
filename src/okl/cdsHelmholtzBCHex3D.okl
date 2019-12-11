@@ -24,29 +24,32 @@
 
 */
 
-#define surfaceTerms(sk,face,i, j)                                      \
-  {									\
-    struct bcData bc;  \
-    bc.idM = vmapM[sk];   bc.time = time;  \
-    bc.nx = sgeo[sk*p_Nsgeo+p_NXID];        \
-    bc.ny = sgeo[sk*p_Nsgeo+p_NYID];        \
-    bc.nz = sgeo[sk*p_Nsgeo+p_NZID];        \
-    bc.x   = x[bc.idM]; \
-    bc.y   = y[bc.idM]; \
-    bc.z   = z[bc.idM]; \
-                                                                      \
-    const dfloat WsJ = sgeo[sk*p_Nsgeo+p_WSJID];      \
-    bc.sF= 0.f; bc.sP=0.f;                                        \
-    bc.id = mapB[bc.idM];                                 \
-   if(bc.id==1) {                                                            \
-      cdsDirichletConditions3D(&bc);\
-    }                                                                     \
-    if(bc.id==2) {                                                            \
-      cdsNeumannConditions3D(&bc); \
-    }                                                                       \
-                                                                        \
-    s_U  [j][i] =  bc.sP;							\
-    s_ndU[j][i] = -WsJ*(bc.sF);          \
+#define surfaceTerms(sk,face,i, j)                          \
+  {					                    \
+    struct bcData bc;                                       \
+    bc.idM = vmapM[sk];                                     \
+    bc.time = time;                                         \
+    bc.id  = EToBM[face + p_Nfaces*e];                      \
+    bc.nx  = sgeo[sk*p_Nsgeo+p_NXID];                       \
+    bc.ny  = sgeo[sk*p_Nsgeo+p_NYID];                       \
+    bc.nz  = sgeo[sk*p_Nsgeo+p_NZID];                       \
+    bc.x   = x[bc.idM];                                     \
+    bc.y   = y[bc.idM];                                     \
+    bc.z   = z[bc.idM];                                     \
+                                                            \
+    const dfloat WsJ = sgeo[sk*p_Nsgeo+p_WSJID];            \
+    const dlong bcType = mapB[bc.idM];                      \
+    bc.sF= 0.f; bc.sP=0.f;                                  \
+    bc.scalarId = scalarId;                                 \
+    if(bcType==1) {                                         \
+      cdsDirichletConditions3D(&bc);                        \
+    }                                                       \
+    if(bcType==2) {                                         \
+      cdsNeumannConditions3D(&bc);                          \
+    }                                                       \
+                                                            \
+    s_U  [j][i] =  bc.sP;	                            \
+    s_ndU[j][i] = -WsJ*(bc.sF);                             \
   }
 
 //RHS contributions for continuous solver
@@ -57,8 +60,9 @@
 				@restrict const  dfloat *  S,
 				@restrict const  dfloat *  MM,
 				@restrict const  dlong  *  vmapM,
-				@restrict const  int    *  EToB,
+				@restrict const  int    *  EToBM,
 				@restrict const  dlong  *  sMT,
+                                const dlong scalarId,
 				const dfloat time,
 				const dlong offset,
 				@restrict const  dfloat *  x,
@@ -111,7 +115,7 @@
       for(int i=0;i<p_Nq;++i;@inner(0)){
 	//face 0
 	r_U   [0]  = s_U  [j][i];
-	if(EToB[e*p_Nfaces+0]>0){
+	if(EToBM[e*p_Nfaces+0]>0){
 	  r_rhsU[0] += s_ndU[j][i];
 	}
       }
@@ -134,7 +138,7 @@
       for(int i=0;i<p_Nq;++i;@inner(0)){
 	//face 5
 	r_U   [p_Nq-1]  = s_U  [j][i];
-	if(EToB[e*p_Nfaces+5]>0){
+	if(EToBM[e*p_Nfaces+5]>0){
 	  r_rhsU[p_Nq-1] += s_ndU[j][i];
 	}
       }
@@ -159,7 +163,7 @@
 #pragma unroll p_Nq
 	  for (int k=0;k<p_Nq;k++) {
 	    r_U   [k]  = s_U  [k][i];
-	    if(EToB[e*p_Nfaces+1]>0){
+	    if(EToBM[e*p_Nfaces+1]>0){
 	      r_rhsU[k] += s_ndU[k][i];
 	    }
 	  }
@@ -186,7 +190,7 @@
 #pragma unroll p_Nq
 	  for (int k=0;k<p_Nq;k++) {
 	    r_U[k]  = s_U[k][i];
-	    if(EToB[e*p_Nfaces+3]>0){
+	    if(EToBM[e*p_Nfaces+3]>0){
 	      r_rhsU[k] += s_ndU[k][i];
 	    }
 	  }
@@ -213,7 +217,7 @@
 #pragma unroll p_Nq
 	  for (int k=0;k<p_Nq;k++) {
 	    r_U[k] = s_U[k][j];
-	    if(EToB[e*p_Nfaces+2]>0){
+	    if(EToBM[e*p_Nfaces+2]>0){
 	      r_rhsU[k] += s_ndU[k][j];
 	    }
 	  }
@@ -240,7 +244,7 @@
 #pragma unroll p_Nq
           for (int k=0;k<p_Nq;k++) {
             r_U[k]  = s_U[k][j];
-	    if(EToB[e*p_Nfaces+4]>0){
+	    if(EToBM[e*p_Nfaces+4]>0){
 	      r_rhsU[k] += s_ndU[k][j];
 	    }
           }
@@ -347,12 +351,14 @@
 }
 
 @kernel void cdsHelmholtzAddBCHex3D(const dlong Nelements,
+                                   const dlong scalarId,
 				   const dfloat time,
 				   @restrict const  dfloat *  sgeo,
 				   @restrict const  dfloat *  x,
 				   @restrict const  dfloat *  y,
 				   @restrict const  dfloat *  z,
 				   @restrict const  dlong  *  vmapM,
+				   @restrict const  int    *  EToBM,
 				   @restrict const  int    *  mapB,
 				   @restrict dfloat *  S){
 
@@ -361,26 +367,29 @@
       @barrier("global");
       for(int m=0;m<p_Nfp;++m;@inner(0)){
         struct bcData bc;
-        const int n = m + f*p_Nfp;         
-        const dlong idM = vmapM[e*p_Nfp*p_Nfaces + n];
-        bc.id = mapB[idM];
+        const int n = m + f*p_Nfp;        
+        const int sk = e*p_Nfp*p_Nfaces + n; 
+        const dlong idM = vmapM[sk];
+        const dlong bcType = mapB[idM];
 
-      if(bc.id==1) {
+        if(bcType==1) {
+          bc.id = EToBM[f + p_Nfaces*e];
           bc.idM = idM; 
           bc.time = time; 
           bc.x  = x[bc.idM]; 
           bc.y  = y[bc.idM]; 
           bc.z  = z[bc.idM]; 
           bc.sM = S[idM];
-
-        const dlong sk = e*p_Nfp*p_Nfaces + n;
-        bc.nx = sgeo[sk*p_Nsgeo+p_NXID];
-        bc.ny = sgeo[sk*p_Nsgeo+p_NYID];
-        bc.nz = sgeo[sk*p_Nsgeo+p_NZID];
-        bc.sP = 0.f;
-        cdsDirichletConditions3D(&bc) ;
-        S[idM] = bc.sP;
-      }    
+          bc.scalarId = scalarId;
+  
+          const dlong sk = e*p_Nfp*p_Nfaces + n;
+          bc.nx = sgeo[sk*p_Nsgeo+p_NXID];
+          bc.ny = sgeo[sk*p_Nsgeo+p_NYID];
+          bc.nz = sgeo[sk*p_Nsgeo+p_NZID];
+          bc.sP = 0.f;
+          cdsDirichletConditions3D(&bc) ;
+          S[idM] = bc.sP;
+        }    
     }
   }
 }

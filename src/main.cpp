@@ -60,6 +60,7 @@ not be used for advertising or product endorsement purposes.
 
 \*---------------------------------------------------------------------------*/
 
+#include <fenv.h>
 #include <mpi.h>
 #include <iostream>
 #include <cstdio>
@@ -82,6 +83,10 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
+#ifdef DEBUG
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
   int retval;
   retval =  MPI_Init(&argc, &argv);
   if (retval != MPI_SUCCESS) {
@@ -97,7 +102,7 @@ int main(int argc, char **argv)
 #ifdef DEBUG
   if (rank == 0) {
     char str[10];
-    cout << "Press enter to continue" << endl;
+    cout << "Connect debugger, then press enter to continue" << endl;
     gets(str);
   }
   MPI_Barrier(comm);

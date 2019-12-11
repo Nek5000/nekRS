@@ -10,6 +10,8 @@
 #include "mesh3D.h"
 #include "elliptic.h"
 
+#define NSCALAR_MAX 100
+
 extern "C" { // Begin C Linkage
 typedef struct {
 
@@ -17,7 +19,7 @@ typedef struct {
   
   mesh_t     *mesh;
   mesh_t     *meshV;
-  elliptic_t *solver;
+  elliptic_t *solver[NSCALAR_MAX];
   
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields
@@ -43,13 +45,13 @@ typedef struct {
   int outputForceStep; 
   int dtAdaptStep; 
   
-  int Niter;
+  int Niter[NSCALAR_MAX];
 
   //solver tolerances
   dfloat TOL;
 
   dfloat *U, *S;
-  dfloat *NS, *rkNS;
+  dfloat *rkNS;
   //  dfloat *rhsS;   
   dfloat *rkS; 
 
@@ -60,9 +62,9 @@ typedef struct {
   dfloat *extbdfA, *extbdfB, *extbdfC;
   dfloat *extC;
 
-  int *mapB, *EToB;
-  occa::memory o_mapB;
-  occa::memory o_EToB; 
+  int *mapB[NSCALAR_MAX], *EToB[NSCALAR_MAX];
+  occa::memory o_mapB[NSCALAR_MAX];
+  occa::memory o_EToB[NSCALAR_MAX]; 
 
   //halo data
   dfloat *sendBuffer;
@@ -95,6 +97,7 @@ typedef struct {
   dfloat *cU, *cSd, *cS, *FS, *BF; 
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF;
 
+  occa::kernel setScalarKernel;
   occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
@@ -127,8 +130,7 @@ typedef struct {
   occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
   occa::memory o_extC;
 
-  occa::memory o_invLumpedMassMatrix;
-  occa::memory o_InvM;
+  occa::memory o_InvM, o_InvMV;
 
 // Will be depreceated.....AK
   occa::kernel haloExtractKernel;
@@ -163,9 +165,7 @@ typedef struct {
     
 }cds_t;
 
-void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, occa::memory o_NS);
-
-void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk,occa::memory o_Snew);
+void cdsSolve(int i, cds_t *cds, dfloat time, occa::memory o_wrk,occa::memory o_Snew);
 
 } // end C Linkage
 

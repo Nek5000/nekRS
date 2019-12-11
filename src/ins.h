@@ -69,8 +69,8 @@ typedef struct {
   dfloat *extbdfA, *extbdfB, *extbdfC;
   dfloat *extC;
 
-  int *VmapB, *PmapB;
-  occa::memory o_VmapB, o_PmapB;
+  int *VmapB;
+  occa::memory o_VmapB;
 
   //halo data
   dfloat *vSendBuffer;
@@ -126,8 +126,6 @@ typedef struct {
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 
-  occa::memory o_invLumpedMassMatrix;
-  
   occa::kernel constrainKernel;
   
   occa::memory o_U, o_P;

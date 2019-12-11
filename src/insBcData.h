@@ -5,21 +5,20 @@ struct bcData
    int fieldOffset;
    int id;
 
+   int scalarId;
+
    dfloat time;
    dfloat x, y, z;
    dfloat nx, ny, nz;
 
    dfloat uM, vM, wM;
    dfloat uP, vP, wP;
-   dfloat uxM, uyM, uzM;
-   dfloat vxM, vyM, vzM;
-   dfloat wxM, wyM, wzM;
    dfloat uxP, uyP, uzP;
    dfloat vxP, vyP, vzP;
    dfloat wxP, wyP, wzP;
 
    dfloat pM;
-   dfloat pP, pxP, pyP, pzP;
+   dfloat pP;
 
    @globalPtr dfloat* wrk;
 
