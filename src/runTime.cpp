@@ -77,8 +77,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
       printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: ",
         tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
         ins->NiterP);
-      for(int is=0; is<ins->Nscalar; is++)
-        printf("%d  ", cds->Niter[is]);
+      for(int is=0; is<ins->Nscalar; is++) printf("%d  ", cds->Niter[is]);
       printf("tElapsed= %.5e s\n", MPI_Wtime()-etime0);
     } else {
       printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
@@ -477,7 +476,7 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
         ins->o_extC.copyFrom(ins->extC);
 
         //compute advective velocity fields at time t
-        ins->velocityExtKernel(ins->Ntotal,
+        ins->velocityExtKernel(mesh->Nelements,
                                Nstages,
                                ins->fieldOffset,
                                ins->o_extC,
@@ -542,8 +541,6 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
   const dfloat tn1 = time - 1*cds->dt;
   const dfloat tn2 = time - 2*cds->dt;
 
-  const dlong Nelements = cds->meshV->Nelements;
-
   dfloat zero = 0.0, one = 1.0;
   int izero = 0;
   dfloat b, bScale=0;
@@ -558,9 +555,9 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
     dlong toffset = torder*cds->NSfields*cds->fieldOffset;
 
     if (torder==cds->ExplicitOrder-1) { //first substep
-      cds->scaledAddKernel(cds->NSfields*cds->Ntotal, b, toffset, o_S, zero, izero, o_Sd);
+      cds->scaledAddKernel(cds->Ntotal, b, toffset, o_S, zero, izero, o_Sd);
     } else { //add the next field
-      cds->scaledAddKernel(cds->NSfields*cds->Ntotal, b, toffset, o_S,  one, izero, o_Sd);
+      cds->scaledAddKernel(cds->Ntotal, b, toffset, o_S,  one, izero, o_Sd);
     }     
 
     // SubProblem  starts from here from t^(n-torder)
@@ -629,7 +626,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_w
         ogsGatherScatter(o_wrk, ogsDfloat, ogsAdd, mesh->ogs);
         cds->invMassMatrixKernel(mesh->Nelements,
                                  cds->fieldOffset,
-                                 cds->NSfields,
+                                 1,
                                  mesh->o_vgeo,
                                  cds->o_InvMV,
                                  o_wrk);

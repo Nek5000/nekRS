@@ -79,6 +79,7 @@
 				@restrict const  dfloat *  y,
 				@restrict const  dfloat *  z,
 				@restrict const  int    *  mapB,
+				@restrict const  int    *  EToB,
                                 @restrict const  dfloat *  W,
                                 @restrict const  dfloat *  U,
                                 @restrict const  dfloat *  lambda,
@@ -146,7 +147,7 @@
 	r_W[0]  = s_W  [j][i];
 
 	//face 0
-	if(EToBM[e*p_Nfaces+0]>0){
+	if(EToB[e*p_Nfaces+0]>0){
 	  r_rhsU[0] += s_ndU[j][i];
 	  r_rhsV[0] += s_ndV[j][i];
 	  r_rhsW[0] += s_ndW[j][i];
@@ -175,7 +176,7 @@
 	r_W   [p_Nq-1]  = s_W  [j][i];
   
 	//face 5
-	if(EToBM[e*p_Nfaces+5]>0){
+	if(EToB[e*p_Nfaces+5]>0){
 	  r_rhsU[p_Nq-1] += s_ndU[j][i];
 	  r_rhsV[p_Nq-1] += s_ndV[j][i];
 	  r_rhsW[p_Nq-1] += s_ndW[j][i];
@@ -207,7 +208,7 @@
 	    r_V[k]  = s_V  [k][i];
 	    r_W[k]  = s_W  [k][i];
       
-	    if(EToBM[e*p_Nfaces+1]>0){
+	    if(EToB[e*p_Nfaces+1]>0){
 	      r_rhsU[k] += s_ndU[k][i];
 	      r_rhsV[k] += s_ndV[k][i];
 	      r_rhsW[k] += s_ndW[k][i]; 
@@ -240,7 +241,7 @@
 	    r_V[k]  = s_V[k][i];
 	    r_W[k]  = s_W[k][i];
         
-	    if(EToBM[e*p_Nfaces+3]>0){
+	    if(EToB[e*p_Nfaces+3]>0){
 	      r_rhsU[k] += s_ndU[k][i];
 	      r_rhsV[k] += s_ndV[k][i];
 	      r_rhsW[k] += s_ndW[k][i];
@@ -272,7 +273,7 @@
 	    r_V[k] = s_V[k][j];
 	    r_W[k] = s_W[k][j];
       
-	    if(EToBM[e*p_Nfaces+2]>0){
+	    if(EToB[e*p_Nfaces+2]>0){
 	      r_rhsU[k] += s_ndU[k][j];
 	      r_rhsV[k] += s_ndV[k][j];
 	      r_rhsW[k] += s_ndW[k][j];
@@ -305,7 +306,7 @@
 	    r_V[k]  = s_V[k][j];
 	    r_W[k]  = s_W[k][j];
       
-	    if(EToBM[e*p_Nfaces+4]>0){
+	    if(EToB[e*p_Nfaces+4]>0){
 	      r_rhsU[k] += s_ndU[k][j];
 	      r_rhsV[k] += s_ndV[k][j];
 	      r_rhsW[k] += s_ndW[k][j];
@@ -456,7 +457,7 @@
 				   @restrict const  dfloat *  z,
 				   @restrict const  dlong  *  vmapM,
                                    @restrict const  int    *  EToBM,
-                                   @restrict const  int    *  mapB,
+                                   @restrict const  int    *  EToB,
                                    @restrict const  dfloat *  W,
                                    @restrict const  dfloat *  U,
 				   @restrict dfloat *  UH){
@@ -470,27 +471,27 @@
          const int sk = e*p_Nfp*p_Nfaces + n; 
          const dlong sid  = e*p_Nfaces*p_Nfp + n;
 	 const dlong idM = vmapM[sk];
-	 const dlong bcType = mapB[idM];
+	 const dlong bcType = EToB[f + p_Nfaces*e];
 
 	if(bcType>0) {
           bc.id = EToBM[f + p_Nfaces*e];
           bc.idM = idM; 
           bc.time = time; 
-          bc.x  = x[bc.idM]; 
-          bc.y  = y[bc.idM]; 
-          bc.z  = z[bc.idM]; 
+          bc.x  = x[idM]; 
+          bc.y  = y[idM]; 
+          bc.z  = z[idM]; 
           
           bc.nx = sgeo[sid*p_Nsgeo+p_NXID];
           bc.ny = sgeo[sid*p_Nsgeo+p_NYID];
           bc.nz = sgeo[sid*p_Nsgeo+p_NZID];
    
-          bc.uM = U[bc.idM + 0*offset]; 
-          bc.vM = U[bc.idM + 1*offset]; 
-          bc.wM = U[bc.idM + 2*offset]; 
+          bc.uM = U[idM + 0*offset]; 
+          bc.vM = U[idM + 1*offset]; 
+          bc.wM = U[idM + 2*offset]; 
    
-          bc.uP = UH[bc.idM + 0*offset]; 
-          bc.vP = UH[bc.idM + 1*offset];
-          bc.wP = UH[bc.idM + 2*offset]; 
+          bc.uP = UH[idM + 0*offset]; 
+          bc.vP = UH[idM + 1*offset];
+          bc.wP = UH[idM + 2*offset]; 
           bc.pP = 0.f;  
           bc.wrk = (dfloat *) W;
           bc.fieldOffset = offset; 
@@ -506,9 +507,9 @@
 	  }else if(bcType==6){
 	    bc.wP = 0.f; // vP = vM ; uP = uM;           
 	  }
-	  UH[bc.idM + 0*offset] = bc.uP;
-	  UH[bc.idM + 1*offset] = bc.vP;
-	  UH[bc.idM + 2*offset] = bc.wP;
+	  UH[idM + 0*offset] = bc.uP;
+	  UH[idM + 1*offset] = bc.vP;
+	  UH[idM + 2*offset] = bc.wP;
 	}    
       }
     }

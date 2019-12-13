@@ -40,18 +40,20 @@ SOFTWARE.
 
       const dlong id = n + e*p_Np;
 
-      dfloat ress =   resS[id+i*soffset];
-      dfloat rhss =  -rhsS[id+i*soffset];// -Nu !!!!!!
-      dfloat sn   =      S[id+i*soffset];
+      #pragma unroll p_NSfields
+      for (int i=0;i<p_NSfields;i++) {
+        dfloat ress =   resS[id+i*soffset];
+        dfloat rhss =  -rhsS[id+i*soffset];// -Nu !!!!!!
+        dfloat sn   =      S[id+i*soffset];
 
-      ress = rka*ress + dt*rhss;
-      sn += rkb*ress;
+        ress = rka*ress + dt*rhss;
+        sn += rkb*ress;
 
-      resS[id+i*soffset] = ress;
-      S[id+i*soffset]    = sn;
+        resS[id+i*soffset] = ress;
+        S[id+i*soffset]    = sn;
+      }
     }
   }
-
 }
 
 
@@ -60,7 +62,7 @@ SOFTWARE.
                            const dlong voffset,
                            @restrict const  dfloat *  c,
                            @restrict const  dfloat *  U,
-                           @restrict dfloat *  Ue){
+                                 @restrict dfloat *  Ue){
 
  // Low storage Runge Kutta time step update
   for(dlong e=0;e<Nelements;++e;@outer(0)){
@@ -68,7 +70,7 @@ SOFTWARE.
       const dlong id = n+p_Np*e;
       
       #pragma unroll p_NVfields
-      for (int i=0;i<p_NVfields;i++) {
+      for (int i=0;i<0*p_NVfields;i++) {
         dfloat Un = 0.f;
 
         for (int s=0;s<Nstages;s++) {
@@ -81,5 +83,5 @@ SOFTWARE.
       }
     }
   }
-
 }
+

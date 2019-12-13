@@ -145,7 +145,7 @@
     bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                             \
     bc.wrk = (double *) W;                                              \
     bc.id  = EToBM[face+p_Nfaces*e];                                    \
-    const dlong bcType = mapB[idM];                                     \
+    const dlong bcType = EToB[face+p_Nfaces*e];                         \                                     \
     if(bcType>0) {                                                      \
       if(bcType==1){                                                    \
         bc.uP = 0.f;  bc.vP = 0.f; bc.wP = 0.f;                         \
@@ -169,6 +169,7 @@
 					    @restrict const  dlong  *  vmapM,
 					    @restrict const  dlong  *  mapB,
 					    @restrict const  int    *  EToBM,
+					    @restrict const  int    *  EToB,
 					    const dfloat time,
 					    const dfloat coef,
 					    @restrict const  dfloat *  x,
