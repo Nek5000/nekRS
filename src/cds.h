@@ -58,6 +58,8 @@ typedef struct {
   //RK Subcycle Data
   int SNrk;
   dfloat *Srka, *Srkb, *Srkc; 
+  occa::memory o_Srka, o_Srkb;
+
   //EXTBDF data
   dfloat *extbdfA, *extbdfB, *extbdfC;
   dfloat *extC;
@@ -86,8 +88,8 @@ typedef struct {
 
   int Nsubsteps;
   dfloat sdt; 
-  dfloat *Ue, *resS;
-  occa::memory o_Ue, o_resS;
+  dfloat *Ue;
+  occa::memory o_Ue;
 
   int var_coeff;
   dfloat *prop, *ellipticCoeff; 
