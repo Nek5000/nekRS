@@ -35,7 +35,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if (rank == 0) {
     #include "printHeader.inc"
-    cout << "MPI ranks: " << size << endl << endl;
+    cout << "MPI tasks: " << size << endl << endl;
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 

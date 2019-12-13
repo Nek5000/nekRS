@@ -7,7 +7,7 @@ polynomialOrder = 7
 stopAt = numSteps
 numSteps = 300
 dt = 1e-03
-timeStepper = bdf2
+timeStepper = tombo2
 writeInterval = 100
 
 [PROBLEMTYPE]

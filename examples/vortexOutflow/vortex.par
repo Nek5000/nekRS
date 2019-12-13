@@ -8,7 +8,7 @@ polynomialOrder = 7
 stopAt = endTime
 endTime = 15
 dt = 2e-03
-timeStepper = bdf2
+timeStepper = tombo2
 writeInterval = 500
 
 [PRESSURE]
@@ -19,4 +19,4 @@ residualTol = 1e-05
 boundaryTypeMap = inlet, outlet
 residualTol = 1e-08
 density = 1.0
-viscosity = -1000 
+viscosity = 1/1000 

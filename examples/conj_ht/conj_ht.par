@@ -7,6 +7,7 @@ deviceNumber = LOCAL-RANK
 polynomialOrder = 7
 numSteps = 1000 
 dt = 2e-02
+timeStepper = tombo2
 writeInterval = 100
 
 [PROBLEMTYPE]

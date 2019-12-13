@@ -9,16 +9,16 @@ stopAt = endTime
 endTime = 100 
 
 dt = 3e-03
-timeStepper = bdf2 
-extrapolation = OIFS # disable after transition
-targetCFL = 2.0
+timeStepper = tombo2 
+extrapolation = subCycling # disable after transition
+subCyclingSteps = 1
 
 writeControl = runTime
 writeInterval = 5
 
 filtering = hpfrt
 filterWeight = 15
-filterCutoffRatio = 0.9
+filterModes = 1
 
 [PRESSURE]
 preconditioner = semg_amg

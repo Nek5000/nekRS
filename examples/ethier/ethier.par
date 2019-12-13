@@ -8,13 +8,13 @@ polynomialOrder = 7
 stopAt = numSteps
 numSteps = 1000 
 dt = 2e-04
-timeStepper = bdf2
+timeStepper = tombo2
 writeControl = runTime
 writeInterval = 0.1
 
 [PRESSURE]
 preconditioner = semg_amg
-amgSolver = parAlmond
+#amgSolver = parAlmond
 residualTol = 1e-08
 
 [VELOCITY]
