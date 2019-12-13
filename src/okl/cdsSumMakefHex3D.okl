@@ -54,17 +54,16 @@ SOFTWARE.
               dfloat sum = 0;
 
               if (p_SUBCYCLING) {
-                const dfloat NSm = NS[id+0*sOffset];
+                const dfloat NSm = NS[id];
                 sum += rhoM * idt*NSm;
                  for (int s=0;s<p_Nstages;s++) {
-                  const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  const dfloat FSm = FS[id+s*p_NSfields*sOffset];
                   sum += extbdfA[s]*FSm;
                 }
               }else {
                  for (int s=0;s<p_Nstages;s++) {
-                  const dfloat Sm  =  S[id+0*sOffset+s*p_NSfields*sOffset];
-                  const dfloat NSm = NS[id+0*sOffset+s*p_NSfields*sOffset];
-                  const dfloat FSm = FS[id+0*sOffset+s*p_NSfields*sOffset];
+                  const dfloat Sm  =  S[id+s*p_NSfields*sOffset];
+                  const dfloat FSm = FS[id+s*p_NSfields*sOffset];
                   // non-linear terms are multiplied by rho already
                   sum += rhoM*idt*extbdfB[s]*Sm + extbdfA[s]*FSm;
                   }

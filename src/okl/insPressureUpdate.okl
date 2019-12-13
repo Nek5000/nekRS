@@ -34,11 +34,11 @@ SOFTWARE.
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const dlong id  = n + e*p_Np;
-      const int bcType = mapB[id]; // 1 means Dirichlet
+      const int bcType = mapB[id];
       const dfloat princ = PI[id];
       dfloat pr = P[id];
 
-      if(bcType == 1) // already updated 
+      if(bcType == 1) // Dirichlet already updated 
         pr = princ;
       else
         pr += princ; 

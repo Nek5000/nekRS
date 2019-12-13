@@ -33,32 +33,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (nekData.nelv != nekData.nelt) cht = 1;
 
   if (buildOnly) {
-    ins->meshT = createMeshDummy(comm, N);
+    ins->meshT = createMeshDummy(comm, N, options, kernelInfo);
     ins->mesh = ins->meshT;
-    // init device
-    meshOccaSetup3D(ins->mesh, options, kernelInfo);
   } else {
-    ins->meshT = createMeshT(comm, N, cht);
-    bcMap::check(ins->meshT);
-    // init device
-    meshOccaSetup3D(ins->meshT, options, kernelInfo);
-    // free what is not required
-    ins->meshT->o_cubsgeo.free();
-    ins->meshT->o_cubggeo.free();
-    ins->meshT->o_cubsgeo = (void *) NULL;
-    ins->meshT->o_cubggeo = (void *) NULL;
-
+    ins->meshT = createMeshT(comm, N, cht, options, kernelInfo);
     ins->mesh = ins->meshT;
-    if (cht) {
-      ins->mesh = createMeshV(comm, N, ins->meshT);
-      bcMap::check(ins->mesh);
-      meshVOccaSetup3D(ins->mesh, options, kernelInfo);
-    }
+    if (cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
   }
   mesh_t *mesh = ins->mesh;
-
-  if (mesh->rank==0) 
-    printf("Nq: %d \t cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   ins->NVfields = (ins->dim==3) ? 3:2; //  Total Number of Velocity Fields
   ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
@@ -302,13 +284,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
  
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) filterSetup(ins); 
     
-  // setup scalar solve
-  if(ins->Nscalar) {
-   mesh_t *msh;
-   (cht) ? msh = ins->meshT : msh = ins->mesh;
-   ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
-  }
-
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
   //make option objects for elliptc solvers
@@ -435,7 +410,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
  
   ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
 
-  // create boundary mapping
+  // setup boundary mapping
   dfloat largeNumber = 1<<20;
   ins->VmapB = (int *) calloc(mesh->Nelements*mesh->Np,sizeof(int));
   for (int e=0;e<mesh->Nelements;e++) {
@@ -452,7 +427,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       if (bc>0) {
 	for (int n=0;n<mesh->Nfp;n++) {
 	  int fid = mesh->faceNodes[n+f*mesh->Nfp];
-	  ins->VmapB[fid+e*mesh->Np] = mymin(bc,ins->VmapB[fid+e*mesh->Np]); // Dirichlet wins
+          ins->VmapB[fid+e*mesh->Np] = mymin(bc,ins->VmapB[fid+e*mesh->Np]); // Dirichlet wins
 	}
       }
       cnt++;
@@ -502,7 +477,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->o_velocityHaloGatherTmp = mesh->device.malloc(vGatherBytes,  ins->velocityHaloGatherTmp);
   }
 
-  // load kernels
+  // build kernels
   string fileName, kernelName ;
   string suffix;
 
@@ -699,6 +674,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
+  // setup scalar solve
+  if(ins->Nscalar) {
+   mesh_t *msh;
+   (cht) ? msh = ins->meshT : msh = ins->mesh;
+   ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
+  }
+
+
   return ins;
 }
 
@@ -856,6 +839,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     const dfloat lambda = 1; // not used if var_coeff
     ellipticSolveSetup(cds->solver[is], lambda, kernelInfoH); 
 
+    // setup boundary mapping
     dfloat largeNumber = 1<<20;
     cds->mapB[is] = (int *) calloc(mesh->Nelements*mesh->Np,sizeof(int));
     int *mapB = cds->mapB[is];
@@ -874,8 +858,11 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
         if (bc>0) {
           for (int n=0;n<mesh->Nfp;n++) {
             int fid = mesh->faceNodes[n+f*mesh->Nfp];
-            mapB[fid+e*mesh->Np] = mymin(bc,mapB[fid+e*mesh->Np]);
-          }
+            if(bc != 1 && ins->VmapB[fid+e*mesh->Np] != 1)
+              mapB[fid+e*mesh->Np] = mapB[fid+e*mesh->Np]; // for Neumann BCs do nothing      
+            else
+              mapB[fid+e*mesh->Np] = mymin(bc,mapB[fid+e*mesh->Np]); // Dirichlet wins
+	  }
         }
         cnt++;
       }
@@ -884,16 +871,14 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     ogsGatherScatter(mapB, ogsInt, ogsMin, mesh->ogs);
     
     for (int n=0;n<mesh->Nelements*mesh->Np;n++) {
-      if (mapB[n] == largeNumber) {
-        mapB[n] = 0.;
-      }
+      if (mapB[n] == largeNumber) mapB[n] = 0;
     }
   
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), mapB);
   }
 
-  // mass lumping
+  // build inverse mass matrix
   dfloat *lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
   for(hlong e=0;e<mesh->Nelements;++e){
     for(int n=0;n<mesh->Np;++n){
@@ -947,7 +932,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     }
   }
 
-  // set kernel name suffix
+  // build kernels
   string suffix, fileName, kernelName;
   if(cds->elementType==QUADRILATERALS)
      suffix = "Quad2D";

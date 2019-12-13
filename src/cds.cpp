@@ -49,6 +49,6 @@ void cdsSolve(const int is, cds_t *cds, dfloat time, occa::memory o_wrk, occa::m
                             mesh->o_z,
                             mesh->o_vmapM,
                             mesh->o_EToB,
-                            cds->o_mapB[is],
+                            cds->o_EToB[is],
                             o_Shat);
 }

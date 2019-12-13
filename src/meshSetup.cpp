@@ -2,7 +2,9 @@
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 
-mesh_t *createMeshDummy(MPI_Comm comm, int N) {
+void meshVOccaSetup3D(mesh_t *mesh, setupAide &options, occa::properties &kernelInfo);
+
+mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properties& kernelInfo) {
 
   mesh_t *mesh = new mesh_t[1];
 
@@ -13,7 +15,7 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N) {
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
- 
+
   mesh->Nfields = 1;
   mesh->dim = 3;
   mesh->Nverts = 8; // number of vertices per element
@@ -115,6 +117,8 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N) {
   
   // load reference (r,s,t) element nodes
   libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+  if (mesh->rank==0)
+    printf("loaded nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);
@@ -134,10 +138,12 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N) {
   // global nodes
   libParanumal::meshParallelConnectNodes(mesh);
 
+  meshOccaSetup3D(mesh, options, kernelInfo);
+
   return mesh; 
 }
 
-mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT) 
+mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa::properties& kernelInfo) 
 {
   mesh_t *mesh = new mesh_t[1];
 
@@ -162,6 +168,8 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT)
 
   // load reference (r,s,t) element nodes
   libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+  if (mesh->rank==0)
+    printf("loaded nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);
@@ -181,10 +189,19 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT)
   // global nodes
   libParanumal::meshParallelConnectNodes(mesh); 
 
+  bcMap::check(mesh);
+
+  meshOccaSetup3D(mesh, options, kernelInfo);
+
+  mesh->o_cubsgeo.free();
+  mesh->o_cubggeo.free();
+  mesh->o_cubsgeo = (void *) NULL;
+  mesh->o_cubggeo = (void *) NULL;
+
   return mesh;
 }
 
-mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT)
+mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT, setupAide &options, occa::properties& kernelInfo)
 {
   mesh_t *mesh = new mesh_t[1];
 
@@ -232,6 +249,9 @@ mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT)
   // uniquely label each node with a global index, used for gatherScatter
   // mesh->globalIds
   libParanumal::meshParallelConnectNodes(mesh);
+
+  bcMap::check(mesh);
+  meshVOccaSetup3D(mesh, options, kernelInfo);
 
   return mesh;
 }

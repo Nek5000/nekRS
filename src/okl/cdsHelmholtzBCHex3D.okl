@@ -359,7 +359,7 @@
 				   @restrict const  dfloat *  z,
 				   @restrict const  dlong  *  vmapM,
 				   @restrict const  int    *  EToBM,
-				   @restrict const  int    *  mapB,
+				   @restrict const  int    *  EToB,
 				   @restrict dfloat *  S){
 
   for(dlong e=0;e<Nelements;e++;@outer(0)){
@@ -370,15 +370,15 @@
         const int n = m + f*p_Nfp;        
         const int sk = e*p_Nfp*p_Nfaces + n; 
         const dlong idM = vmapM[sk];
-        const dlong bcType = mapB[idM];
+        const dlong bcType = EToB[f + p_Nfaces*e];
 
         if(bcType==1) {
           bc.id = EToBM[f + p_Nfaces*e];
           bc.idM = idM; 
           bc.time = time; 
-          bc.x  = x[bc.idM]; 
-          bc.y  = y[bc.idM]; 
-          bc.z  = z[bc.idM]; 
+          bc.x  = x[idM]; 
+          bc.y  = y[idM]; 
+          bc.z  = z[idM]; 
           bc.sM = S[idM];
           bc.scalarId = scalarId;
   
