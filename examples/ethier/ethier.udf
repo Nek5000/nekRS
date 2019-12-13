@@ -18,8 +18,11 @@ void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
   mesh_t *mesh = ins->mesh; 
   cds_t *cds   = ins->cds; 
   const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->fieldOffset, o_FS);
 
+  occa::memory o_FS1 = o_FS.slice(0*cds->fieldOffset*sizeof(dfloat));
+  occa::memory o_FS2 = o_FS.slice(1*cds->fieldOffset*sizeof(dfloat));
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->fieldOffset, o_FS1);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, cds->fieldOffset, o_FS2);
 }                                                   
 
 void UDF_LoadKernels(ins_t *ins)

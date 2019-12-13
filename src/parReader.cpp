@@ -45,6 +45,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
+  options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
 
   options.setArgs("CASENAME", casename);
   options.setArgs("UDF OKL FILE", casename + ".oudf");
@@ -134,6 +135,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("DEVICE NUMBER", deviceNumber);
 
   // GENERAL
+  bool verbose = false;
+  if(ini.extract("general", "verbose", verbose))
+    if(verbose) options.setArgs("VERBOSE", "TRUE");
+
   string startFrom;
   if (ini.extract("general", "startfrom", startFrom)) {
     options.setArgs("RESTART FROM FILE", "1");

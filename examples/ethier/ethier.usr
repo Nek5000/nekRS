@@ -36,7 +36,7 @@ C-----------------------------------------------------------------------
      &              ,wo2(lx1,ly1,lz1,lelv)
      &              ,omg(lx1*ly1*lz1*lelv,ldim)
 
-      common /SCNRS/ wrk(2)
+      common /SCNRS/ wrk(4)
 
       n  = nelv*nx1*ny1*nz1
       n2 = nelv*nx2*ny2*nz2
@@ -60,6 +60,10 @@ C-----------------------------------------------------------------------
       terrl2 = glsc3(terr,bm1,terr,n)
       terrl2 = sqrt(terrl2)
 
+      call sub3(terr,t(1,1,1,1,2),uxe,n)
+      serrl2 = glsc3(terr,bm1,terr,n)
+      serrl2 = sqrt(serrl2)
+
       call sub3(prerr,pr,pre,n2)
       prerrl2 = glsc3(prerr,bm2,prerr,n2)
       prerrl2 = sqrt(prerrl2)
@@ -67,9 +71,10 @@ C-----------------------------------------------------------------------
       wrk(1) = uxerrl2
       wrk(2) = prerrl2
       wrk(3) = terrl2
+      wrk(4) = serrl2
 
       if (nid.eq.nio) write(6,*) istep,time,uxerrl2,prerrl2,
-     &                           terrl2, ' L2 err'
+     &                           terrl2,serrl2,' L2 err'
 
       return
       end

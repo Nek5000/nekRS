@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void cdsSubCycleRKUpdate(const dlong Nelements,
+@kernel void cdsSubCycleLSERKUpdate(const dlong Nelements,
                                 const dfloat dt,  
                                 const dfloat rka,
                                 const dfloat rkb,
@@ -34,43 +34,67 @@ SOFTWARE.
                                 @restrict dfloat  *  resS,
                                 @restrict dfloat  *  S){
 
-  // Low storage Runge Kutta time step update
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
 
       const dlong id = n + e*p_Np;
 
-      #pragma unroll p_NSfields
-      for (int i=0;i<p_NSfields;i++) {
-        dfloat ress =   resS[id+i*soffset];
-        dfloat rhss =  -rhsS[id+i*soffset];// -Nu !!!!!!
-        dfloat sn   =      S[id+i*soffset];
+      dfloat ress =   resS[id];
+      dfloat rhss =  -rhsS[id];// -Nu !!!!!!
+      dfloat sn   =      S[id];
 
-        ress = rka*ress + dt*rhss;
-        sn += rkb*ress;
+      ress = rka*ress + dt*rhss;
+      sn += rkb*ress;
 
-        resS[id+i*soffset] = ress;
-        S[id+i*soffset]    = sn;
-      }
+      resS[id] = ress;
+      S[id]    = sn;
     }
   }
 }
 
+@kernel void cdsSubCycleERKUpdate(const dlong Nelements,
+                                const int stage,
+                                const dfloat dt,  
+                                const dlong soffset,
+                                @restrict const dfloat * rka,
+                                @restrict const dfloat * rkb,
+                                @restrict dfloat  *  Ss, // U0 at Tn                                 
+                                @restrict dfloat  *  RHSS,
+                                @restrict dfloat  *  S){
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = n + e*p_Np;
+      if(stage==3){ // Final stage
+        dfloat sn = Ss[id]; 
+        for(int st=0; st<stage+1; st++){
+          sn -= dt*rkb[st]*RHSS[id + st*soffset];
+        }
+        S[id] = sn; 
+      }
+      else{
+        dfloat rhss = RHSS[id];
+        dfloat sn   = Ss[id]; 
+        // Intermediate stage Update
+        S[id] = sn - dt*rka[stage+1]*rhss;
+      }
+    }
+  }
+}
 
 @kernel void cdsSubCycleExt(const dlong Nelements,
                            const int Nstages,
                            const dlong voffset,
                            @restrict const  dfloat *  c,
                            @restrict const  dfloat *  U,
-                                 @restrict dfloat *  Ue){
+                           @restrict dfloat *  Ue){
 
- // Low storage Runge Kutta time step update
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const dlong id = n+p_Np*e;
       
       #pragma unroll p_NVfields
-      for (int i=0;i<0*p_NVfields;i++) {
+      for (int i=0;i<p_NVfields;i++) {
         dfloat Un = 0.f;
 
         for (int s=0;s<Nstages;s++) {
@@ -84,4 +108,3 @@ SOFTWARE.
     }
   }
 }
-

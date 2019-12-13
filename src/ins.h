@@ -19,6 +19,8 @@ typedef struct {
   elliptic_t *wSolver;
   elliptic_t *pSolver;
   cds_t      *cds;
+
+  dlong ellipticWrkSize; 
   
   int Nscalar; 
   setupAide options;
@@ -55,7 +57,8 @@ typedef struct {
 
   //RK Subcycle Data
   int SNrk;
-  dfloat *Srka, *Srkb, *Srkc; 
+  dfloat *Srka, *Srkb, *Srkc;
+  occa::memory o_Srka, o_Srkb; 
 
   //ARK data
   int Nrk;
@@ -89,8 +92,8 @@ typedef struct {
   occa::memory o_scratch;
 
   int Nsubsteps;  
-  dfloat *Ue, *resU, sdt;
-  occa::memory o_Ue, o_resU;
+  dfloat *Ue, sdt;
+  occa::memory o_Ue;
 
   int lowMach;
   dfloat *qtl;

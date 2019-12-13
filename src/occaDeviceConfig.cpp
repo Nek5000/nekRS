@@ -50,7 +50,7 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
     sprintf(deviceConfig, "mode: 'OpenMP' ");
   }
   else{
-    sprintf(deviceConfig, "mode: 'Serial' ");
+    sprintf(deviceConfig, "mode: 'Serial', memory: { use_host_pointer: true }");
     options.setArgs("THREAD MODEL", "SERIAL");
   }
 

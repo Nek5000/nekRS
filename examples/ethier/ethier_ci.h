@@ -12,6 +12,9 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
   options.setArgs("VISCOSITY", string("0.01"));
   options.setArgs("DENSITY", string("1"));
+  options.setArgs("NUMBER OF SCALARS", string("2"));
+  options.setArgs("SCALAR00 DIFFUSIVITY", string("0.01"));
+  options.setArgs("SCALAR00 DENSITY", string("1"));
   options.setArgs("SCALAR01 DIFFUSIVITY", string("0.01"));
   options.setArgs("SCALAR01 DENSITY", string("1"));
   options.setArgs("FINAL TIME", string("0.1"));
@@ -36,21 +39,23 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_userchk();
 
   double *err = nekData.cbscnrs;
-  double vxErr, prErr, sErr;
+  double vxErr, prErr, s1Err, s2Err;
 
   switch (ciMode) {
     case 1: vxErr = abs((err[0] - 1.19E-04)/err[0]);
             prErr = abs((err[1] - 6.48E-04)/err[1]);
-            sErr  = abs((err[2] - 1.01E-04)/err[2]);
+            s1Err  = abs((err[2] - 1.01E-04)/err[2]);
+            s2Err  = abs((err[3] - 1.01E-04)/err[3]);
             break;
     case 2: vxErr = abs((err[0] - 1.19E-04)/err[0]);
             prErr = abs((err[1] - 6.50E-04)/err[1]);
-            sErr  = abs((err[2] - 1.01E-04)/err[2]);
+            s1Err  = abs((err[2] - 1.01E-04)/err[2]);
+            s2Err  = abs((err[3] - 1.01E-04)/err[3]);
             break;
   }
 
   if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g s=%g\n", vxErr, prErr, sErr);
+    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g\n", vxErr, prErr, s1Err, s2Err);
 
-  (vxErr < EPS && prErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS) ? (PASS) : (FAIL); 
 }
