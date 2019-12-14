@@ -247,9 +247,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   // setup scratch space
   const int ellipticWrkNflds = 9; 
   ins->ellipticWrkSize = ellipticWrkNflds*NtotalMax;
-  int nFieldsScratch = 9+ins->ellipticWrkSize;
-  ins->scratch   = (dfloat*) calloc(nFieldsScratch*NtotalMax,sizeof(dfloat));
-  ins->o_scratch = mesh->device.malloc(nFieldsScratch*NtotalMax*sizeof(dfloat), ins->scratch);
+  const int scratchNflds = 9+ellipticWrkNflds;
+  ins->scratch   = (dfloat*) calloc(scratchNflds*NtotalMax,sizeof(dfloat));
+  ins->o_scratch = mesh->device.malloc(scratchNflds*NtotalMax*sizeof(dfloat), ins->scratch);
 
   // dummy decleration for user work space 
   ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
