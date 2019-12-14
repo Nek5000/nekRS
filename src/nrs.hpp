@@ -11,7 +11,7 @@
 #include <mpi.h>
 
 #define NEKRS_VERSION "0"
-#define NEKRS_SUBVERSION "4"
+#define NEKRS_SUBVERSION "5"
 
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
 
