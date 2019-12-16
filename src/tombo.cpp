@@ -210,7 +210,7 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_wrk1, occa::memory o_
   occa::memory o_wrk1w = o_wrk1.slice(2*ins->fieldOffset*sizeof(dfloat));
  
   // Use old velocity for velocity solver initial condition
-  o_Unew.copyFrom(ins->o_U,ins->NVfields*ins->Ntotal*sizeof(dfloat));
+  o_Unew.copyFrom(ins->o_U,ins->NVfields*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_u = o_Unew.slice(0*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_v = o_Unew.slice(1*ins->fieldOffset*sizeof(dfloat));
   occa::memory o_w = o_Unew.slice(2*ins->fieldOffset*sizeof(dfloat));

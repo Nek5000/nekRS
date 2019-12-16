@@ -167,7 +167,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
   occa::memory o_adv = o_scratch6.slice(0*1*cds->fieldOffset*sizeof(dfloat));
   occa::memory o_wrk5 = o_scratch6.slice(1*cds->fieldOffset*sizeof(dfloat));
 
-  cds->setScalarKernel(cds->Ntotal*cds->NSfields, 0.0, cds->o_FS);
+  cds->setScalarKernel(cds->fieldOffset*cds->NSfields, 0.0, cds->o_FS);
 
   if(udf.sEqnSource) udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
     
@@ -192,7 +192,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
            o_Si,
            o_FSi);
 
-    cds->setScalarKernel(cds->Ntotal, 0.0, o_adv);
+    cds->setScalarKernel(cds->fieldOffset, 0.0, o_adv);
     if(cds->Nsubsteps) {
       scalarStrongSubCycle(cds, time, cds->Nstages, o_wrk5, cds->o_U, o_Si, o_adv);
     } else {
@@ -259,7 +259,7 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
   for (int s=cds->Nstages;s>1;s--) {
     cds->o_FS.copyFrom(
            cds->o_FS, 
-           cds->Ntotal*cds->NSfields*sizeof(dfloat), 
+           cds->fieldOffset*cds->NSfields*sizeof(dfloat), 
            (s-1)*cds->fieldOffset*cds->NSfields*sizeof(dfloat), 
            (s-2)*cds->fieldOffset*cds->NSfields*sizeof(dfloat));
   }
@@ -288,7 +288,7 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
     for (int s=cds->Nstages;s>1;s--) {
       o_S.copyFrom(
         o_S, 
-        cds->Ntotal*sizeof(dfloat), 
+        cds->fieldOffset*sizeof(dfloat), 
         ((s-1)*(cds->fieldOffset*cds->NSfields) + is*cds->fieldOffset)*sizeof(dfloat), 
         ((s-2)*(cds->fieldOffset*cds->NSfields) + is*cds->fieldOffset)*sizeof(dfloat));
     }
@@ -303,12 +303,12 @@ void makef(ins_t *ins, dfloat time, occa::memory o_scratch18, occa::memory o_BF)
   for (int s=ins->Nstages;s>1;s--) {
     ins->o_FU.copyFrom(
       ins->o_FU, 
-      ins->Ntotal*ins->NVfields*sizeof(dfloat), 
+      ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
       (s-1)*ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
       (s-2)*ins->fieldOffset*ins->NVfields*sizeof(dfloat));
   }
 
-  ins->setScalarKernel(ins->Ntotal*ins->NVfields, 0.0, ins->o_FU);
+  ins->setScalarKernel(ins->fieldOffset*ins->NVfields, 0.0, ins->o_FU);
   if(udf.uEqnSource) udf.uEqnSource(ins, time, ins->o_U, ins->o_FU);
   
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
@@ -348,7 +348,7 @@ void makef(ins_t *ins, dfloat time, occa::memory o_scratch18, occa::memory o_BF)
          o_adv);
 
     ins->scaledAddKernel(
-       ins->NVfields*ins->Ntotal, 
+       ins->NVfields*ins->fieldOffset, 
        -1.0, 
        0, 
        o_adv, 
@@ -415,11 +415,11 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     for (int s=ins->Nstages;s>1;s--) {
       o_U.copyFrom(
         o_U, 
-        ins->Ntotal*ins->NVfields*sizeof(dfloat), 
+        ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
         (s-1)*ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
         (s-2)*ins->fieldOffset*ins->NVfields*sizeof(dfloat));
     }
-    o_U.copyFrom(o_Unew, ins->NVfields*ins->Ntotal*sizeof(dfloat));
+    o_U.copyFrom(o_Unew, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
   } 
 }
 
@@ -448,9 +448,9 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder*ins->NVfields*ins->fieldOffset;
     if (torder==ins->ExplicitOrder-1) { //first substep
-      ins->scaledAddKernel(ins->NVfields*ins->Ntotal, b, toffset, o_U, zero, izero, o_Ud);
+      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, o_U, zero, izero, o_Ud);
     } else { //add the next field
-      ins->scaledAddKernel(ins->NVfields*ins->Ntotal, b, toffset, o_U,  one, izero, o_Ud);
+      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, o_U,  one, izero, o_Ud);
     }   
     
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
@@ -580,9 +580,9 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_s
     dlong toffset = torder*cds->NSfields*cds->fieldOffset;
 
     if (torder==cds->ExplicitOrder-1) { //first substep
-      cds->scaledAddKernel(cds->Ntotal, b, toffset, o_S, zero, izero, o_Sd);
+      cds->scaledAddKernel(cds->fieldOffset, b, toffset, o_S, zero, izero, o_Sd);
     } else { //add the next field
-      cds->scaledAddKernel(cds->Ntotal, b, toffset, o_S,  one, izero, o_Sd);
+      cds->scaledAddKernel(cds->fieldOffset, b, toffset, o_S,  one, izero, o_Sd);
     } 
 
     // SubProblem  starts from here from t^(n-torder)

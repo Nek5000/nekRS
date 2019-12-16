@@ -105,24 +105,35 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
 
   const dlong Nlocal = mesh->Np*mesh->Nelements;
-  ins->Nlocal  = Nlocal;
   const dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+
+  ins->Nlocal = Nlocal;
   ins->Ntotal = Ntotal;
 
-  const dlong NtotalT = ins->meshT->Np*(ins->meshT->Nelements+ins->meshT->totalHaloPairs);
-  const dlong NtotalMax = mymax(Ntotal, NtotalT);
+  { // ensure that offset is large enough for v and t mesh and is properly aligned 
+    const dlong NtotalT = ins->meshT->Np*(ins->meshT->Nelements+ins->meshT->totalHaloPairs);
+    dlong ntot = mymax(Ntotal, NtotalT);
 
-  ins->fieldOffset = Ntotal;
+    int PAGESIZE = 4096; // default is 4kB 
+    char *tmp;
+    tmp = getenv("NEKRS_PAGE_SIZE");
+    if (tmp != NULL) PAGESIZE = std::stoi(tmp);
+    const int pageW = PAGESIZE/sizeof(dfloat);
+    if (ntot%pageW) ntot = (ntot/pageW + 1)*pageW;
+
+    ins->fieldOffset = ntot;
+  }
+
   ins->Nblock = (Nlocal+blockSize-1)/blockSize;
 
-  ins->U  = (dfloat*) calloc(ins->NVfields*ins->Nstages*Ntotal,sizeof(dfloat));
-  ins->Ue = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
+  ins->U  = (dfloat*) calloc(ins->NVfields*ins->Nstages*ins->fieldOffset,sizeof(dfloat));
+  ins->Ue = (dfloat*) calloc(ins->NVfields*ins->fieldOffset,sizeof(dfloat));
 
   ins->P  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
   ins->PI = (dfloat*) calloc(Ntotal,sizeof(dfloat));
 
-  ins->BF = (dfloat*) calloc(ins->NVfields*Ntotal,sizeof(dfloat));
-  ins->FU = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*Ntotal,sizeof(dfloat));
+  ins->BF = (dfloat*) calloc(ins->NVfields*ins->fieldOffset,sizeof(dfloat));
+  ins->FU = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*ins->fieldOffset,sizeof(dfloat));
 
   if(ins->Nsubsteps){
     int Sorder; 
@@ -246,37 +257,37 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   // setup scratch space
   const int ellipticWrkNflds = 9; 
-  ins->ellipticWrkSize = ellipticWrkNflds*NtotalMax;
+  ins->ellipticWrkSize = ellipticWrkNflds*ins->fieldOffset;
   const int scratchNflds = 9+ellipticWrkNflds;
-  ins->scratch   = (dfloat*) calloc(scratchNflds*NtotalMax,sizeof(dfloat));
-  ins->o_scratch = mesh->device.malloc(scratchNflds*NtotalMax*sizeof(dfloat), ins->scratch);
+  ins->scratch   = (dfloat*) calloc(scratchNflds*ins->fieldOffset,sizeof(dfloat));
+  ins->o_scratch = mesh->device.malloc(scratchNflds*ins->fieldOffset*sizeof(dfloat), ins->scratch);
 
   // dummy decleration for user work space 
   ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
   ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
 
-  ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*Ntotal*sizeof(dfloat), ins->U);
-  ins->o_Ue = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->Ue);
+  ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*ins->fieldOffset*sizeof(dfloat), ins->U);
+  ins->o_Ue = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->Ue);
   ins->o_P  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->P);
   ins->o_PI = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->PI);
 
-  ins->o_FU = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*Ntotal*sizeof(dfloat), ins->FU);
-  ins->o_BF = mesh->device.malloc(ins->NVfields*Ntotal*sizeof(dfloat), ins->BF);
+  ins->o_FU = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*ins->fieldOffset*sizeof(dfloat), ins->FU);
+  ins->o_BF = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->BF);
 
   ins->var_coeff = 1; // use always var coeff elliptic
-  ins->ellipticCoeff  = (dfloat*) calloc(2*NtotalMax,sizeof(dfloat));
-  for (int i=0;i<2*NtotalMax;i++) // just to avoid devision by 0 in Jacobi setup 
+  ins->ellipticCoeff  = (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
+  for (int i=0;i<2*ins->fieldOffset;i++) // just to avoid devision by 0 in Jacobi setup 
       ins->ellipticCoeff[i] = 1;
-  ins->o_ellipticCoeff = mesh->device.malloc(2*NtotalMax*sizeof(dfloat), ins->ellipticCoeff);  
+  ins->o_ellipticCoeff = mesh->device.malloc(2*ins->fieldOffset*sizeof(dfloat), ins->ellipticCoeff);  
 
-  ins->prop =  (dfloat*) calloc(2*Ntotal,sizeof(dfloat));
+  ins->prop =  (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
   for (int e=0;e<mesh->Nelements;e++) { 
     for (int n=0;n<mesh->Np;n++) {
       ins->prop[0*ins->fieldOffset + e*mesh->Np + n] = mue;
       ins->prop[1*ins->fieldOffset + e*mesh->Np + n] = rho;
     }
   }
-  ins->o_prop = mesh->device.malloc(2*Ntotal*sizeof(dfloat), ins->prop);  
+  ins->o_prop = mesh->device.malloc(2*ins->fieldOffset*sizeof(dfloat), ins->prop);  
   ins->o_mue = ins->o_prop.slice(0*ins->fieldOffset*sizeof(dfloat));
   ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
 
@@ -340,6 +351,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->velTOL  = 1E-6;
  
   ins->uSolver = new elliptic_t();
+  ins->uSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
   ins->uSolver->wrk = ins->scratch; 
   ins->uSolver->o_wrk = ins->o_scratch; 
   ins->uSolver->mesh = mesh;
@@ -357,6 +369,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ellipticSolveSetup(ins->uSolver, lambda, kernelInfoV); 
 
   ins->vSolver = new elliptic_t();
+  ins->vSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
   ins->vSolver->wrk = ins->scratch;
   ins->vSolver->o_wrk = ins->o_scratch;
   ins->vSolver->mesh = mesh;
@@ -374,6 +387,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   if (ins->dim==3) {
     ins->wSolver = new elliptic_t();
+    ins->wSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
     ins->wSolver->wrk = ins->scratch;
     ins->wSolver->o_wrk = ins->o_scratch;
     ins->wSolver->mesh = mesh;
@@ -392,6 +406,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
+  ins->pSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
   ins->pSolver->wrk = ins->scratch;
   ins->pSolver->o_wrk = ins->o_scratch;
   ins->pSolver->mesh = mesh;
@@ -738,14 +753,14 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->Ntotal  = Ntotal;
 
   cds->vFieldOffset = ins->fieldOffset;
-  cds->fieldOffset  = Ntotal;
+  cds->fieldOffset  = ins->fieldOffset;
   cds->Nblock       = (Nlocal+blockSize-1)/blockSize;
 
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
-  cds->S     = (dfloat*) calloc(cds->NSfields*(cds->Nstages+0)*Ntotal,sizeof(dfloat));
-  cds->BF    = (dfloat*) calloc(cds->NSfields*Ntotal,sizeof(dfloat));
-  cds->FS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*Ntotal,sizeof(dfloat));
+  cds->S     = (dfloat*) calloc(cds->NSfields*(cds->Nstages+0)*cds->fieldOffset,sizeof(dfloat));
+  cds->BF    = (dfloat*) calloc(cds->NSfields*cds->fieldOffset,sizeof(dfloat));
+  cds->FS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*cds->fieldOffset,sizeof(dfloat));
 
   // Use Nsubsteps if INS does to prevent stability issues
   cds->Nsubsteps = ins->Nsubsteps; 
@@ -765,7 +780,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->sdt = ins->sdt; 
   cds->NtimeSteps = ins->NtimeSteps; 
 
-  cds->prop = (dfloat*) calloc(cds->NSfields*2*Ntotal,sizeof(dfloat));
+  cds->prop = (dfloat*) calloc(cds->NSfields*2*cds->fieldOffset,sizeof(dfloat));
   for(int is=0; is<cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -784,7 +799,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
       }
     }
   }
-  cds->o_prop = mesh->device.malloc(cds->NSfields*2*Ntotal*sizeof(dfloat), cds->prop);  
+  cds->o_prop = mesh->device.malloc(cds->NSfields*2*cds->fieldOffset*sizeof(dfloat), cds->prop);  
   cds->o_diff = cds->o_prop.slice(0*cds->NSfields*cds->fieldOffset*sizeof(dfloat));
   cds->o_rho  = cds->o_prop.slice(1*cds->NSfields*cds->fieldOffset*sizeof(dfloat));
 
@@ -799,9 +814,9 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
  
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
-  cds->o_S  = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*Ntotal*sizeof(dfloat), cds->S);
-  cds->o_BF = mesh->device.malloc(cds->NSfields*Ntotal*sizeof(dfloat), cds->BF);
-  cds->o_FS = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*Ntotal*sizeof(dfloat), cds->FS);
+  cds->o_S  = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*cds->fieldOffset*sizeof(dfloat), cds->S);
+  cds->o_BF = mesh->device.malloc(cds->NSfields*cds->fieldOffset*sizeof(dfloat), cds->BF);
+  cds->o_FS = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*cds->fieldOffset*sizeof(dfloat), cds->FS);
 
   //make option objects for elliptc solvers
   cds->options = options;
@@ -844,6 +859,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     cds->options.setArgs("SOLVER TOLERANCE", options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
 
     cds->solver[is] = new elliptic_t();
+    cds->solver[is]->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
     cds->solver[is]->wrk = ins->scratch;
     cds->solver[is]->o_wrk = ins->o_scratch;
     cds->solver[is]->mesh = mesh;
