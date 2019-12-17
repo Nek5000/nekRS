@@ -88,7 +88,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 
   if (cfl > 20) {
     if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
-    EXIT(0);
+    EXIT(1);
   }
 
   if (tstep%5==0) fflush(stdout);
@@ -275,9 +275,9 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
     occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
 
     cds->setEllipticCoeffKernel(
-         mesh->Nelements*mesh->Np,
+         cds->Nlocal,
          cds->g0*cds->idt,
-         cds->fieldOffset,
+         cds->solver[is]->Ntotal, // offset required by elliptic
          o_diff,
          o_rho,
          cds->o_ellipticCoeff);
@@ -382,7 +382,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   {
     ins->setEllipticCoeffPressureKernel(
       ins->Nlocal,
-      ins->fieldOffset,
+      ins->pSolver->Ntotal, // offset required by elliptic
       ins->o_rho,
       ins->o_ellipticCoeff);
 
@@ -400,7 +400,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     ins->setEllipticCoeffKernel(
       ins->Nlocal,
       ins->g0*ins->idt,
-      ins->fieldOffset,
+      ins->uSolver->Ntotal, // offset required by elliptic
       ins->o_mue,
       ins->o_rho,
       ins->o_ellipticCoeff);

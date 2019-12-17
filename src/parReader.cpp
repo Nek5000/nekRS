@@ -94,6 +94,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
+  const char *ptr = realpath(setupFile.c_str(), NULL);
+  if (!ptr) {
+     if (rank == 0) cout << "\nERROR: Cannot find " << setupFile << "!\n";
+     EXIT(-1);
+  }
+
   libParanumal::setupAide options;
 
   string casename = setupFile.substr(0, setupFile.find(".par"));
@@ -163,10 +169,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
     ABORT("No support for bdf3!"); 
   } 
-  if(timeStepper == "bdf2" || timeStepper == "tombo3") { 
+  if(timeStepper == "bdf2" || timeStepper == "tombo2") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
   } 
-  if(timeStepper == "bdf1" || timeStepper == "tombo3") { 
+  if(timeStepper == "bdf1" || timeStepper == "tombo1") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   } 
   

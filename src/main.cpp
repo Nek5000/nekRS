@@ -165,7 +165,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   cmdOptions *cmdOpt = new cmdOptions();
  
   int err = 0;
-  int foundSetup = 0;
 
   if (rank == 0){
     while(1){
@@ -185,11 +184,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
       switch(c){ 
           case 's':
               cmdOpt->setupFile.assign(optarg);  
-              cmdOpt->setupFile = cmdOpt->setupFile + ".par";
-              if (const char *ptr = realpath(cmdOpt->setupFile.c_str(), NULL)) 
-                foundSetup = 1;
-              else 
-                std::cout << "ERROR: Cannot find " << cmdOpt->setupFile << "!\n";
               break;  
           case 'b':  
               cmdOpt->buildOnly = 1;
@@ -206,7 +200,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
               err = 1;
       }
     }  
-    if (!foundSetup) err = 1;
   } 
 
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);

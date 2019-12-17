@@ -112,16 +112,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   { // ensure that offset is large enough for v and t mesh and is properly aligned 
     const dlong NtotalT = ins->meshT->Np*(ins->meshT->Nelements+ins->meshT->totalHaloPairs);
-    dlong ntot = mymax(Ntotal, NtotalT);
+    ins->fieldOffset = mymax(Ntotal, NtotalT);
 
     int PAGESIZE = 4096; // default is 4kB 
     char *tmp;
     tmp = getenv("NEKRS_PAGE_SIZE");
     if (tmp != NULL) PAGESIZE = std::stoi(tmp);
     const int pageW = PAGESIZE/sizeof(dfloat);
-    if (ntot%pageW) ntot = (ntot/pageW + 1)*pageW;
-
-    ins->fieldOffset = ntot;
+    if (ins->fieldOffset%pageW) ins->fieldOffset = (ins->fieldOffset/pageW + 1)*pageW;
   }
 
   ins->Nblock = (Nlocal+blockSize-1)/blockSize;
@@ -275,7 +273,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_BF = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->BF);
 
   ins->var_coeff = 1; // use always var coeff elliptic
-  ins->ellipticCoeff  = (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
+  ins->ellipticCoeff = (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
   for (int i=0;i<2*ins->fieldOffset;i++) // just to avoid devision by 0 in Jacobi setup 
       ins->ellipticCoeff[i] = 1;
   ins->o_ellipticCoeff = mesh->device.malloc(2*ins->fieldOffset*sizeof(dfloat), ins->ellipticCoeff);  
@@ -351,7 +349,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->velTOL  = 1E-6;
  
   ins->uSolver = new elliptic_t();
-  ins->uSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
+  ins->uSolver->wrkOffset = ins->fieldOffset;
   ins->uSolver->wrk = ins->scratch; 
   ins->uSolver->o_wrk = ins->o_scratch; 
   ins->uSolver->mesh = mesh;
@@ -369,7 +367,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ellipticSolveSetup(ins->uSolver, lambda, kernelInfoV); 
 
   ins->vSolver = new elliptic_t();
-  ins->vSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
+  ins->vSolver->wrkOffset = ins->fieldOffset;
   ins->vSolver->wrk = ins->scratch;
   ins->vSolver->o_wrk = ins->o_scratch;
   ins->vSolver->mesh = mesh;
@@ -387,7 +385,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   if (ins->dim==3) {
     ins->wSolver = new elliptic_t();
-    ins->wSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
+    ins->wSolver->wrkOffset = ins->fieldOffset;
     ins->wSolver->wrk = ins->scratch;
     ins->wSolver->o_wrk = ins->o_scratch;
     ins->wSolver->mesh = mesh;
@@ -406,7 +404,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
-  ins->pSolver->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
+  ins->pSolver->wrkOffset = ins->fieldOffset;
   ins->pSolver->wrk = ins->scratch;
   ins->pSolver->o_wrk = ins->o_scratch;
   ins->pSolver->mesh = mesh;
@@ -859,7 +857,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     cds->options.setArgs("SOLVER TOLERANCE", options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
 
     cds->solver[is] = new elliptic_t();
-    cds->solver[is]->wrkOffsetByte = ins->fieldOffset*sizeof(dfloat);
+    cds->solver[is]->wrkOffset = ins->fieldOffset;
     cds->solver[is]->wrk = ins->scratch;
     cds->solver[is]->o_wrk = ins->o_scratch;
     cds->solver[is]->mesh = mesh;
@@ -894,7 +892,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
         if (bc>0) {
           for (int n=0;n<mesh->Nfp;n++) {
             int fid = mesh->faceNodes[n+f*mesh->Nfp];
-            if(bc != 1 && ins->VmapB[fid+e*mesh->Np] != 1)
+            if(bc != 1 && mapB[fid+e*mesh->Np] != 1)
               mapB[fid+e*mesh->Np] = mapB[fid+e*mesh->Np]; // for Neumann BCs do nothing      
             else
               mapB[fid+e*mesh->Np] = mymin(bc,mapB[fid+e*mesh->Np]); // Dirichlet wins

@@ -3,7 +3,7 @@
 #define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
 #define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
 
-#define EPS 1e-2
+#define EPS 1e-1
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
@@ -25,6 +25,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-08"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
