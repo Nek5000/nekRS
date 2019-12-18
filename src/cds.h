@@ -44,7 +44,8 @@ typedef struct {
   int outputStep;
   int outputForceStep; 
   int dtAdaptStep; 
-  
+
+  int compute[NSCALAR_MAX];  
   int Niter[NSCALAR_MAX];
 
   //solver tolerances

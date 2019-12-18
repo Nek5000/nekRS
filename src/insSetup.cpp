@@ -29,16 +29,16 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
 
-  int cht = 0;
-  if (nekData.nelv != nekData.nelt) cht = 1;
+  ins->cht = 0;
+  if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
 
   if (buildOnly) {
     ins->meshT = createMeshDummy(comm, N, options, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMeshT(comm, N, cht, options, kernelInfo);
+    ins->meshT = createMeshT(comm, N, ins->cht, options, kernelInfo);
     ins->mesh = ins->meshT;
-    if (cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
+    if (ins->cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
   }
   mesh_t *mesh = ins->mesh;
 
@@ -485,7 +485,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
   ins->o_InvM = 
     mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
- 
+
+/* 
   // halo setup
   if(mesh->totalHaloPairs){
     dlong vHaloBytes = mesh->totalHaloPairs*mesh->Np*ins->NVfields*sizeof(dfloat);
@@ -509,6 +510,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
                                            ins->o_gatherTmpPinned, ins->h_gatherTmpPinned);
     ins->o_velocityHaloGatherTmp = mesh->device.malloc(vGatherBytes,  ins->velocityHaloGatherTmp);
   }
+*/
 
   // build kernels
   string fileName, kernelName ;
@@ -707,10 +709,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
-  // setup scalar solve
+  // setup scalar solver
   if(ins->Nscalar) {
    mesh_t *msh;
-   (cht) ? msh = ins->meshT : msh = ins->mesh;
+   (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
    ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
   }
 
@@ -724,7 +726,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->mesh = mesh;
  
   if (mesh->rank==0) 
-    cout << "==================SCALARS SETUP==========================\n";
+    cout << "==================SCALAR SETUP===========================\n";
                           
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -784,6 +786,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     ss << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str(); 
 
+    if(options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) continue;
+
     dfloat diff = 1;
     dfloat rho = 1;
     options.getArgs("SCALAR" + sid + " DIFFUSIVITY", diff);
@@ -818,7 +822,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
   //make option objects for elliptc solvers
   cds->options = options;
-  cds->options.setArgs("KRYLOV SOLVER",        options.getArgs("SCALAR KRYLOV SOLVER"));
+  cds->options.setArgs("KRYLOV SOLVER",        options.getArgs("SCALAR SOLVER"));
   cds->options.setArgs("DISCRETIZATION",       options.getArgs("SCALAR DISCRETIZATION"));
   cds->options.setArgs("BASIS",                options.getArgs("SCALAR BASIS"));
   /*
@@ -846,6 +850,12 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     std::stringstream ss;
     ss  << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str(); 
+
+    cds->compute[is] = 1;
+    if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
+      cds->compute[is] = 0;
+      continue;
+    }
 
     for (int bID=1; bID <= nbrBIDs; bID++) {
       string bcTypeText(bcMap::text(bID, "scalar" + sid));
@@ -937,6 +947,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_prkA    = ins->o_extbdfC;
   cds->o_prkB    = ins->o_extbdfC;
 
+/*
   if(mesh->totalHaloPairs){//halo setup
     int npe = mesh->Nfp; 
     dlong haloBytes   = mesh->totalHaloPairs*npe*(cds->NSfields + cds->NVfields)*sizeof(dfloat);
@@ -965,6 +976,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
       cds->o_shaloGatherTmp = mesh->device.malloc(sgatherBytes,  cds->shaloGatherTmp);
     }
   }
+*/
 
   // build kernels
   string suffix, fileName, kernelName;

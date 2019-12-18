@@ -97,7 +97,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   const char *ptr = realpath(setupFile.c_str(), NULL);
   if (!ptr) {
      if (rank == 0) cout << "\nERROR: Cannot find " << setupFile << "!\n";
-     EXIT(-1);
+     EXIT(1);
   }
 
   libParanumal::setupAide options;
@@ -324,8 +324,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   // SCALARS
   int nscal = 0;
+  int isStart = 0;
   if(ini.sections.count("temperature")) {
     nscal++;
+    isStart++;
 
     options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
 
@@ -376,20 +378,32 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(key.compare(0, 6, "scalar") == 0) nscal++;
   }
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
-  for (int i = 1; i<nscal; i++) {
+  for (int is = isStart; is<nscal; is++) {
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(2) << i;
+    ss << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str();
- 
+    string sidPar = sid;
+    if(isStart == 0) {
+      std::stringstream ss;
+      ss << std::setfill('0') << std::setw(2) << is+1;
+      sidPar = ss.str();
+    }
+
+    string solver;
+    ini.extract("scalar" + sidPar, "solver", solver);
+    if(solver == "none") {
+      options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
+      continue;
+    }  
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
-    if(ini.extract("scalar" + sid, + "residualtol", s_residualTol)) {
+    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol)) {
       options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
     double diffusivity; 
-    if(ini.extract("scalar" + sid, "diffusivity", sbuf)) {
+    if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
       diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for diffusivity!");
@@ -397,31 +411,31 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter SCALAR" + sid + "::diffusivity!"); 
+        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!"); 
     }
 
     double rho; 
-    if(ini.extract("scalar" + sid, "rho", sbuf)) {
+    if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       rho = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rho!");
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter SCALAR" + sid + "::rho!"); 
+        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!"); 
     }
 
     string s_bcMap;
-    if(ini.extract("scalar" + sid, "boundarytypemap", s_bcMap)) {
+    if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
     } else {
-      ABORT("Cannot find mandatory parameter SCALAR" + sid + "::boundaryTypeMap!");
+      ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!");
     } 
   }
   if(nscal) {
-    options.setArgs("SCALAR KRYLOV SOLVER", "PCG");
+    options.setArgs("SCALAR SOLVER", "PCG");
     options.setArgs("SCALAR BASIS", "NODAL");
     options.setArgs("SCALAR DISCRETIZATION", "CONTINUOUS");
   }

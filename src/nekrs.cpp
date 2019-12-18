@@ -77,7 +77,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   string casename;
   options.getArgs("CASENAME", casename);
   options.getArgs("POLYNOMIAL DEGREE", N);
-  if(rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), nscal, N, size);
   MPI_Barrier(comm);
 
   // init nek
@@ -95,8 +95,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup) udf.setup(ins);
   if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
     if(!udf.properties) {
-      if (rank ==0) cout << "ERROR: variableProperties requires udf.properties function handle" << "!\n";
-      EXIT(-1);
+      if (rank ==0) cout << "ERROR: variableProperties requires assigned udf.properties pointer" << "!\n";
+      EXIT(1);
     } 
   }
   ins->o_U.copyFrom(ins->U);
@@ -109,7 +109,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.properties) {
     udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
-                           ins->o_prop, ins->cds->o_prop);
+                   ins->o_prop, ins->cds->o_prop);
     ins->o_prop.copyTo(ins->prop); 
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
   }
@@ -122,9 +122,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
-    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
+    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
   }
   fflush(stdout);
 }
@@ -222,7 +222,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   // jit compile nek
   int nscal;
   options.getArgs("NUMBER OF SCALARS", nscal);
-  if (rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, npTarget);
+  if (rank == 0) buildNekInterface(casename.c_str(), nscal, N, npTarget);
   MPI_Barrier(comm);
 
   // init solver
@@ -241,7 +241,7 @@ static void setOUDF(libParanumal::setupAide &options)
   char *ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
     if (rank ==0) cout << "ERROR: Cannot find " << oklFile << "!\n";
-    EXIT(-1);
+    EXIT(1);
   }
   free(ptr);
 

@@ -40,8 +40,10 @@ typedef struct {
   dfloat startTime;   
   dfloat finalTime;   
 
-  int temporalOrder;
-  int ExplicitOrder; 
+  int   cht;
+
+  int   temporalOrder;
+  int   ExplicitOrder; 
   int   NtimeSteps;  // number of time steps 
   int   Nstages;     
   int   outputStep;

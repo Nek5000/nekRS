@@ -72,26 +72,24 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
-  if (mesh->rank==0) {
-    if(ins->Nscalar) {
-      printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  S: ",
-        tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-        ins->NiterP);
-      for(int is=0; is<ins->Nscalar; is++) printf("%d  ", cds->Niter[is]);
-      printf("tElapsed= %.5e s\n", MPI_Wtime()-etime0);
-    } else {
-      printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d  tElapsed= %.5e s\n",
-        tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-        ins->NiterP, MPI_Wtime()-etime0);
+  if(mesh->rank==0) {
+    printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d",
+           tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
+           ins->NiterP);
+
+    for(int is=0; is<ins->Nscalar; is++) {
+      if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
     }
+
+    printf("  tElapsed= %.5e s\n", MPI_Wtime()-etime0);
   }
 
-  if (cfl > 20) {
-    if (mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
+  if(cfl > 20) {
+    if(mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
     EXIT(1);
   }
 
-  if (tstep%5==0) fflush(stdout);
+  if(tstep%5==0) fflush(stdout);
 }
 
 void extbdfCoefficents(ins_t *ins, int order) {
@@ -174,6 +172,8 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
   for(int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
+
+    if(!cds->compute[is]) continue;
 
     occa::memory o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
     occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
@@ -270,9 +270,12 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
 
+    if(!cds->compute[is]) continue; 
+
     occa::memory o_Si   = cds->o_S.slice   (is*cds->fieldOffset*sizeof(dfloat));
     occa::memory o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
     occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_Snew = o_scratch.slice(6*cds->fieldOffset*sizeof(dfloat));
 
     cds->setEllipticCoeffKernel(
          cds->Nlocal,
@@ -282,7 +285,6 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
          o_rho,
          cds->o_ellipticCoeff);
 
-    occa::memory o_Snew = o_scratch.slice(6*cds->fieldOffset*sizeof(dfloat));
     cdsSolve(is, cds, time+dt, o_scratch6, o_Snew);
 
     for (int s=cds->Nstages;s>1;s--) {
