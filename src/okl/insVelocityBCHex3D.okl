@@ -66,6 +66,7 @@
 //RHS contributions for continuous solver
 @kernel void insVelocityBCHex3D(const dlong Nelements,
                                 const dlong offset, 
+                                const dlong lambdaOffset, 
 				@restrict const  dfloat *  ggeo,
 				@restrict const  dfloat *  sgeo,
 				@restrict const  dfloat *  D,
@@ -339,8 +340,8 @@
 	  r_GwJ = ggeo[gbase+p_GWJID*p_Np];
 
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-          lambda0 = lambda[0*offset + id];
-          lambda1 = lambda[1*offset + id];
+          lambda0 = lambda[0*lambdaOffset + id];
+          lambda1 = lambda[1*lambdaOffset + id];
 	}
       }
 

@@ -127,8 +127,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->U  = (dfloat*) calloc(ins->NVfields*ins->Nstages*ins->fieldOffset,sizeof(dfloat));
   ins->Ue = (dfloat*) calloc(ins->NVfields*ins->fieldOffset,sizeof(dfloat));
 
-  ins->P  = (dfloat*) calloc(Ntotal,sizeof(dfloat));
-  ins->PI = (dfloat*) calloc(Ntotal,sizeof(dfloat));
+  ins->P  = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
+  ins->PI = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
 
   ins->BF = (dfloat*) calloc(ins->NVfields*ins->fieldOffset,sizeof(dfloat));
   ins->FU = (dfloat*) calloc(ins->NVfields*(ins->Nstages+1)*ins->fieldOffset,sizeof(dfloat));
@@ -266,8 +266,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*ins->fieldOffset*sizeof(dfloat), ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->Ue);
-  ins->o_P  = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->P);
-  ins->o_PI = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->PI);
+  ins->o_P  = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->P);
+  ins->o_PI = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->PI);
 
   ins->o_FU = mesh->device.malloc(ins->NVfields*(ins->Nstages+1)*ins->fieldOffset*sizeof(dfloat), ins->FU);
   ins->o_BF = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->BF);
@@ -291,8 +291,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->lowMach = 0;
   if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
-  ins->qtl   = (dfloat*) calloc(Ntotal,sizeof(dfloat));
-  ins->o_qtl = mesh->device.malloc(Ntotal*sizeof(dfloat), ins->qtl);  
+  ins->qtl   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
+  ins->o_qtl = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->qtl);  
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   ins->o_rkC     = mesh->device.malloc(4*sizeof(dfloat),rkC);
@@ -746,8 +746,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->g0            = ins->g0; 
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
-  cds->Nlocal  = Nlocal;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
+  cds->Nlocal  = Nlocal;
   cds->Ntotal  = Ntotal;
 
   cds->vFieldOffset = ins->fieldOffset;

@@ -118,7 +118,7 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properti
   // load reference (r,s,t) element nodes
   libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
   if (mesh->rank==0)
-    printf("loaded nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+    printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);
@@ -169,7 +169,7 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa:
   // load reference (r,s,t) element nodes
   libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
   if (mesh->rank==0)
-    printf("loaded nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+    printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);

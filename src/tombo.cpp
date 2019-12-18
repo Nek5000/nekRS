@@ -92,6 +92,7 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_P
   ins->AxKernel(
        mesh->Nelements,
        ins->fieldOffset,
+       ins->pSolver->Ntotal,
        mesh->o_ggeo,
        mesh->o_Dmatrices,
        mesh->o_Smatrices,
@@ -184,6 +185,7 @@ void velocitySolve(ins_t *ins, dfloat time, occa::memory o_wrk1, occa::memory o_
   ins->velocityRhsBCKernel(
        mesh->Nelements,
        ins->fieldOffset,
+       ins->uSolver->Ntotal,
        mesh->o_ggeo,
        mesh->o_sgeo,
        mesh->o_Dmatrices,
