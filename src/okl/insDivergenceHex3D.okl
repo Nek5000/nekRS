@@ -143,9 +143,9 @@
     bc.vM  = U[idM+1*offset];                                           \
     bc.wM  = U[idM+2*offset];                                           \
     bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                             \
-    bc.wrk = (double *) W;                                              \
+    bc.wrk = W;                                                         \
     bc.id  = EToBM[face+p_Nfaces*e];                                    \
-    const dlong bcType = EToB[face+p_Nfaces*e];                         \                                     \
+    const dlong bcType = EToB[face+p_Nfaces*e];                         \
     if(bcType>0) {                                                      \
       if(bcType==1){                                                    \
         bc.uP = 0.f;  bc.vP = 0.f; bc.wP = 0.f;                         \

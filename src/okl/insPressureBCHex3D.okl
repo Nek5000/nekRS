@@ -65,7 +65,7 @@
         bc.vM = U[idM + 1*offset]; 
         bc.wM = U[idM + 2*offset]; 
         bc.pM = P[idM];
-        bc.wrk = (dfloat *) W; 
+        bc.wrk = W; 
 
         bc.pP = 0.f; 
         insPressureDirichletConditions3D(&bc);

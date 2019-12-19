@@ -36,6 +36,8 @@
     bc.x   = x[bc.idM];                                     \
     bc.y   = y[bc.idM];                                     \
     bc.z   = z[bc.idM];                                     \
+    bc.fieldOffset = offset;                                \
+    bc.wrk = W;                                             \
                                                             \
     const dfloat WsJ = sgeo[sk*p_Nsgeo+p_WSJID];            \
     const dlong bcType = mapB[bc.idM];                      \
@@ -65,11 +67,13 @@
                                 const dlong scalarId,
 				const dfloat time,
 				const dlong offset,
+				const dlong lambdaOffset,
 				@restrict const  dfloat *  x,
 				@restrict const  dfloat *  y,
 				@restrict const  dfloat *  z,
 				@restrict const  int    *  mapB,
 				@restrict const  dfloat *  lambda,
+                                @restrict const  dfloat *  W,
 				@restrict dfloat *  rhsU){
 
 
@@ -274,8 +278,8 @@
 	  r_GwJ = ggeo[gbase+p_GWJID*p_Np];
 
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-          lambda0 = lambda[0*offset + id]; 
-          lambda1 = lambda[1*offset + id]; 
+          lambda0 = lambda[0*lambdaOffset + id]; 
+          lambda1 = lambda[1*lambdaOffset + id]; 
 	}
       }
 
@@ -351,6 +355,7 @@
 }
 
 @kernel void cdsHelmholtzAddBCHex3D(const dlong Nelements,
+                                   const dlong offset,
                                    const dlong scalarId,
 				   const dfloat time,
 				   @restrict const  dfloat *  sgeo,
@@ -360,6 +365,7 @@
 				   @restrict const  dlong  *  vmapM,
 				   @restrict const  int    *  EToBM,
 				   @restrict const  int    *  EToB,
+                                   @restrict const  dfloat *  W,
 				   @restrict dfloat *  S){
 
   for(dlong e=0;e<Nelements;e++;@outer(0)){
@@ -368,7 +374,7 @@
       for(int m=0;m<p_Nfp;++m;@inner(0)){
         struct bcData bc;
         const int n = m + f*p_Nfp;        
-        const int sk = e*p_Nfp*p_Nfaces + n; 
+        const dlong sk = e*p_Nfp*p_Nfaces + n; 
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces*e];
 
@@ -380,14 +386,15 @@
           bc.y  = y[idM]; 
           bc.z  = z[idM]; 
           bc.sM = S[idM];
+          bc.wrk = W;
+          bc.fieldOffset = offset;
           bc.scalarId = scalarId;
   
-          const dlong sk = e*p_Nfp*p_Nfaces + n;
           bc.nx = sgeo[sk*p_Nsgeo+p_NXID];
           bc.ny = sgeo[sk*p_Nsgeo+p_NYID];
           bc.nz = sgeo[sk*p_Nsgeo+p_NZID];
           bc.sP = 0.f;
-          cdsDirichletConditions3D(&bc) ;
+          cdsDirichletConditions3D(&bc);
           S[idM] = bc.sP;
         }    
     }

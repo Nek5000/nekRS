@@ -747,6 +747,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->temporalOrder = ins->temporalOrder; 
   cds->g0            = ins->g0; 
 
+  cds->o_usrwrk = ins->o_usrwrk;
+
   dlong Nlocal = mesh->Np*mesh->Nelements;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
   cds->Nlocal  = Nlocal;

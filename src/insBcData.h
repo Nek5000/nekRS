@@ -20,7 +20,7 @@ struct bcData
    dfloat pM;
    dfloat pP;
 
-   @globalPtr dfloat* wrk;
+   @globalPtr const dfloat* wrk;
 
    dfloat sM, sP, sF; 
 };

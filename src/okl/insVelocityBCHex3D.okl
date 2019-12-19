@@ -43,7 +43,7 @@
     bc.uxP = 0.f;  bc.uyP = 0.f;  bc.uzP = 0.f; bc.uP = 0.f;            \
     bc.vxP = 0.f;  bc.vyP = 0.f;  bc.vzP = 0.f; bc.vP = 0.f;            \
     bc.wxP = 0.f;  bc.wyP = 0.f;  bc.wzP = 0.f; bc.wP = 0.f;            \
-    bc.wrk = (dfloat *) W;                                              \
+    bc.wrk = W;                                                         \
                                                                         \
     const dlong bcType = mapB[bc.idM];                                  \
     if(bcType>0) {                                                      \
@@ -494,7 +494,7 @@
           bc.vP = UH[idM + 1*offset];
           bc.wP = UH[idM + 2*offset]; 
           bc.pP = 0.f;  
-          bc.wrk = (dfloat *) W;
+          bc.wrk = W;
           bc.fieldOffset = offset; 
 	  
           if(bcType==1){
