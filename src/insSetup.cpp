@@ -487,32 +487,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_InvM = 
     mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
 
-/* 
-  // halo setup
-  if(mesh->totalHaloPairs){
-    dlong vHaloBytes = mesh->totalHaloPairs*mesh->Np*ins->NVfields*sizeof(dfloat);
-    dlong pHaloBytes = mesh->totalHaloPairs*mesh->Np*sizeof(dfloat);
-    dlong vGatherBytes = ins->NVfields*mesh->ogs->NhaloGather*sizeof(dfloat);
-
-    ins->o_vHaloBuffer = mesh->device.malloc(vHaloBytes);
-    ins->o_pHaloBuffer = mesh->device.malloc(pHaloBytes);
-
-    ins->vSendBuffer = (dfloat*) occaHostMallocPinned(mesh->device, vHaloBytes, 
-                       NULL, ins->o_vSendBuffer, ins->h_vSendBuffer);
-    ins->vRecvBuffer = (dfloat*) occaHostMallocPinned(mesh->device, vHaloBytes, 
-                       NULL, ins->o_vRecvBuffer, ins->h_vRecvBuffer);
-
-    ins->pSendBuffer = (dfloat*) occaHostMallocPinned(mesh->device, pHaloBytes, 
-                       NULL, ins->o_pSendBuffer, ins->h_pSendBuffer);
-    ins->pRecvBuffer = (dfloat*) occaHostMallocPinned(mesh->device, pHaloBytes, 
-                       NULL, ins->o_pRecvBuffer, ins->h_pRecvBuffer);
-
-    ins->velocityHaloGatherTmp = (dfloat*) occaHostMallocPinned(mesh->device, vGatherBytes, NULL, 
-                                           ins->o_gatherTmpPinned, ins->h_gatherTmpPinned);
-    ins->o_velocityHaloGatherTmp = mesh->device.malloc(vGatherBytes,  ins->velocityHaloGatherTmp);
-  }
-*/
-
   // build kernels
   string fileName, kernelName ;
   string suffix;
@@ -528,23 +502,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
       
-      fileName = oklpath + "insHaloExchange.okl";
- 
-      kernelName = "insVelocityHaloExtract";
-      ins->velocityHaloExtractKernel =  
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "insVelocityHaloScatter";
-      ins->velocityHaloScatterKernel =  
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "insPressureHaloExtract";
-      ins->pressureHaloExtractKernel =  
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "insPressureHaloScatter";
-      ins->pressureHaloScatterKernel =  
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      // ===========================================================================
-
       fileName = oklpath + "insAdvection" + suffix + ".okl";
 
       kernelName = "insStrongAdvectionVolume" + suffix;
@@ -950,37 +907,6 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_prkA    = ins->o_extbdfC;
   cds->o_prkB    = ins->o_extbdfC;
 
-/*
-  if(mesh->totalHaloPairs){//halo setup
-    int npe = mesh->Nfp; 
-    dlong haloBytes   = mesh->totalHaloPairs*npe*(cds->NSfields + cds->NVfields)*sizeof(dfloat);
-    dlong gatherBytes = (cds->NSfields+cds->NVfields)*mesh->ogs->NhaloGather*sizeof(dfloat);
-    cds->o_haloBuffer = mesh->device.malloc(haloBytes);
-
-    cds->sendBuffer = (dfloat*) occaHostMallocPinned(mesh->device, haloBytes, NULL, 
-                      cds->o_sendBuffer, cds->h_sendBuffer);
-    cds->recvBuffer = (dfloat*) occaHostMallocPinned(mesh->device, haloBytes, NULL, 
-                      cds->o_recvBuffer, cds->h_recvBuffer);
-    cds->haloGatherTmp = (dfloat*) occaHostMallocPinned(mesh->device, gatherBytes, NULL, 
-                      cds->o_gatherTmpPinned, cds->h_gatherTmpPinned); 
-    cds->o_haloGatherTmp = mesh->device.malloc(gatherBytes,  cds->haloGatherTmp);
-
-    if(cds->Nsubsteps){
-      dlong shaloBytes   = mesh->totalHaloPairs*npe*(cds->NSfields)*sizeof(dfloat);
-      dlong sgatherBytes = (cds->NSfields)*mesh->ogs->NhaloGather*sizeof(dfloat);
-      cds->o_shaloBuffer = mesh->device.malloc(shaloBytes);
-
-      cds->ssendBuffer = (dfloat*) occaHostMallocPinned(mesh->device, shaloBytes, NULL, 
-                         cds->o_ssendBuffer, cds->h_ssendBuffer);
-      cds->srecvBuffer = (dfloat*) occaHostMallocPinned(mesh->device, shaloBytes, NULL,
-                         cds->o_srecvBuffer, cds->h_srecvBuffer);
-      cds->shaloGatherTmp = (dfloat*) occaHostMallocPinned(mesh->device, sgatherBytes, NULL, 
-                         cds->o_sgatherTmpPinned, cds->h_sgatherTmpPinned);
-      cds->o_shaloGatherTmp = mesh->device.malloc(sgatherBytes,  cds->shaloGatherTmp);
-    }
-  }
-*/
-
   // build kernels
   string suffix, fileName, kernelName;
   if(cds->elementType==QUADRILATERALS)
@@ -990,22 +916,6 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
-
-      fileName = install_dir + "/okl/cdsHaloExchange.okl";
-      
-      kernelName = "cdsHaloGet";
-      cds->haloGetKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo); 
-      
-      kernelName = "cdsHaloPut";
-      cds->haloPutKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      if(cds->Nsubsteps){
-        kernelName =  "cdsScalarHaloGet";
-        cds->scalarHaloGetKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo); 
-        
-        kernelName = "cdsScalarHaloPut";
-        cds->scalarHaloPutKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);    
-      } 
 
       fileName = install_dir + "/okl/cdsAdvection" + suffix + ".okl";
 

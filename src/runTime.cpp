@@ -164,7 +164,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
 
   occa::memory o_adv = o_scratch6;
   occa::memory o_wrk5 = o_scratch6.slice(1*cds->fieldOffset*sizeof(dfloat));
-  occa::memory o_rho, o_diff, o_Si, o_FSi, o_BFi;
+  occa::memory o_BFi;
    
   cds->setScalarKernel(cds->fieldOffset*cds->NSfields, 0.0, cds->o_FS);
 
@@ -176,12 +176,12 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
 
     if(!cds->compute[is]) continue;
 
-    o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
-    o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
 
-    o_Si  = cds->o_S.slice (is*cds->fieldOffset*sizeof(dfloat));
-    o_FSi = cds->o_FS.slice(is*cds->fieldOffset*sizeof(dfloat));
-    o_BFi = cds->o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_Si  = cds->o_S.slice (is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_FSi = cds->o_FS.slice(is*cds->fieldOffset*sizeof(dfloat));
+    o_BFi = o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
 
     if(cds->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
       cds->filterRTKernel(
@@ -240,7 +240,7 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
          cds->o_extbdfA,
          cds->o_extbdfB,
          cds->o_extbdfC,
-         cds->fieldOffset,
+         cds->NSfields*cds->fieldOffset,
          o_Si,
          o_adv,
          o_FSi,
@@ -264,18 +264,16 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
 
   makeq(ins, time, ins->o_scratch, cds->o_BF);
 
-  occa::memory o_Si, o_rho, o_diff, o_Snew;
-
   for (int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
 
     if(!cds->compute[is]) continue; 
 
-    o_Si   = cds->o_S.slice   (is*cds->fieldOffset*sizeof(dfloat));
-    o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
-    o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
-    o_Snew = ins->o_scratch.slice(1*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_Si   = cds->o_S.slice      (is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_rho  = cds->o_rho.slice    (is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_diff = cds->o_diff.slice   (is*cds->fieldOffset*sizeof(dfloat));
+    occa::memory o_Snew = ins->o_scratch.slice( 1*cds->fieldOffset*sizeof(dfloat));
 
     cds->setEllipticCoeffKernel(
          cds->Nlocal,
