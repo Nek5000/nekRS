@@ -77,7 +77,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   string casename;
   options.getArgs("CASENAME", casename);
   options.getArgs("POLYNOMIAL DEGREE", N);
-  if(rank == 0) buildNekInterface(casename.c_str(), nscal, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), mymax(1,nscal), N, size);
   MPI_Barrier(comm);
 
   // init nek

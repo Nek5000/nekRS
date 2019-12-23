@@ -21,7 +21,7 @@ void pressureSolve(ins_t *ins, dfloat time, occa::memory o_wrk, occa::memory o_P
        ins->fieldOffset,
        ins->o_qtl,
        o_wrk1);
-  occa::memory o_irho = ins->o_ellipticCoeff.slice(0*ins->fieldOffset*sizeof(dfloat));
+  occa::memory o_irho = ins->o_ellipticCoeff;
   ins->ncKernel(
        mesh->Np*mesh->Nelements,
        ins->fieldOffset,

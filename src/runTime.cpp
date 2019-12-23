@@ -162,25 +162,26 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_scratch6, occa::memory o_BF)
 
   cds_t *cds   = ins->cds;
 
-  occa::memory o_adv = o_scratch6.slice(0*1*cds->fieldOffset*sizeof(dfloat));
+  occa::memory o_adv = o_scratch6;
   occa::memory o_wrk5 = o_scratch6.slice(1*cds->fieldOffset*sizeof(dfloat));
-
+  occa::memory o_rho, o_diff, o_Si, o_FSi, o_BFi;
+   
   cds->setScalarKernel(cds->fieldOffset*cds->NSfields, 0.0, cds->o_FS);
 
   if(udf.sEqnSource) udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
-    
+   
   for(int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
 
     if(!cds->compute[is]) continue;
 
-    occa::memory o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
+    o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
+    o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
 
-    occa::memory o_Si  = cds->o_S.slice (is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_FSi = cds->o_FS.slice(is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_BFi = cds->o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
+    o_Si  = cds->o_S.slice (is*cds->fieldOffset*sizeof(dfloat));
+    o_FSi = cds->o_FS.slice(is*cds->fieldOffset*sizeof(dfloat));
+    o_BFi = cds->o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
 
     if(cds->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
       cds->filterRTKernel(
@@ -253,9 +254,6 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
 {
   cds_t *cds   = ins->cds;
 
-  occa::memory o_scratch = ins->o_scratch.slice(ins->ellipticWrkSize*sizeof(dfloat)); 
-  occa::memory o_scratch6 = o_scratch.slice(0*6*cds->fieldOffset*sizeof(dfloat));
-
   for (int s=cds->Nstages;s>1;s--) {
     cds->o_FS.copyFrom(
            cds->o_FS, 
@@ -264,7 +262,9 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
            (s-2)*cds->fieldOffset*cds->NSfields*sizeof(dfloat));
   }
 
-  makeq(ins, time, o_scratch6, cds->o_BF);
+  makeq(ins, time, ins->o_scratch, cds->o_BF);
+
+  occa::memory o_Si, o_rho, o_diff, o_Snew;
 
   for (int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
@@ -272,10 +272,10 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
 
     if(!cds->compute[is]) continue; 
 
-    occa::memory o_Si   = cds->o_S.slice   (is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
-    occa::memory o_Snew = o_scratch.slice(6*cds->fieldOffset*sizeof(dfloat));
+    o_Si   = cds->o_S.slice   (is*cds->fieldOffset*sizeof(dfloat));
+    o_rho  = cds->o_rho.slice (is*cds->fieldOffset*sizeof(dfloat));
+    o_diff = cds->o_diff.slice(is*cds->fieldOffset*sizeof(dfloat));
+    o_Snew = ins->o_scratch.slice(1*cds->fieldOffset*sizeof(dfloat));
 
     cds->setEllipticCoeffKernel(
          cds->Nlocal,
@@ -285,7 +285,7 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
          o_rho,
          cds->o_ellipticCoeff);
 
-    cdsSolve(is, cds, time+dt, o_scratch6, o_Snew);
+    cdsSolve(is, cds, time+dt, ins->o_scratch, o_Snew);
 
     for (int s=cds->Nstages;s>1;s--) {
       o_S.copyFrom(
@@ -301,6 +301,9 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
 void makef(ins_t *ins, dfloat time, occa::memory o_scratch18, occa::memory o_BF)
 {
   mesh_t *mesh = ins->mesh;
+
+  occa::memory o_adv   = o_scratch18;
+  occa::memory o_wrk15 = o_scratch18.slice(3*ins->fieldOffset*sizeof(dfloat));
 
   for (int s=ins->Nstages;s>1;s--) {
     ins->o_FU.copyFrom(
@@ -321,10 +324,6 @@ void makef(ins_t *ins, dfloat time, occa::memory o_scratch18, occa::memory o_BF)
          ins->fieldOffset,
          ins->o_U,
          ins->o_FU);
-
-
-  occa::memory o_adv   = o_scratch18.slice(0*3*ins->fieldOffset*sizeof(dfloat));;
-  occa::memory o_wrk15 = o_scratch18.slice(3*ins->fieldOffset*sizeof(dfloat));
 
   if(ins->Nsubsteps) {
     velocityStrongSubCycle(ins, time, ins->Nstages, o_wrk15, ins->o_U, o_adv);
@@ -381,48 +380,42 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   makef(ins, time, ins->o_scratch, ins->o_BF);
   timer::toc("makef");
 
-  {
-    ins->setEllipticCoeffPressureKernel(
-      ins->Nlocal,
-      ins->pSolver->Ntotal, // offset required by elliptic
-      ins->o_rho,
-      ins->o_ellipticCoeff);
+  occa::memory o_wrk6 = ins->o_scratch;
 
-    occa::memory o_scratch = ins->o_scratch.slice(ins->ellipticWrkSize*sizeof(dfloat)); 
-    occa::memory o_Pnew = o_scratch.slice(0*1*ins->fieldOffset*sizeof(dfloat));
-    occa::memory o_wrk6 = o_scratch.slice(1*ins->fieldOffset*sizeof(dfloat));
- 
-    timer::tic("pressureSolve");
-    tombo::pressureSolve(ins, time+dt, o_wrk6, o_Pnew);
-    timer::toc("pressureSolve");
-    ins->o_P.copyFrom(o_Pnew, ins->Ntotal*sizeof(dfloat));
+  ins->setEllipticCoeffPressureKernel(
+    ins->Nlocal,
+    ins->pSolver->Ntotal, // offset required by elliptic
+    ins->o_rho,
+    ins->o_ellipticCoeff);
+
+  occa::memory o_Pnew = ins->o_scratch.slice(6*ins->fieldOffset*sizeof(dfloat));
+
+  timer::tic("pressureSolve");
+  tombo::pressureSolve(ins, time+dt, o_wrk6, o_Pnew);
+  timer::toc("pressureSolve");
+  ins->o_P.copyFrom(o_Pnew, ins->Ntotal*sizeof(dfloat));
+
+  ins->setEllipticCoeffKernel(
+    ins->Nlocal,
+    ins->g0*ins->idt,
+    ins->uSolver->Ntotal, // offset required by elliptic
+    ins->o_mue,
+    ins->o_rho,
+    ins->o_ellipticCoeff);
+
+  occa::memory o_Unew = ins->o_scratch.slice(6*ins->fieldOffset*sizeof(dfloat));
+
+  timer::tic("velocitySolve");
+  tombo::velocitySolve(ins, time+dt, o_wrk6, o_Unew);
+  timer::toc("velocitySolve");
+  for (int s=ins->Nstages;s>1;s--) {
+    o_U.copyFrom(
+      o_U, 
+      ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
+      (s-1)*ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
+      (s-2)*ins->fieldOffset*ins->NVfields*sizeof(dfloat));
   }
-
-  {
-    ins->setEllipticCoeffKernel(
-      ins->Nlocal,
-      ins->g0*ins->idt,
-      ins->uSolver->Ntotal, // offset required by elliptic
-      ins->o_mue,
-      ins->o_rho,
-      ins->o_ellipticCoeff);
-
-    occa::memory o_scratch = ins->o_scratch.slice(ins->ellipticWrkSize*sizeof(dfloat)); 
-    occa::memory o_Unew = o_scratch.slice(0*3*ins->fieldOffset*sizeof(dfloat));
-    occa::memory o_wrk6 = o_scratch.slice(3*ins->fieldOffset*sizeof(dfloat));
-
-    timer::tic("velocitySolve");
-    tombo::velocitySolve(ins, time+dt, o_wrk6, o_Unew);
-    timer::toc("velocitySolve");
-    for (int s=ins->Nstages;s>1;s--) {
-      o_U.copyFrom(
-        o_U, 
-        ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
-        (s-1)*ins->fieldOffset*ins->NVfields*sizeof(dfloat), 
-        (s-2)*ins->fieldOffset*ins->NVfields*sizeof(dfloat));
-    }
-    o_U.copyFrom(o_Unew, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-  } 
+  o_U.copyFrom(o_Unew, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
 }
 
 void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o_scratch15,
@@ -430,7 +423,7 @@ void velocityStrongSubCycle(ins_t *ins, dfloat time, int Nstages, occa::memory o
 {
   mesh_t *mesh = ins->mesh;
 
-  occa::memory o_tmp = o_scratch15.slice(0*ins->NVfields*ins->fieldOffset * sizeof(dfloat));
+  occa::memory o_tmp = o_scratch15;
 
   const dfloat tn0 = time - 0*ins->dt;
   const dfloat tn1 = time - 1*ins->dt;
@@ -562,7 +555,7 @@ void scalarStrongSubCycle(cds_t *cds, dfloat time, int Nstages, occa::memory o_s
 {
   mesh_t *mesh = cds->meshV;
 
-  occa::memory o_tmp = o_scratch5.slice(0*cds->fieldOffset * sizeof(dfloat));
+  occa::memory o_tmp = o_scratch5;
 
   const dfloat tn0 = time - 0*cds->dt;
   const dfloat tn1 = time - 1*cds->dt;
@@ -701,7 +694,7 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
   cds_t *cds = ins->cds;
   mesh_t *mesh = ins->mesh;
 
-  occa::memory o_gradS = ins->o_scratch.slice(0*3*cds->fieldOffset*sizeof(dfloat));
+  occa::memory o_gradS = ins->o_scratch;
   occa::memory o_src   = ins->o_scratch.slice(3*cds->fieldOffset*sizeof(dfloat));
 
   ins->gradientVolumeKernel(

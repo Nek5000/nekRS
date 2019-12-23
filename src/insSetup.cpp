@@ -254,9 +254,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   }  
 
   // setup scratch space
+  const int wrkNflds = 9; 
   const int ellipticWrkNflds = 9; 
   ins->ellipticWrkSize = ellipticWrkNflds*ins->fieldOffset;
-  const int scratchNflds = 9+ellipticWrkNflds;
+  const int scratchNflds = wrkNflds+ellipticWrkNflds;
   ins->scratch   = (dfloat*) calloc(scratchNflds*ins->fieldOffset,sizeof(dfloat));
   ins->o_scratch = mesh->device.malloc(scratchNflds*ins->fieldOffset*sizeof(dfloat), ins->scratch);
 
@@ -350,8 +351,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
  
   ins->uSolver = new elliptic_t();
   ins->uSolver->wrkOffset = ins->fieldOffset;
-  ins->uSolver->wrk = ins->scratch; 
-  ins->uSolver->o_wrk = ins->o_scratch; 
+  ins->uSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
+  ins->uSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
   ins->uSolver->mesh = mesh;
   ins->uSolver->options = ins->vOptions;
   ins->uSolver->dim = ins->dim;
@@ -368,8 +369,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->vSolver = new elliptic_t();
   ins->vSolver->wrkOffset = ins->fieldOffset;
-  ins->vSolver->wrk = ins->scratch;
-  ins->vSolver->o_wrk = ins->o_scratch;
+  ins->vSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
+  ins->vSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
   ins->vSolver->mesh = mesh;
   ins->vSolver->options = ins->vOptions;
   ins->vSolver->dim = ins->dim;
@@ -386,8 +387,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (ins->dim==3) {
     ins->wSolver = new elliptic_t();
     ins->wSolver->wrkOffset = ins->fieldOffset;
-    ins->wSolver->wrk = ins->scratch;
-    ins->wSolver->o_wrk = ins->o_scratch;
+    ins->wSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
+    ins->wSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
     ins->wSolver->mesh = mesh;
     ins->wSolver->options = ins->vOptions;
     ins->wSolver->dim = ins->dim;
@@ -405,8 +406,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
   ins->pSolver->wrkOffset = ins->fieldOffset;
-  ins->pSolver->wrk = ins->scratch;
-  ins->pSolver->o_wrk = ins->o_scratch;
+  ins->pSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
+  ins->pSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
   ins->pSolver->mesh = mesh;
 
   ins->pOptions = options;
@@ -870,8 +871,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
     cds->solver[is] = new elliptic_t();
     cds->solver[is]->wrkOffset = ins->fieldOffset;
-    cds->solver[is]->wrk = ins->scratch;
-    cds->solver[is]->o_wrk = ins->o_scratch;
+    cds->solver[is]->wrk = ins->scratch + 9*ins->fieldOffset;
+    cds->solver[is]->o_wrk = ins->o_scratch.slice(9*ins->fieldOffset*sizeof(dfloat));
     cds->solver[is]->mesh = mesh;
     cds->solver[is]->options = cds->options;
     cds->solver[is]->dim = cds->dim;
