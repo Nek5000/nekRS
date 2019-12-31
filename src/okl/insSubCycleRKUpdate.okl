@@ -81,7 +81,7 @@ SOFTWARE.
       } else{
         #pragma unroll p_NVfields
         for (int fld=0;fld<p_NVfields;fld++) {
-           dfloat rhsu = RHSU[id + fld*offset];
+           dfloat rhsu = RHSU[id + fld*offset + stage*p_NVfields*offset];
            dfloat un   = Us[id + fld*offset]; 
            // Intermediate stage Update
            U[id + fld*offset] = un - dt*rka[stage+1]*rhsu;

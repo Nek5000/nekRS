@@ -1,13 +1,13 @@
 #include "nrs.hpp"
 
-void cdsSolve(const int is, cds_t *cds, dfloat time, occa::memory o_wrk, occa::memory o_Shat){
+occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
+{
 
   mesh_t *mesh; 
   (is) ? mesh = cds->meshV : mesh = cds->mesh;
   elliptic_t *solver = cds->solver[is];
 
-  occa::memory o_BFi = cds->o_BF.slice(is*cds->fieldOffset*sizeof(dfloat));
-  o_wrk.copyFrom(o_BFi, cds->Ntotal*sizeof(dfloat)); 
+  cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal*sizeof(dfloat), 0, is*cds->fieldOffset*sizeof(dfloat)); 
 
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
@@ -28,18 +28,17 @@ void cdsSolve(const int is, cds_t *cds, dfloat time, occa::memory o_wrk, occa::m
                             cds->o_mapB[is],
                             cds->o_ellipticCoeff,
                             cds->o_usrwrk,
-                            o_wrk);
+                            cds->o_wrk1);
 
-  ogsGatherScatter(o_wrk, ogsDfloat, ogsAdd, mesh->ogs);
-  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_wrk);
+  ogsGatherScatter(cds->o_wrk1, ogsDfloat, ogsAdd, mesh->ogs);
+  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
 
   //copy current solution fields as initial guess
-  occa::memory o_Si = cds->o_S.slice(is*cds->fieldOffset*sizeof(dfloat));
-  o_Shat.copyFrom(o_Si, cds->Ntotal*sizeof(dfloat)); 
-  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, o_Shat);
+  cds->o_wrk0.copyFrom(cds->o_S, cds->Ntotal*sizeof(dfloat), 0, is*cds->fieldOffset*sizeof(dfloat)); 
+  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk0);
 
   const dfloat lambda = 1; // dummy value not used if coeff is variable
-  cds->Niter[is] = ellipticSolve(solver, lambda, cds->TOL, o_wrk, o_Shat);
+  cds->Niter[is] = ellipticSolve(solver, lambda, cds->TOL, cds->o_wrk1, cds->o_wrk0);
 
   cds->helmholtzAddBCKernel(mesh->Nelements,
                             cds->fieldOffset,
@@ -53,5 +52,6 @@ void cdsSolve(const int is, cds_t *cds, dfloat time, occa::memory o_wrk, occa::m
                             mesh->o_EToB,
                             cds->o_EToB[is],
                             cds->o_usrwrk,
-                            o_Shat);
+                            cds->o_wrk0);
+  return cds->o_wrk0;
 }

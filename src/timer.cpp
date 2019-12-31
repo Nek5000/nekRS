@@ -196,32 +196,29 @@ void printStat()
   MPI_Comm_rank(comm_, &rank);
 
   double dEtime[6];
-  dEtime[0] = timer::query("fluidSolve", "DEVICE:MAX");
-  dEtime[1] = timer::query("makef", "DEVICE:MAX");
-  dEtime[2] = timer::query("velocitySolve", "DEVICE:MAX");
-  dEtime[3] = timer::query("pressureSolve", "DEVICE:MAX");
+  dEtime[0] = timer::query("makef", "DEVICE:MAX");
+  dEtime[1] = timer::query("velocitySolve", "DEVICE:MAX");
+  dEtime[2] = timer::query("pressureSolve", "DEVICE:MAX");
+  dEtime[3] = timer::query("makeq", "DEVICE:MAX"); 
   dEtime[4] = timer::query("scalarSolve", "DEVICE:MAX");
-  dEtime[5] = timer::query("makeq", "DEVICE:MAX"); 
 
   double hEtime[6];
-  hEtime[0] = timer::query("fluidSolve", "HOST:MAX");
-  hEtime[1] = timer::query("makef", "HOST:MAX");
-  hEtime[2] = timer::query("velocitySolve", "HOST:MAX");
-  hEtime[3] = timer::query("pressureSolve", "HOST:MAX");
+  hEtime[0] = timer::query("makef", "HOST:MAX");
+  hEtime[1] = timer::query("velocitySolve", "HOST:MAX");
+  hEtime[2] = timer::query("pressureSolve", "HOST:MAX");
+  hEtime[3] = timer::query("makeq", "HOST:MAX"); 
   hEtime[4] = timer::query("scalarSolve", "HOST:MAX");
-  hEtime[5] = timer::query("makeq", "HOST:MAX"); 
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );
 
     std::cout << "runtime statistics\n\n";
     std::cout << "                      device(s)      host(s)\n"
-              << "  fluidSolve          " << dEtime[0] << "   " << hEtime[0] << "\n"
-              << "    makef             " << dEtime[1] << "   " << hEtime[1] << "\n"  
-              << "    velocitySolve     " << dEtime[2] << "   " << hEtime[2] << "\n"  
-              << "    pressureSolve     " << dEtime[3] << "   " << hEtime[3] << "\n" 
+              << "  makef               " << dEtime[0] << "   " << hEtime[0] << "\n"  
+              << "  velocitySolve       " << dEtime[1] << "   " << hEtime[1] << "\n"  
+              << "  pressureSolve       " << dEtime[2] << "   " << hEtime[2] << "\n" 
+              << "  makeq               " << dEtime[3] << "   " << hEtime[3] << "\n"
               << "  scalarSolve         " << dEtime[4] << "   " << hEtime[4] << "\n" 
-              << "    makeq             " << dEtime[5] << "   " << hEtime[5] << "\n"
               << std::endl; 
 
     std::cout.unsetf ( std::ios::scientific ); 

@@ -55,7 +55,7 @@ SOFTWARE.
 @kernel void cdsSubCycleERKUpdate(const dlong Nelements,
                                 const int stage,
                                 const dfloat dt,  
-                                const dlong soffset,
+                                const dlong offset,
                                 @restrict const dfloat * rka,
                                 @restrict const dfloat * rkb,
                                 @restrict dfloat  *  Ss, // U0 at Tn                                 
@@ -68,14 +68,13 @@ SOFTWARE.
       if(stage==3){ // Final stage
         dfloat sn = Ss[id]; 
         for(int st=0; st<stage+1; st++){
-          sn -= dt*rkb[st]*RHSS[id + st*soffset];
+          sn -= dt*rkb[st]*RHSS[id+st*offset];
         }
         S[id] = sn; 
       }
       else{
-        dfloat rhss = RHSS[id];
-        dfloat sn   = Ss[id]; 
-        // Intermediate stage Update
+        dfloat rhss = RHSS[id+stage*offset];
+        dfloat sn = Ss[id]; 
         S[id] = sn - dt*rka[stage+1]*rhss;
       }
     }

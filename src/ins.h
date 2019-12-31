@@ -20,7 +20,7 @@ typedef struct {
   elliptic_t *pSolver;
   cds_t      *cds;
 
-  dlong ellipticWrkSize; 
+  dlong ellipticWrkOffset; 
   
   int Nscalar; 
   setupAide options;
@@ -77,6 +77,9 @@ typedef struct {
   int *VmapB;
   occa::memory o_VmapB;
 
+  dlong *elementInfo;
+  occa::memory o_elementInfo;
+
   //halo data
   dfloat *vSendBuffer;
   dfloat *vRecvBuffer;
@@ -90,8 +93,8 @@ typedef struct {
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
   
-  dfloat *scratch;
-  occa::memory o_scratch;
+  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6,
+               o_wrk9, o_wrk12, o_wrk15; 
 
   int Nsubsteps;  
   dfloat *Ue, sdt;

@@ -5,6 +5,9 @@
 #include "filter.hpp"
 #include "bcMap.hpp"
 
+static dfloat *scratch;
+static occa::memory o_scratch;
+
 cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &kernelInfoH);
               
  
@@ -168,29 +171,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
-    }else if(Sorder==4 && ins->SNrk==5){ // LSERK(4,5)
-      dfloat rka[5] = {0.0,
-                      -567301805773.0/1357537059087.0,
-                      -2404267990393.0/2016746695238.0,
-                      -3550918686646.0/2091501179385.0,
-                      -1275806237668.0/842570457699.0};
-      dfloat rkb[5] = {1432997174477.0/9575080441755.0,
-                      5161836677717.0/13612068292357.0,
-                      1720146321549.0/2090206949498.0,
-                      3134564353537.0/4481467310338.0,
-                      2277821191437.0/14882151754819.0};
-      dfloat rkc[6] = {0.0,
-                      1432997174477.0/9575080441755.0,
-                      2526269341429.0/6820363962896.0,
-                      2006345519317.0/3224310063776.0,
-                      2802321613138.0/2924317926251.0,
-                      1.};
-      ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkc = (dfloat*) calloc(ins->SNrk+1, sizeof(dfloat));
-      memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkc, rkc, (ins->SNrk+1)*sizeof(dfloat));
     }else{
       if(mesh->rank==0) cout << "Unsupported subcycling scheme!\n"; 
       MPI_Finalize(); 
@@ -255,11 +235,23 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   // setup scratch space
   const int wrkNflds = 9; 
-  const int ellipticWrkNflds = 9; 
-  ins->ellipticWrkSize = ellipticWrkNflds*ins->fieldOffset;
+  const int ellipticWrkNflds = 9;
+  ins->ellipticWrkOffset = wrkNflds*ins->fieldOffset;
+
   const int scratchNflds = wrkNflds+ellipticWrkNflds;
-  ins->scratch   = (dfloat*) calloc(scratchNflds*ins->fieldOffset,sizeof(dfloat));
-  ins->o_scratch = mesh->device.malloc(scratchNflds*ins->fieldOffset*sizeof(dfloat), ins->scratch);
+  scratch   = (dfloat*) calloc(scratchNflds*ins->fieldOffset,sizeof(dfloat));
+  o_scratch = mesh->device.malloc(scratchNflds*ins->fieldOffset*sizeof(dfloat), scratch);
+
+  ins->o_wrk0  = o_scratch.slice( 0*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk1  = o_scratch.slice( 1*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk2  = o_scratch.slice( 2*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk3  = o_scratch.slice( 3*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk4  = o_scratch.slice( 4*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk5  = o_scratch.slice( 5*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk6  = o_scratch.slice( 6*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk9  = o_scratch.slice( 9*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk12 = o_scratch.slice(12*ins->fieldOffset*sizeof(dfloat));
+  ins->o_wrk15 = o_scratch.slice(15*ins->fieldOffset*sizeof(dfloat));
 
   // dummy decleration for user work space 
   ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
@@ -294,6 +286,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
   ins->qtl   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
   ins->o_qtl = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->qtl);  
+
+  ins->elementInfo = (dlong*) calloc(ins->meshT->Nelements,sizeof(dlong));
+  for (int e=0;e<ins->meshT->Nelements;e++) ins->elementInfo[e] = mesh->elementInfo[e]; 
+  ins->o_elementInfo = mesh->device.malloc(ins->meshT->Nelements*sizeof(dlong), ins->elementInfo);  
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   ins->o_rkC     = mesh->device.malloc(4*sizeof(dfloat),rkC);
@@ -351,8 +347,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
  
   ins->uSolver = new elliptic_t();
   ins->uSolver->wrkOffset = ins->fieldOffset;
-  ins->uSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
-  ins->uSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
+  ins->uSolver->wrk = scratch + ins->ellipticWrkOffset; 
+  ins->uSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
   ins->uSolver->mesh = mesh;
   ins->uSolver->options = ins->vOptions;
   ins->uSolver->dim = ins->dim;
@@ -369,8 +365,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->vSolver = new elliptic_t();
   ins->vSolver->wrkOffset = ins->fieldOffset;
-  ins->vSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
-  ins->vSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
+  ins->vSolver->wrk = scratch + ins->ellipticWrkOffset; 
+  ins->vSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
   ins->vSolver->mesh = mesh;
   ins->vSolver->options = ins->vOptions;
   ins->vSolver->dim = ins->dim;
@@ -387,8 +383,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (ins->dim==3) {
     ins->wSolver = new elliptic_t();
     ins->wSolver->wrkOffset = ins->fieldOffset;
-    ins->wSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
-    ins->wSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
+    ins->wSolver->wrk = scratch + ins->ellipticWrkOffset; 
+    ins->wSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
     ins->wSolver->mesh = mesh;
     ins->wSolver->options = ins->vOptions;
     ins->wSolver->dim = ins->dim;
@@ -406,8 +402,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
   ins->pSolver->wrkOffset = ins->fieldOffset;
-  ins->pSolver->wrk = ins->scratch + wrkNflds*ins->fieldOffset; 
-  ins->pSolver->o_wrk = ins->o_scratch.slice(wrkNflds*ins->fieldOffset*sizeof(dfloat)); 
+  ins->pSolver->wrk = scratch + ins->ellipticWrkOffset; 
+  ins->pSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
   ins->pSolver->mesh = mesh;
 
   ins->pOptions = options;
@@ -653,16 +649,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->ncKernel =  
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      // ===========================================================================
-      fileName = oklpath + "insHalo.okl";
-      kernelName = "insHaloGet";
-      ins->haloGetKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "insHaloPut";
-      ins->haloPutKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
     }
     MPI_Barrier(mesh->comm);
   }
@@ -715,6 +701,14 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->vFieldOffset = ins->fieldOffset;
   cds->fieldOffset  = ins->fieldOffset;
   cds->Nblock       = (Nlocal+blockSize-1)/blockSize;
+
+  cds->o_wrk0 = ins->o_wrk0;
+  cds->o_wrk1 = ins->o_wrk1;
+  cds->o_wrk2 = ins->o_wrk2;
+  cds->o_wrk3 = ins->o_wrk3;
+  cds->o_wrk4 = ins->o_wrk4;
+  cds->o_wrk5 = ins->o_wrk5;
+  cds->o_wrk6 = ins->o_wrk6;
 
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
@@ -828,8 +822,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
     cds->solver[is] = new elliptic_t();
     cds->solver[is]->wrkOffset = ins->fieldOffset;
-    cds->solver[is]->wrk = ins->scratch + 9*ins->fieldOffset;
-    cds->solver[is]->o_wrk = ins->o_scratch.slice(9*ins->fieldOffset*sizeof(dfloat));
+    cds->solver[is]->wrk = scratch + ins->ellipticWrkOffset;
+    cds->solver[is]->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat));
     cds->solver[is]->mesh = mesh;
     cds->solver[is]->options = cds->options;
     cds->solver[is]->dim = cds->dim;

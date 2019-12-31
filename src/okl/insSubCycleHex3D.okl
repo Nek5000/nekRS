@@ -32,6 +32,7 @@
 					       @restrict const  dfloat *  cubProjectT,
 					       @restrict const  dfloat *  invLumpedMassMatrix,
 					       const dlong offset,
+					       const dlong NUOffset,
 					       @restrict const  dfloat *  U,
 					       @restrict const  dfloat *  Ud,
 					       @restrict dfloat *  NU){
@@ -299,9 +300,9 @@
 	    }
 
             const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
-            NU[id+0*offset] = rhsU;
-            NU[id+1*offset] = rhsV;
-            NU[id+2*offset] = rhsW;
+            NU[id+0*offset+NUOffset] = rhsU;
+            NU[id+1*offset+NUOffset] = rhsV;
+            NU[id+2*offset+NUOffset] = rhsW;
           }
         }
       }
@@ -315,6 +316,7 @@
 				       @restrict const  dfloat *  vgeo,
 				       @restrict const  dfloat *  D,
 				       const dlong offset,
+				       const dlong NUOffset,
 				       @restrict const  dfloat *  U,
 				       @restrict const  dfloat *  Ud,
 				       @restrict dfloat *  NU){
@@ -404,9 +406,9 @@
 	  dfloat v = U[id+1*offset];
 	  dfloat w = U[id+2*offset];
 
-	  NU[id+0*offset] =  JW*(u*duddx + v*duddy + w*duddz);
-	  NU[id+1*offset] =  JW*(u*dvddx + v*dvddy + w*dvddz);
-	  NU[id+2*offset] =  JW*(u*dwddx + v*dwddy + w*dwddz);
+	  NU[id+0*offset+NUOffset] =  JW*(u*duddx + v*duddy + w*duddz);
+	  NU[id+1*offset+NUOffset] =  JW*(u*dvddx + v*dvddy + w*dvddz);
+	  NU[id+2*offset+NUOffset] =  JW*(u*dwddx + v*dwddy + w*dwddz);
     
 	}
       }

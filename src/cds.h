@@ -102,6 +102,8 @@ typedef struct {
   dfloat *cU, *cSd, *cS, *FS, *BF; 
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF;
 
+  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
+
   occa::kernel setScalarKernel;
   occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
@@ -170,7 +172,7 @@ typedef struct {
     
 }cds_t;
 
-void cdsSolve(int i, cds_t *cds, dfloat time, occa::memory o_wrk,occa::memory o_Snew);
+occa::memory cdsSolve(int i, cds_t *cds, dfloat time);
 
 } // end C Linkage
 
