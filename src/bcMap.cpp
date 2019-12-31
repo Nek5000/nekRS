@@ -13,8 +13,10 @@
 #define DIRICHLET 1
 #define NEUMANN 2
 
-static std::map<int, int> vBToBc;
-static std::map<int, int> sBToBc;
+
+// stores for every (field, boundaryID) pair a bcID
+static std::map<std::pair<string, int>, int> bToBc;
+static int nbid = 0;
 
 static std::map<string, int> vBcTextToID = {
   {"periodic"               , 0},  
@@ -54,7 +56,7 @@ static void v_setup(string s);
 static void s_setup(string s);
 
 
-static void v_setup(std::vector<std::string> slist)
+static void v_setup(string field, std::vector<std::string> slist)
 {
   for(int i=0; i < slist.size(); i++){
 
@@ -81,7 +83,7 @@ static void v_setup(std::vector<std::string> slist)
 
     try
     {
-      vBToBc[i] = vBcTextToID.at(key);
+      bToBc[make_pair(field, i)] = vBcTextToID.at(key);
     }
     catch (const std::out_of_range& oor) 
     {
@@ -92,7 +94,7 @@ static void v_setup(std::vector<std::string> slist)
   }
 }
 
-static void s_setup(std::vector<std::string> slist)
+static void s_setup(string field, std::vector<std::string> slist)
 {
   for(int i=0; i < slist.size(); i++){
 
@@ -116,7 +118,7 @@ static void s_setup(std::vector<std::string> slist)
 
     try
     {
-      sBToBc[i] = sBcTextToID.at(key);
+      bToBc[make_pair(field, i)] = sBcTextToID.at(key);
     }
     catch (const std::out_of_range& oor) 
     {
@@ -133,37 +135,29 @@ namespace bcMap {
     if (slist.size() == 0) return;
     if (slist[0].compare("null") == 0) return;
     if (slist[0].compare("none") == 0) return;
-  
+ 
+    nbid = slist.size();
+ 
     if (field.compare("velocity") == 0)
-      v_setup(slist);
-    else if (field.compare("scalar01") == 0)
-      s_setup(slist);
+      v_setup(field, slist);
+    else if (field.compare(0, 6, "scalar") == 0)
+      s_setup(field, slist);
   }
 
   int id(int bid, string field)
   {
     if (bid < 1) return NOTBOUNDARY;
   
-    if (field.compare("velocity") == 0) {
-  
-      return vBToBc[bid-1];
-  
-    } else if (field.compare("scalar01") == 0) {
-  
-      return sBToBc[bid-1];
-  
-    }
-  
-    EXIT(0) 
+    return bToBc[{field, bid-1}];
   }
   
   int type(int bid, string field)
   {
     if (bid < 1) return NOTBOUNDARY;
-  
+
     if (field.compare("x-velocity") == 0) {
   
-      const int bcID = vBToBc[bid-1];
+      const int bcID = bToBc[{"velocity", bid-1}];
       if (bcID == 1) return DIRICHLET;
       if (bcID == 2) return DIRICHLET;
       if (bcID == 3) return NEUMANN;
@@ -173,7 +167,7 @@ namespace bcMap {
   
     } else if (field.compare("y-velocity") == 0) {
   
-      const int bcID = vBToBc[bid-1];
+      const int bcID = bToBc[{"velocity", bid-1}];
       if (bcID == 1) return DIRICHLET;
       if (bcID == 2) return DIRICHLET;
       if (bcID == 3) return NEUMANN;
@@ -183,7 +177,7 @@ namespace bcMap {
   
     } else if (field.compare("z-velocity") == 0) {
   
-      const int bcID = vBToBc[bid-1];
+      const int bcID = bToBc[{"velocity", bid-1}];
       if (bcID == 1) return DIRICHLET;
       if (bcID == 2) return DIRICHLET;
       if (bcID == 3) return NEUMANN;
@@ -193,7 +187,7 @@ namespace bcMap {
   
     } else if (field.compare("pressure") == 0) {
   
-      const int bcID = vBToBc[bid-1];
+      const int bcID = bToBc[{"velocity", bid-1}];
       if (bcID == 1) return NEUMANN;
       if (bcID == 2) return NEUMANN;
       if (bcID == 3) return DIRICHLET;
@@ -201,9 +195,9 @@ namespace bcMap {
       if (bcID == 5) return NEUMANN;
       if (bcID == 6) return NEUMANN;
   
-    } else if (field.compare("scalar01") == 0) {
+    } else if (field.compare(0, 6, "scalar") == 0) {
   
-      const int bcID = sBToBc[bid-1];
+      const int bcID = bToBc[{field, bid-1}];
       if (bcID == 1) return DIRICHLET;
       if (bcID == 2) return NEUMANN;
       if (bcID == 3) return NEUMANN;
@@ -219,13 +213,14 @@ namespace bcMap {
   {
     if (bid < 1) return std::string(); 
   
+    const int bcID = bToBc[{field, bid-1}];
     if (field.compare("velocity") == 0) {
   
-      return vBcIDToText[vBToBc[bid-1]];
+      return vBcIDToText[bcID];
   
-    } else if (field.compare("scalar01") == 0) {
+    } else if (field.compare(0, 6, "scalar") == 0) {
   
-      return sBcIDToText[sBToBc[bid-1]];
+      return sBcIDToText[bcID];
   
     }
 
@@ -236,12 +231,11 @@ namespace bcMap {
   
   int size(void)
   {
-    return vBToBc.size();
+    return nbid;
   }
   
   void check(mesh_t *mesh)
   {
-    const int nbid = size();
     const int *bid = nekData.boundaryID;
   
     int retval = 0;

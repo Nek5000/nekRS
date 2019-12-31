@@ -131,7 +131,7 @@
 #pragma unroll p_Nq
         for(int k=0;k<p_Nq;++k){    
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-          const dfloat rhoM = RHO[id];
+          const dfloat rhoM = RHO[id+offset];
           NU[id+offset] += filterS*rhoM*(r_U[k] - r_Un[k]);
         }
       }

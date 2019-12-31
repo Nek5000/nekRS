@@ -25,13 +25,13 @@
 */
 
 @kernel void cdsSubCycleStrongCubatureVolumeHex3D(const dlong Nelements,
+               const dlong voffset,
+               const dlong NSOffset,
                @restrict const  dfloat *  vgeo,
                @restrict const  dfloat *  cubvgeo,
                @restrict const  dfloat *  cubDT,
                @restrict const  dfloat *  cubInterpT,
                @restrict const  dfloat *  cubProjectT,
-               const dlong voffset,
-               const dlong soffset,
                @restrict const  dfloat *  U,
                @restrict const  dfloat *  S,
                @restrict dfloat *  NS){
@@ -89,7 +89,7 @@
       s_U[b][a] = U[id+0*voffset]; 
       s_V[b][a] = U[id+1*voffset];
       s_W[b][a] = U[id+2*voffset];
-      s_S[b][a] = S[id+0*soffset];      
+      s_S[b][a] = S[id];      
     }
   }
       }
@@ -256,7 +256,7 @@
         rhsS += Iia*s_Sd[b][i];
       }
             const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
-            NS[id+0*soffset] = rhsS;
+            NS[id+NSOffset] = rhsS;
           }
         }
       }
@@ -267,10 +267,10 @@
 
 
 @kernel void cdsSubCycleStrongVolumeHex3D(const dlong Nelements,
+             const dlong voffset,
+             const dlong NSOffset,
              @restrict const  dfloat *  vgeo,
              @restrict const  dfloat *  D,
-             const dlong voffset,
-             const dlong soffset,
              @restrict const  dfloat *  U,
              @restrict const  dfloat *  S,
              @restrict dfloat *  NS){
@@ -288,7 +288,7 @@
 
     id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
-    const dfloat Sn = S[id+0*soffset];
+    const dfloat Sn = S[id];
     s_S[k][j][i] = Sn;
   }
       }
@@ -335,7 +335,7 @@
     const dfloat v = U[id+1*voffset];
     const dfloat w = U[id+2*voffset];
     
-    NS[id+0*soffset] =  JW*(u*dSdx + v*dSdy + w*dSdz);
+    NS[id+NSOffset] =  JW*(u*dSdx + v*dSdy + w*dSdz);
     
   }
       }

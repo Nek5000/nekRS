@@ -19,6 +19,8 @@ typedef struct {
   elliptic_t *wSolver;
   elliptic_t *pSolver;
   cds_t      *cds;
+
+  dlong ellipticWrkOffset; 
   
   int Nscalar; 
   setupAide options;
@@ -38,8 +40,10 @@ typedef struct {
   dfloat startTime;   
   dfloat finalTime;   
 
-  int temporalOrder;
-  int ExplicitOrder; 
+  int   cht;
+
+  int   temporalOrder;
+  int   ExplicitOrder; 
   int   NtimeSteps;  // number of time steps 
   int   Nstages;     
   int   outputStep;
@@ -55,7 +59,8 @@ typedef struct {
 
   //RK Subcycle Data
   int SNrk;
-  dfloat *Srka, *Srkb, *Srkc; 
+  dfloat *Srka, *Srkb, *Srkc;
+  occa::memory o_Srka, o_Srkb; 
 
   //ARK data
   int Nrk;
@@ -69,8 +74,11 @@ typedef struct {
   dfloat *extbdfA, *extbdfB, *extbdfC;
   dfloat *extC;
 
-  int *VmapB, *PmapB;
-  occa::memory o_VmapB, o_PmapB;
+  int *VmapB;
+  occa::memory o_VmapB;
+
+  dlong *elementInfo;
+  occa::memory o_elementInfo;
 
   //halo data
   dfloat *vSendBuffer;
@@ -85,12 +93,12 @@ typedef struct {
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
   
-  dfloat *scratch;
-  occa::memory o_scratch;
+  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6,
+               o_wrk9, o_wrk12, o_wrk15; 
 
   int Nsubsteps;  
-  dfloat *Ue, *resU, sdt;
-  occa::memory o_Ue, o_resU;
+  dfloat *Ue, sdt;
+  occa::memory o_Ue;
 
   int lowMach;
   dfloat *qtl;
@@ -126,8 +134,6 @@ typedef struct {
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 
-  occa::memory o_invLumpedMassMatrix;
-  
   occa::kernel constrainKernel;
   
   occa::memory o_U, o_P;

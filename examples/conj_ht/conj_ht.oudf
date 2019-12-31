@@ -12,18 +12,18 @@ void cdsDirichletConditions3D(bcData *bc)
 }
 
 
-#define SOLID 1
 @kernel void cFill(const dlong Nelements,
                    const dfloat CONST1,
                    const dfloat CONST2,
-                   @restrict const long long * eInfo,
+                   @restrict const dlong * eInfo,
                    @restrict dfloat * QVOL)
 {
   for(dlong e=0;e<Nelements;++e;@outer(0)){
+    const dlong solid = eInfo[e];
     for(int n=0;n<p_Np;++n;@inner(0)){
       const int id = e*p_Np + n;
       QVOL[id] = CONST1;
-      if (eInfo[e] == SOLID) QVOL[id] = CONST2; 
+      if (solid) QVOL[id] = CONST2; 
     }
   }
 }

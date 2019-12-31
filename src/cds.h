@@ -10,6 +10,8 @@
 #include "mesh3D.h"
 #include "elliptic.h"
 
+#define NSCALAR_MAX 100
+
 extern "C" { // Begin C Linkage
 typedef struct {
 
@@ -17,7 +19,7 @@ typedef struct {
   
   mesh_t     *mesh;
   mesh_t     *meshV;
-  elliptic_t *solver;
+  elliptic_t *solver[NSCALAR_MAX];
   
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields
@@ -42,27 +44,32 @@ typedef struct {
   int outputStep;
   int outputForceStep; 
   int dtAdaptStep; 
-  
-  int Niter;
+
+  int compute[NSCALAR_MAX];  
+  int Niter[NSCALAR_MAX];
 
   //solver tolerances
   dfloat TOL;
 
   dfloat *U, *S;
-  dfloat *NS, *rkNS;
+  dfloat *rkNS;
   //  dfloat *rhsS;   
   dfloat *rkS; 
 
   //RK Subcycle Data
   int SNrk;
   dfloat *Srka, *Srkb, *Srkc; 
+  occa::memory o_Srka, o_Srkb;
+
   //EXTBDF data
   dfloat *extbdfA, *extbdfB, *extbdfC;
   dfloat *extC;
 
-  int *mapB, *EToB;
-  occa::memory o_mapB;
-  occa::memory o_EToB; 
+  int *mapB[NSCALAR_MAX], *EToB[NSCALAR_MAX];
+  occa::memory o_mapB[NSCALAR_MAX];
+  occa::memory o_EToB[NSCALAR_MAX]; 
+
+  occa::memory o_usrwrk;
 
   //halo data
   dfloat *sendBuffer;
@@ -84,8 +91,8 @@ typedef struct {
 
   int Nsubsteps;
   dfloat sdt; 
-  dfloat *Ue, *resS;
-  occa::memory o_Ue, o_resS;
+  dfloat *Ue;
+  occa::memory o_Ue;
 
   int var_coeff;
   dfloat *prop, *ellipticCoeff; 
@@ -95,6 +102,9 @@ typedef struct {
   dfloat *cU, *cSd, *cS, *FS, *BF; 
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF;
 
+  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
+
+  occa::kernel setScalarKernel;
   occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
@@ -127,8 +137,7 @@ typedef struct {
   occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
   occa::memory o_extC;
 
-  occa::memory o_invLumpedMassMatrix;
-  occa::memory o_InvM;
+  occa::memory o_InvM, o_InvMV;
 
 // Will be depreceated.....AK
   occa::kernel haloExtractKernel;
@@ -163,9 +172,7 @@ typedef struct {
     
 }cds_t;
 
-void cdsAdvection(cds_t *cds, dfloat time, occa::memory o_U, occa::memory o_S, occa::memory o_NS);
-
-void cdsSolve(cds_t *cds, dfloat time, occa::memory o_wrk,occa::memory o_Snew);
+occa::memory cdsSolve(int i, cds_t *cds, dfloat time);
 
 } // end C Linkage
 

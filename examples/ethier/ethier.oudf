@@ -37,7 +37,7 @@
                          + 2.f*a*cxy*syz*ezx + 2.f*a*cyz*szx*exy 
                          - 2.f*a*sxy*syz*ezx - 2.f*d*sxy*szx*eyz)); 
 
-      FS[n + 0*offset] = -dpdx; 
+      FS[n + offset] = -dpdx; 
     }
   }
 }

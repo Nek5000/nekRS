@@ -60,6 +60,7 @@ not be used for advertising or product endorsement purposes.
 
 \*---------------------------------------------------------------------------*/
 
+#include <fenv.h>
 #include <mpi.h>
 #include <iostream>
 #include <cstdio>
@@ -82,6 +83,10 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
+#ifdef DEBUG
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
   int retval;
   retval =  MPI_Init(&argc, &argv);
   if (retval != MPI_SUCCESS) {
@@ -97,7 +102,7 @@ int main(int argc, char **argv)
 #ifdef DEBUG
   if (rank == 0) {
     char str[10];
-    cout << "Press enter to continue" << endl;
+    cout << "Connect debugger, then press enter to continue" << endl;
     gets(str);
   }
   MPI_Barrier(comm);
@@ -144,6 +149,8 @@ int main(int argc, char **argv)
   }
   MPI_Pcontrol(0);
 
+  nekrs::printRuntimeStatistics();
+
   if(rank == 0) std::cout << "\nEnd." << "\n";
 
   MPI_Finalize();
@@ -158,7 +165,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   cmdOptions *cmdOpt = new cmdOptions();
  
   int err = 0;
-  int foundSetup = 0;
 
   if (rank == 0){
     while(1){
@@ -178,11 +184,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
       switch(c){ 
           case 's':
               cmdOpt->setupFile.assign(optarg);  
-              cmdOpt->setupFile = cmdOpt->setupFile + ".par";
-              if (const char *ptr = realpath(cmdOpt->setupFile.c_str(), NULL)) 
-                foundSetup = 1;
-              else 
-                std::cout << "ERROR: Cannot find " << cmdOpt->setupFile << "!\n";
               break;  
           case 'b':  
               cmdOpt->buildOnly = 1;
@@ -199,7 +200,6 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
               err = 1;
       }
     }  
-    if (!foundSetup) err = 1;
   } 
 
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);

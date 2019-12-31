@@ -125,39 +125,41 @@
 
 #define surfaceTermsTOMBO(sk,face,m, i, j)				\
   {									\
-    struct bcData bc;  \
-    const dlong  idM = vmapM[sk];         \
-    const dlong  idP = vmapP[sk];         \
+    struct bcData bc;                                                   \
+    const dlong  idM = vmapM[sk];                                       \
                                                                         \
-    bc.time = time; \
-    bc.nx  = sgeo[sk*p_Nsgeo+p_NXID];       \
-    bc.ny  = sgeo[sk*p_Nsgeo+p_NYID];       \
-    bc.nz  = sgeo[sk*p_Nsgeo+p_NZID];       \
-    bc.x   = x[idM]; \
-    bc.y   = y[idM]; \
-    bc.z   = z[idM]; \
-    bc.idM = idM; \
-    bc.fieldOffset = offset; \
-    const dfloat WSJ = sgeo[sk*p_Nsgeo+p_WSJID];      \
-                                                                         \
-    bc.uM  = U[idM+0*offset];  bc.vM   = U[idM+1*offset];  bc.wM   = U[idM+2*offset]; \
-    bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f; \
-    bc.wrk = (double *) W; \
-    bc.id = EToB[face+p_Nfaces*e];        \
-    if(bc.id>0) {               \
-      if(bc.id==1){             \
-        bc.uP = 0.f;  bc.vP = 0.f; bc.wP = 0.f;          \
-      }else if(bc.id==2){                \
-        insVelocityDirichletConditions3D(&bc); \
-      }else if(bc.id==4 || bc.id==5 || bc.id==6){             \
-        bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;         \
-      }                 \
-    }                 \
+    bc.time = time;                                                     \
+    bc.nx  = sgeo[sk*p_Nsgeo+p_NXID];                                   \
+    bc.ny  = sgeo[sk*p_Nsgeo+p_NYID];                                   \
+    bc.nz  = sgeo[sk*p_Nsgeo+p_NZID];                                   \
+    bc.x   = x[idM];                                                    \
+    bc.y   = y[idM];                                                    \
+    bc.z   = z[idM];                                                    \
+    bc.idM = idM;                                                       \
+    bc.fieldOffset = offset;                                            \
+    const dfloat WSJ = sgeo[sk*p_Nsgeo+p_WSJID];                        \
+                                                                        \
+    bc.uM  = U[idM+0*offset];                                           \
+    bc.vM  = U[idM+1*offset];                                           \
+    bc.wM  = U[idM+2*offset];                                           \
+    bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                             \
+    bc.wrk = W;                                                         \
+    bc.id  = EToBM[face+p_Nfaces*e];                                    \
+    const dlong bcType = EToB[face+p_Nfaces*e];                         \
+    if(bcType>0) {                                                      \
+      if(bcType==1){                                                    \
+        bc.uP = 0.f;  bc.vP = 0.f; bc.wP = 0.f;                         \
+      }else if(bcType==2){                                              \
+        insVelocityDirichletConditions3D(&bc);                          \
+      }else if(bcType==4 || bcType==5 || bcType==6){                    \
+        bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                    \
+      }                                                                 \
+    }                                                                   \
     dfloat scale = coef;						\
-    if(bc.id==4 || bc.id==5 || bc.id==6 ){					\
+    if(bcType==4 || bcType==5 || bcType==6 ){			        \
       scale = -1.f;							\
     }									\
-    s_fluxDiv[m][j][i] = scale*WSJ*(bc.nx*bc.uP + bc.ny*bc.vP + bc.nz*bc.wP);		\
+    s_fluxDiv[m][j][i] = scale*WSJ*(bc.nx*bc.uP + bc.ny*bc.vP + bc.nz*bc.wP); \
   }
 
 @kernel void insDivergenceSurfaceTOMBOHex3D(const dlong Nelements,
@@ -165,7 +167,8 @@
 					    @restrict const  dfloat *  sgeo,
 					    @restrict const  dfloat *  LIFTT,
 					    @restrict const  dlong  *  vmapM,
-					    @restrict const  dlong  *  vmapP,
+					    @restrict const  dlong  *  mapB,
+					    @restrict const  int    *  EToBM,
 					    @restrict const  int    *  EToB,
 					    const dfloat time,
 					    const dfloat coef,
@@ -173,8 +176,8 @@
 					    @restrict const  dfloat *  y,
 					    @restrict const  dfloat *  z,
 					    const dlong offset,
-              @restrict const  dfloat *  W,
-              @restrict const  dfloat *  U,
+                                            @restrict const  dfloat *  W,
+                                            @restrict const  dfloat *  U,
 					    @restrict dfloat *  divU){
 
 

@@ -45,6 +45,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
+  options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
 
   options.setArgs("CASENAME", casename);
   options.setArgs("UDF OKL FILE", casename + ".oudf");
@@ -93,6 +94,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
+  const char *ptr = realpath(setupFile.c_str(), NULL);
+  if (!ptr) {
+     if (rank == 0) cout << "\nERROR: Cannot find " << setupFile << "!\n";
+     EXIT(1);
+  }
+
   libParanumal::setupAide options;
 
   string casename = setupFile.substr(0, setupFile.find(".par"));
@@ -127,6 +134,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
    UPPER(threadModel); 
    options.setArgs("THREAD MODEL", threadModel);
   }
+
+  if (char *env = getenv("NEKRS_BACKEND")) {
+   string threadModel(env);
+   UPPER(threadModel); 
+   options.setArgs("THREAD MODEL", threadModel);
+  }
  
   string deviceNumber;
   if(ini.extract("occa", "devicenumber", deviceNumber))
@@ -134,6 +147,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("DEVICE NUMBER", deviceNumber);
 
   // GENERAL
+  bool verbose = false;
+  if(ini.extract("general", "verbose", verbose))
+    if(verbose) options.setArgs("VERBOSE", "TRUE");
+
   string startFrom;
   if (ini.extract("general", "startfrom", startFrom)) {
     options.setArgs("RESTART FROM FILE", "1");
@@ -158,10 +175,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
     ABORT("No support for bdf3!"); 
   } 
-  if(timeStepper == "bdf2" || timeStepper == "tombo3") { 
+  if(timeStepper == "bdf2" || timeStepper == "tombo2") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
   } 
-  if(timeStepper == "bdf1" || timeStepper == "tombo3") { 
+  if(timeStepper == "bdf1" || timeStepper == "tombo1") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   } 
   
@@ -313,18 +330,16 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   // SCALARS
   int nscal = 0;
-  if(ini.sections.count("temperature")) nscal = 1; // fixed for now
-  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+  int isStart = 0;
+  if(ini.sections.count("temperature")) {
+    nscal++;
+    isStart++;
 
-  if(nscal) {
-    options.setArgs("SCALAR01 KRYLOV SOLVER", "PCG");
-    options.setArgs("SCALAR01 BASIS", "NODAL");
-    options.setArgs("SCALAR01 PRECONDITIONER", "JACOBI");
-    options.setArgs("SCALAR01 DISCRETIZATION", "CONTINUOUS");
+    options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
     if(ini.extract("temperature", "residualtol", s_residualTol)) {
-      options.setArgs("SCALAR01 SOLVER TOLERANCE", to_string_f(s_residualTol));
+      options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
     double diffusivity; 
@@ -333,7 +348,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for conductivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
-      options.setArgs("SCALAR01 DIFFUSIVITY", to_string_f(diffusivity));
+      options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
     } else {
       if(!variableProperties)
         ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
@@ -344,7 +359,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       int err = 0;
       rhoCp = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rhoCp!");
-      options.setArgs("SCALAR01 DENSITY", to_string_f(rhoCp));
+      options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
     } else {
       if(!variableProperties)
         ABORT("Cannot find mandatory parameter TEMPERATURE::rhoCp!"); 
@@ -354,7 +369,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
-      bcMap::setup(sList, "scalar01");
+      bcMap::setup(sList, "scalar00");
     } else {
       ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
     } 
@@ -363,7 +378,73 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") 
       ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
   }
+  //
+  for (auto & sec : ini.sections) {
+    string key = sec.first;
+    if(key.compare(0, 6, "scalar") == 0) nscal++;
+  }
+  options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
+  for (int is = isStart; is<nscal; is++) {
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(2) << is;
+    string sid = ss.str();
+    string sidPar = sid;
+    if(isStart == 0) {
+      std::stringstream ss;
+      ss << std::setfill('0') << std::setw(2) << is+1;
+      sidPar = ss.str();
+    }
 
+    string solver;
+    ini.extract("scalar" + sidPar, "solver", solver);
+    if(solver == "none") {
+      options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
+      continue;
+    }  
+    options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
+
+    double s_residualTol;
+    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol)) {
+      options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
+    }
+
+    double diffusivity; 
+    if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
+      int err = 0;
+      diffusivity = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for diffusivity!");
+      if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
+      options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!"); 
+    }
+
+    double rho; 
+    if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
+      int err = 0;
+      rho = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for rho!");
+      options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!"); 
+    }
+
+    string s_bcMap;
+    if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(s_bcMap);
+      bcMap::setup(sList, "scalar" + sid);
+    } else {
+      ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!");
+    } 
+  }
+  if(nscal) {
+    options.setArgs("SCALAR SOLVER", "PCG");
+    options.setArgs("SCALAR BASIS", "NODAL");
+    options.setArgs("SCALAR DISCRETIZATION", "CONTINUOUS");
+  }
 
   return options;
 }

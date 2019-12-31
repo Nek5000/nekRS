@@ -24,26 +24,26 @@ SOFTWARE.
 
 */
 
-// P^s = PI + \sum^s-1 prk_si P^i 
 @kernel void insPressureUpdateTOMBO(const dlong Nelements,
                             const dlong offset,
                             @restrict const  int    *  mapB,
                             @restrict const  dfloat *  PI,
                             @restrict const  dfloat *  P,
-                                  @restrict dfloat *  rkP){
+                            @restrict dfloat *   Pnew){
 
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const dlong id  = n + e*p_Np;
-      const int bc    =  mapB[id]; // use volume based bc ids
-      
-      // outflow is already updated so do not use increment
-      dfloat rkPn = PI[id];
+      const int bcType = mapB[id];
+      const dfloat princ = PI[id];
+      dfloat pr = P[id];
 
-      if(bc != 3)
-        rkPn +=  P[id + 0*offset];
+      if(bcType == 1) // Dirichlet already updated 
+        pr = princ;
+      else
+        pr += princ; 
 
-      rkP[id] = rkPn;      
+      Pnew[id] = pr;      
     }
   }
 }

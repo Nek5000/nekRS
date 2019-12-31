@@ -64,7 +64,7 @@ inline void copy()
   const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
-  o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->Ntotal*sizeof(dfloat));
+  o_wrk.copyFrom(ins->o_U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
   setBCVectorValueKernel(mesh->Nelements, zero, bID, ins->fieldOffset,
                          o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
@@ -95,7 +95,7 @@ inline void copy()
 
   const dfloat scale = -wbar*sbuf[0] / sbuf[1]; 
   //printf("rescaling inflow: %f\n", scale);
-  scalarMultiplyKernel(ins->NVfields*ins->Ntotal, scale, o_wrk);
+  scalarMultiplyKernel(ins->NVfields*ins->fieldOffset, scale, o_wrk);
 }
 
 

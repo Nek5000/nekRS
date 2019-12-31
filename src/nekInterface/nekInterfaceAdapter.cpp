@@ -483,47 +483,17 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
   nekData.param[1] = mue;
  
   dfloat rhoCp;
-  options->getArgs("SCALAR01 DENSITY", rhoCp);
+  options->getArgs("SCALAR00 DENSITY", rhoCp);
   nekData.param[6] = rhoCp;
 
   dfloat diff;
-  options->getArgs("SCALAR01 DIFFUSIVITY", diff);
+  options->getArgs("SCALAR00 DIFFUSIVITY", diff);
   nekData.param[7] = diff;
 
   return 0;
 }
 
 void nek_copyFrom(ins_t *ins, dfloat time) {
-
-  mesh_t *mesh = ins->mesh;
-  dlong Nlocal = mesh->Nelements * mesh->Np;
-
-  dfloat *vx = ins->U + 0*ins->fieldOffset;
-  dfloat *vy = ins->U + 1*ins->fieldOffset;
-  dfloat *vz = ins->U + 2*ins->fieldOffset;
-
-  *(nekData.time) = time;
-
-  memcpy(nekData.vx, vx, sizeof(dfloat)*Nlocal);
-  memcpy(nekData.vy, vy, sizeof(dfloat)*Nlocal);
-  memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
-  memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
-  if(ins->Nscalar) {
-    mesh_t *mesh = ins->cds->mesh;
-    dlong Nlocal = mesh->Nelements * mesh->Np;
-    memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
-  }
-}
-
-void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
-
-  ins->o_U.copyTo(ins->U);
-  ins->o_P.copyTo(ins->P); 
-  if(ins->Nscalar) ins->cds->o_S.copyTo(ins->cds->S);
-  nek_copyFrom(ins, time, tstep);
-}
-
-void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
 
   if(rank==0) {
     printf("copying solution to nek\n");
@@ -537,7 +507,6 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
   dfloat *vy = ins->U + 1*ins->fieldOffset;
   dfloat *vz = ins->U + 2*ins->fieldOffset;
 
-  *(nekData.istep) = tstep;
   *(nekData.time) = time;
 
   memcpy(nekData.vx, vx, sizeof(dfloat)*Nlocal);
@@ -545,10 +514,30 @@ void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
   memcpy(nekData.vz, vz, sizeof(dfloat)*Nlocal);
   memcpy(nekData.pr, ins->P, sizeof(dfloat)*Nlocal);
   if(ins->Nscalar) {
-    mesh_t *mesh = ins->cds->mesh;
-    dlong Nlocal = mesh->Nelements * mesh->Np;
-    memcpy(nekData.t, ins->cds->S, sizeof(dfloat)*Nlocal);
+    const dlong nekFieldOffset = nekData.lelt*mesh->Np;
+    for(int is=0; is<ins->Nscalar; is++) {
+      mesh_t *mesh;
+      (is) ? mesh = ins->cds->meshV : mesh = ins->cds->mesh;
+      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      dfloat *Ti = nekData.t   + is*nekFieldOffset;
+      dfloat *Si = ins->cds->S + is*ins->cds->fieldOffset;
+      memcpy(Ti, Si, Nlocal*sizeof(dfloat));
+    }
   }
+}
+
+void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep) {
+
+  ins->o_U.copyTo(ins->U);
+  ins->o_P.copyTo(ins->P); 
+  if(ins->Nscalar) ins->cds->o_S.copyTo(ins->cds->S);
+  nek_copyFrom(ins, time, tstep);
+}
+
+void nek_copyFrom(ins_t *ins, dfloat time, int tstep) {
+
+  nek_copyFrom(ins, time);
+  *(nekData.istep) = tstep;
 }
 
 void nek_ocopyTo(ins_t *ins, dfloat &time) {
@@ -580,9 +569,15 @@ void nek_copyTo(ins_t *ins, dfloat &time) {
   memcpy(vz, nekData.vz, sizeof(dfloat)*Nlocal);
   memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   if(ins->Nscalar) {
-    mesh_t *mesh = ins->cds->mesh;
-    dlong Nlocal = mesh->Nelements * mesh->Np;
-    memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
+    const dlong nekFieldOffset = nekData.lelt*mesh->Np;   
+    for(int is=0; is<ins->Nscalar; is++) {
+      mesh_t *mesh;
+      (is) ? mesh = ins->cds->meshV : mesh = ins->cds->mesh;
+      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      dfloat *Ti = nekData.t   + is*nekFieldOffset;
+      dfloat *Si = ins->cds->S + is*ins->cds->fieldOffset;
+      memcpy(Si, Ti, Nlocal*sizeof(dfloat));
+    }
   }
 }
 
@@ -599,9 +594,15 @@ void nek_copyRestart(ins_t *ins) {
   }
   if (*(nekData.ifgetp)) memcpy(ins->P, nekData.pr, sizeof(dfloat)*Nlocal);
   if(ins->Nscalar) {
-    mesh_t *mesh = ins->cds->mesh;
-    dlong Nlocal = mesh->Nelements * mesh->Np;
-    memcpy(ins->cds->S, nekData.t, sizeof(dfloat)*Nlocal);
+    const dlong nekFieldOffset = nekData.lelt*mesh->Np;
+    for(int is=0; is<ins->Nscalar; is++) {
+       mesh_t *mesh;
+       (is) ? mesh = ins->cds->meshV : mesh = ins->cds->mesh;
+       const dlong Nlocal = mesh->Nelements * mesh->Np;
+       dfloat *Ti = nekData.t   + is*nekFieldOffset;
+       dfloat *Si = ins->cds->S + is*ins->cds->fieldOffset;
+       memcpy(Si, Ti, Nlocal*sizeof(dfloat));
+    }
   }
 }
 

@@ -171,6 +171,7 @@ c-----------------------------------------------------------------------
           iftmsh(2) = .true.
         endif
         npscal = npscal_in - 1
+        param(23) = npscal
         ifto   = .true.       
         do i = 1,npscal
           ifpsco(i) = .true.

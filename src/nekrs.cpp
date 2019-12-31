@@ -24,13 +24,14 @@ static void dryRun(libParanumal::setupAide &options, int npTarget);
 namespace nekrs {
 
 void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
-           int ciMode, string cacheDir, string setupFile)
+           int ciMode, string cacheDir, string _setupFile)
 {
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
  
   nrsBuildOnly = buildOnly; 
+  string setupFile = _setupFile + ".par";
   setCache(cacheDir);
 
   if (rank == 0) {
@@ -76,7 +77,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   string casename;
   options.getArgs("CASENAME", casename);
   options.getArgs("POLYNOMIAL DEGREE", N);
-  if(rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, size);
+  if(rank == 0) buildNekInterface(casename.c_str(), mymax(1,nscal), N, size);
   MPI_Barrier(comm);
 
   // init nek
@@ -94,8 +95,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup) udf.setup(ins);
   if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
     if(!udf.properties) {
-      if (rank ==0) cout << "ERROR: variableProperties requires udf.properties function handle" << "!\n";
-      EXIT(-1);
+      if (rank ==0) cout << "ERROR: variableProperties requires assigned udf.properties pointer" << "!\n";
+      EXIT(1);
     } 
   }
   ins->o_U.copyFrom(ins->U);
@@ -108,7 +109,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.properties) {
     udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S, 
-                           ins->o_prop, ins->cds->o_prop);
+                   ins->o_prop, ins->cds->o_prop);
     ins->o_prop.copyTo(ins->prop); 
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
   }
@@ -116,12 +117,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins, ins->startTime, 0);
 
+  timer::init(ins->mesh->comm, ins->mesh->device, 0);
+
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     cout << ins->vOptions << endl;
-    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
+    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
   }
   fflush(stdout);
 }
@@ -184,6 +187,11 @@ void *nekPtr(const char *id)
   return nek_ptr(id); 
 }
 
+void printRuntimeStatistics()
+{
+  timer::printStat();
+}
+
 } // namespace
 
 static void dryRun(libParanumal::setupAide &options, int npTarget) 
@@ -214,7 +222,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   // jit compile nek
   int nscal;
   options.getArgs("NUMBER OF SCALARS", nscal);
-  if (rank == 0) buildNekInterface(casename.c_str(), nscal+3, N, npTarget);
+  if (rank == 0) buildNekInterface(casename.c_str(), nscal, N, npTarget);
   MPI_Barrier(comm);
 
   // init solver
@@ -233,7 +241,7 @@ static void setOUDF(libParanumal::setupAide &options)
   char *ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
     if (rank ==0) cout << "ERROR: Cannot find " << oklFile << "!\n";
-    EXIT(-1);
+    EXIT(1);
   }
   free(ptr);
 
@@ -308,4 +316,4 @@ static void setCache(string dir)
   if (!getenv("OCCA_CACHE_DIR"))
       occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 }
-
+ 

@@ -10,13 +10,14 @@
 #include <getopt.h>
 #include <mpi.h>
 
-#define NEKRS_VERSION "0"
-#define NEKRS_SUBVERSION "4"
+#define NEKRS_VERSION "19"
+#define NEKRS_SUBVERSION "0"
 
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
 
 #include "libParanumal.hpp"
 #include "ins.h"
+#include "timer.hpp"
 
 // std::to_string might be not accurate enough 
 static string to_string_f(double a) {

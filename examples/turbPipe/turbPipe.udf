@@ -21,8 +21,8 @@ void UDF_Setup(ins_t *ins)
 
   // setup scratch space
   ins->o_usrwrk.free(); free(ins->usrwrk);
-  ins->usrwrk   = (dfloat*) calloc(ins->NVfields*ins->Ntotal, sizeof(dfloat));
-  ins->o_usrwrk = ins->mesh->device.malloc(ins->NVfields*ins->Ntotal*sizeof(dfloat), ins->usrwrk);
+  ins->usrwrk   = (dfloat*) calloc(ins->NVfields*ins->fieldOffset, sizeof(dfloat));
+  ins->o_usrwrk = ins->mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->usrwrk);
 
   // recycling
   const dfloat wbar  = 1.0;
