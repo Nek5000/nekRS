@@ -11,11 +11,13 @@
 void extbdfCoefficents(ins_t *ins, int order);
 
 void makef(ins_t *ins, dfloat time, occa::memory &o_BF);
-occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, occa::memory o_U);
+occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, 
+                                    occa::memory o_U);
 void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U);
 
 void makeq(ins_t *ins, dfloat time, occa::memory o_BF);
-occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is, occa::memory o_U, occa::memory o_S); 
+occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is, 
+                                  occa::memory o_U, occa::memory o_S); 
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 
 void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl);
@@ -249,10 +251,10 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
 
   timer::tic("scalarSolve");
   for (int is=0; is<cds->NSfields; is++) {
+    if(!cds->compute[is]) continue; 
+
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
-
-    if(!cds->compute[is]) continue; 
 
     cds->setEllipticCoeffKernel(
          cds->Nlocal,
@@ -268,7 +270,7 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
     for (int s=cds->Nstages;s>1;s--) {
       o_S.copyFrom(
         o_S, 
-        cds->fieldOffset*sizeof(dfloat), 
+        cds->Ntotal*sizeof(dfloat), 
         ((s-1)*(cds->fieldOffset*cds->NSfields) + is*cds->fieldOffset)*sizeof(dfloat), 
         ((s-2)*(cds->fieldOffset*cds->NSfields) + is*cds->fieldOffset)*sizeof(dfloat));
     }
@@ -392,10 +394,6 @@ occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, occa::memory o_U)
 {
   mesh_t *mesh = ins->mesh;
 
-  const dfloat tn0 = time - 0*ins->dt;
-  const dfloat tn1 = time - 1*ins->dt;
-  const dfloat tn2 = time - 2*ins->dt;
-
   // Solve for Each SubProblem
   for (int torder=ins->ExplicitOrder-1; torder>=0; torder--){
     
@@ -403,14 +401,16 @@ occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, occa::memory o_U)
     dlong toffset = torder*ins->NVfields*ins->fieldOffset;
     const dfloat b=ins->extbdfB[torder];
     if (torder==ins->ExplicitOrder-1) 
-      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, o_U, 0.0, 0, ins->o_wrk0);
+      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, 
+                           o_U, 0.0, 0, ins->o_wrk0);
     else
-      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, o_U, 1.0, 0, ins->o_wrk0);
+      ins->scaledAddKernel(ins->NVfields*ins->fieldOffset, b, toffset, 
+                           o_U, 1.0, 0, ins->o_wrk0);
     
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
     for(int ststep = 0; ststep<ins->Nsubsteps;++ststep){
 
-      const dfloat tsub = time - torder*ins->dt;
+      const dfloat tsub   = time - torder*ins->dt;
       const dfloat tstage = tsub + ststep*ins->sdt;     
 
       //ins->o_wrk3.copyFrom(ins->o_wrk0, ins->NVfields*ins->fieldOffset*sizeof(dfloat));   
@@ -420,7 +420,10 @@ occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, occa::memory o_U)
       for(int rk=0;rk<ins->SNrk;++rk){
         
         // Extrapolate velocity to subProblem stage time
-        const dfloat t = tstage +  ins->sdt*ins->Srkc[rk]; 
+        const dfloat t   = tstage +  ins->sdt*ins->Srkc[rk]; 
+        const dfloat tn0 = time - 0*ins->dt;
+        const dfloat tn1 = time - 1*ins->dt;
+        const dfloat tn2 = time - 2*ins->dt;
         switch(ins->ExplicitOrder){
 	case 1:
 	  ins->extC[0] = 1.f; ins->extC[1] = 0.f; ins->extC[2] = 0.f;
@@ -500,38 +503,41 @@ occa::memory velocityStrongSubCycle(ins_t *ins, dfloat time, occa::memory o_U)
   return ins->o_wrk0;
 }
 
-occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is, occa::memory o_U, occa::memory o_S)
+occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is, 
+                                  occa::memory o_U, occa::memory o_S)
 {
   mesh_t *mesh = cds->meshV;
-
-  const dfloat tn0 = time - 0*cds->dt;
-  const dfloat tn1 = time - 1*cds->dt;
-  const dfloat tn2 = time - 2*cds->dt;
 
    // Solve for Each SubProblem
   for (int torder=(cds->ExplicitOrder-1); torder>=0; torder--){
 
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
-    const dlong toffset = is*cds->fieldOffset + torder*cds->NSfields*cds->fieldOffset;
+    const dlong toffset = is*cds->fieldOffset + 
+                          torder*cds->NSfields*cds->fieldOffset;
     if (torder==cds->ExplicitOrder-1)
-      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder], toffset, o_S, 0.0, 0, cds->o_wrk0);
+      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder], 
+                           toffset, o_S, 0.0, 0, cds->o_wrk0);
     else
-      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder], toffset, o_S, 1.0, 0, cds->o_wrk0);
+      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder],
+                           toffset, o_S, 1.0, 0, cds->o_wrk0);
 
     // Advance SubProblem to t^(n-torder+1) 
     for(int ststep = 0; ststep<cds->Nsubsteps;++ststep){
 
-      const dfloat tsub = time - torder*cds->dt;
+      const dfloat tsub   = time - torder*cds->dt;
       const dfloat tstage = tsub + ststep*cds->sdt;     
 
       //cds->o_wrk1.copyFrom(cds->o_wrk0, cds->fieldOffset*sizeof(dfloat));
       cds->o_wrk0.copyFrom(cds->o_wrk0, cds->fieldOffset*sizeof(dfloat), 
                            cds->fieldOffset*sizeof(dfloat), 0);  
 
-      for(int rk=0;rk<cds->SNrk;++rk){// loop over stages
+      for(int rk=0;rk<cds->SNrk;++rk){
 
         // Extrapolate velocity to subProblem stage time
-        const dfloat t = tstage +  cds->sdt*cds->Srkc[rk]; 
+        const dfloat t   = tstage +  cds->sdt*cds->Srkc[rk]; 
+        const dfloat tn0 = time - 0*cds->dt;
+        const dfloat tn1 = time - 1*cds->dt;
+        const dfloat tn2 = time - 2*cds->dt;
         switch(cds->ExplicitOrder){
           case 1:
             cds->extC[0] = 1.f; cds->extC[1] = 0.f; cds->extC[2] = 0.f;
