@@ -72,6 +72,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
+  options.setArgs("GALERKIN COARSE MATRIX","FALSE");
   options.setArgs("PRESSURE KRYLOV SOLVER", "PCG+FLEXIBLE");
   options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
@@ -281,7 +282,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   bool p_rproj; 
   if(ini.extract("pressure", "projection", p_rproj))
     if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
-  
+ 
+  bool p_gproj; 
+  if(ini.extract("pressure", "galerkincoarsegrid", p_gproj))
+    if(p_gproj) options.setArgs("GALERKIN COARSE MATRIX", "TRUE");
+ 
   string p_amgsolver; 
   ini.extract("pressure", "amgsolver", p_amgsolver);
   if (p_amgsolver == "paralmond")
