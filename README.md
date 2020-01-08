@@ -29,7 +29,7 @@ Requirements:
 * CMake version 3.1 or later
 * Login shell bash or zsh
 
-Download the latest release tarball (not yet available!)
+Download the latest release tarball
 
 ```sh
 wget https://github.com/Nek5000/nekRS/releases/download/v19.0/nekRS-v19.0.tar.gz 
@@ -54,7 +54,7 @@ Please edit the make script to customize build settings.
 
 ## Setting the Enviroment
 
-Assuming you run bash and your install directroy is $HOME/.local/nekrs, 
+Assuming you run bash and your install directory is $HOME/.local/nekrs, 
 add the following line to your $HOME/.bash_profile:
 
 ```sh
@@ -66,7 +66,7 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 ## Run Example
 
 ```sh
-cd $NEKRS_EXAMPLES/ethier
+cd $NEKRS_HOME/examples/ethier
 nrsmpi ethier 2 # run on two MPI ranks
 ```
 
