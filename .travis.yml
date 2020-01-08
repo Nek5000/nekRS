@@ -48,4 +48,4 @@ before_install:
 install:
 
 before_cache:
-  - cd $NEKRS_HOME && find -name ".cache" -exec {} \;
+  - cd $NEKRS_HOME && find -name ".cache" -exec rm -rf {} \;
