@@ -6,7 +6,7 @@
 
 namespace nekrs {
 
-void setup(MPI_Comm comm, int buildOnly, int sizeTarget,
+void setup(int argc, char **argv, MPI_Comm comm, int buildOnly, int sizeTarget,
            int ciMode, std::string cacheDir, std::string setupFile);
 
 void runStep(double time, double dt, int tstep);

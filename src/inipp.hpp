@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#ifndef INIPARSER_H
+#define INIPARSER_H
+
 #pragma once
 
 #include <cstring>
@@ -33,6 +36,8 @@ SOFTWARE.
 #include <functional>
 #include <cctype>
 #include <sstream>
+
+namespace {
 
 namespace inipp {
 
@@ -182,7 +187,7 @@ public:
 		}
 	}
 
-	void parse(std::basic_istream<CharT> & is) {
+	void parse(std::basic_istream<CharT> & is, bool lowerValue = true) {
 		String line;
 		String section;
 		while (!is.eof()) {
@@ -217,8 +222,10 @@ public:
 					detail::rtrim(variable);
 					detail::ltrim(value);
 
-                                        transform(value.begin(), value.end(), value.begin(), 
-                                                          std::ptr_fun<int, int>(std::tolower));
+                                        if (lowerValue) {
+                                          transform(value.begin(), value.end(), value.begin(), 
+                                                    std::ptr_fun<int, int>(std::tolower));
+                                        }
 	
 					auto & sec = sections[section];
 					if (sec.find(variable) == sec.end())
@@ -297,3 +304,8 @@ private:
 };
 
 } // namespace inipp
+
+
+} // namespace
+
+#endif

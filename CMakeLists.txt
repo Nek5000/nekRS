@@ -155,8 +155,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBP_DEFINES}")
 ###############################################################################
 
 configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.bashrc.in
-  ${CMAKE_INSTALL_PREFIX}/bin/nekrs.bashrc
+  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
+  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
 
 ###############################################################################
@@ -310,6 +310,7 @@ set(SRC
     src/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/parReader.cpp
+    src/configReader.cpp
     src/tinyexpr.c
     src/timer.cpp
     ## To get fortran flags

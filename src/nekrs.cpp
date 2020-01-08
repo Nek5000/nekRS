@@ -4,6 +4,7 @@
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
 #include "parReader.hpp"
+#include "configReader.hpp"
 #include "runTime.hpp"
 
 static int rank, size;
@@ -23,12 +24,14 @@ static void dryRun(libParanumal::setupAide &options, int npTarget);
 
 namespace nekrs {
 
-void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
+void setup(int argc, char **argv, MPI_Comm comm_in, int buildOnly, int sizeTarget, 
            int ciMode, string cacheDir, string _setupFile)
 {
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+  configRead(comm, argv[0]);
  
   nrsBuildOnly = buildOnly; 
   string setupFile = _setupFile + ".par";

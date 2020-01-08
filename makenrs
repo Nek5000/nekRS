@@ -14,7 +14,7 @@
 
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
-: ${OCCA_OPENCL_ENABLED:=0}
+: ${OCCA_OPENCL_ENABLED:=1}
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!

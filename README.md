@@ -54,10 +54,12 @@ Please edit the make script to customize build settings.
 
 ## Setting the Enviroment
 
-Assuming you run bash, add the following line to your $HOME/.bash_profile:
+Assuming you run bash and your install directroy is $HOME/.local/nekrs, 
+add the following line to your $HOME/.bash_profile:
 
 ```sh
-source <your install path>/bin/nekrs.bashrc
+export NEKRS_HOME=$HOME/.local/nekrs
+PATH=${NEKRS_HOME}/bin:${PATH}
 ```
 then type `source $HOME/.bash_profile` in the current terminal window. 
 
@@ -84,7 +86,7 @@ If you run into problems compiling, installing, or running nekRS, please send a 
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
 
 ## License
-nekRS is released under the BSD 3-clause license (see the LICENSE file). 
+nekRS is released under the BSD 3-clause license (see LICENSE file). 
 All new contributions must be made under the BSD 3-clause license.
 
 ## Acknowledgment
