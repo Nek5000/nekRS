@@ -7,10 +7,8 @@ env:
   - NEKRS_HOME=/home/travis/.local/nekrs
   - PATH=$NEKRS_HOME/bin:$PATH
   - OCCA_CACHE_DIR=$HOME/.local/nekrs/occa_cache
-  - MAKEFLAGS="-j2"
 
 cache:
-  timeout: 3600
   directories:
     - $HOME/.local/nekrs
 
@@ -28,7 +26,7 @@ jobs:
      script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && OCCA_CUDA_ENABLED=0 ./makenrs 
    - stage: warmup
      name: "warm-up"
-     script: cd $NEKRS_HOME/examples/ethier && nrspre ethier 1  
+     script: cd $NEKRS_HOME/examples/ethier && rm -rf .cache && nrspre ethier 1  
    - stage: test
      name: "ethier default"
      script: cd $NEKRS_HOME/examples/ethier && nrsmpi ethier 2 1 
@@ -49,4 +47,5 @@ before_install:
 
 install:
 
-before_script:
+before_cache:
+  - cd $NEKRS_HOME && find -name ".cache" -exec {} \;
