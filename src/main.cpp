@@ -111,7 +111,7 @@ int main(int argc, char **argv)
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
   std::string cacheDir; 
-  nekrs::setup(argc, argv, comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
+  nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cacheDir, cmdOpt->setupFile);
 
   if (cmdOpt->buildOnly) {

@@ -2,6 +2,6 @@
 #define nekrs_cfgreader_hpp_
 
 #include "nekrs.hpp"
-void configRead(MPI_Comm comm, char *path);
+void configRead(MPI_Comm comm);
 
 #endif

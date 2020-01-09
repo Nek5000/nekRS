@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export NEKRS_HOME="`dirname "$0"`/../"
-
+export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
 : ${TRAVIS:="false"}
 
 if [ "$TRAVIS" == "true" ]; then
