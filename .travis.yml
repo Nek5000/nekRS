@@ -5,8 +5,11 @@ dist: bionic
 env:
   global:
   - NEKRS_HOME=/home/travis/.local/nekrs
+  - NEKRS_EXAMPLES=$NEKRS_HOME/examples
   - PATH=$NEKRS_HOME/bin:$PATH
   - OCCA_CACHE_DIR=$HOME/.local/nekrs/occa_cache
+  - OCCA_CUDA_ENABLED=0
+  - OCCA_OPENCL_ENABLED=1
 
 cache:
   directories:
@@ -23,29 +26,33 @@ jobs:
   include:
    - stage: prepare
      name: "install"
-     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && OCCA_CUDA_ENABLED=0 ./makenrs 
+     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && ./makenrs 
    - stage: warmup
      name: "warm-up"
-     script: cd $NEKRS_HOME/examples/ethier && rm -rf .cache && nrspre ethier 1  
+     script: cd $NEKRS_EXAMPLES/ethier && rm -rf .cache && nrspre ethier 1  
    - stage: test
      name: "ethier default"
-     script: cd $NEKRS_HOME/examples/ethier && nrsmpi ethier 2 1 
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 1 
    - stage: test
      name: "ethier subcycle"
-     script: cd $NEKRS_HOME/examples/ethier && nrsmpi ethier 2 2 
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 2 
+   - stage: test
+     name: "ethier default openCL"
+     script: cd $NEKRS_EXAMPLES/ethier && NEKRS_BACKEND=OPENCL nrsmpi ethier 2 1 
    - stage: test
      name: "lowMach default"
-     script: cd $NEKRS_HOME/examples/lowMach && nrsmpi lowMach 2 1 
+     script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
    - stage: test
      name: "conj_ht"
-     script: cd $NEKRS_HOME/examples/conj_ht && nrsmpi conj_ht 2 1
+     script: cd $NEKRS_EXAMPLES/conj_ht && nrsmpi conj_ht 2 1
 
 
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libmpich-dev mpich
+  - sudo apt-get install pocl
 
 install:
 
 before_cache:
-  - cd $NEKRS_HOME && find -name ".cache" -exec rm -rf {} \;
+  - cd $NEKRS_EXAMPLES && find -name ".cache" -exec rm -rf {} \;

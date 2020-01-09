@@ -15,7 +15,7 @@
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
-void configRead(MPI_Comm comm, char* path)
+void configRead(MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
