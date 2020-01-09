@@ -37,9 +37,6 @@ jobs:
      name: "ethier subcycle"
      script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 2 
    - stage: test
-     name: "ethier default openCL"
-     script: cd $NEKRS_EXAMPLES/ethier && NEKRS_BACKEND=OPENCL nrsmpi ethier 2 1 
-   - stage: test
      name: "lowMach default"
      script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
    - stage: test
@@ -50,7 +47,6 @@ jobs:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libmpich-dev mpich
-  - sudo apt-get install pocl
 
 install:
 
