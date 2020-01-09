@@ -83,7 +83,16 @@ occa::kernel udfBuildKernel(ins_t *ins, const char *function)
   mesh_t *mesh = ins->mesh;
   MPI_Comm_rank(mesh->comm, &rank);
 
-  const char *fname = "__udf.okl";
+  char buf[FILENAME_MAX];
+  getcwd(buf, sizeof(buf));
+  string tmp;
+  tmp.assign(buf);
+
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  kernelInfo["include_paths"] += tmp.c_str(); 
+
+  tmp += "/.udf.okl";
+  const char *fname = tmp.c_str(); 
 
   // add dummy to make occa happy
   if (rank == 0){
@@ -101,7 +110,6 @@ occa::kernel udfBuildKernel(ins_t *ins, const char *function)
   }
 
   occa::kernel k;
-  occa::properties& kernelInfo = *ins->kernelInfo;
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
        k = mesh->device.buildKernel(fname, function, kernelInfo);
