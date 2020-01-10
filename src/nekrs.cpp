@@ -252,9 +252,11 @@ static void setOUDF(libParanumal::setupAide &options)
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
   string casename;
   options.getArgs("CASENAME", casename);
-  string dataFile = cache_dir + "/" + casename + ".okl";
+  const string dataFileDir = cache_dir + "/udf/"; 
+  const string dataFile = dataFileDir + "udf.okl";
 
   if (rank == 0) {
+    mkdir(dataFileDir.c_str(), S_IRWXU);
 
     std::ifstream in;
     in.open(oklFile);
@@ -291,6 +293,11 @@ static void setOUDF(libParanumal::setupAide &options)
     found = buffer.str().find("void cdsDirichletConditions");
     if (found ==std::string::npos)
       out << "void cdsDirichletConditions3D(bcData *bc){}\n"; 
+
+    out <<
+      "@kernel void __dummy__(int N) {"
+      "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
+      "}";
 
     out.close();
   }

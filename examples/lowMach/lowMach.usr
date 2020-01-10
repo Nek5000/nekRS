@@ -29,12 +29,12 @@ c-----------------------------------------------------------------------
       do 100 k=1,nz1
       do 100 j=1,ny1
       do 100 i=1,nx1
-         XD = XM1(i,j,k,iel)/DELTA
+         XD = XM1(i,j,k,iel)/P_DELTA
          sech = 1.0/cosh(XD)
          exact = 0.5*(3.0 + tanh(XD))
          aa = 3./2 - (tanh(1.0) - tanh(-1.0))/3.
 
-         qtle               = 0.5/DELTA*(1. - (tanh(XD)*tanh(XD)))
+         qtle               = 0.5/P_DELTA*(1. - (tanh(XD)*tanh(XD)))
          pre(i,j,k,iel)     = 4./3 * qtle - exact + aa
 
          VX_err(i,j,k,iel)  = abs(VX(i,j,k,iel)   - exact) 
@@ -95,7 +95,7 @@ C   Set initial conditions
 
       real xd
 
-      XD = X/DELTA
+      XD = X/P_DELTA
 
       UX = 0.5*(3.0 + tanh(XD))
       UY = 0.0

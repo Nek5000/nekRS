@@ -45,6 +45,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   }
   mesh_t *mesh = ins->mesh;
 
+  occa::properties kernelInfoV  = kernelInfo;
+  occa::properties kernelInfoP  = kernelInfo;
+  occa::properties kernelInfoS  = kernelInfo;
+
   ins->NVfields = (ins->dim==3) ? 3:2; //  Total Number of Velocity Fields
   ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
 
@@ -180,58 +184,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->o_Srkb = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srkb);
   }
 
-  occa::properties kernelInfoV  = kernelInfo;
-  occa::properties kernelInfoP  = kernelInfo;
-  occa::properties kernelInfoS  = kernelInfo;
-
-  // ADD-DEFINES
-  kernelInfo["defines/" "p_NTfields"]= ins->NTfields;
-  kernelInfo["defines/" "p_NVfields"]= ins->NVfields;
-  kernelInfo["defines/" "p_NfacesNfp"]=  mesh->Nfaces*mesh->Nfp;
-  kernelInfo["defines/" "p_Nstages"]=  ins->Nstages;
-  if(ins->Nsubsteps)
-    kernelInfo["defines/" "p_SUBCYCLING"]=  1;
-  else
-    kernelInfo["defines/" "p_SUBCYCLING"]=  0;
-
-  kernelInfo["defines/" "p_blockSize"]= blockSize;
-  //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
-  kernelInfo["defines/" "p_maxNodes"]= maxNodes;
-
-  int NblockV = mymax(1,256/mesh->Np); // works for CUDA
-  kernelInfo["defines/" "p_NblockV"]= NblockV;
-
-  int NblockS = mymax(1,256/maxNodes); // works for CUDA
-  kernelInfo["defines/" "p_NblockS"]= NblockS;
-
-  int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);  
-  kernelInfo["defines/" "p_maxNodesVolumeCub"]= maxNodesVolumeCub;
-  int cubNblockV = mymax(1,256/maxNodesVolumeCub);
-  //
-  int maxNodesSurfaceCub = mymax(mesh->Np, mymax(mesh->Nfaces*mesh->Nfp, mesh->Nfaces*mesh->intNfp));
-  kernelInfo["defines/" "p_maxNodesSurfaceCub"]=maxNodesSurfaceCub;
-  int cubNblockS = mymax(256/maxNodesSurfaceCub,1); // works for CUDA
-  //
-  kernelInfo["defines/" "p_cubNblockV"]=cubNblockV;
-  kernelInfo["defines/" "p_cubNblockS"]=cubNblockS;
-
-  // Struct for BC implementation
-  string bcDataFile;
-  bcDataFile = install_dir + "/include/insBcData.h";
-  kernelInfo["includes"] += bcDataFile.c_str();
-
-  //add boundary data to kernel info
-  string boundaryHeaderFileName; 
-  options.getArgs("DATA FILE", boundaryHeaderFileName);
-  kernelInfo["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
-  // jit compile udf kernels
-  if (udf.loadKernels) {
-    if (mesh->rank == 0) cout << "building udf kernels ...";
-    udf.loadKernels(ins);
-    if (mesh->rank == 0) cout << " done" << endl;
-  }  
+  
 
   // setup scratch space
   const int wrkNflds = 9; 
@@ -290,7 +243,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->elementInfo = (dlong*) calloc(ins->meshT->Nelements,sizeof(dlong));
   for (int e=0;e<ins->meshT->Nelements;e++) ins->elementInfo[e] = mesh->elementInfo[e]; 
   ins->o_elementInfo = mesh->device.malloc(ins->meshT->Nelements*sizeof(dlong), ins->elementInfo);  
-
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   ins->o_rkC     = mesh->device.malloc(4*sizeof(dfloat),rkC);
   ins->o_extbdfA = mesh->device.malloc(3*sizeof(dfloat));
@@ -299,9 +251,56 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_extC    = mesh->device.malloc(3*sizeof(dfloat)); 
   ins->o_prkA    = ins->o_extbdfC;
   ins->o_prkB    = ins->o_extbdfC;
+
+  kernelInfo["defines/" "p_NTfields"]= ins->NTfields;
+  kernelInfo["defines/" "p_NVfields"]= ins->NVfields;
+  kernelInfo["defines/" "p_NfacesNfp"]=  mesh->Nfaces*mesh->Nfp;
+  kernelInfo["defines/" "p_Nstages"]=  ins->Nstages;
+  if(ins->Nsubsteps)
+    kernelInfo["defines/" "p_SUBCYCLING"]=  1;
+  else
+    kernelInfo["defines/" "p_SUBCYCLING"]=  0;
+
+  kernelInfo["defines/" "p_blockSize"]= blockSize;
+  //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
+  int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
+  kernelInfo["defines/" "p_maxNodes"]= maxNodes;
+
+  int NblockV = mymax(1,256/mesh->Np); // works for CUDA
+  kernelInfo["defines/" "p_NblockV"]= NblockV;
+
+  int NblockS = mymax(1,256/maxNodes); // works for CUDA
+  kernelInfo["defines/" "p_NblockS"]= NblockS;
+
+  int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);  
+  kernelInfo["defines/" "p_maxNodesVolumeCub"]= maxNodesVolumeCub;
+  int cubNblockV = mymax(1,256/maxNodesVolumeCub);
+
+  int maxNodesSurfaceCub = mymax(mesh->Np, mymax(mesh->Nfaces*mesh->Nfp, 
+                           mesh->Nfaces*mesh->intNfp));
+  kernelInfo["defines/" "p_maxNodesSurfaceCub"]=maxNodesSurfaceCub;
+  int cubNblockS = mymax(256/maxNodesSurfaceCub,1); // works for CUDA
  
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) filterSetup(ins); 
-    
+  kernelInfo["defines/" "p_cubNblockV"]=cubNblockV;
+  kernelInfo["defines/" "p_cubNblockS"]=cubNblockS;
+
+  // jit compile udf kernels
+  if (udf.loadKernels) {
+    if (mesh->rank == 0) cout << "building udf kernels ...";
+    udf.loadKernels(ins);
+    if (mesh->rank == 0) cout << " done" << endl;
+  }
+ 
+  occa::properties kernelInfoBC = kernelInfo;
+  const string bcDataFile = install_dir + "/include/insBcData.h";
+  kernelInfoBC["includes"] += bcDataFile.c_str();
+  string boundaryHeaderFileName; 
+  options.getArgs("DATA FILE", boundaryHeaderFileName);
+  kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
+
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
+    filterSetup(ins); 
+
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
   //make option objects for elliptc solvers
@@ -485,15 +484,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   // build kernels
   string fileName, kernelName ;
-  string suffix;
-
-  if(ins->dim==3)
-    suffix = "Hex3D";
-  else
-    suffix = "Quad2D";
-
-  string oklpath;
-  oklpath += install_dir + "/okl/";
+  const string suffix = "Hex3D";
+  const string oklpath = install_dir + "/okl/";
 
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
@@ -537,11 +529,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       fileName = oklpath + "insDivergence" + suffix + ".okl";
       kernelName = "insDivergenceVolumeTOMBO" + suffix;
       ins->divergenceVolumeKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       kernelName = "insDivergenceSurfaceTOMBO" + suffix;
       ins->divergenceSurfaceKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insPressureRhs" + suffix + ".okl";
       kernelName = "insPressureRhsTOMBO" + suffix;
@@ -551,7 +543,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
       kernelName = "insPressureAddBCTOMBO" + suffix;
       ins->pressureAddBCKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insPressureUpdate" + ".okl";
       kernelName = "insPressureUpdateTOMBO";
@@ -565,11 +557,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
       kernelName = "insVelocityBC" + suffix;
       ins->velocityRhsBCKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       kernelName = "insVelocityAddBC" + suffix;
       ins->velocityAddBCKernel = 
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insSubCycle" + suffix + ".okl";
       kernelName = "insSubCycleStrongCubatureVolume" + suffix;
@@ -763,11 +755,6 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->ellipticCoeff   = ins->ellipticCoeff;
   cds->o_ellipticCoeff = ins->o_ellipticCoeff;  
 
-  occa::properties& kernelInfo  = *ins->kernelInfo; 
-  // ADD-DEFINES
-  kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
-  kernelInfo["defines/" "p_NTSfields"] = (cds->NVfields+cds->NSfields + 1);
- 
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
   cds->o_S  = mesh->device.malloc(cds->NSfields*(cds->Nstages+0)*cds->fieldOffset*sizeof(dfloat), cds->S);
@@ -902,11 +889,18 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_prkB    = ins->o_extbdfC;
 
   // build kernels
-  string suffix, fileName, kernelName;
-  if(cds->elementType==QUADRILATERALS)
-     suffix = "Quad2D";
-  if(cds->elementType==HEXAHEDRA)
-     suffix = "Hex3D";
+  occa::properties kernelInfo = *ins->kernelInfo;
+  occa::properties kernelInfoBC = kernelInfo;
+  //kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
+
+  const string bcDataFile = install_dir + "/include/insBcData.h";
+  kernelInfoBC["includes"] += bcDataFile.c_str();
+  string boundaryHeaderFileName; 
+  options.getArgs("DATA FILE", boundaryHeaderFileName);
+  kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
+
+  string fileName, kernelName;
+  const string  suffix = "Hex3D";
 
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
@@ -932,10 +926,10 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
       
       fileName = install_dir + "/okl/cdsHelmholtzBC" + suffix + ".okl"; 
       kernelName = "cdsHelmholtzBC" + suffix; 
-      cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       kernelName = "cdsHelmholtzAddBC" + suffix;
-      cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       fileName = install_dir + "/okl/setEllipticCoeff.okl"; 
       kernelName = "setEllipticCoeff";

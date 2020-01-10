@@ -1,16 +1,14 @@
-#include "casedata.h"
-
 // Boundary conditions
 void insVelocityDirichletConditions3D(bcData *bc)
 {
-  bc->uP = 0.5*(3.0 + tanh(bc->x/DELTA)); 
+  bc->uP = 0.5*(3.0 + tanh(bc->x/p_DELTA)); 
   bc->vP = 0.0; 
   bc->wP = 0.0;
 }
 
 void cdsDirichletConditions3D(bcData *bc)
 {
-  bc->sP = 0.5*(3.0 + tanh(bc->x/DELTA));
+  bc->sP = 0.5*(3.0 + tanh(bc->x/p_DELTA));
 }
 
 
@@ -21,9 +19,9 @@ void cdsDirichletConditions3D(bcData *bc)
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const int id = e*p_Np + n;
-      const dfloat xd = X[id]/DELTA;
+      const dfloat xd = X[id]/p_DELTA;
       const dfloat sech = 1/cosh(xd);
-      QVOL[id] = sech*sech/DELTA * (0.5 + tanh(xd)/DELTA); 
+      QVOL[id] = sech*sech/p_DELTA * (0.5 + tanh(xd)/p_DELTA); 
     }
   }
 }

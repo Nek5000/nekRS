@@ -83,42 +83,21 @@ occa::kernel udfBuildKernel(ins_t *ins, const char *function)
   mesh_t *mesh = ins->mesh;
   MPI_Comm_rank(mesh->comm, &rank);
 
-  char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
-  string tmp;
-  tmp.assign(buf);
-
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  kernelInfo["include_paths"] += tmp.c_str(); 
-
-  tmp += "/.udf.okl";
-  const char *fname = tmp.c_str(); 
-
-  // add dummy to make occa happy
-  if (rank == 0){
-    std::ofstream ss;
-    ss.open(fname, std::ofstream::out);
-    ss << "@kernel void __dummy(const int entries){ \n"
-       << "  for (int group = 0; group < entries; group += 128; @outer) {\n"
-       << "    for (int item = group; item < entries; ++item; @inner) {\n"
-       << "      const int n = item;\n\n"
-       << "    }\n"
-       << "  }\n"
-       << "}\n"
-       << "\n";
-    ss.close();
-  }
+  string install_dir;
+  occa::properties kernelInfo = *ins->kernelInfo;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const string bcDataFile = install_dir + "/include/insBcData.h";
+  kernelInfo["includes"] += bcDataFile.c_str();
+ 
+  string oudf;
+  ins->options.getArgs("DATA FILE", oudf);
 
   occa::kernel k;
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
-       k = mesh->device.buildKernel(fname, function, kernelInfo);
+      k = mesh->device.buildKernel(oudf.c_str(), function, kernelInfo);
     }
     MPI_Barrier(mesh->comm);
-  }
-
-  if (rank == 0) {
-    remove(fname);
   }
   return k;
 }

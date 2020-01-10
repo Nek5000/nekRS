@@ -1,5 +1,3 @@
-#include "casedata.h"
-
 @kernel void dpdx(const dlong Ntotal,
                      const dfloat time, 
                      @restrict const  dfloat *  x,
@@ -13,12 +11,12 @@
       const dfloat yn = y[n]; 
       const dfloat zn = z[n]; 
       //
-      const dfloat a = _A; 
-      const dfloat d = _D; 
+      const dfloat a = p_A; 
+      const dfloat d = p_D; 
       //
-      const dfloat xx = xn - U0*time; 
-      const dfloat yy = yn - V0*time; 
-      const dfloat zz = zn - W0*time; 
+      const dfloat xx = xn - p_U0*time; 
+      const dfloat yy = yn - p_V0*time; 
+      const dfloat zz = zn - p_W0*time; 
       //
       const dfloat exy = exp( a * ( xx + yy ) );
       const dfloat eyz = exp( a * ( yy + zz ) );
@@ -47,14 +45,14 @@ void exact(dfloat *u, dfloat *v, dfloat *w,
            const dfloat x, const dfloat y, const dfloat z,
            const dfloat t, const dfloat visc)
 {                                                                        
-  dfloat a = _A;                                                   
-  dfloat d = _D;                                                   
+  dfloat a = p_A;                                                   
+  dfloat d = p_D;                                                   
   dfloat ex,ey,ez;                                                       
   dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
 
-  const dfloat xx = x - U0*t;
-  const dfloat yy = y - V0*t;
-  const dfloat zz = z - W0*t;
+  const dfloat xx = x - p_U0*t;
+  const dfloat yy = y - p_V0*t;
+  const dfloat zz = z - p_W0*t;
 
   ex  = exp(a*xx);                                                        
   ey  = exp(a*yy);                                                        
@@ -73,9 +71,9 @@ void exact(dfloat *u, dfloat *v, dfloat *w,
   cyz = cos(a*yy + d*zz);                                                  
   czx = cos(a*zz + d*xx);                                                  
                                                                          
-  *(u)= -a*(ex*syz + ez*cxy)*e2t + U0;                                        
-  *(v)= -a*(ey*szx + ex*cyz)*e2t + V0;                                        
-  *(w)= -a*(ez*sxy + ey*czx)*e2t + W0;                                        
+  *(u)= -a*(ex*syz + ez*cxy)*e2t + p_U0;                                        
+  *(v)= -a*(ey*szx + ex*cyz)*e2t + p_V0;                                        
+  *(w)= -a*(ez*sxy + ey*czx)*e2t + p_W0;                                        
 }   
 
 // Boundary conditions
