@@ -32,6 +32,11 @@ void UDF_LoadKernels(ins_t *ins)
   options.getArgs("VISCOSITY", mue);
   options.getArgs("DENSITY", rho); 
   kernelInfo["defines/p_nu"] = mue/rho;
+  kernelInfo["defines/p_U0"] = P_U0;
+  kernelInfo["defines/p_V0"] = P_V0;
+  kernelInfo["defines/p_W0"] = P_W0;
+  kernelInfo["defines/p_A"]  = P_A0 * M_PI;
+  kernelInfo["defines/p_D"]  = P_D0 * M_PI;
   dpdxKernel = udfBuildKernel(ins, "dpdx");
 }
 

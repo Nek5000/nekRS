@@ -6,6 +6,7 @@
 
 static int ciMode = 0;
 #include "lowMach_ci.h"
+#include "casedata.h"
 
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
@@ -30,6 +31,8 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
 
 void UDF_LoadKernels(ins_t *ins)
 {
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  kernelInfo["defines/p_DELTA"] = P_DELTA;
   userQKernel = udfBuildKernel(ins, "userQ");
   userVpKernel = udfBuildKernel(ins, "userVp");
 }

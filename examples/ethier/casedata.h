@@ -1,7 +1,6 @@
-#define U0 (1.0)
-#define V0 (0.1)
-#define W0 (0.2)
+#define P_U0 (1.0)
+#define P_V0 (0.1)
+#define P_W0 (0.2)
 
-#define _PI (3.141592653589793238)
-#define _A (0.5*_PI)
-#define _D (_PI)
+#define P_A0 (0.5)
+#define P_D0 (1.0)
