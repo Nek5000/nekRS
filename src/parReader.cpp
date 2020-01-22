@@ -284,8 +284,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
  
   bool p_gproj; 
-  if(ini.extract("pressure", "galerkincoarsegrid", p_gproj))
-    if(p_gproj) options.setArgs("GALERKIN COARSE MATRIX", "TRUE");
+  if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
+    if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
  
   string p_amgsolver; 
   ini.extract("pressure", "amgsolver", p_amgsolver);

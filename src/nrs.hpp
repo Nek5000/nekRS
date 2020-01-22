@@ -10,7 +10,7 @@
 #include <getopt.h>
 #include <mpi.h>
 
-#define NEKRS_VERSION "19"
+#define NEKRS_VERSION "20"
 #define NEKRS_SUBVERSION "0"
 
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 

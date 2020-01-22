@@ -83,10 +83,6 @@ install_batch_if_newer(@NEKDIR@/3rd_party/parRSB
 
 install_files_if_newer(@NEKDIR@/bin/nekconfig @CMAKE_INSTALL_PREFIX@/nek5000/bin)
 
-## Examples
-message("-- Installing examples")
-install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/examples * @CMAKE_INSTALL_PREFIX@/examples)
-
 ## nekRS
 message("-- Installing nekRS")
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/scripts * @CMAKE_INSTALL_PREFIX@/bin)
@@ -97,3 +93,4 @@ install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl "*.okl" @CMAKE_INSTALL_PREFIX@/
 
 install_files_if_newer(@CMAKE_SOURCE_DIR@/src/udf/CMakeLists.txt @CMAKE_INSTALL_PREFIX@/udf)
 install_files_if_newer("@CMAKE_SOURCE_DIR@/src/nekInterface/NEKINTF;@CMAKE_SOURCE_DIR@/src/nekInterface/nekInterface.f;@CMAKE_SOURCE_DIR@/src/nekInterface/Makefile" @CMAKE_INSTALL_PREFIX@/nekInterface)
+install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/examples * @CMAKE_INSTALL_PREFIX@/examples)
