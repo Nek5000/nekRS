@@ -16,7 +16,7 @@ OCCA_GIT_BRANCH=master
 OCCA_GIT_URL=https://github.com/libocca/occa.git
 
 LIBP_VER=1.0 # latest
-LIBP_GIT_BRANCH=next
+LIBP_GIT_BRANCH=block2
 LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
 
 HYPRE_VER=2.17.0
