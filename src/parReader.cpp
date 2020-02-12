@@ -62,6 +62,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
 
   options.setArgs("START TIME", "0.0");
 
+  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
   options.setArgs("VELOCITY KRYLOV SOLVER", "PCG");
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
@@ -291,13 +292,38 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("pressure", "amgsolver", p_amgsolver);
   if (p_amgsolver == "paralmond")
     options.setArgs("AMG SOLVER", "PARALMOND");
-  
+ 
+  if(ini.sections.count("boomeramg")) {
+    string coarsenType;
+    if(ini.extract("boomeramg", "coarsentype", coarsenType)) { 
+      if(coarsenType == "hmis") options.setArgs("BOOMERAMG COARSEN TYPE", "10");
+      if(coarsenType == "pmis") options.setArgs("BOOMERAMG COARSEN TYPE", "8");
+    }
+    int numCycles;
+    if(ini.extract("boomeramg", "iterations", numCycles))
+      options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
+    double strongThres;
+    if(ini.extract("boomeramg", "strongthreshold", strongThres))
+      options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
+    double nonGalerkinTol;
+    if(ini.extract("boomeramg", "nongalerkintol", nonGalerkinTol))
+      options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
+  }
+ 
   string p_preconditioner; 
   ini.extract("pressure", "preconditioner", p_preconditioner);
   if(p_preconditioner == "jacobi")
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
  
   // VELOCITY 
+  string vsolver;
+  ini.extract("velocity", "solver", vsolver);
+  if(vsolver == "none") {
+      options.setArgs("VELOCITY SOLVER", "NONE");
+  } else if(std::strstr(vsolver.c_str(), "block")) {
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+  }  
+ 
   double v_residualTol;
   if(ini.extract("velocity", "residualtol", v_residualTol))
     options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));

@@ -130,9 +130,9 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_wrk3);
 
   ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);
-  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_PI);
+  //if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_PI);
 
-  ins->NiterP = ellipticSolve(solver, 0.0, ins->presTOL, ins->o_wrk3, ins->o_PI);
+  ins->NiterP = ellipticSolve(solver, ins->presTOL, ins->o_wrk3, ins->o_PI);
 
   ins->pressureAddBCKernel(mesh->Nelements,
                            time,
@@ -197,7 +197,7 @@ occa::memory velocitySolve(ins_t *ins, dfloat time)
   ins->velocityRhsBCKernel(
        mesh->Nelements,
        ins->fieldOffset,
-       ins->uSolver->Ntotal,
+       ins->Ntotal,
        mesh->o_ggeo,
        mesh->o_sgeo,
        mesh->o_Dmatrices,
@@ -220,21 +220,26 @@ occa::memory velocitySolve(ins_t *ins, dfloat time)
   ogsGatherScatterMany(ins->o_wrk3, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
 
-  if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked, ins->uSolver->o_maskIds, ins->o_wrk3);
-  if (ins->vSolver->Nmasked) mesh->maskKernel(ins->vSolver->Nmasked, ins->vSolver->o_maskIds, ins->o_wrk4);
-  if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked, ins->wSolver->o_maskIds, ins->o_wrk5);
- 
+
   // Use old velocity as initial condition
   ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-  if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked, ins->uSolver->o_maskIds, ins->o_wrk0);
-  if (ins->vSolver->Nmasked) mesh->maskKernel(ins->vSolver->Nmasked, ins->vSolver->o_maskIds, ins->o_wrk1);
-  if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked, ins->wSolver->o_maskIds, ins->o_wrk2);
-  
-  const dfloat lambda = 1; // dummy
-  ins->NiterU = ellipticSolve(ins->uSolver, lambda, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
-  ins->NiterV = ellipticSolve(ins->vSolver, lambda, ins->velTOL, ins->o_wrk4, ins->o_wrk1);
-  ins->NiterW = ellipticSolve(ins->wSolver, lambda, ins->velTOL, ins->o_wrk5, ins->o_wrk2);
-  
+
+  if(ins->uvwSolver){
+    if (ins->uvwSolver->Nmasked) mesh->maskKernel(ins->uvwSolver->Nmasked, ins->uvwSolver->o_maskIds, ins->o_wrk0);
+    if (ins->uvwSolver->Nmasked) mesh->maskKernel(ins->uvwSolver->Nmasked, ins->uvwSolver->o_maskIds, ins->o_wrk3);
+    ins->NiterU = ellipticSolve(ins->uvwSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
+  } else {
+    if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked, ins->uSolver->o_maskIds, ins->o_wrk0);
+    if (ins->vSolver->Nmasked) mesh->maskKernel(ins->vSolver->Nmasked, ins->vSolver->o_maskIds, ins->o_wrk1);
+    if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked, ins->wSolver->o_maskIds, ins->o_wrk2);
+    if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked, ins->uSolver->o_maskIds, ins->o_wrk3);
+    if (ins->vSolver->Nmasked) mesh->maskKernel(ins->vSolver->Nmasked, ins->vSolver->o_maskIds, ins->o_wrk4);
+    if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked, ins->wSolver->o_maskIds, ins->o_wrk5);
+    ins->NiterU = ellipticSolve(ins->uSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
+    ins->NiterV = ellipticSolve(ins->vSolver, ins->velTOL, ins->o_wrk4, ins->o_wrk1);
+    ins->NiterW = ellipticSolve(ins->wSolver, ins->velTOL, ins->o_wrk5, ins->o_wrk2);
+  } 
+ 
   ins->velocityAddBCKernel(mesh->Nelements,
                            ins->fieldOffset,
                            time,

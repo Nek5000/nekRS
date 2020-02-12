@@ -17,6 +17,7 @@ typedef struct {
   elliptic_t *uSolver;
   elliptic_t *vSolver;
   elliptic_t *wSolver;
+  elliptic_t *uvwSolver;
   elliptic_t *pSolver;
   cds_t      *cds;
 

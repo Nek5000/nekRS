@@ -38,7 +38,7 @@ occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk0);
 
   const dfloat lambda = 1; // dummy value not used if coeff is variable
-  cds->Niter[is] = ellipticSolve(solver, lambda, cds->TOL, cds->o_wrk1, cds->o_wrk0);
+  cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);
 
   cds->helmholtzAddBCKernel(mesh->Nelements,
                             cds->fieldOffset,

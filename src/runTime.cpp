@@ -63,14 +63,19 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
       qthermal(ins, time+dt, ins->o_qtl);
   }
 
-  fluidSolve(ins, time, dt, ins->o_U);
+  if(!ins->options.compareArgs("VELOCITY SOLVER", "NONE"))
+    fluidSolve(ins, time, dt, ins->o_U);
 
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
   if(mesh->rank==0) {
-    printf("step= %d  t= %.5e  dt=%.1e  C= %.2f  U: %d  V: %d  W: %d  P: %d",
-           tstep, time+dt, dt, cfl, ins->NiterU, ins->NiterV, ins->NiterW, 
-           ins->NiterP);
+    printf("step= %d  t= %.5e  dt=%.1e  C= %.2f",
+           tstep, time+dt, dt, cfl); 
+
+    if(ins->uvwSolver)
+      printf("  UVW: %d  P: %d", ins->NiterU, ins->NiterP); 
+    else
+      printf("  U: %d  V: %d  W: %d  P: %d", ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP); 
 
     for(int is=0; is<ins->Nscalar; is++) {
       if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
@@ -362,7 +367,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   timer::tic("pressureSolve");
   ins->setEllipticCoeffPressureKernel(
     ins->Nlocal,
-    ins->pSolver->Ntotal, // offset required by elliptic
+    ins->Ntotal, // offset required by elliptic
     ins->o_rho,
     ins->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(ins, time+dt); 
@@ -374,7 +379,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     ins->Nlocal,
     ins->g0*ins->idt,
     0*ins->fieldOffset,
-    ins->uSolver->Ntotal, // offset required by elliptic
+    ins->Ntotal, // offset required by elliptic
     ins->o_mue,
     ins->o_rho,
     ins->o_ellipticCoeff);
