@@ -365,16 +365,16 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   // Copy case.usr file to cache_dir
   sprintf(buf,"%s.usr",casename);
   if(access(buf,F_OK)!=-1){
-    sprintf(buf, "cp -pf %s.usr %s/ >build.log 2>&1",casename,cache_dir);
+    sprintf(buf, "cp -pf %s.usr %s",casename,cache_dir);
   } else {
-    sprintf(buf, "cp -pf %s/core/zero.usr %s/%s.usr >>build.log 2>&1",nek5000_dir,cache_dir,casename);
+    sprintf(buf, "cp -pf %s/core/zero.usr %s/%s.usr",nek5000_dir,cache_dir,casename);
   }
   retval=system(buf);
   if (retval) goto err;
 
 
   // Copy Nek5000/core from install_dir to cache_dir
-  sprintf(buf, "cp -pr %s %s/", nek5000_dir, cache_dir);
+  sprintf(buf, "cp -pr %s %s", nek5000_dir, cache_dir);
   retval = system(buf);
   if (retval) goto err; 
 
@@ -399,6 +399,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   return 0;
 
 err:
+  fflush(stdout);
   printf("\nAn ERROR occured, see %s/build.log for details!\n", cache_dir);
   exit(EXIT_FAILURE);
 }

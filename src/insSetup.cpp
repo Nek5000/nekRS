@@ -8,7 +8,7 @@
 static dfloat *scratch;
 static occa::memory o_scratch;
 
-cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &kernelInfoH);
+cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &kernelInfoH);
               
  
 ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
@@ -49,8 +49,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
 
-  ins->NVfields = (ins->dim==3) ? 3:2; //  Total Number of Velocity Fields
-  ins->NTfields = (ins->dim==3) ? 4:3; // Total Velocity + Pressure
+  ins->NVfields = (ins->dim==3) ? 3:2; // Total Number of Velocity Fields
+  ins->NTfields = ins->NVfields + 1;   // Total Velocity + Pressure
 
   ins->SNrk = 0;
   options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
@@ -143,29 +143,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(ins->Nsubsteps){
     int Sorder; 
     options.getArgs("SUBCYCLING TIME ORDER", Sorder);
-
-    if(Sorder==2 && ins->SNrk==2){
-      dfloat rka[2] = {0.0,     1.0 };
-      dfloat rkb[2] = {0.5,     0.5 };
-      dfloat rkc[2] = {0.0,     1.0 };
-      ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
-    }else if(Sorder ==3 && ins->SNrk==3){
-      // Using Williamson 3rd order scheme converted to low storage since the better truncation 
-      dfloat rka[3] = {0.0,     -5.0/9.0,  -153.0/128.0};
-      dfloat rkb[3] = {1.0/3.0, 15.0/16.0,    8.0/15.0 };
-      dfloat rkc[3] = {0.0,      1.0/3.0,     3.0/4.0  };
-      ins->Srka = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkb = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      ins->Srkc = (dfloat*) calloc(ins->SNrk, sizeof(dfloat));
-      memcpy(ins->Srka, rka, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkb, rkb, ins->SNrk*sizeof(dfloat));
-      memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
-    }else if(Sorder==4 && ins->SNrk==4){ // ERK(4,4)
+    if(Sorder==4 && ins->SNrk==4){ // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0/2.0, 1.0/2.0, 1.0};
       dfloat rkb[4] = {1.0/6.0, 1.0/3.0, 1.0/3.0, 1.0/6.0};
       dfloat rkc[4] = {0.0, 1.0/2.0, 1.0/2.0, 1.0};
@@ -177,18 +155,15 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
     }else{
       if(mesh->rank==0) cout << "Unsupported subcycling scheme!\n"; 
-      MPI_Finalize(); 
       exit(1);
     }
     ins->o_Srka = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srka);
     ins->o_Srkb = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srkb);
   }
 
-  
-
   // setup scratch space
-  const int wrkNflds = 9; 
-  const int ellipticWrkNflds = 9;
+  const int wrkNflds = 6; 
+  const int ellipticWrkNflds = 15;
   ins->ellipticWrkOffset = wrkNflds*ins->fieldOffset;
 
   const int scratchNflds = wrkNflds+ellipticWrkNflds;
@@ -252,6 +227,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_prkA    = ins->o_extbdfC;
   ins->o_prkB    = ins->o_extbdfC;
 
+  dfloat *lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
+  ins->o_InvM = 
+    mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
+
+  kernelInfo["defines/" "p_eNfields"] = ins->NVfields;
   kernelInfo["defines/" "p_NTfields"]= ins->NTfields;
   kernelInfo["defines/" "p_NVfields"]= ins->NVfields;
   kernelInfo["defines/" "p_NfacesNfp"]=  mesh->Nfaces*mesh->Nfp;
@@ -301,9 +281,30 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
     filterSetup(ins); 
 
+  const int nbrBIDs = bcMap::size();
+
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
-  //make option objects for elliptc solvers
+  ins->velTOL  = 1E-6;
+  ins->uvwSolver = NULL;
+  if(options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    ins->uvwSolver = new elliptic_t();
+
+  int NBCType = nbrBIDs+1;
+  int *uvwBCType = (int*) calloc(3*NBCType, sizeof(int));
+  int *uBCType = uvwBCType + 0*NBCType;
+  int *vBCType = uvwBCType + 1*NBCType;
+  int *wBCType = uvwBCType + 2*NBCType;
+  for (int bID=1; bID <= nbrBIDs; bID++) {
+    string bcTypeText(bcMap::text(bID, "velocity"));
+    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
+
+    uBCType[bID] = bcMap::type(bID, "x-velocity");
+    vBCType[bID] = bcMap::type(bID, "y-velocity");
+    wBCType[bID] = bcMap::type(bID, "z-velocity");
+  }
+  
+
   ins->vOptions = options;
   ins->vOptions.setArgs("KRYLOV SOLVER",        options.getArgs("VELOCITY KRYLOV SOLVER"));
   ins->vOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("VELOCITY SOLVER TOLERANCE"));
@@ -313,93 +314,116 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->vOptions.setArgs("MULTIGRID COARSENING", options.getArgs("VELOCITY MULTIGRID COARSENING"));
   ins->vOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("VELOCITY MULTIGRID SMOOTHER"));
   ins->vOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("VELOCITY MULTIGRID CHEBYSHEV DEGREE"));
-
   ins->vOptions.setArgs("PARALMOND CYCLE",      options.getArgs("VELOCITY PARALMOND CYCLE"));
   ins->vOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("VELOCITY PARALMOND SMOOTHER"));
   ins->vOptions.setArgs("PARALMOND PARTITION",  options.getArgs("VELOCITY PARALMOND PARTITION"));
   ins->vOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("VELOCITY PARALMOND CHEBYSHEV DEGREE"));
-
   ins->vOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
-  
   ins->vOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->vOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  const int nbrBIDs = bcMap::size();
-  int *uBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-  int *vBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-  int *wBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-  int *pBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+  if(ins->uvwSolver){
+    ins->uvwSolver->blockSolver = 1;
+    ins->uvwSolver->Nfields = ins->NVfields; 
+    ins->uvwSolver->wrkOffset = ins->NVfields*ins->fieldOffset;
+    ins->uvwSolver->wrk = scratch + ins->ellipticWrkOffset; 
+    ins->uvwSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
+    ins->uvwSolver->mesh = mesh;
+    ins->uvwSolver->options = ins->vOptions;
+    ins->uvwSolver->dim = ins->dim;
+    ins->uvwSolver->elementType = ins->elementType;
+    ins->uvwSolver->NBCType = NBCType;
+    ins->uvwSolver->BCType = (int*) calloc(ins->NVfields*NBCType,sizeof(int));
+    memcpy(ins->uvwSolver->BCType,uvwBCType,ins->NVfields*NBCType*sizeof(int));
+    ins->uvwSolver->var_coeff = ins->var_coeff;
+    ins->uvwSolver->lambda = ins->ellipticCoeff; 
+    ins->uvwSolver->o_lambda = ins->o_ellipticCoeff; 
+    ins->uvwSolver->loffset = 0;
+  
+    ellipticSolveSetup(ins->uvwSolver, kernelInfoV); 
+  } else {
+    ins->uSolver = new elliptic_t();
+    ins->uSolver->blockSolver = 0;
+    ins->uSolver->Nfields = 1; 
+    ins->uSolver->wrkOffset = ins->fieldOffset;
+    ins->uSolver->wrk = scratch + ins->ellipticWrkOffset; 
+    ins->uSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
+    ins->uSolver->mesh = mesh;
+    ins->uSolver->options = ins->vOptions;
+    ins->uSolver->dim = ins->dim;
+    ins->uSolver->elementType = ins->elementType;
+    ins->uSolver->NBCType = NBCType;
+    ins->uSolver->BCType = (int*) calloc(NBCType,sizeof(int));
+    memcpy(ins->uSolver->BCType,uBCType,NBCType*sizeof(int));
+    ins->uSolver->var_coeff = ins->var_coeff;
+    ins->uSolver->lambda = ins->ellipticCoeff; 
+    ins->uSolver->o_lambda = ins->o_ellipticCoeff; 
+    ins->uSolver->loffset = 0;
+ 
+    ellipticSolveSetup(ins->uSolver, kernelInfoV); 
+  
+    ins->vSolver = new elliptic_t();
+    ins->vSolver->blockSolver = 0;
+    ins->vSolver->Nfields = 1; 
+    ins->vSolver->wrkOffset = ins->fieldOffset;
+    ins->vSolver->wrk = scratch + ins->ellipticWrkOffset; 
+    ins->vSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
+    ins->vSolver->mesh = mesh;
+    ins->vSolver->options = ins->vOptions;
+    ins->vSolver->dim = ins->dim;
+    ins->vSolver->elementType = ins->elementType;
+    ins->vSolver->NBCType = NBCType;
+    ins->vSolver->BCType = (int*) calloc(NBCType,sizeof(int));
+    memcpy(ins->vSolver->BCType,vBCType,NBCType*sizeof(int));
+    ins->vSolver->var_coeff = ins->var_coeff;
+    ins->vSolver->lambda = ins->ellipticCoeff; 
+    ins->vSolver->o_lambda = ins->o_ellipticCoeff; 
+    ins->vSolver->loffset = 0;
+    
+    ellipticSolveSetup(ins->vSolver, kernelInfoV);
+  
+    if (ins->dim==3) {
+      ins->wSolver = new elliptic_t();
+      ins->wSolver->blockSolver = 0;
+      ins->wSolver->Nfields = 1; 
+      ins->wSolver->wrkOffset = ins->fieldOffset;
+      ins->wSolver->wrk = scratch + ins->ellipticWrkOffset; 
+      ins->wSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
+      ins->wSolver->mesh = mesh;
+      ins->wSolver->options = ins->vOptions;
+      ins->wSolver->dim = ins->dim;
+      ins->wSolver->elementType = ins->elementType;
+      ins->wSolver->NBCType = NBCType;
+      ins->wSolver->BCType = (int*) calloc(NBCType,sizeof(int));
+      memcpy(ins->wSolver->BCType,wBCType,NBCType*sizeof(int));
+      ins->wSolver->var_coeff = ins->var_coeff;
+      ins->wSolver->lambda = ins->ellipticCoeff; 
+      ins->wSolver->o_lambda = ins->o_ellipticCoeff; 
+      ins->wSolver->loffset = 0;
+ 
+      ellipticSolveSetup(ins->wSolver, kernelInfoV);
+    }
+  }
 
+  // setup scalar solver
+  if(ins->Nscalar) {
+   mesh_t *msh;
+   (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
+   ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
+  }
+
+  if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
+
+  ins->presTOL = 1E-4;
+
+  int *pBCType = (int*) calloc(NBCType, sizeof(int));
   for (int bID=1; bID <= nbrBIDs; bID++) {
-    string bcTypeText(bcMap::text(bID, "velocity"));
-    if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str()); 
-
-    uBCType[bID] = bcMap::type(bID, "x-velocity");
-    vBCType[bID] = bcMap::type(bID, "y-velocity");
-    wBCType[bID] = bcMap::type(bID, "z-velocity");
     pBCType[bID] = bcMap::type(bID, "pressure");
   }
 
-  //default solver tolerances
-  ins->presTOL = 1E-4;
-  ins->velTOL  = 1E-6;
- 
-  ins->uSolver = new elliptic_t();
-  ins->uSolver->wrkOffset = ins->fieldOffset;
-  ins->uSolver->wrk = scratch + ins->ellipticWrkOffset; 
-  ins->uSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
-  ins->uSolver->mesh = mesh;
-  ins->uSolver->options = ins->vOptions;
-  ins->uSolver->dim = ins->dim;
-  ins->uSolver->elementType = ins->elementType;
-  ins->uSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
-  memcpy(ins->uSolver->BCType,uBCType,(nbrBIDs+1)*sizeof(int));
-
-  ins->uSolver->var_coeff = ins->var_coeff;
-  ins->uSolver->coeff = ins->ellipticCoeff; 
-  ins->uSolver->o_coeff = ins->o_ellipticCoeff; 
-  const dfloat lambda = 1; // not used if var_coeff
-
-  ellipticSolveSetup(ins->uSolver, lambda, kernelInfoV); 
-
-  ins->vSolver = new elliptic_t();
-  ins->vSolver->wrkOffset = ins->fieldOffset;
-  ins->vSolver->wrk = scratch + ins->ellipticWrkOffset; 
-  ins->vSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
-  ins->vSolver->mesh = mesh;
-  ins->vSolver->options = ins->vOptions;
-  ins->vSolver->dim = ins->dim;
-  ins->vSolver->elementType = ins->elementType;
-  ins->vSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
-  memcpy(ins->vSolver->BCType,vBCType,(nbrBIDs+1)*sizeof(int));
-
-  ins->vSolver->var_coeff = ins->var_coeff;
-  ins->vSolver->coeff = ins->ellipticCoeff; 
-  ins->vSolver->o_coeff = ins->o_ellipticCoeff; 
-  
-  ellipticSolveSetup(ins->vSolver, lambda, kernelInfoV); //!!!!!
-
-  if (ins->dim==3) {
-    ins->wSolver = new elliptic_t();
-    ins->wSolver->wrkOffset = ins->fieldOffset;
-    ins->wSolver->wrk = scratch + ins->ellipticWrkOffset; 
-    ins->wSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
-    ins->wSolver->mesh = mesh;
-    ins->wSolver->options = ins->vOptions;
-    ins->wSolver->dim = ins->dim;
-    ins->wSolver->elementType = ins->elementType;
-    ins->wSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
-    memcpy(ins->wSolver->BCType,wBCType,(nbrBIDs+1)*sizeof(int));
-
-    ins->wSolver->var_coeff = ins->var_coeff;
-    ins->wSolver->coeff = ins->ellipticCoeff; 
-    ins->wSolver->o_coeff = ins->o_ellipticCoeff; 
-    
-    ellipticSolveSetup(ins->wSolver, lambda, kernelInfoV);  //!!!!!
-  }
-  
-  if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
   ins->pSolver = new elliptic_t();
+  ins->pSolver->blockSolver = 0;
+  ins->pSolver->Nfields = 1; 
   ins->pSolver->wrkOffset = ins->fieldOffset;
   ins->pSolver->wrk = scratch + ins->ellipticWrkOffset; 
   ins->pSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
@@ -414,17 +438,13 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
   ins->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
   ins->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
-
   ins->pOptions.setArgs("PARALMOND CYCLE",      options.getArgs("PRESSURE PARALMOND CYCLE"));
   ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE PARALMOND SMOOTHER"));
   ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
   ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
-
   ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
-  
   ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
-
   ins->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
 
   ins->pSolver->options = ins->pOptions;
@@ -432,12 +452,12 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->elementType = ins->elementType;
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
-
   ins->pSolver->var_coeff = 1;
-  ins->pSolver->coeff = ins->ellipticCoeff; 
-  ins->pSolver->o_coeff = ins->o_ellipticCoeff;
- 
-  ellipticSolveSetup(ins->pSolver, 0.0, kernelInfoP); //!!!!
+  ins->pSolver->lambda = ins->ellipticCoeff;
+  ins->pSolver->o_lambda = ins->o_ellipticCoeff;
+  ins->pSolver->loffset = 0;
+
+  ellipticSolveSetup(ins->pSolver, kernelInfoP);
 
   // setup boundary mapping
   dfloat largeNumber = 1<<20;
@@ -472,15 +492,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_VmapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), ins->VmapB);
 
   // build inverse mass matrix  
-  dfloat *lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements*mesh->Np, sizeof(dfloat));
   for(hlong e=0;e<mesh->Nelements;++e)
     for(int n=0;n<mesh->Np;++n)
       lumpedMassMatrix[e*mesh->Np+n] = mesh->vgeo[e*mesh->Np*mesh->Nvgeo+JWID*mesh->Np+n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   for(int n=0;n<mesh->Np*mesh->Nelements;++n)
     lumpedMassMatrix[n] = 1./lumpedMassMatrix[n];
-  ins->o_InvM = 
-    mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
+  ins->o_InvM.copyFrom(lumpedMassMatrix);
+  free(lumpedMassMatrix);
 
   // build kernels
   string fileName, kernelName ;
@@ -645,18 +664,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
-  // setup scalar solver
-  if(ins->Nscalar) {
-   mesh_t *msh;
-   (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
-   ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
-  }
-
-
   return ins;
 }
 
-cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &kernelInfoH)
+cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &kernelInfoH)
 {
   cds_t *cds = new cds_t(); 
   cds->mesh = mesh;
@@ -708,9 +719,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->BF    = (dfloat*) calloc(cds->NSfields*cds->fieldOffset,sizeof(dfloat));
   cds->FS    = (dfloat*) calloc(cds->NSfields*(cds->Nstages+1)*cds->fieldOffset,sizeof(dfloat));
 
-  // Use Nsubsteps if INS does to prevent stability issues
   cds->Nsubsteps = ins->Nsubsteps; 
-
   if(cds->Nsubsteps){
     cds->SNrk   = ins->SNrk;  
     cds->Srka   = ins->Srka; 
@@ -761,7 +770,6 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   cds->o_BF = mesh->device.malloc(cds->NSfields*cds->fieldOffset*sizeof(dfloat), cds->BF);
   cds->o_FS = mesh->device.malloc(cds->NSfields*(cds->Nstages+1)*cds->fieldOffset*sizeof(dfloat), cds->FS);
 
-  //make option objects for elliptc solvers
   cds->options = options;
   cds->options.setArgs("KRYLOV SOLVER",        options.getArgs("SCALAR SOLVER"));
   cds->options.setArgs("DISCRETIZATION",       options.getArgs("SCALAR DISCRETIZATION"));
@@ -781,6 +789,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
 
   const int nbrBIDs = bcMap::size();
   int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
+
 
   cds->TOL = 1e-6;
 
@@ -808,6 +817,8 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     cds->options.setArgs("SOLVER TOLERANCE", options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
 
     cds->solver[is] = new elliptic_t();
+    cds->solver[is]->blockSolver = 0;
+    cds->solver[is]->Nfields = 1;
     cds->solver[is]->wrkOffset = ins->fieldOffset;
     cds->solver[is]->wrk = scratch + ins->ellipticWrkOffset;
     cds->solver[is]->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat));
@@ -819,10 +830,10 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
     memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs+1)*sizeof(int));
 
     cds->solver[is]->var_coeff = cds->var_coeff;
-    cds->solver[is]->coeff = cds->ellipticCoeff; 
-    cds->solver[is]->o_coeff = cds->o_ellipticCoeff; 
-    const dfloat lambda = 1; // not used if var_coeff
-    ellipticSolveSetup(cds->solver[is], lambda, kernelInfoH); 
+    cds->solver[is]->lambda = cds->ellipticCoeff; 
+    cds->solver[is]->o_lambda = cds->o_ellipticCoeff; 
+    cds->solver[is]->loffset = 0; 
+    ellipticSolveSetup(cds->solver[is], kernelInfoH); 
 
     // setup boundary mapping
     dfloat largeNumber = 1<<20;
@@ -861,6 +872,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide &options, occa::properties &
   
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), mapB);
+
   }
 
   // build inverse mass matrix
