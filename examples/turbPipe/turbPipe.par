@@ -3,6 +3,7 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL]
+#verbose = true
 polynomialOrder = 7
 #startFrom = restart.fld
 stopAt = endTime
@@ -27,7 +28,16 @@ preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]
+solver = pcg+block
 boundaryTypeMap = inlet, outlet, wall
 density = 1.0
 viscosity = -19000
 residualTol = 1e-06
+
+[BOOMERAMG]
+coarsenType = 10
+interpolationType = 6
+#smootherType = -1
+iterations = 1
+strongThreshold = 0.25
+#nonGalerkinTol = 0.1

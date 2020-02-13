@@ -294,11 +294,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("AMG SOLVER", "PARALMOND");
  
   if(ini.sections.count("boomeramg")) {
-    string coarsenType;
-    if(ini.extract("boomeramg", "coarsentype", coarsenType)) { 
-      if(coarsenType == "hmis") options.setArgs("BOOMERAMG COARSEN TYPE", "10");
-      if(coarsenType == "pmis") options.setArgs("BOOMERAMG COARSEN TYPE", "8");
-    }
+    int coarsenType;
+    if(ini.extract("boomeramg", "coarsentype", coarsenType)) 
+      options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
+    int interpolationType;
+    if(ini.extract("boomeramg", "interpolationtype", interpolationType)) 
+      options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
+    int smootherType;
+    if(ini.extract("boomeramg", "smoothertype", smootherType)) 
+      options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
     int numCycles;
     if(ini.extract("boomeramg", "iterations", numCycles))
       options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
