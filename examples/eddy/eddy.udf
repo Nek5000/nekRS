@@ -9,6 +9,13 @@
 
 void UDF_LoadKernels(ins_t *ins)
 {
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  setupAide &options = ins->options;
+
+  dfloat mue, rho;
+  options.getArgs("VISCOSITY", mue);
+  options.getArgs("DENSITY", rho); 
+  kernelInfo["defines/p_nu"] = mue/rho;
 }
 
 void UDF_Setup(ins_t *ins)

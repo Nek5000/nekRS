@@ -453,6 +453,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
   ins->pSolver->var_coeff = 1;
+  // coeff used by ellipticSetup to detect allNeumann 
+  // and coeff[0] to setup MG levels
   for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 0; 
   ins->pSolver->lambda = ins->ellipticCoeff;
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
