@@ -367,7 +367,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   timer::tic("pressureSolve");
   ins->setEllipticCoeffPressureKernel(
     ins->Nlocal,
-    ins->Ntotal, // offset required by elliptic
+    ins->pSolver->Ntotal, // offset required by elliptic
     ins->o_rho,
     ins->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(ins, time+dt); 
@@ -379,7 +379,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     ins->Nlocal,
     ins->g0*ins->idt,
     0*ins->fieldOffset,
-    ins->Ntotal, // offset required by elliptic
+    ins->pSolver->Ntotal, // offset required by elliptic
     ins->o_mue,
     ins->o_rho,
     ins->o_ellipticCoeff);

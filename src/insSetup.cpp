@@ -453,6 +453,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
   ins->pSolver->var_coeff = 1;
+  for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 0; 
   ins->pSolver->lambda = ins->ellipticCoeff;
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
@@ -830,6 +831,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
     memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs+1)*sizeof(int));
 
     cds->solver[is]->var_coeff = cds->var_coeff;
+    for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 1; 
     cds->solver[is]->lambda = cds->ellipticCoeff; 
     cds->solver[is]->o_lambda = cds->o_ellipticCoeff; 
     cds->solver[is]->loffset = 0; 
