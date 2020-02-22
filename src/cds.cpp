@@ -21,7 +21,6 @@ occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
                             is,
                             time,
                             cds->fieldOffset,
-                            solver->Ntotal, // lambda offset required by elliptic
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,

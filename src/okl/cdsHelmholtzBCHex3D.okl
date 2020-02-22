@@ -67,7 +67,6 @@
                                 const dlong scalarId,
 				const dfloat time,
 				const dlong offset,
-				const dlong lambdaOffset,
 				@restrict const  dfloat *  x,
 				@restrict const  dfloat *  y,
 				@restrict const  dfloat *  z,
@@ -278,8 +277,8 @@
 	  r_GwJ = ggeo[gbase+p_GWJID*p_Np];
 
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-          lambda0 = lambda[0*lambdaOffset + id]; 
-          lambda1 = lambda[1*lambdaOffset + id]; 
+          lambda0 = lambda[0*offset + id]; 
+          lambda1 = lambda[1*offset + id]; 
 	}
       }
 

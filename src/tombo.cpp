@@ -108,7 +108,6 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
   ins->AxKernel(
        mesh->Nelements,
        ins->fieldOffset,
-       ins->pSolver->Ntotal, // lambda offset required by elliptic
        mesh->o_ggeo,
        mesh->o_Dmatrices,
        mesh->o_Smatrices,
@@ -197,7 +196,6 @@ occa::memory velocitySolve(ins_t *ins, dfloat time)
   ins->velocityRhsBCKernel(
        mesh->Nelements,
        ins->fieldOffset,
-       ins->pSolver->Ntotal,  // lambda offset required by elliptic
        mesh->o_ggeo,
        mesh->o_sgeo,
        mesh->o_Dmatrices,

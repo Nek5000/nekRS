@@ -10,11 +10,14 @@
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_CXXFLAGS:="-O2 -g -DUSE_OCCA_MEM_BYTE_ALIGN=32"}
+
+: ${NEKRS_CXXFLAGS:="-g -O3 -march=native -mtune=native -DUSE_OCCA_MEM_BYTE_ALIGN=64"}
+: ${OCCA_CXXFLAGS:="${NEKRS_CXXFLAGS}"}
 
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
+
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
@@ -35,12 +38,17 @@ fi
 
 : ${OCCA_METAL_ENABLED:=0}
 
+if uname -a | grep 'ppc64'; then
+  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g") 
+fi
+
 NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_DEBUG=0
 NEKRS_LIBP_DEFINES="-DUSE_NULL_PROJECTION=1"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
+export OCCA_CXXFLAGS
 export OCCA_CUDA_ENABLED
 export OCCA_HIP_ENABLED
 export OCCA_OPENCL_ENABLED
@@ -68,7 +76,6 @@ export NEKRS_NEKINTERFACE_DIR="${NEKRS_INSTALL_DIR}/nekInterface"
 export NEKRS_NEK5000_DIR="${NEKRS_INSTALL_DIR}/nek5000"
 export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
 
-export OCCA_CXXFLAGS="${NEKRS_CXXFLAGS} ${NEKRS_LIBP_DEFINES}"
 export OCCA_DIR="${NEKRS_INSTALL_DIR}/occa"
 
 export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"

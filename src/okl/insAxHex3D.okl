@@ -27,7 +27,6 @@
 // Computes local [lap(u) + lambda*u] = [-(grad(u), grad(phi)) + lambda*u] operation
 @kernel void insAxHex3D(const dlong Nelements,
                         const dlong offset,
-                        const dlong lambdaOffset,
 		        @restrict const  dfloat *  ggeo,
 		        @restrict const  dfloat *  D,
 		        @restrict const  dfloat *  S,
@@ -87,8 +86,8 @@
             r_GwJ = ggeo[gbase+p_GWJID*p_Np];
 
             const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-            lambda0 = lambda[0*lambdaOffset + id];
-            lambda1 = lambda[1*lambdaOffset + id];
+            lambda0 = lambda[0*offset + id];
+            lambda1 = lambda[1*offset + id];
           }
         }
 

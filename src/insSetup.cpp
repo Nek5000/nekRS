@@ -117,7 +117,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->Nlocal = Nlocal;
   ins->Ntotal = Ntotal;
 
-  { // ensure that offset is large enough for v and t mesh and is properly aligned 
+  // ensure that offset is large enough for v and t mesh and is properly aligned 
+  {
     const dlong NtotalT = ins->meshT->Np*(ins->meshT->Nelements+ins->meshT->totalHaloPairs);
     ins->fieldOffset = mymax(Ntotal, NtotalT);
 
@@ -195,8 +196,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->var_coeff = 1; // use always var coeff elliptic
   ins->ellipticCoeff = (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
-  for (int i=0;i<2*ins->fieldOffset;i++) // just to avoid devision by 0 in Jacobi setup 
-      ins->ellipticCoeff[i] = 1;
   ins->o_ellipticCoeff = mesh->device.malloc(2*ins->fieldOffset*sizeof(dfloat), ins->ellipticCoeff);  
 
   ins->prop =  (dfloat*) calloc(2*ins->fieldOffset,sizeof(dfloat));
@@ -231,6 +230,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_InvM = 
     mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(dfloat), lumpedMassMatrix);
 
+  // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = ins->NVfields;
   kernelInfo["defines/" "p_NTfields"]= ins->NTfields;
   kernelInfo["defines/" "p_NVfields"]= ins->NVfields;
@@ -246,10 +246,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   int maxNodes = mymax(mesh->Np, (mesh->Nfp*mesh->Nfaces));
   kernelInfo["defines/" "p_maxNodes"]= maxNodes;
 
-  int NblockV = mymax(1,256/mesh->Np); // works for CUDA
+  int NblockV = mymax(1,256/mesh->Np);
   kernelInfo["defines/" "p_NblockV"]= NblockV;
 
-  int NblockS = mymax(1,256/maxNodes); // works for CUDA
+  int NblockS = mymax(1,256/maxNodes);
   kernelInfo["defines/" "p_NblockS"]= NblockS;
 
   int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);  
@@ -259,7 +259,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   int maxNodesSurfaceCub = mymax(mesh->Np, mymax(mesh->Nfaces*mesh->Nfp, 
                            mesh->Nfaces*mesh->intNfp));
   kernelInfo["defines/" "p_maxNodesSurfaceCub"]=maxNodesSurfaceCub;
-  int cubNblockS = mymax(256/maxNodesSurfaceCub,1); // works for CUDA
+  int cubNblockS = mymax(256/maxNodesSurfaceCub,1);
  
   kernelInfo["defines/" "p_cubNblockV"]=cubNblockV;
   kernelInfo["defines/" "p_cubNblockS"]=cubNblockS;
@@ -304,7 +304,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     wBCType[bID] = bcMap::type(bID, "z-velocity");
   }
   
-
   ins->vOptions = options;
   ins->vOptions.setArgs("KRYLOV SOLVER",        options.getArgs("VELOCITY KRYLOV SOLVER"));
   ins->vOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("VELOCITY SOLVER TOLERANCE"));
@@ -322,10 +321,13 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->vOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->vOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
+  // coeff used by ellipticSetup to detect allNeumann 
+  for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 1; 
+
   if(ins->uvwSolver){
     ins->uvwSolver->blockSolver = 1;
     ins->uvwSolver->Nfields = ins->NVfields; 
-    ins->uvwSolver->wrkOffset = ins->NVfields*ins->fieldOffset;
+    ins->uvwSolver->Ntotal = ins->fieldOffset;
     ins->uvwSolver->wrk = scratch + ins->ellipticWrkOffset; 
     ins->uvwSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
     ins->uvwSolver->mesh = mesh;
@@ -338,14 +340,14 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->uvwSolver->var_coeff = ins->var_coeff;
     ins->uvwSolver->lambda = ins->ellipticCoeff; 
     ins->uvwSolver->o_lambda = ins->o_ellipticCoeff; 
-    ins->uvwSolver->loffset = 0;
+    ins->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
   
     ellipticSolveSetup(ins->uvwSolver, kernelInfoV); 
   } else {
     ins->uSolver = new elliptic_t();
     ins->uSolver->blockSolver = 0;
     ins->uSolver->Nfields = 1; 
-    ins->uSolver->wrkOffset = ins->fieldOffset;
+    ins->uSolver->Ntotal = ins->fieldOffset;
     ins->uSolver->wrk = scratch + ins->ellipticWrkOffset; 
     ins->uSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
     ins->uSolver->mesh = mesh;
@@ -365,7 +367,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->vSolver = new elliptic_t();
     ins->vSolver->blockSolver = 0;
     ins->vSolver->Nfields = 1; 
-    ins->vSolver->wrkOffset = ins->fieldOffset;
+    ins->vSolver->Ntotal = ins->fieldOffset;
     ins->vSolver->wrk = scratch + ins->ellipticWrkOffset; 
     ins->vSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
     ins->vSolver->mesh = mesh;
@@ -386,7 +388,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->wSolver = new elliptic_t();
       ins->wSolver->blockSolver = 0;
       ins->wSolver->Nfields = 1; 
-      ins->wSolver->wrkOffset = ins->fieldOffset;
+      ins->wSolver->Ntotal = ins->fieldOffset;
       ins->wSolver->wrk = scratch + ins->ellipticWrkOffset; 
       ins->wSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
       ins->wSolver->mesh = mesh;
@@ -421,14 +423,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     pBCType[bID] = bcMap::type(bID, "pressure");
   }
 
-  ins->pSolver = new elliptic_t();
-  ins->pSolver->blockSolver = 0;
-  ins->pSolver->Nfields = 1; 
-  ins->pSolver->wrkOffset = ins->fieldOffset;
-  ins->pSolver->wrk = scratch + ins->ellipticWrkOffset; 
-  ins->pSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
-  ins->pSolver->mesh = mesh;
-
   ins->pOptions = options;
   ins->pOptions.setArgs("KRYLOV SOLVER",        options.getArgs("PRESSURE KRYLOV SOLVER"));
   ins->pOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("PRESSURE SOLVER TOLERANCE"));
@@ -447,6 +441,13 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
   ins->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
 
+  ins->pSolver = new elliptic_t();
+  ins->pSolver->blockSolver = 0;
+  ins->pSolver->Nfields = 1; 
+  ins->pSolver->Ntotal = ins->fieldOffset;
+  ins->pSolver->wrk = scratch + ins->ellipticWrkOffset; 
+  ins->pSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
+  ins->pSolver->mesh = mesh;
   ins->pSolver->options = ins->pOptions;
   ins->pSolver->dim = ins->dim;
   ins->pSolver->elementType = ins->elementType;
@@ -822,7 +823,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
     cds->solver[is] = new elliptic_t();
     cds->solver[is]->blockSolver = 0;
     cds->solver[is]->Nfields = 1;
-    cds->solver[is]->wrkOffset = ins->fieldOffset;
+    cds->solver[is]->Ntotal = ins->fieldOffset;
     cds->solver[is]->wrk = scratch + ins->ellipticWrkOffset;
     cds->solver[is]->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat));
     cds->solver[is]->mesh = mesh;
