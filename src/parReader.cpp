@@ -318,6 +318,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("pressure", "preconditioner", p_preconditioner);
   if(p_preconditioner == "jacobi")
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
+  if(p_preconditioner == "semg")
+    options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
  
   // VELOCITY 
   string vsolver;
