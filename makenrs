@@ -11,7 +11,7 @@
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
 
-: ${NEKRS_CXXFLAGS:="-g -O3 -march=native -mtune=native -DUSE_OCCA_MEM_BYTE_ALIGN=64"}
+: ${NEKRS_CXXFLAGS:="-g -O2 -march=native -mtune=native -DUSE_OCCA_MEM_BYTE_ALIGN=64"}
 : ${OCCA_CXXFLAGS:="${NEKRS_CXXFLAGS}"}
 
 : ${OCCA_CUDA_ENABLED:=1}
