@@ -1,0 +1,35 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+#verbose = true
+polynomialOrder = 7
+#startFrom = r1.fld
+stopAt = endTime
+endTime = 10
+
+dt = 2.0e-3
+timeStepper = tombo2
+extrapolation = subCycling
+subCyclingSteps = 2
+
+writeControl = TIMESTEP
+writeInterval = 1000
+
+filtering = hpfrt
+filterWeight = 100 
+filterModes = 2
+
+[PRESSURE]
+#preconditioner = semg_amg
+#amgSolver = parAlmond
+#galerkinCoarseOperator = yes
+residualTol = 1e-04
+
+[VELOCITY]
+solver = pcg+block
+boundaryTypeMap = inlet, outlet, wall
+density = 1.0
+viscosity = -10000.0
+residualTol = 1e-06
