@@ -28,7 +28,7 @@ macro(install_glob_if_newer source pattern install_prefix)
 endmacro()
 
 ## Use cmake_static_prefix, etc.
-set(g_patterns "*.okl" "*.hpp" "*.tpp" "*.h" "*.so" "*.dylib" "*.a" "hex*.dat")
+set(g_patterns "*.okl" "*.c" "*.hpp" "*.tpp" "*.h" "*.so" "*.dylib" "*.a" "hex*.dat")
 set(g_suffix "okl" "include" "lib" "nodes" "data")
 
 macro(install_batch_ source_dir sub_dir dest_dir patterns)
@@ -89,7 +89,7 @@ install_glob_if_newer(@CMAKE_SOURCE_DIR@/scripts * @CMAKE_INSTALL_PREFIX@/bin)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src "*.h*" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/udf "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/nekInterface "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
-install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl "*.okl" @CMAKE_INSTALL_PREFIX@/okl)
+install_glob_if_newer(@CMAKE_SOURCE_DIR@/src/okl * @CMAKE_INSTALL_PREFIX@/okl)
 
 install_files_if_newer(@CMAKE_SOURCE_DIR@/src/udf/CMakeLists.txt @CMAKE_INSTALL_PREFIX@/udf)
 install_files_if_newer("@CMAKE_SOURCE_DIR@/src/nekInterface/NEKINTF;@CMAKE_SOURCE_DIR@/src/nekInterface/nekInterface.f;@CMAKE_SOURCE_DIR@/src/nekInterface/Makefile" @CMAKE_INSTALL_PREFIX@/nekInterface)
