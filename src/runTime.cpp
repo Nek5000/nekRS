@@ -270,6 +270,11 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
          cds->o_rho,
          cds->o_ellipticCoeff);
 
+    if(udf.sEqnAddToLhs) {
+      occa::memory o_LHS = cds->o_ellipticCoeff + cds->fieldOffset*sizeof(dfloat);
+      udf.sEqnAddToLhs(ins, is, time+dt, o_LHS);
+    }
+
     occa::memory o_Snew = cdsSolve(is, cds, time+dt);
 
     for (int s=cds->Nstages;s>1;s--) {
@@ -383,6 +388,10 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
     ins->o_mue,
     ins->o_rho,
     ins->o_ellipticCoeff);
+  if(udf.uEqnAddToLhs) {
+    occa::memory o_LHS = ins->o_ellipticCoeff + ins->fieldOffset*sizeof(dfloat);
+    udf.uEqnAddToLhs(ins, time+dt, o_LHS);
+  }
   occa::memory o_Unew = tombo::velocitySolve(ins, time+dt);
   for (int s=ins->Nstages;s>1;s--) {
     o_U.copyFrom(
