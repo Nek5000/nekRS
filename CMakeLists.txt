@@ -245,7 +245,10 @@ set(THIRD_PARTY_INCLUDES ${THIRD_PARTY_INCLUDES}
   ${CDSDIR}
 )
 
-set(NEKRS_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+set(NEKRS_INCLUDES 
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core
   ${CMAKE_CURRENT_SOURCE_DIR}/src/udf
   ${NEKINTERFACEDIR}
 )
@@ -296,23 +299,23 @@ add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
 ###############################################################################
 set(SRC 
     src/nekrs.cpp
-    src/cfl.cpp
-    src/filter.cpp
-    src/bcMap.cpp
-    src/insSetup.cpp
-    src/runTime.cpp
-    src/tombo.cpp
-    src/cds.cpp
+    src/core/cfl.cpp
+    src/core/filter.cpp
+    src/core/bcMap.cpp
+    src/core/insSetup.cpp
+    src/core/runTime.cpp
+    src/core/tombo.cpp
+    src/core/cds.cpp
     src/udf/udf.cpp
-    src/meshSetup.cpp
-    src/meshNekReader.cpp
-    src/meshPhysicalNodesHex3D.cpp
-    src/occaDeviceConfig.cpp
+    src/mesh/meshSetup.cpp
+    src/mesh/meshNekReader.cpp
+    src/mesh/meshPhysicalNodesHex3D.cpp
+    src/core/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
-    src/parReader.cpp
-    src/configReader.cpp
-    src/tinyexpr.c
-    src/timer.cpp
+    src/core/parReader.cpp
+    src/core/configReader.cpp
+    src/core/tinyexpr.c
+    src/core/timer.cpp
     ## To get fortran flags
     src/dummy.f
 )

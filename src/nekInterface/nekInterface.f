@@ -243,15 +243,16 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_outfld()
+      subroutine nekf_outfld(suffix)
 
       include 'SIZE'
       include 'TOTAL'
 
+      character*3 suffix
       common /scrcg/ pm1(lx1,ly1,lz1,lelv)
 
       call copy(pm1,pr,nx1*ny1*nz1*nelv)
-      call outfld('   ')
+      call outfld(suffix)
 
       return
       end

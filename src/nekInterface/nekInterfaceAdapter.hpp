@@ -82,8 +82,13 @@ DECLARE_USER_FUNC(useric)
 DECLARE_USER_FUNC(usrsetvert)
 DECLARE_USER_FUNC(userqtl)
 
+#ifdef __cplusplus
+}
+#endif
+
 void*  nek_ptr(const char *id);
 void   nek_outfld(void);
+void   nek_outfld(const char *suffix);
 void   nek_uic(int ifield);
 void   nek_end(void);
 void   nek_map_m_to_n(double *a, int na, double *b, int nb);
@@ -95,10 +100,6 @@ void   nek_ifoutfld(int i);
 void   nek_setic(void);
 void   nek_userchk(void);
 int    nek_bcmap(int bid, int ifld);
-
-#ifdef __cplusplus
-}
-#endif
 
 int buildNekInterface(const char *casename, int nFields, int N, int np);
 void nek_copyFrom(ins_t *ins, dfloat time, int tstep);

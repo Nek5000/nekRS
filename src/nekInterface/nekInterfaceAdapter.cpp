@@ -20,7 +20,7 @@ static void (*userqtl_ptr)(void);
 static void (*usrsetvert_ptr)(void); 
 
 static void (*nek_ptr_ptr)(void **, char *, int*);
-static void (*nek_outfld_ptr)(void);
+static void (*nek_outfld_ptr)(char *);
 static void (*nek_uic_ptr)(int *);
 static void (*nek_end_ptr)(void);
 static void (*nek_restart_ptr)(char *, int *);
@@ -47,7 +47,12 @@ void *nek_ptr(const char *id){
 }
 
 void nek_outfld(){
-  (*nek_outfld_ptr)();
+  const char suffix[] = "   ";
+  (*nek_outfld_ptr)((char*)suffix);
+}
+
+void nek_outfld(const char *suffix){
+  (*nek_outfld_ptr)((char*)suffix);
 }
 
 void nek_uic(int ifield){
@@ -176,7 +181,7 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_end_ptr = (void (*)(void)) dlsym(handle, fname("nekf_end"));
   check_error(dlerror());
-  nek_outfld_ptr = (void (*)(void)) dlsym(handle, fname("nekf_outfld"));
+  nek_outfld_ptr = (void (*)(char *)) dlsym(handle, fname("nekf_outfld"));
   check_error(dlerror());
   nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());

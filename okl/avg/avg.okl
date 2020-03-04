@@ -1,0 +1,40 @@
+@kernel void avgX_XX(const dlong N,
+                     const dlong offset,
+                     const dlong Nfields,
+                     const dfloat a,
+                     const dfloat b,
+                     @restrict const  dfloat * X,
+                     @restrict dfloat * Y){
+ 
+  for(dlong fld=0;fld<Nfields;++fld){ 
+    for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+      if(n<N){
+        const dlong id = n + fld*offset;
+        const dfloat xn = X[id];
+        Y[id + 0*offset] = a*Y[id + 0*offset] + b*xn; 
+        Y[id + 1*offset] = a*Y[id + 1*offset] + b*xn*xn; 
+      }
+    }
+  }
+}
+
+@kernel void avgXY_YZ_XZ(const dlong N,
+                         const dlong offset,
+                         const dlong Xoffset,
+                         const dfloat a,
+                         const dfloat b,
+                         @restrict const dfloat * X,
+                         @restrict dfloat * Y){
+ 
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat vx = X[n + 0*offset];
+      const dfloat vy = X[n + 1*offset];
+      const dfloat vz = X[n + 2*offset];
+      const dlong id = n + Xoffset;
+      Y[id + 0*offset] = a*Y[id + 0*offset] + b*vx*vy;
+      Y[id + 1*offset] = a*Y[id + 1*offset] + b*vy*vz;
+      Y[id + 2*offset] = a*Y[id + 2*offset] + b*vz*vx;
+    }
+  }
+}

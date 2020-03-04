@@ -29,6 +29,9 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 {
   mesh_t *mesh = ins->mesh;
   cds_t *cds = ins->cds;
+ 
+  int flow = 1;
+  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
 
   ins->dt = dt;
   if(tstep<=1){
@@ -63,19 +66,20 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
       qthermal(ins, time+dt, ins->o_qtl);
   }
 
-  if(!ins->options.compareArgs("VELOCITY SOLVER", "NONE"))
-    fluidSolve(ins, time, dt, ins->o_U);
-
+  if(flow) fluidSolve(ins, time, dt, ins->o_U);
+    
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
   if(mesh->rank==0) {
     printf("step= %d  t= %.5e  dt=%.1e  C= %.2f",
            tstep, time+dt, dt, cfl); 
 
-    if(ins->uvwSolver)
-      printf("  UVW: %d  P: %d", ins->NiterU, ins->NiterP); 
-    else
-      printf("  U: %d  V: %d  W: %d  P: %d", ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP); 
+    if(flow) {
+      if(ins->uvwSolver)
+        printf("  UVW: %d  P: %d", ins->NiterU, ins->NiterP); 
+      else
+        printf("  U: %d  V: %d  W: %d  P: %d", ins->NiterU, ins->NiterV, ins->NiterW, ins->NiterP); 
+    }
 
     for(int is=0; is<ins->Nscalar; is++) {
       if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
@@ -84,12 +88,12 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     printf("  tElapsed= %.5e s\n", MPI_Wtime()-etime0);
   }
 
-  if(cfl > 20) {
+  if(cfl > 30) {
     if(mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
     EXIT(1);
   }
 
-  if(tstep%5==0) fflush(stdout);
+  if(tstep%10==0) fflush(stdout);
 }
 
 void extbdfCoefficents(ins_t *ins, int order) {

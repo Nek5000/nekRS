@@ -31,6 +31,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
+ 
+  int flow = 1;
+  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
@@ -282,6 +285,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     filterSetup(ins); 
 
   const int nbrBIDs = bcMap::size();
+  int NBCType = nbrBIDs+1;
+
+  if (flow) {
 
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
@@ -290,7 +296,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
     ins->uvwSolver = new elliptic_t();
 
-  int NBCType = nbrBIDs+1;
   int *uvwBCType = (int*) calloc(3*NBCType, sizeof(int));
   int *uBCType = uvwBCType + 0*NBCType;
   int *vBCType = uvwBCType + 1*NBCType;
@@ -407,12 +412,16 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     }
   }
 
+  } // flow
+
   // setup scalar solver
   if(ins->Nscalar) {
    mesh_t *msh;
    (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
    ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
   }
+
+  if (flow) {
 
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
 
@@ -495,6 +504,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_EToB = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int),ins->EToB);
   ins->o_VmapB = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), ins->VmapB);
 
+  } // flow
+
   // build inverse mass matrix  
   for(hlong e=0;e<mesh->Nelements;++e)
     for(int n=0;n<mesh->Np;++n)
@@ -508,7 +519,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   // build kernels
   string fileName, kernelName ;
   const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/";
+  const string oklpath = install_dir + "/okl/core/";
 
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
@@ -917,12 +928,13 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
   string fileName, kernelName;
-  const string  suffix = "Hex3D";
+  const string suffix = "Hex3D";
+  const string oklpath = install_dir + "/okl/core/";
 
   for (int r=0;r<2;r++){
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
 
-      fileName = install_dir + "/okl/cdsAdvection" + suffix + ".okl";
+      fileName = oklpath + "cdsAdvection" + suffix + ".okl";
 
       kernelName = "cdsStrongAdvectionVolume" + suffix;
       cds->advectionStrongVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -937,30 +949,30 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
       cds->setScalarKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName   = install_dir + "/okl/cdsSumMakef" + suffix + ".okl"; 
+      fileName   = oklpath + "cdsSumMakef" + suffix + ".okl"; 
       kernelName = "cdsSumMakef" + suffix;
       cds->sumMakefKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       
-      fileName = install_dir + "/okl/cdsHelmholtzBC" + suffix + ".okl"; 
+      fileName = oklpath + "cdsHelmholtzBC" + suffix + ".okl"; 
       kernelName = "cdsHelmholtzBC" + suffix; 
       cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       kernelName = "cdsHelmholtzAddBC" + suffix;
       cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      fileName = install_dir + "/okl/setEllipticCoeff.okl"; 
+      fileName = oklpath + "setEllipticCoeff.okl"; 
       kernelName = "setEllipticCoeff";
       cds->setEllipticCoeffKernel =  
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = install_dir + "/okl/cdsMassMatrix.okl"; 
+      fileName = oklpath + "cdsMassMatrix.okl"; 
       kernelName = "cdsMassMatrix" + suffix;
       cds->massMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
 
       kernelName = "cdsInvMassMatrix" + suffix;
       cds->invMassMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
 
-      fileName = install_dir + "/okl/cdsFilterRT" + suffix + ".okl"; 
+      fileName = oklpath + "cdsFilterRT" + suffix + ".okl"; 
       kernelName = "cdsFilterRT" + suffix;
       cds->filterRTKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -971,19 +983,19 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
         cds->scaledAddKernel = 
           mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-        fileName = install_dir + "/okl/cdsSubCycle" + suffix + ".okl"; 
+        fileName = oklpath + "cdsSubCycle" + suffix + ".okl"; 
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
         kernelName = "cdsSubCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
-        fileName = install_dir + "/okl/cdsSubCycleRKUpdate.okl";
+        fileName = oklpath + "cdsSubCycleRKUpdate.okl";
         kernelName = "cdsSubCycleLSERKUpdate";
         if(cds->SNrk==4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       }
-      fileName = install_dir + "/okl/insVelocityExt" + ".okl";
+      fileName = oklpath + "insVelocityExt" + ".okl";
       kernelName = "insVelocityExt";
       cds->velocityExtKernel = 
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
