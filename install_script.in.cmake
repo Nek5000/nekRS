@@ -98,8 +98,6 @@ install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/okl "*.okl" @CMAKE_INSTALL_PREF
 message("-- Installing nekRS plugins")
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src/avg "*.hpp" @CMAKE_INSTALL_PREFIX@/plugin)
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src/velRecycling "*.hpp" @CMAKE_INSTALL_PREFIX@/plugin)
-install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/okl/avg "*.okl" @CMAKE_INSTALL_PREFIX@/plugin/okl)
-install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/okl/velRecycling "*.okl" @CMAKE_INSTALL_PREFIX@/plugin/okl)
 
 install_files_if_newer(@CMAKE_SOURCE_DIR@/src/udf/CMakeLists.txt @CMAKE_INSTALL_PREFIX@/udf)
 install_files_if_newer("@CMAKE_SOURCE_DIR@/src/nekInterface/NEKINTF;@CMAKE_SOURCE_DIR@/src/nekInterface/nekInterface.f;@CMAKE_SOURCE_DIR@/src/nekInterface/Makefile" @CMAKE_INSTALL_PREFIX@/nekInterface)

@@ -141,9 +141,11 @@ int main(int argc, char **argv)
       if (tStep%outputStep == 0 || tStep == NtimeSteps) isOutputStep = 1;
     }
 
-    if (isOutputStep) nekrs::copyToNek(time, tStep);
     nekrs::udfExecuteStep(time, tStep, isOutputStep);
-    if (isOutputStep) nekrs::nekOutfld();
+    if (isOutputStep) {
+      nekrs::copyToNek(time, tStep); 
+      nekrs::nekOutfld();
+    }
 
     ++tStep;
   }

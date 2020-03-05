@@ -21,6 +21,8 @@ static void (*usrsetvert_ptr)(void);
 
 static void (*nek_ptr_ptr)(void **, char *, int*);
 static void (*nek_outfld_ptr)(char *);
+static void (*nek_resetio_ptr)(void);
+static void (*nek_setio_ptr)(double *, int *, int *, int *, int *, int *, int *);
 static void (*nek_uic_ptr)(int *);
 static void (*nek_end_ptr)(void);
 static void (*nek_restart_ptr)(char *, int *);
@@ -53,6 +55,55 @@ void nek_outfld(){
 
 void nek_outfld(const char *suffix){
   (*nek_outfld_ptr)((char*)suffix);
+}
+
+void nek_outfld(ins_t *ins, const char *suffix, dfloat t, occa::memory o_x, 
+                occa::memory o_u, occa::memory o_p, occa::memory o_s, 
+                int NSfields, int FP64){
+
+  mesh_t *mesh = ins->mesh;
+  cds_t *cds = ins->cds;
+  dlong Nlocal = mesh->Nelements * mesh->Np;
+
+  double time = t;
+
+  int xo = 0;
+  int vo = 0;
+  int po = 0;
+  int so = 0;
+
+  if(o_x.ptr()) {
+    xo = 1;
+  }
+  if(o_u.ptr()) {
+    occa::memory o_vx = o_u + 0*ins->fieldOffset*sizeof(dfloat);
+    occa::memory o_vy = o_u + 1*ins->fieldOffset*sizeof(dfloat);
+    occa::memory o_vz = o_u + 2*ins->fieldOffset*sizeof(dfloat);
+    o_vx.copyTo(nekData.vx, Nlocal*sizeof(dfloat));
+    o_vy.copyTo(nekData.vy, Nlocal*sizeof(dfloat));
+    o_vz.copyTo(nekData.vz, Nlocal*sizeof(dfloat));
+    vo = 1;
+  }
+  if(o_p.ptr()) {
+    o_p.copyTo(nekData.pr, Nlocal*sizeof(dfloat));
+    po = 1;
+  }
+  if(o_s.ptr() && NSfields) {
+    const dlong nekFieldOffset = nekData.lelt*mesh->Np;
+    for(int is=0; is<NSfields; is++) {
+      mesh_t *mesh;
+      (is) ? mesh = ins->cds->meshV : mesh = ins->cds->mesh;
+      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      dfloat *Ti = nekData.t + is*nekFieldOffset;
+      occa::memory o_Si = o_s + is*cds->fieldOffset*sizeof(dfloat);
+      o_Si.copyTo(Ti, Nlocal*sizeof(dfloat));
+    }
+    so = 1;
+  }
+
+  (*nek_setio_ptr)(&t, &xo, &vo, &po, &so, &NSfields, &FP64);
+  (*nek_outfld_ptr)((char*)suffix);
+  (*nek_resetio_ptr)();
 }
 
 void nek_uic(int ifield){
@@ -182,6 +233,10 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_end_ptr = (void (*)(void)) dlsym(handle, fname("nekf_end"));
   check_error(dlerror());
   nek_outfld_ptr = (void (*)(char *)) dlsym(handle, fname("nekf_outfld"));
+  check_error(dlerror());
+  nek_resetio_ptr = (void (*)(void)) dlsym(handle, fname("nekf_resetio"));
+  check_error(dlerror());
+  nek_setio_ptr = (void (*)(double *, int *, int *, int *, int *, int *, int *)) dlsym(handle, fname("nekf_setio"));
   check_error(dlerror());
   nek_restart_ptr = (void (*)(char *, int *)) dlsym(handle, fname("nekf_restart"));
   check_error(dlerror());
@@ -449,8 +504,10 @@ int nek_setup(MPI_Comm c, setupAide &options_in) {
 
   nekData.qtl = (double *) nek_ptr("qtl");
 
-  nekData.ifgetu = (int *) nek_ptr("ifgetu");
-  nekData.ifgetp = (int *) nek_ptr("ifgetp");
+  nekData.ifgetu  = (int *) nek_ptr("ifgetu");
+  nekData.ifgetp  = (int *) nek_ptr("ifgetp");
+  nekData.ifgett  = (int *) nek_ptr("ifgett");
+  nekData.ifgetps = (int *) nek_ptr("ifgetps");
 
   nekData.unx = (double *) nek_ptr("unx");
   nekData.uny = (double *) nek_ptr("uny"); 

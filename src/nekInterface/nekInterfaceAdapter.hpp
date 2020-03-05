@@ -34,7 +34,7 @@ typedef struct {
 
   double *qtl;
 
-  int *ifgetu, *ifgetp;
+  int *ifgetu, *ifgetp, *ifgett, *ifgetps;
 
   double *cbscnrs;
 
@@ -89,6 +89,9 @@ DECLARE_USER_FUNC(userqtl)
 void*  nek_ptr(const char *id);
 void   nek_outfld(void);
 void   nek_outfld(const char *suffix);
+void   nek_outfld(ins_t *ins, const char *suffix, dfloat t, occa::memory o_x, 
+                  occa::memory o_u, occa::memory o_p, occa::memory o_s, 
+                  int NSfields, int FP64);
 void   nek_uic(int ifield);
 void   nek_end(void);
 void   nek_map_m_to_n(double *a, int na, double *b, int nb);

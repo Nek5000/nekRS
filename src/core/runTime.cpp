@@ -44,8 +44,10 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   }
 
   // First extrapolate velocity to t^(n+1)
+  int velocityExtrapolationOrder = ins->ExplicitOrder;
+  if(!flow) velocityExtrapolationOrder = 1; 
   ins->velocityExtKernel(mesh->Nelements,
-                         ins->ExplicitOrder,
+                         velocityExtrapolationOrder,
                          ins->fieldOffset,
                          ins->o_extbdfC,
                          ins->o_U,
