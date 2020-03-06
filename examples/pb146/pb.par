@@ -33,3 +33,6 @@ boundaryTypeMap = inlet, outlet, wall
 density = 1.0
 viscosity = -10000.0
 residualTol = 1e-06
+
+[BOOMERAMG]
+iterations = 1

@@ -10,14 +10,13 @@
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
+: ${NEKRS_CXXFLAGS:="-g -O2 -march=native -mtune=native"}
 
-: ${NEKRS_CXXFLAGS:="-g -O2 -march=native -mtune=native -DUSE_OCCA_MEM_BYTE_ALIGN=64"}
+: ${OCCA_CXX:="${NEKRS_CXX}"}
 : ${OCCA_CXXFLAGS:="${NEKRS_CXXFLAGS}"}
-
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
-
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
@@ -38,6 +37,8 @@ fi
 
 : ${OCCA_METAL_ENABLED:=0}
 
+NEKRS_CXXFLAGS+=" -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
+
 if uname -a | grep 'ppc64'; then
   NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g") 
 fi
@@ -48,6 +49,7 @@ NEKRS_DEBUG=0
 NEKRS_LIBP_DEFINES="-DUSE_NULL_PROJECTION=1"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
+export OCCA_CXX
 export OCCA_CXXFLAGS
 export OCCA_CUDA_ENABLED
 export OCCA_HIP_ENABLED
@@ -177,6 +179,8 @@ cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
       -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
       -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_OCCA_CXX_COMPILER="${OCCA_CXX}" \
+      -DCMAKE_OCCA_CXX_FLAGS="${OCCA_CXXFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
       -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
