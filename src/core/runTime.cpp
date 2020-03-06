@@ -90,8 +90,8 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     printf("  tElapsed= %.5e s\n", MPI_Wtime()-etime0);
   }
 
-  if(cfl > 30) {
-    if(mesh->rank==0) cout << "CFL too high! Dying ...\n" << endl; 
+  if(cfl > 30 || std::isnan(cfl)) {
+    if(mesh->rank==0) cout << "Unreasonable CFL! Dying ...\n" << endl; 
     EXIT(1);
   }
 

@@ -179,7 +179,7 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
           {0, 0, 0, 0}
       };
       int option_index = 0;
-      int c = getopt_long (argc, argv, "s:d:", long_options, &option_index);
+      int c = getopt_long (argc, argv, "s:", long_options, &option_index);
     
       if (c == -1)
         break;
@@ -208,6 +208,17 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
     }  
   } 
 
+  char buf[FILENAME_MAX];
+  strcpy(buf, cmdOpt->setupFile.c_str());
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
+  cmdOpt->setupFile.assign(buf);
+  MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
+  MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
+  MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
+  MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
+
+  if(cmdOpt->setupFile.empty()) err++;
+
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
   if (err) {
     if (rank == 0)
@@ -218,14 +229,7 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
     exit(1);
   }
 
-  char buf[FILENAME_MAX];
-  strcpy(buf, cmdOpt->setupFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
-  cmdOpt->setupFile.assign(buf);
-  MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
-  MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
-  MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
-  MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
+
 
  return cmdOpt;
 }
