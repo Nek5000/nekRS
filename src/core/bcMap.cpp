@@ -41,15 +41,15 @@ static std::map<int, string> vBcIDToText = {
 static std::map<string, int> sBcTextToID = {
   {"periodic"     , 0},  
   {"fixedvalue"   , 1},  
-  {"fixedgradient", 2},  
-  {"zerogradient" , 3}  
+  {"zerogradient" , 2},  
+  {"fixedgradient", 3}  
 };
 
 static std::map<int, string> sBcIDToText = {
   {0, "periodic"     },  
   {1, "fixedValue"   },  
-  {2, "fixedGradient"},  
-  {3, "zeroGradient" }  
+  {2, "zeroGradient" },  
+  {3, "fixedGradient"}  
 };
 
 static void v_setup(string s);

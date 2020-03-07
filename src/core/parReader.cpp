@@ -242,11 +242,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("general", "filtering", filtering);
   if(filtering == "hpfrt") {
     options.setArgs("FILTER STABILIZATION", "RELAXATION");
-    double filterWeight;
-    if(ini.extract("general", "filterweight", filterWeight))
-      options.setArgs("HPFRT STRENGTH", to_string_f(filterWeight));
-    else
+    if(ini.extract("general", "filterweight", sbuf)) {
+      int err = 0;
+      double weight = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for filterWeight!");
+      options.setArgs("HPFRT STRENGTH", to_string_f(weight));
+    }else{
       ABORT("Cannot find mandatory parameter GENERAL:filterWeight!");
+    }
     double filterCutoffRatio;
     int NFilterModes;
     if(ini.extract("general", "filtercutoffratio", filterCutoffRatio))
@@ -353,10 +356,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       ABORT("Cannot find mandatory parameter VELOCITY::density!"); 
   }
   
-  double viscosity;
   if(ini.extract("velocity", "viscosity", sbuf)) {
     int err = 0;
-    viscosity = te_interp(sbuf.c_str(), &err);
+    double viscosity = te_interp(sbuf.c_str(), &err);
     if(err) ABORT("Invalid expression for viscosity!");
     if(viscosity < 0) viscosity = fabs(1/viscosity);
     options.setArgs("VISCOSITY", to_string_f(viscosity));
@@ -379,10 +381,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
-    double diffusivity; 
     if(ini.extract("temperature", "conductivity", sbuf)) {
       int err = 0;
-      diffusivity = te_interp(sbuf.c_str(), &err);
+      double diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for conductivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
@@ -391,10 +392,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
     }
 
-    double rhoCp; 
     if(ini.extract("temperature", "rhocp", sbuf)) {
       int err = 0;
-      rhoCp = te_interp(sbuf.c_str(), &err);
+      double rhoCp = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rhoCp!");
       options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
     } else {
@@ -445,10 +445,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
     }
 
-    double diffusivity; 
     if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
-      diffusivity = te_interp(sbuf.c_str(), &err);
+      double diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for diffusivity!");
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
@@ -457,10 +456,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!"); 
     }
 
-    double rho; 
     if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
-      rho = te_interp(sbuf.c_str(), &err);
+      double rho = te_interp(sbuf.c_str(), &err);
       if(err) ABORT("Invalid expression for rho!");
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
     } else {

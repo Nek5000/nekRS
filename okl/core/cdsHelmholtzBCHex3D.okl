@@ -46,7 +46,7 @@
     if(bcType==1) {                                         \
       cdsDirichletConditions3D(&bc);                        \
     }                                                       \
-    if(bcType==2) {                                         \
+    if(bcType==3) {                                         \
       cdsNeumannConditions3D(&bc);                          \
     }                                                       \
                                                             \

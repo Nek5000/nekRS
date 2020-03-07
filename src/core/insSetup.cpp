@@ -870,10 +870,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
         if (bc>0) {
           for (int n=0;n<mesh->Nfp;n++) {
             int fid = mesh->faceNodes[n+f*mesh->Nfp];
-            if(bc != 1 && mapB[fid+e*mesh->Np] != 1)
-              mapB[fid+e*mesh->Np] = mapB[fid+e*mesh->Np]; // for Neumann BCs do nothing      
-            else
-              mapB[fid+e*mesh->Np] = mymin(bc,mapB[fid+e*mesh->Np]); // Dirichlet wins
+            mapB[fid+e*mesh->Np] = mymin(bc,mapB[fid+e*mesh->Np]); // Dirichlet wins
 	  }
         }
         cnt++;
