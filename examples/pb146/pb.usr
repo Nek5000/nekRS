@@ -8,7 +8,8 @@ c-----------------------------------------------------------------------
       ux   = 0.0
       uy   = 0.0
       uz   = 1.0
-
+      temp = 0.0
+  
       return
       end
 c-----------------------------------------------------------------------
@@ -47,17 +48,18 @@ c-----------------------------------------------------------------------
         zm1(i,1,1,1)=zm1(i,1,1,1)*scale
       enddo
 
-      do e=1,nelv
-      do f=1,2*ndim
-        if(cbc(f,e,1) .eq. 'SYM') cbc(f,e,1)='W  ' 
-      enddo
-      enddo
-
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
          if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
-         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 3
+         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 3
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 4
+      enddo
+      enddo
+
+      do e=1,nelv
+      do f=1,2*ndim
+        if(cbc(f,e,1) .eq. 'SYM') cbc(f,e,1)='W  ' 
       enddo
       enddo
 

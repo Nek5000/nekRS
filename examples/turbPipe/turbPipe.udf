@@ -37,5 +37,8 @@ void UDF_Setup(ins_t *ins)
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
 {
   velRecycling::copy();
-  if (ins->isOutputStep) nek_userchk();
+  if (ins->isOutputStep) {
+    nek_ocopyFrom(ins, time, tstep);
+    nek_userchk();
+  }
 }

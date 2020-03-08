@@ -30,7 +30,11 @@ set(INCLUDE_DIRS
   ${GSDIR}
   ${ELLIPTICDIR}
   ${ALMONDDIR}
+  ${NEKRS_INSTALL_DIR}
   ${NEKRS_INSTALL_DIR}/include
+  ${NEKRS_INSTALL_DIR}/include/core
+  ${NEKRS_INSTALL_DIR}/include/udf
+  ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 

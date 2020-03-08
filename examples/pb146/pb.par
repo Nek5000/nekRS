@@ -5,20 +5,20 @@ deviceNumber = LOCAL-RANK
 [GENERAL]
 #verbose = true
 polynomialOrder = 7
-#startFrom = r1.fld
+#startFrom = r.fld
 stopAt = endTime
-endTime = 10
+endTime = 20
 
 dt = 2.0e-3
 timeStepper = tombo2
 extrapolation = subCycling
 subCyclingSteps = 2
 
-writeControl = TIMESTEP
-writeInterval = 1000
+writeControl = runTime
+writeInterval = 1
 
 filtering = hpfrt
-filterWeight = 100 
+filterWeight = 0.2/${dt} 
 filterModes = 2
 
 [PRESSURE]
@@ -29,7 +29,16 @@ residualTol = 1e-04
 
 [VELOCITY]
 solver = pcg+block
-boundaryTypeMap = inlet, outlet, wall
+boundaryTypeMap = inlet, outlet, wall, wall
 density = 1.0
-viscosity = -10000.0
+viscosity = -5000.0
 residualTol = 1e-06
+
+[TEMPERATURE]
+boundaryTypeMap = inlet, outlet, insulated, flux 
+residualTol = 1e-06
+rhoCp = 1.0
+conductivity = -5000
+
+[BOOMERAMG]
+iterations = 1

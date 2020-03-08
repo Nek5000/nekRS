@@ -97,6 +97,10 @@ c-----------------------------------------------------------------------
          ptr = loc(getu)
       elseif (id .eq. 'ifgetp') then
          ptr = loc(getp)
+      elseif (id .eq. 'ifgett') then
+         ptr = loc(gett)
+      elseif (id .eq. 'ifgetps') then
+         ptr = loc(getps)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -243,15 +247,99 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_outfld()
+      subroutine nekf_resetio()
 
       include 'SIZE'
       include 'TOTAL'
+      include 'NEKINTF'
 
+      real ts
+      integer npscals, p63s
+      logical ifxyos, ifvos, ifpos, iftos, ifpscos(ldimt1)
+      common /ifos/ fxyos, ifvos, ifpos, iftos, ifpscos, npscals, p63s,
+     $              ts
+
+      time = ts
+
+      param(63) = p63s
+
+      npscal = npscals
+      ifxyo  = ifxyos 
+      ifvo   = ifvos 
+      ifpo   = ifpos 
+      ifto   = iftos 
+      do i = 1,ldimt1
+        ifpsco(i) = ifpscos(i) 
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setio(ttime, xo, vo, po, so, ns, fp64)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      real ttime
+      integer xo, vo, po, so, fp64
+
+      real ts
+      integer npscals, p63s
+      logical ifxyos, ifvos, ifpos, iftos, ifpscos(ldimt1)
+      common /ifos/ fxyos, ifvos, ifpos, iftos, ifpscos, npscals, p63s,
+     $              ts
+
+      if(ns.gt.ldimt) call exitti('nekf_setifo: ns > ldimt$',ns) 
+
+      ts = time
+      time = ttime
+
+      p63s = param(63)
+      param(63) = fp64 
+ 
+      npscals = npscal
+      ifxyos  = ifxyo
+      ifvos   = ifvo
+      ifpos   = ifpo
+      iftos   = ifto
+      do i = 1,ldimt1
+        ifpscos(i)  = ifpsco(i) 
+      enddo
+
+      npscal = ns-1 
+      ifxyo  = .false.
+      ifvo   = .false.
+      ifpo   = .false.
+      ifto   = .false.
+      do i = 1,ldimt1
+        ifpsco(i) = .false.
+      enddo
+ 
+      if(xo.ne.0) ifxyo = .true.
+      if(vo.ne.0) ifvo  = .true.
+      if(po.ne.0) ifpo  = .true.
+      if(so.ne.0) then
+        ifto = .true.
+        do i = 1,npscal
+          ifpsco(i) = .true.
+        enddo
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_outfld(suffix)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      character*3 suffix
       common /scrcg/ pm1(lx1,ly1,lz1,lelv)
 
       call copy(pm1,pr,nx1*ny1*nz1*nelv)
-      call outfld('   ')
+      call outfld(suffix)
 
       return
       end
@@ -331,9 +419,11 @@ c-----------------------------------------------------------------------
       call setics()
       getu = 1
       getp = 1
-    
+      gett = 1
+ 
       if (.not. ifgetu) getu = 0 
       if (.not. ifgetp) getp = 0
+      if (.not. ifgett) gett = 0
 
       return
       end
