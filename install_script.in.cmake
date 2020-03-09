@@ -94,8 +94,6 @@ install_glob_if_newer(@CMAKE_SOURCE_DIR@/scripts * @CMAKE_INSTALL_PREFIX@/bin)
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src "*.h" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src "*.hpp" @CMAKE_INSTALL_PREFIX@/include)
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/okl "*.okl" @CMAKE_INSTALL_PREFIX@/okl)
-
-message("-- Installing nekRS plugins")
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src/avg "*.hpp" @CMAKE_INSTALL_PREFIX@/plugin)
 install_glob_recurse_if_newer(@CMAKE_SOURCE_DIR@/src/velRecycling "*.hpp" @CMAKE_INSTALL_PREFIX@/plugin)
 

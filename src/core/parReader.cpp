@@ -276,95 +276,99 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
   }
 
-  // PRESSURE
-  double p_residualTol;
-  if(ini.extract("pressure", "residualtol", p_residualTol))
-    options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
-  else
-    ABORT("Cannot find mandatory parameter PRESSURE::residualTol!"); 
+  if(ini.sections.count("velocity")) {
+    // PRESSURE
+    double p_residualTol;
+    if(ini.extract("pressure", "residualtol", p_residualTol))
+      options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
+    else
+      ABORT("Cannot find mandatory parameter PRESSURE::residualTol!"); 
+    
+    bool p_rproj; 
+    if(ini.extract("pressure", "projection", p_rproj))
+      if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
   
-  bool p_rproj; 
-  if(ini.extract("pressure", "projection", p_rproj))
-    if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
- 
-  bool p_gproj; 
-  if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
-    if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
- 
-  string p_amgsolver; 
-  ini.extract("pressure", "amgsolver", p_amgsolver);
-  if (p_amgsolver == "paralmond")
-    options.setArgs("AMG SOLVER", "PARALMOND");
- 
-  if(ini.sections.count("boomeramg")) {
-    int coarsenType;
-    if(ini.extract("boomeramg", "coarsentype", coarsenType)) 
-      options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
-    int interpolationType;
-    if(ini.extract("boomeramg", "interpolationtype", interpolationType)) 
-      options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
-    int smootherType;
-    if(ini.extract("boomeramg", "smoothertype", smootherType)) 
-      options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
-    int numCycles;
-    if(ini.extract("boomeramg", "iterations", numCycles))
-      options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
-    double strongThres;
-    if(ini.extract("boomeramg", "strongthreshold", strongThres))
-      options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
-    double nonGalerkinTol;
-    if(ini.extract("boomeramg", "nongalerkintol", nonGalerkinTol))
-      options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
-  }
- 
-  string p_preconditioner; 
-  ini.extract("pressure", "preconditioner", p_preconditioner);
-  if(p_preconditioner == "jacobi")
-    options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-  if(p_preconditioner == "semg")
-    options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
- 
-  // VELOCITY 
-  string vsolver;
-  ini.extract("velocity", "solver", vsolver);
-  if(vsolver == "none") {
-      options.setArgs("VELOCITY SOLVER", "NONE");
-  } else if(std::strstr(vsolver.c_str(), "block")) {
-    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-  }  
- 
-  double v_residualTol;
-  if(ini.extract("velocity", "residualtol", v_residualTol))
-    options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
-  else
-    ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
+    bool p_gproj; 
+    if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
+      if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+  
+    string p_amgsolver; 
+    ini.extract("pressure", "amgsolver", p_amgsolver);
+    if (p_amgsolver == "paralmond")
+      options.setArgs("AMG SOLVER", "PARALMOND");
+  
+    if(ini.sections.count("boomeramg")) {
+      int coarsenType;
+      if(ini.extract("boomeramg", "coarsentype", coarsenType)) 
+        options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
+      int interpolationType;
+      if(ini.extract("boomeramg", "interpolationtype", interpolationType)) 
+        options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
+      int smootherType;
+      if(ini.extract("boomeramg", "smoothertype", smootherType)) 
+        options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
+      int numCycles;
+      if(ini.extract("boomeramg", "iterations", numCycles))
+        options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
+      double strongThres;
+      if(ini.extract("boomeramg", "strongthreshold", strongThres))
+        options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
+      double nonGalerkinTol;
+      if(ini.extract("boomeramg", "nongalerkintol", nonGalerkinTol))
+        options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
+    }
+  
+    string p_preconditioner; 
+    ini.extract("pressure", "preconditioner", p_preconditioner);
+    if(p_preconditioner == "jacobi")
+      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
+    if(p_preconditioner == "semg")
+      options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
 
-  string v_bcMap;
-  if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
-    std::vector<std::string> sList;
-    sList = serializeString(v_bcMap);
-    bcMap::setup(sList, "velocity");
-  } else {
-    ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
-  }
+    // VELOCITY 
+    string vsolver;
+    ini.extract("velocity", "solver", vsolver);
+    if(vsolver == "none") {
+        options.setArgs("VELOCITY SOLVER", "NONE");
+    } else if(std::strstr(vsolver.c_str(), "block")) {
+      options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    }  
   
-  double rho;
-  if(ini.extract("velocity", "density", rho)) {
-    options.setArgs("DENSITY", to_string_f(rho));
+    double v_residualTol;
+    if(ini.extract("velocity", "residualtol", v_residualTol))
+      options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
+    else
+      ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
+ 
+    string v_bcMap;
+    if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(v_bcMap);
+      bcMap::setup(sList, "velocity");
+    } else {
+      ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
+    }
+    
+    double rho;
+    if(ini.extract("velocity", "density", rho)) {
+      options.setArgs("DENSITY", to_string_f(rho));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter VELOCITY::density!"); 
+    }
+    
+    if(ini.extract("velocity", "viscosity", sbuf)) {
+      int err = 0;
+      double viscosity = te_interp(sbuf.c_str(), &err);
+      if(err) ABORT("Invalid expression for viscosity!");
+      if(viscosity < 0) viscosity = fabs(1/viscosity);
+      options.setArgs("VISCOSITY", to_string_f(viscosity));
+    } else {
+      if(!variableProperties)
+        ABORT("Cannot find mandatory parameter VELOCITY::viscosity!"); 
+    }
   } else {
-    if(!variableProperties)
-      ABORT("Cannot find mandatory parameter VELOCITY::density!"); 
-  }
-  
-  if(ini.extract("velocity", "viscosity", sbuf)) {
-    int err = 0;
-    double viscosity = te_interp(sbuf.c_str(), &err);
-    if(err) ABORT("Invalid expression for viscosity!");
-    if(viscosity < 0) viscosity = fabs(1/viscosity);
-    options.setArgs("VISCOSITY", to_string_f(viscosity));
-  } else {
-    if(!variableProperties)
-      ABORT("Cannot find mandatory parameter VELOCITY::viscosity!"); 
+    options.setArgs("VELOCITY SOLVER", "NONE");
   }
 
   // SCALARS

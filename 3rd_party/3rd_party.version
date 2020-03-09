@@ -19,7 +19,7 @@ LIBP_VER=1.0 # latest
 LIBP_GIT_BRANCH=next
 LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
 
-HYPRE_VER=2.17.0
+HYPRE_VER=2.18.2
 HYPRE_ARCHIVE_URL=https://github.com/hypre-space/hypre/archive/v${HYPRE_VER}.tar.gz
 
 function clone_nek() {

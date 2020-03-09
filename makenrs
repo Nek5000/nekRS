@@ -12,8 +12,8 @@
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_CXXFLAGS:="-g -O2 -march=native -mtune=native"}
 
-: ${OCCA_CXX:="${NEKRS_CXX}"}
-: ${OCCA_CXXFLAGS:="${NEKRS_CXXFLAGS}"}
+: ${OCCA_CXX:="gcc"}
+: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
@@ -112,12 +112,19 @@ if [ ${NEKRS_DEBUG} -ne 0 ]; then
   NEKRS_BUILD_TYPE=Debug
 fi
 
-################################################################################
-# See if its just cleaning and if yes, clean and exit
-################################################################################
 if [ "$#" -eq 1 ]; then
   if [[ "$1" = *"clean"* ]]; then
     set +e
+
+    read -p "installation in $NEKRS_INSTALL_DIR? [N]" yn
+    case $yn in
+      [Yy]* )
+        rm -rf $NEKRS_INSTALL_DIR >/dev/null 2>&1
+        ;;
+      * )
+        ;;
+    esac
+
     read -p "nekRS? [N]" yn
     case $yn in
       [Yy]* )
@@ -163,14 +170,9 @@ EOF
   fi
 fi
 
-################################################################################
-# Build NekRS 
-################################################################################
 nekrs_info "Building NekRS ..."
-
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
-
 cd "${NEKRS_BUILD_DIR}"
 cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
@@ -179,13 +181,10 @@ cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
       -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
       -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
-      -DCMAKE_OCCA_CXX_COMPILER="${OCCA_CXX}" \
-      -DCMAKE_OCCA_CXX_FLAGS="${OCCA_CXXFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
       -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
       ${NEKRS_DIR} && make install
-
 
 if [ $? -ne 0 ]; then
   echo
