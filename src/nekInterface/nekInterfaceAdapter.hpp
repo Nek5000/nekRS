@@ -89,7 +89,7 @@ DECLARE_USER_FUNC(userqtl)
 void*  nek_ptr(const char *id);
 void   nek_outfld(void);
 void   nek_outfld(const char *suffix);
-void   nek_outfld(ins_t *ins, const char *suffix, dfloat t, occa::memory o_x, 
+void   nek_outfld(const char *suffix, dfloat t, occa::memory o_x, 
                   occa::memory o_u, occa::memory o_p, occa::memory o_s, 
                   int NSfields, int FP64);
 void   nek_uic(int ifield);
@@ -98,19 +98,19 @@ void   nek_map_m_to_n(double *a, int na, double *b, int nb);
 void   nek_outpost(double *v1, double *v2, double *v3, double *vp, double *vt, char *name);
 int    nek_lglel(int e);
 void   nek_uf(double *u, double *v, double *w);
-int    nek_setup(MPI_Comm c, setupAide &options);
+int    nek_setup(MPI_Comm c, setupAide &options, ins_t **insAddr);
 void   nek_ifoutfld(int i);
 void   nek_setic(void);
 void   nek_userchk(void);
 int    nek_bcmap(int bid, int ifld);
 
 int buildNekInterface(const char *casename, int nFields, int N, int np);
-void nek_copyFrom(ins_t *ins, dfloat time, int tstep);
-void nek_ocopyFrom(ins_t *ins, dfloat time, int tstep);
-void nek_copyFrom(ins_t *ins, dfloat time);
-void nek_copyTo(ins_t *ins, dfloat &time);
-void nek_ocopyTo(ins_t *ins, dfloat &time);
-void nek_copyRestart(ins_t *ins);
+void nek_copyFrom(dfloat time, int tstep);
+void nek_ocopyFrom(dfloat time, int tstep);
+void nek_copyFrom(dfloat time);
+void nek_copyTo(dfloat &time);
+void nek_ocopyTo(dfloat &time);
+void nek_copyRestart();
 long long nek_set_glo_num(int npts, int isTMesh);
 
 #endif

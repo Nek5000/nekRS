@@ -21,7 +21,7 @@ void UDF_LoadKernels(ins_t *ins)
 void UDF_Setup(ins_t *ins)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins, ins->startTime);
+  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)

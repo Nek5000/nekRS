@@ -84,7 +84,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   MPI_Barrier(comm);
 
   // init nek
-  nek_setup(comm, options);
+  nek_setup(comm, options, &ins);
   nek_setic();
   nek_userchk();
 
@@ -94,7 +94,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // set initial condition
   int readRestartFile;
   options.getArgs("RESTART FROM FILE", readRestartFile);
-  if(readRestartFile) nek_copyRestart(ins);
+  if(readRestartFile) nek_copyRestart();
   if(udf.setup) udf.setup(ins);
   if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
     if(!udf.properties) {
@@ -118,7 +118,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
-  nek_ocopyFrom(ins, ins->startTime, 0);
+  nek_ocopyFrom(ins->startTime, 0);
 
   timer::init(ins->mesh->comm, ins->mesh->device, 0);
 
@@ -142,7 +142,7 @@ void runStep(double time, double dt, int tstep)
 
 void copyToNek(double time, int tstep)
 {
-  nek_ocopyFrom(ins, time, tstep);
+  nek_ocopyFrom(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
@@ -156,6 +156,11 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   ins->isOutputStep = 0;
+}
+
+void nekUserchk(void)
+{
+  nek_userchk();
 }
 
 void nekOutfld(void)

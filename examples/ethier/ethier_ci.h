@@ -39,7 +39,7 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
  
   const int rank = ins->mesh->rank;
  
-  nek_ocopyFrom(ins, time, tstep);
+  nek_ocopyFrom(time, tstep);
   nek_userchk();
 
   double *err = nekData.cbscnrs;

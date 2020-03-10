@@ -13,6 +13,7 @@ void runStep(double time, double dt, int tstep);
 void copyToNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep); 
 void nekOutfld(void);
+void nekUserchk(void);
 void printRuntimeStatistics(void);
 
 const double dt(void);

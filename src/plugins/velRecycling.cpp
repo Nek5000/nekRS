@@ -8,6 +8,7 @@
 
 #include <nekrs.hpp>
 #include <nekInterfaceAdapter.hpp>
+#include "velRecycling.hpp"
 
 // private members
 namespace {
@@ -36,9 +37,7 @@ namespace {
   static int Nblock;
 }
 
-namespace velRecycling {
-
-void buildKernel(ins_t *ins)
+void velRecycling::buildKernel(ins_t *ins)
 {
   mesh_t *mesh = ins->mesh; 
 
@@ -58,7 +57,7 @@ void buildKernel(ins_t *ins)
   }
 } 
 
-void copy()
+void velRecycling::copy()
 {
   mesh_t *mesh = ins->mesh; 
   const dfloat zero = 0.0;
@@ -98,9 +97,8 @@ void copy()
   scalarMultiplyKernel(ins->NVfields*ins->fieldOffset, scale, o_wrk);
 }
 
-
-void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
-           const dfloat wbar_)
+void velRecycling::setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
+                         const dfloat wbar_)
 {
   ins = ins_;
   o_wrk = o_wrk_;
@@ -146,5 +144,3 @@ void setup(ins_t *ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_
   o_flux = mesh->device.malloc(NfpTotal*sizeof(dfloat), flux);
   o_area = mesh->device.malloc(NfpTotal*sizeof(dfloat), area);
 }
-
-} // namespace 
