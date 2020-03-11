@@ -24,6 +24,7 @@ filterModes = 1
 residualTol = 1e-04
 
 [VELOCITY]
+solver = pcg+block
 boundaryTypeMap = wall
 viscosity = -19000
 density = 1.0

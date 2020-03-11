@@ -16,7 +16,7 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
   ins->options.getArgs("VISCOSITY", mue);
   ins->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho/mue; 
-  const dfloat DPDZ = -4*pow(RE_TAU/(0.5*RE_B), 2);
+  const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
   userfKernel(ins->Nlocal, ins->fieldOffset, DPDZ, o_FU);
 }
 

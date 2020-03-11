@@ -35,9 +35,9 @@ viscosity = -19000
 residualTol = 1e-06
 
 [BOOMERAMG]
-coarsenType = 10
-interpolationType = 6
+#coarsenType = 10
+#interpolationType = 6
 #smootherType = -1
 iterations = 1
-strongThreshold = 0.25
+#strongThreshold = 0.25
 #nonGalerkinTol = 0.1
