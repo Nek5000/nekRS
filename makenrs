@@ -10,7 +10,7 @@
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_CXXFLAGS:="-g -O2 -march=native -mtune=native"}
+: ${NEKRS_CXXFLAGS:="-g -O2"}
 
 : ${OCCA_CXX:="gcc"}
 : ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
@@ -40,7 +40,8 @@ fi
 NEKRS_CXXFLAGS+=" -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
 
 if uname -a | grep 'ppc64'; then
-  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g") 
+  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
+  OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
 fi
 
 NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
