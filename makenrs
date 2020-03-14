@@ -14,7 +14,7 @@
 
 : ${OCCA_CXX:="gcc"}
 : ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
-: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_CUDA_ENABLED:=0}
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
 
