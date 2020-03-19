@@ -86,7 +86,14 @@ void RANSktau::mue(dfloat C, occa::memory o_mue)
   mesh_t *mesh = ins->mesh;
 
   limitKernel(mesh->Nelements*mesh->Np, o_k, o_tau);
-  mueKernel(mesh->Nelements*mesh->Np, ins->fieldOffset, rho, mueLam, C, o_k, o_tau, o_mue);
+  mueKernel(mesh->Nelements*mesh->Np, 
+            ins->fieldOffset,
+            rho,
+            mueLam, 
+            C, 
+            o_k, 
+            o_tau, 
+            o_mue);
 }
 
 void RANSktau::mue(dfloat mueLamIn, dfloat C, occa::memory o_mue)
@@ -94,17 +101,35 @@ void RANSktau::mue(dfloat mueLamIn, dfloat C, occa::memory o_mue)
   mesh_t *mesh = ins->mesh;
 
   limitKernel(mesh->Nelements*mesh->Np, o_k, o_tau);
-  mueKernel(mesh->Nelements*mesh->Np, ins->fieldOffset, rho, mueLamIn, C, o_k, o_tau, o_mue);
+  mueKernel(mesh->Nelements*mesh->Np, 
+            ins->fieldOffset, 
+            rho, 
+            mueLamIn, 
+            C, 
+            o_k, 
+            o_tau, 
+            o_mue);
 }
 
 void RANSktau::sourceTerms(occa::memory o_FS, occa::memory o_BFDiag)
 {
   mesh_t *mesh = ins->mesh;
 
-  // S'ij=2Sij, O'ij=2Oij
   const int NSOfields = 9;
-  SijOijKernel(mesh->Nelements, ins->fieldOffset, mesh->o_vgeo, mesh->o_D, ins->o_U, o_SijOij);
-  ogsGatherScatterMany(o_SijOij, NSOfields, ins->fieldOffset, ogsDfloat, ogsAdd, mesh->ogs);
+  SijOijKernel(mesh->Nelements, 
+               ins->fieldOffset, 
+               mesh->o_vgeo, 
+               mesh->o_D, 
+               ins->o_U, 
+               o_SijOij);
+
+  ogsGatherScatterMany(o_SijOij, 
+                       NSOfields, 
+                       ins->fieldOffset, 
+                       ogsDfloat, 
+                       ogsAdd, 
+                       mesh->ogs);
+
   ins->invMassMatrixKernel(
        mesh->Nelements,
        ins->fieldOffset,
@@ -113,13 +138,26 @@ void RANSktau::sourceTerms(occa::memory o_FS, occa::memory o_BFDiag)
        ins->o_InvM,
        o_SijOij);
 
-  // St_mag2=2S^2=S'^2/2 and Om_mag2=2O^2=O'^2/2
-  SijOijMag2Kernel(mesh->Nelements*mesh->Np, ins->fieldOffset, o_SijOij, o_OiOjSk, o_SijMag2); 
+  SijOijMag2Kernel(mesh->Nelements*mesh->Np, 
+                   ins->fieldOffset, 
+                   o_SijOij, 
+                   o_OiOjSk, 
+                   o_SijMag2); 
 
   limitKernel(mesh->Nelements*mesh->Np, o_k, o_tau);
-  computeKernel(mesh->Nelements, ins->fieldOffset, rho, mueLam, mesh->o_vgeo, mesh->o_D,
-                o_k, o_tau, o_SijMag2, o_OiOjSk,
-                o_BFDiag, o_FS);
+
+  computeKernel(mesh->Nelements, 
+                ins->fieldOffset, 
+                rho, 
+                mueLam, 
+                mesh->o_vgeo, 
+                mesh->o_D,
+                o_k, 
+                o_tau, 
+                o_SijMag2, 
+                o_OiOjSk,
+                o_BFDiag, 
+                o_FS);
 }
 
 void RANSktau::setup(ins_t *insIn, occa::memory o_kIn, occa::memory o_tauIn)
@@ -127,7 +165,7 @@ void RANSktau::setup(ins_t *insIn, occa::memory o_kIn, occa::memory o_tauIn)
   setup(insIn, o_kIn, o_tauIn, NULL);
 } 
 
-void RANSktau::setup(ins_t *insIn, occa::memory o_kIn, occa::memory o_tauIn, dfloat *coeffIn)
+void RANSktau::setup(ins_t *insIn, occa::memory o_kIn, occa::memory o_tauIn, const dfloat *coeffIn)
 {
   if(setupCalled) return;
 
@@ -138,7 +176,7 @@ void RANSktau::setup(ins_t *insIn, occa::memory o_kIn, occa::memory o_tauIn, dfl
   o_tau = o_tauIn;
 
   if(ins->Nscalar < 2) {
-    if(mesh->rank == 0) cout << "ktau requires Nscalar >= 2!\n";
+    if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
     exit(1);
   }
 
