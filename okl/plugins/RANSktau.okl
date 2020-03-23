@@ -98,8 +98,8 @@
 	  const dfloat stMag2 = STMAG2[id];
           const dfloat OiOjSk = OIOJSK[id]; 
 
-	  const dfloat kk      = s_k[k][j][i];
-	  const dfloat tau     = s_tau[k][j][i];
+	  const dfloat kk  = K[id];
+	  const dfloat tau = TAU[id];
 
           const dfloat mu_t  = rho*p_alpinf_str*kk*tau;
           dfloat itau = 0;
@@ -306,20 +306,6 @@
       const dfloat tau = TAU[n];
       const dfloat mut = rho*p_alpinf_str*k*tau;
       MUE[n] = mueLam + C*mut;
-    }
-  }
-}
-
-@kernel void scalarScaledAdd(const dlong N,
-		             const dfloat mue,
-		             const dfloat C,
-	                     @restrict const dfloat * MUT,
-	                     @restrict dfloat * MUE){
-
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
-    if(n<N){
-      const dfloat mut = MUT[n]; 
-      MUE[n] = mue + C*mut; 
     }
   }
 }
