@@ -295,17 +295,23 @@
 		 const dlong offset,
                  const dfloat rho,
                  const dfloat mueLam,
-                 const dfloat C,
 	         @restrict const dfloat * K,
 	         @restrict const dfloat * TAU,
-	         @restrict dfloat * MUE){
+	         @restrict dfloat * MUET,
+	         @restrict dfloat * MUE,
+	         @restrict dfloat * DIFF){
 
   for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
     if(n<N){ 
       const dfloat k   = K[n];
       const dfloat tau = TAU[n];
       const dfloat mut = rho*p_alpinf_str*k*tau;
-      MUE[n] = mueLam + C*mut;
+
+      MUET[n] = mut;
+
+      MUE[n] = mueLam + mut;
+      DIFF[n + 0*offset] = mueLam + p_sigma_k*mut;
+      DIFF[n + 1*offset] = mueLam + p_sigma_tau*mut;
     }
   }
 }

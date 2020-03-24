@@ -634,6 +634,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->maxKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      kernelName = "scalarScaledAdd";
+      ins->scalarScaledAddKernel =  
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       // ===========================================================================
 
       fileName = oklpath + "insFilterRT" + suffix + ".okl";

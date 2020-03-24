@@ -11,6 +11,8 @@ namespace {
   dfloat rho;
   dfloat mueLam;
 
+  static occa::memory o_mut;
+
   static occa::memory o_k;
   static occa::memory o_tau;
 
@@ -20,7 +22,6 @@ namespace {
   static occa::kernel limitKernel;
   static occa::kernel mueKernel;
 
-  static bool buildKernelCalled = 0;
   static bool setupCalled = 0;
 
   static dfloat coeff[] = {
@@ -79,37 +80,32 @@ void RANSktau::buildKernel(ins_t *ins)
   }
 } 
 
-void RANSktau::mue(dfloat C, occa::memory o_mue)
+void RANSktau::updateProperties()
 {
   mesh_t *mesh = ins->mesh;
+  cds_t *cds = ins->cds;
+
+  occa::memory o_mue  = ins->o_mue; 
+  occa::memory o_diff = cds->o_diff + kFieldIndex*cds->fieldOffset*sizeof(dfloat); 
 
   limitKernel(mesh->Nelements*mesh->Np, o_k, o_tau);
   mueKernel(mesh->Nelements*mesh->Np, 
             ins->fieldOffset,
             rho,
             mueLam, 
-            C, 
             o_k, 
-            o_tau, 
-            o_mue);
+            o_tau,
+            o_mut,
+            o_mue, 
+            o_diff);
 }
 
-void RANSktau::mue(dfloat mueLamIn, dfloat C, occa::memory o_mue)
+occa::memory RANSktau::o_mue_t()
 {
-  mesh_t *mesh = ins->mesh;
-
-  limitKernel(mesh->Nelements*mesh->Np, o_k, o_tau);
-  mueKernel(mesh->Nelements*mesh->Np, 
-            ins->fieldOffset, 
-            rho, 
-            mueLamIn, 
-            C, 
-            o_k, 
-            o_tau, 
-            o_mue);
+  return o_mut;
 }
 
-void RANSktau::sourceTerms()
+void RANSktau::updateSourceTerms()
 {
   mesh_t *mesh = ins->mesh;
   cds_t *cds = ins->cds;
@@ -118,8 +114,8 @@ void RANSktau::sourceTerms()
   occa::memory o_SijMag2 = ins->o_wrk1;
   occa::memory o_SijOij  = ins->o_wrk2; 
 
-  occa::memory o_FS     = cds->o_FS     + kFieldIndex*cds->fieldOffset*sizeof(dfloat); 
-  occa::memory o_BFDiag = cds->o_BFDiag + kFieldIndex*cds->fieldOffset*sizeof(dfloat); 
+  occa::memory o_FS      = cds->o_FS     + kFieldIndex*cds->fieldOffset*sizeof(dfloat); 
+  occa::memory o_BFDiag  = cds->o_BFDiag + kFieldIndex*cds->fieldOffset*sizeof(dfloat); 
 
   const int NSOfields = 9;
   SijOijKernel(mesh->Nelements, 
@@ -194,20 +190,12 @@ void RANSktau::setup(ins_t *insIn, dfloat mueIn, dfloat rhoIn,
   o_k   = cds->o_S + kFieldIndex*cds->fieldOffset*sizeof(dfloat);
   o_tau = cds->o_S + (kFieldIndex+1)*cds->fieldOffset*sizeof(dfloat);
 
+  o_mut = mesh->device.malloc(cds->fieldOffset*sizeof(dfloat));
+
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = mesh->device.malloc(cds->NSfields*cds->fieldOffset*sizeof(dfloat));
     ins->setScalarKernel(cds->NSfields*cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;
-}
-
-dfloat RANSktau::sigma_k()
-{
-  return coeff[0]; 
-}
-
-dfloat RANSktau::sigma_tau()
-{
-  return coeff[1]; 
 }
