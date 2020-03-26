@@ -256,8 +256,9 @@ c-----------------------------------------------------------------------
       real ts
       integer npscals, p63s
       logical ifxyos, ifvos, ifpos, iftos, ifpscos(ldimt1)
-      common /ifos/ fxyos, ifvos, ifpos, iftos, ifpscos, npscals, p63s,
-     $              ts
+      common /ros/  ts
+      common /ios/  npscals, p63s
+      common /ifos/ ifxyos, ifvos, ifpos, iftos, ifpscos
 
       time = ts
 
@@ -287,8 +288,10 @@ c-----------------------------------------------------------------------
       real ts
       integer npscals, p63s
       logical ifxyos, ifvos, ifpos, iftos, ifpscos(ldimt1)
-      common /ifos/ fxyos, ifvos, ifpos, iftos, ifpscos, npscals, p63s,
-     $              ts
+
+      common /ros/  ts
+      common /ios/  npscals, p63s
+      common /ifos/ ifxyos, ifvos, ifpos, iftos, ifpscos
 
       if(ns.gt.ldimt) call exitti('nekf_setifo: ns > ldimt$',ns) 
 

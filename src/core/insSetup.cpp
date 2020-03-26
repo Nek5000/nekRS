@@ -634,6 +634,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->maxKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      kernelName = "scalarScaledAdd";
+      ins->scalarScaledAddKernel =  
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       // ===========================================================================
 
       fileName = oklpath + "insFilterRT" + suffix + ".okl";
@@ -974,12 +978,12 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
       cds->filterRTKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      if(cds->Nsubsteps){
-        fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
-        kernelName = "scaledAddwOffset";
-        cds->scaledAddKernel = 
-          mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
+      kernelName = "scaledAddwOffset";
+      cds->scaledAddKernel = 
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      if(cds->Nsubsteps){
         fileName = oklpath + "cdsSubCycle" + suffix + ".okl"; 
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);

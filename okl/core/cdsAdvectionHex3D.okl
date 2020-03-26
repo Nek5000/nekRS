@@ -40,16 +40,16 @@ SOFTWARE.
 
     for(int k=0;k<p_Nq;++k;@inner(2)){
       for(int j=0;j<p_Nq;++j;@inner(1)){
-  for(int i=0;i<p_Nq;++i;@inner(0)){
-    dlong id = i+j*p_Nq;
-    if(k==0)
-      s_D[0][id] = D[id];
-
-    id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-
-    const dfloat Sn = S[id+0*soffset];
-    s_S[k][j][i] = Sn;
-  }
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          dlong id = i+j*p_Nq;
+          if(k==0)
+            s_D[0][id] = D[id];
+      
+          id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+      
+          const dfloat Sn = S[id+soffset];
+          s_S[k][j][i] = Sn;
+        }
       }
     }
 
@@ -91,9 +91,9 @@ SOFTWARE.
     const dfloat u = U[id+0*voffset];
     const dfloat v = U[id+1*voffset];
     const dfloat w = U[id+2*voffset];
-    const dfloat rhoM = RHO[id];
+    const dfloat rhoM = RHO[id+soffset];
 
-    NS[id+0*soffset] =  rhoM*(u*dSdx + v*dSdy + w*dSdz);
+    NS[id] =  rhoM*(u*dSdx + v*dSdy + w*dSdz);
   }
       }
     }
@@ -166,7 +166,7 @@ SOFTWARE.
       s_U[b][a] = U[id+0*voffset]; 
       s_V[b][a] = U[id+1*voffset];
       s_W[b][a] = U[id+2*voffset];      
-      s_S[b][a] = S[id+0*soffset];      
+      s_S[b][a] = S[id+soffset];      
     }
   }
       }
@@ -329,9 +329,9 @@ SOFTWARE.
             const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
             
             const dfloat IJW   = vgeo[gid + p_IJWID*p_Np];
-            const dfloat rhoM = RHO[id];
+            const dfloat rhoM = RHO[id+soffset];
             
-            NS[id+0*soffset] = rhoM * IJW*rhsS;
+            NS[id] = rhoM * IJW*rhsS;
           }
         }
       }

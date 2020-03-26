@@ -17,8 +17,6 @@ typedef void (*udfsetup)(ins_t *ins);
 typedef void (*udfloadKernels)(ins_t *ins);
 typedef void (*udfexecuteStep)(ins_t *ins, dfloat time, int tstep);
 
-typedef void (*udfuEqnAddToLhs)(ins_t *ins, dfloat time, occa::memory o_LHS);
-typedef void (*udfsEqnAddToLhs)(ins_t *ins, int i, dfloat time, occa::memory o_LHS);
 typedef void (*udfuEqnSource)(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU);
 typedef void (*udfsEqnSource)(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_SU);
 typedef void (*udfproperties)(ins_t *ins, dfloat time, occa::memory o_U, 
@@ -32,8 +30,6 @@ typedef struct
   udfsetup setup;
   udfloadKernels loadKernels;
   udfexecuteStep executeStep;
-  udfuEqnAddToLhs uEqnAddToLhs;
-  udfsEqnAddToLhs sEqnAddToLhs;
   udfuEqnSource uEqnSource;
   udfsEqnSource sEqnSource;
   udfproperties properties;

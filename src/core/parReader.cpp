@@ -378,47 +378,53 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     nscal++;
     isStart++;
 
-    options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
-
-    double s_residualTol;
-    if(ini.extract("temperature", "residualtol", s_residualTol)) {
-      options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
-    }
-
-    if(ini.extract("temperature", "conductivity", sbuf)) {
-      int err = 0;
-      double diffusivity = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for conductivity!");
-      if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
-      options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
+    string solver;
+    ini.extract("temperature", "solver", solver);
+    if(solver == "none") {
+      options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
-      if(!variableProperties)
-        ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
+      options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
+ 
+      double s_residualTol;
+      if(ini.extract("temperature", "residualtol", s_residualTol)) {
+        options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
+      }
+ 
+      if(ini.extract("temperature", "conductivity", sbuf)) {
+        int err = 0;
+        double diffusivity = te_interp(sbuf.c_str(), &err);
+        if(err) ABORT("Invalid expression for conductivity!");
+        if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
+        options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
+      } else {
+        if(!variableProperties)
+          ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
+      }
+ 
+      if(ini.extract("temperature", "rhocp", sbuf)) {
+        int err = 0;
+        double rhoCp = te_interp(sbuf.c_str(), &err);
+        if(err) ABORT("Invalid expression for rhoCp!");
+        options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
+      } else {
+        if(!variableProperties)
+          ABORT("Cannot find mandatory parameter TEMPERATURE::rhoCp!"); 
+      }
+ 
+      string s_bcMap;
+      if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+        std::vector<std::string> sList;
+        sList = serializeString(s_bcMap);
+        bcMap::setup(sList, "scalar00");
+      } else {
+        ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
+      } 
     }
-
-    if(ini.extract("temperature", "rhocp", sbuf)) {
-      int err = 0;
-      double rhoCp = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for rhoCp!");
-      options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
-    } else {
-      if(!variableProperties)
-        ABORT("Cannot find mandatory parameter TEMPERATURE::rhoCp!"); 
-    }
-
-    string s_bcMap;
-    if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
-      std::vector<std::string> sList;
-      sList = serializeString(s_bcMap);
-      bcMap::setup(sList, "scalar00");
-    } else {
-      ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
-    } 
-
-  } else {
-    if(equation == "lowmachns") 
-      ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
   }
+ 
+  if(equation == "lowmachns" && ini.sections.count("temperature") == 0) 
+    ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
+    
   //
   for (auto & sec : ini.sections) {
     string key = sec.first;
