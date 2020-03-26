@@ -330,7 +330,6 @@ set(SRC
     src/core/timer.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
-    src/plugins/RANSktau.cpp
     ## To get fortran flags
     src/dummy.f
 )
