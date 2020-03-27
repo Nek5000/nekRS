@@ -20,7 +20,7 @@ occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S); 
 void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 
-void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl);
+void qthermal(ins_t *ins, dfloat time, occa::memory o_div);
 
 double etime0 = 0;
 
@@ -62,10 +62,10 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   timer::toc("udfProperties"); 
 
   if(ins->lowMach){
-    if(udf.qtl)
-      udf.qtl(ins, time+dt, ins->o_qtl);
+    if(udf.div)
+      udf.div(ins, time+dt, ins->o_div);
     else
-      qthermal(ins, time+dt, ins->o_qtl);
+      qthermal(ins, time+dt, ins->o_div);
   }
 
   if(flow) fluidSolve(ins, time, dt, ins->o_U);
@@ -194,7 +194,6 @@ void makeq(ins_t *ins, dfloat time, occa::memory o_BF)
 
     } else {
 
-     //ins->setScalarKernel(cds->fieldOffset, 1.0, cds->o_rho);
      if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
         cds->advectionStrongCubatureVolumeKernel(
              cds->meshV->Nelements,
@@ -648,7 +647,7 @@ occa::memory scalarStrongSubCycle(cds_t *cds, dfloat time, int is,
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
+void qthermal(ins_t *ins, dfloat time, occa::memory o_div)
 {
   cds_t *cds = ins->cds;
   mesh_t *mesh = ins->mesh;
@@ -687,9 +686,9 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
         cds->o_diff,
         cds->o_rho,
         cds->o_wrk3,
-        o_qtl);
+        o_div);
 
-   ogsGatherScatterMany(o_qtl, 1, ins->fieldOffset,
+   ogsGatherScatterMany(o_div, 1, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
 
    ins->invMassMatrixKernel(
@@ -698,5 +697,5 @@ void qthermal(ins_t *ins, dfloat time, occa::memory o_qtl)
         1,
         mesh->o_vgeo,
         ins->o_InvM, 
-        o_qtl);
+        o_div);
 }

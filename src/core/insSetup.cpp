@@ -214,8 +214,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   ins->lowMach = 0;
   if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
-  ins->qtl   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
-  ins->o_qtl = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->qtl);  
+  ins->div   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
+  ins->o_div = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->div);  
 
   ins->elementInfo = (dlong*) calloc(ins->meshT->Nelements,sizeof(dlong));
   for (int e=0;e<ins->meshT->Nelements;e++) ins->elementInfo[e] = mesh->elementInfo[e]; 

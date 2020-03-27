@@ -9,7 +9,7 @@ void insVelocityDirichletConditions3D(bcData *bc)
 // Stabilized outflow (Dong et al)
 void insPressureDirichletConditions3D(bcData *bc)
 {
-  const dfloat iU0delta = 10.0;
+  const dfloat iU0delta = 20.0;
   const dfloat un = bc->uM*bc->nx + bc->vM*bc->ny + bc->wM*bc->nz;
   const dfloat s0 = 0.5 * (1.0 - tanh(un*iU0delta)); 
   bc->pP = -0.5 * (bc->uM*bc->uM + bc->vM*bc->vM + bc->wM*bc->wM) * s0;

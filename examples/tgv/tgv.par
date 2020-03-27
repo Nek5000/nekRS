@@ -24,6 +24,7 @@ filterModes = 1
 residualTol = 1e-04
 
 [VELOCITY]
+solver = cg+block
 boundaryTypeMap = null
 density = 1.0
 viscosity = -1600
