@@ -1,0 +1,115 @@
+C
+C  USER SPECIFIED ROUTINES: 
+C
+C     - boundary conditions 
+C     - initial conditions  
+C     - variable properties 
+C     - forcing function for fluid (f)
+C     - forcing function for passive scalar (q)
+C     - general purpose routine for checking errors etc.        
+C
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      real kmax
+
+      Re    = 1/param(2)
+      kmax  = 3.9201E-03
+      omax  = 0.5
+
+      ux   = 1.0  
+      uy   = 0.0 
+      uz   = 0.0
+
+      yd = 1 + y
+      tau = 0.0
+      if(yd.ne.0) then
+         omeg = omax + 6./Re/0.075/yd**2
+         tau = 1/omeg
+      endif
+
+      if (ifield.eq.2) then
+         temp = 1.0
+      elseif (ifield.eq.3) then
+         temp = kmax
+      elseif (ifield.eq.4) then
+         temp = tau
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+c      ubar  = glsc2(vx,bm1,nx1*ny1*nz1*nelt)/volvm1
+c      if (nid.eq.0) write(6,*) 'ubar=', ubar
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat   ! This routine to modify element vertices
+      include 'SIZE'      ! _before_ mesh is generated, which 
+      include 'TOTAL'     ! guarantees GLL mapping of mesh.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2()  ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+
+      parameter(BETAM = 1.8)
+
+      call rescale_x(xm1, 0.0,8.0)
+      call rescale_x(ym1,-1.0,0.0)
+      call rescale_x(zm1, 0.0,1.0)
+
+      ntot = nx1*ny1*nz1*nelt
+
+      do i=1,ntot
+         ym1(i,1,1,1) = tanh(BETAM*ym1(i,1,1,1))/tanh(BETAM)
+      enddo
+
+      do iel=1,nelt
+         cbc(5,iel,1) = 'P  '
+         cbc(6,iel,1) = 'P  '
+      do ifc=1,2*ndim
+         cbc(ifc,iel,2)  = cbc(ifc,iel,1)
+         if (cbc(ifc,iel,1) .eq. 'W  ') cbc(ifc,iel,2) = 't  ' 
+         if (cbc(ifc,iel,1) .eq. 'SYM') cbc(ifc,iel,2) = 'I  ' 
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 2
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
+      integer*8 glo_num(1)
+
+      ! kludge for periodic bc in z
+      nxy  = nx*ny
+      nxyz = nx*ny*nz
+      do iel = 1,nel
+         ioff = nxyz*(iel-1)
+         do ixy = 1,nxy
+            glo_num(ioff + nxy*(nz-1) + ixy) = glo_num(ioff + ixy)
+         enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
