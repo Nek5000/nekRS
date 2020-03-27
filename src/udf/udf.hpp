@@ -22,7 +22,7 @@ typedef void (*udfsEqnSource)(ins_t *ins, dfloat time, occa::memory o_S, occa::m
 typedef void (*udfproperties)(ins_t *ins, dfloat time, occa::memory o_U, 
                               occa::memory o_S, occa::memory o_UProp,
                               occa::memory o_SProp);
-typedef void (*udfqtl)(ins_t *ins, dfloat time, occa::memory o_qtl);
+typedef void (*udfdiv)(ins_t *ins, dfloat time, occa::memory o_div);
 
 typedef struct
 {
@@ -33,7 +33,7 @@ typedef struct
   udfuEqnSource uEqnSource;
   udfsEqnSource sEqnSource;
   udfproperties properties;
-  udfqtl qtl;
+  udfdiv div;
 } UDF;
 
 extern UDF udf;

@@ -104,11 +104,12 @@ c-----------------------------------------------------------------------
       call rescale_x(ym1,xmin,xmax)
 
       do iel=1,nelt
-      do ifc=5,6
-         cbc(ifc,iel,1) = 'P  '
-         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
-         if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
-      enddo
+        do ifc=1,2*ndim
+          if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+          if (cbc(ifc,iel,1) .eq. 'o  ') boundaryID(ifc,iel) = 2
+        enddo
+        cbc(5,iel,1) = 'P  '
+        cbc(6,iel,1) = 'P  '
       enddo
 
       ifto = .true.

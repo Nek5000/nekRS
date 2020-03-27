@@ -102,8 +102,8 @@ typedef struct {
   occa::memory o_Ue;
 
   int lowMach;
-  dfloat *qtl;
-  occa::memory o_qtl;
+  dfloat *div;
+  occa::memory o_div;
 
   dfloat rho, mue;
   occa::memory o_rho, o_mue;

@@ -40,7 +40,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->o_vgeo,
        mesh->o_Dmatrices,
        ins->fieldOffset,
-       ins->o_qtl,
+       ins->o_div,
        ins->o_wrk0);
   occa::memory o_irho = ins->o_ellipticCoeff;
   ins->ncKernel(
@@ -120,7 +120,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->Nelements,
        mesh->o_vgeo,
        lambda,
-       ins->o_qtl,
+       ins->o_div,
        ins->o_wrk3);
 
   elliptic_t *solver = ins->pSolver;
@@ -167,7 +167,7 @@ occa::memory velocitySolve(ins_t *ins, dfloat time)
   ins->pqKernel(
        mesh->Nelements*mesh->Np,
        ins->o_mue,
-       ins->o_qtl,
+       ins->o_div,
        ins->o_P,
        ins->o_wrk3); 
   ins->gradientVolumeKernel(

@@ -28,9 +28,9 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
  
   const int rank = ins->mesh->rank;
 
-  ins->o_qtl.copyTo(ins->qtl);
+  ins->o_div.copyTo(ins->div);
   dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  memcpy(nekData.qtl, ins->qtl, sizeof(dfloat)*Nlocal);
+  memcpy(nekData.qtl, ins->div, sizeof(dfloat)*Nlocal);
  
   nek_ocopyFrom(time, tstep);
   nek_userchk();

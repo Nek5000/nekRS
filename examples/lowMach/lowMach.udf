@@ -50,7 +50,7 @@ void UDF_Setup(ins_t *ins)
 
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
-  //udf.qtl        = &userqtl;
+  //udf.div      = &userqtl;
 }
 
 void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
