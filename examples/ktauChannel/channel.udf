@@ -12,9 +12,9 @@ occa::kernel userfKernel;
 
 void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  const dfloat Re_tau = 2000.0 
-  const dfloat Re_B   = rho/mueLam; 
-  const dfloat DPDX   = (Re_tau/Re_B)*(Re_TAU/Re_B);
+  const dfloat Re_tau = 2000.0; 
+  const dfloat Re_b   = rho/mueLam; 
+  const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
   userfKernel(ins->Nlocal, 0*ins->fieldOffset, DPDX, o_FU);
 }
 

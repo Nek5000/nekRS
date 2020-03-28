@@ -4,7 +4,7 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL]
 polynomialOrder = 7
-startFrom = r.fld+time=0
+#startFrom = r.fld+time=0
 stopAt = endTime
 endTime = 500
 dt = 2e-02

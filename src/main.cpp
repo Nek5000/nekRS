@@ -148,6 +148,7 @@ int main(int argc, char **argv)
     }
 
     ++tStep;
+    printf("tdiff %.15e %.15e %.15e\n", time, finalTime, finalTime-time);
   }
   MPI_Pcontrol(0);
 
