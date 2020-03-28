@@ -129,12 +129,10 @@ int main(int argc, char **argv)
   double time = startTime;
   int tStep = 1;
   MPI_Pcontrol(1);
-  while (finalTime-time > 1e-10) {
+  while (finalTime-time >= nekrs::dt()) {
 
-    const double dt = nekrs::dt();
-
-    nekrs::runStep(time, dt, tStep);
-    time += dt;
+    nekrs::runStep(time, nekrs::dt(), tStep);
+    time += nekrs::dt();
 
     int isOutputStep = 0;
     if (outputStep > 0) {
@@ -148,7 +146,6 @@ int main(int argc, char **argv)
     }
 
     ++tStep;
-    printf("tdiff %.15e %.15e %.15e\n", time, finalTime, finalTime-time);
   }
   MPI_Pcontrol(0);
 

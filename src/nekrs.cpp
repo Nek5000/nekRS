@@ -125,7 +125,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(rank == 0) {
     cout << "\nsettings:\n" << endl;
     if(!ins->options.compareArgs("VELOCITY SOLVER", "NONE"))
-      cout << ins->vOptions << endl;
+      cout << ins->options << endl;
     else
       if(ins->Nscalar) cout << ins->cds->options << endl;
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;

@@ -78,6 +78,12 @@ void RANSktau::buildKernel(ins_t *ins)
     }
     MPI_Barrier(mesh->comm);
   }
+
+  if(ins->Nscalar < 2) {
+    if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
+    exit(1);
+  }
+  ins->options.setArgs("VARIABLE VISCOSITY", "TRUE");
 } 
 
 void RANSktau::updateProperties()
@@ -179,13 +185,6 @@ void RANSktau::setup(ins_t *insIn, dfloat mueIn, dfloat rhoIn,
 
   cds_t *cds = ins->cds;
   mesh_t *mesh = ins->mesh;
-
-  if(ins->Nscalar < 2) {
-    if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
-    exit(1);
-  }
-
-  options.setArgs("VARIABLE VISCOSITY", "TRUE");
 
   if(coeffIn) memcpy(coeff, coeffIn, sizeof(coeff));
 
