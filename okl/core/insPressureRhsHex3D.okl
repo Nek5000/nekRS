@@ -1,72 +1,31 @@
-/*
+@kernel void insPressureRhsTOMBOHex3D(const dlong N,
+                                      const dlong fieldOffset,
+                                      @restrict const  dfloat *  MUE,
+                                      @restrict const  dfloat *  iRHO,
+                                      @restrict const  dfloat *  BF,
+                                      @restrict const  dfloat *  NC,
+                                      @restrict const  dfloat *  gDIV,
+                                      @restrict dfloat *  rhsU){
 
-  The MIT License (MIT)
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat nu  = MUE[n]*iRHO[n];
 
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+      const dfloat BFx = BF[n+0*fieldOffset];
+      const dfloat BFy = BF[n+1*fieldOffset];
+      const dfloat BFz = BF[n+2*fieldOffset];
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+      const dfloat NCx = NC[n+0*fieldOffset];
+      const dfloat NCy = NC[n+1*fieldOffset];
+      const dfloat NCz = NC[n+2*fieldOffset];
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+      const dfloat gDIVx = gDIV[n+0*fieldOffset];
+      const dfloat gDIVy = gDIV[n+1*fieldOffset];
+      const dfloat gDIVz = gDIV[n+2*fieldOffset];
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
-
-// F (o_rkU) = sum_j (alfa_j U_j)/dt- sum_j ( beta_j (NU_j + NC_j) )
-@kernel void insPressureRhsTOMBOHex3D(const dlong Nelements,
-                                @restrict const  dfloat *  vgeo,
-                                @restrict const  dfloat *  MM,
-                                const dfloat idt,
-                                const dfloat g0,
-                                @restrict const  dfloat *  extbdfA,
-                                @restrict const  dfloat *  extbdfB,
-                                const dlong fieldOffset,
-                                @restrict const  dfloat *  U,
-                                @restrict const  dfloat *  BF,
-                                @restrict const  dfloat *  NC,
-                                @restrict const  dfloat *  FU,
-                                @restrict dfloat *  rhsU){
-
-  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
-
-    for(int es=0;es<p_NblockV;++es;@inner(2)){// for all elements in block
-      for(int j=0;j<p_Nq;++j;@inner(1)){ 
-        for(int i=0;i<p_Nq;++i;@inner(0)){
-          const dlong e = eo+es; // element in block
-          if(e<Nelements){
-#pragma unroll p_Nq
-            for(int k=0;k<p_Nq;++k){
-              const dlong id = i + j*p_Nq + k*p_Nq*p_Nq + p_Np*e;
-
-              const dfloat NCx = NC[id+0*fieldOffset];
-              const dfloat NCy = NC[id+1*fieldOffset];
-              const dfloat NCz = NC[id+2*fieldOffset];
-
-              const dfloat BFx = BF[id+0*fieldOffset];
-              const dfloat BFy = BF[id+1*fieldOffset];
-              const dfloat BFz = BF[id+2*fieldOffset];
-
-      	      rhsU[id + 0*fieldOffset] = BFx- NCx;
-      	      rhsU[id + 1*fieldOffset] = BFy- NCy;
-      	      rhsU[id + 2*fieldOffset] = BFz- NCz;
-	          }
-	        }
-	      }
-      }
+      rhsU[n + 0*fieldOffset] = BFx - nu*(NCx - 4/3.f*gDIVx);
+      rhsU[n + 1*fieldOffset] = BFy - nu*(NCy - 4/3.f*gDIVy);
+      rhsU[n + 2*fieldOffset] = BFz - nu*(NCz - 4/3.f*gDIVz);
     }
   }
 }
-
-

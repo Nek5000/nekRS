@@ -122,11 +122,11 @@ typedef struct {
 
   occa::kernel qtlKernel;
   occa::kernel pressureAddQtlKernel;
+  occa::kernel pressureStressKernel;
 
   occa::kernel pqKernel;
-  occa::kernel ncKernel;
- 
   occa::kernel dotMultiplyKernel;
+
   occa::kernel scalarScaledAddKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;

@@ -185,6 +185,8 @@ void RANSktau::setup(ins_t *insIn, dfloat mueIn, dfloat rhoIn,
     exit(1);
   }
 
+  options.setArgs("VARIABLE VISCOSITY", "TRUE");
+
   if(coeffIn) memcpy(coeff, coeffIn, sizeof(coeff));
 
   o_k   = cds->o_S + kFieldIndex*cds->fieldOffset*sizeof(dfloat);

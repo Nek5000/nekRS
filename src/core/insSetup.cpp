@@ -574,6 +574,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->pressureRhsKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = oklpath + "insPressureStress" + suffix + ".okl";
+      kernelName = "insPressureStress" + suffix;
+      ins->pressureStressKernel =  
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
       kernelName = "insPressureAddBCTOMBO" + suffix;
       ins->pressureAddBCKernel = 
@@ -678,12 +683,6 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       kernelName = "insPQ";
       ins->pqKernel =  
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "insNC.okl"; 
-      kernelName = "insNC";
-      ins->ncKernel =  
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
     }
     MPI_Barrier(mesh->comm);
   }
