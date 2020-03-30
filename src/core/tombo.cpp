@@ -12,7 +12,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
                   mesh->o_Dmatrices,
                   mesh->o_MM, 
                   ins->fieldOffset,
-                  ins->o_U,
+                  ins->o_Ue,
                   ins->o_wrk0);
 
   ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
