@@ -33,7 +33,9 @@ namespace {
   static bool buildKernelCalled = 0;
   static bool setupCalled = 0;
 
-  static dfloat atime = 0;
+  static int counter = 0;
+
+  static dfloat atime;
   static dfloat timel;
 }
 
@@ -53,11 +55,29 @@ void avg::buildKernel(ins_t *ins)
     }
     MPI_Barrier(mesh->comm);
   }
+  buildKernelCalled = 1;
 } 
+
+void avg::reset()
+{
+  counter = 0;
+  atime   = 0;
+}
 
 void avg::run(dfloat time)
 {
+  if(!setupCalled || !buildKernelCalled) { 
+    cout << "avg::run() was called prior to avg::setup()!\n";
+    exit(1);
+  }
+
   mesh_t *mesh = ins->mesh;
+
+  if(!counter) {
+    atime = 0;
+    timel = time;
+  }
+  counter++;
 
   const dfloat dtime = time - timel;
   atime += dtime; 
@@ -66,7 +86,7 @@ void avg::run(dfloat time)
  
   const dfloat b = dtime/atime;
   const dfloat a = 1-b;
-  const dlong N  = ins->fieldOffset; 
+  const dlong  N = ins->fieldOffset; 
 
   avgX_XXKernel(N, ins->fieldOffset, ins->fieldOffset*ins->NVfields, 
                 ins->NVfields, a, b, ins->o_U, o_Uavg);
@@ -86,6 +106,11 @@ void avg::run(dfloat time)
 
 void avg::setup(ins_t *ins_)
 {
+  if(!buildKernelCalled) { 
+    cout << "avg::setup() was called prior avg::buildKernel()!\n";
+    exit(1);
+  }
+
   ins = ins_;
   mesh_t *mesh = ins->mesh;
 
@@ -107,7 +132,6 @@ void avg::setup(ins_t *ins_)
   }
 
   setupCalled = 1;
-  timel = ins->startTime;
 }
 
 void avg::outfld()

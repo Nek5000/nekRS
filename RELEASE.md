@@ -10,7 +10,7 @@
 
 ## Known Bugs 
 
-* n/a
+[80](https://github.com/Nek5000/nekRS/issues/80)
 
 ## Thanks to our Contributors
 
