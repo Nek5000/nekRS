@@ -1,0 +1,62 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+#include "casedata.h"
+
+/* User Functions */
+
+occa::kernel coriolisKernel; 
+
+void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  coriolisKernel(
+    ins->Nlocal, 
+    ins->fieldOffset, 
+    ins->mesh->o_y,
+    ins->cds->o_S,
+    ins->o_U,
+    o_FU);
+}
+
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  setupAide &options = ins->options;
+
+  dfloat cond;
+  options.getArgs("SCALAR00 DIFFUSIVITY", cond);
+  const dfloat g = 9.81;
+  const dfloat omega = 7.2921159e-5; 
+
+  kernelInfo["defines/p_fcor"]      = 2*omega*LREF/UREF * sin(NLAT*M_PI/180);
+  kernelInfo["defines/p_bcor"]      = 2*omega*LREF/UREF * cos(NLAT*M_PI/180);
+  kernelInfo["defines/p_gacc"]      = LREF*g/(UREF*UREF);
+  kernelInfo["defines/p_cond"]      = cond;
+  kernelInfo["defines/p_TsGrad"]    = ILSTRENGTH * LREF/TREF;
+  kernelInfo["defines/p_T0s"]       = TS0/TREF;
+  kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
+
+  coriolisKernel = udfBuildKernel(ins, "coriolis");
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+
+  udf.uEqnSource = &userf;
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  if (ins->isOutputStep) {
+    nek_ocopyFrom(time, tstep);
+    nek_userchk();
+  }
+}
