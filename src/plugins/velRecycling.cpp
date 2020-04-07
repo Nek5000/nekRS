@@ -44,7 +44,7 @@ void velRecycling::buildKernel(ins_t *ins)
   string fileName;
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/velRecycling/velRecycling.okl";
+  fileName += "/okl/plugins/velRecycling.okl";
   occa::properties& kernelInfo = *ins->kernelInfo;
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
