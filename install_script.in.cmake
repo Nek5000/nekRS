@@ -85,6 +85,8 @@ install_batch_if_newer(@NEKDIR@/3rd_party/parRSB
   @CMAKE_INSTALL_PREFIX@/nek5000/3rd_party/parRSB)
 install_batch_if_newer(@NEKDIR@/3rd_party/parRSB
   @CMAKE_INSTALL_PREFIX@/nek5000/3rd_party/parRSB)
+install_batch_if_newer(@NEKDIR@/3rd_party/parMETIS
+  @CMAKE_INSTALL_PREFIX@/nek5000/3rd_party/parMETIS)
 
 install_files_if_newer(@NEKDIR@/bin/nekconfig @CMAKE_INSTALL_PREFIX@/nek5000/bin)
 
