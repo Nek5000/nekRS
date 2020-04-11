@@ -6,8 +6,6 @@
 #include "plugins/velRecycling.hpp"
 #include "plugins/avg.hpp"
 
-#define ZLENGTH  20.0  /* diameters  */
-
 /* UDF Functions */                                                      
 
 void UDF_LoadKernels(ins_t *ins)
@@ -29,10 +27,8 @@ void UDF_Setup(ins_t *ins)
   // recycling
   const dfloat wbar  = 1.0;
   const int bID      = 1; 
-  const int nSlabs   = 60; 
-  const int nelSlab  = 108;
-  dfloat zRecycLayer = 5.0;
-  const hlong offset = nelSlab * round(nSlabs * zRecycLayer/ZLENGTH); 
+  dfloat zRecycLayer = 0.25*ZLENGTH;
+  const hlong offset = NELSLAB * round(NSLABS * zRecycLayer/ZLENGTH); 
   velRecycling::setup(ins, ins->o_usrwrk, offset, bID, wbar);
 
   avg::setup(ins);

@@ -3,8 +3,7 @@
 //
 #include <math.h>
 #include "udf.hpp"
-
-#define RE_TAU 550.0
+#include "casedata.h"
 
 /* User Functions */
 

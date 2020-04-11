@@ -1,4 +1,4 @@
-#define ZLENGTH  20.0  /* diameters  */
+#include "casedata.h"
 
 c-----------------------------------------------------------------------
       subroutine userchk
@@ -120,7 +120,7 @@ c-----------------------------------------------------------------------
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
-         if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 2
+         if (cbc(ifc,iel,1) .eq. 'o  ') boundaryID(ifc,iel) = 2
          if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 3
       enddo
       enddo

@@ -1,6 +1,5 @@
 C This is a round turbulent pipe flow example
-
-#define ZLENGTH  6.0  /* diameters  */
+#include "casedata.h"
 
 c-----------------------------------------------------------------------
       subroutine userchk
