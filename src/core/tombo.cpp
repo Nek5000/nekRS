@@ -10,7 +10,6 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
   ins->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
                   mesh->o_Dmatrices,
-                  mesh->o_MM, 
                   ins->fieldOffset,
                   ins->o_Ue,
                   ins->o_wrk0);
@@ -30,7 +29,6 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->Nelements,
        mesh->o_vgeo,
        mesh->o_Dmatrices,
-       mesh->o_MM, 
        ins->fieldOffset,
        ins->o_wrk0,
        ins->o_wrk3);
@@ -89,9 +87,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->Nelements,
        mesh->o_vgeo,
        mesh->o_sgeo,
-       mesh->o_LIFTT,
        mesh->o_vmapM,
-       mesh->o_vmapP,
        mesh->o_EToB,
        ins->o_EToB,
        time,
@@ -101,7 +97,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->o_z,
        ins->fieldOffset,
        ins->o_usrwrk,
-       ins->o_wrk0,
+       ins->U,
        ins->o_wrk3);
 
   ins->AxKernel(
@@ -110,7 +106,6 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->o_ggeo,
        mesh->o_Dmatrices,
        mesh->o_Smatrices,
-       mesh->o_MM,
        ins->o_P,
        ins->o_ellipticCoeff,
        ins->o_wrk3);

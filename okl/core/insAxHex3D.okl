@@ -30,7 +30,6 @@
 		        @restrict const  dfloat *  ggeo,
 		        @restrict const  dfloat *  D,
 		        @restrict const  dfloat *  S,
-		        @restrict const  dfloat *  MM,
 		        @restrict const  dfloat *  q,
 		        @restrict const  dfloat *  lambda,
 		        @restrict dfloat *  Aq){
