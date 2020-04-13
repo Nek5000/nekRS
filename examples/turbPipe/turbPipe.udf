@@ -6,6 +6,8 @@
 #include "plugins/velRecycling.hpp"
 #include "plugins/avg.hpp"
 
+#include "casedata.h"
+
 /* UDF Functions */                                                      
 
 void UDF_LoadKernels(ins_t *ins)
