@@ -629,6 +629,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->setScalarKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = install_dir + "/libparanumal/okl/dotMultiply.okl";
+      kernelName = "dotMultiply";
+      ins->dotMultiplyKernel =  
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       fileName = oklpath + "math" + ".okl";
       kernelName = "max";
       ins->maxKernel =  
@@ -681,6 +686,30 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
     }
     MPI_Barrier(mesh->comm);
+  }
+
+  {
+    dlong gNelements = mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
+    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
+    ins->setScalarKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
+    ogsGatherScatter(ins->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
+    ins->dotMultiplyKernel(
+         Nlocal,
+         mesh->ogs->o_invDegree,
+         ins->o_wrk0,
+         ins->o_wrk1);
+    dfloat *tmp = (dfloat *) calloc(Nlocal, sizeof(dfloat));
+    ins->o_wrk1.copyTo(tmp, Nlocal*sizeof(dfloat));
+    dfloat sum1 = 0;
+    for(int i=0; i<Nlocal; i++) sum1 += tmp[i];
+    free(tmp);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    const dfloat err = abs(sum1-sum2)/sum2;
+    if(err > 1e-15) {
+      if(mesh->rank==0) cout << "ogsGatherScatter test failed!\n"; 
+      exit(1);
+    }
   }
 
   return ins;

@@ -125,7 +125,8 @@ typedef struct {
 
   occa::kernel pqKernel;
   occa::kernel ncKernel;
-
+ 
+  occa::kernel dotMultiplyKernel;
   occa::kernel scalarScaledAddKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel ;
