@@ -1,7 +1,45 @@
 #include "nrs.hpp"
 #include "udf.hpp"
+#include "nekInterfaceAdapter.hpp"
+
+#define NEKDSSUM
+
+int firstStep = 1;
 
 namespace tombo {
+
+void nek_ogsGatherScatterMany(ins_t *ins, occa::memory o_u, int nfld)
+{
+   occa::memory o_vx = o_u + 0*ins->fieldOffset*sizeof(dfloat);
+   occa::memory o_vy = o_u + 1*ins->fieldOffset*sizeof(dfloat);
+   occa::memory o_vz = o_u + 2*ins->fieldOffset*sizeof(dfloat);
+
+   dfloat *vx = ins->U + 0*ins->fieldOffset;
+   dfloat *vy = ins->U + 1*ins->fieldOffset;
+   dfloat *vz = ins->U + 2*ins->fieldOffset;
+
+   *(nekData.istep) = 1;
+   o_vx.copyTo(vx, ins->fieldOffset*sizeof(dfloat));
+   memcpy(nekData.vx, vx, sizeof(dfloat)*ins->Nlocal);
+   if(nfld==3) {
+     o_vy.copyTo(vy, ins->fieldOffset*sizeof(dfloat));
+     memcpy(nekData.vy, vy, sizeof(dfloat)*ins->Nlocal);
+
+     o_vz.copyTo(vz, ins->fieldOffset*sizeof(dfloat));
+     memcpy(nekData.vz, vz, sizeof(dfloat)*ins->Nlocal);
+   }
+
+   nek_userchk(); // call dssum for vx, vy, vz
+
+   memcpy(vx, nekData.vx, sizeof(dfloat)*ins->Nlocal);
+   o_vx.copyFrom(vx, ins->fieldOffset*sizeof(dfloat));
+   if(nfld==3) {
+     memcpy(vy, nekData.vy, sizeof(dfloat)*ins->Nlocal);
+     o_vy.copyFrom(vy, ins->fieldOffset*sizeof(dfloat));
+     memcpy(vz, nekData.vz, sizeof(dfloat)*ins->Nlocal);
+     o_vz.copyFrom(vz, ins->fieldOffset*sizeof(dfloat));
+   }
+}
 
 occa::memory pressureSolve(ins_t *ins, dfloat time)
 {
@@ -15,8 +53,16 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
                   ins->o_Ue,
                   ins->o_wrk0);
 
+#ifdef NEKDSSUM
+  ins->o_wrk0.copyTo(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
+  nek_dssum(ins->U + 0*ins->fieldOffset);
+  nek_dssum(ins->U + 1*ins->fieldOffset);
+  nek_dssum(ins->U + 2*ins->fieldOffset);
+  ins->o_wrk0.copyFrom(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
+#else
   ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
+#endif
 
   ins->invMassMatrixKernel(
        mesh->Nelements,
@@ -66,8 +112,16 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        ins->o_FU,
        ins->o_wrk0);
 
+#ifdef NEKDSSUM 
+  ins->o_wrk0.copyTo(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
+  nek_dssum(ins->U + 0*ins->fieldOffset);
+  nek_dssum(ins->U + 1*ins->fieldOffset);
+  nek_dssum(ins->U + 2*ins->fieldOffset);
+  ins->o_wrk0.copyFrom(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
+#else
   ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
+#endif
 
   ins->invMassMatrixKernel(
        mesh->Nelements,
@@ -125,7 +179,21 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
 
   elliptic_t *solver = ins->pSolver;
 
+#ifdef NEKDSSUM 
+  ins->o_wrk3.copyTo(ins->U, ins->fieldOffset*sizeof(dfloat));
+  nek_dssum(ins->U + 0*ins->fieldOffset);
+  ins->o_wrk3.copyFrom(ins->U, ins->fieldOffset*sizeof(dfloat));
+#else
   ogsGatherScatter(ins->o_wrk3, ogsDfloat, ogsAdd, mesh->ogs);
+#endif
+
+  if(firstStep){
+    ins->o_wrk3.copyTo(ins->U, ins->fieldOffset*sizeof(dfloat)); //dumping respr (no masked)
+    nek_copyFrom(time, 0);
+    nek_outfld();
+    firstStep = 0;
+  }
+
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_wrk3);
 
   ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);
