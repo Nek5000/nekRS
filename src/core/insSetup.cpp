@@ -688,7 +688,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
-  {
+  if(!buildOnly) {
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
