@@ -611,10 +611,8 @@ void nek_ocopyFrom(dfloat time, int tstep) {
 
 void nek_copyFrom(dfloat time, int tstep) {
 
-  if(time != timeLast) {
-    nek_copyFrom(time);
-    *(nekData.istep) = tstep;
-  }
+  nek_copyFrom(time);
+  *(nekData.istep) = tstep;
 }
 
 void nek_ocopyTo(dfloat &time) {

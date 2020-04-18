@@ -688,7 +688,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
-  if(!buildOnly) {
+  {
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
@@ -717,7 +717,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     for(int i=0; i<Nlocal; i++) sum1 += (tmp[i] - vmult[i]);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
     if(sum1 > 1e-15) {
-      if(mesh->rank==0) cout << "multiplicity test failed!\n"; 
+      if(mesh->rank==0) printf("multiplicity test failed! err=%g\n", sum1); 
       fflush(stdout);
       exit(1);
     }
