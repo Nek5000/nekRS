@@ -150,9 +150,9 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
     occa::memory o_null;
     nek_outfld("rs0",time, 1,
              o_null,
-             o_null,
              ins->o_wrk3,
-             1,
+             o_null,
+             0,
              0);
   }
 
@@ -168,9 +168,9 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
     occa::memory o_null;
     nek_outfld("rs1",time, 1,
              o_null,
-             o_null,
              ins->o_wrk3,
-             1,
+             o_null,
+             0,
              0);
     firstStep = 0;
   }
