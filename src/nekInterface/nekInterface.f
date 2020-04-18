@@ -535,7 +535,7 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer*8 function nekf_set_vert(npts, isTmsh)
+      integer*8 function nekf_set_vert(nx, isTmsh)
 
       include 'SIZE'
       include 'TOTAL'
@@ -548,7 +548,6 @@ c-----------------------------------------------------------------------
 
       integer*8 ngv
 
-      nx  = npts**(1./ndim)
       nel = nelt
       if (isTmsh.eq.0) nel = nelv
       call set_vert(glo_num,ngv,nx,nel,vertex,.false.)

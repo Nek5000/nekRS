@@ -685,8 +685,8 @@ int nek_bcmap(int bid, int ifld) {
   return (*nek_bcmap_ptr)(&bid, &ifld);
 }
 
-long long nek_set_glo_num(int npts, int isTMesh) {
-  return (*nek_set_vert_ptr)(&npts, &isTMesh);
+long long nek_set_glo_num(int nx, int isTMesh) {
+  return (*nek_set_vert_ptr)(&nx, &isTMesh);
 }
 
 void nek_dssum(dfloat *u) {
