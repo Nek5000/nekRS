@@ -719,6 +719,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     fflush(stdout);
     if(sum1 > 1e-15) err++;
 
+/*
     hlong ngv = nek_set_glo_num(mesh->N+1, 0);
     hlong *gIds = (hlong *) calloc(Nlocal, sizeof(hlong));
     for(int i=0; i<Nlocal; ++i) gIds[i] = nekData.glo_num[i]; 
@@ -734,6 +735,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     if(mesh->rank==0) printf("multiplicity test2 err=%g\n", sum1); 
     fflush(stdout);
     if(sum1 > 1e-15) err++;
+*/
 
     if(err) exit(1);
     free(tmp);
