@@ -6,6 +6,7 @@
 #include "nekInterfaceAdapter.hpp"
 
 extern int nrsBuildOnly;
+extern int isTmesh;
 
 typedef struct{
 
@@ -25,7 +26,7 @@ void meshNekParallelConnectNodes(mesh_t *mesh)
   dlong localNodeCount = mesh->Np*mesh->Nelements;
 
   mesh->globalIds = (hlong*) calloc(localNodeCount, sizeof(hlong));
-  hlong ngv = nek_set_glo_num(mesh->N+1, 0);
+  hlong ngv = nek_set_glo_num(mesh->N+1, isTmesh);
   for(dlong id=0;id<localNodeCount;++id){
     mesh->globalIds[id] = nekData.glo_num[id];    
   }
@@ -34,6 +35,7 @@ void meshNekParallelConnectNodes(mesh_t *mesh)
 void meshParallelConnectNodes(mesh_t *mesh){
 
   if(!nrsBuildOnly) {
+    // hotfix as libP version seems to be broken
     meshNekParallelConnectNodes(mesh);
     return;
   }
