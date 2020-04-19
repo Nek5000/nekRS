@@ -2,7 +2,7 @@
 #include "udf.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-#define NEKDSSUM
+//#define NEKDSSUM
 
 int firstStep = 1;
 
