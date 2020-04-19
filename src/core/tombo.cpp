@@ -1,10 +1,5 @@
 #include "nrs.hpp"
 #include "udf.hpp"
-#include "nekInterfaceAdapter.hpp"
-
-//#define NEKDSSUM
-
-int firstStep = 1;
 
 namespace tombo {
 
@@ -20,16 +15,8 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
                   ins->o_Ue,
                   ins->o_wrk0);
 
-#ifdef NEKDSSUM
-  ins->o_wrk0.copyTo(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-  nek_dssum(ins->U + 0*ins->fieldOffset);
-  nek_dssum(ins->U + 1*ins->fieldOffset);
-  nek_dssum(ins->U + 2*ins->fieldOffset);
-  ins->o_wrk0.copyFrom(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-#else
   ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
-#endif
 
   ins->invMassMatrixKernel(
        mesh->Nelements,
@@ -79,16 +66,8 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        ins->o_FU,
        ins->o_wrk0);
 
-#ifdef NEKDSSUM 
-  ins->o_wrk0.copyTo(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-  nek_dssum(ins->U + 0*ins->fieldOffset);
-  nek_dssum(ins->U + 1*ins->fieldOffset);
-  nek_dssum(ins->U + 2*ins->fieldOffset);
-  ins->o_wrk0.copyFrom(ins->U, ins->NVfields*ins->fieldOffset*sizeof(dfloat));
-#else
   ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
-#endif
 
   ins->invMassMatrixKernel(
        mesh->Nelements,
@@ -146,35 +125,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
 
   elliptic_t *solver = ins->pSolver;
 
-  if(firstStep){
-    occa::memory o_null;
-    nek_outfld("rs0",time, 1,
-             o_null,
-             ins->o_wrk3,
-             o_null,
-             0,
-             0);
-  }
-
-#ifdef NEKDSSUM 
-  ins->o_wrk3.copyTo(ins->U, ins->fieldOffset*sizeof(dfloat));
-  nek_dssum(ins->U + 0*ins->fieldOffset);
-  ins->o_wrk3.copyFrom(ins->U, ins->fieldOffset*sizeof(dfloat));
-#else
   ogsGatherScatter(ins->o_wrk3, ogsDfloat, ogsAdd, mesh->ogs);
-#endif
-
-  if(firstStep){
-    occa::memory o_null;
-    nek_outfld("rs1",time, 1,
-             o_null,
-             ins->o_wrk3,
-             o_null,
-             0,
-             0);
-    firstStep = 0;
-  }
-
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_wrk3);
 
   ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);

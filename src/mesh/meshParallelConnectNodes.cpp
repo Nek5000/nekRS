@@ -33,7 +33,10 @@ void meshNekParallelConnectNodes(mesh_t *mesh)
 
 void meshParallelConnectNodes(mesh_t *mesh){
 
-  if(!nrsBuildOnly) meshNekParallelConnectNodes(mesh);
+  if(!nrsBuildOnly) {
+    meshNekParallelConnectNodes(mesh);
+    return;
+  }
 
   int rank, size;
   rank = mesh->rank; 

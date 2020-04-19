@@ -689,7 +689,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   }
 
   if(!buildOnly) {
-    dfloat err = 0;
+    int err = 0;
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
@@ -705,9 +705,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     dfloat sum1 = 0;
     for(int i=0; i<Nlocal; i++) sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    if(abs(sum1-sum2)/sum2 > 1e-15) {
-      if(mesh->rank==0) cout << "ogsGatherScatter test failed!\n"; 
+    sum1 = abs(sum1-sum2)/sum2;
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("ogsGatherScatter test err=%g!\n", sum1); 
       fflush(stdout);
+      err++;
     }
 
     mesh->ogs->o_invDegree.copyTo(tmp, Nlocal*sizeof(dfloat));
@@ -715,27 +717,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     sum1 = 0;
     for(int i=0; i<Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    if(mesh->rank==0) printf("multiplicity test err=%g\n", sum1); 
-    fflush(stdout);
-    if(sum1 > 1e-15) err++;
-
-/*
-    hlong ngv = nek_set_glo_num(mesh->N+1, 0);
-    hlong *gIds = (hlong *) calloc(Nlocal, sizeof(hlong));
-    for(int i=0; i<Nlocal; ++i) gIds[i] = nekData.glo_num[i]; 
-    mesh->ogs = ogsSetup(Nlocal, gIds, mesh->comm, 0, mesh->device);  
-
-    ins->setScalarKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
-    ogsGatherScatter(ins->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    ins->o_wrk0.copyTo(tmp, Nlocal*sizeof(dfloat));
-
-    sum1 = 0;
-    for(int i=0; i<Nlocal; i++) sum1 += abs(1/tmp[i] - vmult[i]);
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    if(mesh->rank==0) printf("multiplicity test2 err=%g\n", sum1); 
-    fflush(stdout);
-    if(sum1 > 1e-15) err++;
-*/
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("multiplicity test err=%g!\n", sum1); 
+      fflush(stdout);
+      err++;
+    }
 
     if(err) exit(1);
     free(tmp);
