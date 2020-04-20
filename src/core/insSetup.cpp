@@ -535,7 +535,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       
       fileName = oklpath + "insAx" + suffix + ".okl";
       kernelName = "insAx" + suffix;
-      ins->AxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
+      ins->pressureAxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
      
       fileName = oklpath + "insCurl" + suffix + ".okl";
       kernelName = "insCurl" + suffix;

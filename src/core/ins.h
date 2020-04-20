@@ -208,7 +208,7 @@ typedef struct {
   occa::kernel setEllipticCoeffPressureKernel;
 
   int TOMBO;  
-  occa::kernel AxKernel; 
+  occa::kernel pressureAxKernel; 
   occa::kernel curlKernel; 
   occa::kernel invMassMatrixKernel; 
   occa::kernel massMatrixKernel; 
