@@ -89,7 +89,7 @@ DECLARE_USER_FUNC(userqtl)
 void*  nek_ptr(const char *id);
 void   nek_outfld(void);
 void   nek_outfld(const char *suffix);
-void   nek_outfld(const char *suffix, dfloat t, int coords, 
+void   nek_outfld(const char *suffix, dfloat t, occa::memory o_x, 
                   occa::memory o_u, occa::memory o_p, occa::memory o_s, 
                   int NSfields, int FP64);
 void   nek_uic(int ifield);
@@ -112,6 +112,5 @@ void nek_copyTo(dfloat &time);
 void nek_ocopyTo(dfloat &time);
 void nek_copyRestart();
 long long nek_set_glo_num(int npts, int isTMesh);
-void nek_dssum(dfloat *u);
 
 #endif

@@ -40,7 +40,6 @@ static void (*nek_setics_ptr)(void);
 static int  (*nek_bcmap_ptr)(int *, int*);
 static int  (*nek_nbid_ptr)(int *);
 static long long (*nek_set_vert_ptr)(int *, int *);
-static void (*nek_dssum_ptr)(double *);
 
 void noop_func(void) {}
 
@@ -60,7 +59,7 @@ void nek_outfld(const char *suffix){
   (*nek_outfld_ptr)((char*)suffix);
 }
 
-void nek_outfld(const char *suffix, dfloat t, int coords, 
+void nek_outfld(const char *suffix, dfloat t, occa::memory o_x, 
                 occa::memory o_u, occa::memory o_p, occa::memory o_s, 
                 int NSfields, int FP64){
 
@@ -75,7 +74,7 @@ void nek_outfld(const char *suffix, dfloat t, int coords,
   int po = 0;
   int so = 0;
 
-  if(coords) {
+  if(o_x.ptr()) {
     xo = 1;
   }
   if(o_u.ptr()) {
@@ -262,8 +261,7 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_set_vert_ptr = (long long (*)(int *, int *)) dlsym(handle,fname("nekf_set_vert"));
   check_error(dlerror());
-  nek_dssum_ptr = (void (*)(double *)) dlsym(handle,fname("nekf_dssum"));
-  check_error(dlerror());
+
 
 #define postfix(x) x##_ptr
 #define load_or_noop(s) \
@@ -611,8 +609,10 @@ void nek_ocopyFrom(dfloat time, int tstep) {
 
 void nek_copyFrom(dfloat time, int tstep) {
 
-  nek_copyFrom(time);
-  *(nekData.istep) = tstep;
+  if(time != timeLast) {
+    nek_copyFrom(time);
+    *(nekData.istep) = tstep;
+  }
 }
 
 void nek_ocopyTo(dfloat &time) {
@@ -685,12 +685,6 @@ int nek_bcmap(int bid, int ifld) {
   return (*nek_bcmap_ptr)(&bid, &ifld);
 }
 
-long long nek_set_glo_num(int nx, int isTMesh) {
-  return (*nek_set_vert_ptr)(&nx, &isTMesh);
+long long nek_set_glo_num(int npts, int isTMesh) {
+  return (*nek_set_vert_ptr)(&npts, &isTMesh);
 }
-
-void nek_dssum(dfloat *u) {
-   
-  (*nek_dssum_ptr)(u);
-}
-

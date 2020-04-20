@@ -101,8 +101,6 @@ c-----------------------------------------------------------------------
          ptr = loc(gett)
       elseif (id .eq. 'ifgetps') then
          ptr = loc(getps)
-      elseif (id .eq. 'vmult') then
-         ptr = loc(vmult)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -535,7 +533,7 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer*8 function nekf_set_vert(nx, isTmsh)
+      integer*8 function nekf_set_vert(npts, isTmsh)
 
       include 'SIZE'
       include 'TOTAL'
@@ -548,6 +546,7 @@ c-----------------------------------------------------------------------
 
       integer*8 ngv
 
+      nx  = npts**(1./ndim)
       nel = nelt
       if (isTmsh.eq.0) nel = nelv
       call set_vert(glo_num,ngv,nx,nel,vertex,.false.)
@@ -557,14 +556,3 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_dssum(u)
-      include 'SIZE'
-      include 'TOTAL'
-
-      ifld = ifield
-      ifield = 1
-      call dssum(u,lx1,ly1,lz1)
-      ifield = ifld 
-
-      return
-      end
