@@ -2,8 +2,6 @@
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 
-int isTmesh = 0;
-
 void meshVOccaSetup3D(mesh_t *mesh, setupAide &options, occa::properties &kernelInfo);
 
 mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properties& kernelInfo) {
@@ -138,7 +136,7 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properti
   libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
   
   // global nodes
-  meshParallelConnectNodes(mesh);
+  libParanumal::meshParallelConnectNodes(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
 
@@ -189,9 +187,7 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa:
   libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  isTmesh = 1;
-  meshParallelConnectNodes(mesh); 
-  isTmesh = 0;
+  libParanumal::meshParallelConnectNodes(mesh); 
 
   bcMap::check(mesh);
 
@@ -252,7 +248,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT, setupAide &options, occ
 
   // uniquely label each node with a global index, used for gatherScatter
   // mesh->globalIds
-  meshParallelConnectNodes(mesh);
+  libParanumal::meshParallelConnectNodes(mesh);
 
   bcMap::check(mesh);
   meshVOccaSetup3D(mesh, options, kernelInfo);

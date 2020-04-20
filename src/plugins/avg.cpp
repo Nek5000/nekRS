@@ -174,7 +174,6 @@ void avg::outfld()
   cds_t *cds = ins->cds; 
   mesh_t *mesh = ins->mesh;
   const int FP64 = 1;
-  const int coords = 0;
 
   occa::memory o_null;
   occa::memory o_Tavg, o_Trms;
@@ -185,21 +184,21 @@ void avg::outfld()
     occa::memory o_Trms = o_Srms; 
   }
 
-  nek_outfld("avg", atime, coords, 
+  nek_outfld("avg", atime, o_null, 
              o_Uavg, 
              o_Pavg, 
              o_Tavg, 
              Nscalar, 
              FP64); 
 
-  nek_outfld("rms", atime, coords, 
+  nek_outfld("rms", atime, o_null, 
              o_Urms, 
              o_Prms, 
              o_Trms, 
              Nscalar, 
              FP64); 
 
-  nek_outfld("rm2", atime, coords, 
+  nek_outfld("rm2", atime, o_null, 
              o_Urm2, 
              o_null, 
              o_null,
