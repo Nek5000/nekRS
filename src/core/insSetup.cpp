@@ -688,7 +688,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     MPI_Barrier(mesh->comm);
   }
 
-  {
+  if(!buildOnly) {
+    int err = 0;
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
@@ -703,13 +704,27 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->o_wrk1.copyTo(tmp, Nlocal*sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i=0; i<Nlocal; i++) sum1 += tmp[i];
-    free(tmp);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    const dfloat err = abs(sum1-sum2)/sum2;
-    if(err > 1e-15) {
-      if(mesh->rank==0) cout << "ogsGatherScatter test failed!\n"; 
-      exit(1);
+    sum1 = abs(sum1-sum2)/sum2;
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("ogsGatherScatter test err=%g!\n", sum1); 
+      fflush(stdout);
+      err++;
     }
+
+    mesh->ogs->o_invDegree.copyTo(tmp, Nlocal*sizeof(dfloat));
+    double *vmult = (double *) nek_ptr("vmult");
+    sum1 = 0;
+    for(int i=0; i<Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("multiplicity test err=%g!\n", sum1); 
+      fflush(stdout);
+      err++;
+    }
+
+    if(err) exit(1);
+    free(tmp);
   }
 
   return ins;

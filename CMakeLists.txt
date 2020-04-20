@@ -322,6 +322,7 @@ set(SRC
     src/mesh/meshSetup.cpp
     src/mesh/meshNekReader.cpp
     src/mesh/meshPhysicalNodesHex3D.cpp
+    src/mesh/meshParallelConnectNodes.cpp
     src/core/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/core/parReader.cpp
