@@ -33,7 +33,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("ELEMENT TYPE", ins->elementType);
  
   int flow = 1;
-  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
+  if(options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
@@ -213,7 +213,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
 
   ins->lowMach = 0;
-  if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
+  if(options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
   ins->div   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
   ins->o_div = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->div);  
 
@@ -281,7 +281,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
+  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
     filterSetup(ins); 
 
   const int nbrBIDs = bcMap::size();

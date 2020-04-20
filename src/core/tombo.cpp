@@ -97,7 +97,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->o_z,
        ins->fieldOffset,
        ins->o_usrwrk,
-       ins->U,
+       ins->o_U,
        ins->o_wrk3);
 
   ins->AxKernel(
