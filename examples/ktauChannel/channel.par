@@ -1,0 +1,43 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+polynomialOrder = 7
+#startFrom = r.fld+time=0
+stopAt = endTime
+endTime = 500
+dt = 2e-02
+timeStepper = tombo2
+
+writeControl = runTime
+writeInterval = 50
+
+[PRESSURE]
+preconditioner = semg_amg
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = wall, slipY 
+residualTol = 1e-06
+density = 1.0
+viscosity = -43500. 
+
+[TEMPERATURE]
+#solver = none
+boundaryTypeMap = inlet, insulated 
+residualTol = 1e-06
+rhoCp = 1.0
+conductivity = -43500. 
+
+[SCALAR01] # k
+boundaryTypeMap = inlet, insulated 
+residualTol = 1e-06
+rho = 1.0
+diffusivity = -43500. 
+
+[SCALAR02] # tau
+boundaryTypeMap = inlet, insulated 
+residualTol = 1e-06
+rho = 1.0
+diffusivity = -43500. 

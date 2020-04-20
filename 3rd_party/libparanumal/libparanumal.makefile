@@ -79,7 +79,6 @@ $(HDRDIR)/src/meshLoadReferenceNodesTet3D.o \
 $(HDRDIR)/src/meshOccaSetup2D.o \
 $(HDRDIR)/src/meshOccaSetup3D.o \
 $(HDRDIR)/src/meshOccaSetupQuad3D.o \
-$(HDRDIR)/src/meshParallelConnectNodes.o \
 $(HDRDIR)/src/meshParallelConnectOpt.o \
 $(HDRDIR)/src/meshParallelConsecutiveGlobalNumbering.o\
 $(HDRDIR)/src/meshParallelGatherScatterSetup.o \
@@ -123,7 +122,8 @@ $(HDRDIR)/src/hash.o\
 $(HDRDIR)/src/setupAide.o \
 $(HDRDIR)/src/readArray.o\
 $(HDRDIR)/src/occaHostMallocPinned.o \
-$(HDRDIR)/src/timer.o
+$(HDRDIR)/src/timer.o \
+#$(HDRDIR)/src/meshParallelConnectNodes.o
 
 ifeq ($(OS),Windows_NT)
     detected_OS := Windows

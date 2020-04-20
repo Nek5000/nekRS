@@ -322,6 +322,7 @@ set(SRC
     src/mesh/meshSetup.cpp
     src/mesh/meshNekReader.cpp
     src/mesh/meshPhysicalNodesHex3D.cpp
+    src/mesh/meshParallelConnectNodes.cpp
     src/core/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/core/parReader.cpp
@@ -330,6 +331,7 @@ set(SRC
     src/core/timer.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
+    src/plugins/RANSktau.cpp
     ## To get fortran flags
     src/dummy.f
 )

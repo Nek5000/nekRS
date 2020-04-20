@@ -1,0 +1,75 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+#include "plugins/RANSktau.hpp"
+
+/* User Functions */
+
+static dfloat rho, mueLam;
+occa::kernel userfKernel; 
+
+void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  const dfloat Re_tau = 2000.0; 
+  const dfloat Re_b   = rho/mueLam; 
+  const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
+  userfKernel(ins->Nlocal, 0*ins->fieldOffset, DPDX, o_FU);
+}
+
+void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  mesh_t *mesh = ins->mesh;
+  cds_t *cds   = ins->cds;
+
+  RANSktau::updateSourceTerms();
+}
+
+void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  mesh_t *mesh = ins->mesh;
+  cds_t *cds   = ins->cds;
+
+  RANSktau::updateProperties();
+
+  dfloat conductivity;
+  ins->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  const dfloat Pr_t = 0.7;
+  occa::memory o_mue_t = RANSktau::o_mue_t();
+  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset*sizeof(dfloat);
+  ins->scalarScaledAddKernel(ins->Nlocal, mueLam, 1/Pr_t, o_mue_t, o_temp_mue); 
+}
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  userfKernel = udfBuildKernel(ins, "cfill");
+  RANSktau::buildKernel(ins);
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  mesh_t *mesh = ins->mesh;
+  cds_t *cds = ins->cds;
+
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+
+  udf.properties = &uservp;
+  udf.uEqnSource = &userf;
+  udf.sEqnSource = &userq;
+
+  const int scalarFieldStart = 1;
+  ins->options.getArgs("VISCOSITY", mueLam); 
+  ins->options.getArgs("DENSITY", rho); 
+  RANSktau::setup(ins, mueLam, rho, scalarFieldStart);
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  if (ins->isOutputStep) {
+    nek_ocopyFrom(time, tstep);
+    nek_userchk();
+  }
+}

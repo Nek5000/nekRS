@@ -33,7 +33,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("ELEMENT TYPE", ins->elementType);
  
   int flow = 1;
-  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
+  if(options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
@@ -213,7 +213,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_rho = ins->o_prop.slice(1*ins->fieldOffset*sizeof(dfloat));
 
   ins->lowMach = 0;
-  if(ins->options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
+  if(options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
   ins->div   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
   ins->o_div = mesh->device.malloc(ins->fieldOffset*sizeof(dfloat), ins->div);  
 
@@ -281,7 +281,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
+  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
     filterSetup(ins); 
 
   const int nbrBIDs = bcMap::size();
@@ -533,9 +533,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->advectionStrongCubatureVolumeKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       
-      fileName = oklpath + "insAx" + suffix + ".okl";
-      kernelName = "insAx" + suffix;
-      ins->AxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
+      fileName = oklpath + "insPressureAx" + suffix + ".okl";
+      kernelName = "insPressureAx" + suffix;
+      ins->pressureAxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
      
       fileName = oklpath + "insCurl" + suffix + ".okl";
       kernelName = "insCurl" + suffix;
@@ -572,6 +572,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       fileName = oklpath + "insPressureRhs" + suffix + ".okl";
       kernelName = "insPressureRhsTOMBO" + suffix;
       ins->pressureRhsKernel =  
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insPressureStress" + suffix + ".okl";
+      kernelName = "insPressureStress" + suffix;
+      ins->pressureStressKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
@@ -678,17 +683,12 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       kernelName = "insPQ";
       ins->pqKernel =  
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "insNC.okl"; 
-      kernelName = "insNC";
-      ins->ncKernel =  
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
     }
     MPI_Barrier(mesh->comm);
   }
 
-  {
+  if(!buildOnly) {
+    int err = 0;
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
@@ -703,13 +703,27 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->o_wrk1.copyTo(tmp, Nlocal*sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i=0; i<Nlocal; i++) sum1 += tmp[i];
-    free(tmp);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    const dfloat err = abs(sum1-sum2)/sum2;
-    if(err > 1e-15) {
-      if(mesh->rank==0) cout << "ogsGatherScatter test failed!\n"; 
-      exit(1);
+    sum1 = abs(sum1-sum2)/sum2;
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("ogsGatherScatter test err=%g!\n", sum1); 
+      fflush(stdout);
+      err++;
     }
+
+    mesh->ogs->o_invDegree.copyTo(tmp, Nlocal*sizeof(dfloat));
+    double *vmult = (double *) nek_ptr("vmult");
+    sum1 = 0;
+    for(int i=0; i<Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    if(sum1 > 1e-15) {
+      if(mesh->rank==0) printf("multiplicity test err=%g!\n", sum1); 
+      fflush(stdout);
+      err++;
+    }
+
+    if(err) exit(1);
+    free(tmp);
   }
 
   return ins;

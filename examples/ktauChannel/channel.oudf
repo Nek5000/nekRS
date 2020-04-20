@@ -1,0 +1,18 @@
+@kernel void cfill(const dlong Ntotal,
+                    const dlong offset,
+                    const dfloat CONST,
+                    @restrict dfloat * NU) 
+{
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+    if(n<Ntotal){
+      const dlong id = n + offset;
+      NU[id] = CONST;
+    }
+  }
+}
+
+void cdsDirichletConditions3D(bcData *bc)
+{
+  bc->sP = 0;
+  if(bc->scalarId == 0) bc->sP = 0; 
+}

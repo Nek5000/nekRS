@@ -28,7 +28,6 @@ SOFTWARE.
 @kernel void insCurlHex3D(const dlong Nelements, 
                            @restrict const  dfloat *  vgeo,
                            @restrict const  dfloat *  const D,
-                           @restrict const  dfloat *  const M,
                            const dlong offset,
                            @restrict const  dfloat *  U,
                            @restrict dfloat *  W){

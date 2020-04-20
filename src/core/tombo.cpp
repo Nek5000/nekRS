@@ -10,7 +10,6 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
   ins->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
                   mesh->o_Dmatrices,
-                  mesh->o_MM, 
                   ins->fieldOffset,
                   ins->o_Ue,
                   ins->o_wrk0);
@@ -30,10 +29,20 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->Nelements,
        mesh->o_vgeo,
        mesh->o_Dmatrices,
-       mesh->o_MM, 
        ins->fieldOffset,
        ins->o_wrk0,
        ins->o_wrk3);
+
+  if(ins->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
+    ins->pressureStressKernel( 
+         mesh->Nelements,
+         mesh->o_vgeo,
+         mesh->o_Dmatrices,
+         ins->fieldOffset,
+         ins->o_mue,
+         ins->o_Ue,
+         ins->o_div,
+         ins->o_wrk3);
 
   ins->gradientVolumeKernel(
        mesh->Nelements,
@@ -42,31 +51,19 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        ins->fieldOffset,
        ins->o_div,
        ins->o_wrk0);
+
   occa::memory o_irho = ins->o_ellipticCoeff;
-  ins->ncKernel(
-       mesh->Np*mesh->Nelements,
+  ins->pressureRhsKernel(
+       mesh->Nelements*mesh->Np,
        ins->fieldOffset,
        ins->o_mue,
        o_irho,
-       ins->o_wrk0,
-       ins->o_wrk3);
-
-  ins->pressureRhsKernel(
-       mesh->Nelements,
-       mesh->o_vgeo,
-       mesh->o_MM,
-       ins->idt,
-       ins->g0,
-       ins->o_extbdfA,
-       ins->o_extbdfB,
-       ins->fieldOffset,
-       ins->o_U,
        ins->o_BF,
        ins->o_wrk3,
-       ins->o_FU,
-       ins->o_wrk0);
+       ins->o_wrk0,
+       ins->o_wrk6);
 
-  ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
+  ogsGatherScatterMany(ins->o_wrk6, ins->NVfields, ins->fieldOffset,
                        ogsDfloat, ogsAdd, mesh->ogs);
 
   ins->invMassMatrixKernel(
@@ -75,14 +72,14 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        ins->NVfields,
        mesh->o_vgeo,
        ins->o_InvM,
-       ins->o_wrk0);
+       ins->o_wrk6);
 
   ins->divergenceVolumeKernel(
        mesh->Nelements,
        mesh->o_vgeo,
        mesh->o_Dmatrices,
        ins->fieldOffset,
-       ins->o_wrk0,
+       ins->o_wrk6,
        ins->o_wrk3);
 
   const dfloat lambda = ins->g0*ins->idt;
@@ -90,9 +87,7 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->Nelements,
        mesh->o_vgeo,
        mesh->o_sgeo,
-       mesh->o_LIFTT,
        mesh->o_vmapM,
-       mesh->o_vmapP,
        mesh->o_EToB,
        ins->o_EToB,
        time,
@@ -102,16 +97,15 @@ occa::memory pressureSolve(ins_t *ins, dfloat time)
        mesh->o_z,
        ins->fieldOffset,
        ins->o_usrwrk,
-       ins->o_wrk0,
+       ins->o_U,
        ins->o_wrk3);
 
-  ins->AxKernel(
+  ins->pressureAxKernel(
        mesh->Nelements,
        ins->fieldOffset,
        mesh->o_ggeo,
        mesh->o_Dmatrices,
        mesh->o_Smatrices,
-       mesh->o_MM,
        ins->o_P,
        ins->o_ellipticCoeff,
        ins->o_wrk3);

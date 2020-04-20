@@ -1,0 +1,319 @@
+@kernel void computeHex3D(const dlong Nelements,
+		          const dlong offset,
+		          const dfloat rho,
+		          const dfloat mue,
+		          @restrict const  dfloat * vgeo,
+		          @restrict const  dfloat * D,
+		          @restrict const  dfloat * K,
+		          @restrict const  dfloat * TAU,
+		          @restrict const  dfloat * STMAG2,
+                          @restrict const  dfloat * OIOJSK,
+                          @restrict dfloat * SRCDIAG,
+		          @restrict dfloat * SRC){
+
+  for(dlong e=0; e<Nelements; ++e; @outer(0)) {
+    @shared dfloat s_k[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_tau[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_tauSqrt[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+	  dlong id = i+j*p_Nq;
+	  if(k==0) s_D[0][id] = D[id];
+
+	  id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+	  const dfloat kn   = K[id];
+	  const dfloat taun = TAU[id];
+
+	  s_k[k][j][i]       = kn;
+	  s_tau[k][j][i]     = taun;
+	  s_tauSqrt[k][j][i] = sqrt(taun);
+	}
+      }
+    }
+
+    @barrier("local");
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+
+	  const dlong gid = e*p_Np*p_Nvgeo+ k*p_Nq*p_Nq + j*p_Nq +i;
+	  const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+	  const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+	  const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+	  const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+	  const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+	  const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+	  const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+	  const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+	  const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          const dfloat JW   = vgeo[gid + p_JWID*p_Np];
+
+	  dfloat dkdr = 0, dkds = 0, dkdt = 0;
+	  dfloat dtaudr = 0, dtauds = 0, dtaudt = 0;
+	  dfloat dtauSqrtdr = 0, dtauSqrtds = 0, dtauSqrtdt = 0;
+
+#pragma unroll p_Nq
+	  for (int n=0;n<p_Nq;n++) {
+	    const dfloat Dr = s_D[i][n];
+	    const dfloat Ds = s_D[j][n];
+	    const dfloat Dt = s_D[k][n];
+
+	    dkdr += Dr*s_k[k][j][n];
+	    dkds += Ds*s_k[k][n][i];
+	    dkdt += Dt*s_k[n][j][i];
+
+	    dtaudr += Dr*s_tau[k][j][n];
+	    dtauds += Ds*s_tau[k][n][i];
+	    dtaudt += Dt*s_tau[n][j][i];
+
+	    dtauSqrtdr += Dr*s_tauSqrt[k][j][n];
+	    dtauSqrtds += Ds*s_tauSqrt[k][n][i];
+	    dtauSqrtdt += Dt*s_tauSqrt[n][j][i];
+	  }
+
+	  const dfloat dkdx = drdx*dkdr + dsdx*dkds + dtdx*dkdt;
+	  const dfloat dkdy = drdy*dkdr + dsdy*dkds + dtdy*dkdt;
+	  const dfloat dkdz = drdz*dkdr + dsdz*dkds + dtdz*dkdt;
+
+	  const dfloat dtaudx = drdx*dtaudr + dsdx*dtauds + dtdx*dtaudt;
+	  const dfloat dtaudy = drdy*dtaudr + dsdy*dtauds + dtdy*dtaudt;
+	  const dfloat dtaudz = drdz*dtaudr + dsdz*dtauds + dtdz*dtaudt;
+
+	  const dfloat dtauSqrtdx = drdx*dtauSqrtdr + dsdx*dtauSqrtds + dtdx*dtauSqrtdt;
+	  const dfloat dtauSqrtdy = drdy*dtauSqrtdr + dsdy*dtauSqrtds + dtdy*dtauSqrtdt;
+	  const dfloat dtauSqrtdz = drdz*dtauSqrtdr + dsdz*dtauSqrtds + dtdz*dtauSqrtdt;
+
+          const dfloat xk  = -(dkdx*dtaudx + dkdy*dtaudy + dkdz*dtaudz);
+          const dfloat xt  = dtaudx*dtaudx + dtaudy*dtaudy + dtaudz*dtaudz;
+          const dfloat xtq = dtauSqrtdx*dtauSqrtdx + dtauSqrtdy*dtauSqrtdy + dtauSqrtdz*dtauSqrtdz;
+	
+	  const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+	  const dfloat stMag2 = STMAG2[id];
+          const dfloat OiOjSk = OIOJSK[id]; 
+
+	  const dfloat kk  = K[id];
+	  const dfloat tau = TAU[id];
+
+          const dfloat mu_t  = rho*p_alpinf_str*kk*tau;
+          dfloat itau = 0;
+          if(tau > 0) itau = 1/tau;
+
+          dfloat sigd = p_sigd_min;
+          dfloat f_beta_str = 1.0;
+          if (xk > 0) {
+            const dfloat xk3 = xk*xk*tau*tau;
+            sigd = p_sigd_max;
+            f_beta_str = (1.0 + p_fb_c1st*xk3)/(1.0 + p_fb_c2st*xk3);
+          }
+        
+          // compute source term for k 
+          const dfloat Y_k = rho*p_betainf_str*f_beta_str*itau;
+          const dfloat kSrc  = mu_t*stMag2;
+          const dfloat kDiag = Y_k; 
+
+          // compute rource term for omega
+          const dfloat x_w = abs(OiOjSk)*(tau*tau*tau*p_ibetainf_str3);
+          const dfloat f_b = (1.0 + p_fb_c1*x_w)/(1.0 + p_fb_c2*x_w);
+          dfloat tauSrc  = rho*(p_beta0*f_b - sigd*xk*tau);
+          dfloat tauDiag = rho*tau*p_alp_inf*stMag2 + 
+                           8.0*rho*p_alpinf_str*kk*xtq*p_sigma_tau;
+
+          // apply correction
+          const dfloat S_tau = 8.0*mue*xtq;
+          if (tau <= p_tiny) 
+            tauSrc  -= S_tau;
+          else
+            tauDiag += S_tau*itau;
+
+          SRC[id + 0*offset]     = kSrc;
+          SRC[id + 1*offset]     = tauSrc;
+          SRCDIAG[id + 0*offset] = kDiag;
+          SRCDIAG[id + 1*offset] = tauDiag;
+	}
+      }
+    }
+  }
+}
+
+@kernel void SijOijHex3D(const dlong Nelements,
+		         const dlong offset,
+		         @restrict const  dfloat * vgeo,
+		         @restrict const  dfloat * D,
+		         @restrict const  dfloat * U,
+		         @restrict dfloat * SO){
+
+  for(dlong e=0; e<Nelements; ++e; @outer(0)) {
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+	  dlong id = i+j*p_Nq;
+	  if(k==0) s_D[0][id] = D[id];
+
+	  id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+          const dfloat Un = U[id+0*offset];
+          const dfloat Vn = U[id+1*offset];
+          const dfloat Wn = U[id+2*offset];
+
+          s_U[k][j][i] = Un;
+          s_V[k][j][i] = Vn;
+          s_W[k][j][i] = Wn;
+	}
+      }
+    }
+
+    @barrier("local");
+
+    for(int k=0;k<p_Nq;++k;@inner(2)){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+	for(int i=0;i<p_Nq;++i;@inner(0)){
+
+	  const dlong gid = e*p_Np*p_Nvgeo+ k*p_Nq*p_Nq + j*p_Nq +i;
+	  const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+	  const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+	  const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+	  const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+	  const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+	  const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+	  const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+	  const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+	  const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          const dfloat JW   = vgeo[gid + p_JWID*p_Np];
+
+	  dfloat dudr = 0, duds = 0, dudt = 0;
+	  dfloat dvdr = 0, dvds = 0, dvdt = 0;
+	  dfloat dwdr = 0, dwds = 0, dwdt = 0;
+
+#pragma unroll p_Nq
+          for (int n=0;n<p_Nq;n++) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+            dudr += Dr*s_U[k][j][n];
+            duds += Ds*s_U[k][n][i];
+            dudt += Dt*s_U[n][j][i];
+
+            dvdr += Dr*s_V[k][j][n];
+            dvds += Ds*s_V[k][n][i];
+            dvdt += Dt*s_V[n][j][i];
+
+            dwdr += Dr*s_W[k][j][n];
+            dwds += Ds*s_W[k][n][i];
+            dwdt += Dt*s_W[n][j][i];
+          }
+
+          const dfloat dudx = drdx*dudr + dsdx*duds + dtdx*dudt;
+          const dfloat dudy = drdy*dudr + dsdy*duds + dtdy*dudt;
+          const dfloat dudz = drdz*dudr + dsdz*duds + dtdz*dudt;
+
+          const dfloat dvdx = drdx*dvdr + dsdx*dvds + dtdx*dvdt;
+          const dfloat dvdy = drdy*dvdr + dsdy*dvds + dtdy*dvdt;
+          const dfloat dvdz = drdz*dvdr + dsdz*dvds + dtdz*dvdt;
+
+          const dfloat dwdx = drdx*dwdr + dsdx*dwds + dtdx*dwdt;
+          const dfloat dwdy = drdy*dwdr + dsdy*dwds + dtdy*dwdt;
+          const dfloat dwdz = drdz*dwdr + dsdz*dwds + dtdz*dwdt;
+
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+          SO[id+0*offset] = JW*2*dudx;
+          SO[id+1*offset] = JW*2*dvdy;
+          SO[id+2*offset] = JW*2*dwdz;
+          SO[id+3*offset] = JW*(dudy + dvdx);
+          SO[id+4*offset] = JW*(dvdz + dwdy);
+          SO[id+5*offset] = JW*(dudz + dwdx);
+
+          SO[id+6*offset] = JW*(dwdy - dvdz);
+          SO[id+7*offset] = JW*(dudz - dwdx);
+          SO[id+8*offset] = JW*(dvdx - dudy);
+	}
+      }
+    }
+  }
+}
+
+@kernel void SijOijMag2(const dlong N,
+		        const dlong offset,
+		        @restrict const  dfloat * SOIJ,
+		        @restrict dfloat * OIOJSK,
+		        @restrict dfloat * MAGSIJ){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat s1 = SOIJ[n+0*offset]; 
+      const dfloat s2 = SOIJ[n+1*offset]; 
+      const dfloat s3 = SOIJ[n+2*offset]; 
+      const dfloat s4 = SOIJ[n+3*offset]; 
+      const dfloat s5 = SOIJ[n+4*offset]; 
+      const dfloat s6 = SOIJ[n+5*offset];
+
+      const dfloat o1 = SOIJ[n+6*offset];
+      const dfloat o2 = SOIJ[n+7*offset];
+      const dfloat o3 = SOIJ[n+8*offset];
+
+      const dfloat magSij = s1*s1 + s2*s2 + s3*s3 + 2*(s4*s4 + s5*s5 + s6*s6);
+      const dfloat OiOjSk = s1*(o2*o2 + o3*o3) + s2*(o1*o1 + o3*o3) + s3*(o1*o1 + o2*o2)
+                            + 2*(o1*o2*s4 + o2*o3*s5 - o1*o3*s6); 
+
+      MAGSIJ[n] = 0.5*magSij;
+      OIOJSK[n] = OiOjSk;
+    }
+  }
+}
+
+@kernel void limit(const dlong N,
+		   @restrict dfloat * K,
+		   @restrict dfloat * TAU){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){ 
+      dfloat k   = K[n];
+      dfloat tau = TAU[n];
+      if(k < 0) k = 0.01*abs(k);
+      if(tau < 0) tau = 0.01*abs(tau);
+
+      K[n] = k;
+      TAU[n] = tau;
+    }
+  }
+}
+
+@kernel void mue(const dlong N,
+		 const dlong offset,
+                 const dfloat rho,
+                 const dfloat mueLam,
+	         @restrict const dfloat * K,
+	         @restrict const dfloat * TAU,
+	         @restrict dfloat * MUET,
+	         @restrict dfloat * MUE,
+	         @restrict dfloat * DIFF){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){ 
+      const dfloat k   = K[n];
+      const dfloat tau = TAU[n];
+      const dfloat mut = rho*p_alpinf_str*k*tau;
+
+      MUET[n] = mut;
+
+      MUE[n] = mueLam + mut;
+      DIFF[n + 0*offset] = mueLam + p_sigma_k*mut;
+      DIFF[n + 1*offset] = mueLam + p_sigma_tau*mut;
+    }
+  }
+}
+
+

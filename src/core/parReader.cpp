@@ -68,6 +68,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
+  options.setArgs("VARIABLE VISCOSITY", "FALSE");
   options.setArgs("LOWMACH", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
