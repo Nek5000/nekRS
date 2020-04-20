@@ -19,7 +19,7 @@ writeInterval = 1
 
 filtering = hpfrt
 filterWeight = 8
-filterModes = 1
+filterModes = 20
 
 [PRESSURE]
 preconditioner = semg_amg
