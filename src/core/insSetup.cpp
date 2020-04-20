@@ -533,8 +533,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->advectionStrongCubatureVolumeKernel =  
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       
-      fileName = oklpath + "insAx" + suffix + ".okl";
-      kernelName = "insAx" + suffix;
+      fileName = oklpath + "insPressureAx" + suffix + ".okl";
+      kernelName = "insPressureAx" + suffix;
       ins->pressureAxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);  
      
       fileName = oklpath + "insCurl" + suffix + ".okl";

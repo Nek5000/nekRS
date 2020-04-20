@@ -25,7 +25,7 @@
 */
 
 // Computes local [lap(u) + lambda*u] = [-(grad(u), grad(phi)) + lambda*u] operation
-@kernel void insAxHex3D(const dlong Nelements,
+@kernel void insPressureAxHex3D(const dlong Nelements,
                         const dlong offset,
 		        @restrict const  dfloat *  ggeo,
 		        @restrict const  dfloat *  D,
