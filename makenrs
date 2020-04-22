@@ -6,17 +6,18 @@
 ###############################################################################
 
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
-
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_CXXFLAGS:="-g -O2"}
 
-: ${OCCA_CXX:="gcc"}
-: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
+: ${OCCA_CXX:="gcc"}
+: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
+#: ${OCCA_INCLUDE_PATH:="/usr/local/cuda/include"}
+#: ${OCCA_LIBRARY_PATH:="/usr/local/cuda/lib"}
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
@@ -57,6 +58,8 @@ export OCCA_HIP_ENABLED
 export OCCA_OPENCL_ENABLED
 export OCCA_METAL_ENABLED
 export OCCA_LDFLAGS
+export OCCA_LIBRARY_PATH
+export OCCA_INCLUDE_PATH
 
 export NEKRS_CC
 export NEKRS_CXX
