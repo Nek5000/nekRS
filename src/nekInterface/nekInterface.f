@@ -234,6 +234,9 @@ c-----------------------------------------------------------------------
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
       call findSYMOrient
+      call prinit
+      call swap_lengths
+      call h1mg_setup
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3

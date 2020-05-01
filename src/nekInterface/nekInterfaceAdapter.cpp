@@ -41,6 +41,7 @@ static int  (*nek_bcmap_ptr)(int *, int*);
 static int  (*nek_nbid_ptr)(int *);
 static long long (*nek_set_vert_ptr)(int *, int *);
 static void (*nek_dssum_ptr)(double *);
+static void (*nek_get_operators)(double *, double *,double *, double *,double*,int *);
 
 void noop_func(void) {}
 
@@ -263,6 +264,8 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_set_vert_ptr = (long long (*)(int *, int *)) dlsym(handle,fname("nekf_set_vert"));
   check_error(dlerror());
   nek_dssum_ptr = (void (*)(double *)) dlsym(handle,fname("nekf_dssum"));
+  check_error(dlerror());
+  nek_get_operators = (void (*)(double *, double *,double *,double *,double*,int *)) dlsym(handle,fname("get_operators"));
   check_error(dlerror());
 
 #define postfix(x) x##_ptr
@@ -694,3 +697,7 @@ void nek_dssum(dfloat *u) {
   (*nek_dssum_ptr)(u);
 }
 
+void   get_nek_operators(double * Sx, double * Sy, double * Sz, double * D, double * wt, int level)
+{
+  (*nek_get_operators)(Sx,Sy,Sz,D,wt,&level);
+}
