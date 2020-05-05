@@ -63,6 +63,9 @@ typedef struct {
   /* MPI communicator */
   MPI_Comm comm;
 
+  /* multigrid levels */
+  int* mg_nx;
+
 } nekdata_private;
 
 extern nekdata_private nekData;

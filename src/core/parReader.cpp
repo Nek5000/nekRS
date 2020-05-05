@@ -80,11 +80,11 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
-  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,SCHWARZ");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
-  options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
+  options.setArgs("PRESSURE PARALMOND SMOOTHER", "SCHWARZ");
   options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
   options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
   options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
@@ -325,6 +325,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
     if(p_preconditioner == "semg")
       options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
+
+    string p_smoother; 
+    ini.extract("pressure", "smoother", p_smoother);
+    if(p_preconditioner == "schwarz")
+      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "SCHWARZ");
 
     // VELOCITY 
     string vsolver;

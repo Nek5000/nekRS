@@ -4,6 +4,7 @@
 #include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
+#include "schwarzSmoother.hpp"
 
 static dfloat *scratch;
 static occa::memory o_scratch;
@@ -469,8 +470,17 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->lambda = ins->ellipticCoeff;
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
-
+  //ins->pSolver->levels = nekData.mg_nx;
+  ins->pSolver->levels = (int*) calloc(3,sizeof(int));
+  ins->pSolver->levels[0] = 7;
+  ins->pSolver->levels[1] = 3;
+  ins->pSolver->levels[2] = 1; // TODO: fix this
+  ins->pSolver->nLevels = 3; // TODO: avoid hard coding this
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
+  // TODO: avoid hard coding
+  //if(ins->pOptions.getArgs("PRESSURE MULTIGRID SMOOTHER") == "SCHWARZ"){
+      reconfigurePressureSolver(ins->pSolver);
+  //}
 
   // setup boundary mapping
   dfloat largeNumber = 1<<20;

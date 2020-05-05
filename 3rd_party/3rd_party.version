@@ -35,7 +35,7 @@ function clone_nek() {
       echo "Can't find the Nek5000 branch."
       exit 1
     else #clone nek5000
-      git clone --depth 1 -b ${NEK_GIT_BRANCH} ${NEK_GIT_URL}
+      git clone --depth 1 -b ${NEK_GIT_BRANCH} ${NEK_GIT_URL} nek5000
     fi
   else # using archive url
     if [ -z ${NEK_VER} ]; then

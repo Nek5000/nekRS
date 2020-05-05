@@ -16,6 +16,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
+      include 'HSMG'
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
@@ -103,6 +104,8 @@ c-----------------------------------------------------------------------
          ptr = loc(getps)
       elseif (id .eq. 'vmult') then
          ptr = loc(vmult)
+      elseif (id .eq. 'mg_nx') then
+         ptr = loc(mg_nx)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 

@@ -542,6 +542,8 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   nekData.eface = (int *) nek_ptr("eface");
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
+  
+  nekData.mg_nx = (int *) nek_ptr("mg_nx");
 
   int isTMesh = 0;
   nekData.NboundaryID  = (*nek_nbid_ptr)(&isTMesh);
