@@ -2,7 +2,7 @@
 
 NEK_VER=19.0 # latest 
 NEK_GIT_BRANCH=master
-NEK_GIT_URL=https://github.com/nek5000/nek5000.git
+NEK_GIT_URL=https://github.com/MalachiTimothyPhillips/Nek5000.git
 
 GS_VER=1.0.5
 GS_CHKSUM=1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27
@@ -16,7 +16,7 @@ OCCA_GIT_BRANCH=master
 OCCA_GIT_URL=https://github.com/libocca/occa.git
 
 LIBP_VER=1.0 # latest
-LIBP_GIT_BRANCH=next
+LIBP_GIT_BRANCH=fdm
 LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
 
 HYPRE_VER=2.18.2

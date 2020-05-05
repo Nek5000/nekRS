@@ -1,8 +1,8 @@
 #include "schwarzSmoother.hpp"
-#include <util.hpp>
 #include "nekInterfaceAdapter.hpp"
 #include <vector>
 void reconfigurePressureSolver(elliptic_t* pSolver){
+  auto mesh = pSolver->mesh;
   auto Nelements = mesh->Nelements;
   auto precon = pSolver->precon;
   auto levels = precon->parAlmond->levels;
