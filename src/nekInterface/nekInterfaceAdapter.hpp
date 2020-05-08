@@ -65,6 +65,8 @@ typedef struct {
 
   /* multigrid levels */
   int* mg_nx;
+  int mg_lmax;
+
 
 } nekdata_private;
 

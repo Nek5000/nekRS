@@ -470,17 +470,20 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->lambda = ins->ellipticCoeff;
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
-  //ins->pSolver->levels = nekData.mg_nx;
-  ins->pSolver->levels = (int*) calloc(3,sizeof(int));
-  ins->pSolver->levels[0] = 7;
-  ins->pSolver->levels[1] = 3;
-  ins->pSolver->levels[2] = 1; // TODO: fix this
-  ins->pSolver->nLevels = 3; // TODO: avoid hard coding this
+
+  // TODO: Once coupling with nek5000 is removed, there will be no need
+  // to force the multigrid levels to be the same as that used by nek5000
+  if(ins->pOptions.getArgs("PRESSURE PARALMOND SMOOTHER") == "SCHWARZ"){
+    ins->pSolver->nLevels = nekData.mg_lmax;
+    ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
+    for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
+      ins->pSolver->levels[i] = nekData.mg_nx[ins->pSolver->nLevels-i-1];
+    }
+  }
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
-  // TODO: avoid hard coding
-  //if(ins->pOptions.getArgs("PRESSURE MULTIGRID SMOOTHER") == "SCHWARZ"){
+  if(ins->pOptions.getArgs("PRESSURE PARALMOND SMOOTHER") == "SCHWARZ"){
       reconfigurePressureSolver(ins->pSolver);
-  //}
+  }
 
   // setup boundary mapping
   dfloat largeNumber = 1<<20;

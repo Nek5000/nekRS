@@ -106,6 +106,8 @@ c-----------------------------------------------------------------------
          ptr = loc(vmult)
       elseif (id .eq. 'mg_nx') then
          ptr = loc(mg_nx)
+      elseif (id .eq. 'mg_lmax') then
+         ptr = loc(mg_lmax)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 

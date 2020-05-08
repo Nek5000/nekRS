@@ -3,12 +3,11 @@
 #include <vector>
 void reconfigurePressureSolver(elliptic_t* pSolver){
   auto Nelements = pSolver->mesh->Nelements;
-  int levels[] = {7,3,1}; // TODO: fix
   auto mglevels = pSolver->precon->parAlmond->levels;
   for(int level = 0; level < pSolver->nLevels; ++level){
     MGLevel* curr_level = dynamic_cast<MGLevel*>(mglevels[level]);
     if(curr_level){
-      auto N = levels[level]+1;
+      auto N = pSolver->levels[level]+1;
       auto N2 = (N+2)*(N+2);
       auto N3 = N2*(N+2);
       std::vector<dfloat> Sx(N2*Nelements);
