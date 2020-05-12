@@ -3,6 +3,7 @@
 rm -f logfile
 mv $1.log.$2 $1.log1.$2 2>/dev/null
 
+ulimit -s unlimited
 export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
 : ${TRAVIS:="false"}
 

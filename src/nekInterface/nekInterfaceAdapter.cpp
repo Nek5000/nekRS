@@ -423,10 +423,8 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   char ver[10];
   int nelgv, nelgt, ndim;
   sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
-  int lelt = nelgt/np;
-  int lelt_imb = 0.1*(nelgt/np);
-  if(lelt_imb < 2) lelt_imb = 2;
-  lelt += lelt_imb;
+  int lelt = nelgt/np + 3;
+  if(lelt > nelgt) lelt = nelgt;
   mkSIZE(N+1, 1, lelt, nelgt, ndim, np, ldimt);
 
   // Copy case.usr file to cache_dir
