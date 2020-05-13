@@ -11,11 +11,11 @@
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_CXXFLAGS:="-g -O2"}
 
-: ${OCCA_CUDA_ENABLED:=1}
-: ${OCCA_HIP_ENABLED:=0}
-: ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_CXX:="gcc"}
 : ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
+#: ${OCCA_CUDA_ENABLED:=1}
+#: ${OCCA_HIP_ENABLED:=1}
+#: ${OCCA_OPENCL_ENABLED:=1}
 #: ${OCCA_INCLUDE_PATH:="/usr/local/cuda/include"}
 #: ${OCCA_LIBRARY_PATH:="/usr/local/cuda/lib"}
 
@@ -36,6 +36,39 @@ if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
+if [ -z ${OCCA_CUDA_ENABLED} ]; then
+    read -p "enable CUDA backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_CUDA_ENABLED=1
+        ;;
+      * )
+        OCCA_CUDA_ENABLED=0 
+        ;;
+    esac
+fi
+if [ -z ${OCCA_HIP_ENABLED} ]; then
+    read -p "enable HIP backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_HIP_ENABLED=1
+        ;;
+      * )
+        OCCA_HIP_ENABLED=0
+        ;;
+    esac
+fi
+if [ -z ${OCCA_OPENCL_ENABLED} ]; then
+    read -p "enable OPENCL backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_OPENCL_ENABLED=1
+        ;;
+      * )
+        OCCA_OPENCL_ENABLED=0
+        ;;
+    esac
+fi
 : ${OCCA_METAL_ENABLED:=0}
 
 NEKRS_CXXFLAGS+=" -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
