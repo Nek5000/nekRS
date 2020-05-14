@@ -18,6 +18,8 @@ void reconfigurePressureSolver(elliptic_t* pSolver){
       std::vector<dfloat> wts(N*N*4*3*Nelements);
       get_nek_operators(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data(), 3-level);
       curr_level->fdm_op->build(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data());
+      curr_level->fdm_op->legacy_function = nek_apply;
+      curr_level->fdm_op->legacy_fdm = nek_hsmg_fdm;
       output_nek_operators(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data(), 3-level);
     }
   }

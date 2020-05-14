@@ -43,6 +43,8 @@ static long long (*nek_set_vert_ptr)(int *, int *);
 static void (*nek_dssum_ptr)(double *);
 static void (*nek_get_operators)(double *, double *,double *, double *,double*,int *);
 static void (*nek_output_operators)(double *, double *,double *, double *,double*,int *);
+static void (*nek_h1mg)(double*,double*,double*,int*);
+static void (*nek_hsmg_fdm_f)(double*,double*,int*);
 static void (*nek_open_log)();
 static void (*nek_close_log)();
 
@@ -271,6 +273,14 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_get_operators = (void (*)(double *, double *,double *,double *,double*,int *)) dlsym(handle,fname("get_operators"));
   check_error(dlerror());
   nek_output_operators = (void (*)(double *, double *,double *,double *,double*,int *)) dlsym(handle,fname("nrs_output_operators"));
+  check_error(dlerror());
+  nek_open_log = (void (*)()) dlsym(handle,fname("open_log"));
+  check_error(dlerror());
+  nek_close_log = (void (*)()) dlsym(handle,fname("close_log"));
+  check_error(dlerror());
+  nek_h1mg = (void (*)(double*,double*,double*,int*)) dlsym(handle,fname("h1mg_schwarz"));
+  check_error(dlerror());
+  nek_hsmg_fdm_f = (void (*)(double*,double*,int*)) dlsym(handle,fname("hsmg_fdm"));
   check_error(dlerror());
 
 #define postfix(x) x##_ptr
@@ -721,4 +731,12 @@ void   open_logfile()
 void   close_logfile()
 {
   (*nek_close_log)();
+}
+void   nek_apply(double* e, double * r, double sigma, int level)
+{
+  (*nek_h1mg)(e,r, &sigma, &level);
+}
+void   nek_hsmg_fdm(double* e, double * r, int level)
+{
+  (*nek_hsmg_fdm_f)(e,r,&level);
 }
