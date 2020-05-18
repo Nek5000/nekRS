@@ -329,7 +329,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     string p_smoother; 
     ini.extract("pressure", "smoother", p_smoother);
     if(p_smoother == "schwarz"){
-      std::cout << "Encountered schwarz option, setting parameters\n";
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,SCHWARZ");
       options.setArgs("PRESSURE PARALMOND SMOOTHER", "SCHWARZ");
     }
