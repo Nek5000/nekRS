@@ -135,6 +135,10 @@ c-----------------------------------------------------------------------
       logical ltest 
       logical ifbswap
 
+      common /screv/ x(2*ltotd)
+      common /scrvh/ y(2*ltotd)
+      common /scrch/ z(2*ltotd)
+
       ! set word size for REAL
       wdsize = sizeof(rtest)
       ! set word size for INTEGER
@@ -239,8 +243,11 @@ c-----------------------------------------------------------------------
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
       call findSYMOrient
-      call prinit
+
+      ifield = 1
       call swap_lengths
+      call gen_fast_spacing(x,y,z)
+      call hsmg_setup
       call h1mg_setup
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
