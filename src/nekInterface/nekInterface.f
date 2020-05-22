@@ -583,3 +583,49 @@ c-----------------------------------------------------------------------
 
       return
       end
+c----------------------------------------------------------------------
+      subroutine get_operators(sx,sy,sz,dl,wt,l)
+      include 'SIZE'
+      include 'INPUT'
+      include 'HSMG'
+      real sx(1), sy(1), sz(1), dl(1), wt(1)
+      call fill_operators(sx,sy,sz,dl,wt,
+     $      mg_fast_s(mg_fast_s_index(l,1)),
+     $      mg_fast_d(mg_fast_d_index(l,1)),
+     $      mg_schwarz_wt(mg_schwarz_wt_index(l,1)),
+     $      mg_nh(l)+2)
+      return
+      end
+c----------------------------------------------------------------------
+      subroutine fill_operators(sx,sy,sz,dl,wt,s,d,my_wt,nl)
+      include 'SIZE'
+      include 'INPUT'
+      include 'HSMG'
+      real s(nl*nl,2,ldim,nelv)
+      real d(nl**ldim,nelv)
+      real sx(nl*nl,nelv), sy(nl*nl,nelv), sz(nl*nl,nelv)
+      real dl(nl**3,nelv)
+      real wt(nl-2,nl-2,4,3,nelv)
+      real my_wt(nl-2,nl-2,4,3,nelv)
+      integer i,j,k,l
+      do ie=1,nelv
+         do i=1,nl*nl
+             sx(i,ie)=s(i,2,1,ie)
+             sy(i,ie)=s(i,2,2,ie)
+             sz(i,ie)=s(i,2,3,ie)
+         enddo
+         do i=1,nl*nl*nl
+            dl(i,ie)=d(i,ie)
+         enddo
+         do i=1,nl-2
+           do j=1,nl-2
+            do k=1,4
+               do l=1,3
+                 wt(i,j,k,l,ie)=my_wt(i,j,k,l,ie)
+               enddo
+            enddo
+           enddo
+         enddo
+      enddo
+      return
+      end
