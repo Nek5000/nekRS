@@ -597,28 +597,29 @@ c----------------------------------------------------------------------
       return
       end
 c----------------------------------------------------------------------
-      subroutine fill_operators(sx,sy,sz,dl,wt,s,d,my_wt,nl)
+      subroutine fill_operators(sx,sy,sz,dl,wt,s,d,my_wt,nql)
       include 'SIZE'
       include 'INPUT'
       include 'HSMG'
-      real s(nl*nl,2,ldim,nelv)
-      real d(nl**ldim,nelv)
-      real sx(nl*nl,nelv), sy(nl*nl,nelv), sz(nl*nl,nelv)
-      real dl(nl**3,nelv)
-      real wt(nl-2,nl-2,4,3,nelv)
-      real my_wt(nl-2,nl-2,4,3,nelv)
+      integer nql
+      real s(nql*nql,2,ldim,nelv)
+      real d(nql**ldim,nelv)
+      real sx(nql*nql,nelv), sy(nql*nql,nelv), sz(nql*nql,nelv)
+      real dl(nql**3,nelv)
+      real wt(nql-2,nql-2,4,3,nelv)
+      real my_wt(nql-2,nql-2,4,3,nelv)
       integer i,j,k,l
       do ie=1,nelv
-         do i=1,nl*nl
+         do i=1,nql*nql
              sx(i,ie)=s(i,2,1,ie)
              sy(i,ie)=s(i,2,2,ie)
              sz(i,ie)=s(i,2,3,ie)
          enddo
-         do i=1,nl*nl*nl
+         do i=1,nql*nql*nql
             dl(i,ie)=d(i,ie)
          enddo
-         do i=1,nl-2
-           do j=1,nl-2
+         do i=1,nql-2
+           do j=1,nql-2
             do k=1,4
                do l=1,3
                  wt(i,j,k,l,ie)=my_wt(i,j,k,l,ie)
