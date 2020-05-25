@@ -15,7 +15,7 @@ void reconfigurePressureSolver(elliptic_t* pSolver){
       std::vector<dfloat> Sz(N2*Nelements);
       std::vector<dfloat> D(N3*Nelements);
       std::vector<dfloat> wts(N*N*4*3*Nelements);
-      get_nek_operators(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data(), pSolver->nLevels-level);
+      nek_schwarzOperators(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data(), pSolver->nLevels-level);
       currLevel->build(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data());
     }
   }

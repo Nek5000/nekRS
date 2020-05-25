@@ -584,16 +584,18 @@ c-----------------------------------------------------------------------
       return
       end
 c----------------------------------------------------------------------
-      subroutine get_operators(sx,sy,sz,dl,wt,l)
+      subroutine nekf_schwarz_operators(sx,sy,sz,dl,wt,l)
       include 'SIZE'
       include 'INPUT'
       include 'HSMG'
+
       real sx(1), sy(1), sz(1), dl(1), wt(1)
       call fill_operators(sx,sy,sz,dl,wt,
      $      mg_fast_s(mg_fast_s_index(l,1)),
      $      mg_fast_d(mg_fast_d_index(l,1)),
      $      mg_schwarz_wt(mg_schwarz_wt_index(l,1)),
      $      mg_nh(l)+2)
+
       return
       end
 c----------------------------------------------------------------------
@@ -601,14 +603,14 @@ c----------------------------------------------------------------------
       include 'SIZE'
       include 'INPUT'
       include 'HSMG'
-      integer nql
-      real s(nql*nql,2,ldim,nelv)
-      real d(nql**ldim,nelv)
-      real sx(nql*nql,nelv), sy(nql*nql,nelv), sz(nql*nql,nelv)
-      real dl(nql**3,nelv)
-      real wt(nql-2,nql-2,4,3,nelv)
-      real my_wt(nql-2,nql-2,4,3,nelv)
-      integer i,j,k,l
+
+      real s(nql*nql,2,ldim,*)
+      real d(nql**ldim,*)
+      real sx(nql*nql,*), sy(nql*nql,*), sz(nql*nql,*)
+      real dl(nql**3,*)
+      real wt(nql-2,nql-2,4,3,*)
+      real my_wt(nql-2,nql-2,4,3,*)
+
       do ie=1,nelv
          do i=1,nql*nql
              sx(i,ie)=s(i,2,1,ie)
@@ -628,5 +630,6 @@ c----------------------------------------------------------------------
            enddo
          enddo
       enddo
+
       return
       end

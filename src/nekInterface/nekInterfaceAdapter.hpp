@@ -118,6 +118,6 @@ void nek_ocopyTo(dfloat &time);
 void nek_copyRestart();
 long long nek_set_glo_num(int npts, int isTMesh);
 void nek_dssum(dfloat *u);
-void get_nek_operators(double * Sx, double * Sy, double * Sz, double * D, double * wt, int level);
+void nek_schwarzOperators(double * Sx, double * Sy, double * Sz, double * D, double * wt, int level);
 
 #endif
