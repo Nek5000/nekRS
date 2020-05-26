@@ -331,6 +331,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(p_smoother == "schwarz"){
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,SCHWARZ");
       options.setArgs("PRESSURE PARALMOND SMOOTHER", "SCHWARZ");
+      string schwarz_type;
+      ini.extract("pressure","schwarz_type",schwarz_type);
+      if(schwarz_type == "restrictive"){
+        options.setArgs("SCHWARZ TYPE", "RESTRICTIVE");
+      } else {
+        options.setArgs("SCHWARZ TYPE", "ADDITIVE");
+      }
     }
 
     // VELOCITY 
