@@ -443,7 +443,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
   ins->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
   ins->pOptions.setArgs("PARALMOND CYCLE",      options.getArgs("PRESSURE PARALMOND CYCLE"));
-  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE PARALMOND SMOOTHER"));
+  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
   ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
   ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
   ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
@@ -464,7 +464,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
   ins->pSolver->var_coeff = 1;
-  // coeff used by ellipticSetup to detect allNeumann 
+  //// coeff used by ellipticSetup to detect allNeumann 
   // and coeff[0] to setup MG levels
   for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 0; 
   ins->pSolver->lambda = ins->ellipticCoeff;
@@ -473,7 +473,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 
   // TODO: Once coupling with nek5000 is removed, there will be no need
   // to force the multigrid levels to be the same as that used by nek5000
-  if(ins->pOptions.getArgs("PRESSURE PARALMOND SMOOTHER") == "SCHWARZ"){
+  if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
+     ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
     ins->pSolver->nLevels = nekData.mg_lmax;
     ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
     for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
@@ -481,7 +482,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     }
   }
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
-  if(ins->pOptions.getArgs("PRESSURE PARALMOND SMOOTHER") == "SCHWARZ"){
+  if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
+     ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
       reconfigurePressureSolver(ins->pSolver);
   }
 

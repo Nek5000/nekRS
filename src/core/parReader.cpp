@@ -327,19 +327,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
 
     string p_smoother; 
-    ini.extract("pressure", "smoother", p_smoother);
-    if(p_smoother == "schwarz"){
-      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,SCHWARZ");
-      options.setArgs("PRESSURE PARALMOND SMOOTHER", "SCHWARZ");
-      string schwarz_type;
-      ini.extract("pressure","schwarz_type",schwarz_type);
-      if(schwarz_type == "restrictive"){
-        options.setArgs("SCHWARZ TYPE", "RESTRICTIVE");
-      } else {
-        options.setArgs("SCHWARZ TYPE", "ADDITIVE");
-      }
+    if(ini.extract("pressure", "smoothertype", p_smoother)) {
+      if(p_smoother == "asm") 
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+      else if (p_smoother == "ras")
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
+      else
+        ABORT("Unknown PRESSURE::smootherType!"); 
     }
-
+ 
     // VELOCITY 
     string vsolver;
     ini.extract("velocity", "solver", vsolver);
