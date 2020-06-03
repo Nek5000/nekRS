@@ -15,8 +15,26 @@ void reconfigurePressureSolver(elliptic_t* pSolver){
       std::vector<dfloat> Sz(N2*Nelements);
       std::vector<dfloat> D(N3*Nelements);
       std::vector<dfloat> wts(N*N*4*3*Nelements);
+
+      std::vector<pfloat> casted_Sx(N2*Nelements);
+      std::vector<pfloat> casted_Sy(N2*Nelements);
+      std::vector<pfloat> casted_Sz(N2*Nelements);
+      std::vector<pfloat> casted_D(N3*Nelements);
+      std::vector<pfloat> casted_wts(N*N*4*3*Nelements);
       nek_schwarzOperators(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data(), pSolver->nLevels-level);
-      currLevel->build(Sx.data(), Sy.data(), Sz.data(), D.data(), wts.data());
+      for(dlong i = 0; i < N2*Nelements; ++i){
+        casted_Sx[i] = static_cast<pfloat>(Sx[i]);
+        casted_Sy[i] = static_cast<pfloat>(Sy[i]);
+        casted_Sz[i] = static_cast<pfloat>(Sz[i]);
+      }
+      for(dlong i = 0; i < N3*Nelements; ++i){
+        casted_D[i] = static_cast<pfloat>(D[i]);
+      }
+      for(dlong i = 0; i < N*N*4*3*Nelements; ++i){
+        casted_wts[i] = static_cast<pfloat>(wts[i]);
+      }
+
+      currLevel->build(casted_Sx.data(), casted_Sy.data(), casted_Sz.data(), casted_D.data(), casted_wts.data());
     }
   }
 }
