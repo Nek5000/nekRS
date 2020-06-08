@@ -129,7 +129,7 @@ int main(int argc, char **argv)
   double time = startTime;
   int tStep = 1;
   MPI_Pcontrol(1);
-  while ((finalTime-time)/finalTime > 0.1*nekrs::dt()) {
+  while ((finalTime-time)/finalTime > 1e-6*nekrs::dt()) {
 
     nekrs::runStep(time, nekrs::dt(), tStep);
     time += nekrs::dt();

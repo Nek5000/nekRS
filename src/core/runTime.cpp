@@ -73,7 +73,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
   if(mesh->rank==0) {
-    printf("step= %d  t= %.5e  dt=%.1e  C= %.2f",
+    printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time+dt, dt, cfl); 
 
     if(flow) {
