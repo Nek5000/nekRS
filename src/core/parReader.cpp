@@ -81,6 +81,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+  options.setArgs("PRESSURE ASYNC DRIVER", "ENABLED");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
@@ -335,6 +336,39 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       else
         ABORT("Unknown PRESSURE::smootherType!"); 
     }
+    string p_async;
+    ini.extract("pressure", "concurrentcoarsesolve", p_async);
+    if(p_async == "false"){
+      options.setArgs("PRESSURE ASYNC DRIVER", "DISABLED");
+    } else {
+      if(rank == 0){
+        int provided;
+        MPI_Query_thread(&provided);
+        bool issueWarning = (provided != MPI_THREAD_MULTIPLE);
+        if(issueWarning){
+          std::cout << "Provided level is : " << provided << "\n";
+          std::cout << "MPI modes are:\n";
+          std::cout << "MPI_THREAD_SINGLE (" << MPI_THREAD_SINGLE << ")\n";
+          std::cout << "MPI_THREAD_FUNNELED (" << MPI_THREAD_FUNNELED << ")\n";
+          std::cout << "MPI_THREAD_SERIALIZED (" << MPI_THREAD_SERIALIZED << ")\n";
+          std::cout << "MPI_THREAD_MULTIPLE (" << MPI_THREAD_MULTIPLE << ")\n";
+          const char * mess =
+          "MPI_THREAD_SINGLE\n"
+          " - Only one thread will execute.\n"
+          "MPI_THREAD_FUNNELED\n"
+          " - The process may be multi-threaded, but only the main thread will make MPI calls (all MPI calls are funneled to the main thread).\n"
+          "MPI_THREAD_SERIALIZED\n"
+          " - The process may be multi-threaded, and multiple threads may make MPI calls, but only one at a time: MPI calls are not made concurrently from two distinct threads (all MPI calls are serialized).\n"
+          "MPI_THREAD_MULTIPLE\n"
+          " - Multiple threads may call MPI, with no restrictions.\n";
+          std::cout << mess;
+          std::cout << "This application does not require MPI_THREAD_MULTIPLE in order to run,"
+          " but there may be a substantial performance degradation.\n"
+          "Please consider using a fully thread-safe MPI implementation.\n";
+        }
+      }
+    }
+
  
     // VELOCITY 
     string vsolver;

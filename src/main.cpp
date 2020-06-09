@@ -98,28 +98,6 @@ int main(int argc, char **argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-
-  if(provided != MPI_THREAD_MULTIPLE && rank == 0) {
-    std::cout << "Provided level is : " << provided << "\n";
-    std::cout << "MPI modes are:\n";
-    std::cout << "MPI_THREAD_SINGLE (" << MPI_THREAD_SINGLE << ")\n";
-    std::cout << "MPI_THREAD_FUNNELED (" << MPI_THREAD_FUNNELED << ")\n";
-    std::cout << "MPI_THREAD_SERIALIZED (" << MPI_THREAD_SERIALIZED << ")\n";
-    std::cout << "MPI_THREAD_MULTIPLE (" << MPI_THREAD_MULTIPLE << ")\n";
-    const char * mess =
-    "MPI_THREAD_SINGLE\n"
-    " - Only one thread will execute.\n"
-    "MPI_THREAD_FUNNELED\n"
-    " - The process may be multi-threaded, but only the main thread will make MPI calls (all MPI calls are funneled to the main thread).\n"
-    "MPI_THREAD_SERIALIZED\n"
-    " - The process may be multi-threaded, and multiple threads may make MPI calls, but only one at a time: MPI calls are not made concurrently from two distinct threads (all MPI calls are serialized).\n"
-    "MPI_THREAD_MULTIPLE\n"
-    " - Multiple threads may call MPI, with no restrictions.\n";
-    std::cout << mess;
-    std::cout << "This application does not require MPI_THREAD_MULTIPLE in order to run,"
-    " but there may be a substantial performance degradation.\n"
-    "Please consider using a fully thread-safe MPI implementation.\n";
-  }
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) { 
