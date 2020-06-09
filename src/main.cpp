@@ -88,9 +88,7 @@ int main(int argc, char **argv)
 {
   int retval;
   int provided;
-  // OMPI reports this incorrectly.
-  //retval =  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE,&provided);
-  retval =  MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE,&provided);
+  retval =  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE,&provided);
   if (retval != MPI_SUCCESS) {
     std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
     exit(1);
