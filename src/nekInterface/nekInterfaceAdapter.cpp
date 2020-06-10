@@ -460,13 +460,12 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
 
   printf("done\n\n"); 
   fflush(stdout);
-  sync();
   return 0;
 
 err:
-  fflush(stdout);
   printf("\nAn ERROR occured, see %s/build.log for details!\n", cache_dir);
-  exit(EXIT_FAILURE);
+  fflush(stdout);
+  MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 }
 
 int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {

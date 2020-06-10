@@ -18,7 +18,9 @@ void udfBuild(const char *udfFile)
   const char *udf_dir = getenv("NEKRS_UDF_DIR");
 
   printf("building udf ... "); fflush(stdout);
-  sprintf(cmd, "mkdir -p %s/udf", cache_dir);
+  sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && \\
+               rm -rf CMake* Makefile cmake_install.cmake",
+               cache_dir, cache_dir);
   system(cmd);
 
   ptr = realpath(udfFile, abs_path);
@@ -27,25 +29,21 @@ void udfBuild(const char *udfFile)
     exit(EXIT_FAILURE);
   }
  
-  sprintf(cmd,"cp %s/CMakeLists.txt %s/udf", udf_dir, cache_dir);
-  system(cmd);
-  sprintf(cmd,"cd %s/udf && CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-      cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1", cache_dir, udf_dir, abs_path);
-  retval = system(cmd);
-  if(retval) goto err;
-
-  sprintf(cmd,"cd %s/udf && make >>build.log 2>&1", cache_dir);
+  sprintf(cmd,"cd %s/udf && cp %s/CMakeLists.txt . && CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
+              cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
+              make >>build.log 2>&1",
+              cache_dir, udf_dir, udf_dir, abs_path);
   retval = system(cmd);
   if(retval) goto err;
 
   printf("done\n");
   fflush(stdout);
-  sync();
   return;
 
 err:
   printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
-  exit(EXIT_FAILURE);
+  fflush(stdout);
+  MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 }
 
 void *udfLoadFunction(const char *fname, int errchk)
