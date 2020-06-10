@@ -40,8 +40,6 @@ static void (*nek_setics_ptr)(void);
 static int  (*nek_bcmap_ptr)(int *, int*);
 static int  (*nek_nbid_ptr)(int *);
 static long long (*nek_set_vert_ptr)(int *, int *);
-static void (*nek_dssum_ptr)(double *);
-static void (*nek_schwarz_operators_ptr)(double *, double *,double *, double *,double*,int *);
 
 void noop_func(void) {}
 
@@ -262,10 +260,6 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_nbid_ptr = (int (*)(int *)) dlsym(handle,fname("nekf_nbid"));
   check_error(dlerror());
   nek_set_vert_ptr = (long long (*)(int *, int *)) dlsym(handle,fname("nekf_set_vert"));
-  check_error(dlerror());
-  nek_dssum_ptr = (void (*)(double *)) dlsym(handle,fname("nekf_dssum"));
-  check_error(dlerror());
-  nek_schwarz_operators_ptr = (void (*)(double *, double *,double *,double *,double*,int *)) dlsym(handle,fname("nekf_schwarz_operators"));
   check_error(dlerror());
 
 #define postfix(x) x##_ptr
@@ -527,6 +521,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   nekData.xm1 = (double *) nek_ptr("xm1");
   nekData.ym1 = (double *) nek_ptr("ym1"); 
   nekData.zm1 = (double *) nek_ptr("zm1");
+  nekData.wxm1 = (double *) nek_ptr("wxm1");
   nekData.xc = (double *) nek_ptr("xc");
   nekData.yc = (double *) nek_ptr("yc"); 
   nekData.zc = (double *) nek_ptr("zc");
@@ -693,14 +688,4 @@ int nek_bcmap(int bid, int ifld) {
 
 long long nek_set_glo_num(int nx, int isTMesh) {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
-}
-
-void nek_dssum(dfloat *u) {
-   
-  (*nek_dssum_ptr)(u);
-}
-
-void nek_schwarzOperators(double * Sx, double * Sy, double * Sz, double * D, double * wt, int level)
-{
-  (*nek_schwarz_operators_ptr)(Sx,Sy,Sz,D,wt,&level);
 }

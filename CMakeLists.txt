@@ -329,7 +329,6 @@ set(SRC
     src/core/configReader.cpp
     src/core/tinyexpr.c
     src/core/timer.cpp
-    src/core/schwarzSmoother.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp

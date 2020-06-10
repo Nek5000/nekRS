@@ -4,12 +4,63 @@
 #include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
-#include "schwarzSmoother.hpp"
+#include <vector>
 
 static dfloat *scratch;
 static occa::memory o_scratch;
 
 cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &kernelInfoH);
+std::vector<int> parse_cbc(const dlong nElements)
+{
+  std::vector<int> parsed_cbc;
+  for(dlong entry = 0 ; entry < 6*3*nElements; entry += 3)
+  {
+    char cbc_str[3] = {
+      nekData.cbc[entry],
+      nekData.cbc[entry+1],
+      nekData.cbc[entry+2]
+    };
+    std::string cbc_name = std::string(cbc_str, 3);
+    int ibc = -1;
+    cbc_name.erase(std::remove_if(cbc_name.begin(), cbc_name.end(), ::isspace), cbc_name.end());
+    if (cbc_name ==  std::string("")) ibc = 0;
+    if (cbc_name ==  std::string("E")) ibc = 0;
+    if (cbc_name ==  std::string("msi")) ibc = 0;
+    if (cbc_name ==  std::string("MSI")) ibc = 0;
+    if (cbc_name ==  std::string("P")) ibc = 0;
+    if (cbc_name ==  std::string("p")) ibc = 0;
+    if (cbc_name ==  std::string("O")) ibc = 1;
+    if (cbc_name ==  std::string("ON")) ibc = 1;
+    if (cbc_name ==  std::string("o")) ibc = 1;
+    if (cbc_name ==  std::string("on")) ibc = 1;
+    if (cbc_name ==  std::string("MS")) ibc = 1;
+    if (cbc_name ==  std::string("ms")) ibc = 1;
+    if (cbc_name ==  std::string("MM")) ibc = 1;
+    if (cbc_name ==  std::string("mm")) ibc = 1;
+    if (cbc_name ==  std::string("mv")) ibc = 2;
+    if (cbc_name ==  std::string("mvn")) ibc = 2;
+    if (cbc_name ==  std::string("v")) ibc = 2;
+    if (cbc_name ==  std::string("V")) ibc = 2;
+    if (cbc_name ==  std::string("W")) ibc = 2;
+    if (cbc_name ==  std::string("SYM")) ibc = 2;
+    if (cbc_name ==  std::string("SL")) ibc = 2;
+    if (cbc_name ==  std::string("sl")) ibc = 2;
+    if (cbc_name ==  std::string("SHL")) ibc = 2;
+    if (cbc_name ==  std::string("shl")) ibc = 2;
+    if (cbc_name ==  std::string("A")) ibc = 2;
+    if (cbc_name ==  std::string("S")) ibc = 2;
+    if (cbc_name ==  std::string("s")) ibc = 2;
+    if (cbc_name ==  std::string("J")) ibc = 0;
+    if (cbc_name ==  std::string("SP")) ibc = 0;
+    if(ibc == -1){
+      std::cout << "Error encountered -- failing!\n";
+      std::cout << cbc_name << " was not found!\n";
+      exit(-1);
+    }
+    parsed_cbc.push_back(ibc);
+  }
+  return parsed_cbc;
+}
               
  
 ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
@@ -48,6 +99,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     if (ins->cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
   }
   mesh_t *mesh = ins->mesh;
+  std::vector<int> cbc = parse_cbc(mesh->Nelements);
 
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
@@ -330,6 +382,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   // coeff used by ellipticSetup to detect allNeumann 
   for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 1; 
 
+
   if(ins->uvwSolver){
     ins->uvwSolver->blockSolver = 1;
     ins->uvwSolver->Nfields = ins->NVfields; 
@@ -348,7 +401,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->uvwSolver->o_lambda = ins->o_ellipticCoeff; 
     ins->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
   
-    ellipticSolveSetup(ins->uvwSolver, kernelInfoV); 
+    ellipticSolveSetup(ins->uvwSolver, kernelInfoV, cbc); 
   } else {
     ins->uSolver = new elliptic_t();
     ins->uSolver->blockSolver = 0;
@@ -368,7 +421,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->uSolver->o_lambda = ins->o_ellipticCoeff; 
     ins->uSolver->loffset = 0;
  
-    ellipticSolveSetup(ins->uSolver, kernelInfoV); 
+    ellipticSolveSetup(ins->uSolver, kernelInfoV, cbc); 
   
     ins->vSolver = new elliptic_t();
     ins->vSolver->blockSolver = 0;
@@ -388,7 +441,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     ins->vSolver->o_lambda = ins->o_ellipticCoeff; 
     ins->vSolver->loffset = 0;
     
-    ellipticSolveSetup(ins->vSolver, kernelInfoV);
+    ellipticSolveSetup(ins->vSolver, kernelInfoV, cbc);
   
     if (ins->dim==3) {
       ins->wSolver = new elliptic_t();
@@ -409,7 +462,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->wSolver->o_lambda = ins->o_ellipticCoeff; 
       ins->wSolver->loffset = 0;
  
-      ellipticSolveSetup(ins->wSolver, kernelInfoV);
+      ellipticSolveSetup(ins->wSolver, kernelInfoV, cbc);
     }
   }
 
@@ -481,11 +534,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       ins->pSolver->levels[i] = nekData.mg_nx[ins->pSolver->nLevels-i-1];
     }
   }
-  ellipticSolveSetup(ins->pSolver, kernelInfoP);
-  if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
-     ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
-      reconfigurePressureSolver(ins->pSolver);
-  }
+  ellipticSolveSetup(ins->pSolver, kernelInfoP, cbc);
 
   // setup boundary mapping
   dfloat largeNumber = 1<<20;
@@ -748,6 +797,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
 {
   cds_t *cds = new cds_t(); 
   cds->mesh = mesh;
+  std::vector<int> cbc = parse_cbc(mesh->Nelements);
  
   if (mesh->rank==0) 
     cout << "==================SCALAR SETUP===========================\n";
@@ -911,7 +961,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
     cds->solver[is]->lambda = cds->ellipticCoeff; 
     cds->solver[is]->o_lambda = cds->o_ellipticCoeff; 
     cds->solver[is]->loffset = 0; 
-    ellipticSolveSetup(cds->solver[is], kernelInfoH); 
+    ellipticSolveSetup(cds->solver[is], kernelInfoH, cbc); 
 
     // setup boundary mapping
     dfloat largeNumber = 1<<20;

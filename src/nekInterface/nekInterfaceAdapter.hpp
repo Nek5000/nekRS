@@ -22,6 +22,7 @@ typedef struct {
   /* x,y and z co-ordinates */
   double *xm1, *ym1, *zm1;
   double *xc, *yc, *zc;
+  double * wxm1;
 
   double *unx, *uny, *unz;
 
@@ -66,7 +67,6 @@ typedef struct {
   /* multigrid levels */
   int* mg_nx;
   int mg_lmax;
-
 
 } nekdata_private;
 
@@ -117,7 +117,5 @@ void nek_copyTo(dfloat &time);
 void nek_ocopyTo(dfloat &time);
 void nek_copyRestart();
 long long nek_set_glo_num(int npts, int isTMesh);
-void nek_dssum(dfloat *u);
-void nek_schwarzOperators(double * Sx, double * Sy, double * Sz, double * D, double * wt, int level);
 
 #endif
