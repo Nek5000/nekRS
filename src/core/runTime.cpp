@@ -92,7 +92,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 
   if(cfl > 30 || std::isnan(cfl)) {
     if(mesh->rank==0) cout << "Unreasonable CFL! Dying ...\n" << endl; 
-    EXIT(1);
+    ABORT(1);
   }
 
   if(tstep%10==0) fflush(stdout);

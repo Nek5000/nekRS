@@ -14,6 +14,7 @@
 #define NEKRS_SUBVERSION "0"
 
 #define EXIT(a)  { MPI_Finalize(); exit(a); } 
+#define ABORT(a) { fflush(stdout); MPI_Abort(MPI_COMM_WORLD,a); } 
 
 #include "libParanumal.hpp"
 #include "ins.h"

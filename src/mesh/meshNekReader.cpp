@@ -11,12 +11,12 @@ void meshNekReaderHex3D(int N, mesh_t *mesh, int isMeshT){
   mesh->dim = nekData.ndim;
   if(mesh->dim != 3) {
     printf("ERROR: No support for %d-D meshes!\n", mesh->dim);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
 
   if(nekData.nx1 != N+1) {
     printf("ERROR: lx1=%d does not match N=%d\n!\n", nekData.nx1, N);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
  
   mesh->Nverts = 8;

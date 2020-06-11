@@ -192,7 +192,7 @@ DEFINE_USER_FUNC(userqtl)
 void check_error(char *error) {
   if(error != NULL) {
     fprintf(stderr, "Error: %s\n", error);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
 }
 
@@ -206,7 +206,7 @@ void set_function_handles(const char *session_in,int verbose) {
   void *handle = dlopen(lib_session,RTLD_NOW|RTLD_GLOBAL);
   if(!handle) {
     fprintf(stderr, "%s\n", dlerror());
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
 
   // check if we need to append an underscore
@@ -313,11 +313,11 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
     sizeFile = (char *) calloc(length+500,sizeof(char));
     if(!sizeFile) {
       fprintf(stderr, "Error allocating space for SIZE file.\n");
-      exit(EXIT_FAILURE);
+      ABORT(EXIT_FAILURE);
     }
   } else {
     fprintf(stderr, "Error opening %s/core/SIZE.template!\n", nekrs_nek5000_dir);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
 
   int count = 0;
@@ -415,7 +415,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
   fp = fopen(buf, "r");
   if (!fp) {
     printf("\nERROR: Cannot find %s!\n", buf);
-    exit(EXIT_FAILURE);;
+    ABORT(EXIT_FAILURE);;
   }
   fgets(buf, 80, fp);
   fclose(fp);
@@ -464,8 +464,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
 
 err:
   printf("\nAn ERROR occured, see %s/build.log for details!\n", cache_dir);
-  fflush(stdout);
-  MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  ABORT(EXIT_FAILURE);
 }
 
 int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {

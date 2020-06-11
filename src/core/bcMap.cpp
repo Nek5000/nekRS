@@ -78,7 +78,7 @@ static void v_setup(string field, std::vector<std::string> slist)
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
       cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
-      EXIT(1);
+      ABORT(1);
     }
 
     try
@@ -88,7 +88,7 @@ static void v_setup(string field, std::vector<std::string> slist)
     catch (const std::out_of_range& oor) 
     {
       cout << "Out of Range error: " << oor.what() << "!\n";
-      EXIT(1);
+      ABORT(1);
     }
 
   }
@@ -113,7 +113,7 @@ static void s_setup(string field, std::vector<std::string> slist)
 
     if (sBcTextToID.find(key) == sBcTextToID.end()) {
       cout << "Invalid bcType " << "\'" << key << "\'"<< "!\n";
-      EXIT(1);
+      ABORT(1);
     }
 
     try
@@ -123,7 +123,7 @@ static void s_setup(string field, std::vector<std::string> slist)
     catch (const std::out_of_range& oor) 
     {
       cout << "Out of Range error: " << oor.what() << "!\n";
-      EXIT(1);
+      ABORT(1);
     }
   }
 }
@@ -205,7 +205,7 @@ namespace bcMap {
     }
   
     cout << __func__ << "(): Unexpected error occured!" << endl;
-    EXIT(1);
+    ABORT(1);
     return 0;
   }
   
@@ -225,7 +225,7 @@ namespace bcMap {
     }
 
     cout << __func__ << "(): Unexpected error occured!" << endl;
-    EXIT(1);
+    ABORT(1);
     return 0;
   }
   
@@ -247,7 +247,7 @@ namespace bcMap {
       MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
       if (retval == 0) {
         if (mesh->rank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);
-        EXIT(1);
+        ABORT(1);
       } 
     }
   
@@ -257,7 +257,7 @@ namespace bcMap {
     MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
     if (retval > 0) {
       if (mesh->rank == 0) printf("Mesh has unmapped boundary IDs!\n");
-      EXIT(1);
+      ABORT(1);
     }
   }
   

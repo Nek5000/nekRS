@@ -159,7 +159,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
     }else{
       if(mesh->rank==0) cout << "Unsupported subcycling scheme!\n"; 
-      exit(1);
+      ABORT(1);
     }
     ins->o_Srka = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srka);
     ins->o_Srkb = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srkb);
@@ -186,8 +186,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_wrk15 = o_scratch.slice(15*ins->fieldOffset*sizeof(dfloat));
 
   // dummy decleration for user work space 
-  ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
-  ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
+  //ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
+  //ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
 
   ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*ins->fieldOffset*sizeof(dfloat), ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->Ue);
@@ -722,7 +722,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       err++;
     }
 
-    if(err) exit(1);
+    if(err) ABORT(1);
     free(tmp);
   }
 
@@ -756,7 +756,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
   cds->temporalOrder = ins->temporalOrder; 
   cds->g0            = ins->g0; 
 
-  cds->o_usrwrk = ins->o_usrwrk;
+  cds->o_usrwrk = &(ins->o_usrwrk);
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);

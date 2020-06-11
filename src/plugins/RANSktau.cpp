@@ -81,7 +81,7 @@ void RANSktau::buildKernel(ins_t *ins)
 
   if(ins->Nscalar < 2) {
     if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
-    exit(1);
+    ABORT(1);
   }
   ins->options.setArgs("VARIABLE VISCOSITY", "TRUE");
 } 

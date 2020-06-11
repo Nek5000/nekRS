@@ -18,15 +18,14 @@ void udfBuild(const char *udfFile)
   const char *udf_dir = getenv("NEKRS_UDF_DIR");
 
   printf("building udf ... "); fflush(stdout);
-  sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && \\
-               rm -rf CMake* Makefile cmake_install.cmake",
-               cache_dir, cache_dir);
+  sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && rm -rf CMake* Makefile cmake_install.cmake", 
+          cache_dir, cache_dir);
   system(cmd);
 
   ptr = realpath(udfFile, abs_path);
   if(!ptr) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
  
   sprintf(cmd,"cd %s/udf && cp %s/CMakeLists.txt . && CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
@@ -64,7 +63,7 @@ void *udfLoadFunction(const char *fname, int errchk)
 
 err:
   fprintf(stderr, "Error in %s(): %s\n", __func__, dlerror());
-  exit(EXIT_FAILURE);
+  ABORT(EXIT_FAILURE);
 }
 
 void udfLoad(void)

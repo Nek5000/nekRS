@@ -12,7 +12,7 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 
-#define ABORT(a)  { if(rank==0) cout << a << endl; MPI_Finalize(); exit(1); }
+#define abort(a,b)  { if(rank==0) cout << a << endl; ABORT(b); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
@@ -100,7 +100,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   const char *ptr = realpath(setupFile.c_str(), NULL);
   if (!ptr) {
      if (rank == 0) cout << "\nERROR: Cannot find " << setupFile << "!\n";
-     EXIT(1);
+     ABORT(1);
   }
 
   libParanumal::setupAide options;
@@ -164,19 +164,19 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("general", "polynomialorder", N))
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
   else
-    ABORT("Cannot find mandatory parameter GENERAL::polynomialOrder!"); 
+    abort("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE); 
   
   double dt;
   if(ini.extract("general", "dt", dt))
     options.setArgs("DT", to_string_f(dt));
   else
-    ABORT("Cannot find mandatory parameter GENERAL::dt!"); 
+    abort("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE); 
  
   string timeStepper;
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    ABORT("No support for bdf3!"); 
+    abort("No support for bdf3!", EXIT_FAILURE); 
   } 
   if(timeStepper == "bdf2" || timeStepper == "tombo2") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
@@ -187,7 +187,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   
   bool variableDt = false;
   ini.extract("general", "variabledt", variableDt);
-  if(variableDt) ABORT("GENERAL::variableDt = Yes not supported!"); 
+  if(variableDt) abort("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE); 
   
   double endTime;
   string stopAt;
@@ -198,11 +198,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = numSteps*dt;
     } else {
-      ABORT("Cannot find mandatory parameter GENERAL::numSteps!");
+      abort("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     } 
   } else {
     if(!ini.extract("general", "endtime", endTime))
-      ABORT("Cannot find mandatory parameter GENERAL::endTime!"); 
+      abort("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE); 
   }
   options.setArgs("FINAL TIME", to_string_f(endTime));
   
@@ -246,10 +246,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("general", "filterweight", sbuf)) {
       int err = 0;
       double weight = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for filterWeight!");
+      if(err) abort("Invalid expression for filterWeight!", EXIT_FAILURE);
       options.setArgs("HPFRT STRENGTH", to_string_f(weight));
     }else{
-      ABORT("Cannot find mandatory parameter GENERAL:filterWeight!");
+      abort("Cannot find mandatory parameter GENERAL:filterWeight!", EXIT_FAILURE);
     }
     double filterCutoffRatio;
     int NFilterModes;
@@ -259,7 +259,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(NFilterModes < 1) NFilterModes = 1; 
     options.setArgs("HPFRT MODES", to_string_f(NFilterModes));
   } else if(filtering == "explicit") {
-    ABORT("GENERAL::filtering = explicit not supported!");
+    abort("GENERAL::filtering = explicit not supported!", EXIT_FAILURE);
   }
 
   // PROBLEMTYPE
@@ -270,7 +270,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   bool stressFormulation; 
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
-    if(stressFormulation) ABORT("PROBLEMTYPE::stressFormulation = Yes not supported!");
+    if(stressFormulation) abort("PROBLEMTYPE::stressFormulation = Yes not supported!", EXIT_FAILURE);
 
   string equation; 
   if(ini.extract("problemtype", "equation", equation)) {
@@ -283,11 +283,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("pressure", "residualtol", p_residualTol))
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
-      ABORT("Cannot find mandatory parameter PRESSURE::residualTol!"); 
+      abort("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE); 
     
     bool p_rproj; 
     if(ini.extract("pressure", "projection", p_rproj))
-      if(p_rproj) ABORT("PRESSURE::projection = Yes not supported!");
+      if(p_rproj) abort("PRESSURE::projection = Yes not supported!", EXIT_FAILURE);
   
     bool p_gproj; 
     if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
@@ -339,7 +339,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("velocity", "residualtol", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
-      ABORT("Cannot find mandatory parameter VELOCITY::residualTol!"); 
+      abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
  
     string v_bcMap;
     if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
@@ -347,7 +347,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       sList = serializeString(v_bcMap);
       bcMap::setup(sList, "velocity");
     } else {
-      ABORT("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!"); 
+      abort("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!", EXIT_FAILURE); 
     }
     
     double rho;
@@ -355,18 +355,18 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("DENSITY", to_string_f(rho));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter VELOCITY::density!"); 
+        abort("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE); 
     }
     
     if(ini.extract("velocity", "viscosity", sbuf)) {
       int err = 0;
       double viscosity = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for viscosity!");
+      if(err) abort("Invalid expression for viscosity!", EXIT_FAILURE);
       if(viscosity < 0) viscosity = fabs(1/viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter VELOCITY::viscosity!"); 
+        abort("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
     }
   } else {
     options.setArgs("VELOCITY SOLVER", "NONE");
@@ -394,22 +394,22 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(ini.extract("temperature", "conductivity", sbuf)) {
         int err = 0;
         double diffusivity = te_interp(sbuf.c_str(), &err);
-        if(err) ABORT("Invalid expression for conductivity!");
+        if(err) abort("Invalid expression for conductivity!", EXIT_FAILURE);
         if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
         options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
       } else {
         if(!variableProperties)
-          ABORT("Cannot find mandatory parameter TEMPERATURE::conductivity!"); 
+          abort("Cannot find mandatory parameter TEMPERATURE::conductivity!", EXIT_FAILURE); 
       }
  
       if(ini.extract("temperature", "rhocp", sbuf)) {
         int err = 0;
         double rhoCp = te_interp(sbuf.c_str(), &err);
-        if(err) ABORT("Invalid expression for rhoCp!");
+        if(err) abort("Invalid expression for rhoCp!", EXIT_FAILURE);
         options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
       } else {
         if(!variableProperties)
-          ABORT("Cannot find mandatory parameter TEMPERATURE::rhoCp!"); 
+          abort("Cannot find mandatory parameter TEMPERATURE::rhoCp!", EXIT_FAILURE); 
       }
  
       string s_bcMap;
@@ -418,13 +418,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         sList = serializeString(s_bcMap);
         bcMap::setup(sList, "scalar00");
       } else {
-        ABORT("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!");
+        abort("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!", EXIT_FAILURE);
       } 
     }
   }
  
   if(equation == "lowmachns" && ini.sections.count("temperature") == 0) 
-    ABORT("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!");
+    abort("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!", EXIT_FAILURE);
     
   //
   for (auto & sec : ini.sections) {
@@ -459,22 +459,22 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
       double diffusivity = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for diffusivity!");
+      if(err) abort("Invalid expression for diffusivity!", EXIT_FAILURE);
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!"); 
+        abort("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!", EXIT_FAILURE); 
     }
 
     if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       double rho = te_interp(sbuf.c_str(), &err);
-      if(err) ABORT("Invalid expression for rho!");
+      if(err) abort("Invalid expression for rho!", EXIT_FAILURE);
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
     } else {
       if(!variableProperties)
-        ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!"); 
+        abort("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!", EXIT_FAILURE); 
     }
 
     string s_bcMap;
@@ -483,7 +483,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
     } else {
-      ABORT("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!");
+      abort("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!", EXIT_FAILURE);
     } 
   }
   if(nscal) {

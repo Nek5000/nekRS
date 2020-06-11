@@ -69,7 +69,7 @@ typedef struct {
   occa::memory o_mapB[NSCALAR_MAX];
   occa::memory o_EToB[NSCALAR_MAX]; 
 
-  occa::memory o_usrwrk;
+  occa::memory *o_usrwrk;
 
   //halo data
   dfloat *sendBuffer;

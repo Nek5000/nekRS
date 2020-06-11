@@ -11,7 +11,6 @@
 #include "inipp.hpp"
 #include "nrs.hpp"
 
-#define ABORT(a)  { if(rank==0) cout << a << endl; MPI_Finalize(); exit(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
@@ -27,7 +26,7 @@ void configRead(MPI_Comm comm)
   const char *ptr = realpath(configFile.c_str(), NULL);
   if (!ptr) {
      if (rank == 0) cout << "\nERROR: Cannot find " << configFile << "!\n";
-     EXIT(1);
+     ABORT(1);
   }
 
   char *rbuf;
