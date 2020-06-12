@@ -138,11 +138,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
    options.setArgs("THREAD MODEL", threadModel);
   }
 
+/*
   if (char *env = getenv("NEKRS_BACKEND")) {
    string threadModel(env);
    UPPER(threadModel); 
    options.setArgs("THREAD MODEL", threadModel);
   }
+*/
  
   string deviceNumber;
   if(ini.extract("occa", "devicenumber", deviceNumber))
