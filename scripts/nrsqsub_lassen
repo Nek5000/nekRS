@@ -1,0 +1,118 @@
+#/bin/bash
+
+: ${PROJ_ID:=""}
+
+: ${NEKRS_HOME:="$HOME/.local/nekrs"}
+: ${OCCA_CACHE_DIR="$PWD/.cache/occa"}
+XL_HOME="/usr/tce/packages/xl/xl-2020.03.18/xlC/16.1.1"
+
+: ${CPUONLY:=0}
+export NEKRS_HOME
+export OCCA_CACHE_DIR
+export NEKRS_HYPRE_NUM_THREADS=1
+export OCCA_CXX="$XL_HOME/bin/xlc" 
+export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
+export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
+
+#export OCCA_VERBOSE=1
+
+if [ -z "$PROJ_ID" ]; then
+  echo "ERROR: PROJ_ID is empty"
+  exit 1
+fi
+
+if [ $# -ne 3 ]; then
+  echo "usage: [PROJ_ID] [CPUONLY=1] $0 <casename> <number of compute nodes> <hh:mm>"
+  exit 0
+fi
+
+module load gcc/7.3.1
+
+bin=$NEKRS_HOME/bin/nekrs
+case=$1
+nodes=$2
+gpu_per_node=4
+cores_per_socket=21
+let nn=$nodes*$gpu_per_node
+let ntasks=nn
+time=$3
+
+if [ $CPUONLY -eq 1 ]; then
+  let nn=2*$nodes
+  let ntasks=$nn*$cores_per_socket
+fi 
+
+if [ ! -f $bin ]; then
+  echo "Cannot find" $bin
+  exit 1
+fi
+
+if [ ! -f $case.par ]; then
+  echo "Cannot find" $case.par
+  exit 1
+fi
+
+if [ ! -f $case.co2 ]; then
+  echo "Cannot find" $case.co2
+  exit 1
+fi
+
+if [ ! -f $case.udf ]; then
+  echo "Cannot find" $case.udf
+  exit 1
+fi
+
+if [ ! -f $case.oudf ]; then
+  echo "Cannot find" $case.oudf
+  exit 1
+fi
+
+if [ ! -f $case.re2 ]; then
+  echo "Cannot find" $case.re2
+  exit 1
+fi
+
+mkdir -p $OCCA_CACHE_DIR 2>/dev/null
+
+
+if ! bsubfile=`mktemp $case.pbs.XXXXXX` ; then
+    echo "Failed to create temp file for qsub! Exiting"
+    exit 1
+fi
+chmod 777 $bsubfile
+
+echo "#!/bin/bash" >> $bsubfile
+echo "set -e -a" >> $bsubfile
+echo "#BSUB -nnodes $nodes " >> $bsubfile
+echo "#BSUB -W $time" >> $bsubfile
+echo "#BSUB -J nekRS_$case" >> $bsubfile
+echo "#BSUB -eo $PWD/nekRS_$case.np=$nodes-lassen-mpi-%J.error" >> $bsubfile
+echo "#BSUB -oo $PWD/nekRS_$case.np=$nodes-lassen-mpi-%J.output" >> $bsubfile
+echo "#BSUB -stage storage=1" >> $bsubfile
+echo "#BSUB -q pbatch" >> $bsubfile
+echo "#BSUB -G $PROJ_ID" >> $bsubfile
+
+while true;
+do
+  read -p "Do you want precompile (recommended)? [N]" yn
+  case $yn in
+    [Yy]* )
+      echo "jsrun -X 1 -n1 -r1 -a1 -c1 -g0 -b packed:1 -d packed $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks" >> $bsubfile
+      break ;;
+    * )
+      break ;;
+  esac
+done
+
+if [ $CPUONLY -eq 1 ]; then
+  echo "jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* \$BBPATH" >> $bsubfile
+  echo "export OCCA_CACHE_DIR=\$BBPATH" >> $bsubfile
+  echo "jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup $case --backend CPU" >> $bsubfile
+else
+  echo "jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* \$BBPATH" >> $bsubfile
+  echo "export OCCA_CACHE_DIR=\$BBPATH" >> $bsubfile
+  echo "jsrun -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup $case --backend CUDA --device-id 0" >> $bsubfile
+fi
+
+bsub < $bsubfile 
+rm $bsubfile
