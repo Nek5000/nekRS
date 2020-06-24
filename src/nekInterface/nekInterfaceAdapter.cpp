@@ -521,7 +521,6 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   nekData.xm1 = (double *) nek_ptr("xm1");
   nekData.ym1 = (double *) nek_ptr("ym1"); 
   nekData.zm1 = (double *) nek_ptr("zm1");
-  nekData.wxm1 = (double *) nek_ptr("wxm1");
   nekData.xc = (double *) nek_ptr("xc");
   nekData.yc = (double *) nek_ptr("yc"); 
   nekData.zc = (double *) nek_ptr("zc");
@@ -538,9 +537,6 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
   
-  nekData.mg_nx = (int *) nek_ptr("mg_nx");
-  nekData.mg_lmax = *((int *) nek_ptr("mg_lmax"));
-
   int isTMesh = 0;
   nekData.NboundaryID  = (*nek_nbid_ptr)(&isTMesh);
   isTMesh = 1;

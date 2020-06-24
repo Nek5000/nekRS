@@ -22,7 +22,6 @@ typedef struct {
   /* x,y and z co-ordinates */
   double *xm1, *ym1, *zm1;
   double *xc, *yc, *zc;
-  double * wxm1;
 
   double *unx, *uny, *unz;
 

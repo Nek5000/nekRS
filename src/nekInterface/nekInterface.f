@@ -104,10 +104,6 @@ c-----------------------------------------------------------------------
          ptr = loc(getps)
       elseif (id .eq. 'vmult') then
          ptr = loc(vmult)
-      elseif (id .eq. 'mg_nx') then
-         ptr = loc(mg_nx)
-      elseif (id .eq. 'mg_lmax') then
-         ptr = loc(mg_lmax)
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -245,10 +241,6 @@ c-----------------------------------------------------------------------
       call findSYMOrient
 
       ifield = 1
-      call swap_lengths
-      call gen_fast_spacing(x,y,z)
-      call hsmg_setup
-      call h1mg_setup
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3

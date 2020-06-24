@@ -5,6 +5,7 @@
 #include "filter.hpp"
 #include "bcMap.hpp"
 #include <vector>
+#include <map>
 
 static dfloat *scratch;
 static occa::memory o_scratch;
@@ -470,14 +471,31 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
 
-  // TODO: Once coupling with nek5000 is removed, there will be no need
-  // to force the multigrid levels to be the same as that used by nek5000
+  std::map<int,std::vector<int>> mg_level_lookup = 
+  {
+    {1,{1}},
+    {2,{2,1}},
+    {3,{3,1}},
+    {4,{4,2,1}},
+    {5,{5,3,1}},
+    {6,{6,3,1}},
+    {7,{7,3,1}},
+    {8,{8,3,1}},
+    {9,{9,3,1}},
+    {10,{10,3,1}},
+    {11,{11,3,1}},
+    {12,{12,3,1}},
+    {13,{13,3,1}},
+    {14,{14,3,1}},
+    {15,{15,3,1}}
+  };
   if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
      ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
-    ins->pSolver->nLevels = nekData.mg_lmax;
+    const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq-1);
+    ins->pSolver->nLevels = levels.size();
     ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
     for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
-      ins->pSolver->levels[i] = nekData.mg_nx[ins->pSolver->nLevels-i-1];
+      ins->pSolver->levels[i] = levels.at(i);
     }
   }
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
