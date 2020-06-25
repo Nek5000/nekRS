@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.11)
 project(NekRS)
 enable_language(C CXX Fortran)
 include(FortranCInterface)
@@ -125,9 +125,9 @@ endif()
 if (EXISTS "${CMAKE_INSTALL_PREFIX}/occa")
   message(WARNING "Found OCCA already installed at ${CMAKE_INSTALL_PREFIX}/.")
 endif()
-if (EXISTS "${CMAKE_INSTALL_PREFIX}/libparanumal")
-  message(WARNING "Found libparanumal already installed at ${CMAKE_INSTALL_PREFIX}/.")
-endif()
+#if (EXISTS "${CMAKE_INSTALL_PREFIX}/libparanumal")
+#  message(WARNING "Found libparanumal already installed at ${CMAKE_INSTALL_PREFIX}/.")
+#endif()
 
 ###############################################################################
 # Set compiler flags                                                          #
@@ -193,58 +193,63 @@ endmacro()
 # Build OCCA                                                                  #
 ###############################################################################
 
-set_shared_lib(occa "${OCCADIR}/lib")
-file(REMOVE ${occa_lib})
-add_custom_target(occa_build DEPENDS ${occa_lib})
-add_custom_command(OUTPUT ${occa_lib}
-  WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
-  COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
-    NEKRS_CFLAGS=${CMAKE_C_FLAGS}
-    NEKRS_CXX=${CMAKE_CXX_COMPILER}
-    NEKRS_CXXFLAGS=${CMAKE_CXX_FLAGS}
-    NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
-    NEKRS_INSTALL_DIR=${CMAKE_INSTALL_PREFIX}
-    OCCA_DIR=${OCCADIR}
-    OCCA_CUDA_ENABLED="${OCCA_CUDA_ENABLED}"
-    OCCA_HIP_ENABLED="${OCCA_HIP_ENABLED}"
-    OCCA_OPENCL_ENABLED="${OCCA_OPENCL_ENABLED}"
-    OCCA_METAL_ENABLED="${OCCA_METAL_ENABLED}"
-    ${SRC_THIRD_PARTY_DIR}/occa.build
-)
-add_library(occa SHARED IMPORTED)
-set_target_properties(occa PROPERTIES IMPORTED_LOCATION ${occa_lib})
-set(THIRD_PARTY_INCLUDES ${OCCADIR}/include ${OCCADIR})
+#set_shared_lib(occa "${OCCADIR}/lib")
+#file(REMOVE ${occa_lib})
+#add_custom_target(occa_build DEPENDS ${occa_lib})
+#add_custom_command(OUTPUT ${occa_lib}
+#  WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
+#  COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
+#    NEKRS_CFLAGS=${CMAKE_C_FLAGS}
+#    NEKRS_CXX=${CMAKE_CXX_COMPILER}
+#    NEKRS_CXXFLAGS=${CMAKE_CXX_FLAGS}
+#    NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
+#    NEKRS_INSTALL_DIR=${CMAKE_INSTALL_PREFIX}
+#    OCCA_DIR=${OCCADIR}
+#    OCCA_CUDA_ENABLED="${OCCA_CUDA_ENABLED}"
+#    OCCA_HIP_ENABLED="${OCCA_HIP_ENABLED}"
+#    OCCA_OPENCL_ENABLED="${OCCA_OPENCL_ENABLED}"
+#    OCCA_METAL_ENABLED="${OCCA_METAL_ENABLED}"
+#    ${SRC_THIRD_PARTY_DIR}/occa.build
+#)
+#add_library(occa SHARED IMPORTED)
+#set_target_properties(occa PROPERTIES IMPORTED_LOCATION ${occa_lib})
+#set(THIRD_PARTY_INCLUDES ${OCCADIR}/include ${OCCADIR})
+
+include(config/occa.cmake)
 
 ###############################################################################
 # Build Nek5000                                                               #
 ###############################################################################
-set(NEK_BUILD_LIBRARIES)
-set(NEK_INCLUDES)
-macro(FIND_NEK_DEPS target_name builddir include_)
-  set_static_lib(${target_name} ${builddir})
-  set(NEK_BUILD_LIBRARIES ${NEK_BUILD_LIBRARIES} ${${target_name}_lib})
-  set(NEK_INCLUDES ${NEK_INCLUDES} ${include_})
-endmacro()
 
-FIND_NEK_DEPS(gs ${NEKDIR}/3rd_party/gslib/gslib/lib
-  ${NEKDIR}/3rd_party/gslib/gslib/include)
-FIND_NEK_DEPS(parRSB ${NEKDIR}/3rd_party/parRSB/parRSB/lib
-  ${NEKDIR}/3rd_party/parRSB/parRSB/include)
-FIND_NEK_DEPS(blasLapack ${NEKDIR}/3rd_party/blasLapack
-  ${NEKDIR}/3rd_party/blasLapack)
+#set(NEK_BUILD_LIBRARIES)
+#set(NEK_INCLUDES)
+#macro(FIND_NEK_DEPS target_name builddir include_)
+#  set_static_lib(${target_name} ${builddir})
+#  set(NEK_BUILD_LIBRARIES ${NEK_BUILD_LIBRARIES} ${${target_name}_lib})
+#  set(NEK_INCLUDES ${NEK_INCLUDES} ${include_})
+#endmacro()
+#
+#FIND_NEK_DEPS(gs ${NEKDIR}/3rd_party/gslib/gslib/lib
+#  ${NEKDIR}/3rd_party/gslib/gslib/include)
+#FIND_NEK_DEPS(parRSB ${NEKDIR}/3rd_party/parRSB/parRSB/lib
+#  ${NEKDIR}/3rd_party/parRSB/parRSB/include)
+#FIND_NEK_DEPS(blasLapack ${NEKDIR}/3rd_party/blasLapack
+#  ${NEKDIR}/3rd_party/blasLapack)
+#
+#file(REMOVE ${NEK_BUILD_LIBRARIES})
+#add_custom_target(nek_build DEPENDS ${NEK_BUILD_LIBRARIES})
+#add_custom_command(OUTPUT ${NEK_BUILD_LIBRARIES}
+#  WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
+#  COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
+#    NEKRS_CFLAGS=${CMAKE_C_FLAGS}
+#    NEKRS_FC=${CMAKE_Fortran_COMPILER}
+#    NEKRS_FFLAGS=${CMAKE_Fortran_FLAGS}
+#    NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
+#    NEKRS_NEK5000_PPLIST=${NEK5000_PPLIST}
+#    ${SRC_THIRD_PARTY_DIR}/nek5000.build
+#)
 
-file(REMOVE ${NEK_BUILD_LIBRARIES})
-add_custom_target(nek_build DEPENDS ${NEK_BUILD_LIBRARIES})
-add_custom_command(OUTPUT ${NEK_BUILD_LIBRARIES}
-  WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
-  COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
-    NEKRS_CFLAGS=${CMAKE_C_FLAGS}
-    NEKRS_FC=${CMAKE_Fortran_COMPILER}
-    NEKRS_FFLAGS=${CMAKE_Fortran_FLAGS}
-    NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
-    NEKRS_NEK5000_PPLIST=${NEK5000_PPLIST}
-    ${SRC_THIRD_PARTY_DIR}/nek5000.build
-)
+include(config/libnek5000.cmake)
 
 ###############################################################################
 # Set include dirs                                                            #
@@ -268,43 +273,45 @@ set(NEKRS_INCLUDES
 ###############################################################################
 # Build libP                                                                  #
 ###############################################################################
-macro(FIND_DEPS target_name builddir)
-  set_shared_lib(${target_name} ${builddir})
-  add_library(${target_name} SHARED IMPORTED)
-  set_target_properties(${target_name} PROPERTIES IMPORTED_LOCATION
-    ${${target_name}_lib})
-endmacro()
+# macro(FIND_DEPS target_name builddir)
+#   set_shared_lib(${target_name} ${builddir})
+#   add_library(${target_name} SHARED IMPORTED)
+#   set_target_properties(${target_name} PROPERTIES IMPORTED_LOCATION
+#     ${${target_name}_lib})
+# endmacro()
+# 
+# set(LIBP_BUILD_LIBRARIES)
+# macro(FIND_LIBP_DEPS target_name builddir)
+#   FIND_DEPS(${target_name} ${builddir})
+#   set(LIBP_BUILD_LIBRARIES ${LIBP_BUILD_LIBRARIES} ${${target_name}_lib})
+# endmacro()
+# 
+# FIND_LIBP_DEPS(P "${LIBPDIR}")
+# FIND_LIBP_DEPS(elliptic "${ELLIPTICDIR}")
+# FIND_LIBP_DEPS(parAlmond "${PARALMONDDIR}")
+# FIND_LIBP_DEPS(ogs "${OGSDIR}")
+# 
+# file(REMOVE ${LIBP_BUILD_LIBRARIES})
+# add_custom_target(libparanumal_build DEPENDS ${LIBP_BUILD_LIBRARIES})
+# add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
+#   WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
+#   COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
+#     NEKRS_CFLAGS=${CMAKE_C_FLAGS}
+#     NEKRS_CXX=${CMAKE_CXX_COMPILER}
+#     NEKRS_CXXFLAGS=${CMAKE_CXX_FLAGS}
+#     NEKRS_FC=${CMAKE_Fortran_COMPILER}
+#     NEKRS_FFLAGS=${CMAKE_Fortran_FLAGS}
+#     NEKRS_LIBP_DIR=${CMAKE_INSTALL_PREFIX}
+#     NEKRS_LIBP_DEFINES=${LIBP_DEFINES}
+#     NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
+#     NEKRS_BIN_THIRD_PARTY_DIR=${BIN_THIRD_PARTY_DIR}
+#     NEKRS_OCCA_DIR=${BIN_THIRD_PARTY_DIR}/occa
+#     NEKRS_INSTALL_DIR=${CMAKE_INSTALL_PREFIX}
+#     ${SRC_THIRD_PARTY_DIR}/libparanumal/libparanumal.build
+#   DEPENDS occa_build
+# )
 
-set(LIBP_BUILD_LIBRARIES)
-macro(FIND_LIBP_DEPS target_name builddir)
-  FIND_DEPS(${target_name} ${builddir})
-  set(LIBP_BUILD_LIBRARIES ${LIBP_BUILD_LIBRARIES} ${${target_name}_lib})
-endmacro()
-
-FIND_LIBP_DEPS(P "${LIBPDIR}")
-FIND_LIBP_DEPS(elliptic "${ELLIPTICDIR}")
-FIND_LIBP_DEPS(parAlmond "${PARALMONDDIR}")
-FIND_LIBP_DEPS(ogs "${OGSDIR}")
-
-file(REMOVE ${LIBP_BUILD_LIBRARIES})
-add_custom_target(libparanumal_build DEPENDS ${LIBP_BUILD_LIBRARIES})
-add_custom_command(OUTPUT ${LIBP_BUILD_LIBRARIES}
-  WORKING_DIRECTORY ${BIN_THIRD_PARTY_DIR}
-  COMMAND NEKRS_CC=${CMAKE_C_COMPILER}
-    NEKRS_CFLAGS=${CMAKE_C_FLAGS}
-    NEKRS_CXX=${CMAKE_CXX_COMPILER}
-    NEKRS_CXXFLAGS=${CMAKE_CXX_FLAGS}
-    NEKRS_FC=${CMAKE_Fortran_COMPILER}
-    NEKRS_FFLAGS=${CMAKE_Fortran_FLAGS}
-    NEKRS_LIBP_DIR=${CMAKE_INSTALL_PREFIX}
-    NEKRS_LIBP_DEFINES=${LIBP_DEFINES}
-    NEKRS_SRC_THIRD_PARTY_DIR=${SRC_THIRD_PARTY_DIR}
-    NEKRS_BIN_THIRD_PARTY_DIR=${BIN_THIRD_PARTY_DIR}
-    NEKRS_OCCA_DIR=${BIN_THIRD_PARTY_DIR}/occa
-    NEKRS_INSTALL_DIR=${CMAKE_INSTALL_PREFIX}
-    ${SRC_THIRD_PARTY_DIR}/libparanumal/libparanumal.build
-  DEPENDS occa_build
-)
+include(config/libparanumal.cmake)
 
 ###############################################################################
 # Add nekrs target                                                            #
@@ -338,8 +345,10 @@ set(SRC
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX)
-add_dependencies(nekrs-lib occa_build libparanumal_build nek_build)
-target_link_libraries(nekrs-lib ${CMAKE_DL_LIBS} elliptic parAlmond P ogs occa)
+
+#add_dependencies(nekrs-lib occa_build libp_download nek_build)
+target_link_libraries(nekrs-lib ${CMAKE_DL_LIBS} libelliptic)
+
 target_include_directories(nekrs-lib PRIVATE ${THIRD_PARTY_INCLUDES} ${NEKRS_INCLUDES})
 set_target_properties(nekrs-lib PROPERTIES OUTPUT_NAME nekrs)
 
