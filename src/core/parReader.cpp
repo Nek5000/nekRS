@@ -80,9 +80,12 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
-  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-  options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
-  //options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+
+  //options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+  //options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
+  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+  options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
+
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
