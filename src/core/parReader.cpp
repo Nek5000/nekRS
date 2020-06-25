@@ -80,10 +80,10 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
-  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
-  options.setArgs("PRESSURE ASYNC DRIVER", "ENABLED");
+  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+  options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
+  //options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-  options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
   options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
@@ -322,10 +322,17 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   
     string p_preconditioner; 
     ini.extract("pressure", "preconditioner", p_preconditioner);
+
     if(p_preconditioner == "jacobi")
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    if(p_preconditioner == "semg")
-      options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
+    if(p_preconditioner.find("semg") !=std::string::npos  || 
+       p_preconditioner.find("multigrid") !=std::string::npos) {
+      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
+      string key = "VCYCLE";
+      if(p_preconditioner.find("additive") !=std::string::npos) key += "+ADDITIVE";
+      if(p_preconditioner.find("overlap") !=std::string::npos) key += "+OVERLAPCRS";
+      options.setArgs("PRESSURE PARALMOND CYCLE", key);
+    }
 
     string p_smoother; 
     if(ini.extract("pressure", "smoothertype", p_smoother)) {
@@ -333,24 +340,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
       else if (p_smoother == "ras")
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
+      else if (p_smoother == "chebyshev")
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
       else
         ABORT("Unknown PRESSURE::smootherType!"); 
     }
-    string p_async;
-    ini.extract("pressure", "concurrentcoarsesolve", p_async);
-    if(p_async == "false"){
-      options.setArgs("PRESSURE ASYNC DRIVER", "DISABLED");
-    } else {
-      if(rank == 0){
-        int provided;
-        MPI_Query_thread(&provided);
-        bool issueWarning = (provided != MPI_THREAD_MULTIPLE);
-        if(issueWarning){
-          std::cout << "concurrentCoarseSolve disabled because of limited MPI thread support\n";
-        }
-      }
-    }
-
  
     // VELOCITY 
     string vsolver;
