@@ -15,7 +15,6 @@ equation = lowMachNS
 variableProperties = yes
 
 [PRESSURE]
-preconditioner = semg_amg
 residualTol = 1e-10
 
 [VELOCITY]

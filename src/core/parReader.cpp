@@ -296,6 +296,35 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     bool p_gproj; 
     if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
       if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+
+    string p_preconditioner; 
+    ini.extract("pressure", "preconditioner", p_preconditioner);
+
+    if(p_preconditioner == "jacobi")
+      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
+    if(p_preconditioner.find("semg") !=std::string::npos  || 
+       p_preconditioner.find("multigrid") !=std::string::npos) {
+      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
+      string key = "VCYCLE";
+      if(p_preconditioner.find("additive") !=std::string::npos) key += "+ADDITIVE";
+      if(p_preconditioner.find("overlap") !=std::string::npos) key += "+OVERLAPCRS";
+      options.setArgs("PRESSURE PARALMOND CYCLE", key);
+    }
+
+    string p_smoother; 
+    if(ini.extract("pressure", "smoothertype", p_smoother)) {
+      if(p_smoother == "asm"){ 
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+        options.setArgs("BOOMERAMG ITERATIONS", "1");
+      } else if (p_smoother == "ras") {
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
+        options.setArgs("BOOMERAMG ITERATIONS", "1");
+      } else if (p_smoother == "chebyshev") {
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+      } else {
+        ABORT("Unknown PRESSURE::smootherType!");
+      } 
+    }
   
     string p_amgsolver; 
     ini.extract("pressure", "amgsolver", p_amgsolver);
@@ -321,32 +350,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       double nonGalerkinTol;
       if(ini.extract("boomeramg", "nongalerkintol", nonGalerkinTol))
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
-    }
-  
-    string p_preconditioner; 
-    ini.extract("pressure", "preconditioner", p_preconditioner);
-
-    if(p_preconditioner == "jacobi")
-      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    if(p_preconditioner.find("semg") !=std::string::npos  || 
-       p_preconditioner.find("multigrid") !=std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-      string key = "VCYCLE";
-      if(p_preconditioner.find("additive") !=std::string::npos) key += "+ADDITIVE";
-      if(p_preconditioner.find("overlap") !=std::string::npos) key += "+OVERLAPCRS";
-      options.setArgs("PRESSURE PARALMOND CYCLE", key);
-    }
-
-    string p_smoother; 
-    if(ini.extract("pressure", "smoothertype", p_smoother)) {
-      if(p_smoother == "asm") 
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-      else if (p_smoother == "ras")
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
-      else if (p_smoother == "chebyshev")
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
-      else
-        ABORT("Unknown PRESSURE::smootherType!"); 
     }
  
     // VELOCITY 

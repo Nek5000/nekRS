@@ -14,9 +14,6 @@ writeControl = runTime
 writeInterval = 0.1
 
 [PRESSURE]
-preconditioner = semg_amg
-smoother = SCHWARZ
-#amgSolver = parAlmond
 residualTol = 1e-08
 
 [VELOCITY]

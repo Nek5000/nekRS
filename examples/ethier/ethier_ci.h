@@ -20,6 +20,10 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("FINAL TIME", string("0.1"));
   options.setArgs("DT", string("2e-4"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
+  if (ciMode == 11) {
+    options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+    options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
+  }
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
@@ -44,22 +48,32 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   double *err = nekData.cbscnrs;
   double vxErr, prErr, s1Err, s2Err;
+  int pIterErr;
+
+  vxErr = abs((err[0] - 1.19E-04)/err[0]);
+  prErr = abs((err[1] - 6.49E-04)/err[1]);
+  s1Err = abs((err[2] - 1.01E-04)/err[2]);
+  s2Err = abs((err[3] - 1.01E-04)/err[3]);
 
   switch (ciMode) {
-    case 1: vxErr = abs((err[0] - 1.19E-04)/err[0]);
-            prErr = abs((err[1] - 6.48E-04)/err[1]);
-            s1Err  = abs((err[2] - 1.01E-04)/err[2]);
-            s2Err  = abs((err[3] - 1.01E-04)/err[3]);
-            break;
-    case 2: vxErr = abs((err[0] - 1.19E-04)/err[0]);
-            prErr = abs((err[1] - 6.50E-04)/err[1]);
-            s1Err  = abs((err[2] - 1.01E-04)/err[2]);
-            s2Err  = abs((err[3] - 1.01E-04)/err[3]);
-            break;
+    case 1 : pIterErr = abs(ins->NiterP - 5); 
+             if (rank == 0)
+               printf("relative error to target: vx=%g pr=%g s1=%g s2=%g pIter=%d\n", 
+                      vxErr, prErr, s1Err, s2Err, pIterErr);
+             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 1) ? (PASS) : (FAIL); 
+             break;
+    case 11: pIterErr = abs(ins->NiterP - 17); 
+             if (rank == 0)
+               printf("relative error to target: vx=%g pr=%g s1=%g s2=%g pIter=%d\n", 
+                      vxErr, prErr, s1Err, s2Err, pIterErr);
+             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 1) ? (PASS) : (FAIL); 
+             break;
+
+    case  2: pIterErr = abs(ins->NiterP - 5); 
+             if (rank == 0)
+               printf("relative error to target: vx=%g pr=%g s1=%g s2=%g\n", 
+                      vxErr, prErr, s1Err, s2Err);
+             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS) ? (PASS) : (FAIL);
+             break;
   }
-
-  if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g\n", vxErr, prErr, s1Err, s2Err);
-
-  (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS) ? (PASS) : (FAIL); 
 }

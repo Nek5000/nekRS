@@ -22,9 +22,6 @@ filterWeight = 8
 filterModes = 20
 
 [PRESSURE]
-preconditioner = semg_amg
-#amgSolver = parAlmond
-#galerkinCoarseOperator = true
 residualTol = 1e-04
 
 [VELOCITY]
