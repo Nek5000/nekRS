@@ -1,6 +1,6 @@
 include(ExternalProject)
 include(FetchContent)
-set(FETCHCONTENT_QUIET OFF)
+#set(FETCHCONTENT_QUIET OFF)
 
 # ---------------------------------------------------------
 # Download sources
@@ -20,6 +20,11 @@ if (NOT nek5000_content_POPULATED)
 endif()
 
 set(NEK5000_DIR ${nek5000_content_SOURCE_DIR})
+
+# blasLapack
+# ==========
+
+set(BLASLAPACK_DIR ${NEK5000_DIR}/3rd_party/blasLapack)
 
 # gslib
 # =====
@@ -59,19 +64,29 @@ endif()
 # Project configuration
 # ---------------------------------------------------------
 
+# ExternalProject_Add has some peculiar rules about quoting arguments,
+# so we use the helper script (run_config.sh) to set the environment
+# variables based on the command-line arguments
 ExternalProject_Add(
   nek5000_project
   SOURCE_DIR ${NEK5000_DIR}
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ${NEK5000_DIR}/bin/nekconfig;-build-dep
+  BUILD_COMMAND 
+    ${CMAKE_CURRENT_LIST_DIR}/run_nekconfig.sh 
+    "CC=${CMAKE_C_COMPILER}" 
+    "CFLAGS=${CMAKE_C_FLAGS}" 
+    "FC=${CMAKE_Fortran_COMPILER}"
+    "FFLAGS=${CMAKE_Fortran_FLAGS}"
+    "NEK5000_DIR=${NEK5000_DIR}"
   INSTALL_COMMAND ""
-  #LIST_SEPARATOR " "
   USES_TERMINAL_BUILD on
 )
 
-add_library(nek5000 INTERFACE IMPORTED)
-add_dependencies(nek5000 nek5000_project)
-
-add_library(gs INTERFACE IMPORTED)
+add_library(gs STATIC IMPORTED)
 target_include_directories(gs INTERFACE ${GS_DIR}/src ${GS_DIR}/include)
+set_target_properties(gs PROPERTIES IMPORTED_LOCATION ${GS_DIR}/lib/libgs.a)
 add_dependencies(gs nek5000_project)
+
+add_library(blasLapack STATIC IMPORTED)
+set_target_properties(blasLapack PROPERTIES IMPORTED_LOCATION ${BLASLAPACK_DIR}/libblasLapack.a)
+add_dependencies(blasLapack nek5000_project)
