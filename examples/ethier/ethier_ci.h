@@ -23,6 +23,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 11) {
     options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
     options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
+    options.setArgs("BOOMERAMG ITERATIONS", "1"); 
   }
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");

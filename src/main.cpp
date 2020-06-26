@@ -86,12 +86,20 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
-  int retval;
-  int provided;
-  retval =  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE,&provided);
-  if (retval != MPI_SUCCESS) {
-    std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
-    exit(1);
+
+  {
+    int request = MPI_THREAD_MULTIPLE;
+    const char *env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
+    if(env_val) {
+      if(!std::stoi(env_val)) request = MPI_THREAD_FUNNELED;
+    }
+ 
+    int provided;
+    int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
+    if (retval != MPI_SUCCESS) {
+      std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
+      exit(1);
+    }
   }
 
   int rank, size;

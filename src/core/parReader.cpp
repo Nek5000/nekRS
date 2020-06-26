@@ -81,7 +81,6 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
 
-  //options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
   //options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
@@ -299,10 +298,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     string p_preconditioner; 
     ini.extract("pressure", "preconditioner", p_preconditioner);
-
-    if(p_preconditioner == "jacobi")
+    if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    if(p_preconditioner.find("semg") !=std::string::npos  || 
+    } else if(p_preconditioner.find("semg") !=std::string::npos  || 
        p_preconditioner.find("multigrid") !=std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
       string key = "VCYCLE";
@@ -321,9 +319,17 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("BOOMERAMG ITERATIONS", "1");
       } else if (p_smoother == "chebyshev") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+        options.setArgs("BOOMERAMG ITERATIONS", "2");
       } else {
         ABORT("Unknown PRESSURE::smootherType!");
       } 
+    } else {
+      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV"); 
+      options.setArgs("BOOMERAMG ITERATIONS", "2");
+      if(p_preconditioner.find("additive") !=std::string::npos) {
+         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+         options.setArgs("BOOMERAMG ITERATIONS", "1");
+      }
     }
   
     string p_amgsolver; 
