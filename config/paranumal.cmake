@@ -1,5 +1,5 @@
 include(FetchContent)
-#set(FETCHCONTENT_QUIET OFF)
+set(FETCHCONTENT_QUIET OFF)
 
 # TODO: Need to get value from OCCA?
 set(USE_OCCA_MEM_BYTE_ALIGN 64)

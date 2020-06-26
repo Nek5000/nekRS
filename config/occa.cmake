@@ -1,5 +1,5 @@
 include(FetchContent)
-#set(FETCHCONTENT_QUIET OFF)
+set(FETCHCONTENT_QUIET OFF)
 
 FetchContent_Declare(
   occa_content

@@ -1,6 +1,6 @@
 include(ExternalProject)
 include(FetchContent)
-#set(FETCHCONTENT_QUIET OFF)
+set(FETCHCONTENT_QUIET OFF)
 
 # ---------------------------------------------------------
 # Download sources
@@ -61,14 +61,14 @@ if (PARRSB MATCHES ${NEK5000_PPLIST})
 endif()
 
 # ---------------------------------------------------------
-# Project configuration
+# Build Nek5000 dependencies
 # ---------------------------------------------------------
 
 # ExternalProject_Add has some peculiar rules about quoting arguments,
 # so we use the helper script (run_config.sh) to set the environment
 # variables based on the command-line arguments
 ExternalProject_Add(
-  nek5000_project
+  nek5000_deps
   SOURCE_DIR ${NEK5000_DIR}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND 
@@ -85,8 +85,8 @@ ExternalProject_Add(
 add_library(gs STATIC IMPORTED)
 target_include_directories(gs INTERFACE ${GS_DIR}/src ${GS_DIR}/include)
 set_target_properties(gs PROPERTIES IMPORTED_LOCATION ${GS_DIR}/lib/libgs.a)
-add_dependencies(gs nek5000_project)
+add_dependencies(gs nek5000_deps)
 
 add_library(blasLapack STATIC IMPORTED)
 set_target_properties(blasLapack PROPERTIES IMPORTED_LOCATION ${BLASLAPACK_DIR}/libblasLapack.a)
-add_dependencies(blasLapack nek5000_project)
+add_dependencies(blasLapack nek5000_deps)
