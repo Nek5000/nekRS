@@ -22,20 +22,21 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S);
 
 void qthermal(ins_t *ins, dfloat time, occa::memory o_div);
 
-double etime0 = 0;
+double tElapsed = 0;
 
 
 void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 {
   mesh_t *mesh = ins->mesh;
   cds_t *cds = ins->cds;
- 
+
+  double tStart = MPI_Wtime();
+
   int flow = 1;
   if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
 
   ins->dt = dt;
   if(tstep<=1){
-    etime0 = MPI_Wtime();
     extbdfCoefficents(ins,tstep);
   } else if(tstep<=2 && ins->temporalOrder>=2){ 
     extbdfCoefficents(ins,tstep);
@@ -86,8 +87,10 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     for(int is=0; is<ins->Nscalar; is++) {
       if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
     }
-
-    printf("  tElapsed= %.5e s\n", MPI_Wtime()-etime0);
+    
+    const double tElapsedStep = MPI_Wtime()-tStart;
+    tElapsed += tElapsedStep;
+    printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
   }
 
   if(cfl > 30 || std::isnan(cfl)) {
