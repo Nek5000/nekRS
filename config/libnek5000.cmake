@@ -14,6 +14,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/nek5000/nek5000.git
   GIT_TAG master
   )
+FetchContent_GetProperties(nek5000_content)
 if (NOT nek5000_content_POPULATED)
   FetchContent_Populate(nek5000_content)
 endif()
@@ -31,6 +32,7 @@ FetchContent_Declare(
   URL_HASH SHA1=1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27
   SOURCE_DIR ${GS_DIR}
 )
+FetchContent_GetProperties(gs_content)
 if (NOT gs_content_POPULATED)
   file(RENAME ${GS_DIR}/install temp_gslib_install)
   FetchContent_Populate(gs_content)
@@ -47,6 +49,7 @@ if (PARRSB MATCHES ${NEK5000_PPLIST})
     URL https://github.com/Nek5000/parRSB/archive/v0.2.tar.gz
     SOURCE_DIR ${NEK5000_DIR}/3rd_party/parRSB
   )
+  FetchContent_GetProperties(parrsb_content)
   if (NOT parrsb_content_POPULATED)
     FetchContent_Populate(parrsb_content)
   endif()

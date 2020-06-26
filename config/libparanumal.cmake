@@ -14,6 +14,7 @@ FetchContent_Declare(
     paranumal_content
     GIT_REPOSITORY https://gitlab.com/nekrs/libparanumal.git
     GIT_TAG next)
+FetchContent_GetProperties(paranumal_content)
 if(NOT paranumal_content_POPULATED)
   FetchContent_Populate(paranumal_content)
 endif()
@@ -21,13 +22,12 @@ endif()
 # FetchContent_MakeAvailable uses the CMakeLists in SOURCE_SUBDIR
 FetchContent_Declare(
   hypre_content
-  URL https://github.com/hypre-space/hypre/archive/v2.18.2.tar.gz 
-  #SOURCE_SUBDIR src
-  )
+  URL https://github.com/hypre-space/hypre/archive/v2.18.2.tar.gz )
 #FetchContent_MakeAvailable(hypre_content)
+FetchContent_GetProperties(hypre_content)
 if (NOT hypre_content_POPULATED)
   FetchContent_Populate(hypre_content)
-  add_subdirectory(${hypre_content_SOURCE_DIR}/src)
+  add_subdirectory(${hypre_content_SOURCE_DIR}/src ${hypre_content_BINARY_DIR})
 endif()
 
 set(PARANUMAL_DIR ${paranumal_content_SOURCE_DIR})
@@ -35,7 +35,6 @@ set(OGS_DIR ${PARANUMAL_DIR}/libs/gatherScatter)
 set(PARALMOND_DIR ${PARANUMAL_DIR}/libs/parAlmond)
 set(ELLIPTIC_DIR ${PARANUMAL_DIR}/solvers/elliptic)
 set(HYPRE_DIR ${hypre_content_SOURCE_DIR})
-message(WARNING "HYPRE DIR IS ${HYPRE_DIR}")
 
 # ---------------------------------------------------------
 # libogs
@@ -72,7 +71,7 @@ target_include_directories(libogs PUBLIC
         ${OGS_DIR}/include
         ${OGS_DIR}
         ${PARANUMAL_DIR}/include)
-target_link_libraries(libogs PUBLIC libocca IMPORTED gs)
+target_link_libraries(libogs PUBLIC libocca gs)
 
 # ---------------------------------------------------------
 # libparanumal
@@ -188,13 +187,14 @@ set(PARALMOND_SOURCES
 
 add_library(libparAlmond ${PARALMOND_SOURCES})
 set_target_properties(libparAlmond PROPERTIES OUTPUT_NAME parAlmond)
-target_compile_definitions(libparAlmond PUBLIC -DDPARALMOND="${PARALMOND_DIR}")
-target_compile_options(libparAlmond PRIVATE -DHYPRE)
-target_include_directories(libparAlmond PUBLIC
+target_compile_definitions(libparAlmond PUBLIC -DDPARALMOND="${PARALMOND_DIR}" PRIVATE -DHYPRE)
+target_include_directories(libparAlmond 
+        PUBLIC
         ${PARALMOND_DIR}/include
         ${PARALMOND_DIR}
         ${PARALMOND_DIR}/hypre
         ${PARANUMAL_DIR}/include
+        PRIVATE
         ${HYPRE_DIR}/src
         ${HYPRE_DIR}/src/utilities
         ${HYPRE_DIR}/src/seq_mv
@@ -203,10 +203,8 @@ target_include_directories(libparAlmond PUBLIC
         ${HYPRE_DIR}/src/IJ_mv
         ${HYPRE_DIR}/src/multivector
         ${HYPRE_DIR}/src/krylov
-        #${CMAKE_CURRENT_BINARY_DIR}/3rd_party/hypre/src
-        )
-target_link_libraries(libparAlmond PUBLIC libogs libocca)
-target_link_libraries(libparAlmond PRIVATE HYPRE)
+        ${hypre_content_BINARY_DIR})
+target_link_libraries(libparAlmond PUBLIC libogs libocca PRIVATE HYPRE)
 # This conflicts with the stdlib "version" header...
 file(REMOVE ${HYPRE_DIR}/src/utilities/version)
 
