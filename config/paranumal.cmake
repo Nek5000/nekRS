@@ -26,6 +26,8 @@ FetchContent_Declare(
 FetchContent_GetProperties(hypre_content)
 if (NOT hypre_content_POPULATED)
   FetchContent_Populate(hypre_content)
+  set(HYPRE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "" FORCE)
+  set(HYPRE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "" FORCE)
   add_subdirectory(${hypre_content_SOURCE_DIR}/src ${hypre_content_BINARY_DIR})
 endif()
 
