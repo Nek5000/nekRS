@@ -98,6 +98,7 @@ $(HDRDIR)/src/meshPlotVTU3D.o \
 $(HDRDIR)/src/meshPrint2D.o \
 $(HDRDIR)/src/meshPrint3D.o \
 $(HDRDIR)/src/meshSetup.o \
+$(HDRDIR)/src/meshFree.o \
 $(HDRDIR)/src/meshSetupTri2D.o \
 $(HDRDIR)/src/meshSetupTri3D.o \
 $(HDRDIR)/src/meshSetupQuad2D.o \
