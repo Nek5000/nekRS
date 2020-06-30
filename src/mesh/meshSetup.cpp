@@ -193,7 +193,7 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa:
   meshParallelConnectNodes(mesh); 
   isTmesh = 0;
 
-  bcMap::check(mesh);
+  bcMap::check(mesh, isMeshT);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
 
@@ -254,7 +254,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, mesh_t *meshT, setupAide &options, occ
   // mesh->globalIds
   meshParallelConnectNodes(mesh);
 
-  bcMap::check(mesh);
+  bcMap::check(mesh, 0);
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
   return mesh;

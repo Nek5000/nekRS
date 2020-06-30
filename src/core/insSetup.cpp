@@ -284,7 +284,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
     filterSetup(ins); 
 
-  const int nbrBIDs = bcMap::size();
+  const int nbrBIDs = bcMap::size(0);
   int NBCType = nbrBIDs+1;
 
   if (flow) {
@@ -849,15 +849,15 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
   cds->options.setArgs("DEBUG ENABLE OGS", "1");
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  const int nbrBIDs = bcMap::size();
-  int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-
-
   cds->TOL = 1e-6;
 
   for (int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+
+    int nbrBIDs = bcMap::size(0);
+    if(ins->cht && is==0) nbrBIDs = bcMap::size(1);
+    int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
     std::stringstream ss;
     ss  << std::setfill('0') << std::setw(2) << is;
@@ -933,6 +933,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), mapB);
 
+    free(sBCType);
   }
 
   // build inverse mass matrix

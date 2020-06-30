@@ -12,8 +12,9 @@ void setup(std::vector<std::string> slist, string field);
 int id(int bid, string field);
 int type(int bid, string field);
 string text(int bid, string field);
-int size(void);
-void check(mesh_t *mesh);
+int size(int isTmesh);
+void check(mesh_t *mesh, int isTmesh);
+void setBcMap(string field, int *map, int nbid);
 
 }
 

@@ -12,7 +12,7 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 
-#define abort(a,b)  { if(rank==0) cout << a << endl; ABORT(b); }
+#define abort(a,b)  { if(rank==0) cout << a << endl; EXIT(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
@@ -279,6 +279,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
   }
 
+  int bcInPar = 0;
   if(ini.sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
@@ -328,7 +329,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(p_preconditioner == "semg")
       options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
 
-    // VELOCITY 
+    // VELOCITY
     string vsolver;
     ini.extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
@@ -348,8 +349,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       std::vector<std::string> sList;
       sList = serializeString(v_bcMap);
       bcMap::setup(sList, "velocity");
+      bcInPar = 1;
     } else {
-      abort("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!", EXIT_FAILURE); 
+      if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
     }
     
     double rho;
@@ -416,11 +418,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
  
       string s_bcMap;
       if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+        if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);  
         std::vector<std::string> sList;
         sList = serializeString(s_bcMap);
         bcMap::setup(sList, "scalar00");
+        bcInPar = 1;
       } else {
-        abort("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!", EXIT_FAILURE);
+        if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
       } 
     }
   }
@@ -481,11 +485,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     string s_bcMap;
     if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
+      if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
+      bcInPar = 1;
     } else {
-      abort("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!", EXIT_FAILURE);
+      if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
     } 
   }
   if(nscal) {
