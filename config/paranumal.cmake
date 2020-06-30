@@ -154,10 +154,11 @@ set(PARANUMAL_SOURCES
 
 set_source_files_properties(${PARANUMAL_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libparanumal ${PARANUMAL_SOURCES})
-set_target_properties(libparanumal PROPERTIES OUTPUT_NAME paranumal)
+set_target_properties(libparanumal PROPERTIES OUTPUT_NAME P)
 target_compile_definitions(libparanumal PUBLIC -DDHOLMES="${PARANUMAL_DIR}")
 target_include_directories(libparanumal PUBLIC ${PARANUMAL_DIR}/include src/core/)
 target_link_libraries(libparanumal PUBLIC libogs libocca blasLapack)
+
 
 # ---------------------------------------------------------
 # libparAlmond
@@ -255,3 +256,44 @@ target_compile_definitions(libelliptic PUBLIC -DDELLIPTIC="${ELLIPTIC_DIR}")
 target_include_directories(libelliptic PUBLIC ${ELLIPTIC_DIR})
 target_link_libraries(libelliptic PUBLIC libparanumal libparAlmond libogs libocca blasLapack)
 
+# ---------------------------------------------------------
+# install
+# ---------------------------------------------------------
+
+set(file_pattern "\.okl$|\.c$|\.hpp$|\.tpp$|\.h$|hex.*\.dat$")
+
+install(TARGETS libparanumal LIBRARY DESTINATION libparanumal)
+install(DIRECTORY 
+  ${PARANUMAL_DIR}/include 
+  ${PARANUMAL_DIR}/nodes
+  ${PARANUMAL_DIR}/okl 
+  DESTINATION libparanumal
+  FILES_MATCHING REGEX ${file_pattern})
+
+install(TARGETS libogs LIBRARY DESTINATION gatherScatter)
+install(DIRECTORY
+  ${OGS_DIR}/include 
+  ${OGS_DIR}/okl 
+  DESTINATION gatherScatter
+  FILES_MATCHING REGEX ${file_pattern})
+install(FILES ${OGS_DIR}/ogs.hpp DESTINATION gatherScatter)
+
+install(TARGETS libparAlmond LIBRARY DESTINATION parAlmond)
+install(DIRECTORY
+  ${PARALMOND_DIR}/include
+  ${PARALMOND_DIR}/okl
+  DESTINATION parAlmond
+  FILES_MATCHING REGEX ${file_pattern})
+install(FILES ${PARALMOND_DIR}/parAlmond.hpp DESTINATION gatherScatter)
+
+install(TARGETS libelliptic LIBRARY DESTINATION elliptic)
+install(DIRECTORY
+  ${ELLIPTIC_DIR}/data
+  ${ELLIPTIC_DIR}/okl
+  DESTINATION elliptic
+  FILES_MATCHING REGEX ${file_pattern})
+install(FILES 
+  ${ELLIPTIC_DIR}/elliptic.h
+  ${ELLIPTIC_DIR}/ellipticMultiGrid.h
+  ${ELLIPTIC_DIR}/ellipticPrecon.h
+  DESTINATION gatherScatter)

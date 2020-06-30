@@ -48,6 +48,8 @@ endif()
 # parRSB
 # ======
 
+set(PARRSB_DIR ${NEK5000_DIR}/3rd_party/parRSB)
+
 if (PARRSB MATCHES ${NEK5000_PPLIST})
   FetchContent_Declare(
     parrsb_content
@@ -90,3 +92,15 @@ add_dependencies(gs nek5000_deps)
 add_library(blasLapack STATIC IMPORTED)
 set_target_properties(blasLapack PROPERTIES IMPORTED_LOCATION ${BLASLAPACK_DIR}/libblasLapack.a)
 add_dependencies(blasLapack nek5000_deps)
+
+# ---------------------------------------------------------
+# Install
+# ---------------------------------------------------------
+
+install(DIRECTORY ${NEK5000_DIR}/core DESTINATION nek5000)
+install(PROGRAMS ${NEK5000_DIR}/bin/nekconfig DESTINATION nek5000/bin)
+install(DIRECTORY ${GS_DIR}/include DESTINATION nek5000/3rd_party/gslib)
+if (PARRSB MATCHES ${NEK5000_PPLIST})
+  install(DIRECTORY ${PARRSB_DIR}/include DESTINATION nek5000/3rd_party/parRSB)
+endif()
+

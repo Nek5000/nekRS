@@ -176,7 +176,7 @@ include(config/occa.cmake)
 # Build Nek5000 dependencies                                                  #
 ###############################################################################
 
-include(config/nek5000_deps.cmake)
+include(config/nek5000.cmake)
 
 ###############################################################################
 # Build libP                                                                  #
@@ -238,11 +238,9 @@ target_link_libraries(nekrs-bin nekrs-lib)
 #install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_script.cmake)
 
 #install nekRS
-install(TARGETS nekrs-lib nekrs-bin libparanumal libelliptic libparAlmond
+install(TARGETS nekrs-lib nekrs-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  PUBLIC_HEADER DESTINATION include
-  PRIVATE_HEADER DESTINATION include
 )
 
 # Trailing slash prevents parent directory from being copied
