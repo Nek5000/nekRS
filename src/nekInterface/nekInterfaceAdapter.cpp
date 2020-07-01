@@ -500,7 +500,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
 
   string velocitySolver;
   int flow = 1;
-  if(!options->getArgs("VELOCITY SOLVER", velocitySolver)) flow = 0;
+  if(options->compareArgs("VELOCITY", "FALSE")) flow = 0;
 
   int nBcRead = 1;
   int bcInPar = 1;

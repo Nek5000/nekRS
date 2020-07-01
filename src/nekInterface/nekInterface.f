@@ -176,10 +176,8 @@ c-----------------------------------------------------------------------
 
       if (npscal_in .gt. 0) then
         ifheat = .true.
-        if(nelgt.ne.nelgv) then
-          param(32) = 2
-          iftmsh(2) = .true.
-        endif
+        if(nelgt.ne.nelgv) iftmsh(2) = .true.
+        if(nelgt.ne.nelgv .and. param(32).eq.1) param(32) = 2 
         npscal = npscal_in - 1
         param(23) = npscal
         ifto   = .true.       
@@ -197,9 +195,11 @@ c-----------------------------------------------------------------------
       call read_re2_data(ifbswap)
 
       call izero(boundaryID, size(boundaryID))
+      ifld_bId = 2
+      if(ifflow) ifld_bId = 1
       do iel = 1,nelv
       do ifc = 1,2*ndim
-         boundaryID(ifc,iel) = bc(5,ifc,iel,1)
+         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
       enddo
       enddo
       call izero(boundaryIDt, size(boundaryIDt))

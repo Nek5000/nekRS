@@ -279,7 +279,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
   }
 
-  int bcInPar = 0;
+  int bcInPar = 1;
   if(ini.sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
@@ -353,7 +353,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       bcMap::setup(sList, "velocity");
       bcInPar = 1;
     } else {
-      if(bcInPar && flow) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
+      bcInPar = 0;
     }
     
     double rho;
@@ -374,6 +374,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(!variableProperties && flow)
         abort("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
     }
+  } else {
+    options.setArgs("VELOCITY", "FALSE");
   } 
 
   // SCALARS
@@ -422,9 +424,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         std::vector<std::string> sList;
         sList = serializeString(s_bcMap);
         bcMap::setup(sList, "scalar00");
-        bcInPar = 1;
       } else {
         if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+        bcInPar = 0;
       } 
     }
   }
@@ -489,9 +491,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
-      bcInPar = 1;
     } else {
       if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+      bcInPar = 0;
     } 
   }
   if(nscal) {

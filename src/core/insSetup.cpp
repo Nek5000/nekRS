@@ -33,6 +33,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("ELEMENT TYPE", ins->elementType);
  
   ins->flow = 1;
+  if(options.compareArgs("VELOCITY", "FALSE")) ins->flow = 0;
   if(options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
 
   ins->cht = 0;
