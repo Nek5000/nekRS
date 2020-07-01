@@ -32,8 +32,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
  
-  int flow = 1;
-  if(options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
+  ins->flow = 1;
+  if(options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
@@ -287,7 +287,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   const int nbrBIDs = bcMap::size(0);
   int NBCType = nbrBIDs+1;
 
-  if (flow) {
+  if (ins->flow) {
 
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
@@ -421,7 +421,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
    ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
   }
 
-  if (flow) {
+  if (ins->flow) {
 
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
 

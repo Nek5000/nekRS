@@ -331,9 +331,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     // VELOCITY
     string vsolver;
+    int flow = 1;
     ini.extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
         options.setArgs("VELOCITY SOLVER", "NONE");
+        flow = 0;
     } else if(std::strstr(vsolver.c_str(), "block")) {
       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     }  
@@ -342,7 +344,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("velocity", "residualtol", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
-      abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
+      if(flow) abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
  
     string v_bcMap;
     if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
@@ -351,14 +353,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       bcMap::setup(sList, "velocity");
       bcInPar = 1;
     } else {
-      if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
+      if(bcInPar && flow) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
     }
     
     double rho;
     if(ini.extract("velocity", "density", rho)) {
       options.setArgs("DENSITY", to_string_f(rho));
     } else {
-      if(!variableProperties)
+      if(!variableProperties && flow)
         abort("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE); 
     }
     
@@ -369,12 +371,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(viscosity < 0) viscosity = fabs(1/viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
     } else {
-      if(!variableProperties)
+      if(!variableProperties && flow)
         abort("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
     }
-  } else {
-    options.setArgs("VELOCITY SOLVER", "NONE");
-  }
+  } 
 
   // SCALARS
   int nscal = 0;
