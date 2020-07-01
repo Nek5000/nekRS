@@ -2,6 +2,7 @@
 #include <fstream>
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "bcMap.hpp"
 
 nekdata_private nekData;
 static int rank;
@@ -34,10 +35,11 @@ static void (*nek_outpost_ptr)(double *v1, double *v2, double *v3, double *vp,
                                   double *vt, char *name, int);
 static void (*nek_uf_ptr)(double *, double *, double *);
 static int  (*nek_lglel_ptr)(int *);
-static void (*nek_setup_ptr)(int *, char *, char *, int*, int, int);
+static void (*nek_setup_ptr)(int *, char *, char *, int*, int*, int*, int, int);
 static void (*nek_ifoutfld_ptr)(int *);
 static void (*nek_setics_ptr)(void);
 static int  (*nek_bcmap_ptr)(int *, int*);
+static void (*nek_gen_bcmap_ptr)(void);
 static int  (*nek_nbid_ptr)(int *);
 static long long (*nek_set_vert_ptr)(int *, int *);
 static void (*nek_dssum_ptr)(double *);
@@ -229,7 +231,7 @@ void set_function_handles(const char *session_in,int verbose) {
 
   nek_ptr_ptr = (void (*)(void **, char *, int *)) dlsym(handle, fname("nekf_ptr"));
   check_error(dlerror());
-  nek_setup_ptr = (void (*)(int *, char *, char *, int *, int, int)) dlsym(handle, fname("nekf_setup"));
+  nek_setup_ptr = (void (*)(int *, char *, char *, int *, int *, int *, int, int)) dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int *)) dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -254,6 +256,8 @@ void set_function_handles(const char *session_in,int verbose) {
   nek_setics_ptr = (void (*)(void)) dlsym(handle,fname("nekf_setics"));
   check_error(dlerror());
   nek_bcmap_ptr = (int (*)(int *, int *)) dlsym(handle,fname("nekf_bcmap"));
+  check_error(dlerror());
+  nek_gen_bcmap_ptr = (void (*)(void)) dlsym(handle,fname("nekf_gen_bcmap"));
   check_error(dlerror());
   nek_map_m_to_n_ptr = (void (*)(double *, int *, double *, int *, int *, double *, int *)) \
                        dlsym(handle, fname("map_m_to_n"));
@@ -467,6 +471,14 @@ err:
   ABORT(EXIT_FAILURE);
 }
 
+int nek_bcmap(int bid, int ifld) {
+  return (*nek_bcmap_ptr)(&bid, &ifld);
+}
+
+void nek_gen_bcmap() {
+  (*nek_gen_bcmap_ptr)();
+}
+
 int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   options = &options_in;
   ins = ins_in;
@@ -486,8 +498,19 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   int nscal = 0;
   options->getArgs("NUMBER OF SCALARS", nscal);
 
+  string velocitySolver;
+  int flow = 1;
+  if(options->compareArgs("VELOCITY", "FALSE")) flow = 0;
+
+  int nBcRead = 1;
+  int bcInPar = 1;
+  if(bcMap::size(0) == 0 && bcMap::size(1) == 0) {
+    bcInPar = 0;
+    nBcRead = flow + nscal;
+  } 
+
   (*nek_setup_ptr)(&nek_comm, (char *)cwd.c_str(), (char *)casename.c_str(),
-                   &nscal, cwd.length(), casename.length());
+                   &flow, &nscal, &nBcRead, cwd.length(), casename.length());
 
   nekData.param = (double *) nek_ptr("param");
   nekData.ifield = (int *) nek_ptr("ifield");
@@ -535,6 +558,36 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t **ins_in) {
   nekData.eface = (int *) nek_ptr("eface");
   nekData.icface = (int *) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int *) nek_ptr("nekcomm"));
+
+  int cht = 0;
+  if (nekData.nelv != nekData.nelt && nscal) cht = 1;
+
+  // import BCs from nek if not specified in par
+  if(!bcInPar) {
+    nek_gen_bcmap();
+    if(flow) {
+      int isTMesh = 0;
+      int nIDs = (*nek_nbid_ptr)(&isTMesh);
+      int* map = (int*) calloc(nIDs, sizeof(int));
+      for(int id=0; id<nIDs; id++) map[id] = nek_bcmap(id+1, 1); 
+      bcMap::setBcMap("velocity", map, nIDs);  
+      free(map);
+    }
+    for(int is=0; is<nscal; is++) {
+      std::stringstream ss;
+      ss  << std::setfill('0') << std::setw(2) << is;
+      string sid = ss.str();
+ 
+      int isTMesh = 0;
+      if (cht && is==0) isTMesh = 1;
+      int nIDs = (*nek_nbid_ptr)(&isTMesh);
+  
+      int* map = (int*) calloc(nIDs, sizeof(int));
+      for(int id=0; id<nIDs; id++) map[id] = nek_bcmap(id+1, is+2); 
+      bcMap::setBcMap("scalar" + sid, map, nIDs);
+      free(map);
+    }
+  }
 
   int isTMesh = 0;
   nekData.NboundaryID  = (*nek_nbid_ptr)(&isTMesh);
@@ -677,10 +730,6 @@ void nek_copyRestart() {
   }
 }
 
-int nek_bcmap(int bid, int ifld) {
-  return (*nek_bcmap_ptr)(&bid, &ifld);
-}
-
 long long nek_set_glo_num(int nx, int isTMesh) {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
 }
@@ -689,4 +738,3 @@ void nek_dssum(dfloat *u) {
    
   (*nek_dssum_ptr)(u);
 }
-

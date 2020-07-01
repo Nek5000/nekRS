@@ -111,14 +111,15 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in, session_in, npscal_in) 
+      subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
+     $                      npscal_in, p32) 
 
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in, iftmsh_in
+      integer comm_in, iftmsh_in, ifflow_in, p32
       character session_in*(*),path_in*(*)
 
       common /rdump/ ntdump
@@ -161,10 +162,13 @@ c-----------------------------------------------------------------------
       param(7)  = 1.0
       param(8)  = 1.0
       param(27) = 1  ! torder 1 to save mem
-      param(32) = 1  ! read only vel BC from re2
       param(99) = -1 ! no dealiasing to save mem
 
+
+      param(32) = p32 ! number of BC fields read from re2
+
       ifflow = .true.
+      if(ifflow_in.eq.0) ifflow = .false.
       iftran = .true.
       ifheat = .false.
       ifvo   = .true.
@@ -172,10 +176,8 @@ c-----------------------------------------------------------------------
 
       if (npscal_in .gt. 0) then
         ifheat = .true.
-        if(nelgt.ne.nelgv) then
-          param(32) = 2
-          iftmsh(2) = .true.
-        endif
+        if(nelgt.ne.nelgv) iftmsh(2) = .true.
+        if(nelgt.ne.nelgv .and. param(32).eq.1) param(32) = 2 
         npscal = npscal_in - 1
         param(23) = npscal
         ifto   = .true.       
@@ -193,9 +195,11 @@ c-----------------------------------------------------------------------
       call read_re2_data(ifbswap)
 
       call izero(boundaryID, size(boundaryID))
+      ifld_bId = 2
+      if(ifflow) ifld_bId = 1
       do iel = 1,nelv
       do ifc = 1,2*ndim
-         boundaryID(ifc,iel) = bc(5,ifc,iel,1)
+         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
       enddo
       enddo
       call izero(boundaryIDt, size(boundaryIDt))
@@ -233,7 +237,7 @@ c-----------------------------------------------------------------------
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
-      call findSYMOrient
+c      call findSYMOrient
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3
@@ -467,14 +471,14 @@ c-----------------------------------------------------------------------
       else if(ifld.gt.1) then
         if (c.eq.'t  ') then 
           ibc = 1
-        else if (c.eq.'f  ') then 
-          ibc = 2
         else if (c.eq.'o  ' .or. c.eq.'O  ' .or. c.eq.'I  ') then 
+          ibc = 2
+        else if (c.eq.'f  ') then 
           ibc = 3
         endif
       endif
 
-c      write(6,*) ifld, 'bcmap: ', bID, c, ibc
+c      write(6,*) ifld, 'bcmap: ', bID, 'cbc: ', c, 'ibc: ', ibc
 
       if (ibc.eq.0) then
         write(6,*) 'Found unsupport BC type:', c
@@ -493,13 +497,13 @@ c-----------------------------------------------------------------------
       include 'GEOM'
 
       integer bID
-      logical ifalgn,ifnorx,ifnory,ifnorz
+      logical ifalg,ifnorx,ifnory,ifnorz
 
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1).eq.'SYM') then
            bID = boundaryID(ifc,iel) 
-           call chknord(ifalgn,ifnorx,ifnory,ifnorz,ifc,iel) 
+           call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel) 
            if (ifnorx) cbc_bmap(bID, 1) = 'SYX'
            if (ifnory) cbc_bmap(bID, 1) = 'SYY'
            if (ifnorz) cbc_bmap(bID, 1) = 'SYZ'
@@ -565,6 +569,181 @@ c-----------------------------------------------------------------------
       ifield = 1
       call dssum(u,lx1,ly1,lz1)
       ifield = ifld 
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_gen_bcmap()
+c
+c     generate cbc_bmap mapping a boundaryID to boundary condition
+c     note: 
+c       * boundaryID is index-1 and contiguous
+c       * each boundary condition defines a boundaryID 
+c
+      include 'SIZE'
+      include 'TOTAL'
+
+      integer bID, bcID
+      integer map(6)
+      integer ibc_bmap(lbid, ldimt1) 
+
+      logical ifalg,ifnorx,ifnory,ifnorz
+      character*3 cb 
+
+      call izero(boundaryID, size(boundaryID))
+      call izero(boundaryIDt, size(boundaryIDt))
+
+      call izero(map, size(map))
+ 
+      if(ifflow) then
+        do iel = 1,nelv
+        do ifc = 1,2*ndim
+           cb = cbc(ifc,iel,1) 
+           if(cb.eq.'W  ') map(1) = 1
+           if(cb.eq.'v  ') map(2) = 1
+           if(cb.eq.'o  ' .or. cb.eq.'O  ') map(3) = 1
+           if(cb.eq.'SYM') then
+             call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
+             if (ifnorx) map(4) = 1 
+             if (ifnory) map(5) = 1 
+             if (ifnorz) map(6) = 1 
+           endif
+        enddo
+        enddo
+      else
+        do iel = 1,nelv
+        do ifc = 1,2*ndim
+           cb = cbc(ifc,iel,1)
+           if(cb.eq.'t  ') map(1) = 1
+           if(cb.eq.'I  ' .or. cb.eq.'O  ') map(2) = 1
+           if(cb.eq.'f  ') map(3) = 1
+        enddo
+        enddo
+      endif
+
+      bID = 1
+      do i = 1,6
+        map(i) = iglmax(map(i),1)
+        if(map(i).gt.0) then
+          map(i) = bID
+          bID = bID + 1
+        endif 
+      enddo
+ 
+      ierr = 0
+      ifld = 1
+      do iel = 1,nelv
+      do ifc = 1,2*ndim
+         cb = cbc(ifc,iel,ifld) 
+         if(cb.eq.'W  ') then
+           boundaryID(ifc,iel) = map(1) 
+         else if(cb.eq.'v  ') then
+           boundaryID(ifc,iel) = map(2) 
+         else if(cb.eq.'o  ' .or. cb.eq.'O  ') then
+           boundaryID(ifc,iel) = map(3) 
+         else if(cb.eq.'SYM') then
+           call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
+           if (ifnorx) boundaryID(ifc,iel) = map(4) 
+           if (ifnory) boundaryID(ifc,iel) = map(5) 
+           if (ifnorz) boundaryID(ifc,iel) = map(6) 
+         else
+           if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+         endif
+      enddo
+      enddo
+      call err_chk(ierr, 'Invalid boundary condition type!$')
+
+      if(map(1).gt.0) cbc_bmap(map(1), ifld) = 'W  '
+      if(map(2).gt.0) cbc_bmap(map(2), ifld) = 'v  '
+      if(map(3).gt.0) cbc_bmap(map(3), ifld) = 'o  '
+      if(map(4).gt.0) cbc_bmap(map(4), ifld) = 'SYX'
+      if(map(5).gt.0) cbc_bmap(map(5), ifld) = 'SYY'
+      if(map(6).gt.0) cbc_bmap(map(6), ifld) = 'SYZ'
+
+c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
+ 
+      do ifld = 2,nfield
+        ierr = 0
+        if(iftmsh(ifld)) goto 199
+        call izero(ibc_bmap, size(ibc_bmap))
+        do iel  = 1,nelv
+        do ifc  = 1,2*ndim
+          bID = boundaryID(ifc,iel)
+          if(bID.gt.0) then
+            cb = cbc(ifc,iel,ifld) 
+            if(cb.eq.'t  ') then
+              bcID = 1
+            else if(cb.eq.'I  ') then
+              bcID = 2
+            else if(cb.eq.'f  ' .or. cb.eq.'O  ') then
+              bcID = 3
+            else
+              if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+            endif 
+            ibc_bmap(bID, ifld) = bcID 
+          endif          
+        enddo
+        enddo
+        call err_chk(ierr, 'Invalid boundary condition type!$')
+
+        do bID = 1,6
+           bcID = iglmax(ibc_bmap(bID, ifld),1)
+           if(bcID.eq.1) cbc_bmap(bID, ifld) = 't  ' 
+           if(bcID.eq.2) cbc_bmap(bID, ifld) = 'I  ' 
+           if(bcID.eq.3) cbc_bmap(bID, ifld) = 'f  ' 
+        enddo
+
+c        write(6,*) ifld, 't cbc_bmap: ', (cbc_bmap(i,ifld), i=1,6)
+ 199    continue
+      enddo
+
+      ! cht
+      ifld = 2
+      if(iftmsh(ifld)) then
+        ierr = 0
+        call izero(map, size(map))
+ 
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           cb = cbc(ifc,iel,ifld) 
+           if(cb.eq.'t  ') then
+             map(1) = 1
+           else if(cb.eq.'I  ' .or. cb.eq.'O  ') then 
+             map(2) = 1
+           else if(cb.eq.'f  ') then
+             map(3) = 1
+           else 
+             if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+           endif
+        enddo
+        enddo
+        call err_chk(ierr, 'Invalid boundary condition type!$')
+ 
+        bid = 1
+        do i = 1,3
+          map(i) = iglmax(map(i),1)
+          if(map(i).gt.0) then
+            map(i) = bid
+            bid = bid + 1
+          endif 
+        enddo
+ 
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           cb = cbc(ifc,iel,ifld) 
+           if(cb.eq.'t  ')  boundaryIDt(ifc,iel) = map(1) 
+           if(cb.eq.'I  ' .or. cb.eq.'O  ') 
+     $       boundaryIDt(ifc,iel) = map(2) 
+           if(cb.eq.'f  ') boundaryIDt(ifc,iel) = map(3)  
+        enddo
+        enddo
+
+        if(map(1).gt.0) cbc_bmap(map(1), ifld) = 't  '
+        if(map(2).gt.0) cbc_bmap(map(2), ifld) = 'I  '
+        if(map(3).gt.0) cbc_bmap(map(3), ifld) = 'f  '
+
+c        write(6,*) 'cht t cbc_bmap:', (cbc_bmap(i,ifld), i=1,6)
+      endif
 
       return
       end

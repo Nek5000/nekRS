@@ -32,9 +32,6 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 
   double tStart = MPI_Wtime();
 
-  int flow = 1;
-  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
-
   ins->dt = dt;
   if(tstep<=1){
     extbdfCoefficents(ins,tstep);
@@ -46,7 +43,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
 
   // First extrapolate velocity to t^(n+1)
   int velocityExtrapolationOrder = ins->ExplicitOrder;
-  if(!flow) velocityExtrapolationOrder = 1; 
+  if(!ins->flow) velocityExtrapolationOrder = 1; 
   ins->velocityExtKernel(mesh->Nelements,
                          velocityExtrapolationOrder,
                          ins->fieldOffset,
@@ -69,7 +66,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
       qthermal(ins, time+dt, ins->o_div);
   }
 
-  if(flow) fluidSolve(ins, time, dt, ins->o_U);
+  if(ins->flow) fluidSolve(ins, time, dt, ins->o_U);
     
   const dfloat cfl = computeCFL(ins, time+dt, tstep);
 
@@ -77,7 +74,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time+dt, dt, cfl); 
 
-    if(flow) {
+    if(ins->flow) {
       if(ins->uvwSolver)
         printf("  UVW: %d  P: %d", ins->NiterU, ins->NiterP); 
       else
