@@ -144,7 +144,7 @@ endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBP_DEFINES}")
 
 ###############################################################################
-# Generate nekrs.bashrc                                                       #
+# Generate nekrs.conf                                                       #
 ###############################################################################
 
 configure_file(
@@ -244,9 +244,10 @@ install(TARGETS nekrs-lib nekrs-bin
 )
 
 # Trailing slash prevents parent directory from being copied
-install(DIRECTORY scripts/ DESTINATION bin)
+install(DIRECTORY scripts/ DESTINATION bin 
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
-install(DIRECTORY okl DESTINATION include FILES_MATCHING REGEX "\.okl$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
 install(DIRECTORY examples/ DESTINATION examples)

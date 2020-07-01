@@ -50,15 +50,17 @@ endif()
 
 set(PARRSB_DIR ${NEK5000_DIR}/3rd_party/parRSB)
 
-if (PARRSB MATCHES ${NEK5000_PPLIST})
+if (${NEK5000_PPLIST} MATCHES "PARRSB")
   FetchContent_Declare(
     parrsb_content
     URL https://github.com/Nek5000/parRSB/archive/v0.2.tar.gz
-    SOURCE_DIR ${NEK5000_DIR}/3rd_party/parRSB
+    SOURCE_DIR ${PARRSB_DIR}
   )
   FetchContent_GetProperties(parrsb_content)
   if (NOT parrsb_content_POPULATED)
+    file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
     FetchContent_Populate(parrsb_content)
+    file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
   endif()
 endif()
 
@@ -80,6 +82,7 @@ ExternalProject_Add(
     "FC=${CMAKE_Fortran_COMPILER}"
     "FFLAGS=${CMAKE_Fortran_FLAGS}"
     "NEK5000_DIR=${NEK5000_DIR}"
+    "PPLIST=${NEK5000_PPLIST}"
   INSTALL_COMMAND ""
   USES_TERMINAL_BUILD on
 )
@@ -97,10 +100,22 @@ add_dependencies(blasLapack nek5000_deps)
 # Install
 # ---------------------------------------------------------
 
-install(DIRECTORY ${NEK5000_DIR}/core DESTINATION nek5000)
+
+install(DIRECTORY ${NEK5000_DIR}/core DESTINATION nek5000
+  PATTERN "*"
+  PATTERN "mkuserfile" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+
 install(PROGRAMS ${NEK5000_DIR}/bin/nekconfig DESTINATION nek5000/bin)
+
+install(FILES ${GS_DIR}/lib/libgs.a DESTINATION nek5000/3rd_party/gslib/lib)
 install(DIRECTORY ${GS_DIR}/include DESTINATION nek5000/3rd_party/gslib)
-if (PARRSB MATCHES ${NEK5000_PPLIST})
-  install(DIRECTORY ${PARRSB_DIR}/include DESTINATION nek5000/3rd_party/parRSB)
+
+install(FILES ${BLASLAPACK_DIR}/libblasLapack.a DESTINATION nek5000/3rd_party/blasLapack)
+
+if (${NEK5000_PPLIST} MATCHES "PARRSB")
+  install(FILES ${PARRSB_DIR}/lib/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
+  install(DIRECTORY ${PARRSB_DIR}/src/ 
+    DESTINATION nek5000/3rd_party/parRSB/include 
+    FILES_MATCHING REGEX "\.h$")
 endif()
 

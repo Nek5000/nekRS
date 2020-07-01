@@ -210,6 +210,7 @@ nekrs_info "Building NekRS ..."
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
+# ENABLE_CUDA, ENABLE_OPENCL, etc., are used by OCCA's CMakeLists
 cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
@@ -220,7 +221,11 @@ cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
       -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
-      ${NEKRS_DIR}
+      -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
+      -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
+      -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
+      -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
+      ${NEKRS_DIR} && make -j4 install
 
 if [ $? -ne 0 ]; then
   echo
