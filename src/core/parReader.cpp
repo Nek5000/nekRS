@@ -305,6 +305,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
       string key = "VCYCLE";
       if(p_preconditioner.find("additive") !=std::string::npos) key += "+ADDITIVE";
+      if(p_preconditioner.find("multiplicative") !=std::string::npos) key += "+MULTIPLICATIVE";
       if(p_preconditioner.find("overlap") !=std::string::npos) key += "+OVERLAPCRS";
       options.setArgs("PRESSURE PARALMOND CYCLE", key);
     }
@@ -314,12 +315,39 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(p_smoother == "asm"){ 
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
+        if(p_preconditioner.find("multiplicative") !=std::string::npos){
+            ABORT("Multiplicative vcycle is not supported for ASM smoother!\n");
+        } else {
+            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
+            if(entry.find("ADDITIVE") == std::string::npos){
+              entry += "+ADDITIVE";
+              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
+            }
+        }
       } else if (p_smoother == "ras") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
+        if(p_preconditioner.find("multiplicative") !=std::string::npos){
+            ABORT("Multiplicative vcycle is not supported for RAS smoother!\n");
+        } else {
+            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
+            if(entry.find("ADDITIVE") == std::string::npos){
+              entry += "+ADDITIVE";
+              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
+            }
+        }
       } else if (p_smoother == "chebyshev") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
+        if(p_preconditioner.find("additive") !=std::string::npos){
+            ABORT("Additive vcycle is not supported for Chebyshev smoother!\n");
+        } else {
+            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
+            if(entry.find("MULTIPLICATIVE") == std::string::npos){
+              entry += "+MULTIPLICATIVE";
+              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
+            }
+        }
       } else {
         ABORT("Unknown PRESSURE::smootherType!");
       } 
