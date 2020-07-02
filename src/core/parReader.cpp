@@ -12,7 +12,7 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 
-#define abort(a,b)  { if(rank==0) cout << a << endl; EXIT(1); }
+#define exit(a,b)  { if(rank==0) cout << a << endl; EXIT(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
@@ -169,19 +169,19 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("general", "polynomialorder", N))
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
   else
-    abort("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE); 
+    exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE); 
   
   double dt;
   if(ini.extract("general", "dt", dt))
     options.setArgs("DT", to_string_f(dt));
   else
-    abort("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE); 
+    exit("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE); 
  
   string timeStepper;
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    abort("No support for bdf3!", EXIT_FAILURE); 
+    exit("No support for bdf3!", EXIT_FAILURE); 
   } 
   if(timeStepper == "bdf2" || timeStepper == "tombo2") { 
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
@@ -192,7 +192,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   
   bool variableDt = false;
   ini.extract("general", "variabledt", variableDt);
-  if(variableDt) abort("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE); 
+  if(variableDt) exit("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE); 
   
   double endTime;
   string stopAt;
@@ -203,11 +203,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = numSteps*dt;
     } else {
-      abort("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
+      exit("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     } 
   } else {
     if(!ini.extract("general", "endtime", endTime))
-      abort("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE); 
+      exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE); 
   }
   options.setArgs("FINAL TIME", to_string_f(endTime));
   
@@ -251,10 +251,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("general", "filterweight", sbuf)) {
       int err = 0;
       double weight = te_interp(sbuf.c_str(), &err);
-      if(err) abort("Invalid expression for filterWeight!", EXIT_FAILURE);
+      if(err) exit("Invalid expression for filterWeight!", EXIT_FAILURE);
       options.setArgs("HPFRT STRENGTH", to_string_f(weight));
     }else{
-      abort("Cannot find mandatory parameter GENERAL:filterWeight!", EXIT_FAILURE);
+      exit("Cannot find mandatory parameter GENERAL:filterWeight!", EXIT_FAILURE);
     }
     double filterCutoffRatio;
     int NFilterModes;
@@ -264,7 +264,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(NFilterModes < 1) NFilterModes = 1; 
     options.setArgs("HPFRT MODES", to_string_f(NFilterModes));
   } else if(filtering == "explicit") {
-    abort("GENERAL::filtering = explicit not supported!", EXIT_FAILURE);
+    exit("GENERAL::filtering = explicit not supported!", EXIT_FAILURE);
   }
 
   // PROBLEMTYPE
@@ -275,7 +275,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   bool stressFormulation; 
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
-    if(stressFormulation) abort("PROBLEMTYPE::stressFormulation = Yes not supported!", EXIT_FAILURE);
+    if(stressFormulation) exit("PROBLEMTYPE::stressFormulation = Yes not supported!", EXIT_FAILURE);
 
   string equation; 
   if(ini.extract("problemtype", "equation", equation)) {
@@ -289,11 +289,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("pressure", "residualtol", p_residualTol))
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
-      abort("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE); 
+      exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE); 
     
     bool p_rproj; 
     if(ini.extract("pressure", "projection", p_rproj))
-      if(p_rproj) abort("PRESSURE::projection = Yes not supported!", EXIT_FAILURE);
+      if(p_rproj) exit("PRESSURE::projection = Yes not supported!", EXIT_FAILURE);
   
     bool p_gproj; 
     if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
@@ -304,7 +304,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
     } else if(p_preconditioner.find("semg") !=std::string::npos  || 
-       p_preconditioner.find("multigrid") !=std::string::npos) {
+              p_preconditioner.find("multigrid") !=std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
       string key = "VCYCLE";
       if(p_preconditioner.find("additive") !=std::string::npos) key += "+ADDITIVE";
@@ -318,35 +318,28 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(p_smoother == "asm"){ 
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
-        if(p_preconditioner.find("multiplicative") !=std::string::npos){
-            if (rank == 0) cout << "\nERROR: Multiplicative vcycle is not supported for ASM smoother!\n";
-            ABORT(1);
+        if(p_preconditioner.find("multigrid") !=std::string::npos){
+          if(p_preconditioner.find("additive") ==std::string::npos){
+            exit("ASM smoother only supported for additive V-cycle!", EXIT_FAILURE);
+          }
         } else {
-            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-            if(entry.find("ADDITIVE") == std::string::npos){
-              entry += "+ADDITIVE";
-              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-            }
+          options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");       
         }
       } else if (p_smoother == "ras") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
-        if(p_preconditioner.find("multiplicative") !=std::string::npos){
-            if (rank == 0) cout << "\nERROR: Multiplicative vcycle is not supported for RAS smoother!\n";
-            ABORT(1);
+        if(p_preconditioner.find("multigrid") !=std::string::npos){
+          if(p_preconditioner.find("additive") ==std::string::npos){
+            exit("RAS smoother only supported for additive V-cycle!", EXIT_FAILURE);
+          }
         } else {
-            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-            if(entry.find("ADDITIVE") == std::string::npos){
-              entry += "+ADDITIVE";
-              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-            }
+          options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");       
         }
       } else if (p_smoother == "chebyshev") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
-            if (rank == 0) cout << "\nERROR: Additive vcycle is not supported for Chebyshev smoother!\n";
-            ABORT(1);
+            exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
         } else {
             std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
             if(entry.find("MULTIPLICATIVE") == std::string::npos){
@@ -355,8 +348,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
             }
         }
       } else {
-        if (rank == 0) cout << "\nERROR: Unknown PRESSURE::smootherType!\n";
-        ABORT(1);
+        exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
       } 
     } else {
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV"); 
@@ -407,7 +399,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("velocity", "residualtol", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
-      if(flow) abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
+      if(flow) exit("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
  
     string v_bcMap;
     if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
@@ -424,18 +416,18 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("DENSITY", to_string_f(rho));
     } else {
       if(!variableProperties && flow)
-        abort("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE); 
+        exit("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE); 
     }
     
     if(ini.extract("velocity", "viscosity", sbuf)) {
       int err = 0;
       double viscosity = te_interp(sbuf.c_str(), &err);
-      if(err) abort("Invalid expression for viscosity!", EXIT_FAILURE);
+      if(err) exit("Invalid expression for viscosity!", EXIT_FAILURE);
       if(viscosity < 0) viscosity = fabs(1/viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
     } else {
       if(!variableProperties && flow)
-        abort("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
+        exit("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
     }
   } else {
     options.setArgs("VELOCITY", "FALSE");
@@ -463,39 +455,39 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(ini.extract("temperature", "conductivity", sbuf)) {
         int err = 0;
         double diffusivity = te_interp(sbuf.c_str(), &err);
-        if(err) abort("Invalid expression for conductivity!", EXIT_FAILURE);
+        if(err) exit("Invalid expression for conductivity!", EXIT_FAILURE);
         if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
         options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
       } else {
         if(!variableProperties)
-          abort("Cannot find mandatory parameter TEMPERATURE::conductivity!", EXIT_FAILURE); 
+          exit("Cannot find mandatory parameter TEMPERATURE::conductivity!", EXIT_FAILURE); 
       }
  
       if(ini.extract("temperature", "rhocp", sbuf)) {
         int err = 0;
         double rhoCp = te_interp(sbuf.c_str(), &err);
-        if(err) abort("Invalid expression for rhoCp!", EXIT_FAILURE);
+        if(err) exit("Invalid expression for rhoCp!", EXIT_FAILURE);
         options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
       } else {
         if(!variableProperties)
-          abort("Cannot find mandatory parameter TEMPERATURE::rhoCp!", EXIT_FAILURE); 
+          exit("Cannot find mandatory parameter TEMPERATURE::rhoCp!", EXIT_FAILURE); 
       }
  
       string s_bcMap;
       if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
-        if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);  
+        if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);  
         std::vector<std::string> sList;
         sList = serializeString(s_bcMap);
         bcMap::setup(sList, "scalar00");
       } else {
-        if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+        if(bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
         bcInPar = 0;
       } 
     }
   }
  
   if(equation == "lowmachns" && ini.sections.count("temperature") == 0) 
-    abort("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!", EXIT_FAILURE);
+    exit("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!", EXIT_FAILURE);
     
   //
   for (auto & sec : ini.sections) {
@@ -530,32 +522,32 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
       double diffusivity = te_interp(sbuf.c_str(), &err);
-      if(err) abort("Invalid expression for diffusivity!", EXIT_FAILURE);
+      if(err) exit("Invalid expression for diffusivity!", EXIT_FAILURE);
       if(diffusivity < 0) diffusivity = fabs(1/diffusivity);
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
     } else {
       if(!variableProperties)
-        abort("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!", EXIT_FAILURE); 
+        exit("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!", EXIT_FAILURE); 
     }
 
     if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       double rho = te_interp(sbuf.c_str(), &err);
-      if(err) abort("Invalid expression for rho!", EXIT_FAILURE);
+      if(err) exit("Invalid expression for rho!", EXIT_FAILURE);
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
     } else {
       if(!variableProperties)
-        abort("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!", EXIT_FAILURE); 
+        exit("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!", EXIT_FAILURE); 
     }
 
     string s_bcMap;
     if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
-      if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
+      if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
     } else {
-      if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+      if(bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
       bcInPar = 0;
     } 
   }
