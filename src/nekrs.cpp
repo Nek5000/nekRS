@@ -25,7 +25,8 @@ static void dryRun(libParanumal::setupAide &options, int npTarget);
 namespace nekrs {
 
 void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget, 
-           int ciMode, string cacheDir, string _setupFile)
+           int ciMode, string cacheDir, string _setupFile, 
+           string _backend, string _deviceID)
 {
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
@@ -44,6 +45,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   options = parRead(setupFile, comm);
+
+  if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend); 
+  if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID); 
 
   setOUDF(options);
 

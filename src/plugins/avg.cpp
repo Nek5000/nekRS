@@ -85,7 +85,7 @@ void avg::run(dfloat time)
 {
   if(!setupCalled || !buildKernelCalled) { 
     cout << "avg::run() was called prior to avg::setup()!\n";
-    exit(1);
+    ABORT(1);
   }
 
   if(!counter) {
@@ -137,7 +137,7 @@ void avg::setup(ins_t *ins_)
 {
   if(!buildKernelCalled) { 
     cout << "avg::setup() was called prior avg::buildKernel()!\n";
-    exit(1);
+    ABORT(1);
   }
 
   ins = ins_;

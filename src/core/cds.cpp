@@ -26,7 +26,7 @@ occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
                             mesh->o_z,
                             cds->o_mapB[is],
                             cds->o_ellipticCoeff,
-                            cds->o_usrwrk,
+                            *(cds->o_usrwrk),
                             cds->o_wrk1);
 
   ogsGatherScatter(cds->o_wrk1, ogsDfloat, ogsAdd, mesh->ogs);
@@ -49,7 +49,7 @@ occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
                             mesh->o_vmapM,
                             mesh->o_EToB,
                             cds->o_EToB[is],
-                            cds->o_usrwrk,
+                            *(cds->o_usrwrk),
                             cds->o_wrk0);
   return cds->o_wrk0;
 }

@@ -7,7 +7,8 @@
 namespace nekrs {
 
 void setup(MPI_Comm comm, int buildOnly, int sizeTarget,
-           int ciMode, std::string cacheDir, std::string setupFile);
+           int ciMode, std::string cacheDir, std::string setupFile, 
+           std::string deviceID, std::string backend);
 
 void runStep(double time, double dt, int tstep);
 void copyToNek(double time, int tstep);

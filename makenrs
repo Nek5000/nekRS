@@ -11,11 +11,8 @@
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_CXXFLAGS:="-g -O2"}
 
-: ${OCCA_CUDA_ENABLED:=1}
-: ${OCCA_HIP_ENABLED:=0}
-: ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_CXX:="gcc"}
-: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
+: ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 #: ${OCCA_INCLUDE_PATH:="/usr/local/cuda/include"}
 #: ${OCCA_LIBRARY_PATH:="/usr/local/cuda/lib"}
 
@@ -31,11 +28,105 @@ else
    NEKRS_EXIT_CMD=exit
 fi
 
+export NEKRS_BUILD_DIR=`pwd`/build
+
+if [ "$#" -eq 1 ]; then
+  if [[ "$1" = *"clean"* ]]; then
+    set +e
+
+    read -p "installation in $NEKRS_INSTALL_DIR? [N]" yn
+    case $yn in
+      [Yy]* )
+        rm -rf $NEKRS_INSTALL_DIR >/dev/null 2>&1
+        ;;
+      * )
+        ;;
+    esac
+
+    read -p "nekRS? [N]" yn
+    case $yn in
+      [Yy]* )
+        rm -rf "${NEKRS_BUILD_DIR}"/CMakeFiles > /dev/null 2>&1
+        ;;
+      * )
+        ;;
+    esac
+
+    read -p "OCCA? [N]" yn
+    case $yn in
+      [Yy]* )
+        make -C ${NEKRS_BUILD_DIR}/3rd_party/occa clean > /dev/null 2>&1
+        ;;
+      * )
+        ;;
+    esac
+    read -p "libParanumal? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_DIR=${NEKRS_BUILD_DIR}/3rd_party/occa \
+        make -C ${NEKRS_BUILD_DIR}/3rd_party/libparanumal/solvers/elliptic realclean  > /dev/null 2>&1
+        ;;
+      * )
+        ;;
+    esac
+
+    read -p "nek 3rd-party? [N]" yn
+    case $yn in
+      [Yy]* )
+        ${NEKRS_BUILD_DIR}/3rd_party/nek5000/bin/nekconfig clean << EOF
+y
+EOF
+        ;;
+      * )
+        ;;
+    esac
+    set -e
+    exit 0
+  else
+    nekrs_info "Usage: makenrs [clean]"
+    ${NEKRS_EXIT_CMD} 1
+  fi
+fi
+
+
 if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then 
   echo "Error: user's login shell needs to be bash or zsh!"
   ${NEKRS_EXIT_CMD} 1
 fi
 
+if [ -z ${OCCA_CUDA_ENABLED} ]; then
+    read -p "enable CUDA backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_CUDA_ENABLED=1
+        ;;
+      * )
+        OCCA_CUDA_ENABLED=0 
+        ;;
+    esac
+fi
+if [ -z ${OCCA_HIP_ENABLED} ]; then
+    read -p "enable HIP backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_HIP_ENABLED=1
+        ;;
+      * )
+        OCCA_HIP_ENABLED=0
+        ;;
+    esac
+fi
+if [ -z ${OCCA_OPENCL_ENABLED} ]; then
+    read -p "enable OPENCL backend? [N]" yn
+    case $yn in
+      [Yy]* )
+        OCCA_OPENCL_ENABLED=1
+        ;;
+      * )
+        OCCA_OPENCL_ENABLED=0
+        ;;
+    esac
+fi
 : ${OCCA_METAL_ENABLED:=0}
 
 NEKRS_CXXFLAGS+=" -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
@@ -100,8 +191,6 @@ function nekrs_error() {
 }
 export -f nekrs_error
 
-export NEKRS_BUILD_DIR=`pwd`/build
-
 if [ ${NEKRS_SOURCED} -eq 1 ]; then
   ${NEKRS_EXIT_CMD} 0
 fi
@@ -116,63 +205,6 @@ if [ ${NEKRS_DEBUG} -ne 0 ]; then
   NEKRS_BUILD_TYPE=Debug
 fi
 
-if [ "$#" -eq 1 ]; then
-  if [[ "$1" = *"clean"* ]]; then
-    set +e
-
-    read -p "installation in $NEKRS_INSTALL_DIR? [N]" yn
-    case $yn in
-      [Yy]* )
-        rm -rf $NEKRS_INSTALL_DIR >/dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-
-    read -p "nekRS? [N]" yn
-    case $yn in
-      [Yy]* )
-        rm -rf "${NEKRS_BUILD_DIR}"/CMakeFiles > /dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-
-    read -p "OCCA? [N]" yn
-    case $yn in
-      [Yy]* )
-        make -C ${NEKRS_BUILD_DIR}/3rd_party/occa clean > /dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-    read -p "libParanumal? [N]" yn
-    case $yn in
-      [Yy]* )
-        OCCA_DIR=${NEKRS_BUILD_DIR}/3rd_party/occa \
-        make -C ${NEKRS_BUILD_DIR}/3rd_party/libparanumal/solvers/elliptic realclean  > /dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-
-    read -p "nek 3rd-party? [N]" yn
-    case $yn in
-      [Yy]* )
-        ${NEKRS_BUILD_DIR}/3rd_party/nek5000/bin/nekconfig clean << EOF
-y
-EOF
-        ;;
-      * )
-        ;;
-    esac
-    set -e
-    exit 0
-  else
-    nekrs_info "Usage: makenrs [clean]"
-    ${NEKRS_EXIT_CMD} 1
-  fi
-fi
 
 nekrs_info "Building NekRS ..."
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1

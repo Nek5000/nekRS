@@ -1,3 +1,4 @@
+#include "nrs.hpp"
 #include "ins.h"
 
 void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A); 
@@ -52,7 +53,7 @@ void filterSetup(ins_t* ins){
 
   if(INFO){
     printf("DGE_TRI/TRF error: %d \n", INFO);
-    exit(EXIT_FAILURE);
+    ABORT(EXIT_FAILURE);
   }
  
 

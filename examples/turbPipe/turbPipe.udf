@@ -22,9 +22,7 @@ void UDF_Setup(ins_t *ins)
   if (!ins->readRestartFile) nek_copyTo(ins->startTime);
 
   // setup scratch space
-  ins->o_usrwrk.free(); free(ins->usrwrk);
-  ins->usrwrk   = (dfloat*) calloc(ins->NVfields*ins->fieldOffset, sizeof(dfloat));
-  ins->o_usrwrk = ins->mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->usrwrk);
+  ins->o_usrwrk = ins->mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat));
 
   // recycling
   const dfloat wbar  = 1.0;

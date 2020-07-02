@@ -3,6 +3,7 @@
 rm -f logfile
 mv $1.log.$2 $1.log1.$2 2>/dev/null
 
+ulimit -s unlimited 2>/dev/null
 export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
 : ${TRAVIS:="false"}
 
@@ -17,7 +18,7 @@ else
     echo "usage: ${0##*/} <casename> <#tasks>"
     exit 1
   fi
-  mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 >$1.log.$2 2>&1 &
+  nohup mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 1>&2 | tee $1.log.$2 &
 fi
 
 ln -sf $1.log.$2 logfile

@@ -32,8 +32,9 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   options.getArgs("MESH DIMENSION", ins->dim);
   options.getArgs("ELEMENT TYPE", ins->elementType);
  
-  int flow = 1;
-  if(options.compareArgs("VELOCITY SOLVER", "NONE")) flow = 0;
+  ins->flow = 1;
+  if(options.compareArgs("VELOCITY", "FALSE")) ins->flow = 0;
+  if(options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
@@ -159,7 +160,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       memcpy(ins->Srkc, rkc, ins->SNrk*sizeof(dfloat));
     }else{
       if(mesh->rank==0) cout << "Unsupported subcycling scheme!\n"; 
-      exit(1);
+      ABORT(1);
     }
     ins->o_Srka = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srka);
     ins->o_Srkb = mesh->device.malloc(ins->SNrk*sizeof(dfloat), ins->Srkb);
@@ -186,8 +187,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->o_wrk15 = o_scratch.slice(15*ins->fieldOffset*sizeof(dfloat));
 
   // dummy decleration for user work space 
-  ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
-  ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
+  //ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
+  //ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
 
   ins->o_U  = mesh->device.malloc(ins->NVfields*ins->Nstages*ins->fieldOffset*sizeof(dfloat), ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat), ins->Ue);
@@ -284,10 +285,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if(options.compareArgs("FILTER STABILIZATION", "RELAXATION")) 
     filterSetup(ins); 
 
-  const int nbrBIDs = bcMap::size();
+  const int nbrBIDs = bcMap::size(0);
   int NBCType = nbrBIDs+1;
 
-  if (flow) {
+  if (ins->flow) {
 
   if (mesh->rank==0) printf("==================VELOCITY SETUP=========================\n");
 
@@ -422,7 +423,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
    ins->cds = cdsSetup(ins, msh, options, kernelInfoS); 
   }
 
-  if (flow) {
+  if (ins->flow) {
 
   if (mesh->rank==0) printf("==================PRESSURE SETUP=========================\n");
 
@@ -750,7 +751,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
       err++;
     }
 
-    if(err) exit(1);
+    if(err) ABORT(1);
     free(tmp);
   }
 
@@ -784,7 +785,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
   cds->temporalOrder = ins->temporalOrder; 
   cds->g0            = ins->g0; 
 
-  cds->o_usrwrk = ins->o_usrwrk;
+  cds->o_usrwrk = &(ins->o_usrwrk);
 
   dlong Nlocal = mesh->Np*mesh->Nelements;
   dlong Ntotal = mesh->Np*(mesh->Nelements+mesh->totalHaloPairs);
@@ -877,15 +878,15 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
   cds->options.setArgs("DEBUG ENABLE OGS", "1");
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
-  const int nbrBIDs = bcMap::size();
-  int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
-
-
   cds->TOL = 1e-6;
 
   for (int is=0; is<cds->NSfields; is++) {
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+
+    int nbrBIDs = bcMap::size(0);
+    if(ins->cht && is==0) nbrBIDs = bcMap::size(1);
+    int *sBCType = (int*) calloc(nbrBIDs+1, sizeof(int));
 
     std::stringstream ss;
     ss  << std::setfill('0') << std::setw(2) << is;
@@ -961,6 +962,7 @@ cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &k
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements*mesh->Nfaces*sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements*mesh->Np*sizeof(int), mapB);
 
+    free(sBCType);
   }
 
   // build inverse mass matrix

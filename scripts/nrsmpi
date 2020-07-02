@@ -1,5 +1,6 @@
 #!/bin/bash
 
+ulimit -s unlimited 2>/dev/null
 export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
 : ${TRAVIS:="false"}
 

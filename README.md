@@ -10,12 +10,13 @@
 Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
-* Conjugate fluid-solid heat transfer
-* CG-SEM using hexaheadral elements 
-* 2nd order semi-implicit time integration + OIFS
-* Dealiasing and high-pass filter relaxation term stabilization
-* MPI+X hybrid parallelism supporting serial (CPU), CUDA, OPENCL and HIP 
+* CG-SEM using curvilinear conformal hexaheadral elements 
+* 2nd order semi-implicit time integration + operator integration factor splitting
+* MPI+X hybrid parallelism supporting CPU, CUDA, HIP and OPENCL
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
+* Conjugate fluid-solid heat transfer
+* LES and RANS turbulence models
+* VisIt & Paraview support for data analysis and visualization
 
 Note, the code is an early prototype so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
 
@@ -69,11 +70,6 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 cd $NEKRS_HOME/examples/ethier
 nrsmpi ethier 2 # run on two MPI ranks
 ```
-
-## Current Limitations
-
-* Kernels are optimized primarily for NVIDIA GPUs 
-
 ## Contributing
 
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.

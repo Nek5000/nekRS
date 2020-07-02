@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------*\
-Copyright (c) 2019, UCHICAGO ARGONNE, LLC. 
+Copyright (c) 2019-2020, UCHICAGO ARGONNE, LLC. 
 
 The UChicago Argonne, LLC as Operator of Argonne National
 Laboratory holds copyright in the Software. The copyright holder
@@ -79,6 +79,8 @@ struct cmdOptions {
   int sizeTarget = 0;
   int debug = 0;
   std::string setupFile;
+  std::string deviceID;
+  std::string backend;
 };
 
 static cmdOptions *processCmdLineOptions(int argc, char **argv); 
@@ -120,7 +122,8 @@ int main(int argc, char **argv)
 
   std::string cacheDir; 
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
-               cmdOpt->ciMode, cacheDir, cmdOpt->setupFile);
+               cmdOpt->ciMode, cacheDir, cmdOpt->setupFile, 
+               cmdOpt->backend, cmdOpt->deviceID);
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize(); 
@@ -137,7 +140,7 @@ int main(int argc, char **argv)
   double time = startTime;
   int tStep = 1;
   MPI_Pcontrol(1);
-  while ((finalTime-time)/finalTime > 0.1*nekrs::dt()) {
+  while ((finalTime-time)/finalTime > 1e-6*nekrs::dt()) {
 
     nekrs::runStep(time, nekrs::dt(), tStep);
     time += nekrs::dt();
@@ -182,7 +185,9 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
           {"cimode", required_argument, 0, 'c'},
           {"build-only", required_argument, 0, 'b'},
           {"debug", no_argument, 0, 'd'},
-          {0, 0, 0, 0}
+          {"backend", required_argument, 0, 't'},
+          {"device-id", required_argument, 0, 'i'},
+        {0, 0, 0, 0}
       };
       int option_index = 0;
       int c = getopt_long (argc, argv, "s:", long_options, &option_index);
@@ -208,6 +213,12 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
            case 'd':  
               cmdOpt->debug = 1;
               break; 
+          case 'i':
+              cmdOpt->deviceID.assign(optarg);  
+              break;  
+          case 't':
+              cmdOpt->backend.assign(optarg);  
+              break;  
           default:  
               err = 1;
       }
@@ -218,6 +229,12 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   strcpy(buf, cmdOpt->setupFile.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->setupFile.assign(buf);
+  strcpy(buf, cmdOpt->deviceID.c_str());
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
+  cmdOpt->deviceID.assign(buf);
+  strcpy(buf, cmdOpt->backend.c_str());
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
+  cmdOpt->backend.assign(buf);
   MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
@@ -229,7 +246,8 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   if (err) {
     if (rank == 0)
       std::cout << "usage: ./nekrs --setup <case name> "
-                << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ]"
+                << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
+                << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
                 << "\n";
     MPI_Finalize(); 
     exit(1);

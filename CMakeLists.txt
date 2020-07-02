@@ -159,8 +159,8 @@ else()
   set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING "")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LIBP_DEFINES}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBP_DEFINES}")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LIBP_DEFINES}")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBP_DEFINES}")
 
 ###############################################################################
 # Generate nekrs.bashrc                                                       #

@@ -221,11 +221,14 @@ public:
                                                   std::ptr_fun<int, int>(std::tolower));
 					detail::rtrim(variable);
 					detail::ltrim(value);
-
-                                        if (lowerValue) {
+                           
+                                        bool inquotes = lowerValue && value.front() == '"' &&
+                                                        lowerValue && value.back() == '"'; 
+                                        if (lowerValue && !inquotes) {
                                           transform(value.begin(), value.end(), value.begin(), 
                                                     std::ptr_fun<int, int>(std::tolower));
                                         }
+                                        value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
 	
 					auto & sec = sections[section];
 					if (sec.find(variable) == sec.end())
