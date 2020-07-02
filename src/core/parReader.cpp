@@ -319,7 +319,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
         if(p_preconditioner.find("multiplicative") !=std::string::npos){
-            ABORT("Multiplicative vcycle is not supported for ASM smoother!\n");
+            if (rank == 0) cout << "\nERROR: Multiplicative vcycle is not supported for ASM smoother!\n";
+            ABORT(1);
         } else {
             std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
             if(entry.find("ADDITIVE") == std::string::npos){
@@ -331,7 +332,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
         if(p_preconditioner.find("multiplicative") !=std::string::npos){
-            ABORT("Multiplicative vcycle is not supported for RAS smoother!\n");
+            if (rank == 0) cout << "\nERROR: Multiplicative vcycle is not supported for RAS smoother!\n";
+            ABORT(1);
         } else {
             std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
             if(entry.find("ADDITIVE") == std::string::npos){
@@ -343,7 +345,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
-            ABORT("Additive vcycle is not supported for Chebyshev smoother!\n");
+            if (rank == 0) cout << "\nERROR: Additive vcycle is not supported for Chebyshev smoother!\n";
+            ABORT(1);
         } else {
             std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
             if(entry.find("MULTIPLICATIVE") == std::string::npos){
@@ -352,7 +355,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
             }
         }
       } else {
-        ABORT("Unknown PRESSURE::smootherType!");
+        if (rank == 0) cout << "\nERROR: Unknown PRESSURE::smootherType!\n";
+        ABORT(1);
       } 
     } else {
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV"); 

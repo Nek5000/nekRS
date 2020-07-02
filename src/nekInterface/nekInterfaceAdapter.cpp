@@ -730,7 +730,3 @@ void nek_copyRestart() {
 long long nek_set_glo_num(int nx, int isTMesh) {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
 }
-
-void nek_dssum(dfloat *u) {
-  (*nek_dssum_ptr)(u);
-}
