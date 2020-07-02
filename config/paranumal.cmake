@@ -67,7 +67,7 @@ set(OGS_SOURCES
 
 add_library(libogs ${OGS_SOURCES})
 set_target_properties(libogs PROPERTIES OUTPUT_NAME ogs)
-target_compile_definitions(libogs PUBLIC -DDOGS="${OGS_DIR}")
+target_compile_definitions(libogs PUBLIC -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter")
 target_include_directories(libogs PUBLIC
         ${OGS_DIR}/include
         ${OGS_DIR}
@@ -155,7 +155,7 @@ set(PARANUMAL_SOURCES
 set_source_files_properties(${PARANUMAL_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libparanumal ${PARANUMAL_SOURCES})
 set_target_properties(libparanumal PROPERTIES OUTPUT_NAME P)
-target_compile_definitions(libparanumal PUBLIC -DDHOLMES="${PARANUMAL_DIR}")
+target_compile_definitions(libparanumal PUBLIC -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal")
 target_include_directories(libparanumal PUBLIC ${PARANUMAL_DIR}/include src/core/)
 target_link_libraries(libparanumal PUBLIC libogs libocca blasLapack)
 
@@ -189,7 +189,7 @@ set(PARALMOND_SOURCES
 
 add_library(libparAlmond ${PARALMOND_SOURCES})
 set_target_properties(libparAlmond PROPERTIES OUTPUT_NAME parAlmond)
-target_compile_definitions(libparAlmond PUBLIC -DDPARALMOND="${PARALMOND_DIR}" PRIVATE -DHYPRE)
+target_compile_definitions(libparAlmond PUBLIC -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" PRIVATE -DHYPRE)
 target_include_directories(libparAlmond 
         PUBLIC
         ${PARALMOND_DIR}/include
@@ -252,7 +252,7 @@ set(ELLIPTIC_SOURCES
 set_source_files_properties(${ELLIPTIC_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libelliptic ${ELLIPTIC_SOURCES})
 set_target_properties(libelliptic PROPERTIES OUTPUT_NAME elliptic)
-target_compile_definitions(libelliptic PUBLIC -DDELLIPTIC="${ELLIPTIC_DIR}")
+target_compile_definitions(libelliptic PUBLIC -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic")
 target_include_directories(libelliptic PUBLIC ${ELLIPTIC_DIR})
 target_link_libraries(libelliptic PUBLIC libparanumal libparAlmond libogs libocca blasLapack)
 
