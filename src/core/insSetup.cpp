@@ -481,14 +481,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     {5,{5,3,1}},
     {6,{6,3,1}},
     {7,{7,3,1}},
-    {8,{8,3,1}},
-    {9,{9,3,1}},
-    {10,{10,3,1}},
-    {11,{11,3,1}},
-    {12,{12,3,1}},
-    {13,{13,3,1}},
-    {14,{14,3,1}},
-    {15,{15,3,1}}
+    {8,{8,5,1}},
+    {9,{9,5,1}},
   };
   if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
      ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
