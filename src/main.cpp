@@ -237,7 +237,9 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
     err++;
   } else {
     std::string casepath, casename;
-    nekrs::parseCaseString(cmdOpt->setupFile, casepath, casename);
+    size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
+    casepath = cmdOpt->setupFile.substr(0,last_slash);
+    casename = cmdOpt->setupFile.substr(last_slash, cmdOpt->setupFile.length() - last_slash);
     if(casepath.length() > 0) chdir(casepath.c_str());
     cmdOpt->setupFile.assign(casename);
   }

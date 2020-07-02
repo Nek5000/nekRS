@@ -203,12 +203,6 @@ void printRuntimeStatistics()
   timer::printStat();
 }
 
-void parseCaseString(const std::string& casestring, std::string& casepath, std::string& casename){
-  size_t last_slash = casestring.rfind('/') + 1;
-  casepath = casestring.substr(0,last_slash);
-  casename = casestring.substr(last_slash, casestring.length() - last_slash);
-}
-
 } // namespace
 
 static void dryRun(libParanumal::setupAide &options, int npTarget) 
