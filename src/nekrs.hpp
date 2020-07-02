@@ -16,6 +16,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep);
 void nekOutfld(void);
 void nekUserchk(void);
 void printRuntimeStatistics(void);
+void parseCaseString(const std::string& casestring, std::string& casepath, std::string& casename);
 
 const double dt(void);
 const int outputStep(void);

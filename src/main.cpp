@@ -67,6 +67,7 @@ not be used for advertising or product endorsement purposes.
 #include <cstring>
 #include <getopt.h>
 #include <cfenv>
+#include <unistd.h>
 #include "nekrs.hpp"
 
 #define DEBUG
@@ -232,7 +233,14 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv)
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
 
-  if(cmdOpt->setupFile.empty()) err++;
+  if(cmdOpt->setupFile.empty()){
+    err++;
+  } else {
+    std::string casepath, casename;
+    nekrs::parseCaseString(cmdOpt->setupFile, casepath, casename);
+    if(casepath.length() > 0) chdir(casepath.c_str());
+    cmdOpt->setupFile.assign(casename);
+  }
 
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
   if (err) {
