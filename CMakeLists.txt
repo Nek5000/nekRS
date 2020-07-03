@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS C CXX Fortran)
+project(NekRS LANGUAGES C CXX Fortran VERSION 20.1)
+cmake_policy(SET CMP0048 NEW)   # For VERSION variables, since v3.0
 include(FortranCInterface)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
@@ -244,11 +245,23 @@ install(TARGETS nekrs-lib nekrs-bin
 )
 
 # Trailing slash prevents parent directory from being copied
+install(DIRECTORY examples/ DESTINATION examples)
 install(DIRECTORY scripts/ DESTINATION bin 
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
 install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
-install(DIRECTORY examples/ DESTINATION examples)
+
+
+#################################################################################
+# Make tarball
+#################################################################################
+
+set(TARNAME "nekRS-${PROJECT_VERSION}")
+
+add_custom_target(tar
+  COMMAND ${CMAKE_COMMAND} -DTARNAME=${TARNAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
+  COMMAND tar -czf ${TARNAME}.tar.gz ${TARNAME}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
