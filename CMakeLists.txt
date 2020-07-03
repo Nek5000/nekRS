@@ -182,7 +182,7 @@ include(config/nek5000.cmake)
 # Build libP                                                                  #
 ###############################################################################
 
-include(config/paranumal.cmake)
+include(config/libparanumal.cmake)
 
 ###############################################################################
 # Build NekRS
