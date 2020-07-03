@@ -12,10 +12,12 @@ add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
 # libparanumal
 # ------------
 
-set(LIBP_SOURCE_DIR 3rd_party/libparanumal)
+set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/libparanumal)
 
 # If LIBP is not in source tree, download it in build directory
-if (NOT EXISTS ${LIBP_SOURCE_DIR})
+if (EXISTS ${LIBP_SOURCE_DIR})
+  message(STATUS "Using libparanumal source in ${LIBP_SOURCE_DIR}")
+else()
   FetchContent_Declare(
       libp_content
       GIT_REPOSITORY https://gitlab.com/nekrs/libparanumal.git
@@ -35,8 +37,14 @@ set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
 # HYPRE
 # ------------
 
-set(HYPRE_SOURCE_DIR 3rd_party/hypre)
+set(HYPRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/hypre)
+# * These two variables are significant to HYPRE's CMakeLists, not our own
+#   HYPRE's CMakeLists leak some variables into parent project, and this is a workaround
+set(HYPRE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "" FORCE)
+set(HYPRE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "" FORCE)
+
 if (EXISTS ${HYPRE_SOURCE_DIR})
+  message(STATUS "Using HYPRE source in ${HYPRE_SOURCE_DIR}")
   add_subdirectory(${HYPRE_SOURCE_DIR}/src)
   get_property(HYPRE_BINARY_DIR TARGET HYPRE PROPERTY BINARY_DIR)
 else()
@@ -54,10 +62,6 @@ else()
 
   # * Exclude from all since HYPRE CMakeLists adds a bunch of targets we don't need
   #   libHYPRE will be build just fine, since we've explicitly declared it as a dependency
-  # * These two variables are significant to HYPRE's CMakeLists, not our own
-  #   HYPRE's CMakeLists leak some variables into parent project, and this is a workaround
-  set(HYPRE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "" FORCE)
-  set(HYPRE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "" FORCE)
   add_subdirectory(${HYPRE_SOURCE_DIR}/src ${HYPRE_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
@@ -228,7 +232,7 @@ target_include_directories(libparAlmond
         ${HYPRE_SOURCE_DIR}/src/IJ_mv
         ${HYPRE_SOURCE_DIR}/src/multivector
         ${HYPRE_SOURCE_DIR}/src/krylov
-        ${hypre_content_BINARY_DIR})
+        ${HYPRE_BINARY_DIR})
 target_link_libraries(libparAlmond PUBLIC libogs libocca PRIVATE HYPRE)
 # This conflicts with the stdlib "version" header...
 file(REMOVE ${HYPRE_SOURCE_DIR}/src/utilities/version)

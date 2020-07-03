@@ -258,10 +258,10 @@ install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp
 # Make tarball
 #################################################################################
 
-set(TARNAME "nekRS-${PROJECT_VERSION}")
+set(TARNAME "nekRS-v${PROJECT_VERSION}")
 
 add_custom_target(tar
-  COMMAND ${CMAKE_COMMAND} -DTARNAME=${TARNAME} -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
+  COMMAND ${CMAKE_COMMAND} -DTARNAME=${TARNAME} -DLIBP_SOURCE_DIR=${LIBP_SOURCE_DIR} -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
   COMMAND tar -czf ${TARNAME}.tar.gz ${TARNAME}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
