@@ -2,6 +2,10 @@ include(ExternalProject)
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
+set(GS_VERSION "1.0.5")
+set(GS_HASH "1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27")
+set(PARRSB_VERSION "0.2")
+
 # ---------------------------------------------------------
 # Download sources
 # ---------------------------------------------------------
@@ -40,27 +44,32 @@ set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 # gslib
 # =====
 
-set(GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib/gslib)
+set(GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib)
+set(GS_TAR ${GS_DIR}/v${GS_VERSION}.tar.gz)
 
-if (EXISTS ${GS_DIR})
-  message(STATUS "Using gslib source in ${GS_DIR}")
+if (EXISTS ${GS_TAR})
+  message(STATUS "Using gslib source from ${GS_TAR}")
 else()
   FetchContent_Declare(
     gs_content
-    URL http://github.com/gslib/gslib/archive/v1.0.5.tar.gz
-    URL_HASH SHA1=1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27
-    SOURCE_DIR ${GS_DIR}
+    URL http://github.com/gslib/gslib/archive/v${GS_VERSION}.tar.gz
+    URL_HASH SHA1=${GS_HASH}
+    DOWNLOAD_DIR ${GS_DIR}
+    DOWNLOAD_NO_EXTRACT on
   )
   if (NOT gs_content_POPULATED)
     FetchContent_Populate(gs_content)
   endif()
 endif()
 
-set(GS_INCLUDE_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib/include)
-# This directory needs to exists for target_include_directories
-# but it does not need to be populated with headers at configure time
+set(GS_SOURCE_DIR ${GS_DIR}/gslib/src)
+set(GS_INCLUDE_DIR ${GS_DIR}/include)
+set(GS_LIB_DIR ${GS_DIR}/lib)
+
+# These directories need to exist for target_include_directories
+# but do not need to be populated with headers at configure time
+file(MAKE_DIRECTORY ${GS_SOURCE_DIR})
 file(MAKE_DIRECTORY ${GS_INCLUDE_DIR})
-set(GS_LIB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib/lib)
 
 # parRSB
 # ======
@@ -107,8 +116,9 @@ ExternalProject_Add(
 )
 
 add_library(gs STATIC IMPORTED)
-target_include_directories(gs INTERFACE ${GS_DIR}/src ${GS_INCLUDE_DIR})
 set_target_properties(gs PROPERTIES IMPORTED_LOCATION ${GS_LIB_DIR}/libgs.a)
+target_include_directories(gs INTERFACE ${GS_SOURCE_DIR} ${GS_INCLUDE_DIR})
+
 add_dependencies(gs nek5000_deps)
 
 add_library(blasLapack STATIC IMPORTED)
