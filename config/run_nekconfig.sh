@@ -8,4 +8,4 @@ done
 
 export CFLAGS="${CFLAGS} -fPIC"
 export FFLAGS="${FFLAGS} -fPIC -mcmodel=medium"
-${NEK5000_DIR}/bin/nekconfig -build-dep
+${NEK5000_SOURCE_DIR}/bin/nekconfig -build-dep

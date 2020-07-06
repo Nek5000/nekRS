@@ -14,7 +14,8 @@ file(COPY
   scripts 
   src 
   DESTINATION ${TARNAME}
-  PATTERN ".git" EXCLUDE)
+  PATTERN ".git" EXCLUDE
+  PATTERN ".cache" EXCLUDE)
 
 file(COPY 
   ${LIBP_SOURCE_DIR}/
@@ -26,3 +27,9 @@ file(COPY
   DESTINATION ${TARNAME}/3rd_party/hypre
   PATTERN ".git" EXCLUDE)
 
+file(COPY
+  ${NEK5000_SOURCE_DIR}/
+  DESTINATION ${TARNAME}/3rd_party/nek5000
+  PATTERN ".git" EXCLUDE
+  REGEX ".*\\.o$" EXCLUDE
+  REGEX ".*\\.a$" EXCLUDE)
