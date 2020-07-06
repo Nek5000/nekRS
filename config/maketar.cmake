@@ -17,6 +17,11 @@ file(COPY
   PATTERN ".git" EXCLUDE
   PATTERN ".cache" EXCLUDE)
 
+file(COPY
+  ${OCCA_SOURCE_DIR}/
+  DESTINATION ${DEST_DIR}/3rd_party/occa
+  PATTERN ".git" EXCLUDE)
+
 file(COPY 
   ${LIBP_SOURCE_DIR}/
   DESTINATION ${DEST_DIR}/3rd_party/libparanumal

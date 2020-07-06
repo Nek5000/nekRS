@@ -159,8 +159,6 @@ install(FILES ${BLASLAPACK_DIR}/libblasLapack.a DESTINATION nek5000/3rd_party/bl
 
 if (${USE_PARRSB})
   install(FILES ${PARRSB_DIR}/lib/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
-  install(DIRECTORY ${PARRSB_DIR}/src/ 
-    DESTINATION nek5000/3rd_party/parRSB/include 
-    FILES_MATCHING REGEX "\.h$")
+  install(DIRECTORY ${PARRSB_DIR}/include DESTINATION nek5000/3rd_party/parRSB)
 endif()
 
