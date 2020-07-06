@@ -6,6 +6,10 @@ set(GS_VERSION "1.0.5")
 set(GS_HASH "1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27")
 set(PARRSB_VERSION "0.2")
 
+if (${NEK5000_PPLIST} MATCHES "PARRSB")
+  set(USE_PARRSB on)
+endif()
+
 # ---------------------------------------------------------
 # Download sources
 # ---------------------------------------------------------
@@ -75,20 +79,26 @@ file(MAKE_DIRECTORY ${GS_INCLUDE_DIR})
 # ======
 
 set(PARRSB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/parRSB)
+set(PARRSB_TAR ${PARRSB_DIR}/v${PARRSB_VERSION}.tar.gz)
 
-if (${NEK5000_PPLIST} MATCHES "PARRSB")
-  FetchContent_Declare(
-    parrsb_content
-    URL https://github.com/Nek5000/parRSB/archive/v0.2.tar.gz
-    SOURCE_DIR ${PARRSB_DIR}
-  )
-  FetchContent_GetProperties(parrsb_content)
-  if (NOT parrsb_content_POPULATED)
-    # Moves `install` script so it doesn't get clobbered when 
-    # populating content.  
-    file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
-    FetchContent_Populate(parrsb_content)
-    file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
+if (USE_PARRSB)
+  if (EXISTS ${PARRSB_TAR})
+    message(STATUS "Using parRSB source from ${PARRSB_TAR}")
+  else()
+    FetchContent_Declare(
+      parrsb_content
+      URL https://github.com/Nek5000/parRSB/archive/v${PARRSB_VERSION}.tar.gz
+      DOWNLOAD_DIR ${PARRSB_DIR}
+      DOWNLOAD_NO_EXTRACT on
+    )
+    FetchContent_GetProperties(parrsb_content)
+    if (NOT parrsb_content_POPULATED)
+      # Moves `install` script so it doesn't get clobbered when 
+      # populating content.  
+      #file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
+      FetchContent_Populate(parrsb_content)
+      #file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
+    endif()
   endif()
 endif()
 
@@ -125,6 +135,12 @@ add_library(blasLapack STATIC IMPORTED)
 set_target_properties(blasLapack PROPERTIES IMPORTED_LOCATION ${BLASLAPACK_DIR}/libblasLapack.a)
 add_dependencies(blasLapack nek5000_deps)
 
+if (${USE_PARRSB})
+  add_library(parRSB STATIC IMPORTED)
+  set_target_properties(parRSB PROPERTIES IMPORTED_LOCATION ${PARRSB_DIR}/lib/libparRSB.a)
+  add_dependencies(parRSB nek5000_deps)
+endif()
+
 # ---------------------------------------------------------
 # Install
 # ---------------------------------------------------------
@@ -141,7 +157,7 @@ install(DIRECTORY ${GS_INCLUDE_DIR} DESTINATION nek5000/3rd_party/gslib)
 
 install(FILES ${BLASLAPACK_DIR}/libblasLapack.a DESTINATION nek5000/3rd_party/blasLapack)
 
-if (${NEK5000_PPLIST} MATCHES "PARRSB")
+if (${USE_PARRSB})
   install(FILES ${PARRSB_DIR}/lib/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
   install(DIRECTORY ${PARRSB_DIR}/src/ 
     DESTINATION nek5000/3rd_party/parRSB/include 
