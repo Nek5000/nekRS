@@ -1,7 +1,3 @@
-include(ExternalProject)
-include(FetchContent)
-set(FETCHCONTENT_QUIET OFF)
-
 set(GS_VERSION "1.0.5")
 set(GS_HASH "1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27")
 set(PARRSB_VERSION "0.2")

@@ -1,16 +1,8 @@
-include(FetchContent)
-set(FETCHCONTENT_QUIET OFF)
-
-# TODO: Need to get value from OCCA?
-set(USE_OCCA_MEM_BYTE_ALIGN 64)
-add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
-
 # ---------------------------------------------------------
-# Download dependencies
+# Downloads
 # ---------------------------------------------------------
 
 # libparanumal
-# ------------
 
 set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/libparanumal)
 
@@ -35,7 +27,6 @@ set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
 
 # HYPRE
-# ------------
 
 set(HYPRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/hypre)
 # * These two variables are significant to HYPRE's CMakeLists, not our own
@@ -95,7 +86,8 @@ set(OGS_SOURCES
 
 add_library(libogs ${OGS_SOURCES})
 set_target_properties(libogs PROPERTIES OUTPUT_NAME ogs)
-target_compile_definitions(libogs PUBLIC -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter")
+target_compile_definitions(libogs 
+  PUBLIC -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter" ${LIBP_DEFINES})
 target_include_directories(libogs PUBLIC
         ${OGS_SOURCE_DIR}/include
         ${OGS_SOURCE_DIR}
@@ -183,7 +175,8 @@ set(LIBP_SOURCES
 set_source_files_properties(${LIBP_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libP ${LIBP_SOURCES})
 set_target_properties(libP PROPERTIES OUTPUT_NAME P)
-target_compile_definitions(libP PUBLIC -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal")
+target_compile_definitions(libP 
+  PUBLIC -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" ${LIBP_DEFINES})
 target_include_directories(libP PUBLIC ${LIBP_SOURCE_DIR}/include src/core/)
 target_link_libraries(libP PUBLIC libogs libocca blasLapack)
 
@@ -216,7 +209,9 @@ set(PARALMOND_SOURCES
 
 add_library(libparAlmond ${PARALMOND_SOURCES})
 set_target_properties(libparAlmond PROPERTIES OUTPUT_NAME parAlmond)
-target_compile_definitions(libparAlmond PUBLIC -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" PRIVATE -DHYPRE)
+target_compile_definitions(libparAlmond 
+  PUBLIC -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" ${LIBP_DEFINES} 
+  PRIVATE -DHYPRE)
 target_include_directories(libparAlmond 
         PUBLIC
         ${PARALMOND_SOURCE_DIR}/include
@@ -279,7 +274,8 @@ set(ELLIPTIC_SOURCES
 set_source_files_properties(${ELLIPTIC_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libelliptic ${ELLIPTIC_SOURCES})
 set_target_properties(libelliptic PROPERTIES OUTPUT_NAME elliptic)
-target_compile_definitions(libelliptic PUBLIC -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic")
+target_compile_definitions(libelliptic 
+  PUBLIC -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" ${LIBP_DEFINES})
 target_include_directories(libelliptic PUBLIC ${ELLIPTIC_SOURCE_DIR})
 target_link_libraries(libelliptic PUBLIC libP libparAlmond libogs libocca blasLapack)
 

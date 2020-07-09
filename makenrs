@@ -10,11 +10,9 @@
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_CXXFLAGS:="-g -O2"}
+: ${NEKRS_DEBUG:=0}
 
-: ${OCCA_CXX:="gcc"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
-#: ${OCCA_INCLUDE_PATH:="/usr/local/cuda/include"}
-#: ${OCCA_LIBRARY_PATH:="/usr/local/cuda/lib"}
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
@@ -34,52 +32,24 @@ if [ "$#" -eq 1 ]; then
   if [[ "$1" = *"clean"* ]]; then
     set +e
 
-    read -p "installation in $NEKRS_INSTALL_DIR? [N]" yn
+    read -p "Uninstall from $NEKRS_INSTALL_DIR? [N]" yn
     case $yn in
       [Yy]* )
-        rm -rf $NEKRS_INSTALL_DIR >/dev/null 2>&1
+        make -C "${NEKRS_BUILD_DIR}" uninstall
         ;;
       * )
         ;;
     esac
 
-    read -p "nekRS? [N]" yn
+    read -p "Clean build in $NEKRS_BUILD_DIR? [N]" yn
     case $yn in
       [Yy]* )
-        rm -rf "${NEKRS_BUILD_DIR}"/CMakeFiles > /dev/null 2>&1
+        make -C "${NEKRS_BUILD_DIR}" clean
         ;;
       * )
         ;;
     esac
 
-    read -p "OCCA? [N]" yn
-    case $yn in
-      [Yy]* )
-        make -C ${NEKRS_BUILD_DIR}/3rd_party/occa clean > /dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-    read -p "libParanumal? [N]" yn
-    case $yn in
-      [Yy]* )
-        OCCA_DIR=${NEKRS_BUILD_DIR}/3rd_party/occa \
-        make -C ${NEKRS_BUILD_DIR}/3rd_party/libparanumal/solvers/elliptic realclean  > /dev/null 2>&1
-        ;;
-      * )
-        ;;
-    esac
-
-    read -p "nek 3rd-party? [N]" yn
-    case $yn in
-      [Yy]* )
-        ${NEKRS_BUILD_DIR}/3rd_party/nek5000/bin/nekconfig clean << EOF
-y
-EOF
-        ;;
-      * )
-        ;;
-    esac
     set -e
     exit 0
   else
@@ -138,19 +108,13 @@ fi
 
 NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
-NEKRS_DEBUG=0
 NEKRS_LIBP_DEFINES="-DUSE_NULL_PROJECTION=1"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
-export OCCA_CXX
-export OCCA_CXXFLAGS
 export OCCA_CUDA_ENABLED
 export OCCA_HIP_ENABLED
 export OCCA_OPENCL_ENABLED
 export OCCA_METAL_ENABLED
-export OCCA_LDFLAGS
-export OCCA_LIBRARY_PATH
-export OCCA_INCLUDE_PATH
 
 export NEKRS_CC
 export NEKRS_CXX
@@ -172,8 +136,6 @@ export NEKRS_UDF_DIR="${NEKRS_INSTALL_DIR}/udf"
 export NEKRS_NEKINTERFACE_DIR="${NEKRS_INSTALL_DIR}/nekInterface"
 export NEKRS_NEK5000_DIR="${NEKRS_INSTALL_DIR}/nek5000"
 export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
-
-export OCCA_DIR="${NEKRS_INSTALL_DIR}/occa"
 
 export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"
 
@@ -200,7 +162,7 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-NEKRS_BUILD_TYPE=None
+NEKRS_BUILD_TYPE=RelWithDebInfo
 if [ ${NEKRS_DEBUG} -ne 0 ]; then
   NEKRS_BUILD_TYPE=Debug
 fi
@@ -222,6 +184,8 @@ cmake -Wno-dev \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
       -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
+      -DOCCA_CXX="${OCCA_CXX}" \
+      -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
       -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \

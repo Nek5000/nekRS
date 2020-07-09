@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.11)
 project(NekRS LANGUAGES C CXX Fortran VERSION 20.1)
-cmake_policy(SET CMP0048 NEW)   # For VERSION variables, since v3.0
+
 include(FortranCInterface)
+include(ExternalProject)
+include(FetchContent)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
+set(FETCHCONTENT_QUIET off)
 
 #Link:https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
@@ -15,6 +18,29 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/elliptic
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/parAlmond")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/libparanumal")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherScatter")
+
+###############################################################################
+# Configure Options
+###############################################################################
+
+set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING 
+  "Preprocessor macros for Nek5000")
+
+set(NEKINTERFACEDIR "${CMAKE_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
+  "Directory for Nek5000 inteface source files")
+
+set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING 
+  "Preprocessor macros for libparanumal")
+
+set(OCCA_CXXFLAGS "" CACHE STRING "C++ Flags for OCCA")
+
+# From OCCA's CMakeLists. All default to ON, but are verified in config tests
+#   - ENABLE_OPENMP
+#   - ENABLE_CUDA
+#   - ENABLE_OPENCL
+#   - ENABLE_HIP
+#   - ENABLE_METAL
+#   - ENABLE_MPI
 
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
@@ -62,56 +88,6 @@ endif()
 set (CMAKE_CXX_STANDARD 14)
 
 ###############################################################################
-# Setup cmake and default env variables                                       #
-###############################################################################
-
-set(NEKINTERFACEDIR "${CMAKE_SOURCE_DIR}/src/nekInterface/" CACHE PATH "")
-set(LIBP_DEFINES "$ENV{NEKRS_LIBP_DEFINES}" CACHE STRING "")
-set(NEK5000_PPLIST "$ENV{NEKRS_NEK5000_PPLIST}" CACHE STRING "")
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  set(NEKRS_DEBUG 1 CACHE BOOL "")
-else()
-  set(NEKRS_DEBUG 0 CACHE BOOL "")
-endif()
-
-if (DEFINED ENV{OCCA_CXX})
-  set(CMAKE_OCCA_CXX_COMPILER "$ENV{OCCA_CXX}" CACHE STRING "")
-else()
-  set(CMAKE_OCCA_CXX_COMPILER "${CMAKE_CXX_COMPILER}" CACHE STRING "")
-endif()
-
-if (DEFINED ENV{OCCA_CXXFLAGS})
-  set(CMAKE_OCCA_CXX_FLAGS "$ENV{OCCA_CXXFLAGS}" CACHE STRING "")
-else()
-  set(CMAKE_OCCA_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "")
-endif()
-
-if (DEFINED ENV{OCCA_CUDA_ENABLED})
-  set(OCCA_CUDA_ENABLED "$ENV{OCCA_CUDA_ENABLED}" CACHE BOOL "")
-else()
-  set(OCCA_CUDA_ENABLED 1 CACHE BOOL "")
-endif()
-
-if (DEFINED ENV{OCCA_HIP_ENABLED})
-  set(OCCA_HIP_ENABLED "$ENV{OCCA_HIP_ENABLED}" CACHE BOOL "")
-else()
-  set(OCCA_HIP_ENABLED 0 CACHE BOOL "")
-endif()
-
-if (DEFINED ENV{OCCA_OPENCL_ENABLED})
-  set(OCCA_OPENCL_ENABLED "$ENV{OCCA_OPENCL_ENABLED}" CACHE BOOL "")
-else()
-  set(OCCA_OPENCL_ENABLED 0 CACHE BOOL "")
-endif()
-
-if (DEFINED ENV{OCCA_METAL_ENABLED})
-  set(OCCA_METAL_ENABLED "$ENV{OCCA_METAL_ENABLED}" CACHE BOOL "")
-else()
-  set(OCCA_METAL_ENABLED 0 CACHE BOOL "")
-endif()
-
-###############################################################################
 # Set compiler flags                                                          #
 ###############################################################################
 find_package(OpenMP)
@@ -134,15 +110,6 @@ elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS_RELEASE}")
 endif()
-
-if (DEFINED ENV{NEKRS_LIBP_DEFINES})
-  set(LIBP_DEFINES "$ENV{NEKRS_LIBP_DEFINES}" CACHE STRING "")
-else()
-  set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING "")
-endif()
-
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LIBP_DEFINES}")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBP_DEFINES}")
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
@@ -234,9 +201,6 @@ target_link_libraries(nekrs-bin nekrs-lib)
 #################################################################################
 ### Install                                                                     #
 #################################################################################
-# Install dependencies and examples
-#configure_file(install_script.in.cmake install_script.cmake @ONLY)
-#install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_script.cmake)
 
 #install nekRS
 install(TARGETS nekrs-lib nekrs-bin
@@ -253,6 +217,17 @@ install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
 
+#################################################################################
+# Uninstall
+#################################################################################
+
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/config/uninstall.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
+  IMMEDIATE @ONLY)
+
+add_custom_target(uninstall
+  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake)
 
 #################################################################################
 # Make tarball
