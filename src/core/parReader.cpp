@@ -347,8 +347,20 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
               options.setArgs("PRESSURE PARALMOND CYCLE", entry);
             }
         }
-      } else if (p_smoother == "hybrid") {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "HYBRID");
+      } else if (p_smoother == "hybridasm") {
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "HYBRID+ASM");
+        options.setArgs("BOOMERAMG ITERATIONS", "2");
+        if(p_preconditioner.find("additive") !=std::string::npos){
+            exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
+        } else {
+            std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
+            if(entry.find("MULTIPLICATIVE") == std::string::npos){
+              entry += "+MULTIPLICATIVE";
+              options.setArgs("PRESSURE PARALMOND CYCLE", entry);
+            }
+        }
+      } else if (p_smoother == "hybridras") {
+        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "HYBRID+RAS");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
