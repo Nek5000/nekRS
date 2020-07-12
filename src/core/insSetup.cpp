@@ -484,8 +484,8 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
     {8,{8,5,1}},
     {9,{9,5,1}},
   };
-  if(ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "ASM" ||
-     ins->pOptions.getArgs("MULTIGRID SMOOTHER") == "RAS"){
+  if(ins->pOptions.compareArgs("MULTIGRID SMOOTHER","ASM") ||
+     ins->pOptions.compareArgs("MULTIGRID SMOOTHER","RAS")){
     const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq-1);
     ins->pSolver->nLevels = levels.size();
     ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
