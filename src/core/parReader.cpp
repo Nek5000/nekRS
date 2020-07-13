@@ -12,7 +12,7 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 
-#define abort(a,b)  { if(rank==0) cout << a << endl; ABORT(b); }
+#define abort(a,b)  { if(rank==0) cout << a << endl; EXIT(1); }
 #define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
 
@@ -279,6 +279,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
   }
 
+  int bcInPar = 1;
   if(ini.sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
@@ -328,11 +329,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(p_preconditioner == "semg")
       options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
 
-    // VELOCITY 
+    // VELOCITY
     string vsolver;
+    int flow = 1;
     ini.extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
         options.setArgs("VELOCITY SOLVER", "NONE");
+        flow = 0;
     } else if(std::strstr(vsolver.c_str(), "block")) {
       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     }  
@@ -341,22 +344,23 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("velocity", "residualtol", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
-      abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
+      if(flow) abort("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE); 
  
     string v_bcMap;
     if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
       std::vector<std::string> sList;
       sList = serializeString(v_bcMap);
       bcMap::setup(sList, "velocity");
+      bcInPar = 1;
     } else {
-      abort("Cannot find mandatory parameter VELOCITY::boundaryTypeMap!", EXIT_FAILURE); 
+      bcInPar = 0;
     }
     
     double rho;
     if(ini.extract("velocity", "density", rho)) {
       options.setArgs("DENSITY", to_string_f(rho));
     } else {
-      if(!variableProperties)
+      if(!variableProperties && flow)
         abort("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE); 
     }
     
@@ -367,12 +371,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(viscosity < 0) viscosity = fabs(1/viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
     } else {
-      if(!variableProperties)
+      if(!variableProperties && flow)
         abort("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE); 
     }
   } else {
-    options.setArgs("VELOCITY SOLVER", "NONE");
-  }
+    options.setArgs("VELOCITY", "FALSE");
+  } 
 
   // SCALARS
   int nscal = 0;
@@ -416,11 +420,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
  
       string s_bcMap;
       if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+        if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);  
         std::vector<std::string> sList;
         sList = serializeString(s_bcMap);
         bcMap::setup(sList, "scalar00");
       } else {
-        abort("Cannot find mandatory parameter TEMPERATURE::boundaryTypeMap!", EXIT_FAILURE);
+        if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+        bcInPar = 0;
       } 
     }
   }
@@ -481,11 +487,13 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     string s_bcMap;
     if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
+      if(!bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
       bcMap::setup(sList, "scalar" + sid);
     } else {
-      abort("Cannot find mandatory parameter SCALAR" + sidPar + "::boundaryTypeMap!", EXIT_FAILURE);
+      if(bcInPar) abort("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE); 
+      bcInPar = 0;
     } 
   }
   if(nscal) {

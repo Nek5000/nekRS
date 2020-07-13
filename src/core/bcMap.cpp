@@ -7,7 +7,6 @@
 #include <map>
 
 #include "nrs.hpp"
-#include "nekInterfaceAdapter.hpp"
 
 #define NOTBOUNDARY 0
 #define DIRICHLET 1
@@ -16,7 +15,7 @@
 
 // stores for every (field, boundaryID) pair a bcID
 static std::map<std::pair<string, int>, int> bToBc;
-static int nbid = 0;
+static int nbid[] = {0, 0};
 
 static std::map<string, int> vBcTextToID = {
   {"periodic"               , 0},  
@@ -136,8 +135,9 @@ namespace bcMap {
     if (slist[0].compare("null") == 0) return;
     if (slist[0].compare("none") == 0) return;
  
-    nbid = slist.size();
- 
+    nbid[0] = slist.size();
+    if (field.compare(0, 8, "scalar00") == 0) nbid[1] = slist.size();
+
     if (field.compare("velocity") == 0)
       v_setup(field, slist);
     else if (field.compare(0, 6, "scalar") == 0)
@@ -229,21 +229,22 @@ namespace bcMap {
     return 0;
   }
   
-  int size(void)
+  int size(int isTmesh)
   {
-    return nbid;
+    return isTmesh ? nbid[1] : nbid[0];
   }
-  
-  void check(mesh_t *mesh)
+
+  void check(mesh_t *mesh, int isTmesh)
   {
-    const int *bid = nekData.boundaryID;
-  
+    int nid = nbid[0];
+    if(isTmesh) nid = nbid[1]; 
+ 
     int retval = 0;
-  
-    for (int id = 1; id <= nbid; id++) {
+    for (int id = 1; id <= nid; id++) {
       retval = 0;
-      for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) 
-        if (bid[f] == id) retval = 1;
+      for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) { 
+        if (mesh->EToB[f] == id) retval = 1;
+      }
       MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
       if (retval == 0) {
         if (mesh->rank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);
@@ -252,13 +253,32 @@ namespace bcMap {
     }
   
     retval = 0;
-    for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) 
-      if (bid[f] < 0 || bid[f] > nbid) retval = 1;
+    for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) { 
+      if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) retval = 1;
+    }
     MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
     if (retval > 0) {
       if (mesh->rank == 0) printf("Mesh has unmapped boundary IDs!\n");
       ABORT(1);
     }
   }
-  
+
+  void setBcMap(string field, int *map, int nIDs)
+  {
+    if (field.compare(0, 8, "scalar00") == 0) 
+      nbid[1] = nIDs;
+    else
+      nbid[0] = nIDs;
+
+    try
+    {
+      for(int i=0; i<nIDs ; i++) bToBc[make_pair(field, i)] = map[i]; 
+    }
+    catch (const std::out_of_range& oor)
+    {
+      cout << "Out of Range error: " << oor.what() << "!\n";
+      ABORT(1);
+    }
+  }
+
 } // namespace

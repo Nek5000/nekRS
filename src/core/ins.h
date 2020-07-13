@@ -22,7 +22,9 @@ typedef struct {
   cds_t      *cds;
 
   dlong ellipticWrkOffset; 
-  
+ 
+  int flow;
+ 
   int Nscalar; 
   setupAide options;
   setupAide vOptions, pOptions; 	
