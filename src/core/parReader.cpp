@@ -337,6 +337,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         }
       } else if (p_smoother == "chebyshev") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI"); 
+        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI"); 
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
@@ -349,6 +351,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         }
       } else if (p_smoother == "chebyshev+asm") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
+        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM"); 
+        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM"); 
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
@@ -361,6 +365,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         }
       } else if (p_smoother == "chebyshev+ras") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
+        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS"); 
+        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS"); 
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
@@ -379,8 +385,40 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("BOOMERAMG ITERATIONS", "2");
       if(p_preconditioner.find("additive") !=std::string::npos) {
          options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
+         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM"); 
+         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM"); 
          options.setArgs("BOOMERAMG ITERATIONS", "1");
       }
+    }
+
+    // Allow flexibility in downward/upward smoother
+    string p_downwardSmoother; 
+    ini.extract("pressure", "downwardsmoother", p_downwardSmoother);
+    if(p_downwardSmoother == "RAS")
+    {
+      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS"); 
+    }
+    else if(p_downwardSmoother == "ASM")
+    {
+      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM"); 
+    }
+    else if(p_downwardSmoother == "jacobi")
+    {
+      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI"); 
+    }
+    string p_upwardSmoother; 
+    ini.extract("pressure", "upwardsmoother", p_upwardSmoother);
+    if(p_upwardSmoother == "RAS")
+    {
+      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS"); 
+    }
+    else if(p_upwardSmoother == "ASM")
+    {
+      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM"); 
+    }
+    else if(p_upwardSmoother == "jacobi")
+    {
+      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI"); 
     }
   
     string p_amgsolver; 
