@@ -335,7 +335,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         } else {
           options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");       
         }
-      } else if (p_smoother == "chebyshev") {
+      } else if (p_smoother == "chebyshev" || p_smoother == "chebyshev+jacobi") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI"); 
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI"); 
