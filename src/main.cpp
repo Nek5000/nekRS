@@ -68,6 +68,7 @@ not be used for advertising or product endorsement purposes.
 #include <getopt.h>
 #include <cfenv>
 #include "nekrs.hpp"
+#include <parAlmond.hpp>
 
 #define DEBUG
 
@@ -163,6 +164,7 @@ int main(int argc, char **argv)
   nekrs::printRuntimeStatistics();
 
   if(rank == 0) std::cout << "\nEnd." << "\n";
+  if(rank == 0) PerformanceTimer::getInstance().dump();
 
   MPI_Finalize();
   return EXIT_SUCCESS;
