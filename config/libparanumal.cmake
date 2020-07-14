@@ -1,32 +1,12 @@
-# ---------------------------------------------------------
-# Downloads
-# ---------------------------------------------------------
-
-# libparanumal
-
 set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/libparanumal)
-
-# If LIBP is not in source tree, download it in build directory
-if (EXISTS ${LIBP_SOURCE_DIR})
-  message(STATUS "Using libparanumal source in ${LIBP_SOURCE_DIR}")
-else()
-  FetchContent_Declare(
-      libp_content
-      GIT_REPOSITORY https://gitlab.com/nekrs/libparanumal.git
-      GIT_TAG next)
-  FetchContent_GetProperties(libp_content)
-  if(NOT libp_content_POPULATED)
-    FetchContent_Populate(libp_content)
-    FetchContent_GetProperties(libp_content)
-  endif()
-  set(LIBP_SOURCE_DIR ${libp_content_SOURCE_DIR})
-endif()
-
 set(OGS_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/gatherScatter)
 set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
 
+
+# ---------------------------------------------------------
 # HYPRE
+# ---------------------------------------------------------
 
 set(HYPRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/hypre)
 # * These two variables are significant to HYPRE's CMakeLists, not our own
@@ -57,6 +37,165 @@ else()
 endif()
 
 # ---------------------------------------------------------
+# LAPACK for libP
+# ---------------------------------------------------------
+
+set(BLASLAPACK_LIBP_DIR ${LIBP_SOURCE_DIR}/3rdParty/BlasLapack)
+
+# Compile and link BLAS/LAPACK binaries for libP, separately from Nek5000
+
+add_library(blasLapack_libp OBJECT
+        ${BLASLAPACK_LIBP_DIR}/dasum.f
+        ${BLASLAPACK_LIBP_DIR}/daxpy.f
+        ${BLASLAPACK_LIBP_DIR}/dbdsqr.f
+        ${BLASLAPACK_LIBP_DIR}/dcabs1.f
+        ${BLASLAPACK_LIBP_DIR}/dcopy.f
+        ${BLASLAPACK_LIBP_DIR}/ddot.f
+        ${BLASLAPACK_LIBP_DIR}/dgebak.f
+        ${BLASLAPACK_LIBP_DIR}/dgebal.f
+        ${BLASLAPACK_LIBP_DIR}/dgebd2.f
+        ${BLASLAPACK_LIBP_DIR}/dgebrd.f
+        ${BLASLAPACK_LIBP_DIR}/dgecon.f
+        ${BLASLAPACK_LIBP_DIR}/dgeev.f
+        ${BLASLAPACK_LIBP_DIR}/dgehd2.f
+        ${BLASLAPACK_LIBP_DIR}/dgehrd.f
+        ${BLASLAPACK_LIBP_DIR}/dgelq2.f
+        ${BLASLAPACK_LIBP_DIR}/dgelqf.f
+        ${BLASLAPACK_LIBP_DIR}/dgels.f
+        ${BLASLAPACK_LIBP_DIR}/dgelss.f
+        ${BLASLAPACK_LIBP_DIR}/dgemm.f
+        ${BLASLAPACK_LIBP_DIR}/dgemv.f
+        ${BLASLAPACK_LIBP_DIR}/dgeqr2.f
+        ${BLASLAPACK_LIBP_DIR}/dgeqrf.f
+        ${BLASLAPACK_LIBP_DIR}/dger.f
+        ${BLASLAPACK_LIBP_DIR}/dgesvd.f
+        ${BLASLAPACK_LIBP_DIR}/dgesv.f
+        ${BLASLAPACK_LIBP_DIR}/dgetf2.f
+        ${BLASLAPACK_LIBP_DIR}/dgetrf.f
+        ${BLASLAPACK_LIBP_DIR}/dgetri.f
+        ${BLASLAPACK_LIBP_DIR}/dgetrs.f
+        ${BLASLAPACK_LIBP_DIR}/dhseqr.f
+        ${BLASLAPACK_LIBP_DIR}/dlabad.f
+        ${BLASLAPACK_LIBP_DIR}/dlabrd.f
+        ${BLASLAPACK_LIBP_DIR}/dlacon.f
+        ${BLASLAPACK_LIBP_DIR}/dlacpy.f
+        ${BLASLAPACK_LIBP_DIR}/dladiv.f
+        ${BLASLAPACK_LIBP_DIR}/dlae2.f
+        ${BLASLAPACK_LIBP_DIR}/dlaev2.f
+        ${BLASLAPACK_LIBP_DIR}/dlahqr.f
+        ${BLASLAPACK_LIBP_DIR}/dlahrd.f
+        ${BLASLAPACK_LIBP_DIR}/dlaln2.f
+        ${BLASLAPACK_LIBP_DIR}/dlamch.f
+        ${BLASLAPACK_LIBP_DIR}/dlange.f
+        ${BLASLAPACK_LIBP_DIR}/dlanhs.f
+        ${BLASLAPACK_LIBP_DIR}/dlanst.f
+        ${BLASLAPACK_LIBP_DIR}/dlansy.f
+        ${BLASLAPACK_LIBP_DIR}/dlanv2.f
+        ${BLASLAPACK_LIBP_DIR}/dlapy2.f
+        ${BLASLAPACK_LIBP_DIR}/dlarfb.f
+        ${BLASLAPACK_LIBP_DIR}/dlarf.f
+        ${BLASLAPACK_LIBP_DIR}/dlarfg.f
+        ${BLASLAPACK_LIBP_DIR}/dlarft.f
+        ${BLASLAPACK_LIBP_DIR}/dlarfx.f
+        ${BLASLAPACK_LIBP_DIR}/dlartg.f
+        ${BLASLAPACK_LIBP_DIR}/dlas2.f
+        ${BLASLAPACK_LIBP_DIR}/dlascl.f
+        ${BLASLAPACK_LIBP_DIR}/dlaset.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq1.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq2.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq3.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq4.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq5.f
+        ${BLASLAPACK_LIBP_DIR}/dlasq6.f
+        ${BLASLAPACK_LIBP_DIR}/dlasr.f
+        ${BLASLAPACK_LIBP_DIR}/dlasrt.f
+        ${BLASLAPACK_LIBP_DIR}/dlassq.f
+        ${BLASLAPACK_LIBP_DIR}/dlasv2.f
+        ${BLASLAPACK_LIBP_DIR}/dlaswp.f
+        ${BLASLAPACK_LIBP_DIR}/dlatrd.f
+        ${BLASLAPACK_LIBP_DIR}/dlatrs.f
+        ${BLASLAPACK_LIBP_DIR}/dnrm2.f
+        ${BLASLAPACK_LIBP_DIR}/dorg2l.f
+        ${BLASLAPACK_LIBP_DIR}/dorg2r.f
+        ${BLASLAPACK_LIBP_DIR}/dorgbr.f
+        ${BLASLAPACK_LIBP_DIR}/dorghr.f
+        ${BLASLAPACK_LIBP_DIR}/dorgl2.f
+        ${BLASLAPACK_LIBP_DIR}/dorglq.f
+        ${BLASLAPACK_LIBP_DIR}/dorgql.f
+        ${BLASLAPACK_LIBP_DIR}/dorgqr.f
+        ${BLASLAPACK_LIBP_DIR}/dorgtr.f
+        ${BLASLAPACK_LIBP_DIR}/dorm2r.f
+        ${BLASLAPACK_LIBP_DIR}/dormbr.f
+        ${BLASLAPACK_LIBP_DIR}/dorml2.f
+        ${BLASLAPACK_LIBP_DIR}/dormlq.f
+        ${BLASLAPACK_LIBP_DIR}/dormqr.f
+        ${BLASLAPACK_LIBP_DIR}/dpbtf2.f
+        ${BLASLAPACK_LIBP_DIR}/dpbtrf.f
+        ${BLASLAPACK_LIBP_DIR}/dpbtrs.f
+        ${BLASLAPACK_LIBP_DIR}/dposv.f
+        ${BLASLAPACK_LIBP_DIR}/dpotf2.f
+        ${BLASLAPACK_LIBP_DIR}/dpotrf.f
+        ${BLASLAPACK_LIBP_DIR}/dpotrs.f
+        ${BLASLAPACK_LIBP_DIR}/drot.f
+        ${BLASLAPACK_LIBP_DIR}/drscl.f
+        ${BLASLAPACK_LIBP_DIR}/dscal.f
+        ${BLASLAPACK_LIBP_DIR}/dsteqr.f
+        ${BLASLAPACK_LIBP_DIR}/dsterf.f
+        ${BLASLAPACK_LIBP_DIR}/dstev.f
+        ${BLASLAPACK_LIBP_DIR}/dswap.f
+        ${BLASLAPACK_LIBP_DIR}/dsyev.f
+        ${BLASLAPACK_LIBP_DIR}/dsygs2.f
+        ${BLASLAPACK_LIBP_DIR}/dsygst.f
+        ${BLASLAPACK_LIBP_DIR}/dsygv.f
+        ${BLASLAPACK_LIBP_DIR}/dsymm.f
+        ${BLASLAPACK_LIBP_DIR}/dsymv.f
+        ${BLASLAPACK_LIBP_DIR}/dsyr2.f
+        ${BLASLAPACK_LIBP_DIR}/dsyr2k.f
+        ${BLASLAPACK_LIBP_DIR}/dsyr.f
+        ${BLASLAPACK_LIBP_DIR}/dsyrfs.f
+        ${BLASLAPACK_LIBP_DIR}/dsyrk.f
+        ${BLASLAPACK_LIBP_DIR}/dsytd2.f
+        ${BLASLAPACK_LIBP_DIR}/dsytrd.f
+        ${BLASLAPACK_LIBP_DIR}/dsytrs.f
+        ${BLASLAPACK_LIBP_DIR}/dtbsv.f
+        ${BLASLAPACK_LIBP_DIR}/dtrevc.f
+        ${BLASLAPACK_LIBP_DIR}/dtrmm.f
+        ${BLASLAPACK_LIBP_DIR}/dtrmv.f
+        ${BLASLAPACK_LIBP_DIR}/dtrsm.f
+        ${BLASLAPACK_LIBP_DIR}/dtrsv.f
+        ${BLASLAPACK_LIBP_DIR}/dtrti2.f
+        ${BLASLAPACK_LIBP_DIR}/dtrtri.f
+        ${BLASLAPACK_LIBP_DIR}/dzasum.f
+        ${BLASLAPACK_LIBP_DIR}/dzsum1.f
+        ${BLASLAPACK_LIBP_DIR}/idamax.f
+        ${BLASLAPACK_LIBP_DIR}/ieeeck.f
+        ${BLASLAPACK_LIBP_DIR}/ilaenv.f
+        ${BLASLAPACK_LIBP_DIR}/izamax.f
+        ${BLASLAPACK_LIBP_DIR}/izmax1.f
+        ${BLASLAPACK_LIBP_DIR}/lsame.f
+        ${BLASLAPACK_LIBP_DIR}/xerbla.f
+        ${BLASLAPACK_LIBP_DIR}/zaxpy.f
+        ${BLASLAPACK_LIBP_DIR}/zcopy.f
+        ${BLASLAPACK_LIBP_DIR}/zdotc.f
+        ${BLASLAPACK_LIBP_DIR}/zdotu.f
+        ${BLASLAPACK_LIBP_DIR}/zdrscl.f
+        ${BLASLAPACK_LIBP_DIR}/zdscal.f
+        ${BLASLAPACK_LIBP_DIR}/zgecon.f
+        ${BLASLAPACK_LIBP_DIR}/zgemm.f
+        ${BLASLAPACK_LIBP_DIR}/zgeru.f
+        ${BLASLAPACK_LIBP_DIR}/zgetf2.f
+        ${BLASLAPACK_LIBP_DIR}/zgetrf.f
+        ${BLASLAPACK_LIBP_DIR}/zlacon.f
+        ${BLASLAPACK_LIBP_DIR}/zladiv.f
+        ${BLASLAPACK_LIBP_DIR}/zlaswp.f
+        ${BLASLAPACK_LIBP_DIR}/zlatrs.f
+        ${BLASLAPACK_LIBP_DIR}/zscal.f
+        ${BLASLAPACK_LIBP_DIR}/zswap.f
+        ${BLASLAPACK_LIBP_DIR}/ztrsm.f
+        ${BLASLAPACK_LIBP_DIR}/ztrsv.f)
+
+
+# ---------------------------------------------------------
 # libogs
 # ---------------------------------------------------------
 
@@ -82,7 +221,8 @@ set(OGS_SOURCES
         ${OGS_SOURCE_DIR}/src/ogsScatter.cpp
         ${OGS_SOURCE_DIR}/src/ogsScatterMany.cpp
         ${OGS_SOURCE_DIR}/src/ogsScatterVec.cpp
-        ${OGS_SOURCE_DIR}/src/ogsSetup.cpp)
+        ${OGS_SOURCE_DIR}/src/ogsSetup.cpp
+        ${OGS_SOURCE_DIR}/src/oogs.cpp)
 
 add_library(libogs ${OGS_SOURCES})
 set_target_properties(libogs PROPERTIES OUTPUT_NAME ogs)
@@ -99,7 +239,6 @@ target_link_libraries(libogs PUBLIC libocca gs)
 # ---------------------------------------------------------
 
 set(LIBP_SOURCES
-        src/core/occaDeviceConfig.cpp
         ${LIBP_SOURCE_DIR}/src/hash.c
         ${LIBP_SOURCE_DIR}/src/matrixConditionNumber.c
         ${LIBP_SOURCE_DIR}/src/matrixInverse.c
@@ -110,6 +249,7 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/meshConnectFaceNodes3D.c
         ${LIBP_SOURCE_DIR}/src/meshConnectPeriodicFaceNodes2D.c
         ${LIBP_SOURCE_DIR}/src/meshConnectPeriodicFaceNodes3D.c
+        ${LIBP_SOURCE_DIR}/src/meshFree.c
         ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsHex3D.c
         ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsQuad2D.c
         ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsQuad3D.c
@@ -128,7 +268,6 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/meshOccaSetup2D.c
         ${LIBP_SOURCE_DIR}/src/meshOccaSetup3D.c
         ${LIBP_SOURCE_DIR}/src/meshOccaSetupQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelConnectNodes.c
         ${LIBP_SOURCE_DIR}/src/meshParallelConnectOpt.c
         ${LIBP_SOURCE_DIR}/src/meshParallelConsecutiveGlobalNumbering.c
         ${LIBP_SOURCE_DIR}/src/meshParallelGatherScatterSetup.c
@@ -170,7 +309,8 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/parallelSort.c
         ${LIBP_SOURCE_DIR}/src/readArray.c
         ${LIBP_SOURCE_DIR}/src/setupAide.c
-        ${LIBP_SOURCE_DIR}/src/timer.c)
+        ${LIBP_SOURCE_DIR}/src/timer.c
+        $<TARGET_OBJECTS:blasLapack_libp>)
 
 set_source_files_properties(${LIBP_SOURCES} PROPERTIES LANGUAGE CXX)
 add_library(libP ${LIBP_SOURCES})
@@ -178,7 +318,7 @@ set_target_properties(libP PROPERTIES OUTPUT_NAME P)
 target_compile_definitions(libP 
   PUBLIC -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" ${LIBP_DEFINES})
 target_include_directories(libP PUBLIC ${LIBP_SOURCE_DIR}/include src/core/)
-target_link_libraries(libP PUBLIC libogs libocca blasLapack)
+target_link_libraries(libP PUBLIC libogs libocca)
 
 # ---------------------------------------------------------
 # libparAlmond
@@ -204,6 +344,7 @@ set(PARALMOND_SOURCES
         ${PARALMOND_SOURCE_DIR}/src/pcg.cpp
         ${PARALMOND_SOURCE_DIR}/src/pgmres.cpp
         ${PARALMOND_SOURCE_DIR}/src/solver.cpp
+        ${PARALMOND_SOURCE_DIR}/src/timer.cpp
         ${PARALMOND_SOURCE_DIR}/src/utils.cpp
         ${PARALMOND_SOURCE_DIR}/src/vector.cpp)
 
@@ -251,6 +392,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMixedCopy.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevel.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevelSetup.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSchwarz.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticOperator.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticPlotVTUHex3D.c
@@ -271,13 +413,19 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticWeightedNorm2.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticZeroMean.c)
 
-set_source_files_properties(${ELLIPTIC_SOURCES} PROPERTIES LANGUAGE CXX)
+set(ELLIPTIC_MAIN ${ELLIPTIC_SOURCE_DIR}/src/ellipticMain.c)
+
+set_source_files_properties(${ELLIPTIC_SOURCES} ${ELLIPTIC_MAIN} PROPERTIES LANGUAGE CXX)
 add_library(libelliptic ${ELLIPTIC_SOURCES})
 set_target_properties(libelliptic PROPERTIES OUTPUT_NAME elliptic)
 target_compile_definitions(libelliptic 
   PUBLIC -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" ${LIBP_DEFINES})
 target_include_directories(libelliptic PUBLIC ${ELLIPTIC_SOURCE_DIR})
 target_link_libraries(libelliptic PUBLIC libP libparAlmond libogs libocca blasLapack)
+
+add_executable(ellipticMain ${ELLIPTIC_MAIN})
+set_target_properties(ellipticMain PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_ALL 1)
+target_link_libraries(ellipticMain libelliptic)
 
 # ---------------------------------------------------------
 # install

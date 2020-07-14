@@ -38,7 +38,6 @@ set(NEK5000_SOURCE_DIR ${nek5000_content_SOURCE_DIR})
 # blasLapack
 # ==========
 
-# BLASLAPACK should always present in Nek5000 source
 set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 
 # gslib
