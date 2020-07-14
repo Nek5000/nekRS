@@ -18,7 +18,7 @@ else
     echo "usage: ${0##*/} <casename> <#tasks>"
     exit 1
   fi
-  nohup mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 1>&2 | tee $1.log.$2 &
+  nohup mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 >$1.log.$2 </dev/null 2>&1 &
 fi
 
 ln -sf $1.log.$2 logfile
