@@ -93,6 +93,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("AMG SOLVER", "BOOMERAMG");
+  options.setArgs("BOOMERAMG ITERATIONS", "2");
 }
 
 libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
@@ -340,6 +341,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI"); 
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI"); 
         options.setArgs("BOOMERAMG ITERATIONS", "2");
+        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
         } else {
@@ -353,7 +355,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM"); 
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM"); 
-        options.setArgs("BOOMERAMG ITERATIONS", "2");
+        options.setArgs("BOOMERAMG ITERATIONS", "1");
+        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
         } else {
@@ -367,7 +370,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS"); 
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS"); 
-        options.setArgs("BOOMERAMG ITERATIONS", "2");
+        options.setArgs("BOOMERAMG ITERATIONS", "1");
+        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
         if(p_preconditioner.find("additive") !=std::string::npos){
             exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!", EXIT_FAILURE);
         } else {
@@ -381,8 +385,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
       } 
     } else {
-      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV"); 
-      options.setArgs("BOOMERAMG ITERATIONS", "2");
+//      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV"); 
+//      options.setArgs("BOOMERAMG ITERATIONS", "2");
       if(p_preconditioner.find("additive") !=std::string::npos) {
          options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
          options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM"); 

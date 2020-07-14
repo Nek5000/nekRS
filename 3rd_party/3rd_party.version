@@ -12,10 +12,10 @@ PARRSB_VER=0.2
 PARRSB_ARCHIVE_URL=https://github.com/Nek5000/parRSB/archive/v${PARRSB_VER}.tar.gz
 
 OCCA_VER=1.0 # latest
-OCCA_GIT_BRANCH=master
+OCCA_GIT_BRANCH=main
 OCCA_GIT_URL=https://github.com/Nek5000/occa.git
 
-HYPRE_VER=2.18.2
+HYPRE_VER=2.19.0
 HYPRE_ARCHIVE_URL=https://github.com/hypre-space/hypre/archive/v${HYPRE_VER}.tar.gz
 
 function clone_nek() {

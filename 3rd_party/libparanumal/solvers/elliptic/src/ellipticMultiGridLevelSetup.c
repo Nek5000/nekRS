@@ -248,18 +248,22 @@ void MGLevel::Report() {
 
   char smootherString[BUFSIZ];
   if (stype==RICHARDSON&&smtypeDown==JACOBI)
-    strcpy(smootherString, "Damped Jacobi   ");
+    strcpy(smootherString, "Damped Jacobi    ");
   else if (stype==CHEBYSHEV&&smtypeDown==JACOBI)
-    strcpy(smootherString, "Chebyshev       ");
+    strcpy(smootherString, "Chebyshev+Jacobi ");
   else if (stype==SCHWARZ)
-    strcpy(smootherString, "Schwarz         ");
+    strcpy(smootherString, "Schwarz          ");
+  else if (stype==CHEBYSHEV&&smtypeDown==SCHWARZ_SMOOTH)
+    strcpy(smootherString, "Chebyshev+Schwarz");
   else if (stype==RICHARDSON&&smtypeDown==LOCALPATCH)
-    strcpy(smootherString, "Local Patch     ");
+    strcpy(smootherString, "Local Patch      ");
   else if (stype==RICHARDSON&&smtypeDown==LOCALPATCH)
-    strcpy(smootherString, "Local Patch+Cheb");
+    strcpy(smootherString, "Local Patch+Cheb ");
+
+  print("here: %s %s\n", stype, smtypeDown);
 
   if (mesh->rank==0){
-    printf(     "|    pMG     |    %10d  |   Matrix-free   |   %s|\n",minNrows, smootherString);
+    printf(     "|    pMG     |    %10d  |   Matrix-free   |  %s|\n", minNrows, smootherString);
     printf("     |            |    %10d  |     Degree %2d   |                   |\n", maxNrows, degree);
     printf("     |            |    %10d  |                 |                   |\n", (int) avgNrows);
   }

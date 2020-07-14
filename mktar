@@ -51,10 +51,6 @@ function tar_3rd_party() {
   clone_libp
 
   if [ $cleanup -eq 1 ]; then
-    rm -rf libparanumal/nodes/tet*
-    rm -rf libparanumal/nodes/tri*
-    rm -rf libparanumal/meshes
-    rm -rf libparanumal/benchmarks
     tar --exclude=libparanumal/.git -cvzf libparanumal.tgz libparanumal/
   else
     tar -cvzf libparanumal.tgz libparanumal/
