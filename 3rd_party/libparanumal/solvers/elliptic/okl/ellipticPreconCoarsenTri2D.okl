@@ -1,0 +1,199 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void ellipticPreconCoarsen_v0(const dlong Nelements,
+                                     @restrict const  dfloat *  invDegree,
+                                     @restrict const  dfloat *  V1,
+                                     @restrict const  dfloat *  qN,
+                                     @restrict dfloat *  q1){
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_Nverts;++n;@inner(0)){
+      dfloat tmp = 0;
+      for(int i=0;i<p_Np;++i){
+        tmp += V1[n*p_Np + i]*qN[e*p_Np+i];
+      }
+      q1[e*p_Nverts+n] = tmp; // *invDegree[e*p_Nverts+n];
+    }
+  }
+}
+
+@kernel void ellipticPreconCoarsenTri2D(const dlong Nelements,
+                                  @restrict const  dfloat *  R,
+                                  @restrict const  dfloat *  qN,
+                                  @restrict dfloat *  q1){
+
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockVCoarse;@outer(0)){
+
+    @shared dfloat s_qN[p_NblockVCoarse][p_NpFine];
+
+    for(int es=0;es<p_NblockVCoarse;++es;@inner(1)){
+      for(int n=0;n<p_NpCoarse;++n;@inner(0)){
+        dlong t = n + es*p_NpCoarse;
+
+        while(t<p_NpFine*p_NblockVCoarse){
+          if(eo*p_NpFine + t< Nelements*p_NpFine)
+            s_qN[0][t] = qN[eo*p_NpFine+t];
+          t += p_NpCoarse*p_NblockVCoarse;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    for(int es=0;es<p_NblockVCoarse;++es;@inner(1)){
+      for(int n=0;n<p_NpCoarse;++n;@inner(0)){
+        const dlong e = eo + es;
+        if(e<Nelements){
+          dfloat tmp = 0;
+          #pragma unroll p_NpFine
+            for(int i=0;i<p_NpFine;++i){
+              tmp += R[n*p_NpFine + i]*s_qN[es][i]; // bank conflict ?
+            }
+          q1[e*p_NpCoarse+n] = tmp; // *invDegree[e*p_NpCoarse+n];
+        }
+      }
+    }
+  }
+}
+
+
+//storing R in @shared is too much for 3D
+#if 0
+@kernel void ellipticPreconCoarsen_v1(const dlong Nelements,
+                                  @restrict const  dfloat *  R,
+                                  @restrict const  dfloat *  qN,
+                                  @restrict dfloat *  q1){
+
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockVCoarse;@outer(0)){
+
+    @shared dfloat s_qN[p_NblockVCoarse][p_NpFine];
+    @shared dfloat s_R[p_NpCoarse][p_NpFine];
+
+    for(int es=0;es<p_NblockVCoarse;++es;@inner(1)){
+      for(int n=0;n<p_NpCoarse;++n;@inner(0)){
+        dlong t = n + es*p_NpCoarse;
+
+        while(t<p_NpFine*p_NblockVCoarse){
+          if(eo*p_NpFine + t< Nelements*p_NpFine)
+            s_qN[0][t] = qN[eo*p_NpFine+t];
+          t += p_NpCoarse*p_NblockVCoarse;
+        }
+
+        t = n + es*p_NpCoarse;
+
+        while(t<p_NpFine*p_NpCoarse){
+          s_R[0][t] = R[t];
+          t += p_NpCoarse*p_NblockVCoarse;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    for(int es=0;es<p_NblockVCoarse;++es;@inner(1)){
+      for(int n=0;n<p_NpCoarse;++n;@inner(0)){
+        const dlong e = eo + es;
+        if(e<Nelements){
+          dfloat tmp = 0;
+          #pragma unroll p_NpFine
+            for(int i=0;i<p_NpFine;++i){
+              tmp += s_R[n][i]*s_qN[es][i]; // bank conflict ?
+            }
+          q1[e*p_NpCoarse+n] = tmp; // *invDegree[e*p_NpCoarse+n];
+        }
+      }
+    }
+  }
+}
+#endif
+
+
+#if 0
+@kernel void ellipticPreconCoarsenQuad2D(const int Nelements,
+                                        @restrict const  dfloat *  R,
+                                        @restrict const  dfloat *  qN,
+                                        @restrict dfloat *  q1){
+
+
+  for(int e=0;e<Nelements;++e;@outer(0)){
+    @shared dfloat s_qNN[p_Nq][p_Nq];
+    @shared dfloat s_q1N[p_Nq1][p_Nq];
+    @shared dfloat s_q11[p_Nq1][p_Nq1];
+
+    // prefetch to @shared
+
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        s_qNN[j][i] = qN[i+j*p_Nq+e*p_Nq*p_Nq];
+      }
+    }
+
+    @barrier("local");
+
+    // coarsen in j index
+
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        if(j<2){
+          dfloat res = 0;
+          for(int m=0;m<p_Nq;++m)
+            res += R[j*p_Nq + m]*s_qN[m][i];
+          s_q1N[j][i] = res;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // coarsen in i index
+
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        if(j<2 && i<2){
+          dfloat rtmp = 0;
+          for(int m=0;m<p_Nq;++m)
+            rtmp += R[i*p_Nq + m]*s_qN[j][m];
+          s_q11[j][i] = rtmp;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // collect writes
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        const int id = i + j*p_Nq;
+        if(id<p_Nq1*p_Nq1){
+          q1[id + p_Nq1*p_Nq1*e] = s_q11[0][id];
+        }
+      }
+    }
+
+  }
+}
+#endif

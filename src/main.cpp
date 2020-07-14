@@ -127,8 +127,9 @@ int main(int argc, char **argv)
                cmdOpt->backend, cmdOpt->deviceID);
 
   if (cmdOpt->buildOnly) {
-    MPI_Finalize(); 
-    return EXIT_SUCCESS;
+   MPI_Finalize(); 
+   fflush(stdout);
+   std::_Exit(EXIT_SUCCESS);
   }
 
   const int outputStep = nekrs::outputStep();
@@ -167,7 +168,8 @@ int main(int argc, char **argv)
   if(rank == 0) PerformanceTimer::getInstance().dump();
 
   MPI_Finalize();
-  return EXIT_SUCCESS;
+  fflush(stdout);
+  std::_Exit(EXIT_SUCCESS);
 }
 
 static cmdOptions *processCmdLineOptions(int argc, char **argv) 

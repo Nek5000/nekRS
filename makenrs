@@ -208,7 +208,7 @@ fi
 
 nekrs_info "Building NekRS ..."
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
-rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
+#rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
 cmake -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \

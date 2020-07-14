@@ -1,0 +1,177 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void ellipticRhsBCIpdgTri2D(const dlong Nelements,
+                                  @restrict const  dlong *  vmapM,
+                                  const dfloat tau,
+                                  const dfloat t,
+                                  @restrict const  dfloat *  x,
+                                  @restrict const  dfloat *  y,
+                                  @restrict const  dfloat *  z,
+                                  @restrict const  dfloat *  vgeo,
+                                  @restrict const  dfloat *  sgeo,
+                                  @restrict const  int   *  EToB,
+                                  @restrict const  dfloat *  Dmatrices,
+                                  @restrict const  dfloat *  LIFTT,
+                                  @restrict const  dfloat *  MM,
+                                  @restrict dfloat *  rhs){
+  
+  for(int e=0;e<Nelements;++e;@outer(0)){
+    @shared  dfloat s_dudx[p_Np];
+    @shared  dfloat s_dudy[p_Np];
+    @shared  dfloat s_lapu[p_Np];
+    @shared  dfloat s_nxdu[p_NfacesNfp];
+    @shared  dfloat s_nydu[p_NfacesNfp];
+    @shared  dfloat s_lapuflux[p_NfacesNfp];
+    @shared  dfloat s_Lnxdu[p_Np];
+    @shared  dfloat s_Lnydu[p_Np];
+
+    @exclusive int idM;
+    @exclusive dfloat nx, ny, sJ, invJ, hinv;
+    
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        const int id  = n + e*p_Nfaces*p_Nfp;
+        idM = vmapM[id];          
+     
+        const int face = n/p_Nfp;
+
+        dfloat dudxP=0, dudyP=0, uP=0;
+        
+        // load surface geofactors for this face
+        int sid = p_Nsgeo*(e*p_Nfaces+face);
+        nx = sgeo[sid+p_NXID];
+        ny = sgeo[sid+p_NYID];
+        sJ = sgeo[sid+p_SJID];
+        invJ = sgeo[sid+p_IJID];
+        hinv = sgeo[sid+p_IHID];
+
+        const int bc = EToB[face+p_Nfaces*e];
+        if(bc>0) {
+          ellipticBoundaryConditions2D(bc, t, x[idM], y[idM], nx, ny, \
+                                        0.f, 0.f, 0.f,                \
+                                        uP, dudxP, dudyP);
+        }  
+
+        const dfloat du = uP;
+        const dfloat half = 1.f;
+        
+        s_nxdu[n] = half*sJ*invJ*nx*du;
+        s_nydu[n] = half*sJ*invJ*ny*du;
+
+        s_lapuflux[n] = half*sJ*invJ*(-nx*(dudxP)-ny*(dudyP) -tau*hinv*du);
+      }
+    }
+
+    @barrier("local");
+
+    // dqdx += LIFT*(sJ/J)*nx*dq
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const int gid = e*p_Nvgeo;
+        const dfloat drdx = vgeo[gid + p_RXID];
+        const dfloat drdy = vgeo[gid + p_RYID];
+        const dfloat dsdx = vgeo[gid + p_SXID];
+        const dfloat dsdy = vgeo[gid + p_SYID];
+
+        dfloat Lnxdu = 0;
+        dfloat Lnydu = 0;
+              
+        #pragma unroll p_NfacesNfp
+          for(int i=0;i<p_NfacesNfp;++i){
+            Lnxdu += LIFTT[n+i*p_Np]*s_nxdu[i];
+            Lnydu += LIFTT[n+i*p_Np]*s_nydu[i];
+          }
+    
+        dfloat dudx = Lnxdu;
+        dfloat dudy = Lnydu;
+
+        s_dudx[n] = drdx*dudx + drdy*dudy; // abuse of notation
+        s_dudy[n] = dsdx*dudx + dsdy*dudy;
+
+        s_Lnxdu[n] = Lnxdu;
+        s_Lnydu[n] = Lnydu;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        int id = idM%p_Np;
+        s_lapuflux[n] += sJ*invJ*(nx*s_Lnxdu[id]+ny*s_Lnydu[id]);
+      }
+
+      if(n<p_Np){
+        dfloat laur = 0, laus = 0;
+
+        #pragma unroll p_Np
+        for(int i=0;i<p_Np;++i) {
+          laur += Dmatrices[n+i*p_Np+0*p_Np*p_Np]*s_dudx[i];
+          laus += Dmatrices[n+i*p_Np+0*p_Np*p_Np]*s_dudy[i];
+        }
+
+        s_lapu[n] = -(laur+laus);
+      }
+      
+    }
+    
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        dfloat lau = 0;
+              
+        // lift remaining surface terms
+        #pragma unroll p_NfacesNfp
+        for(int i=0;i<p_NfacesNfp;++i){
+          lau += LIFTT[n+i*p_Np]*s_lapuflux[i];
+        }
+              
+        s_lapu[n] += lau;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const dfloat J = vgeo[e*p_Nvgeo + p_JID];
+              
+        dfloat Mlapu = 0;
+
+        // multiply by mass matrix
+        #pragma unroll p_Np
+        for(int i=0;i<p_Np;++i){
+          Mlapu += MM[n+i*p_Np]*s_lapu[i];
+        }
+            
+        const int id = e*p_Np+n;
+        rhs[id] -=  J*Mlapu;
+      }
+    }
+  }
+}

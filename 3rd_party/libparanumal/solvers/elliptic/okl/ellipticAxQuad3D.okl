@@ -1,0 +1,258 @@
+/*
+  
+  The MIT License (MIT)
+
+  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+*/
+
+
+// hex @kernel for screened coulomb potential mat-vec
+#define squareThreads                           \
+  for(int j=0; j<p_Nq; ++j; @inner(1))		\
+    for(int i=0; i<p_Nq; ++i; @inner(0))
+
+
+// square thread version
+@kernel void ellipticAxQuad3D(const dlong   Nelements,
+			      @restrict const  dfloat *  ggeo,
+			      @restrict const  dfloat *  D,
+			      @restrict const  dfloat *  S,
+			      @restrict const  dfloat *  MM,
+			      const dfloat   lambda,
+			      @restrict const  dfloat *  q,
+			      @restrict dfloat *  Aq){
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    
+    @shared dfloat s_q[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @exclusive dfloat r_qr, r_qs, r_q, r_Aq;
+    @exclusive pfloat r_G00, r_G01, r_G02;
+    @exclusive pfloat r_G11, r_G12;
+    @exclusive pfloat r_G22;
+    @exclusive pfloat r_GwJ;
+    
+    // prefetch q(:,:,:,e) to @shared
+    squareThreads{
+      const dlong base = i + j*p_Nq + e*p_Np; 
+      
+      s_q[j][i] = q[base];
+      
+      // fetch D to @shared
+      s_D[j][i] = D[j*p_Nq+i];
+    }
+      
+    @barrier("local");
+
+    squareThreads{
+      const dlong base = e*p_Nggeo*p_Np + j*p_Nq + i;
+
+      // assumes w*J built into G entries
+      r_GwJ = ggeo[base+p_GWJID*p_Np];
+
+      r_G00 = ggeo[base+p_G00ID*p_Np];
+      r_G01 = ggeo[base+p_G01ID*p_Np];
+      r_G02 = ggeo[base+p_G02ID*p_Np];
+      r_G11 = ggeo[base+p_G11ID*p_Np];
+      r_G12 = ggeo[base+p_G12ID*p_Np];
+      r_G22 = ggeo[base+p_G22ID*p_Np];
+
+      dfloat qr = 0.f, qs = 0.f;
+      
+#pragma unroll p_Nq
+      for(int n=0; n<p_Nq; ++n){
+	qr += s_D[i][n]*s_q[j][n];
+	qs += s_D[j][n]*s_q[n][i];
+      }
+      
+      r_qr = qr; r_qs = qs; r_q = s_q[j][i];
+      
+      r_Aq = r_GwJ*lambda*r_q;
+    }
+
+    // r term ----->
+    @barrier("local");
+
+    squareThreads{
+      // s_q[j][i] = r_G00*r_qr + r_G01*r_qs + r_G02*r_q;
+      s_q[j][i] = r_G00*r_qr + r_G01*r_qs;
+    }
+    
+    @barrier("local");
+
+    squareThreads{
+      dfloat tmp = 0.f;
+#pragma unroll p_Nq
+      for(int n=0;n<p_Nq;++n) {
+	       tmp += s_D[n][i]*s_q[j][n];
+      }
+      r_Aq += tmp;
+    }
+    
+    // // t term ---->
+
+    // squareThreads{
+    //   r_Aq += r_G02*r_qr + r_G12*r_qs + r_G22*r_q;
+    // }
+    
+    // s term ---->
+    @barrier("local");
+
+    squareThreads{
+      // s_q[j][i] = r_G01*r_qr + r_G11*r_qs + 0.f*r_G12*r_q;
+      s_q[j][i] = r_G01*r_qr + r_G11*r_qs;
+    }
+    
+    @barrier("local");
+
+    squareThreads{
+      // dfloat tmp = r_G22*r_q;
+      dfloat tmp = 0.f;
+
+#pragma unroll p_Nq 
+      for(int n=0;n<p_Nq;++n) {
+	     tmp += s_D[n][j]*s_q[n][i];
+      }
+      
+      r_Aq += tmp;
+
+      const dlong base = e*p_Np + j*p_Nq + i;
+      Aq[base] = r_Aq;
+    }
+  }
+}
+
+// square thread version
+@kernel void ellipticPartialAxQuad3D(const dlong Nelements,
+				     @restrict const  dlong   *  elementList,
+				     @restrict const  dfloat *  ggeo,
+				     @restrict const  dfloat *  D,
+				     @restrict const  dfloat *  S,
+				     @restrict const  dfloat *  MM,
+				     const dfloat   lambda,
+				     @restrict const  dfloat *  q,
+				     @restrict dfloat *  Aq){
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    
+    @shared dfloat s_q[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @exclusive dlong element;
+    @exclusive dfloat r_qr, r_qs, r_q, r_Aq;
+    @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    
+    // prefetch q(:,:,:,e) to @shared
+    squareThreads{
+      element = elementList[e];
+      const dlong base = i + j*p_Nq + element*p_Np; 
+      
+      s_q[j][i] = q[base];
+      
+      // fetch D to @shared
+      s_D[j][i] = D[j*p_Nq+i];
+    }
+      
+    @barrier("local");
+
+    squareThreads{
+      
+      const dlong base = element*p_Nggeo*p_Np + j*p_Nq + i;
+      // assumes w*J built into G entries
+      r_GwJ = ggeo[base+p_GWJID*p_Np];
+      r_G00 = ggeo[base+p_G00ID*p_Np];
+      r_G01 = ggeo[base+p_G01ID*p_Np];
+      r_G02 = ggeo[base+p_G02ID*p_Np];
+      r_G11 = ggeo[base+p_G11ID*p_Np];
+      r_G12 = ggeo[base+p_G12ID*p_Np];
+      r_G22 = ggeo[base+p_G22ID*p_Np];
+
+      dfloat qr = 0.f, qs = 0.f;
+      
+#pragma unroll p_Nq
+      for(int n=0; n<p_Nq; ++n){
+	qr += s_D[i][n]*s_q[j][n];
+	qs += s_D[j][n]*s_q[n][i];
+      }
+      
+      r_qr = qr; r_qs = qs; r_q = s_q[j][i];
+      
+      r_Aq = r_GwJ*lambda*r_q;
+    }
+
+    // r term ----->
+    @barrier("local");
+
+    squareThreads{
+      // s_q[j][i] =  r_G00*r_qr + r_G01*r_qs + r_G02*r_q;
+      s_q[j][i] =  r_G00*r_qr + r_G01*r_qs;
+    }
+    
+    @barrier("local");
+
+    squareThreads{
+      dfloat tmp = 0.f;
+#pragma unroll p_Nq
+      for(int n=0;n<p_Nq;++n) {
+	tmp += s_D[n][i]*s_q[j][n];
+      }
+
+      r_Aq += tmp;
+      // r_Aq += 0.f;
+    }
+
+    // // ts term ---->
+    // squareThreads{
+    //   r_Aq += r_G02*r_qr + r_G12*r_qs + r_G22*r_q;
+    // }
+    
+    // s term ---->
+    @barrier("local");
+
+    squareThreads{
+      // s_q[j][i] = r_G01*r_qr + r_G11*r_qs + r_G12*r_q;
+      s_q[j][i] = r_G01*r_qr + r_G11*r_qs;
+    }
+    
+    @barrier("local");
+
+    squareThreads{
+      // dfloat tmp = r_G22*r_q;
+      dfloat tmp = 0.f;
+
+#pragma unroll p_Nq
+      for(int n=0;n<p_Nq;++n){
+	       tmp += s_D[n][j]*s_q[n][i];
+      }
+
+      r_Aq += tmp;
+
+      const dlong base = element*p_Np + j*p_Nq + i;
+      Aq[base] = r_Aq;
+    }
+  }
+}
+
+
+
+

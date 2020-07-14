@@ -454,7 +454,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
       cflags, cache_dir, cache_dir, casename);
   retval = system(buf);
   if (retval) goto err; 
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile nekInterface "
+  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -f %s/Makefile nekInterface "
       ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
   retval = system(buf);
   if (retval) goto err; 

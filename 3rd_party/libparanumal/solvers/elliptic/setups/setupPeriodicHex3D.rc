@@ -1,0 +1,190 @@
+[FORMAT]
+1.0
+
+[BENCHMARK]
+SOLVE
+
+[DATA FILE]
+data/ellipticSineTest3D.h
+#data/ellipticHomogeneous3D.h
+
+[BOX DOMAIN]
+TRUE
+
+[BOX NX]
+20
+
+[BOX NY]
+20
+
+[BOX NZ]
+20
+
+[BOX XMIN]
+-1.0
+[BOX XMAX]
+1.0
+
+[BOX YMIN]
+-1.0
+[BOX YMAX]
+1.0
+
+[BOX ZMIN]
+-1.0
+[BOX ZMAX]
+1.0
+
+
+
+[MESH DIMENSION]
+3
+
+[ELEMENT TYPE] # number of edges
+12
+
+[POLYNOMIAL DEGREE]
+7
+
+[ELEMENT MAP]
+ISOPARAMETRIC
+#TRILINEAR
+
+[ELLIPTIC INTEGRATION]
+NODAL
+#CUBATURE
+# CUBATURE - WORKING FOR INHOMOGENEOUS DIRICHLET BCS - NOT WORKING FOR NEUMANN YET
+
+[THREAD MODEL]
+#Serial
+CUDA
+
+[PLATFORM NUMBER]
+0
+
+[DEVICE NUMBER]
+0
+
+[LAMBDA]
+0
+
+# can add FLEXIBLE to PCG
+# can add NONBLOCKING (disable FLEXIBLE for the moment)
+[KRYLOV SOLVER]
+PCG+FLEXIBLE
+#+NONBLOCKING
+#+NONBLOCKING+FLEXIBLE
+#+FLEXIBLE
+#+FLEXIBLE+NONBLOCKING
+
+[SOLVER TOLERANCE]
+1.e-7
+
+# can be IPDG, or CONTINUOUS
+[DISCRETIZATION]
+#IPDG
+CONTINUOUS
+
+# can be NODAL or BERN
+[BASIS]
+NODAL
+
+# can be NONE, JACOBI, MASSMATRIX, FULLALMOND, SEMFEM, MULTIGRID, or OAS
+# OAS does not currently work with NONBLOCKING PCG
+[PRECONDITIONER]
+#OAS
+#JACOBI
+MULTIGRID
+#SEMFEM
+#FULLALMOND
+
+
+
+########## MULTIGRID Options ##############
+
+# can be ALLDEGREES, HALFDEGREES, HALFDOFS
+[MULTIGRID COARSENING]
+#ALLDEGREES
+HALFDEGREES
+#HALFDOFS
+
+# can be LOCALPATCH, or DAMPEDJACOBI
+# LOCALPATCH smoother can include EXACT
+# can include CHEBYSHEV for smoother acceleration
+[MULTIGRID SMOOTHER]
+DAMPEDJACOBI+CHEBYSHEV
+
+# can be any integer >0
+[MULTIGRID CHEBYSHEV DEGREE]
+1
+
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[PARALMOND CYCLE]
+KCYCLE
+#EXACT
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[PARALMOND SMOOTHER]
+CHEBYSHEV+DAMPEDJACOBI
+
+# can be any integer >0
+[PARALMOND CHEBYSHEV DEGREE]
+1
+
+# can be STRONGNODES, DISTRIBUTED, SATURATE
+[PARALMOND PARTITION]
+STRONGNODES
+
+# can be DEFAULT or LPSCN
+[PARALMOND AGGREGATION STRATEGY]
+DEFAULT
+#LPSCN
+
+# can be MAX, MIN, or NONE
+[PARALMOND LPSCN ORDERING]
+MAX
+#MIN
+
+# only smooth at bottom of cycle
+[PARALMOND SMOOTH COARSEST]
+TRUE
+
+[PARALMOND SMOOTH COARSEST DEGREE]
+20
+
+###########################################
+
+[RESTART FROM FILE]
+0
+
+[OUTPUT FILE NAME]
+cavity
+
+[VERBOSE]
+TRUE
+#FALSE
+
+# set to 0 (zero) to disable reductions
+[DEBUG ENABLE REDUCTIONS]
+1
+
+# set to 0 (zero) to disable gather-scatter
+[DEBUG ENABLE OGS]
+1
+
+[MAXIMUM ITERATIONS]
+1000
+
+[FIXED ITERATION COUNT]
+FALSE
+
+# TRUE: assume binaries are precompiled
+# FALSE: rely on occa caching
+# NONROOT: rank>0 assume rank==0 compiles binaries or occa binaries are already in cache
+[USE PRECOMPILED BINARIES]
+FALSE

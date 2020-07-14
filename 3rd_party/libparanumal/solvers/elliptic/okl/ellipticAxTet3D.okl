@@ -1,0 +1,300 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+ 
+@kernel void ellipticAxTet3D(const dlong Nelements,
+        @restrict const  dfloat *  ggeo,
+        @restrict const  dfloat *  Dmatrices,
+        @restrict const  dfloat *  Smatrices,
+        @restrict const  dfloat *  MM,
+        const dfloat lambda,
+        @restrict const  dfloat  *  q,
+        @restrict dfloat  *  Aq){
+  
+  for(dlong e=0;e<Nelements;e++;@outer(0)){
+
+    @shared dfloat s_q[p_Np];
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      //prefetch q
+      const dlong id = n + e*p_Np;
+      s_q[n] = q[id];
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong gid = e*p_Nggeo;
+
+      const dfloat Grr = ggeo[gid + p_G00ID];
+      const dfloat Grs = ggeo[gid + p_G01ID];
+      const dfloat Grt = ggeo[gid + p_G02ID];
+      const dfloat Gss = ggeo[gid + p_G11ID];
+      const dfloat Gst = ggeo[gid + p_G12ID];
+      const dfloat Gtt = ggeo[gid + p_G22ID];
+      const dfloat J   = ggeo[gid + p_GWJID];
+
+      dfloat qrr = 0.;
+      dfloat qrs = 0.;
+      dfloat qrt = 0.;
+      dfloat qss = 0.;
+      dfloat qst = 0.;
+      dfloat qtt = 0.;
+      dfloat qM = 0.;
+
+      #pragma unroll p_Np
+        for (int k=0;k<p_Np;k++) {
+          qrr += Smatrices[n+k*p_Np+0*p_Np*p_Np]*s_q[k];
+          qrs += Smatrices[n+k*p_Np+1*p_Np*p_Np]*s_q[k];
+          qrt += Smatrices[n+k*p_Np+2*p_Np*p_Np]*s_q[k];
+          qss += Smatrices[n+k*p_Np+3*p_Np*p_Np]*s_q[k];
+          qst += Smatrices[n+k*p_Np+4*p_Np*p_Np]*s_q[k];
+          qtt += Smatrices[n+k*p_Np+5*p_Np*p_Np]*s_q[k];
+          qM  += MM[n+k*p_Np]*s_q[k];
+        }
+
+
+      const dlong id = n + e*p_Np;
+
+      Aq[id] = Grr*qrr+Grs*qrs+Grt*qrt
+              +Gss*qss+Gst*qst+Gtt*qtt 
+              +J*lambda*qM;
+    }
+  }
+}
+
+
+@kernel void ellipticPartialAxTet3D_v0(const dlong Nelements,
+                                  @restrict const  dlong   *  elementList,
+                                  @restrict const  dfloat *  ggeo,
+                                  @restrict const  dfloat *  Dmatrices,
+                                  @restrict const  dfloat *  Smatrices,
+                                  @restrict const  dfloat *  MM,
+                                  const dfloat lambda,
+                                  @restrict const  dfloat  *  q,
+                                  @restrict dfloat  *  Aq){
+  
+  for(dlong e=0;e<Nelements;e++;@outer(0)){
+
+    @shared dfloat s_q[p_Np];
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      //prefetch q
+      const dlong element = elementList[e];
+      const dlong id = n + element*p_Np;
+      s_q[n] = q[id];
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong element = elementList[e];
+      const dlong gid = element*p_Nggeo;
+
+      const dfloat Grr = ggeo[gid + p_G00ID];
+      const dfloat Grs = ggeo[gid + p_G01ID];
+      const dfloat Grt = ggeo[gid + p_G02ID];
+      const dfloat Gss = ggeo[gid + p_G11ID];
+      const dfloat Gst = ggeo[gid + p_G12ID];
+      const dfloat Gtt = ggeo[gid + p_G22ID];
+      const dfloat J   = ggeo[gid + p_GWJID];
+
+      dfloat qrr = 0.;
+      dfloat qrs = 0.;
+      dfloat qrt = 0.;
+      dfloat qss = 0.;
+      dfloat qst = 0.;
+      dfloat qtt = 0.;
+      dfloat qM = 0.;
+
+      #pragma unroll p_Np
+        for (int k=0;k<p_Np;k++) {
+          qrr += Smatrices[n+k*p_Np+0*p_Np*p_Np]*s_q[k];
+          qrs += Smatrices[n+k*p_Np+1*p_Np*p_Np]*s_q[k];
+          qrt += Smatrices[n+k*p_Np+2*p_Np*p_Np]*s_q[k];
+          qss += Smatrices[n+k*p_Np+3*p_Np*p_Np]*s_q[k];
+          qst += Smatrices[n+k*p_Np+4*p_Np*p_Np]*s_q[k];
+          qtt += Smatrices[n+k*p_Np+5*p_Np*p_Np]*s_q[k];
+          qM  += MM[n+k*p_Np]*s_q[k];
+        }
+
+
+      const dlong id = n + element*p_Np;
+
+      Aq[id] = Grr*qrr+Grs*qrs+Grt*qrt
+              +Gss*qss+Gst*qst+Gtt*qtt 
+              +J*lambda*qM;
+    }
+  }
+}
+
+//Ref3 from benchmarks 
+// number of outputs per thread 
+// important to tune this at low order
+
+// p_Ne: number of outputs per thread
+// p_Nb: number of Np blocks per threadblock
+
+#if p_N==1
+#define p_Ne 2
+#define p_Nb 8
+#elif p_N==2
+#define p_Ne 3
+#define p_Nb 3
+#elif p_N==3
+#define p_Ne 3
+#define p_Nb 3
+#elif p_N==4
+#define p_Ne 3
+#define p_Nb 5
+#elif p_N==5
+#define p_Ne 3
+#define p_Nb 5
+#elif p_N==6
+#define p_Ne 4
+#define p_Nb 6
+#else
+// from N=7
+#define p_Ne 4
+#define p_Nb 2
+#endif
+
+// #define p_Ne 4
+// #define p_Nb 2
+@kernel void ellipticPartialAxTet3D(const dlong Nelements,
+                                  @restrict const  dlong   *  elementList,
+                                  @restrict const  dfloat *  ggeo,
+                                  @restrict const  dfloat *  Dmatrices,
+                                  @restrict const  dfloat *  Smatrices,
+                                  @restrict const  dfloat *  MM,
+                                  const dfloat lambda,
+                                  @restrict const  dfloat  *  q,
+                                        @restrict dfloat  *  Aq){
+
+  // p_Ne nodes per thread
+  // p_Nb elements worth of threads per block
+  
+  for(dlong eo=0;eo<Nelements;eo+=p_Ne*p_Nb;@outer(0)){
+
+    @shared dfloat s_q[p_Ne][p_Nb][p_Np];
+    @shared dfloat s_ggeo[p_Ne][p_Nb][p_Nggeo];
+
+    @exclusive dlong element[p_Ne];
+
+    for(int b=0;b<p_Nb;++b;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+  
+      #pragma unroll p_Ne
+        for(int et=0;et<p_Ne;++et){
+          const dlong e = eo + b + p_Nb*et;
+
+          if(e<Nelements){
+            element[et] = elementList[e];
+            
+            const dlong id = n + element[et]*p_Np;
+            s_q[et][b][n] = q[id];
+            
+            int m=n;
+            while(m<p_Nggeo){
+              s_ggeo[et][b][m] = ggeo[element[et]*p_Nggeo+m];
+              m += p_Np;
+            }
+          }
+        }
+      }
+    }
+
+    @barrier("local");
+
+    for(int b=0;b<p_Nb;++b;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+  
+      dfloat qrr[p_Ne], qrs[p_Ne], qrt[p_Ne], qss[p_Ne], qst[p_Ne], qtt[p_Ne], qM[p_Ne];
+      
+      #pragma unroll p_Ne
+        for(int et=0;et<p_Ne;++et){
+          qrr[et] = 0;    qrs[et] = 0;    qrt[et] = 0;
+          qss[et] = 0;    qst[et] = 0;
+          qtt[et] = 0;
+          qM[et] = 0;
+        }
+      
+      // overall this does p_Ne*14 flops for  (7+p_Ne)*|dfloat| L1+@shared accesse
+      // arithmetic intensity is  (p_Ne*14/((7+p_Ne)*8)) flops per byte
+      #pragma unroll p_Np
+        for (int k=0;k<p_Np;k++) {
+          
+          const dfloat Srr_nk = Smatrices[n+k*p_Np+0*p_Np*p_Np];
+          const dfloat Srs_nk = Smatrices[n+k*p_Np+1*p_Np*p_Np];
+          const dfloat Srt_nk = Smatrices[n+k*p_Np+2*p_Np*p_Np];
+          const dfloat Sss_nk = Smatrices[n+k*p_Np+3*p_Np*p_Np];
+          const dfloat Sst_nk = Smatrices[n+k*p_Np+4*p_Np*p_Np];
+          const dfloat Stt_nk = Smatrices[n+k*p_Np+5*p_Np*p_Np];
+          const dfloat   MM_nk =    MM[n+k*p_Np];
+          
+          #pragma unroll p_Ne
+            for(int et=0;et<p_Ne;++et){
+              const dfloat qk = s_q[et][b][k];
+              qrr[et] += Srr_nk*qk;  
+              qrs[et] += Srs_nk*qk; // assume (Srs stores Srs+Ssr)
+              qrt[et] += Srt_nk*qk; // assume (Srt stores Srt+Str)
+              qss[et] += Sss_nk*qk;
+              qst[et] += Sst_nk*qk; // assume (Sst stores Sst+Sts)
+              qtt[et] += Stt_nk*qk;
+              qM[et]  += MM_nk*qk;
+            }
+        }
+          
+      #pragma unroll p_Ne
+        for(int et=0;et<p_Ne;++et){
+          const dlong e = eo + b + p_Nb*et;
+          if(e<Nelements){
+            const dfloat Grr = s_ggeo[et][b][p_G00ID];
+            const dfloat Grs = s_ggeo[et][b][p_G01ID];
+            const dfloat Grt = s_ggeo[et][b][p_G02ID];
+            const dfloat Gss = s_ggeo[et][b][p_G11ID];
+            const dfloat Gst = s_ggeo[et][b][p_G12ID];
+            const dfloat Gtt = s_ggeo[et][b][p_G22ID];
+            const dfloat J   = s_ggeo[et][b][p_GWJID];
+            
+            const dlong id = n + element[et]*p_Np;
+            
+            Aq[id] = 
+              Grr*qrr[et]+
+              Grs*qrs[et]+
+              Grt*qrt[et]+
+              Gss*qss[et]+
+              Gst*qst[et]+
+              Gtt*qtt[et]+ 
+	      J*lambda*qM[et];
+          }
+        }
+      }
+    }
+  }
+}
+#undef p_Ne
+#undef p_Nb

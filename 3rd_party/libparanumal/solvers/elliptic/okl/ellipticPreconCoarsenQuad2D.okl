@@ -1,0 +1,96 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void ellipticPreconCoarsenQuad2D(const dlong Nelements,
+                                        @restrict const  dfloat *  R,
+                                        @restrict const  dfloat *  qf,
+                                              @restrict dfloat *  qc){
+  
+  
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    @shared dfloat s_qff[p_NqFine][p_NqFine];
+    @shared dfloat s_qcf[p_NqCoarse][p_NqFine];
+    @shared dfloat s_qcc[p_NqCoarse][p_NqCoarse];
+
+    @shared dfloat s_R[p_NqCoarse][p_NqFine];
+
+    // prefetch to @shared
+    
+    for(int j=0;j<p_NqFine;++j;@inner(1)){
+      for(int i=0;i<p_NqFine;++i;@inner(0)){
+        const dlong id = i+j*p_NqFine+e*p_NpFine;
+        s_qff[j][i] = qf[id];
+
+        if (j<p_NqCoarse)
+          s_R[j][i] = R[j*p_NqFine + i];
+      }
+    }
+
+    @barrier("local");
+
+    // coarsen in j index
+    for(int j=0;j<p_NqFine;++j;@inner(1)){
+      for(int i=0;i<p_NqFine;++i;@inner(0)){
+        if(j<p_NqCoarse){
+          dfloat res = 0;
+          #pragma unroll p_NqFine
+            for(int m=0;m<p_NqFine;++m) {
+              res += s_R[j][m]*s_qff[m][i];
+            }
+          s_qcf[j][i] = res;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // coarsen in i index
+    for(int j=0;j<p_NqFine;++j;@inner(1)){
+      for(int i=0;i<p_NqFine;++i;@inner(0)){
+        if(j<p_NqCoarse && i<p_NqCoarse){
+          dfloat rtmp = 0;
+          #pragma unroll p_NqFine
+            for(int m=0;m<p_NqFine;++m) {
+              rtmp += s_R[i][m]*s_qcf[j][m];
+            }
+          s_qcc[j][i] = rtmp;
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // collect writes
+    for(int j=0;j<p_NqFine;++j;@inner(1)){
+      for(int i=0;i<p_NqFine;++i;@inner(0)){
+        const int id = i + j*p_NqFine;
+        if(id<p_NpCoarse){
+          qc[id + p_NpCoarse*e] = s_qcc[0][id];
+        }
+      }
+    }
+  }
+}

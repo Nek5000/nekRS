@@ -13,11 +13,7 @@ PARRSB_ARCHIVE_URL=https://github.com/Nek5000/parRSB/archive/v${PARRSB_VER}.tar.
 
 OCCA_VER=1.0 # latest
 OCCA_GIT_BRANCH=master
-OCCA_GIT_URL=https://github.com/libocca/occa.git
-
-LIBP_VER=1.0 # latest
-LIBP_GIT_BRANCH=fdm
-LIBP_GIT_URL=https://gitlab.com/nekrs/libparanumal.git
+OCCA_GIT_URL=https://github.com/Nek5000/occa.git
 
 HYPRE_VER=2.18.2
 HYPRE_ARCHIVE_URL=https://github.com/hypre-space/hypre/archive/v${HYPRE_VER}.tar.gz
@@ -136,28 +132,7 @@ function clone_occa() {
 }
 
 function clone_libp() {
-  LIBP_TAR=${NEKRS_SRC_THIRD_PARTY_DIR}/libparanumal.tgz
-  if [ -f ${LIBP_TAR} ]; then
-    tar -xvf ${LIBP_TAR}
-  elif [ -z ${LIBP_ARCHIVE_URL} ]; then
-    if [ -z ${LIBP_GIT_URL} ]; then
-      echo "No way to clone libP."
-      exit 1
-    elif [ -z ${LIBP_GIT_BRANCH} ]; then
-      echo "Can't find the libP branch."
-      exit 1
-    else
-      git clone --depth 1 -b ${LIBP_GIT_BRANCH} ${LIBP_GIT_URL}
-    fi
-  else # using archive url
-    if [ -z ${LIBP_VER} ]; then
-      echo "Can't find the libP version and tar name."
-      exit 1
-    fi
-    LIBP_TAR=v${LIBP_VER}.tar.gz
-    wget --no-check-certificate -O ${LIBP_TAR} ${LIBP_ARCHIVE_URL}
-    tar -xvf ${LIBP_TAR}
-  fi
+  cp -a ${NEKRS_SRC_THIRD_PARTY_DIR}/libparanumal .
 }
 
 function clone_hypre() {
