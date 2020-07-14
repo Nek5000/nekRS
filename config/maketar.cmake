@@ -22,11 +22,6 @@ file(COPY
   DESTINATION ${DEST_DIR}/3rd_party/occa
   PATTERN ".git" EXCLUDE)
 
-file(COPY 
-  ${LIBP_SOURCE_DIR}/
-  DESTINATION ${DEST_DIR}/3rd_party/libparanumal
-  PATTERN ".git" EXCLUDE)
-
 file(COPY
   ${HYPRE_SOURCE_DIR}/
   DESTINATION ${DEST_DIR}/3rd_party/hypre
