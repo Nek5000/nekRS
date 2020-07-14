@@ -180,6 +180,7 @@ target_link_libraries(nekrs-bin nekrs-lib)
 install(TARGETS nekrs-lib nekrs-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
 )
 
 # Trailing slash prevents parent directory from being copied
