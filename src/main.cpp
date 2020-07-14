@@ -165,7 +165,6 @@ int main(int argc, char **argv)
   nekrs::printRuntimeStatistics();
 
   if(rank == 0) std::cout << "\nEnd." << "\n";
-  if(rank == 0) PerformanceTimer::getInstance().dump();
 
   MPI_Finalize();
   fflush(stdout);
