@@ -97,19 +97,7 @@ if (OPENMP_FOUND)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS_DEBUG}")
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS_RELEASE}")
-endif()
+set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
@@ -119,20 +107,6 @@ configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
-
-###############################################################################
-# Start building nekRS                                                        #
-###############################################################################
-
-macro(set_static_lib target_name builddir)
-   set(${target_name}_lib
-     "${builddir}/${CMAKE_STATIC_LIBRARY_PREFIX}${target_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-endmacro()
-
-macro(set_shared_lib target_name builddir)
-   set(${target_name}_lib
-     "${builddir}/${CMAKE_SHARED_LIBRARY_PREFIX}${target_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-endmacro()
 
 ###############################################################################
 # Build OCCA                                                                  #
