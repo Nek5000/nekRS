@@ -1,4 +1,4 @@
-set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/libparanumal)
+set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/libP)
 set(OGS_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/gatherScatter)
 set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
