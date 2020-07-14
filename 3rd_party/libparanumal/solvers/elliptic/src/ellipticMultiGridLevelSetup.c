@@ -260,8 +260,6 @@ void MGLevel::Report() {
   else if (stype==RICHARDSON&&smtypeDown==LOCALPATCH)
     strcpy(smootherString, "Local Patch+Cheb ");
 
-  print("here: %s %s\n", stype, smtypeDown);
-
   if (mesh->rank==0){
     printf(     "|    pMG     |    %10d  |   Matrix-free   |  %s|\n", minNrows, smootherString);
     printf("     |            |    %10d  |     Degree %2d   |                   |\n", maxNrows, degree);
