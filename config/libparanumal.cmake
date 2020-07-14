@@ -433,7 +433,9 @@ target_link_libraries(ellipticMain libelliptic)
 
 set(file_pattern "\.okl$|\.c$|\.hpp$|\.tpp$|\.h$|hex.*\.dat$")
 
-install(TARGETS libP LIBRARY DESTINATION libparanumal)
+install(TARGETS libP 
+  LIBRARY DESTINATION libparanumal
+  ARCHIVE DESTINATION libparanumal)
 install(DIRECTORY 
   ${LIBP_SOURCE_DIR}/include 
   ${LIBP_SOURCE_DIR}/nodes
@@ -441,7 +443,9 @@ install(DIRECTORY
   DESTINATION libparanumal
   FILES_MATCHING REGEX ${file_pattern})
 
-install(TARGETS libogs LIBRARY DESTINATION gatherScatter)
+install(TARGETS libogs 
+  LIBRARY DESTINATION gatherScatter
+  ARCHIVE DESTINATION gatherScatter)
 install(DIRECTORY
   ${OGS_SOURCE_DIR}/include 
   ${OGS_SOURCE_DIR}/okl 
@@ -449,7 +453,9 @@ install(DIRECTORY
   FILES_MATCHING REGEX ${file_pattern})
 install(FILES ${OGS_SOURCE_DIR}/ogs.hpp DESTINATION gatherScatter)
 
-install(TARGETS libparAlmond LIBRARY DESTINATION parAlmond)
+install(TARGETS libparAlmond 
+  LIBRARY DESTINATION parAlmond
+  ARCHIVE DESTINATION parAlmond)
 install(DIRECTORY
   ${PARALMOND_SOURCE_DIR}/include
   ${PARALMOND_SOURCE_DIR}/okl
@@ -457,7 +463,9 @@ install(DIRECTORY
   FILES_MATCHING REGEX ${file_pattern})
 install(FILES ${PARALMOND_SOURCE_DIR}/parAlmond.hpp DESTINATION gatherScatter)
 
-install(TARGETS libelliptic LIBRARY DESTINATION elliptic)
+install(TARGETS libelliptic 
+  LIBRARY DESTINATION elliptic
+  ARCHIVE DESTINATION elliptic)
 install(DIRECTORY
   ${ELLIPTIC_SOURCE_DIR}/data
   ${ELLIPTIC_SOURCE_DIR}/okl
