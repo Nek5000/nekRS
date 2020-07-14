@@ -63,6 +63,10 @@ typedef struct {
   /* MPI communicator */
   MPI_Comm comm;
 
+  /* multigrid levels */
+  int* mg_nx;
+  int mg_lmax;
+
 } nekdata_private;
 
 extern nekdata_private nekData;
@@ -112,6 +116,5 @@ void nek_copyTo(dfloat &time);
 void nek_ocopyTo(dfloat &time);
 void nek_copyRestart();
 long long nek_set_glo_num(int npts, int isTMesh);
-void nek_dssum(dfloat *u);
 
 #endif

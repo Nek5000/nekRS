@@ -4,13 +4,13 @@
 #include "udf.hpp"
 #include "filter.hpp"
 #include "bcMap.hpp"
+#include <vector>
+#include <map>
 
 static dfloat *scratch;
 static occa::memory o_scratch;
 
 cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &kernelInfoH);
-              
- 
 ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
 {
 
@@ -330,6 +330,7 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   // coeff used by ellipticSetup to detect allNeumann 
   for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 1; 
 
+
   if(ins->uvwSolver){
     ins->uvwSolver->blockSolver = 1;
     ins->uvwSolver->Nfields = ins->NVfields; 
@@ -441,9 +442,11 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pOptions.setArgs("PRECONDITIONER",       options.getArgs("PRESSURE PRECONDITIONER"));
   ins->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
   ins->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
+  ins->pOptions.setArgs("MULTIGRID DOWNWARD SMOOTHER", options.getArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER")); 
+  ins->pOptions.setArgs("MULTIGRID UPWARD SMOOTHER", options.getArgs("PRESSURE MULTIGRID UPWARD SMOOTHER")); 
   ins->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
   ins->pOptions.setArgs("PARALMOND CYCLE",      options.getArgs("PRESSURE PARALMOND CYCLE"));
-  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE PARALMOND SMOOTHER"));
+  ins->pOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
   ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
   ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
   ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
@@ -464,13 +467,34 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
   memcpy(ins->pSolver->BCType,pBCType,(nbrBIDs+1)*sizeof(int));
   ins->pSolver->var_coeff = 1;
-  // coeff used by ellipticSetup to detect allNeumann 
+  //// coeff used by ellipticSetup to detect allNeumann 
   // and coeff[0] to setup MG levels
   for (int i=0;i<2*ins->fieldOffset;i++) ins->ellipticCoeff[i] = 0; 
   ins->pSolver->lambda = ins->ellipticCoeff;
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
 
+  std::map<int,std::vector<int>> mg_level_lookup = 
+  {
+    {1,{1}},
+    {2,{2,1}},
+    {3,{3,1}},
+    {4,{4,2,1}},
+    {5,{5,3,1}},
+    {6,{6,3,1}},
+    {7,{7,3,1}},
+    {8,{8,5,1}},
+    {9,{9,5,1}},
+  };
+  if(ins->pOptions.compareArgs("MULTIGRID SMOOTHER","ASM") ||
+     ins->pOptions.compareArgs("MULTIGRID SMOOTHER","RAS")){
+    const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq-1);
+    ins->pSolver->nLevels = levels.size();
+    ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
+    for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
+      ins->pSolver->levels[i] = levels.at(i);
+    }
+  }
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
 
   // setup boundary mapping

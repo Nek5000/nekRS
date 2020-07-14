@@ -1,0 +1,481 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+// sgeo stores dfloat4s with nx,ny,nz,(sJ/J)*(w1*w2*w3/(ws1*ws2))
+// nx,ny,nz,sJ,invJ - need WsJ
+
+@kernel void ellipticAxIpdgBBTri2D(const int Nelements,
+                                @restrict const  int *  vmapM,
+                                @restrict const  int *  vmapP,
+                                const dfloat lambda,
+                                const dfloat tau,
+                                @restrict const  dfloat *  vgeo,
+                                @restrict const  dfloat *  sgeo,
+                                @restrict const  int   *  EToB,
+                                @restrict const  int *  D1ids,
+                                @restrict const  int *  D2ids,
+                                @restrict const  int *  D3ids,
+                                @restrict const  dfloat *  Dvals,
+                                @restrict const  dfloat *  L0vals,
+                                @restrict const  int   *  ELids,
+                                @restrict const  dfloat *  ELvals,
+                                @restrict const  dfloat *  MM,
+                                @restrict const  dfloat4 *  gradq,
+                                      @restrict dfloat  *  Aq){
+
+  for(int e=0;e<Nelements;++e;@outer(0)){
+    @shared  dfloat s_dqdx[p_Np];
+    @shared  dfloat s_dqdy[p_Np];
+    @shared  dfloat s_lapq[p_Np];
+    @shared  dfloat s_nxdq[p_NfacesNfp];
+    @shared  dfloat s_nydq[p_NfacesNfp];
+    @shared  dfloat s_lapflux[p_NfacesNfp];
+    @shared  dfloat s_nxdq_copy[p_NfacesNfp];
+    @shared  dfloat s_nydq_copy[p_NfacesNfp];
+    @shared  dfloat s_lapflux_copy[p_NfacesNfp];
+    @shared  dfloat s_Lnxdq[p_Np];
+    @shared  dfloat s_Lnydq[p_Np];
+    @exclusive int idM;
+    @exclusive dfloat nx, ny, sJ, invJ, hinv;
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        // assume that this stores (qx, qy, qz, q) as dfloat4
+        const dfloat4 gradqn = gradq[e*p_Np+n];
+
+        s_dqdx[n] = gradqn.x;
+        s_dqdy[n] = gradqn.y;
+        s_lapq[n] = lambda*gradqn.w;
+      }
+
+      if(n<p_NfacesNfp){
+        const int id  = n + e*p_Nfaces*p_Nfp;
+        idM = vmapM[id];
+        const int idP = vmapP[id];
+        // find face that owns this node
+        const int face = n/p_Nfp;
+
+        const dfloat4 gradqM = gradq[idM];// could fetch from @shared after barrier
+        dfloat4 gradqP = gradq[idP];
+
+        // load surface geofactors for this face
+        const int sid = p_Nsgeo*(e*p_Nfaces+face);
+        nx   = sgeo[sid+p_NXID];
+        ny   = sgeo[sid+p_NYID];
+        sJ   = sgeo[sid+p_SJID];
+        invJ = sgeo[sid+p_IJID];
+        hinv = sgeo[sid+p_IHID];
+
+        const int bc = EToB[face+p_Nfaces*e];
+        if(bc>0) {
+          ellipticHomogeneousBC2D(bc, gradqM.w, gradqM.x, gradqM.y, gradqP.w, gradqP.x, gradqP.y);
+          gradqP = 2*gradqP - gradqM;
+        }
+
+        const dfloat dq = gradqP.w - gradqM.w;
+        const dfloat sc = 0.5*invJ*sJ;
+
+        s_nxdq[n] = sc*nx*dq;
+        s_nydq[n] = sc*ny*dq;
+
+        s_lapflux[n] = sc*(-nx*(gradqP.x-gradqM.x)
+                           -ny*(gradqP.y-gradqM.y)
+                           -tau*hinv*dq);
+      }
+    }
+
+    @barrier("local");
+
+    // dqdx += LIFT*(sJ/J)*nx*dq
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Nfp*p_Nfaces){
+        const int id = n % p_Nfp;  
+        
+        dfloat tmpnxdq = L0vals[id+p_Nfp]*s_nxdq[n];
+        dfloat tmpnydq = L0vals[id+p_Nfp]*s_nydq[n];
+
+        if (id > 0){
+          tmpnxdq += L0vals[id]*s_nxdq[n-1]; // add previous term
+          tmpnydq += L0vals[id]*s_nydq[n-1]; // add previous term
+        }
+        if (id < p_Nfp-1) {
+          tmpnxdq += L0vals[id+2*p_Nfp]*s_nxdq[n+1];// add next term
+          tmpnydq += L0vals[id+2*p_Nfp]*s_nydq[n+1];// add next term
+        }
+        s_nxdq_copy[n] = tmpnxdq;
+        s_nydq_copy[n] = tmpnydq;
+      }
+    }
+
+    @barrier("local");
+
+    //lift reduction
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const int gid = e*p_Nvgeo;
+        const dfloat drdx = vgeo[gid + p_RXID];
+        const dfloat drdy = vgeo[gid + p_RYID];
+        const dfloat dsdx = vgeo[gid + p_SXID];
+        const dfloat dsdy = vgeo[gid + p_SYID];
+
+        dfloat Lnxdq = 0;
+        dfloat Lnydq = 0;
+
+        #pragma unroll p_max_EL_nnz
+          for (int m = 0; m < p_max_EL_nnz; ++m){
+            const int iid = n + m*p_Np;
+            const dfloat ELval = ELvals[iid];
+            const int ELid = ELids[iid];
+            Lnxdq += ELval*s_nxdq_copy[ELid];
+            Lnydq += ELval*s_nydq_copy[ELid];
+          }
+
+        const dfloat dqdx = s_dqdx[n] + Lnxdq;
+        const dfloat dqdy = s_dqdy[n] + Lnydq;
+        s_dqdx[n] = drdx*dqdx + drdy*dqdy; // abuse of notation
+        s_dqdy[n] = dsdx*dqdx + dsdy*dqdy;
+
+        s_Lnxdq[n] = Lnxdq;
+        s_Lnydq[n] = Lnydq;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        const int id = idM%p_Np;
+        s_lapflux[n] += sJ*invJ*(nx*s_Lnxdq[id]+ny*s_Lnydq[id]);
+      }
+
+      if(n<p_Np){
+        const int D1i1 = D1ids[n];
+        const int D2i1 = D2ids[n];
+        const int D3i1 = D3ids[n];
+        const dfloat Dval1 = Dvals[n];
+        
+        const int D1i2 = D1ids[n+p_Np];
+        const int D2i2 = D2ids[n+p_Np];
+        const int D3i2 = D3ids[n+p_Np];
+        const dfloat Dval2 = Dvals[n+p_Np];
+
+        const int D1i3 = D1ids[n+2*p_Np];
+        const int D2i3 = D2ids[n+2*p_Np];
+        const int D3i3 = D3ids[n+2*p_Np];    
+        const dfloat Dval3 = Dvals[n+2*p_Np];
+
+        const dfloat lapr = .5f*(Dval1*(s_dqdx[D2i1] - s_dqdx[D1i1]) +
+                                 Dval2*(s_dqdx[D2i2] - s_dqdx[D1i2]) +
+                                 Dval3*(s_dqdx[D2i3] - s_dqdx[D1i3]));
+        const dfloat laps = .5f*(Dval1*(s_dqdy[D3i1] - s_dqdy[D1i1]) +
+                                 Dval2*(s_dqdy[D3i2] - s_dqdy[D1i2]) +
+                                 Dval3*(s_dqdy[D3i3] - s_dqdy[D1i3]));
+        s_lapq[n] -= lapr+laps;
+      }
+    }
+
+    @barrier("local");
+
+    // lift remaining surface terms
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Nfp*p_Nfaces){
+        const int id = n % p_Nfp;  
+        
+        dfloat tmplapflux = L0vals[id+p_Nfp]*s_lapflux[n];
+        if (id > 0)       tmplapflux += L0vals[id]*s_lapflux[n-1]; // add previous term
+        if (id < p_Nfp-1) tmplapflux += L0vals[id+2*p_Nfp]*s_lapflux[n+1];// add next term
+
+        s_lapflux_copy[n] = tmplapflux;
+      }
+    }
+
+    @barrier("local");
+
+    //lift reduction
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        dfloat lap = 0;
+
+        #pragma unroll p_max_EL_nnz
+          for (int m = 0; m < p_max_EL_nnz; ++m){
+            const int iid = n + m*p_Np;
+            const dfloat ELval = ELvals[iid];
+            const int ELid = ELids[iid];
+            lap += ELval*s_lapflux_copy[ELid];
+          }
+
+        s_lapq[n] += lap;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const dfloat J = vgeo[e*p_Nvgeo + p_JID];
+
+        dfloat Mlapq = 0;
+
+        // multiply by mass matrix
+        #pragma unroll p_Np
+          for(int i=0;i<p_Np;++i){
+            Mlapq += MM[n+i*p_Np]*s_lapq[i];
+          }
+
+        Aq[n+e*p_Np] = J*Mlapq;
+      }
+    }
+  }
+}
+
+@kernel void ellipticPartialAxIpdgBBTri2D(const int Nelements,
+                                @restrict const  int *  elementList,
+                                @restrict const  int *  vmapM,
+                                @restrict const  int *  vmapP,
+                                const dfloat lambda,
+                                const dfloat tau,
+                                @restrict const  dfloat *  vgeo,
+                                @restrict const  dfloat *  sgeo,
+                                @restrict const  int   *  EToB,
+                                @restrict const  int *  D1ids,
+                                @restrict const  int *  D2ids,
+                                @restrict const  int *  D3ids,
+                                @restrict const  dfloat *  Dvals,
+                                @restrict const  dfloat *  L0vals,
+                                @restrict const  int   *  ELids,
+                                @restrict const  dfloat *  ELvals,
+                                @restrict const  dfloat *  MM,
+                                @restrict const  dfloat4 *  gradq,
+                                      @restrict dfloat  *  Aq){
+
+  for(int e=0;e<Nelements;++e;@outer(0)){
+    @shared  dfloat s_dqdx[p_Np];
+    @shared  dfloat s_dqdy[p_Np];
+    @shared  dfloat s_lapq[p_Np];
+    @shared  dfloat s_nxdq[p_NfacesNfp];
+    @shared  dfloat s_nydq[p_NfacesNfp];
+    @shared  dfloat s_lapflux[p_NfacesNfp];
+    @shared  dfloat s_nxdq_copy[p_NfacesNfp];
+    @shared  dfloat s_nydq_copy[p_NfacesNfp];
+    @shared  dfloat s_lapflux_copy[p_NfacesNfp];
+    @shared  dfloat s_Lnxdq[p_Np];
+    @shared  dfloat s_Lnydq[p_Np];
+    @exclusive int element;
+    @exclusive int idM;
+    @exclusive dfloat nx, ny, sJ, invJ, hinv;
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      element = elementList[e];
+      if(n<p_Np){
+        // assume that this stores (qx, qy, qz, q) as dfloat4
+        const dfloat4 gradqn = gradq[element*p_Np+n];
+
+        s_dqdx[n] = gradqn.x;
+        s_dqdy[n] = gradqn.y;
+        s_lapq[n] = lambda*gradqn.w;
+      }
+
+      if(n<p_NfacesNfp){
+        const int id  = n + element*p_Nfaces*p_Nfp;
+        idM = vmapM[id];
+        const int idP = vmapP[id];
+        // find face that owns this node
+        const int face = n/p_Nfp;
+
+        const dfloat4 gradqM = gradq[idM];// could fetch from @shared after barrier
+        dfloat4 gradqP = gradq[idP];
+
+        // load surface geofactors for this face
+        const int sid = p_Nsgeo*(element*p_Nfaces+face);
+        nx   = sgeo[sid+p_NXID];
+        ny   = sgeo[sid+p_NYID];
+        sJ   = sgeo[sid+p_SJID];
+        invJ = sgeo[sid+p_IJID];
+        hinv = sgeo[sid+p_IHID];
+
+        const int bc = EToB[face+p_Nfaces*element];
+        if(bc>0) {
+          ellipticHomogeneousBC2D(bc, gradqM.w, gradqM.x, gradqM.y, gradqP.w, gradqP.x, gradqP.y);
+          gradqP = 2*gradqP - gradqM;
+        }
+
+        const dfloat dq = gradqP.w - gradqM.w;
+        const dfloat sc = 0.5*invJ*sJ;
+
+        s_nxdq[n] = sc*nx*dq;
+        s_nydq[n] = sc*ny*dq;
+
+        s_lapflux[n] = sc*(-nx*(gradqP.x-gradqM.x)
+                           -ny*(gradqP.y-gradqM.y)
+                           -tau*hinv*dq);
+      }
+    }
+
+    @barrier("local");
+
+    // dqdx += LIFT*(sJ/J)*nx*dq
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Nfp*p_Nfaces){
+        const int id = n % p_Nfp;  
+        
+        dfloat tmpnxdq = L0vals[id+p_Nfp]*s_nxdq[n];
+        dfloat tmpnydq = L0vals[id+p_Nfp]*s_nydq[n];
+
+        if (id > 0){
+          tmpnxdq += L0vals[id]*s_nxdq[n-1]; // add previous term
+          tmpnydq += L0vals[id]*s_nydq[n-1]; // add previous term
+        }
+        if (id < p_Nfp-1) {
+          tmpnxdq += L0vals[id+2*p_Nfp]*s_nxdq[n+1];// add next term
+          tmpnydq += L0vals[id+2*p_Nfp]*s_nydq[n+1];// add next term
+        }
+        s_nxdq_copy[n] = tmpnxdq;
+        s_nydq_copy[n] = tmpnydq;
+      }
+    }
+
+    @barrier("local");
+
+    //lift reduction
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const int gid = element*p_Nvgeo;
+        const dfloat drdx = vgeo[gid + p_RXID];
+        const dfloat drdy = vgeo[gid + p_RYID];
+        const dfloat dsdx = vgeo[gid + p_SXID];
+        const dfloat dsdy = vgeo[gid + p_SYID];
+
+        dfloat Lnxdq = 0;
+        dfloat Lnydq = 0;
+
+        #pragma unroll p_max_EL_nnz
+          for (int m = 0; m < p_max_EL_nnz; ++m){
+            const int iid = n + m*p_Np;
+            const dfloat ELval = ELvals[iid];
+            const int ELid = ELids[iid];
+            Lnxdq += ELval*s_nxdq_copy[ELid];
+            Lnydq += ELval*s_nydq_copy[ELid];
+          }
+
+        const dfloat dqdx = s_dqdx[n] + Lnxdq;
+        const dfloat dqdy = s_dqdy[n] + Lnydq;
+        s_dqdx[n] = drdx*dqdx + drdy*dqdy; // abuse of notation
+        s_dqdy[n] = dsdx*dqdx + dsdy*dqdy;
+
+        s_Lnxdq[n] = Lnxdq;
+        s_Lnydq[n] = Lnydq;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        const int id = idM%p_Np;
+        s_lapflux[n] += sJ*invJ*(nx*s_Lnxdq[id]+ny*s_Lnydq[id]);
+      }
+
+      if(n<p_Np){
+        const int D1i1 = D1ids[n];
+        const int D2i1 = D2ids[n];
+        const int D3i1 = D3ids[n];
+        const dfloat Dval1 = Dvals[n];
+        
+        const int D1i2 = D1ids[n+p_Np];
+        const int D2i2 = D2ids[n+p_Np];
+        const int D3i2 = D3ids[n+p_Np];
+        const dfloat Dval2 = Dvals[n+p_Np];
+
+        const int D1i3 = D1ids[n+2*p_Np];
+        const int D2i3 = D2ids[n+2*p_Np];
+        const int D3i3 = D3ids[n+2*p_Np];    
+        const dfloat Dval3 = Dvals[n+2*p_Np];
+
+        const dfloat lapr = .5f*(Dval1*(s_dqdx[D2i1] - s_dqdx[D1i1]) +
+                                 Dval2*(s_dqdx[D2i2] - s_dqdx[D1i2]) +
+                                 Dval3*(s_dqdx[D2i3] - s_dqdx[D1i3]));
+        const dfloat laps = .5f*(Dval1*(s_dqdy[D3i1] - s_dqdy[D1i1]) +
+                                 Dval2*(s_dqdy[D3i2] - s_dqdy[D1i2]) +
+                                 Dval3*(s_dqdy[D3i3] - s_dqdy[D1i3]));
+
+        s_lapq[n] -= (lapr+laps);
+      }
+    }
+
+    @barrier("local");
+
+    // lift remaining surface terms
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Nfp*p_Nfaces){
+        const int id = n % p_Nfp;  
+        
+        dfloat tmplapflux = L0vals[id+p_Nfp]*s_lapflux[n];
+        if (id > 0)       tmplapflux += L0vals[id]*s_lapflux[n-1]; // add previous term
+        if (id < p_Nfp-1) tmplapflux += L0vals[id+2*p_Nfp]*s_lapflux[n+1];// add next term
+
+        s_lapflux_copy[n] = tmplapflux;
+      }
+    }
+
+    @barrier("local");
+
+    //lift reduction
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        dfloat lap = 0;
+
+        #pragma unroll p_max_EL_nnz
+          for (int m = 0; m < p_max_EL_nnz; ++m){
+            const int iid = n + m*p_Np;
+            const dfloat ELval = ELvals[iid];
+            const int ELid = ELids[iid];
+            lap += ELval*s_lapflux_copy[ELid];
+          }
+
+        s_lapq[n] += lap;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        const dfloat J = vgeo[element*p_Nvgeo + p_JID];
+
+        dfloat Mlapq = 0;
+
+        // multiply by mass matrix
+        #pragma unroll p_Np
+          for(int i=0;i<p_Np;++i){
+            Mlapq += MM[n+i*p_Np]*s_lapq[i];
+          }
+
+        Aq[n+element*p_Np] = J*Mlapq;
+      }
+    }
+  }
+}

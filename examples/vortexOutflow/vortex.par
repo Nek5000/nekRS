@@ -12,7 +12,6 @@ timeStepper = tombo2
 writeInterval = 500
 
 [PRESSURE]
-preconditioner = semg_amg
 residualTol = 1e-05
 
 [VELOCITY]

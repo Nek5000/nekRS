@@ -1,0 +1,170 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+// compute local gradients
+
+@kernel void ellipticGradientBBTri2D(const int Nelements,
+                                  @restrict const  dfloat *  vgeo,
+                                  @restrict const  int *  D1ids,
+                                  @restrict const  int *  D2ids,
+                                  @restrict const  int *  D3ids,
+                                  @restrict const  dfloat *  Dvals,  
+                                  @restrict const  dfloat *  q,
+                                  @restrict dfloat4 *  gradq){  
+  
+  // block partition of elements
+  for(int eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+    
+    @shared dfloat s_q[p_NblockV][p_Np];
+
+    for(int e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          const int id = e*p_Np+n;
+          s_q[e-eo][n] = q[id];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+    for(int e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          // prefetch geometric factors (constant on triangle)
+          const dfloat drdx = vgeo[e*p_Nvgeo + p_RXID];
+          const dfloat drdy = vgeo[e*p_Nvgeo + p_RYID];
+          const dfloat dsdx = vgeo[e*p_Nvgeo + p_SXID];
+          const dfloat dsdy = vgeo[e*p_Nvgeo + p_SYID];
+
+          const int es = e-eo;
+
+          const int D1i1 = D1ids[n];
+          const int D2i1 = D2ids[n];
+          const int D3i1 = D3ids[n];
+          const dfloat Dval1 = Dvals[n];
+          
+          const int D1i2 = D1ids[n+p_Np];
+          const int D2i2 = D2ids[n+p_Np];
+          const int D3i2 = D3ids[n+p_Np];
+          const dfloat Dval2 = Dvals[n+p_Np];
+
+          const int D1i3 = D1ids[n+2*p_Np];
+          const int D2i3 = D2ids[n+2*p_Np];
+          const int D3i3 = D3ids[n+2*p_Np];    
+          const dfloat Dval3 = Dvals[n+2*p_Np];
+
+          const dfloat dqdr = .5f*(Dval1*(s_q[es][D2i1] - s_q[es][D1i1]) +
+                                   Dval2*(s_q[es][D2i2] - s_q[es][D1i2]) +
+                                   Dval3*(s_q[es][D2i3] - s_q[es][D1i3]));
+          const dfloat dqds = .5f*(Dval1*(s_q[es][D3i1] - s_q[es][D1i1]) +
+                                   Dval2*(s_q[es][D3i2] - s_q[es][D1i2]) +
+                                   Dval3*(s_q[es][D3i3] - s_q[es][D1i3]));
+
+          dfloat4 gradqn;
+          gradqn.x = drdx*dqdr + dsdx*dqds;
+          gradqn.y = drdy*dqdr + dsdy*dqds;
+          gradqn.w = s_q[es][n];
+          
+          const int id = e*p_Np+n; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}
+
+@kernel void ellipticPartialGradientBBTri2D(const int Nelements,
+                                  const int offset,
+                                  @restrict const  dfloat *  vgeo,
+                                  @restrict const  int *  D1ids,
+                                  @restrict const  int *  D2ids,
+                                  @restrict const  int *  D3ids,
+                                  @restrict const  dfloat *  Dvals,  
+                                  @restrict const  dfloat *  q,
+                                  @restrict dfloat4 *  gradq){  
+  
+  // block partition of elements
+  for(int eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+    
+    @shared dfloat s_q[p_NblockV][p_Np];
+
+    for(int e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          const int id = (e+offset)*p_Np+n;
+          s_q[e-eo][n] = q[id];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+    for(int e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          // prefetch geometric factors (constant on triangle)
+          const dfloat drdx = vgeo[(e+offset)*p_Nvgeo + p_RXID];
+          const dfloat drdy = vgeo[(e+offset)*p_Nvgeo + p_RYID];
+          const dfloat dsdx = vgeo[(e+offset)*p_Nvgeo + p_SXID];
+          const dfloat dsdy = vgeo[(e+offset)*p_Nvgeo + p_SYID];
+
+          const int es = e-eo;
+
+          const int D1i1 = D1ids[n];
+          const int D2i1 = D2ids[n];
+          const int D3i1 = D3ids[n];
+          const dfloat Dval1 = Dvals[n];
+          
+          const int D1i2 = D1ids[n+p_Np];
+          const int D2i2 = D2ids[n+p_Np];
+          const int D3i2 = D3ids[n+p_Np];
+          const dfloat Dval2 = Dvals[n+p_Np];
+
+          const int D1i3 = D1ids[n+2*p_Np];
+          const int D2i3 = D2ids[n+2*p_Np];
+          const int D3i3 = D3ids[n+2*p_Np];    
+          const dfloat Dval3 = Dvals[n+2*p_Np];
+
+          const dfloat dqdr = .5f*(Dval1*(s_q[es][D2i1] - s_q[es][D1i1]) +
+                                   Dval2*(s_q[es][D2i2] - s_q[es][D1i2]) +
+                                   Dval3*(s_q[es][D2i3] - s_q[es][D1i3]));
+          const dfloat dqds = .5f*(Dval1*(s_q[es][D3i1] - s_q[es][D1i1]) +
+                                   Dval2*(s_q[es][D3i2] - s_q[es][D1i2]) +
+                                   Dval3*(s_q[es][D3i3] - s_q[es][D1i3]));
+
+          dfloat4 gradqn;
+          gradqn.x = drdx*dqdr + dsdx*dqds;
+          gradqn.y = drdy*dqdr + dsdy*dqds;
+          gradqn.w = s_q[es][n];
+          
+          const int id = (e+offset)*p_Np+n; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}

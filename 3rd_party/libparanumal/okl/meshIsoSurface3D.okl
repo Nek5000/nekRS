@@ -1,0 +1,294 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus, Nigel Nunn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+
+//------------------------------------------------------------------------------------------
+// adapted from http://paulbourke.net/geometry/polygonise/source1.c
+// https://michelanders.blogspot.com/2012/02/marching-tetrahedrons-in-python.html
+
+
+#define p_plotNfields (p_dim+p_Nfields)
+
+dfloat intersection(const dfloat iso, const dfloat val1, const dfloat val2){
+
+  const dfloat tol = 1.e-5;
+
+  if(fabs(iso-val1)<tol) return (dfloat)0.f;
+  if(fabs(iso-val2)<tol) return (dfloat)1.f;
+  if(fabs(val1-val2)<tol) return (dfloat)0.f;
+
+  const dfloat r = (iso-val1)/(val2-val1);
+
+  return r;
+}  
+
+void intersect(const int fld,
+               const dfloat iso, 
+               const dfloat * vals1,
+               const dfloat * vals2,
+               dfloat * valsIso ){
+
+  const dfloat r = intersection(iso, vals1[fld], vals2[fld]);
+
+  for(int f=0;f<p_plotNfields;++f){
+    valsIso[f] = vals1[f] + r*(vals2[f]-vals1[f]);
+  }
+}
+
+int marchingTet(const int fld,
+                const dfloat vals[p_plotNp][p_plotNfields], // stack X and fields
+                const int v0,
+                const int v1,
+                const int v2,
+                const int v3,
+                const dfloat iso,
+                @restrict dfloat *  valsIso){
+  
+  int ntri = 0;
+
+  /*
+      Determine which of the 16 cases we have given which vertices
+      are above or below the isosurface
+  */
+  int triindex = 0;
+  if (vals[v0][fld] < iso) triindex |= 1;
+  if (vals[v1][fld] < iso) triindex |= 2;
+  if (vals[v2][fld] < iso) triindex |= 4;
+  if (vals[v3][fld] < iso) triindex |= 8;
+
+  int a0 = -1, a1 = -1, a2 = -1;
+  int b0 = -1, b1 = -1, b2 = -1;
+  int c0 = -1, c1 = -1, c2 = -1;
+  int d0 = -1, d1 = -1, d2 = -1;
+
+  /* Form the vertices of the triangles for each case */
+  switch (triindex) {
+  case 0x00:
+  case 0x0F:
+    break;
+  case 0x0E:
+  case 0x01:
+    a0 = v0; b0 = v1;
+    a1 = v0; b1 = v2;
+    a2 = v0; b2 = v3;
+    
+    break;
+  case 0x0D:
+  case 0x02:
+
+    a0 = v1; b0 = v0;
+    a1 = v1; b1 = v3;
+    a2 = v1; b2 = v2;
+    
+    break;
+  case 0x0C:
+  case 0x03:
+
+    a0 = v0; b0 = v3;
+    a1 = v0; b1 = v2;
+    a2 = v1; b2 = v3;
+
+    c0 = v1; d0 = v3;
+    c1 = v1; d1 = v2;
+    c2 = v0; d2 = v2;
+
+    break;
+  case 0x0B:
+  case 0x04:
+
+    a0 = v2; b0 = v0;
+    a1 = v2; b1 = v1;
+    a2 = v2; b2 = v3;
+
+    break;
+  case 0x0A:
+  case 0x05:
+
+    a0 = v0; b0 = v1;
+    a1 = v2; b1 = v3;
+    a2 = v0; b2 = v3;
+
+    c0 = v0; d0 = v1;
+    c1 = v1; d1 = v2;
+    c2 = v2; d2 = v3;
+
+    break;
+  case 0x09:
+  case 0x06:
+
+    a0 = v0; b0 = v1;
+    a1 = v1; b1 = v3;
+    a2 = v2; b2 = v3;
+
+    c0 = v0; d0 = v1;
+    c1 = v0; d1 = v2;
+    c2 = v2; d2 = v3;
+
+    break;
+  case 0x07:
+  case 0x08:
+
+    a0 = v3; b0 = v0;
+    a1 = v3; b1 = v2;
+    a2 = v3; b2 = v1;
+    
+    break;
+  }
+
+  // do these here to avoid traversing all ops in switch
+  if(a0!=-1){
+    intersect(fld,iso,vals[a0],vals[b0], valsIso); valsIso+=p_plotNfields;
+    intersect(fld,iso,vals[a1],vals[b1], valsIso); valsIso+=p_plotNfields;
+    intersect(fld,iso,vals[a2],vals[b2], valsIso); valsIso+=p_plotNfields;
+    
+    ntri++;
+  }
+
+  if(c0!=-1){
+    intersect(fld,iso,vals[c0],vals[d0], valsIso); valsIso+=p_plotNfields;
+    intersect(fld,iso,vals[c1],vals[d1], valsIso); valsIso+=p_plotNfields;
+    intersect(fld,iso,vals[c2],vals[d2], valsIso); valsIso+=p_plotNfields;
+    
+    ntri++;
+  }
+
+  
+  return(ntri);
+}
+
+//------------------------------------------------------------------------------------------
+
+// must zero isoNtris[0] before calling
+
+@kernel void meshIsoSurface3D(const int Nelements,    // number of elements
+                             const int isoField,     // which field to use for isosurfacing
+                             const int isoNlevels,   // number of isosurface levels
+                             @restrict const  dfloat *  isoLevels,// array of isosurface levels
+                             const int isoMaxNtris,  // maximum number of generated triangles
+                             @restrict const  dfloat *  x,     
+                             @restrict const  dfloat *  y,
+                             @restrict const  dfloat *  z,
+                             @restrict const  dfloat *  q,
+                             @restrict const  dfloat *  plotInterp,
+                             @restrict const  int *  plotEToV,
+                             @restrict int *  isoNtris, // output: number of generated triangles
+                             @restrict dfloat *  isoQ   // output: (p_dim+p_Nfields)*3*isoNtris[0] values (x,y,z,q0,q1..)
+                             ){
+
+  
+  for(int e=0;e<Nelements;++e;@outer(0)){
+
+    @shared dfloat s_q[p_plotNfields][p_Np];
+    @shared dfloat s_plotq[p_plotNp][p_plotNfields];
+
+    for(int n=0;n<p_plotNthreads;++n;@inner(0)){
+
+      if(n<p_Np){
+        int id = e*p_Np + n;
+
+        // stack x,y,z,q0,q1,q2..
+        s_q[0][n] = x[id];
+        s_q[1][n] = y[id];
+        s_q[2][n] = z[id];      
+        
+        for(int fld=0;fld<p_Nfields;++fld){
+          int id = e*p_Np*p_Nfields + fld*p_Np + n;
+          s_q[fld+p_dim][n] = q[id];
+        }
+      }
+    }
+
+    @barrier("local");
+    
+    for(int n=0;n<p_plotNthreads;++n;@inner(0)){
+      if(n<p_plotNp){
+        dfloat r_plotq[p_plotNfields];
+        
+        #pragma unroll p_plotNfields
+          for(int fld=0;fld<p_plotNfields;++fld){
+            r_plotq[fld] = 0;
+          }
+        
+        for(int m=0;m<p_Np;++m){
+          dfloat Inm = plotInterp[n+m*p_plotNp];
+          
+          #pragma unroll p_plotNfields
+            for(int fld=0;fld<p_plotNfields;++fld){
+              r_plotq[fld] += Inm*s_q[fld][m];
+            }
+        }
+        
+        #pragma unroll p_plotNfields
+          for(int fld=0;fld<p_plotNfields;++fld){
+            s_plotq[n][fld] = r_plotq[fld]; // note switch to field fastest layout
+          }
+      }
+    }
+    
+    
+    @barrier("local");
+
+    for(int n=0;n<p_plotNthreads;++n;@inner(0)){
+
+      if(n<p_plotNelements){
+        dfloat isoVals[2*(3*p_plotNfields)]; // max number of output vertices
+        
+        const int v1 = plotEToV[n + 0*p_plotNelements];
+        const int v2 = plotEToV[n + 1*p_plotNelements];
+        const int v3 = plotEToV[n + 2*p_plotNelements];
+        const int v4 = plotEToV[n + 3*p_plotNelements];
+        
+        // loop over isosurface levels
+        for(int i=0;i<isoNlevels;++i){
+          
+          const int ntri = marchingTet(isoField, s_plotq, v1, v2, v3, v4, isoLevels[i], isoVals);
+          
+          if(ntri){ // really should do a scan and collapse new iso tris to a contiguous group
+            // increment isoNtris[0] counter by ntri 
+            int offset = atomicAdd(isoNtris, ntri); // get old number of isoNtris and increment stored by ntri
+
+            // since ntri!=0 => ntri>=1
+            if(offset+1<isoMaxNtris){  // make sure this triangle is in bound
+              #pragma unroll 3*p_plotNfields
+                for(int t=0;t<3*p_plotNfields;++t){
+                  isoQ[offset*p_plotNfields*3+t] = isoVals[t]; // bad striding
+                }
+            }
+            
+            if(ntri==2 && ((offset+2)<isoMaxNtris)){ // make sure this triangle is in bound
+              ++offset;
+              #pragma unroll 3*p_plotNfields
+                for(int t=0;t<3*p_plotNfields;++t){
+                  isoQ[offset*p_plotNfields*3+t] = isoVals[t+3*p_plotNfields]; // bad striding
+                }
+            }
+          }
+        }
+      }
+    }
+  }
+}

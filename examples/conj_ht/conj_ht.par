@@ -15,7 +15,6 @@ variableProperties = yes
 
 [PRESSURE]
 residualTol = 1e-06
-residualProj = no
 
 [VELOCITY]
 boundaryTypeMap = v, O, W

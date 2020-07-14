@@ -16,6 +16,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
+      include 'HSMG'
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
@@ -131,6 +132,10 @@ c-----------------------------------------------------------------------
       logical ltest 
       logical ifbswap
 
+      common /screv/ x(2*ltotd)
+      common /scrvh/ y(2*ltotd)
+      common /scrch/ z(2*ltotd)
+
       ! set word size for REAL
       wdsize = sizeof(rtest)
       ! set word size for INTEGER
@@ -238,6 +243,8 @@ c-----------------------------------------------------------------------
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
 c      call findSYMOrient
+
+      ifield = 1
 
       if(nio.eq.0) write(6,*) 'call usrdat3'
       call usrdat3

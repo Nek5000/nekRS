@@ -21,7 +21,6 @@ filterWeight = 15
 filterModes = 1
 
 [PRESSURE]
-preconditioner = semg_amg
 residualTol = 1e-04
 
 [VELOCITY]

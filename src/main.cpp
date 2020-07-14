@@ -68,6 +68,7 @@ not be used for advertising or product endorsement purposes.
 #include <getopt.h>
 #include <cfenv>
 #include "nekrs.hpp"
+#include <parAlmond.hpp>
 
 #define DEBUG
 
@@ -88,18 +89,26 @@ static cmdOptions *processCmdLineOptions(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
-  int retval;
-  retval =  MPI_Init(&argc, &argv);
-  if (retval != MPI_SUCCESS) {
-    std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
-    exit(1);
+
+  {
+    int request = MPI_THREAD_MULTIPLE;
+    const char *env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
+    if(env_val) {
+      if(!std::stoi(env_val)) request = MPI_THREAD_FUNNELED;
+    }
+ 
+    int provided;
+    int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
+    if (retval != MPI_SUCCESS) {
+      std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
+      exit(1);
+    }
   }
 
   int rank, size;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-
   cmdOptions *cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) { 
@@ -118,8 +127,9 @@ int main(int argc, char **argv)
                cmdOpt->backend, cmdOpt->deviceID);
 
   if (cmdOpt->buildOnly) {
-    MPI_Finalize(); 
-    return EXIT_SUCCESS;
+   MPI_Finalize(); 
+   fflush(stdout);
+   std::_Exit(EXIT_SUCCESS);
   }
 
   const int outputStep = nekrs::outputStep();
@@ -157,7 +167,8 @@ int main(int argc, char **argv)
   if(rank == 0) std::cout << "\nEnd." << "\n";
 
   MPI_Finalize();
-  return EXIT_SUCCESS;
+  fflush(stdout);
+  std::_Exit(EXIT_SUCCESS);
 }
 
 static cmdOptions *processCmdLineOptions(int argc, char **argv) 

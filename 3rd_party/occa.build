@@ -8,7 +8,7 @@ if [ ! -d occa ]; then
 fi
 
 cd occa
-make CC="${NEKRS_CC}" \
+make -j 4 CC="${NEKRS_CC}" \
   CFLAGS="${NEKRS_CFLAGS}" \
   CXX="${NEKRS_CXX}" \
   CXXFLAGS="${NEKRS_CXXFLAGS}" \

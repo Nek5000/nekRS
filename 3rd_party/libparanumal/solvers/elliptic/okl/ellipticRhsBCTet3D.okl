@@ -1,0 +1,134 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void ellipticRhsBCTet3D(const int Nelements,
+                              @restrict const  dfloat *  ggeo,
+                              @restrict const  dfloat *  sgeo,
+                              @restrict const  dfloat *  Dmatrices,
+                              @restrict const  dfloat *  Smatrices,
+                              @restrict const  dfloat *  MM,
+                              @restrict const  int   *  vmapM,
+                              @restrict const  dfloat *  sMT,
+                              const dfloat lambda,
+                              const dfloat t,
+                              @restrict const  dfloat *  x,
+                              @restrict const  dfloat *  y,
+                              @restrict const  dfloat *  z,
+                              @restrict const  int    *  mapB,
+                              @restrict dfloat  *  rhs){
+  
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    @shared dfloat s_q[p_Np];
+    @shared dfloat s_ndq[p_Nfp*p_Nfaces];
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        s_q[n] = 0.;
+      }
+      if(n<p_NfacesNfp){
+        s_ndq[n] = 0.;
+      }
+    }
+
+    @barrier("local");
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        const int id  = n + e*p_Nfaces*p_Nfp;
+        const int idM = vmapM[id];          
+        const int nid = idM%p_Np; 
+
+        const int face = n/p_Nfp;
+
+        dfloat dudxP=0, dudyP=0, dudzP=0, uP=0;
+        
+        // load surface geofactors for this face
+        const int sid = p_Nsgeo*(e*p_Nfaces+face);
+        const dfloat nx = sgeo[sid+p_NXID];
+        const dfloat ny = sgeo[sid+p_NYID];
+        const dfloat nz = sgeo[sid+p_NZID];
+        const dfloat sJ = sgeo[sid+p_SJID];
+
+        const int bc = mapB[idM];
+        if(bc>0) {
+          ellipticBoundaryConditions3D(bc, t, x[idM], y[idM], z[idM], nx, ny, nz, \
+                                        0.f, 0.f, 0.f, 0.f,               \
+                                        uP, dudxP, dudyP, dudzP);
+        }  
+
+        s_q[nid] = uP;
+        s_ndq[n] = sJ*(nx*dudxP + ny*dudyP + nz*dudzP);
+      }
+    }
+
+    @barrier("local");
+    
+    for(int n=0;n<p_Nmax;++n;@inner(0)){ 
+      if(n<p_Np){
+        //volume Dirichlet data
+        const int id = n + e*p_Np;
+        const int gid = e*p_Nggeo;
+        const dfloat Grr = ggeo[gid + p_G00ID];
+        const dfloat Grs = ggeo[gid + p_G01ID];
+        const dfloat Grt = ggeo[gid + p_G02ID];
+        const dfloat Gss = ggeo[gid + p_G11ID];
+        const dfloat Gst = ggeo[gid + p_G12ID];
+        const dfloat Gtt = ggeo[gid + p_G22ID];
+        const dfloat J   = ggeo[gid + p_GWJID];
+
+        dfloat qrr = 0.;
+        dfloat qrs = 0.;
+        dfloat qrt = 0.;
+        dfloat qss = 0.;
+        dfloat qst = 0.;
+        dfloat qtt = 0.;
+        dfloat qM = 0.;
+
+        #pragma unroll p_Np
+          for (int k=0;k<p_Np;k++) {
+            qrr += Smatrices[n+k*p_Np+0*p_Np*p_Np]*s_q[k];
+            qrs += Smatrices[n+k*p_Np+1*p_Np*p_Np]*s_q[k];
+            qrt += Smatrices[n+k*p_Np+2*p_Np*p_Np]*s_q[k];
+            qss += Smatrices[n+k*p_Np+3*p_Np*p_Np]*s_q[k];
+            qst += Smatrices[n+k*p_Np+4*p_Np*p_Np]*s_q[k];
+            qtt += Smatrices[n+k*p_Np+5*p_Np*p_Np]*s_q[k];
+            qM  += MM[n+k*p_Np]*s_q[k];
+          }
+
+        dfloat Lndq = 0;            
+        // surface mass * surface terms
+        #pragma unroll p_NfacesNfp
+          for(int i=0;i<p_NfacesNfp;++i){
+            Lndq += sMT[n+i*p_Np]*s_ndq[i];
+          }
+          
+        rhs[id] -= Grr*qrr+Grs*qrs+Grt*qrt 
+                  +Gss*qss+Gst*qst+Gtt*qtt
+                  + J*lambda*qM - Lndq;
+      }
+    }
+  }
+}

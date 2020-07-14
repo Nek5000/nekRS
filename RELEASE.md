@@ -1,16 +1,18 @@
-# Release v20.0
+# Release v20.1-pre
 
 ## What is new? 
 
-* Initial release
+* Additive V-cycle with overlapping coarse grid solve
+* ASM and RAS smoother
+* RANS k-tau model
+* Improved CPU performance
+* Various bug fixes 
 
 ## What you may have to change to be compatible 
 
 * n/a 
 
 ## Known Bugs 
-
-[80](https://github.com/Nek5000/nekRS/issues/80)
 
 ## Thanks to our Contributors
 

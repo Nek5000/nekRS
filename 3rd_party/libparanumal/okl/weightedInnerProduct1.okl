@@ -1,0 +1,172 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+#define B 256
+
+@kernel void weightedInnerProduct1(const dlong N,
+				  @restrict const  dfloat *  w,
+				  @restrict const  dfloat *  x,
+				  @restrict dfloat *  wx2){
+  
+
+  for(dlong b=0;b<(N+B-1)/B;++b;@outer(0)){
+    
+    @shared volatile dfloat s_wx2[B];
+
+    for(int t=0;t<B;++t;@inner(0)){
+      const dlong id = t + B*b;
+      s_wx2[t] = (id<N) ? w[id]*x[id]*x[id] : 0.f;
+    }
+
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<128) s_wx2[t] += s_wx2[t+128];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 64) s_wx2[t] += s_wx2[t+ 64];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 32) s_wx2[t] += s_wx2[t+ 32];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 16) s_wx2[t] += s_wx2[t+ 16];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  8) s_wx2[t] += s_wx2[t+  8];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  4) s_wx2[t] += s_wx2[t+  4];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  2) s_wx2[t] += s_wx2[t+  2];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  1) wx2[b] = s_wx2[0] + s_wx2[1];
+  }
+}
+
+@kernel void weightedBlockInnerProduct1(const dlong N,
+          const dlong offset, 
+          @restrict const  dfloat *  w,
+          @restrict const  dfloat *  x,
+          @restrict dfloat *  wx2){
+  
+
+  for(dlong b=0;b<(N+B-1)/B;++b;@outer(0)){
+    
+    @shared volatile dfloat s_wx2[B];
+
+    for(int t=0;t<B;++t;@inner(0)){
+      const dlong id = t + B*b;
+      dfloat res = 0.f; 
+       if(id<N){
+          for(int fld=0; fld<p_eNfields; fld++){
+           const dfloat xid = x[id + fld*offset];
+           const dfloat wid = w[id + fld*offset];
+           res += wid*xid*xid; 
+          }
+       }
+      s_wx2[t] = res;
+    }
+
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<128) s_wx2[t] += s_wx2[t+128];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 64) s_wx2[t] += s_wx2[t+ 64];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 32) s_wx2[t] += s_wx2[t+ 32];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t< 16) s_wx2[t] += s_wx2[t+ 16];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  8) s_wx2[t] += s_wx2[t+  8];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  4) s_wx2[t] += s_wx2[t+  4];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  2) s_wx2[t] += s_wx2[t+  2];
+    @barrier("local");
+    for(int t=0;t<B;++t;@inner(0)) if(t<  1) wx2[b] = s_wx2[0] + s_wx2[1];
+  }
+}
+
+
+
+
+#if 0
+// barrier avoiding (partial) reduction
+@kernel void weightedInnerProduct1(const int N,
+				  @restrict const  dfloat *  w,
+				  @restrict const  dfloat *  x,
+				  @restrict dfloat *  wx2){
+  
+#define G 8
+#define S 32
+  
+  // loop over blocks
+  for(int b=0;b<(N+G*S-1)/(G*S);++b;@outer(0)){
+    
+    @shared volatile dfloat s_a[G][S];
+    @shared volatile dfloat s_b[G];
+
+    for(int g=0;g<G;++g;@inner(1)){
+      for(int s=0;s<S;++s;@inner(0)){
+	const int n = b*G*S + g*S + s;
+
+	const dfloat wgs = (n<N) ? w[n]:0.f;
+	const dfloat xgs = (n<N) ? x[n]:0.f;
+
+	s_a[g][s] = wgs*xgs*xgs;
+      }
+    }
+
+    @barrier("local");
+
+    for(int g=0;g<G;++g;@inner(1)){
+      for(int s=0;s<S;++s;@inner(0)){
+
+        if(s<16) s_a[g][s] += s_a[g][s + 16];
+        if(s< 8) s_a[g][s] += s_a[g][s +  8];
+        if(s< 4) s_a[g][s] += s_a[g][s +  4];
+        if(s< 2) s_a[g][s] += s_a[g][s +  2];
+        if(s==0) s_b[g] = s_a[g][0] + s_a[g][1];
+      }
+    }
+    
+    @barrier("local");
+
+    for(int g=0;g<G;++g;@inner(1)){
+      for(int s=0;s<S;++s;@inner(0)){
+        if(g==0){
+          if(s< 4) s_b[s] += s_b[s + 4];
+          if(s< 2) s_b[s] += s_b[s + 2];
+          if(s==0) s_b[s] += s_b[s + 1];
+        }
+      }
+    }
+
+    @barrier("local");
+
+    for(int g=0;g<G;++g;@inner(1)){
+      for(int s=0;s<S;++s;@inner(0)){
+        if(g==0 && s==0){
+	  wx2[b] = s_b[0];
+	}
+      }
+    }
+  }
+}
+#endif

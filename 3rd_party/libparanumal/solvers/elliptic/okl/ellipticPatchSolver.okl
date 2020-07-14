@@ -1,0 +1,71 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+// experimental overlapping patch solver
+@kernel void ellipticApproxBlockJacobiSolver(const dlong Nelements,
+                                              @restrict const  dlong  *  patchesIndex,
+                                              @restrict const  dfloat *  invAP,
+                                              @restrict const  dfloat *  invDegree,
+                                              @restrict const  dfloat *  q,
+                                              @restrict dfloat *  invAPq){
+
+  // assume one patch per outer iteration (tune later)
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+    @shared dfloat s_q[p_NblockV][p_Np];
+
+    // loop over elements and load q
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          s_q[e-eo][n] = q[e*p_Np+n];
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // loop over elements/nodes in patch and do local smooth
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          const dfloat invDeg = invDegree[e];
+
+          // patch matrices offset
+          const dlong offset = patchesIndex[e]*p_Np*p_Np + n;
+          dfloat res = 0.f;
+          #pragma unroll p_Np
+            for(int m=0;m<p_Np;++m){
+              res += invAP[offset + m*p_Np ]*s_q[e-eo][m];
+            }
+
+          invAPq[p_Np*e+n] = invDeg*res;
+        }
+      }
+    }
+  }
+}

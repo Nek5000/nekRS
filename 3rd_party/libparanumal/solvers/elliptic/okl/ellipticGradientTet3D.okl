@@ -1,0 +1,153 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+@kernel void ellipticGradientTet3D(const dlong Nelements,
+          @restrict const  dfloat *  vgeo,
+          @restrict const  dfloat *  const Dmatrices,
+          @restrict const  dfloat *  q,
+          @restrict dfloat4 *  gradq){  
+  
+  // block partition of elements
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+    
+    @shared dfloat s_q[p_NblockV][p_Np];
+
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          // prefetch q
+          const dlong id = e*p_Np+n;
+          s_q[e-eo][n] = q[id];
+        }
+      }
+    }
+          
+    @barrier("local");
+
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          const int es = (int) (e-eo);
+          const dlong gid = e*p_Nvgeo;
+
+          const dfloat drdx = vgeo[gid + p_RXID];
+          const dfloat drdy = vgeo[gid + p_RYID];
+          const dfloat drdz = vgeo[gid + p_RZID];
+          const dfloat dsdx = vgeo[gid + p_SXID];
+          const dfloat dsdy = vgeo[gid + p_SYID];
+          const dfloat dsdz = vgeo[gid + p_SZID];
+          const dfloat dtdx = vgeo[gid + p_TXID];
+          const dfloat dtdy = vgeo[gid + p_TYID];
+          const dfloat dtdz = vgeo[gid + p_TZID];    
+
+          // compute 1D derivatives
+          dfloat qr = 0, qs = 0, qt =0;
+
+          #pragma unroll p_Np
+            for(int i=0;i<p_Np;++i) {
+              qr += Dmatrices[n + i*p_Np+0*p_Np*p_Np]*s_q[es][i];
+              qs += Dmatrices[n + i*p_Np+1*p_Np*p_Np]*s_q[es][i];
+              qt += Dmatrices[n + i*p_Np+2*p_Np*p_Np]*s_q[es][i];
+            }
+
+          dfloat4 gradqn;
+          gradqn.x = drdx*qr + dsdx*qs + dtdx*qt;
+          gradqn.y = drdy*qr + dsdy*qs + dtdy*qt;
+          gradqn.z = drdz*qr + dsdz*qs + dtdz*qt;
+          gradqn.w = s_q[es][n];
+          
+          const dlong id = e*p_Np+n; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}
+
+@kernel void ellipticPartialGradientTet3D(const dlong Nelements,
+          const dlong offset,
+          @restrict const  dfloat *  vgeo,
+          @restrict const  dfloat *  const Dmatrices,
+          @restrict const  dfloat *  q,
+          @restrict dfloat4 *  gradq){  
+  
+  // block partition of elements
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+    
+    @shared dfloat s_q[p_NblockV][p_Np];
+
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          // prefetch q
+          const dlong id = (e+offset)*p_Np+n;
+          s_q[e-eo][n] = q[id];
+        }
+      }
+    }
+          
+    @barrier("local");
+
+    for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        if(e<Nelements){
+          const int es = (int) (e-eo);
+          const dlong gid = (e+offset)*p_Nvgeo;
+
+          const dfloat drdx = vgeo[gid + p_RXID];
+          const dfloat drdy = vgeo[gid + p_RYID];
+          const dfloat drdz = vgeo[gid + p_RZID];
+          const dfloat dsdx = vgeo[gid + p_SXID];
+          const dfloat dsdy = vgeo[gid + p_SYID];
+          const dfloat dsdz = vgeo[gid + p_SZID];
+          const dfloat dtdx = vgeo[gid + p_TXID];
+          const dfloat dtdy = vgeo[gid + p_TYID];
+          const dfloat dtdz = vgeo[gid + p_TZID];    
+
+          // compute 1D derivatives
+          dfloat qr = 0, qs = 0, qt =0;
+
+          #pragma unroll p_Np
+            for(int i=0;i<p_Np;++i) {
+              qr += Dmatrices[n + i*p_Np+0*p_Np*p_Np]*s_q[es][i];
+              qs += Dmatrices[n + i*p_Np+1*p_Np*p_Np]*s_q[es][i];
+              qt += Dmatrices[n + i*p_Np+2*p_Np*p_Np]*s_q[es][i];
+            }
+
+          dfloat4 gradqn;
+          gradqn.x = drdx*qr + dsdx*qs + dtdx*qt;
+          gradqn.y = drdy*qr + dsdy*qs + dtdy*qt;
+          gradqn.z = drdz*qr + dsdz*qs + dtdz*qt;
+          gradqn.w = s_q[es][n];
+          
+          const dlong id = (e+offset)*p_Np+n; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}

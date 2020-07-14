@@ -1,0 +1,109 @@
+[FORMAT]
+1.0
+
+[BENCHMARK]
+BK5
+
+[DATA FILE]
+data/ellipticHomogeneous3D.h
+
+[MESH FILE]
+../../meshes/cavityHexH005.msh,../../meshes/cavityHexH0125.msh,../../meshes/cavityHexH016.msh,../../meshes/cavityHexH01.msh,../../meshes/cavityHexH02.msh,../../meshes/cavityHexH03.msh,../../meshes/cavityHexH04.msh
+
+[MESH DIMENSION]
+3
+
+[ELEMENT TYPE] # number of edges
+12
+
+[POLYNOMIAL DEGREE]
+1,2,3,4,5,6,7,8
+
+[THREAD MODEL]
+CUDA
+
+[PLATFORM NUMBER]
+0
+
+[DEVICE NUMBER]
+0
+
+[LAMBDA]
+0
+
+# can add FLEXIBLE to PCG
+[KRYLOV SOLVER]
+PCG+FLEXIBLE
+
+# can be IPDG, or CONTINUOUS
+[DISCRETIZATION]
+CONTINUOUS
+
+# can be NODAL or BERN
+[BASIS]
+NODAL
+
+# can be NONE, JACOBI, MASSMATRIX, FULLALMOND, SEMFEM, or MULTIGRID
+[PRECONDITIONER]
+JACOBI
+#MULTIGRID,
+
+
+########## MULTIGRID Options ##############
+
+# can be ALLDEGREES, HALFDEGREES, HALFDOFS
+[MULTIGRID COARSENING]
+HALFDEGREES
+#HALFDOFS,HALFDEGREES,ALLDEGREES
+
+# can be LOCALPATCH, or DAMPEDJACOBI
+# LOCALPATCH smoother can include EXACT
+# can include CHEBYSHEV for smoother acceleration
+[MULTIGRID SMOOTHER]
+DAMPEDJACOBI+CHEBYSHEV
+
+# can be any integer >0
+[MULTIGRID CHEBYSHEV DEGREE]
+2
+
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[PARALMOND CYCLE]
+VCYCLE
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[PARALMOND SMOOTHER]
+CHEBYSHEV
+
+# can be any integer >0
+[PARALMOND CHEBYSHEV DEGREE]
+2
+
+# can be STRONGNODES, DISTRIBUTED, SATURATE
+[PARALMOND PARTITION]
+STRONGNODES
+
+# can be DEFAULT or LPSCN
+[PARALMOND AGGREGATION STRATEGY]
+DEFAULT
+#LPSCN
+
+# can be MAX, MIN, or NONE
+[PARALMOND LPSCN ORDERING]
+MAX
+#MIN
+
+###########################################
+
+[RESTART FROM FILE]
+0
+
+[OUTPUT FILE NAME]
+cavity
+
+[VERBOSE]
+TRUE

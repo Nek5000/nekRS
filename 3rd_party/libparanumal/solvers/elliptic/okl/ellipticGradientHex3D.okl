@@ -1,0 +1,171 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+// compute local gradients
+
+@kernel void ellipticGradientHex3D(const dlong Nelements,
+                                  @restrict const  dfloat *  vgeo,
+                                  @restrict const  dfloat *   D,
+                                  @restrict const  dfloat *  q,
+                                  @restrict dfloat4 *  gradq){  
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq][p_Nq];
+    
+    // prefetch D
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        s_D[j][i] = D[i + p_Nq*j];
+      }
+    }
+    
+    // prefetch q
+    for(int k=0;k<p_Nq;++k){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          const dlong id = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+          s_q[k][j][i] = q[id];
+        }
+      }
+    }
+    
+    @barrier("local");
+    
+    // loop over slabs
+    for(int k=0;k<p_Nq;++k){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+        
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
+          
+          const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+          
+          const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+          
+          const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          
+          // compute 1D derivatives
+          dfloat qr = 0, qs = 0, qt = 0;
+          for(int n=0;n<p_Nq;++n){
+            qr += s_D[i][n]*s_q[k][j][n];
+            qs += s_D[j][n]*s_q[k][n][i];
+            qt += s_D[k][n]*s_q[n][j][i];
+          }
+          
+          dfloat4 gradqn;
+          gradqn.x = drdx*qr + dsdx*qs + dtdx*qt;
+          gradqn.y = drdy*qr + dsdy*qs + dtdy*qt;
+          gradqn.z = drdz*qr + dsdz*qs + dtdz*qt;
+          gradqn.w = s_q[k][j][i];
+
+          const dlong id = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}
+
+
+@kernel void ellipticPartialGradientHex3D(const dlong Nelements,
+                                         const dlong startElement,
+                                         @restrict const  dfloat *  vgeo,
+                                         @restrict const  dfloat *   D,
+                                         @restrict const  dfloat *  q,
+                                         @restrict dfloat4 *  gradq){  
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq][p_Nq];
+    
+    // prefetch D
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        s_D[j][i] = D[i + p_Nq*j];
+      }
+    }
+    
+    // prefetch q
+    for(int k=0;k<p_Nq;++k){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          const dlong id = (e+startElement)*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+          s_q[k][j][i] = q[id];
+        }
+      }
+    }
+    
+    @barrier("local");
+    
+    // loop over slabs
+    for(int k=0;k<p_Nq;++k){
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+        
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + (e+startElement)*p_Np*p_Nvgeo;
+          
+          const dfloat drdx = vgeo[gid + p_RXID*p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID*p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID*p_Np];
+          
+          const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
+          
+          const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
+          
+          // compute 1D derivatives
+          dfloat qr = 0, qs = 0, qt = 0;
+          for(int n=0;n<p_Nq;++n){
+            qr += s_D[i][n]*s_q[k][j][n];
+            qs += s_D[j][n]*s_q[k][n][i];
+            qt += s_D[k][n]*s_q[n][j][i];
+          }
+          
+          dfloat4 gradqn;
+          gradqn.x = drdx*qr + dsdx*qs + dtdx*qt;
+          gradqn.y = drdy*qr + dsdy*qs + dtdy*qt;
+          gradqn.z = drdz*qr + dsdz*qs + dtdz*qt;
+          gradqn.w = s_q[k][j][i];
+
+          const dlong id = (e+startElement)*p_Np+k*p_Nq*p_Nq+j*p_Nq+i; 
+          gradq[id] = gradqn;
+        }
+      }
+    }
+  }
+}

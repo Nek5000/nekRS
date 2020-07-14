@@ -42,7 +42,6 @@ static int  (*nek_bcmap_ptr)(int *, int*);
 static void (*nek_gen_bcmap_ptr)(void);
 static int  (*nek_nbid_ptr)(int *);
 static long long (*nek_set_vert_ptr)(int *, int *);
-static void (*nek_dssum_ptr)(double *);
 
 void noop_func(void) {}
 
@@ -266,8 +265,6 @@ void set_function_handles(const char *session_in,int verbose) {
   check_error(dlerror());
   nek_set_vert_ptr = (long long (*)(int *, int *)) dlsym(handle,fname("nekf_set_vert"));
   check_error(dlerror());
-  nek_dssum_ptr = (void (*)(double *)) dlsym(handle,fname("nekf_dssum"));
-  check_error(dlerror());
 
 #define postfix(x) x##_ptr
 #define load_or_noop(s) \
@@ -457,7 +454,7 @@ int buildNekInterface(const char *casename, int ldimt, int N, int np) {
       cflags, cache_dir, cache_dir, casename);
   retval = system(buf);
   if (retval) goto err; 
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile nekInterface "
+  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -f %s/Makefile nekInterface "
       ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
   retval = system(buf);
   if (retval) goto err; 
@@ -732,9 +729,4 @@ void nek_copyRestart() {
 
 long long nek_set_glo_num(int nx, int isTMesh) {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
-}
-
-void nek_dssum(dfloat *u) {
-   
-  (*nek_dssum_ptr)(u);
 }

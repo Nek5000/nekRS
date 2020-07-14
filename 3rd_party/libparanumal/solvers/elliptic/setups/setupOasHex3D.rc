@@ -1,0 +1,153 @@
+[FORMAT]
+1.0
+
+[BENCHMARK]
+SOLVE
+#NONE
+#BP5
+
+[DATA FILE]
+data/ellipticSineTest3D.h
+#data/ellipticHomogeneous3D.h
+
+[MESH FILE]
+#../../meshes/cubeHexE8Thilina.msh
+#../../meshes/cavityHexH025.msh
+#../../meshes/cavityHexH0125.msh
+#../../meshes/cavityHexH0075.msh
+#../../meshes/cubeHexE00008.msh
+#../../meshes/cubeHexE00064.msh
+#../../meshes/cubeHexE00216.msh
+#../../meshes/cubeHexE00512.msh
+#../../meshes/cubeHexE01000.msh
+#../../meshes/cubeHexE01728.msh
+../../meshes/cubeHexE04096.msh
+#../../meshes/cubeHexE05832.msh
+#../../meshes/cubeHexE08000.msh
+
+[MESH DIMENSION]
+3
+
+[ELEMENT TYPE] # number of edges
+12
+
+[POLYNOMIAL DEGREE]
+7
+
+[ELEMENT MAP]
+ISOPARAMETRIC
+#TRILINEAR
+
+[ELLIPTIC INTEGRATION]
+NODAL
+#CUBATURE
+# CUBATURE - WORKING FOR INHOMOGENEOUS DIRICHLET BCS - NOT WORKING FOR NEUMANN YET
+
+[THREAD MODEL]
+#Serial
+CUDA
+
+[PLATFORM NUMBER]
+0
+
+[DEVICE NUMBER]
+0
+
+[LAMBDA]
+10
+
+# can add FLEXIBLE to PCG
+[KRYLOV SOLVER]
+PCG+FLEXIBLE
+
+# can be IPDG, or CONTINUOUS
+[DISCRETIZATION]
+#IPDG
+CONTINUOUS
+
+# can be NODAL or BERN
+[BASIS]
+NODAL
+
+# can be NONE, JACOBI, MASSMATRIX, FULLALMOND, SEMFEM, MULTIGRID, or OAS
+[PRECONDITIONER]
+OAS
+#JACOBI
+#MULTIGRID
+#SEMFEM
+#FULLALMOND
+
+
+
+########## MULTIGRID Options ##############
+
+# can be ALLDEGREES, HALFDEGREES, HALFDOFS
+[MULTIGRID COARSENING]
+#ALLDEGREES
+HALFDEGREES
+#HALFDOFS
+
+# can be LOCALPATCH, or DAMPEDJACOBI
+# LOCALPATCH smoother can include EXACT
+# can include CHEBYSHEV for smoother acceleration
+[MULTIGRID SMOOTHER]
+DAMPEDJACOBI+CHEBYSHEV
+
+# can be any integer >0
+[MULTIGRID CHEBYSHEV DEGREE]
+1
+
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[PARALMOND CYCLE]
+KCYCLE
+#EXACT
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[PARALMOND SMOOTHER]
+CHEBYSHEV+DAMPEDJACOBI
+
+# can be any integer >0
+[PARALMOND CHEBYSHEV DEGREE]
+1
+
+# can be STRONGNODES, DISTRIBUTED, SATURATE
+[PARALMOND PARTITION]
+STRONGNODES
+
+# can be DEFAULT or LPSCN
+[PARALMOND AGGREGATION STRATEGY]
+DEFAULT
+#LPSCN
+
+# can be MAX, MIN, or NONE
+[PARALMOND LPSCN ORDERING]
+MAX
+#MIN
+
+###########################################
+
+[RESTART FROM FILE]
+0
+
+[OUTPUT FILE NAME]
+cavity
+
+[VERBOSE]
+TRUE
+#FALSE
+
+# set to 0 (zero) to disable reductions
+[DEBUG ENABLE REDUCTIONS]
+1
+
+# set to 0 (zero) to disable gather-scatter
+[DEBUG ENABLE OGS]
+1
+
+[MAXIMUM ITERATIONS]
+1000
