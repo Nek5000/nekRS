@@ -15,6 +15,7 @@ env:
 cache:
   directories:
     - $HOME/.local/nekrs
+    - $TRAVIS_BUILD_DIR/build
 
 sudo: required
 
