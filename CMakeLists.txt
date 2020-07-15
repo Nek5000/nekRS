@@ -115,16 +115,22 @@ configure_file(
 include(config/occa.cmake)
 
 ###############################################################################
+# Build HYPRE
+###############################################################################
+
+include(config/hypre.cmake)
+
+###############################################################################
 # Build Nek5000 dependencies                                                  #
 ###############################################################################
 
 include(config/nek5000.cmake)
 
 ###############################################################################
-# Build libP                                                                  #
+# Define libP sources
 ###############################################################################
 
-include(config/libparanumal.cmake)
+include(config/libp_sources.cmake)
 
 ###############################################################################
 # Build NekRS
@@ -155,22 +161,61 @@ set(SRC
     src/plugins/RANSktau.cpp
     ## To get fortran flags
     src/dummy.f
+    ${BLASLAPACK_LIBP_SOURCES}
+    ${OGS_SOURCES}
+    ${LIBP_SOURCES}
+    ${PARALMOND_SOURCES}
+    ${ELLIPTIC_SOURCES}
 )
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib ${CMAKE_DL_LIBS} libelliptic)
-target_include_directories(nekrs-lib PUBLIC 
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE)
+
+target_compile_definitions(nekrs-lib PUBLIC
+    ${LIBP_DEFINES}
+    -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
+    -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" 
+    -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" 
+    -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" 
+    -DHYPRE)
+
+target_include_directories(nekrs-lib 
+  PUBLIC 
   src
   src/mesh
   src/core
   src/udf
   ${NEKINTERFACEDIR}
-  )
+  ${OGS_SOURCE_DIR}/include
+  ${OGS_SOURCE_DIR}
+  ${LIBP_SOURCE_DIR}/include
+  ${ELLIPTIC_SOURCE_DIR}
+  ${PARALMOND_SOURCE_DIR}/include
+  ${PARALMOND_SOURCE_DIR}
+  ${PARALMOND_SOURCE_DIR}/hypre
+  PRIVATE
+  ${HYPRE_SOURCE_DIR}/src
+  ${HYPRE_SOURCE_DIR}/src/utilities
+  ${HYPRE_SOURCE_DIR}/src/seq_mv
+  ${HYPRE_SOURCE_DIR}/src/parcsr_mv
+  ${HYPRE_SOURCE_DIR}/src/parcsr_ls
+  ${HYPRE_SOURCE_DIR}/src/IJ_mv
+  ${HYPRE_SOURCE_DIR}/src/multivector
+  ${HYPRE_SOURCE_DIR}/src/krylov
+  ${HYPRE_BINARY_DIR})
+
+target_link_libraries(nekrs-lib PUBLIC libocca gs PRIVATE HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin nekrs-lib)
+
+set(ELLIPTIC_MAIN ${ELLIPTIC_SOURCE_DIR}/src/ellipticMain.c)
+set_source_files_properties(${ELLIPTIC_MAIN} PROPERTIES LANGUAGE CXX)
+add_executable(ellipticMain ${ELLIPTIC_MAIN})
+set_target_properties(ellipticMain PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_ALL 1)
+target_link_libraries(ellipticMain nekrs-lib)
 
 #################################################################################
 ### Install                                                                     #

@@ -2,49 +2,9 @@ set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/libP)
 set(OGS_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/gatherScatter)
 set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
-
-
-# ---------------------------------------------------------
-# HYPRE
-# ---------------------------------------------------------
-
-set(HYPRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/hypre)
-# * These two variables are significant to HYPRE's CMakeLists, not our own
-#   HYPRE's CMakeLists leak some variables into parent project, and this is a workaround
-set(HYPRE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "" FORCE)
-set(HYPRE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "" FORCE)
-
-if (EXISTS ${HYPRE_SOURCE_DIR})
-  message(STATUS "Using HYPRE source in ${HYPRE_SOURCE_DIR}")
-  add_subdirectory(${HYPRE_SOURCE_DIR}/src)
-  get_property(HYPRE_BINARY_DIR TARGET HYPRE PROPERTY BINARY_DIR)
-else()
-
-  FetchContent_Declare(
-    hypre_content
-    URL https://github.com/hypre-space/hypre/archive/v2.18.2.tar.gz )
-  FetchContent_GetProperties(hypre_content)
-  if (NOT hypre_content_POPULATED)
-    FetchContent_Populate(hypre_content)
-    FetchContent_GetProperties(hypre_content)
-  endif()
-  set(HYPRE_SOURCE_DIR ${hypre_content_SOURCE_DIR})
-  set(HYPRE_BINARY_DIR ${hypre_content_BINARY_DIR})
-
-  # * Exclude from all since HYPRE CMakeLists adds a bunch of targets we don't need
-  #   libHYPRE will be build just fine, since we've explicitly declared it as a dependency
-  add_subdirectory(${HYPRE_SOURCE_DIR}/src ${HYPRE_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
-
-# ---------------------------------------------------------
-# LAPACK for libP
-# ---------------------------------------------------------
-
 set(BLASLAPACK_LIBP_DIR ${LIBP_SOURCE_DIR}/3rdParty/BlasLapack)
 
-# Compile and link BLAS/LAPACK binaries for libP, separately from Nek5000
-
-add_library(blasLapack_libp OBJECT
+set(BLASLAPACK_LIBP_SOURCES 
         ${BLASLAPACK_LIBP_DIR}/dasum.f
         ${BLASLAPACK_LIBP_DIR}/daxpy.f
         ${BLASLAPACK_LIBP_DIR}/dbdsqr.f
@@ -194,11 +154,6 @@ add_library(blasLapack_libp OBJECT
         ${BLASLAPACK_LIBP_DIR}/ztrsm.f
         ${BLASLAPACK_LIBP_DIR}/ztrsv.f)
 
-
-# ---------------------------------------------------------
-# libogs
-# ---------------------------------------------------------
-
 set(OGS_SOURCES
         ${OGS_SOURCE_DIR}/src/ogsGather.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherMany.cpp
@@ -223,20 +178,6 @@ set(OGS_SOURCES
         ${OGS_SOURCE_DIR}/src/ogsScatterVec.cpp
         ${OGS_SOURCE_DIR}/src/ogsSetup.cpp
         ${OGS_SOURCE_DIR}/src/oogs.cpp)
-
-add_library(libogs ${OGS_SOURCES})
-set_target_properties(libogs PROPERTIES OUTPUT_NAME ogs)
-target_compile_definitions(libogs 
-  PUBLIC -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter" ${LIBP_DEFINES})
-target_include_directories(libogs PUBLIC
-        ${OGS_SOURCE_DIR}/include
-        ${OGS_SOURCE_DIR}
-        ${LIBP_SOURCE_DIR}/include)
-target_link_libraries(libogs PUBLIC libocca gs)
-
-# ---------------------------------------------------------
-# libparanumal
-# ---------------------------------------------------------
 
 set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/hash.c
@@ -309,20 +250,9 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/parallelSort.c
         ${LIBP_SOURCE_DIR}/src/readArray.c
         ${LIBP_SOURCE_DIR}/src/setupAide.c
-        ${LIBP_SOURCE_DIR}/src/timer.c
-        $<TARGET_OBJECTS:blasLapack_libp>)
+        ${LIBP_SOURCE_DIR}/src/timer.c)
 
 set_source_files_properties(${LIBP_SOURCES} PROPERTIES LANGUAGE CXX)
-add_library(libP ${LIBP_SOURCES})
-set_target_properties(libP PROPERTIES OUTPUT_NAME P)
-target_compile_definitions(libP 
-  PUBLIC -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" ${LIBP_DEFINES})
-target_include_directories(libP PUBLIC ${LIBP_SOURCE_DIR}/include src/core/)
-target_link_libraries(libP PUBLIC libogs libocca)
-
-# ---------------------------------------------------------
-# libparAlmond
-# ---------------------------------------------------------
 
 set(PARALMOND_SOURCES
         ${PARALMOND_SOURCE_DIR}/hypre/hypre.c
@@ -347,31 +277,6 @@ set(PARALMOND_SOURCES
         ${PARALMOND_SOURCE_DIR}/src/timer.cpp
         ${PARALMOND_SOURCE_DIR}/src/utils.cpp
         ${PARALMOND_SOURCE_DIR}/src/vector.cpp)
-
-add_library(libparAlmond ${PARALMOND_SOURCES})
-set_target_properties(libparAlmond PROPERTIES OUTPUT_NAME parAlmond)
-target_compile_definitions(libparAlmond 
-  PUBLIC -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" ${LIBP_DEFINES} 
-  PRIVATE -DHYPRE)
-target_include_directories(libparAlmond 
-        PUBLIC
-        ${PARALMOND_SOURCE_DIR}/include
-        ${PARALMOND_SOURCE_DIR}
-        ${PARALMOND_SOURCE_DIR}/hypre
-        ${LIBP_SOURCE_DIR}/include
-        PRIVATE
-        ${HYPRE_SOURCE_DIR}/src
-        ${HYPRE_SOURCE_DIR}/src/utilities
-        ${HYPRE_SOURCE_DIR}/src/seq_mv
-        ${HYPRE_SOURCE_DIR}/src/parcsr_mv
-        ${HYPRE_SOURCE_DIR}/src/parcsr_ls
-        ${HYPRE_SOURCE_DIR}/src/IJ_mv
-        ${HYPRE_SOURCE_DIR}/src/multivector
-        ${HYPRE_SOURCE_DIR}/src/krylov
-        ${HYPRE_BINARY_DIR})
-target_link_libraries(libparAlmond PUBLIC libogs libocca PRIVATE HYPRE)
-# This conflicts with the stdlib "version" header...
-file(REMOVE ${HYPRE_SOURCE_DIR}/src/utilities/version)
 
 # ---------------------------------------------------------
 # libelliptic
@@ -413,19 +318,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticWeightedNorm2.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticZeroMean.c)
 
-set(ELLIPTIC_MAIN ${ELLIPTIC_SOURCE_DIR}/src/ellipticMain.c)
-
-set_source_files_properties(${ELLIPTIC_SOURCES} ${ELLIPTIC_MAIN} PROPERTIES LANGUAGE CXX)
-add_library(libelliptic ${ELLIPTIC_SOURCES})
-set_target_properties(libelliptic PROPERTIES OUTPUT_NAME elliptic)
-target_compile_definitions(libelliptic 
-  PUBLIC -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" ${LIBP_DEFINES})
-target_include_directories(libelliptic PUBLIC ${ELLIPTIC_SOURCE_DIR})
-target_link_libraries(libelliptic PUBLIC libP libparAlmond libogs libocca blasLapack)
-
-add_executable(ellipticMain ${ELLIPTIC_MAIN})
-set_target_properties(ellipticMain PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_ALL 1)
-target_link_libraries(ellipticMain libelliptic)
+set_source_files_properties(${ELLIPTIC_SOURCES} PROPERTIES LANGUAGE CXX)
 
 # ---------------------------------------------------------
 # install
@@ -433,9 +326,6 @@ target_link_libraries(ellipticMain libelliptic)
 
 set(file_pattern "\.okl$|\.c$|\.hpp$|\.tpp$|\.h$|hex.*\.dat$")
 
-install(TARGETS libP 
-  LIBRARY DESTINATION libparanumal
-  ARCHIVE DESTINATION libparanumal)
 install(DIRECTORY 
   ${LIBP_SOURCE_DIR}/include 
   ${LIBP_SOURCE_DIR}/nodes
@@ -443,9 +333,6 @@ install(DIRECTORY
   DESTINATION libparanumal
   FILES_MATCHING REGEX ${file_pattern})
 
-install(TARGETS libogs 
-  LIBRARY DESTINATION gatherScatter
-  ARCHIVE DESTINATION gatherScatter)
 install(DIRECTORY
   ${OGS_SOURCE_DIR}/include 
   ${OGS_SOURCE_DIR}/okl 
@@ -453,9 +340,6 @@ install(DIRECTORY
   FILES_MATCHING REGEX ${file_pattern})
 install(FILES ${OGS_SOURCE_DIR}/ogs.hpp DESTINATION gatherScatter)
 
-install(TARGETS libparAlmond 
-  LIBRARY DESTINATION parAlmond
-  ARCHIVE DESTINATION parAlmond)
 install(DIRECTORY
   ${PARALMOND_SOURCE_DIR}/include
   ${PARALMOND_SOURCE_DIR}/okl
@@ -463,9 +347,6 @@ install(DIRECTORY
   FILES_MATCHING REGEX ${file_pattern})
 install(FILES ${PARALMOND_SOURCE_DIR}/parAlmond.hpp DESTINATION gatherScatter)
 
-install(TARGETS libelliptic 
-  LIBRARY DESTINATION elliptic
-  ARCHIVE DESTINATION elliptic)
 install(DIRECTORY
   ${ELLIPTIC_SOURCE_DIR}/data
   ${ELLIPTIC_SOURCE_DIR}/okl
