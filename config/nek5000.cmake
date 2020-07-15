@@ -24,7 +24,7 @@ else()
   FetchContent_Declare(
     nek5000_content
     GIT_REPOSITORY https://github.com/nek5000/nek5000.git
-    GIT_TAG master)
+    GIT_TAG ${NEK5000_TAG})
 endif()
 
 FetchContent_GetProperties(nek5000_content)

@@ -12,7 +12,7 @@ else()
 
   FetchContent_Declare(
     hypre_content
-    URL https://github.com/hypre-space/hypre/archive/v2.18.2.tar.gz )
+    URL https://github.com/hypre-space/hypre/archive/v${HYPRE_VER}.tar.gz )
   FetchContent_GetProperties(hypre_content)
   if (NOT hypre_content_POPULATED)
     FetchContent_Populate(hypre_content)

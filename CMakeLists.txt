@@ -7,6 +7,7 @@ include(FetchContent)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(FETCHCONTENT_QUIET off)
+set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
 #Link:https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
@@ -33,6 +34,10 @@ set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING
   "Preprocessor macros for libparanumal")
 
 set(OCCA_CXXFLAGS "" CACHE STRING "C++ Flags for OCCA")
+
+set(OCCA_TAG "main" CACHE STRING "Git branch, tag, or hash for cloning OCCA")
+set(NEK5000_TAG "master" CACHE STRING "Git branch, tag, or hash for cloning Nek5000")
+set(HYPRE_VER "2.18.2" CACHE STRING "Version number of HYPRE to download")
 
 # From OCCA's CMakeLists. All default to ON, but are verified in config tests
 #   - ENABLE_OPENMP
