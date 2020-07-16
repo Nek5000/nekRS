@@ -60,32 +60,33 @@ void ResidualProjection::reOrthogonalize()
       for(int j = m-1; j >= k; j--){
         if(useWeightedFormulation)
         {
-          alpha[j] = 0.5 * (weightedInnerProduct(elliptic.o_invDegree,o_xx[j],o_bb[k])
-           + weightedInnerProduct(elliptic.o_invDegree,o_bb[j],o_xx[k]));
+          alpha[j] = 0.5 * (weightedInnerProduct(elliptic.mesh->ogs->o_invDegree,o_xx,j,o_bb,k)
+           + weightedInnerProduct(elliptic.mesh->ogs->o_invDegree,o_bb,j,o_xx,k));
         }
         else {
-          alpha[j] = 0.5 * (computeInnerProduct(o_xx[j],o_bb[k])
-           + computeInnerProduct(o_bb[j],o_xx[k]));
+          alpha[j] = 0.5 * (computeInnerProduct(o_xx,j,o_bb,k)
+           + computeInnerProduct(o_bb,j,o_xx,k));
         }
       }
       gop(alpha.data()+k,work.data(),(m-k)+1);
       for(int j = m-1; j >= k+1; j--){
-        elliptic.scaledAddKernel(n, -alpha[j], o_xx[j], one, o_xx[k]);
-        elliptic.scaledAddKernel(n, -alpha[j], o_bb[j], one, o_bb[k]);
+        scaledAddwOffsetKernel(n, -alpha[j], o_xx,j, one, k);
+        scaledAddwOffsetKernel(n, -alpha[j], o_bb,j, one, k);
       }
       dfloat normp = sqrt(alpha[k]);
       dfloat normk = 0.0;
       if(useWeightedFormulation){
-        normk = ellipticWeightedInnerProduct(&elliptic,elliptic.o_invDegree, o_xx[k], o_bb[k]);
+        normk = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,k, o_bb,k);
+        gop(&normk,work.data(),1);
       } else {
-        normk = computeInnerProduct(o_xx[k], o_bb[k]);
+        normk = computeInnerProduct(o_xx,k, o_bb,k);
         gop(&normk,work.data(),1);
       }
       normk = sqrt(normk);
       if(normk > tol * normp){
         const dfloat scl1 = 1.0 / normk;
-        elliptic.scaledAddKernel(n, zero, o_xbar, scl1, o_xx[k]);
-        elliptic.scaledAddKernel(n, zero, o_xbar, scl1, o_bb[k]);
+        scalarMultiplyKernel(n, scl1, o_xx,k);
+        scalarMultiplyKernel(n, scl1, o_bb,k);
         flag[k] = true;
       } else {
         flag[k] = false;
@@ -96,17 +97,21 @@ void ResidualProjection::reOrthogonalize()
   for(int j = 0; j < m; ++j){
     if(flag[j]){
       if(k < j){
-        elliptic.scaledAddKernel(n, one, o_xx[j], zero, o_xx[k]);
-        elliptic.scaledAddKernel(n, one, o_bb[j], zero, o_bb[k]);
+        scaledAddwOffsetKernel(n, one, o_xx,j, zero, k);
+        scaledAddwOffsetKernel(n, one, o_bb,j, zero, k);
       }
       k++;
     }
   }
   numVecsProjection = k;
 }
-void ResidualProjection::matvec(occa::memory& o_Ax, occa::memory& o_x)
+void ResidualProjection::matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset)
 {
-  ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);
+  // o_x_tmp = o_x[x_offset]
+  extractVectorKernel(n,o_x,o_x_tmp,x_offset);
+  ellipticOperator(&elliptic, o_x_tmp, o_Ax_tmp, dfloatString);
+  // o_Ax[Ax_offset] = o_Ax_tmp
+  placeVectorKernel(n,o_Ax_tmp,o_Ax,Ax_offset);
 }
 void ResidualProjection::updateProjectionSpace()
 {
@@ -115,12 +120,12 @@ void ResidualProjection::updateProjectionSpace()
   if(useWeightedFormulation){
     for(int k = 0; k < m; ++k)
     {
-      alpha[k] = weightedInnerProduct(elliptic.o_invDegree, o_xx[k],o_bb[m-1]);
+      alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,k,o_bb,m-1);
     }
   } else {
     for(int k = 0; k < m; ++k)
     {
-      alpha[k] = computeInnerProduct(o_xx[k],o_bb[m-1]);
+      alpha[k] = computeInnerProduct(o_xx,k,o_bb,m-1);
     }
   }
   gop(alpha.data(),work.data(),m);
@@ -129,8 +134,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat one = 1.0;
   for(int k = 0; k < m-1; ++k){
     const dfloat scale = -alpha[k];
-    elliptic.scaledAddKernel(n, scale, o_xx[k], one, o_xx[m-1]);
-    elliptic.scaledAddKernel(n, scale, o_bb[k], one, o_bb[m-1]);
+    scaledAddwOffsetKernel(n, scale, o_xx,k, one, m-1);
+    scaledAddwOffsetKernel(n, scale, o_bb,k, one, m-1);
     norm_new = norm_new - alpha[k] * alpha[k];
   }
   norm_new = sqrt(norm_new);
@@ -142,8 +147,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat zero = 0.0;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    elliptic.scaledAddKernel(n, zero, o_xbar, scale, o_xx[m-1]);
-    elliptic.scaledAddKernel(n, zero, o_xbar, scale, o_bb[m-1]);
+    scalarMultiplyKernel(n, scale, o_xx,m-1);
+    scalarMultiplyKernel(n, scale, o_bb,m-1);
   } else {
     numVecsProjection--;
     // TODO:
@@ -160,22 +165,19 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   if(m <= 0) return;
   if(useWeightedFormulation){
     for(int k = 0 ; k < m; ++k){
-      alpha[k] = weightedInnerProduct(elliptic.o_invDegree, o_r,o_xx.at(k));
+      alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_r,0,o_xx,k);
     }
   } else {
     for(int k = 0 ; k < m; ++k){
-      alpha[k] = computeInnerProduct(o_r,o_xx.at(k));
+      alpha[k] = computeInnerProduct(o_r,0,o_xx,k);
     }
   }
   gop(alpha.data(),work.data(),m);
 
-  elliptic.scaledAddKernel(n, alpha[0], o_xx[0], zero, o_xbar);
-  elliptic.scaledAddKernel(n, alpha[0], o_bb[0], zero, o_bbar);
-  for(dlong k = 1 ; k < m; ++k)
-  {
-    elliptic.scaledAddKernel(n, alpha[k], o_xx[k], one, o_xbar);
-    elliptic.scaledAddKernel(n, alpha[k], o_bb[k], one, o_bbar);
-  }
+  o_alpha.copyFrom(alpha.data(), m*sizeof(dfloat));
+
+  accumulateKernel(n, o_alpha, m, o_xx, o_xbar);
+  accumulateKernel(n, o_alpha, m, o_bb, o_bbar);
   elliptic.scaledAddKernel(n, mone, o_bbar, one, o_r);
 
 }
@@ -186,25 +188,25 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   if(numVecsProjection == 0){
     // reset bases
     numVecsProjection=1;
-    o_xx[0].copyFrom(o_x, n*sizeof(dfloat));
+    o_xx.copyFrom(o_x, n*sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection){
     numVecsProjection = 1;
     elliptic.scaledAddKernel(n, one, o_xbar, one, o_x);
-    o_xx[0].copyFrom(o_x, n*sizeof(dfloat));
+    o_xx.copyFrom(o_x, n*sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
-    elliptic.scaledAddKernel(n, one, o_x, zero, o_xx[numVecsProjection-1]);
+    scaledAddwOffsetTwoVecKernel(n, one, o_x, 0, zero, o_xx, numVecsProjection-1);
     // x = x + xbar
     elliptic.scaledAddKernel(n, one, o_xbar, one, o_x);
   }
   const dlong m_save = numVecsProjection;
-  matvec(o_bb[numVecsProjection-1],o_xx[numVecsProjection-1]);
+  matvec(o_bb,numVecsProjection-1,o_xx,numVecsProjection-1);
   updateProjectionSpace();
   if (numVecsProjection < m_save){ // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
-    o_xx[0].copyFrom(o_x, n*sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
-    matvec(o_bb[0],o_xx[0]);
+    o_xx.copyFrom(o_x, n*sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
+    matvec(o_bb,0,o_xx,0);
     updateProjectionSpace();
   }
 }
@@ -224,18 +226,38 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic, const dlong _maxNu
   work.resize(m);
   tmp.resize(Nblock);
   o_xbar = elliptic.mesh->device.malloc<dfloat>(n);
+  o_alpha = elliptic.mesh->device.malloc<dfloat>(m);
   o_tmp = elliptic.mesh->device.malloc<dfloat>(Nblock);
   o_bbar = elliptic.mesh->device.malloc<dfloat>(n);
-  o_xx.resize(m);
-  o_bb.resize(m);
-  for(int i = 0 ; i < m; ++i)
-  {
-    o_xx[i] = elliptic.mesh->device.malloc<dfloat>(n);
-    o_bb[i] = elliptic.mesh->device.malloc<dfloat>(n);
-  }
+  o_Ax_tmp = elliptic.mesh->device.malloc<dfloat>(n);
+  o_x_tmp = elliptic.mesh->device.malloc<dfloat>(n);
+  o_xx = elliptic.mesh->device.malloc<dfloat>(n*m);
+  o_bb = elliptic.mesh->device.malloc<dfloat>(n*m);
 
   // TODO: actually set
   useWeightedFormulation = true;
+  char fileName[BUFSIZ], kernelName[BUFSIZ];
+  for (int r=0;r<2;r++){
+    MPI_Barrier(elliptic.mesh->comm);
+    if ((r==0 && elliptic.mesh->rank==0) || (r==1 && elliptic.mesh->rank>0)) {
+      occa::properties properties;
+      properties += elliptic.mesh->device.properties();
+      properties["defines/p_threadBlockSize"] = 256;
+      properties["defines/dfloat"] = dfloatString;
+      properties["defines/dlong"] = dlongString;
+
+      sprintf(fileName, DELLIPTIC "/okl/ellipticResidualProjection.okl");
+      scalarMultiplyKernel = elliptic.mesh->device.buildKernel(fileName, "scalarMultiply", properties);
+      extractVectorKernel = elliptic.mesh->device.buildKernel(fileName, "extractVector", properties);
+      scaledAddwOffsetTwoVecKernel = elliptic.mesh->device.buildKernel(fileName, "scaledAddwOffsetTwoVec", properties);
+      scaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName, "scaledAddwOffset", properties);
+      placeVectorKernel = elliptic.mesh->device.buildKernel(fileName, "placeVector", properties);
+      weightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(fileName, "weightedInnerProduct2", properties);
+      innerProductKernel = elliptic.mesh->device.buildKernel(fileName, "innerProduct", properties);
+      accumulateKernel = elliptic.mesh->device.buildKernel(fileName, "accumulate", properties);
+    }
+    MPI_Barrier(elliptic.mesh->comm);
+  }
 }
 void ResidualProjection::preSolveProjection(occa::memory& o_r)
 {
@@ -243,20 +265,18 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   if(timestep < numTimeSteps){
     return;
   }
-  // collocate with the weight
-  //elliptic.collocateKernel(n,elliptic.o_invDegree, o_r);
   const int m = numVecsProjection;
   if(m <= 0) return;
-  const dfloat priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.o_invDegree, o_r));
+  const dfloat priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r));
   bool shouldReOrthogonalize = checkOrthogonalize();
   if(shouldReOrthogonalize){
     for(int j = 0 ; j < m-1; ++j){
-      matvec(o_bb[j], o_xx[j]);
+      matvec(o_bb, j, o_xx, j);
     }
     reOrthogonalize();
   }
   computePreProjection(o_r);
-  const dfloat postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.o_invDegree, o_r));
+  const dfloat postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r));
   const dfloat ratio = priorResidualNorm / postResidualNorm;
   if(elliptic.mesh->rank == 0 && verbose){
     std::cout << "Initial residual norm : " << priorResidualNorm << "\n";
@@ -276,12 +296,12 @@ void ResidualProjection::postSolveProjection(occa::memory& o_x)
   }
   computePostProjection(o_x);
 }
-dfloat ResidualProjection::computeInnerProduct(occa::memory &o_a, occa::memory& o_b){
+dfloat ResidualProjection::computeInnerProduct(occa::memory &o_a, const dlong a_offset, occa::memory& o_b, const dlong b_offset){
 
   mesh_t *mesh = elliptic.mesh;
   dlong Nblock = elliptic.Nblock;
 
-  elliptic.innerProductKernel(n, o_a, o_b, o_tmp);
+  innerProductKernel(n, o_a, a_offset, o_b, b_offset, o_tmp);
 
   o_tmp.copyTo(tmp.data());
 
@@ -292,7 +312,7 @@ dfloat ResidualProjection::computeInnerProduct(occa::memory &o_a, occa::memory& 
 
   return ab;
 }
-dfloat ResidualProjection::weightedInnerProduct(occa::memory &o_w, occa::memory &o_a, occa::memory &o_b){
+dfloat ResidualProjection::weightedInnerProduct(occa::memory &o_w, occa::memory &o_a, const dlong a_offset, occa::memory &o_b, const dlong b_offset){
 
   setupAide &options = elliptic.options;
 
@@ -312,10 +332,7 @@ dfloat ResidualProjection::weightedInnerProduct(occa::memory &o_w, occa::memory 
 
   const dlong Nlocal = mesh->Np*mesh->Nelements;
 
-  if(elliptic.blockSolver)
-    elliptic.weightedInnerProduct2Kernel(Nlocal, elliptic.Ntotal, o_w, o_a, o_b, o_tmp);
-  else
-    elliptic.weightedInnerProduct2Kernel(Nlocal, o_w, o_a, o_b, o_tmp);
+  weightedInnerProduct2Kernel(Nlocal, o_w, o_a, a_offset, o_b, b_offset, o_tmp);
 
   /* add a second sweep if Nblock>Ncutoff */
   dlong Ncutoff = 100;

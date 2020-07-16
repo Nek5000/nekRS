@@ -43,10 +43,10 @@ private:
   void updateProjectionSpace();
   void reOrthogonalize();
   bool checkOrthogonalize();
-  void matvec(occa::memory& o_Ax, occa::memory& o_x);
+  void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
   void gop(dfloat*,dfloat*, const dlong);
-  dfloat computeInnerProduct(occa::memory& o_a, occa::memory& o_b);
-  dfloat weightedInnerProduct(occa::memory& o_w, occa::memory& o_a, occa::memory& o_b);
+  dfloat computeInnerProduct(occa::memory& o_a, const dlong a_offset, occa::memory& o_b, const dlong b_offset);
+  dfloat weightedInnerProduct(occa::memory& o_w, occa::memory& o_a, const dlong a_offset, occa::memory& o_b, const dlong b_offset);
   elliptic_t& elliptic;
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
@@ -56,9 +56,21 @@ private:
 
   occa::memory o_xbar;
   occa::memory o_bbar;
-  std::vector<occa::memory> o_xx;
-  std::vector<occa::memory> o_bb;
+  occa::memory o_xx;
+  occa::memory o_bb;
   occa::memory o_tmp;
+  occa::memory o_Ax_tmp;
+  occa::memory o_x_tmp;
+  occa::memory o_alpha;
+
+  occa::kernel scalarMultiplyKernel;
+  occa::kernel scaledAddwOffsetTwoVecKernel;
+  occa::kernel scaledAddwOffsetKernel;
+  occa::kernel placeVectorKernel;
+  occa::kernel extractVectorKernel;
+  occa::kernel weightedInnerProduct2Kernel;
+  occa::kernel innerProductKernel;
+  occa::kernel accumulateKernel;
 
 
   std::vector<dfloat> alpha; // host shadow
