@@ -45,6 +45,9 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
 
   options.getArgs("SOLVER TOLERANCE", tol);
+
+  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED"))
+    elliptic->residualProjection->preSolveProjection(o_r);
   
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING"))
     Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
@@ -60,6 +63,9 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
   if(elliptic->allNeumann){ // zero mean of RHS
     ellipticZeroMean(elliptic, o_x);
   }
+
+  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED"))
+    elliptic->residualProjection->postSolveProjection(o_x);
   
   return Niter;
 

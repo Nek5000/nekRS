@@ -296,6 +296,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticKernelInfo.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMixedCopy.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevel.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticResidualProjection.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevelSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSchwarz.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSetup.c
@@ -355,5 +356,6 @@ install(DIRECTORY
 install(FILES 
   ${ELLIPTIC_SOURCE_DIR}/elliptic.h
   ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGrid.h
+  ${ELLIPTIC_SOURCE_DIR}/ellipticResidualProjection.h
   ${ELLIPTIC_SOURCE_DIR}/ellipticPrecon.h
   DESTINATION gatherScatter)

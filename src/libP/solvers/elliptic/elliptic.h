@@ -40,6 +40,8 @@ SOFTWARE.
 // block size for reduction (hard coded)
 #define blockSize 256
 
+class ResidualProjection;
+
 extern "C" { // C Linkage
 typedef struct {
 
@@ -244,10 +246,13 @@ typedef struct {
   // TO DO: TO HERE <==
   int nLevels;
   int* levels;
+
+  ResidualProjection* residualProjection;
   
 }elliptic_t;
 
 #include "ellipticMultiGrid.h"
+#include "ellipticResidualProjection.h"
 
 elliptic_t *ellipticSetup(mesh2D *mesh, occa::properties &kernelInfo, setupAide options);
 elliptic_t *newEllipticConstCoeff(elliptic_t *elliptic); 
