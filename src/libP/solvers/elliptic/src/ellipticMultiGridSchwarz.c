@@ -742,67 +742,45 @@ void MGLevel::build(
 }
 void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero){
   if(xIsZero){
-    START("smoothSchwarz",degree);
     const dlong Nelements = elliptic->mesh->Nelements;
-    START("preFDMKernel",degree);
     preFDMKernel(Nelements, o_u, o_work1);
-    STOP("preFDMKernel",degree);
 
-    START("schwarzGatherScatterPfloat",degree);
 #ifdef USE_OOGS
     oogs::gatherScatter(o_work1, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 #else
     ogsGatherScatter(o_work1, ogsPfloat, ogsAdd, (ogs_t*) extendedOgs);
 #endif
-    STOP("schwarzGatherScatterPfloat",degree);
 
     if(options.compareArgs("MULTIGRID SMOOTHER","RAS")){
-      START("fusedFDMKernel",degree);
       fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      STOP("fusedFDMKernel",degree);
 
-      START("schwarzGatherScatterPfloat",degree);
 #ifdef USE_OOGS
       oogs::gatherScatter(o_work2, ogsPfloat, ogsAdd, (oogs_t*) ogs);
 #else
       ogsGatherScatter(o_work2, ogsPfloat, ogsAdd, (ogs_t*) ogs);
 #endif
-      STOP("schwarzGatherScatterPfloat",degree);
 
-      START("collocateKernel",degree);
       collocateKernel(elliptic->mesh->Nelements*elliptic->mesh->Np, elliptic->ogs->o_invDegree, o_work2, o_Su);
-      STOP("collocateKernel",degree);
 
     } else {
 
-      START("fusedFDMKernel",degree);
       fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      STOP("fusedFDMKernel",degree);
 
-      START("schwarzGatherScatterPfloat",degree);
 #ifdef USE_OOGS
       oogs::gatherScatter(o_work2, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 #else
       ogsGatherScatter(o_work2, ogsPfloat, ogsAdd, (ogs_t*) extendedOgs);
 #endif
-      STOP("schwarzGatherScatterPfloat",degree);
 
-      START("postFDMKernel",degree);
       postFDMKernel(Nelements,o_work1,o_work2,o_work3);
-      STOP("postFDMKernel",degree);
 
-      START("schwarzGatherScatterPfloat",degree);
 #ifdef USE_OOGS
       oogs::gatherScatter(o_work3, ogsPfloat, ogsAdd, (oogs_t*) ogs);
 #else
       ogsGatherScatter(o_work3, ogsPfloat, ogsAdd, (ogs_t*) ogs);
 #endif
-      STOP("schwarzGatherScatterPfloat",degree);
 
-      START("collocateKernel",degree);
       collocateKernel(elliptic->mesh->Nelements*elliptic->mesh->Np, o_wts, o_work3, o_Su);
-      STOP("collocateKernel",degree);
     }
-    STOP("smoothSchwarz",degree);
   }
 }

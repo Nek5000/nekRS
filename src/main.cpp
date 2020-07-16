@@ -91,10 +91,10 @@ int main(int argc, char **argv)
 {
 
   {
-    int request = MPI_THREAD_MULTIPLE;
+    int request = MPI_THREAD_FUNNELED;
     const char *env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
     if(env_val) {
-      if(!std::stoi(env_val)) request = MPI_THREAD_FUNNELED;
+      if(std::stoi(env_val)) request = MPI_THREAD_MULTIPLE;
     }
  
     int provided;

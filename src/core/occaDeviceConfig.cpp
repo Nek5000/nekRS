@@ -55,7 +55,7 @@ occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm){
     options.setArgs("THREAD MODEL", "SERIAL");
   }
 
-  if(rank==0) printf("Initializing device");
+  if(rank==0) printf("Initializing device\n");
   occa::device device;
   device.setup((std::string)deviceConfig);
 

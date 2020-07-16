@@ -80,20 +80,28 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("PRESSURE MULTIGRID COARSENING", "HALFDEGREES");
+  options.setArgs("AMG SOLVER", "BOOMERAMG");
 
-  //options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
-  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
-
+#if 1
+  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
+  options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
+  options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
+  options.setArgs("PRESSURE SMOOTHER TYPE", "CHEBYSHEV+ASM");
+  options.setArgs("BOOMERAMG ITERATIONS", "1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
+#else
+  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+  options.setArgs("BOOMERAMG ITERATIONS", "2");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
+#endif
+
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
   options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
   options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
   options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
-  options.setArgs("AMG SOLVER", "BOOMERAMG");
-  options.setArgs("BOOMERAMG ITERATIONS", "2");
 }
 
 libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
@@ -336,7 +344,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         } else {
           options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");       
         }
-      } else if (p_smoother == "chebyshev" || p_smoother == "chebyshev+jacobi") {
+      } else if (p_smoother == "chebyshev" && p_preconditioner.find("jac") !=std::string::npos) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI"); 
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI"); 
@@ -427,9 +435,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   
     string p_amgsolver; 
     ini.extract("pressure", "amgsolver", p_amgsolver);
-    if (p_amgsolver == "paralmond")
-      options.setArgs("AMG SOLVER", "PARALMOND");
-  
+    if (p_amgsolver == "paralmond") {
+      exit("Unknown PRESSURE:amgSolver!", EXIT_FAILURE); 
+      //options.setArgs("AMG SOLVER", "PARALMOND");
+    } 
+ 
     if(ini.sections.count("boomeramg")) {
       int coarsenType;
       if(ini.extract("boomeramg", "coarsentype", coarsenType)) 

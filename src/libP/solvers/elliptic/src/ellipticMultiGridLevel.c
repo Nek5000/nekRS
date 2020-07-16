@@ -26,13 +26,10 @@ SOFTWARE.
 
 #include "elliptic.h"
 void MGLevel::Ax(occa::memory o_x, occa::memory o_Ax) {
-  START("Ax",degree);
   ellipticOperator(elliptic,o_x,o_Ax, dfloatString);
-  STOP("Ax",degree);
 }
 
 void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res) {
-  START("residual",degree);
   if(stype != SCHWARZ){
     ellipticOperator(elliptic,o_x,o_res, dfloatString);
     // subtract r = b - A*x
@@ -43,11 +40,9 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
     dfloat one = 1.0;
     elliptic->scaledAddKernel(Nrows, one, o_rhs, zero, o_res);
   }
-  STOP("residual",degree);
 }
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx) {
-  START("coarsen",degree);
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
     elliptic->dotMultiplyKernel(mesh->Nelements*NpF, o_invDegree, o_x, o_x);
 
@@ -57,13 +52,10 @@ void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx) {
     ogsGatherScatter(o_Rx, ogsDfloat, ogsAdd, (ogs_t*) elliptic->ogs);
     if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
   }
-  STOP("residual",degree);
 }
 
 void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px) {
-  START("prolongate",degree);
   elliptic->precon->prolongateKernel(mesh->Nelements, o_R, o_x, o_Px);
-  STOP("prolongate",degree);
 }
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero) {
@@ -103,7 +95,6 @@ void MGLevel::smoother(occa::memory o_x, occa::memory o_Sx, bool x_is_zero) {
 }
 
 void MGLevel::smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero) {
-  START("smoothRichardson",degree);
 
   occa::memory o_res = o_smootherResidual;
 
@@ -121,11 +112,9 @@ void MGLevel::smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZer
   //smooth the fine problem x = x + S(r-Ax)
   this->smoother(o_res, o_res, xIsZero);
   elliptic->scaledAddKernel(Nrows, one, o_res, one, o_x);
-  STOP("smoothRichardson",degree);
 }
 
 void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero) {
-  START("smoothChebyshev",degree);
 
   const dfloat theta = 0.5*(lambda1+lambda0);
   const dfloat delta = 0.5*(lambda1-lambda0);
@@ -178,23 +167,18 @@ void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZer
   }
   //x_k+1 = x_k + d_k
   elliptic->scaledAddKernel(Nrows, one, o_d, one, o_x);
-  STOP("smoothChebyshev",degree);
 }
 void MGLevel::smootherLocalPatch(occa::memory &o_r, occa::memory &o_Sr) {
 
-  START("smootherLocalPatch",degree);
   elliptic->precon->approxBlockJacobiSolverKernel(mesh->Nelements,
                             elliptic->precon->o_patchesIndex,
                             elliptic->precon->o_invAP,
                             elliptic->precon->o_invDegreeAP,
                             o_r,
                             o_Sr);
-  STOP("smootherLocalPatch",degree);
 }
 
 void MGLevel::smootherJacobi(occa::memory &o_r, occa::memory &o_Sr) {
-  START("smootherJacobi",degree);
   elliptic->dotMultiplyKernel(mesh->Np*mesh->Nelements,o_invDiagA,o_r,o_Sr);
-  STOP("smootherJacobi",degree);
 }
 
