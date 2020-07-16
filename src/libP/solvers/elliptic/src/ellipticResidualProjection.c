@@ -27,6 +27,7 @@ SOFTWARE.
 #include "ellipticResidualProjection.h"
 #include <iostream>
 #include <algorithm>
+#include <timer.hpp>
 
 bool ResidualProjection::checkOrthogonalize()
 {
@@ -246,8 +247,6 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   //elliptic.collocateKernel(n,elliptic.o_invDegree, o_r);
   const int m = numVecsProjection;
   if(m <= 0) return;
-  auto start = elliptic.mesh->device.tagStream();
-  auto hostStart = MPI_Wtime();
   const dfloat priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.o_invDegree, o_r));
   bool shouldReOrthogonalize = checkOrthogonalize();
   if(shouldReOrthogonalize){
@@ -264,13 +263,6 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
     std::cout << "Post projection residual norm : " << postResidualNorm << "\n";
     std::cout << "Ratio : " << ratio << "\n";
   }
-  auto stop = elliptic.mesh->device.tagStream();
-  auto hostStop = MPI_Wtime();
-  auto tElapsed = elliptic.mesh->device.timeBetween(start,stop);
-  auto tElapsedHost = hostStop-hostStart;
-  std::cout << "preSolveProjection took " << tElapsed << " time on the device!\n";
-  std::cout << "preSolveProjection took " << tElapsedHost << " time on the host!\n";
-  // TODO: log output here
 }
 void ResidualProjection::gop(dfloat * a, dfloat * work, const dlong size)
 {
@@ -282,16 +274,7 @@ void ResidualProjection::postSolveProjection(occa::memory& o_x)
   if(timestep < numTimeSteps){
     return;
   }
-  auto start = elliptic.mesh->device.tagStream();
-  auto hostStart = MPI_Wtime();
   computePostProjection(o_x);
-  auto stop = elliptic.mesh->device.tagStream();
-  auto hostStop = MPI_Wtime();
-  auto tElapsed = elliptic.mesh->device.timeBetween(start,stop);
-  auto tElapsedHost = hostStop-hostStart;
-  std::cout << "postSolveProjection took " << tElapsed << " time on the device!\n";
-  std::cout << "postSolveProjection took " << tElapsedHost << " time on the host!\n";
-
 }
 dfloat ResidualProjection::computeInnerProduct(occa::memory &o_a, occa::memory& o_b){
 
