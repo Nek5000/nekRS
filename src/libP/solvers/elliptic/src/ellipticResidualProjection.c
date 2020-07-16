@@ -32,10 +32,13 @@ bool ResidualProjection::checkOrthogonalize()
 {
   // Elliptic operator remains constant throughout,
   // so this is always false.
-  // However, when first creating the system at timestep 6,
-  // a full orthogonalization must be done.
-  return timestep == numTimeSteps+1;
-  //return false;
+  // However, the first time this function is called,
+  // an orthogonalization must be made.
+  if(!initialized){
+    initialized = true;
+    return true;
+  }
+  return false;
 }
 void ResidualProjection::reOrthogonalize()
 {
@@ -214,6 +217,8 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic, const dlong _maxNu
   const dlong Nblock = elliptic.Nblock;
   const dlong m = maxNumVecsProjection;
   numVecsProjection = 0;
+  initialized = false;
+  verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha.resize(m);
   work.resize(m);
   tmp.resize(Nblock);
@@ -241,6 +246,8 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   //elliptic.collocateKernel(n,elliptic.o_invDegree, o_r);
   const int m = numVecsProjection;
   if(m <= 0) return;
+  auto start = elliptic.mesh->device.tagStream();
+  auto hostStart = MPI_Wtime();
   const dfloat priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.o_invDegree, o_r));
   bool shouldReOrthogonalize = checkOrthogonalize();
   if(shouldReOrthogonalize){
@@ -252,11 +259,17 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   computePreProjection(o_r);
   const dfloat postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.o_invDegree, o_r));
   const dfloat ratio = priorResidualNorm / postResidualNorm;
-  if(elliptic.mesh->rank == 0){
+  if(elliptic.mesh->rank == 0 && verbose){
     std::cout << "Initial residual norm : " << priorResidualNorm << "\n";
     std::cout << "Post projection residual norm : " << postResidualNorm << "\n";
     std::cout << "Ratio : " << ratio << "\n";
   }
+  auto stop = elliptic.mesh->device.tagStream();
+  auto hostStop = MPI_Wtime();
+  auto tElapsed = elliptic.mesh->device.timeBetween(start,stop);
+  auto tElapsedHost = stop-start;
+  std::cout << "preSolveProjection took " << tElapsed << " time on the device!\n";
+  std::cout << "preSolveProjection took " << tElapsedHost << " time on the host!\n";
   // TODO: log output here
 }
 void ResidualProjection::gop(dfloat * a, dfloat * work, const dlong size)
@@ -269,7 +282,16 @@ void ResidualProjection::postSolveProjection(occa::memory& o_x)
   if(timestep < numTimeSteps){
     return;
   }
+  auto start = elliptic.mesh->device.tagStream();
+  auto hostStart = MPI_Wtime();
   computePostProjection(o_x);
+  auto stop = elliptic.mesh->device.tagStream();
+  auto hostStop = MPI_Wtime();
+  auto tElapsed = elliptic.mesh->device.timeBetween(start,stop);
+  auto tElapsedHost = hostStop-hostStart;
+  std::cout << "postSolveProjection took " << tElapsed << " time on the device!\n";
+  std::cout << "postSolveProjection took " << tElapsedHost << " time on the host!\n";
+
 }
 dfloat ResidualProjection::computeInnerProduct(occa::memory &o_a, occa::memory& o_b){
 

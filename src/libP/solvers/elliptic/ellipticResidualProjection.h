@@ -51,6 +51,8 @@ private:
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
   dlong timestep;
+  bool initialized;
+  bool verbose;
 
   occa::memory o_xbar;
   occa::memory o_bbar;
