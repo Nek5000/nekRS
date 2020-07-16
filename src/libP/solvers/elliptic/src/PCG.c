@@ -83,6 +83,8 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   if (rdotr0 <= TOL && !fixedIterationCountFlag) return 0;
  
   int iter;
+  auto start = elliptic->mesh->device.tagStream();
+  auto hostStart = MPI_Wtime();
   for(iter=1;iter<=MAXIT;++iter){
 
     // z = Precon^{-1} r
@@ -143,6 +145,12 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     if(rdotr<=TOL && !fixedIterationCountFlag) break;
     
   }
+  auto stop = elliptic->mesh->device.tagStream();
+  auto hostStop = MPI_Wtime();
+  auto tElapsed = elliptic->mesh->device.timeBetween(start,stop);
+  auto tElapsedHost = hostStop - hostStart;
+  std::cout << "pressure iteration took " << tElapsed/static_cast<double>(iter) << " time on the device, on average!\n";
+  std::cout << "pressure iteration took " << tElapsedHost/static_cast<double>(iter) << " time on the host, on average!\n";
 
   return iter;
 }

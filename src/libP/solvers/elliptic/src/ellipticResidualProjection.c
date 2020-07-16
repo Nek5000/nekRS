@@ -267,7 +267,7 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   auto stop = elliptic.mesh->device.tagStream();
   auto hostStop = MPI_Wtime();
   auto tElapsed = elliptic.mesh->device.timeBetween(start,stop);
-  auto tElapsedHost = stop-start;
+  auto tElapsedHost = hostStop-hostStart;
   std::cout << "preSolveProjection took " << tElapsed << " time on the device!\n";
   std::cout << "preSolveProjection took " << tElapsedHost << " time on the host!\n";
   // TODO: log output here
