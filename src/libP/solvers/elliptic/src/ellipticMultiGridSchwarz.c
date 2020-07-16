@@ -30,6 +30,8 @@ SOFTWARE.
 #include <math.h>
 #include <cctype>
 #include <string>
+#include <sstream>
+#include <exception>
 
 struct ElementLengths{
   std::vector<double> length_left_x;
@@ -149,29 +151,53 @@ compute_element_lengths(elliptic_t* elliptic){
     lengths->length_right_y.resize(Nelements);
     lengths->length_right_z.resize(Nelements);
 
-    const int n2 = mesh->Nq-1;
+    const int N = mesh->N;
     const int Nq = mesh->Nq;
 
     harmonic_mean_element_length(lengths,elliptic);
 
-    std::vector<double> l(mesh->Np * Nelements);
+    // add check for small values in middle elements
+    const double tol = 1e-12;
+    for(dlong e = 0 ; e < Nelements; ++e){
+      bool failed = false;
+      failed |= std::abs(lengths->length_middle_x[e]) < tol;
+      failed |= std::abs(lengths->length_middle_y[e]) < tol;
+      failed |= std::abs(lengths->length_middle_z[e]) < tol;
+      if(failed){
+        std::cout << "Encountered length of zero in middle for element e = " << e << "!\n";
+        std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
+          << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
+        exit(-1);
+      }
+      bool negative = false;
+      negative |= lengths->length_middle_x[e] < -tol;
+      negative |= lengths->length_middle_y[e] < -tol;
+      negative |= lengths->length_middle_z[e] < -tol;
+      if(negative){
+        std::cout << "Encountered negative length in middle for element e = " << e << "!\n";
+        std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
+          << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
+        exit(-1);
+      }
+    }
 
-    // force it to be 1-indexed to align with the Fortran code
+    std::vector<double> l(mesh->Np * Nelements);
+    std::fill(l.begin(), l.end(), 1.0);
+
     for(dlong e = 0 ; e < Nelements; ++e){
       const dlong elem_offset = Nq * Nq * Nq * e;
-      for(int j = 2; j <= n2; ++j){
-        for(int k = 2 ; k <= n2; ++k){
-          l[(k-1)*Nq+(j-1)*Nq*Nq+elem_offset] = lengths->length_middle_x[e];
-          l[Nq-1+(k-1)*Nq+(j-1)*Nq*Nq+elem_offset] = lengths->length_middle_x[e];
-          l[k-1 + 0 * Nq + (j-1) * Nq * Nq + elem_offset] = lengths->length_middle_y[e];
-          l[k-1 + (Nq-1) * Nq + (j-1) * Nq * Nq + elem_offset] = lengths->length_middle_y[e];
-          l[k-1 + (j-1) * Nq + elem_offset] = lengths->length_middle_z[e];
-          l[k-1 + (j-1) * Nq + (Nq-1) * Nq * Nq + elem_offset] = lengths->length_middle_z[e];
+      for(int j = 1; j < N; ++j){
+        for(int k = 1 ; k < N; ++k){
+          l[k*Nq+j*Nq*Nq+elem_offset] = lengths->length_middle_x[e];
+          l[Nq-1+k*Nq+j*Nq*Nq+elem_offset] = lengths->length_middle_x[e];
+          l[k + 0 * Nq + j * Nq * Nq + elem_offset] = lengths->length_middle_y[e];
+          l[k + (Nq-1) * Nq + j * Nq * Nq + elem_offset] = lengths->length_middle_y[e];
+          l[k + j * Nq + elem_offset] = lengths->length_middle_z[e];
+          l[k + j * Nq + (Nq-1) * Nq * Nq + elem_offset] = lengths->length_middle_z[e];
         }
       }
     }
 
-    // dssum
     ogsGatherScatter(l.data(), "double", ogsAdd, mesh->ogs);
     for(dlong e = 0 ; e < Nelements; ++e){
         const dlong elem_offset = e * Nq * Nq * Nq;
@@ -181,6 +207,34 @@ compute_element_lengths(elliptic_t* elliptic){
         lengths->length_right_y[e] = l[1+(Nq-1)*Nq + 1 * Nq * Nq + elem_offset]-lengths->length_middle_y[e];
         lengths->length_left_z[e] = l[1 + Nq + elem_offset]-lengths->length_middle_z[e];
         lengths->length_right_z[e] = l[1+Nq+(Nq-1)*Nq * Nq + elem_offset]-lengths->length_middle_z[e];
+    }
+    for(dlong e = 0 ; e < Nelements; ++e){
+      double length = lengths->length_left_x[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_left_x[e] = lengths->length_middle_x[e];
+      }
+      length = lengths->length_left_y[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_left_y[e] = lengths->length_middle_y[e];
+      }
+      length = lengths->length_left_z[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_left_z[e] = lengths->length_middle_z[e];
+      }
+    }
+    for(dlong e = 0 ; e < Nelements; ++e){
+      double length = lengths->length_right_x[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_right_x[e] = lengths->length_middle_x[e];
+      }
+      length = lengths->length_right_y[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_right_y[e] = lengths->length_middle_y[e];
+      }
+      length = lengths->length_right_z[e];
+      if(std::abs(length) < tol || length < -tol){
+        lengths->length_right_z[e] = lengths->length_middle_z[e];
+      }
     }
     return lengths;
 }
@@ -233,7 +287,7 @@ void compute_1d_stiffness_matrix(
   /** build ahat matrix here **/
   // Ah = D^T B D
 
-  const int n =  elliptic->mesh->Nq-1;
+  const int n =  elliptic->mesh->N;
   const int nl = n+3;
   std::vector<double> ah((n+1)*(n+1));
   std::vector<double> tmp((n+1)*(n+1));
@@ -372,10 +426,43 @@ void solve_generalized_ev(
   int itype = 1;
   char JOBZ = 'V';
   char UPLO = 'U';
+  // copy of A, B in case anything goes wrong
+  std::vector<double> a_copy;
+  std::vector<double> b_copy;
+  std::copy(a.begin(), a.end(), std::back_inserter(a_copy));
+  std::copy(b.begin(), b.end(), std::back_inserter(b_copy));
   dsygv_(&itype,&JOBZ,&UPLO,&n,a.data(),&n,b.data(), &n, lam.data(), work_arr, &worksize, &info);
   if(info != 0){
-    std::cout << "Error encountered in solve_generalized_ev\n";
-    exit(-1);
+    std::ostringstream err_logger;
+    err_logger << "Error encountered in solve_generalized_ev!\n";
+    if(info < 0){
+      err_logger << "Argument " << -info << " had an illegal value!\n";
+    } else {
+      if(info <= n){
+        err_logger << "DSYEV failed to converge, as i off-diagonal elements of an intermediate tridiagonal form did not converge to zero\n";
+      } else {
+        info -= n;
+        err_logger << "The leading minor of order " << info << " of B is not positive definite.\n"
+         << "The factorization of B could not be completed and no eigenvalues/eigenvectors were computed.\n";
+      }
+    }
+
+    // dump the operators
+    err_logger << "B:\n";
+    for(int i = 0 ; i < n; ++i){
+      for(int j = 0 ; j < n; ++j){
+        err_logger << b_copy.at(i*n+j) << "\t";
+      }
+      err_logger << "\n";
+    }
+    err_logger << "A:\n";
+    for(int i = 0 ; i < n; ++i){
+      for(int j = 0 ; j < n; ++j){
+        err_logger << a_copy.at(i*n+j) << "\t";
+      }
+      err_logger << "\n";
+    }
+    throw std::runtime_error(err_logger.str().c_str());
   }
   free(work_arr);
 }
@@ -388,14 +475,28 @@ void compute_1d_matrices(
   const double lm,
   const double lr,
   const dlong e,
-  elliptic_t* elliptic
+  elliptic_t* elliptic,
+  std::string direction
 )
 {
   const int nl = lam.size();
   std::vector<double> b(nl*nl);
   compute_1d_stiffness_matrix(S,lbc,rbc,ll,lm,lr,e,elliptic);
   compute_1d_mass_matrix(b,lbc,rbc,ll,lm,lr,e,elliptic);
-  solve_generalized_ev(S,b,lam);
+  try {
+    solve_generalized_ev(S,b,lam);
+  } catch(std::exception& failure) {
+    std::cout << "Encountered error:\n";
+    std::cout << failure.what();
+    std::cout << "Direction " << direction << "\n";
+    std::cout << "e = " << e << "\n";
+    std::cout << "lbc = " << lbc << ", rbc = " << rbc << "\n";
+    for(int iface = 0; iface < 6; ++iface)
+    {
+      std::cout << "EToB[iface] = " << elliptic->EToB[6*e+iface] << "\n";
+    }
+    exit(-1);
+  }
   if(lbc > 0){
     row_zero(S,nl,0);
   }
@@ -432,9 +533,9 @@ FDMOperators* gen_operators(ElementLengths* lengths, elliptic_t* elliptic)
     std::vector<double> Sz(Nq_e * Nq_e);
     int lbr = -1, rbr = -1, lbs = -1, rbs = -1, lbt = -1, rbt = -1;
     compute_element_boundary_conditions(&lbr,&rbr,&lbs,&rbs,&lbt,&rbt,e,elliptic);
-    compute_1d_matrices(Sx, lr, lbr, rbr, lengths->length_left_x[e], lengths->length_middle_x[e], lengths->length_right_x[e], e, elliptic);
-    compute_1d_matrices(Sy, ls, lbs, rbs, lengths->length_left_y[e], lengths->length_middle_y[e], lengths->length_right_y[e], e, elliptic);
-    compute_1d_matrices(Sz, lt, lbt, rbt, lengths->length_left_z[e], lengths->length_middle_z[e], lengths->length_right_z[e], e, elliptic);
+    compute_1d_matrices(Sx, lr, lbr, rbr, lengths->length_left_x[e], lengths->length_middle_x[e], lengths->length_right_x[e], e, elliptic,"r");
+    compute_1d_matrices(Sy, ls, lbs, rbs, lengths->length_left_y[e], lengths->length_middle_y[e], lengths->length_right_y[e], e, elliptic,"s");
+    compute_1d_matrices(Sz, lt, lbt, rbt, lengths->length_left_z[e], lengths->length_middle_z[e], lengths->length_right_z[e], e, elliptic,"t");
     // store the transposes
     for(int i = 0 ; i < Nq_e; ++i){
       for(int j = 0 ; j < Nq_e; ++j){
