@@ -306,9 +306,9 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  timer::tic("BoomerAMGSolve", 1);
+  timer::hostTic("BoomerAMGSolve", 1);
   hypre_solve(xLocal, crsh, rhsLocal);
-  timer::toc("BoomerAMGSolve");
+  timer::hostToc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 
