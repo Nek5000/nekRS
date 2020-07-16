@@ -28,6 +28,8 @@ SOFTWARE.
 #include "stdio.h"
 #include "parAlmond.hpp"
 
+#include "timer.hpp"
+
 #include "omp.h"
 #include "limits.h"
 #include "crs_hypre.h"
@@ -304,9 +306,9 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  //double t0 = MPI_Wtime();
+  timer::tic("BoomerAMGSolve", 1);
   hypre_solve(xLocal, crsh, rhsLocal);
-  //printf("tCoarseSolve: %g\n", MPI_Wtime()-t0);
+  timer::toc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 
@@ -322,10 +324,7 @@ void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
   }
 
   if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
-
-    //double t0 = MPI_Wtime();
-    hypre_solve(xLocal, crsh, rhsLocal);
-    //printf("tCoarseSolve: %g\n", MPI_Wtime()-t0);
+    BoomerAMGSolve(); 
   } else {
     //gather the full vector
     MPI_Allgatherv(rhsLocal,             N,                MPI_DFLOAT,

@@ -34,9 +34,6 @@ SOFTWARE.
 
 void meshOccaSetupQuad3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo){
 
-  // conigure device
-  occaDeviceConfig(mesh, newOptions);
-
   //make seperate stream for halo exchange
   mesh->defaultStream = mesh->device.getStream();
   mesh->dataStream = mesh->device.createStream();

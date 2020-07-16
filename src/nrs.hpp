@@ -20,6 +20,8 @@
 #include "ins.h"
 #include "timer.hpp"
 
+occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm);
+
 // std::to_string might be not accurate enough 
 static string to_string_f(double a) {
   stringstream s;

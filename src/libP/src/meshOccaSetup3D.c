@@ -779,9 +779,6 @@ void meshOccaPopulateDevice3D(mesh3D *mesh, setupAide &newOptions, occa::propert
 
 void meshOccaSetup3D(mesh3D *mesh, setupAide &newOptions, occa::properties &kernelInfo){
 
-  // conigure device
-  occaDeviceConfig(mesh, newOptions);
-  
   //make seperate stream for halo exchange
   mesh->defaultStream = mesh->device.getStream();
   mesh->dataStream = mesh->device.createStream();

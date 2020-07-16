@@ -9,11 +9,9 @@
 
 static int rank, size;
 static MPI_Comm comm;
-
+static occa::device device;
 static ins_t *ins;
-
 static libParanumal::setupAide options;
-
 static int ioStep;
 
 int nrsBuildOnly = 0;  // hack for meshPhysicalNodes() 
@@ -50,6 +48,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID); 
 
   setOUDF(options);
+
+  // configure device
+  device = occaDeviceConfig(options, comm);
+  timer::init(comm, device, 0);
 
   if (nrsBuildOnly){
     int rank, size;
@@ -93,7 +95,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nek_userchk();
 
   // init solver
-  ins = insSetup(comm, options, nrsBuildOnly);
+  ins = insSetup(comm, device, options, nrsBuildOnly);
 
   // set initial condition
   int readRestartFile;
@@ -124,8 +126,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins->startTime, 0);
 
-  timer::init(ins->mesh->comm, ins->mesh->device, 0);
-
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
@@ -133,6 +133,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl; 
   }
   fflush(stdout);
+
+  timer::reset();
 }
 
 void runStep(double time, double dt, int tstep)
@@ -237,7 +239,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   MPI_Barrier(comm);
 
   // init solver
-  ins = insSetup(comm, options, nrsBuildOnly);
+  ins = insSetup(comm, device, options, nrsBuildOnly);
 
   if (rank == 0) cout << "\nBuild successful." << endl;
 }

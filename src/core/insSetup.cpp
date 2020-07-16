@@ -11,7 +11,7 @@ static dfloat *scratch;
 static occa::memory o_scratch;
 
 cds_t *cdsSetup(ins_t *ins, mesh_t *mesh, setupAide options, occa::properties &kernelInfoH);
-ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
+ins_t *insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildOnly)
 {
 
   ins_t *ins = new ins_t();
@@ -40,10 +40,10 @@ ins_t *insSetup(MPI_Comm comm, setupAide &options, int buildOnly)
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
 
   if (buildOnly) {
-    ins->meshT = createMeshDummy(comm, N, options, kernelInfo);
+    ins->meshT = createMeshDummy(comm, N, options, device, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMeshT(comm, N, ins->cht, options, kernelInfo);
+    ins->meshT = createMeshT(comm, N, ins->cht, options, device, kernelInfo);
     ins->mesh = ins->meshT;
     if (ins->cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
   }

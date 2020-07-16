@@ -7,12 +7,12 @@
 #include "mpi.h"
 #include "mesh.h"
 
-void occaDeviceConfig(mesh_t *mesh, setupAide &options){
+occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm){
   // OCCA build stuff
   char deviceConfig[BUFSIZ];
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size); 
 
   int device_id = 0;
 
@@ -20,7 +20,7 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
     long int hostId = gethostid();
 
     long int* hostIds = (long int*) calloc(size,sizeof(long int));
-    MPI_Allgather(&hostId,1,MPI_LONG,hostIds,1,MPI_LONG,mesh->comm);
+    MPI_Allgather(&hostId,1,MPI_LONG,hostIds,1,MPI_LONG,comm);
 
     int totalDevices = 0;
     for (int r=0;r<rank;r++) {
@@ -55,12 +55,15 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
     options.setArgs("THREAD MODEL", "SERIAL");
   }
 
-  if(mesh->rank==0) printf("Initializing device...");
-  mesh->device.setup((std::string)deviceConfig);
-  if(mesh->rank==0) printf("done.\n");
+  if(rank==0) printf("Initializing device");
+  occa::device device;
+  device.setup((std::string)deviceConfig);
 
-  if (mesh->device.mode() == "Serial")
+  if (device.mode() == "Serial")
     options.setArgs("THREAD MODEL", "SERIAL");
+
+  if(rank==0)
+    std::cout << "active occa mode: " << device.mode() << "\n\n"; 
 
 #ifdef USE_OCCA_MEM_BYTE_ALIGN 
   occa::env::OCCA_MEM_BYTE_ALIGN = USE_OCCA_MEM_BYTE_ALIGN;
@@ -68,8 +71,9 @@ void occaDeviceConfig(mesh_t *mesh, setupAide &options){
 
   int Nthreads = 1;
   omp_set_num_threads(Nthreads);
-  if(mesh->rank==0)
-    printf("Number of OMP threads: %d\n", omp_get_num_threads());
+  //if(rank==0) printf("Number of OMP threads: %d\n", omp_get_num_threads());
 
-  occa::initTimer(mesh->device);
+  occa::initTimer(device);
+  
+  return device;
 }

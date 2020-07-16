@@ -6,7 +6,7 @@ int isTmesh = 0;
 
 void meshVOccaSetup3D(mesh_t *mesh, setupAide &options, occa::properties &kernelInfo);
 
-mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properties& kernelInfo) {
+mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::device device, occa::properties& kernelInfo) {
 
   mesh_t *mesh = new mesh_t[1];
 
@@ -140,12 +140,13 @@ mesh_t *createMeshDummy(MPI_Comm comm, int N, setupAide &options, occa::properti
   // global nodes
   meshParallelConnectNodes(mesh);
 
+  mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
   return mesh; 
 }
 
-mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa::properties& kernelInfo) 
+mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa::device device, occa::properties& kernelInfo) 
 {
   mesh_t *mesh = new mesh_t[1];
 
@@ -195,6 +196,7 @@ mesh_t *createMeshT(MPI_Comm comm, int N, int isMeshT, setupAide &options, occa:
 
   bcMap::check(mesh, isMeshT);
 
+  mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
   mesh->o_cubsgeo.free();

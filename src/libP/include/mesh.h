@@ -605,8 +605,6 @@ void meshRecursiveSpectralBisectionPartition(mesh_t *mesh);
 void matrixInverse(int N, dfloat *A);
 dfloat matrixConditionNumber(int N, dfloat *A);
 
-void occaDeviceConfig(mesh_t *mesh, setupAide &newOptions);
-
 #if 0
 void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem);
 #else

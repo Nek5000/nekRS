@@ -54,7 +54,7 @@ void runStep(ins_t *ins, dfloat time, dfloat dt, int tstep)
   if(ins->Nscalar)
     scalarSolve(ins, time, dt, cds->o_S);
 
-  timer::tic("udfProperties"); 
+  timer::tic("udfProperties", 1); 
   if(udf.properties)
     udf.properties(ins, time+dt, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
   timer::toc("udfProperties"); 
@@ -262,11 +262,11 @@ void scalarSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_S)
            (s-2)*cds->fieldOffset*cds->NSfields*sizeof(dfloat));
   }
 
-  timer::tic("makeq");
+  timer::tic("makeq", 1);
   makeq(ins, time, cds->o_BF);
   timer::toc("makeq");
 
-  timer::tic("scalarSolve");
+  timer::tic("scalarSolve", 1);
   for (int is=0; is<cds->NSfields; is++) {
     if(!cds->compute[is]) continue; 
 
@@ -383,11 +383,11 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
 {
   mesh_t *mesh = ins->mesh;
 
-  timer::tic("makef");
+  timer::tic("makef", 1);
   makef(ins, time, ins->o_BF);
   timer::toc("makef");
 
-  timer::tic("pressureSolve");
+  timer::tic("pressureSolve", 1);
   ins->setEllipticCoeffPressureKernel(
     ins->Nlocal,
     ins->fieldOffset,
@@ -397,7 +397,7 @@ void fluidSolve(ins_t *ins, dfloat time, dfloat dt, occa::memory o_U)
   ins->o_P.copyFrom(o_Pnew, ins->Ntotal*sizeof(dfloat));
   timer::toc("pressureSolve");
 
-  timer::tic("velocitySolve");
+  timer::tic("velocitySolve", 1);
   ins->setEllipticCoeffKernel(
     ins->Nlocal,
     ins->g0*ins->idt,

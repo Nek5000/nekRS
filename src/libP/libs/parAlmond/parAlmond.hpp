@@ -45,7 +45,6 @@ SOFTWARE.
 #include "include/agmg.hpp"
 #include "include/coarse.hpp"
 #include "include/solver.hpp"
-#include "include/performance_timer.hpp"
 
 
 namespace parAlmond {
