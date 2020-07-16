@@ -85,7 +85,6 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
  
   int iter;
   for(iter=1;iter<=MAXIT;++iter){
-    timer::tic("iterationTime");
 
     // z = Precon^{-1} r
     ellipticPreconditioner(elliptic, o_r, o_z);
@@ -144,7 +143,6 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     
     if(rdotr<=TOL && !fixedIterationCountFlag) break;
     
-    timer::toc("iterationTime");
   }
   return iter;
 }
