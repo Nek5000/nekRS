@@ -3,8 +3,10 @@
 ## What is new? 
 
 * Additive V-cycle with overlapping coarse grid solve
-* ASM and RAS smoother
+* (Chebyshev accelerated) ASM and RAS smoother
+* Residual projection
 * RANS k-tau model
+* Runtime averages
 * Improved CPU performance
 * Various bug fixes 
 
@@ -16,4 +18,5 @@
 
 ## Thanks to our Contributors
 
-We are grateful to all who added new features, filed issues or helped resolve them, asked and answered questions, and were part of inspiring discussions.
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.

@@ -28,6 +28,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-08"));
+  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
   options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
