@@ -18,6 +18,21 @@
 # DONT'T TOUCH WHAT FOLLOWS !!!
 ###############################################################################
 set -e -a
+
+function nekrs_info() {
+  local GREEN='\033[0;92m'
+  local NC='\033[0m'
+  echo -e "${GREEN} $1 ${NC}"
+}
+export -f nekrs_info
+
+function nekrs_error() {
+  local RED='\033[0;31m'
+  local NC='\033[0m'
+  echo -e "${RED} $1 ${NC}"
+}
+export -f nekrs_error
+
 NEKRS_SOURCED=0
 (return 0 2>/dev/null) && NEKRS_SOURCED=1
 if [ ${NEKRS_SOURCED} -eq 1 ]; then
@@ -52,8 +67,8 @@ if [ "$#" -eq 1 ]; then
 
     set -e
     exit 0
-  else
-    nekrs_info "Usage: makenrs [clean]"
+  elif [[ "$1" != *"tar"* ]]; then
+    nekrs_info "Usage: makenrs [clean|tar]"
     ${NEKRS_EXIT_CMD} 1
   fi
 fi
@@ -139,20 +154,6 @@ export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
 
 export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"
 
-function nekrs_info() {
-  local GREEN='\033[0;92m'
-  local NC='\033[0m' 
-  echo -e "${GREEN} $1 ${NC}"
-}
-export -f nekrs_info
-
-function nekrs_error() {
-  local RED='\033[0;31m'
-  local NC='\033[0m' 
-  echo -e "${RED} $1 ${NC}"
-}
-export -f nekrs_error
-
 if [ ${NEKRS_SOURCED} -eq 1 ]; then
   ${NEKRS_EXIT_CMD} 0
 fi
@@ -167,8 +168,11 @@ if [ ${NEKRS_DEBUG} -ne 0 ]; then
   NEKRS_BUILD_TYPE=Debug
 fi
 
+# =======================
+# Run CMake
+# =======================
 
-nekrs_info "Building NekRS ..."
+nekrs_info "Configuring NekRS ..."
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 #rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
@@ -190,7 +194,25 @@ cmake -Wno-dev \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
       -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
-      ${NEKRS_DIR} && make -j4 install
+      ${NEKRS_DIR}
+
+# =========================
+# Make tarball if requested
+# =========================
+
+if [ "$#" -eq 1 ]; then
+  if [[ "$1" = *"tar"* ]]; then
+    nekrs_info "Creating distribution tarball..."
+    make tar
+  fi
+  ${NEKRS_EXIT_CMD} 0
+fi
+
+# =========================
+# Otherwise, make install
+# =========================
+
+make -j4 install
 
 if [ $? -ne 0 ]; then
   echo
