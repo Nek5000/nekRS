@@ -450,6 +450,9 @@ ins_t *insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->pOptions.setArgs("PARALMOND PARTITION",  options.getArgs("PRESSURE PARALMOND PARTITION"));
   ins->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
   ins->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
+  ins->pOptions.setArgs("RESIDUAL PROJECTION", options.getArgs("PRESSURE RESIDUAL PROJECTION"));
+  ins->pOptions.setArgs("RESIDUAL PROJECTION VECTORS", options.getArgs("PRESSURE RESIDUAL PROJECTION VECTORS"));
+  ins->pOptions.setArgs("RESIDUAL PROJECTION START", options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
   ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
   ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
   ins->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");

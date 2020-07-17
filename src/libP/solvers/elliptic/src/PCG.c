@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "elliptic.h"
+#include <timer.hpp>
 
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x, 
         const dfloat tol, const int MAXIT){
@@ -143,6 +144,5 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     if(rdotr<=TOL && !fixedIterationCountFlag) break;
     
   }
-
   return iter;
 }

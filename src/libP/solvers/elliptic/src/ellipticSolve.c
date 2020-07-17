@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "elliptic.h"
+#include <timer.hpp>
 
 int ellipticSolve(elliptic_t *elliptic, dfloat tol,
                   occa::memory &o_r, occa::memory &o_x){
@@ -45,6 +46,12 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
 
   options.getArgs("SOLVER TOLERANCE", tol);
+
+  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED")){
+    timer::tic("preSolveProjection",1);
+    elliptic->residualProjection->preSolveProjection(o_r);
+    timer::toc("preSolveProjection");
+  }
   
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING"))
     Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
@@ -59,6 +66,12 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
 
   if(elliptic->allNeumann){ // zero mean of RHS
     ellipticZeroMean(elliptic, o_x);
+  }
+
+  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED")){
+    timer::tic("postSolveProjection",1);
+    elliptic->residualProjection->postSolveProjection(o_x);
+    timer::toc("postSolveProjection");
   }
   
   return Niter;

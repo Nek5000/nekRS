@@ -202,6 +202,8 @@ void printStat()
   dEtime[3] = timer::query("makeq", "DEVICE:MAX"); 
   dEtime[4] = timer::query("scalarSolve", "DEVICE:MAX");
   dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
+  dEtime[6] = timer::query("preSolveProjection", "DEVICE:MAX");
+  dEtime[6] += timer::query("postSolveProjection", "DEVICE:MAX");
 
   double hEtime[10];
   hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
@@ -210,11 +212,12 @@ void printStat()
     std::cout.setf ( std::ios::scientific );
 
     std::cout << "runtime statistics\n\n"
-              << "  makef               " << dEtime[0] << " s\n"  
-              << "  velocitySolve       " << dEtime[1] << " s\n"  
-              << "  pressureSolve       " << dEtime[2] << " s\n" 
-              << "    preconditioner    " << dEtime[5] << " s\n"
-              << "    coarse grid       " << hEtime[0] << " s\n"
+              << "  makef                 " << dEtime[0] << " s\n"  
+              << "  velocitySolve         " << dEtime[1] << " s\n"  
+              << "  pressureSolve         " << dEtime[2] << " s\n" 
+              << "   preconditioner       " << dEtime[5] << " s\n"
+              << "   residual projection  " << dEtime[6] << " s\n"
+              << "   coarse grid          " << hEtime[0] << " s\n"
               << std::endl; 
 
     if(dEtime[4] > 0) {
