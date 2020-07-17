@@ -151,8 +151,6 @@ void ResidualProjection::updateProjectionSpace()
     scalarMultiplyKernel(n, scale, o_bb,m-1);
   } else {
     numVecsProjection--;
-    // TODO:
-    // log not linearly independent
   }
 }
 void ResidualProjection::computePreProjection(occa::memory& o_r)
@@ -234,7 +232,6 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic, const dlong _maxNu
   o_xx = elliptic.mesh->device.malloc<dfloat>(n*m);
   o_bb = elliptic.mesh->device.malloc<dfloat>(n*m);
 
-  // TODO: actually set
   useWeightedFormulation = true;
   char fileName[BUFSIZ], kernelName[BUFSIZ];
   for (int r=0;r<2;r++){
@@ -267,7 +264,8 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   }
   const int m = numVecsProjection;
   if(m <= 0) return;
-  const dfloat priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r));
+  dfloat priorResidualNorm = 0.0;
+  if(verbose) priorResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r)*elliptic.resNormFactor);
   bool shouldReOrthogonalize = checkOrthogonalize();
   if(shouldReOrthogonalize){
     for(int j = 0 ; j < m-1; ++j){
@@ -276,8 +274,12 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
     reOrthogonalize();
   }
   computePreProjection(o_r);
-  const dfloat postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r));
-  const dfloat ratio = priorResidualNorm / postResidualNorm;
+  dfloat postResidualNorm = 0.0
+  dfloat ratio = 0.0;
+  if(verbose){
+    postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r)*elliptic.resNormFactor);
+    ratio = priorResidualNorm / postResidualNorm;
+  }
   if(elliptic.mesh->rank == 0 && verbose){
     std::cout << "Residual projection : " 
               << priorResidualNorm << ", "
