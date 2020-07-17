@@ -43,7 +43,7 @@ fi
 
 export NEKRS_BUILD_DIR=`pwd`/build
 
-if [ "$#" -eq 1 ]; then
+if [[ "$#" -eq 1 ]]; then
   if [[ "$1" = *"clean"* ]]; then
     set +e
 
@@ -67,7 +67,9 @@ if [ "$#" -eq 1 ]; then
 
     set -e
     exit 0
-  elif [[ "$1" != *"tar"* ]]; then
+  elif [[ "$1" = *"tar"* ]]; then
+    nekrs_info "Downloading sources and creating distribution tarball ..."
+  else
     nekrs_info "Usage: makenrs [clean|tar]"
     ${NEKRS_EXIT_CMD} 1
   fi
@@ -79,40 +81,39 @@ if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-if [ -z ${OCCA_CUDA_ENABLED} ]; then
-    read -p "enable CUDA backend? [N]" yn
-    case $yn in
-      [Yy]* )
-        OCCA_CUDA_ENABLED=1
-        ;;
-      * )
-        OCCA_CUDA_ENABLED=0 
-        ;;
-    esac
+if [[ "$#" -lt 1 ]]; then
+  if [ -z ${OCCA_CUDA_ENABLED} ]; then
+      read -p "enable CUDA backend? [N]" yn
+      case $yn in
+        [Yy]* )
+          OCCA_CUDA_ENABLED=1
+          ;;
+      esac
+  fi
+  if [ -z ${OCCA_HIP_ENABLED} ]; then
+      read -p "enable HIP backend? [N]" yn
+      case $yn in
+        [Yy]* )
+          OCCA_HIP_ENABLED=1
+          ;;
+      esac
+  fi
+  if [ -z ${OCCA_OPENCL_ENABLED} ]; then
+      read -p "enable OPENCL backend? [N]" yn
+      case $yn in
+        [Yy]* )
+          OCCA_OPENCL_ENABLED=1
+          ;;
+      esac
+  fi
 fi
-if [ -z ${OCCA_HIP_ENABLED} ]; then
-    read -p "enable HIP backend? [N]" yn
-    case $yn in
-      [Yy]* )
-        OCCA_HIP_ENABLED=1
-        ;;
-      * )
-        OCCA_HIP_ENABLED=0
-        ;;
-    esac
-fi
-if [ -z ${OCCA_OPENCL_ENABLED} ]; then
-    read -p "enable OPENCL backend? [N]" yn
-    case $yn in
-      [Yy]* )
-        OCCA_OPENCL_ENABLED=1
-        ;;
-      * )
-        OCCA_OPENCL_ENABLED=0
-        ;;
-    esac
-fi
+
+: ${OCCA_CUDA_ENABLED:=0}
+: ${OCCA_HIP_ENABLED:=0}
+: ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_METAL_ENABLED:=0}
+
+echo "$OCCA_CUDA_ENABLED $OCCA_HIP_ENABLED $OCCA_OPENCL_ENABLED"
 
 NEKRS_CXXFLAGS+=" -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
 
@@ -172,7 +173,6 @@ fi
 # Run CMake
 # =======================
 
-nekrs_info "Configuring NekRS ..."
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 #rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
@@ -202,8 +202,9 @@ cmake -Wno-dev \
 
 if [ "$#" -eq 1 ]; then
   if [[ "$1" = *"tar"* ]]; then
-    nekrs_info "Creating distribution tarball..."
     make tar
+    cd ..
+    rm -rf build
   fi
   ${NEKRS_EXIT_CMD} 0
 fi
