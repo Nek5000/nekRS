@@ -967,7 +967,7 @@ void ellipticSolveSetup(elliptic_t *elliptic, occa::properties &kernelInfo){
 
   elliptic->precon->preconBytes = usedBytes;
 
-  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED"))
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE"))
   {
     dlong nVecsProject = 8;
     try {

@@ -279,9 +279,10 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   const dfloat postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r));
   const dfloat ratio = priorResidualNorm / postResidualNorm;
   if(elliptic.mesh->rank == 0 && verbose){
-    std::cout << "Initial residual norm : " << priorResidualNorm << "\n";
-    std::cout << "Post projection residual norm : " << postResidualNorm << "\n";
-    std::cout << "Ratio : " << ratio << "\n";
+    std::cout << "Residual projection : " 
+              << priorResidualNorm << ", "
+              << postResidualNorm << ", "
+              << ratio << "\n";
   }
 }
 void ResidualProjection::gop(dfloat * a, dfloat * work, const dlong size)

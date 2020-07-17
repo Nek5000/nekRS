@@ -214,10 +214,13 @@ void printStat()
     std::cout << "runtime statistics\n\n"
               << "  makef                 " << dEtime[0] << " s\n"  
               << "  velocitySolve         " << dEtime[1] << " s\n"  
-              << "  pressureSolve         " << dEtime[2] << " s\n" 
-              << "   preconditioner       " << dEtime[5] << " s\n"
-              << "   residual projection  " << dEtime[6] << " s\n"
-              << "   coarse grid          " << hEtime[0] << " s\n"
+              << "  pressureSolve         " << dEtime[2] << " s\n";
+
+    if(dEtime[6] > 0) 
+    std::cout << "    residual projection " << dEtime[6] << " s\n";
+
+    std::cout << "    preconditioner      " << dEtime[5] << " s\n"
+              << "      coarse grid       " << hEtime[0] << " s\n"
               << std::endl; 
 
     if(dEtime[4] > 0) {

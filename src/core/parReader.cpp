@@ -95,7 +95,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("BOOMERAMG ITERATIONS", "2");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
 #endif
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "DISABLED");
+  options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
@@ -304,17 +304,20 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE); 
     
     bool p_rproj; 
-    if(ini.extract("pressure", "projection", p_rproj))
-      if(p_rproj) {
-        options.setArgs("PRESSURE RESIDUAL PROJECTION", "ENABLED");
-      }
-    int p_nProjVec; 
-    if(ini.extract("pressure", "projectionvectors", p_nProjVec))
-        options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", std::to_string(p_nProjVec));
-    int p_nProjStep; 
-    if(ini.extract("pressure", "projectionstart", p_nProjStep))
-        options.setArgs("PRESSURE RESIDUAL PROJECTION START", std::to_string(p_nProjStep));
-  
+    if(ini.extract("pressure", "residualproj", p_rproj)) {
+      if(p_rproj)
+        options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+      else
+        options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+
+      int p_nProjVec; 
+      if(ini.extract("pressure", "residualprojectionvectors", p_nProjVec))
+          options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", std::to_string(p_nProjVec));
+      int p_nProjStep; 
+      if(ini.extract("pressure", "residualprojectionstart", p_nProjStep))
+          options.setArgs("PRESSURE RESIDUAL PROJECTION START", std::to_string(p_nProjStep));
+    } 
+ 
     bool p_gproj; 
     if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
       if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");

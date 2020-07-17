@@ -47,7 +47,7 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
 
   options.getArgs("SOLVER TOLERANCE", tol);
 
-  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED")){
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")){
     timer::tic("preSolveProjection",1);
     elliptic->residualProjection->preSolveProjection(o_r);
     timer::toc("preSolveProjection");
@@ -68,7 +68,7 @@ int ellipticSolve(elliptic_t *elliptic, dfloat tol,
     ellipticZeroMean(elliptic, o_x);
   }
 
-  if(options.compareArgs("RESIDUAL PROJECTION","ENABLED")){
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")){
     timer::tic("postSolveProjection",1);
     elliptic->residualProjection->postSolveProjection(o_x);
     timer::toc("postSolveProjection");
