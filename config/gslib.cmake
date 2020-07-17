@@ -24,7 +24,10 @@ ExternalProject_Add(
         SOURCE_DIR ${LIBP_GS_SOURCE_DIR}
         BUILD_IN_SOURCE on
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND ${CMAKE_CURRENT_LIST_DIR}/run_libp_gs_install.sh "CC=${CMAKE_C_COMPILER}"
+        BUILD_COMMAND 
+          ${CMAKE_CURRENT_LIST_DIR}/run_libp_gs_install.sh 
+          "CC=${CMAKE_C_COMPILER}"
+          "CFLAGS=-fPIC ${CMAKE_C_FLAGS}"
         INSTALL_COMMAND ""
         USES_TERMINAL_BUILD on
 )
