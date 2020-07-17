@@ -58,9 +58,6 @@ private:
   occa::memory o_bbar;
   occa::memory o_xx;
   occa::memory o_bb;
-  occa::memory o_tmp;
-  occa::memory o_Ax_tmp;
-  occa::memory o_x_tmp;
   occa::memory o_alpha;
 
   occa::kernel scalarMultiplyKernel;
@@ -75,10 +72,9 @@ private:
 
   std::vector<dfloat> alpha; // host shadow
   std::vector<dfloat> work; // O(m) work array
-  std::vector<dfloat> tmp; // O(m) work array
 
   dlong numVecsProjection;
-  dlong n; // vector size
+  dlong Ntotal; // vector size
   bool useWeightedFormulation;
 
   // logging...
