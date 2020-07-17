@@ -274,7 +274,7 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
     reOrthogonalize();
   }
   computePreProjection(o_r);
-  dfloat postResidualNorm = 0.0
+  dfloat postResidualNorm = 0.0;
   dfloat ratio = 0.0;
   if(verbose){
     postResidualNorm = sqrt(ellipticWeightedNorm2(&elliptic, elliptic.mesh->ogs->o_invDegree, o_r)*elliptic.resNormFactor);
