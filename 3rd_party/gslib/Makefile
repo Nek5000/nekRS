@@ -1,5 +1,3 @@
-include ../../make.inp
-
 MPI ?= 1
 MPIIO ?= 1
 ADDUS ?= 1
