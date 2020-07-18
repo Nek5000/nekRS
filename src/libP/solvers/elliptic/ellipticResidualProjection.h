@@ -55,7 +55,6 @@ private:
   bool verbose;
 
   occa::memory o_xbar;
-  occa::memory o_bbar;
   occa::memory o_xx;
   occa::memory o_bb;
   occa::memory o_alpha;

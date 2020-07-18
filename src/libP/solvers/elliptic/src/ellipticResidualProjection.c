@@ -175,8 +175,8 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   o_alpha.copyFrom(alpha.data(), m*sizeof(dfloat));
 
   accumulateKernel(Ntotal, o_alpha, m, o_xx, o_xbar);
-  accumulateKernel(Ntotal, o_alpha, m, o_bb, o_bbar);
-  elliptic.scaledAddKernel(Ntotal, mone, o_bbar, one, o_r);
+  accumulateKernel(Ntotal, o_alpha, m, o_bb, elliptic.o_rtmp);
+  elliptic.scaledAddKernel(Ntotal, mone, elliptic.o_rtmp, one, o_r);
 
 }
 void ResidualProjection::computePostProjection(occa::memory & o_x)
@@ -222,9 +222,8 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic, const dlong _maxNu
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha.resize(m);
   work.resize(m);
-  o_xbar = elliptic.mesh->device.malloc<dfloat>(Ntotal);
   o_alpha = elliptic.mesh->device.malloc<dfloat>(m);
-  o_bbar = elliptic.mesh->device.malloc<dfloat>(Ntotal);
+  o_xbar = elliptic.mesh->device.malloc<dfloat>(Ntotal);
   o_xx = elliptic.mesh->device.malloc<dfloat>(Ntotal*m);
   o_bb = elliptic.mesh->device.malloc<dfloat>(Ntotal*m);
 
