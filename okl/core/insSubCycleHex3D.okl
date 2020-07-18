@@ -72,7 +72,7 @@
         }
   
         s_cubD[0][id] = cubD[id];
-  
+        #pragma unroll p_cubNq
 	for(int k=0;k<p_cubNq;++k){
 	  r_U[k]  = 0; r_V[k]  = 0; r_W[k]  = 0;
 	  r_Ud[k] = 0; r_Vd[k] = 0; r_Wd[k] = 0;
@@ -152,6 +152,7 @@
 	  }
 
 	  // interpolate in c progressively
+          #pragma unroll p_cubNq
 	  for(int k=0;k<p_cubNq;++k){
 	    dfloat Ikc = s_cubInterpT[c][k];
       
@@ -167,6 +168,7 @@
       }
     }
 
+    #pragma unroll p_cubNq
     for(int k=0;k<p_cubNq;++k){
 
       @barrier("local");
@@ -250,7 +252,8 @@
 	for(int i=0;i<p_cubNq;++i;@inner(0)){
     
 	  dfloat rhsU = 0, rhsV = 0, rhsW = 0;
-
+          
+          #pragma unroll p_cubNq
 	  for(int k=0;k<p_cubNq;++k){
 	    dfloat Ikc = s_cubInterpT[c][k];
 	    rhsU += Ikc*r_U[k];
