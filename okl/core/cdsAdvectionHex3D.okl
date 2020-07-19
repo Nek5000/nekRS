@@ -146,10 +146,11 @@ SOFTWARE.
   
         s_cubD[0][id] = cubD[id];
   
-  for(int k=0;k<p_cubNq;++k){
-    r_U[k]  = 0.f; r_V[k]  = 0.f; r_W[k]  = 0.f; 
-    r_S[k] = 0.f; r_Sd[k] = 0.f;
-  }
+        #pragma unroll p_cubNq  
+        for(int k=0;k<p_cubNq;++k){
+          r_U[k]  = 0.f; r_V[k]  = 0.f; r_W[k]  = 0.f; 
+          r_S[k] = 0.f; r_Sd[k] = 0.f;
+        }
       }
     }
 
@@ -158,99 +159,103 @@ SOFTWARE.
       @barrier("local");
 
       for(int b=0;b<p_cubNq;++b;@inner(1)){
-  for(int a=0;a<p_cubNq;++a;@inner(0)){
-    if(a<p_Nq && b<p_Nq){
-      // this can be improved
-      const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
-      // U.grad U
-      s_U[b][a] = U[id+0*voffset]; 
-      s_V[b][a] = U[id+1*voffset];
-      s_W[b][a] = U[id+2*voffset];      
-      s_S[b][a] = S[id+soffset];      
-    }
-  }
+        for(int a=0;a<p_cubNq;++a;@inner(0)){
+          if(a<p_Nq && b<p_Nq){
+            // this can be improved
+            const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
+            // U.grad U
+            s_U[b][a] = U[id+0*voffset]; 
+            s_V[b][a] = U[id+1*voffset];
+            s_W[b][a] = U[id+2*voffset];      
+            s_S[b][a] = S[id+soffset];      
+          }
+        }
       }
       
       @barrier("local");
       
       // interpolate in 'r' 
       for(int b=0;b<p_cubNq;++b;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){
-    if(b<p_Nq){
-      dfloat U1  = 0, V1 = 0,  W1 = 0, S1 = 0;
-      for(int a=0;a<p_Nq;++a){
-        dfloat Iia = s_cubInterpT[a][i];
-        U1  += Iia*s_U[b][a];
-        V1  += Iia*s_V[b][a];
-        W1  += Iia*s_W[b][a];
-        S1  += Iia*s_S[b][a];
-      }
-
-      s_U1[b][i] = U1;
-      s_V1[b][i] = V1;
-      s_W1[b][i] = W1;      
-      s_S1[b][i] = S1;      
-    }
-  }
+        for(int i=0;i<p_cubNq;++i;@inner(0)){
+          if(b<p_Nq){
+            dfloat U1  = 0, V1 = 0,  W1 = 0, S1 = 0;
+            for(int a=0;a<p_Nq;++a){
+              dfloat Iia = s_cubInterpT[a][i];
+              U1  += Iia*s_U[b][a];
+              V1  += Iia*s_V[b][a];
+              W1  += Iia*s_W[b][a];
+              S1  += Iia*s_S[b][a];
+            }
+   
+            s_U1[b][i] = U1;
+            s_V1[b][i] = V1;
+            s_W1[b][i] = W1;      
+            s_S1[b][i] = S1;      
+          }
+        }
       }
 
       @barrier("local");
 
       // interpolate in 's' 
       for(int j=0;j<p_cubNq;++j;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){
-    dfloat U2 = 0, V2 = 0,  W2 = 0, S2 = 0; 
-    // interpolate in b
-    for(int b=0;b<p_Nq;++b){
-      dfloat Ijb = s_cubInterpT[b][j];
-      U2 += Ijb*s_U1[b][i];
-      V2 += Ijb*s_V1[b][i];
-      W2 += Ijb*s_W1[b][i];
-      S2 += Ijb*s_S1[b][i];
-    }
-
-    // interpolate in c progressively
-    for(int k=0;k<p_cubNq;++k){
-      dfloat Ikc = s_cubInterpT[c][k];
-      r_U[k] += Ikc*U2;
-      r_V[k] += Ikc*V2;
-      r_W[k] += Ikc*W2;
-      r_S[k] += Ikc*S2;
-    }
-
-    for(int k=0;k<p_cubNq;++k){
-      r_Sd[k] = r_S[k]; 
-    }
-  }
+        for(int i=0;i<p_cubNq;++i;@inner(0)){
+          dfloat U2 = 0, V2 = 0,  W2 = 0, S2 = 0; 
+          // interpolate in b
+          for(int b=0;b<p_Nq;++b){
+            dfloat Ijb = s_cubInterpT[b][j];
+            U2 += Ijb*s_U1[b][i];
+            V2 += Ijb*s_V1[b][i];
+            W2 += Ijb*s_W1[b][i];
+            S2 += Ijb*s_S1[b][i];
+          }
+    
+          // interpolate in c progressively
+          #pragma unroll p_cubNq
+          for(int k=0;k<p_cubNq;++k){
+            dfloat Ikc = s_cubInterpT[c][k];
+            r_U[k] += Ikc*U2;
+            r_V[k] += Ikc*V2;
+            r_W[k] += Ikc*W2;
+            r_S[k] += Ikc*S2;
+          }
+    
+          #pragma unroll p_cubNq
+          for(int k=0;k<p_cubNq;++k){
+            r_Sd[k] = r_S[k]; 
+          }
+        }
       }
     }
 
+    #pragma unroll p_cubNq
     for(int k=0;k<p_cubNq;++k){
 
       @barrier("local");
 
       for(int j=0;j<p_cubNq;++j;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){    
-    s_S1[j][i] = r_Sd[k];
-    }
+        for(int i=0;i<p_cubNq;++i;@inner(0)){    
+          s_S1[j][i] = r_Sd[k];
+        }
       }
 
       @barrier("local");
 
       for(int j=0;j<p_cubNq;++j;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){
-
-    dfloat  Sdr = 0, Sds = 0, Sdt = 0;
-
-    for(int n=0;n<p_cubNq;++n){
-      dfloat Din = s_cubD[i][n];
-      dfloat Djn = s_cubD[j][n];
-      dfloat Dkn = s_cubD[k][n];
-      //
-      Sdr += Din*s_S1[j][n];
-      Sds += Djn*s_S1[n][i];
-      Sdt += Dkn*r_Sd[n];
-    }
+        for(int i=0;i<p_cubNq;++i;@inner(0)){
+   
+          dfloat  Sdr = 0, Sds = 0, Sdt = 0;
+  
+          #pragma unroll p_cubNq 
+          for(int n=0;n<p_cubNq;++n){
+            dfloat Din = s_cubD[i][n];
+            dfloat Djn = s_cubD[j][n];
+            dfloat Dkn = s_cubD[k][n];
+            //
+            Sdr += Din*s_S1[j][n];
+            Sds += Djn*s_S1[n][i];
+            Sdt += Dkn*r_Sd[n];
+          }
    
           const dlong gid = e*p_cubNp*p_Nvgeo+ k*p_cubNq*p_cubNq + j*p_cubNq +i;
           const dfloat drdx = cubvgeo[gid + p_RXID*p_cubNp];
@@ -274,7 +279,7 @@ SOFTWARE.
 
           // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
           r_S[k] = Uhat*Sdr + Vhat*Sds + What*Sdt;
-  }
+        }
       }
     }
     
@@ -284,57 +289,59 @@ SOFTWARE.
       @barrier("local");
       
       for(int j=0;j<p_cubNq;++j;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){
+        for(int i=0;i<p_cubNq;++i;@inner(0)){
+          
+          dfloat rhsS = 0;
+   
+          #pragma unroll p_cubNq 
+          for(int k=0;k<p_cubNq;++k){
+            dfloat Ikc = s_cubInterpT[c][k];
+            rhsS += Ikc*r_S[k];
+          }
     
-    dfloat rhsS = 0;
-
-    for(int k=0;k<p_cubNq;++k){
-      dfloat Ikc = s_cubInterpT[c][k];
-      rhsS += Ikc*r_S[k];
-    }
-    
-    s_S[j][i] = rhsS;
-  }
+          s_S[j][i] = rhsS;
+        }
       }
 
       @barrier("local");
       
       for(int b=0;b<p_cubNq;++b;@inner(1)){
-  for(int i=0;i<p_cubNq;++i;@inner(0)){
-    if(b<p_Nq){
-      dfloat rhsS = 0; 
-
-      for(int j=0;j<p_cubNq;++j){
-        dfloat Ijb = s_cubInterpT[b][j];
-        rhsS += Ijb*s_S[j][i];
-      }
-
-      s_S1[b][i] = rhsS;
-    }
-  }
+        for(int i=0;i<p_cubNq;++i;@inner(0)){
+          if(b<p_Nq){
+            dfloat rhsS = 0; 
+   
+            for(int j=0;j<p_cubNq;++j){
+              dfloat Ijb = s_cubInterpT[b][j];
+              rhsS += Ijb*s_S[j][i];
+            }
+   
+            s_S1[b][i] = rhsS;
+          }
+        }
       }
       
       @barrier("local");
       
       for(int b=0;b<p_cubNq;++b;@inner(1)){
-  for(int a=0;a<p_cubNq;++a;@inner(0)){
-    if(a<p_Nq && b<p_Nq){
-      dfloat rhsS = 0; 
-
-      for(int i=0;i<p_cubNq;++i){
-        dfloat Iia = s_cubInterpT[a][i];
-        rhsS += Iia*s_S1[b][i];
-      }
+        for(int a=0;a<p_cubNq;++a;@inner(0)){
+          if(a<p_Nq && b<p_Nq){
+            dfloat rhsS = 0; 
+   
+            for(int i=0;i<p_cubNq;++i){
+              dfloat Iia = s_cubInterpT[a][i];
+              rhsS += Iia*s_S1[b][i];
+            }
             const dlong gid = e*p_Np*p_Nvgeo+ c*p_Nq*p_Nq + b*p_Nq +a;
             const dlong id = e*p_Np + c*p_Nq*p_Nq + b*p_Nq + a;
-            
+                  
             const dfloat IJW   = vgeo[gid + p_IJWID*p_Np];
             const dfloat rhoM = RHO[id+soffset];
-            
+                  
             NS[id] = rhoM * IJW*rhsS;
           }
         }
       }
+
     }
   }
 }
