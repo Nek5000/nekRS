@@ -1,37 +1,37 @@
 /*
-  The MIT License (MIT)
+   The MIT License (MIT)
 
-  Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 
-*/
+ */
 
 // Compute Gradient volume term in weak Form
 @kernel void insDivergenceVolumeTOMBOHex3D(const dlong Nelements,
-					   @restrict const  dfloat *  vgeo,
-					   @restrict const  dfloat *  D,
-					   const dlong offset,
-					   @restrict const  dfloat *  U,
-					   @restrict dfloat *  divU){
-
-  for(dlong e=0; e<Nelements; ++e; @outer(0)) {
+                                           @restrict const dfloat*  vgeo,
+                                           @restrict const dfloat*  D,
+                                           const dlong offset,
+                                           @restrict const dfloat*  U,
+                                           @restrict dfloat*  divU)
+{
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_U[p_Nq][p_Nq];
     @shared dfloat s_V[p_Nq][p_Nq];
     @shared dfloat s_W[p_Nq][p_Nq];
@@ -40,63 +40,60 @@
 
     @exclusive dfloat r_div[p_Nq];
 
-    for(int j=0;j<p_Nq;++j;@inner(1)){ 
-      for(int i=0;i<p_Nq;++i;@inner(0)){
-        const int id = i+j*p_Nq;
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int id = i + j * p_Nq;
         s_D[0][id] = D[id];
 
 #pragma unroll p_Nq
-	for(int k=0;k<p_Nq;++k){         
-	  r_div[k] = 0.;
-	}
+        for(int k = 0; k < p_Nq; ++k)
+          r_div[k] = 0.;
       }
     }
 
     @barrier("local");
 
 #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
-
+    for(int k = 0; k < p_Nq; ++k) {
       //fetch slice
-      for(int j=0;j<p_Nq;++j;@inner(1)){ 
-        for(int i=0;i<p_Nq;++i;@inner(0)){
-          const dlong gid = e*p_Np*p_Nvgeo+ k*p_Nq*p_Nq + j*p_Nq +i;
-          const dfloat drdx = vgeo[gid + p_RXID*p_Np];
-          const dfloat drdy = vgeo[gid + p_RYID*p_Np];
-          const dfloat drdz = vgeo[gid + p_RZID*p_Np];
-          const dfloat dsdx = vgeo[gid + p_SXID*p_Np];
-          const dfloat dsdy = vgeo[gid + p_SYID*p_Np];
-          const dfloat dsdz = vgeo[gid + p_SZID*p_Np];
-          const dfloat dtdx = vgeo[gid + p_TXID*p_Np];
-          const dfloat dtdy = vgeo[gid + p_TYID*p_Np];
-          const dfloat dtdz = vgeo[gid + p_TZID*p_Np];
-          const dfloat JW    = vgeo[gid + p_JWID*p_Np];
+      for(int j = 0; j < p_Nq; ++j; @inner(1))
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW    = vgeo[gid + p_JWID * p_Np];
 
-          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-          const dfloat Un = U[id+0*offset];
-          const dfloat Vn = U[id+1*offset];
-          const dfloat Wn = U[id+2*offset];
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat Un = U[id + 0 * offset];
+          const dfloat Vn = U[id + 1 * offset];
+          const dfloat Wn = U[id + 2 * offset];
 
           //store covarient field
-          s_U[j][i] = JW*(drdx*Un+drdy*Vn+drdz*Wn);
-          s_V[j][i] = JW*(dsdx*Un+dsdy*Vn+dsdz*Wn);
-          s_W[j][i] = JW*(dtdx*Un+dtdy*Vn+dtdz*Wn);
+          s_U[j][i] = JW * (drdx * Un + drdy * Vn + drdz * Wn);
+          s_V[j][i] = JW * (dsdx * Un + dsdy * Vn + dsdz * Wn);
+          s_W[j][i] = JW * (dtdx * Un + dtdy * Vn + dtdz * Wn);
         }
-      }
 
       @barrier("local");
 
-      for(int j=0;j<p_Nq;++j;@inner(1)){ 
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
-	  for (int n=0;n<p_Nq;n++) {
-	    const dfloat Dr = s_D[n][i];
-	    const dfloat Ds = s_D[n][j];
-	    const dfloat Dt = s_D[k][n];
-	    r_div[k] += Dr*s_U[j][n];
-	    r_div[k] += Ds*s_V[n][i];
-	    r_div[n] += Dt*s_W[j][i];
-	  }
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Dr = s_D[n][i];
+            const dfloat Ds = s_D[n][j];
+            const dfloat Dt = s_D[k][n];
+            r_div[k] += Dr * s_U[j][n];
+            r_div[k] += Ds * s_V[n][i];
+            r_div[n] += Dt * s_W[j][i];
+          }
         }
       }
 
@@ -104,17 +101,17 @@
     } //k loop
 
     //write out
-    for(int j=0;j<p_Nq;++j;@inner(1)){ 
-      for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
-	for(int k=0;k<p_Nq;++k){
-	  const dlong gid = e*p_Np*p_Nvgeo+ k*p_Nq*p_Nq + j*p_Nq +i;
-	  // const dfloat invJW = vgeo[gid + p_IJWID*p_Np];
+        for(int k = 0; k < p_Nq; ++k) {
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          // const dfloat invJW = vgeo[gid + p_IJWID*p_Np];
 
-	  const dlong id =e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-	  // divU[id] = -invJW*r_div[k];
-	  divU[id] = r_div[k];
-	}
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          // divU[id] = -invJW*r_div[k];
+          divU[id] = r_div[k];
+        }
       }
     }
   }
@@ -123,64 +120,63 @@
 // Adding slip BC to Pressure Rhs i.e. dp/dn = 0 =>dp/dn -n \dot F = -n \dot F for slip
 // or dp/dn -n\dot F = -g0/dt n \dot u^(n+1) for other BC's
 
-#define surfaceTermsTOMBO(sk,face,m, i, j)				\
-  {									\
+#define surfaceTermsTOMBO(sk,face,m, i, j)    \
+  {         \
     struct bcData bc;                                                   \
-    const dlong  idM = vmapM[sk];                                       \
+    const dlong idM = vmapM[sk];                                       \
                                                                         \
     bc.time = time;                                                     \
-    bc.nx  = sgeo[sk*p_Nsgeo+p_NXID];                                   \
-    bc.ny  = sgeo[sk*p_Nsgeo+p_NYID];                                   \
-    bc.nz  = sgeo[sk*p_Nsgeo+p_NZID];                                   \
+    bc.nx  = sgeo[sk * p_Nsgeo + p_NXID];                                   \
+    bc.ny  = sgeo[sk * p_Nsgeo + p_NYID];                                   \
+    bc.nz  = sgeo[sk * p_Nsgeo + p_NZID];                                   \
     bc.x   = x[idM];                                                    \
     bc.y   = y[idM];                                                    \
     bc.z   = z[idM];                                                    \
     bc.idM = idM;                                                       \
     bc.fieldOffset = offset;                                            \
-    const dfloat WSJ = sgeo[sk*p_Nsgeo+p_WSJID];                        \
+    const dfloat WSJ = sgeo[sk * p_Nsgeo + p_WSJID];                        \
                                                                         \
-    bc.uM  = U[idM+0*offset];                                           \
-    bc.vM  = U[idM+1*offset];                                           \
-    bc.wM  = U[idM+2*offset];                                           \
+    bc.uM  = U[idM + 0 * offset];                                           \
+    bc.vM  = U[idM + 1 * offset];                                           \
+    bc.wM  = U[idM + 2 * offset];                                           \
     bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                             \
     bc.wrk = W;                                                         \
-    bc.id  = EToBM[face+p_Nfaces*e];                                    \
-    const dlong bcType = EToB[face+p_Nfaces*e];                         \
-    if(bcType>0) {                                                      \
-      if(bcType==1){                                                    \
+    bc.id  = EToBM[face + p_Nfaces * e];                                    \
+    const dlong bcType = EToB[face + p_Nfaces * e];                         \
+    if(bcType > 0) {                                                      \
+      if(bcType == 1) {                                                    \
         bc.uP = 0.f;  bc.vP = 0.f; bc.wP = 0.f;                         \
-      }else if(bcType==2){                                              \
+      }else if(bcType == 2) {                                              \
         insVelocityDirichletConditions3D(&bc);                          \
-      }else if(bcType==4 || bcType==5 || bcType==6){                    \
+      }else if(bcType == 4 || bcType == 5 || bcType == 6) {                    \
         bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                    \
       }                                                                 \
     }                                                                   \
-    dfloat scale = coef;						\
-    if(bcType==4 || bcType==5 || bcType==6 ){			        \
-      scale = -1.f;							\
-    }									\
-    s_fluxDiv[m][j][i] = scale*WSJ*(bc.nx*bc.uP + bc.ny*bc.vP + bc.nz*bc.wP); \
+    dfloat scale = coef;      \
+    if(bcType == 4 || bcType == 5 || bcType == 6 ) {           \
+      scale = -1.f;       \
+    }         \
+    s_fluxDiv[m][j][i] = scale * WSJ * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP); \
   }
 
 @kernel void insDivergenceSurfaceTOMBOHex3D(const dlong Nelements,
-					    @restrict const  dfloat *  vgeo,
-					    @restrict const  dfloat *  sgeo,
-					    @restrict const  dlong  *  vmapM,
-					    @restrict const  int    *  EToBM,
-					    @restrict const  int    *  EToB,
-					    const dfloat time,
-					    const dfloat coef,
-					    @restrict const  dfloat *  x,
-					    @restrict const  dfloat *  y,
-					    @restrict const  dfloat *  z,
-					    const dlong offset,
-                                            @restrict const  dfloat *  W,
-                                            @restrict const  dfloat *  U,
-					    @restrict dfloat *  divU){
-
-
+                                            @restrict const dfloat*  vgeo,
+                                            @restrict const dfloat*  sgeo,
+                                            @restrict const dlong*  vmapM,
+                                            @restrict const int*  EToBM,
+                                            @restrict const int*  EToB,
+                                            const dfloat time,
+                                            const dfloat coef,
+                                            @restrict const dfloat*  x,
+                                            @restrict const dfloat*  y,
+                                            @restrict const dfloat*  z,
+                                            const dlong offset,
+                                            @restrict const dfloat*  W,
+                                            @restrict const dfloat*  U,
+                                            @restrict dfloat*  divU)
+{
   // for all elements
-  for(dlong e=0;e<Nelements;e++;@outer(0)){
+  for(dlong e = 0; e < Nelements; e++; @outer(0)) {
     // @shared storage for flux terms
     @shared dfloat s_fluxDiv[2][p_Nq][p_Nq];
 
@@ -188,15 +184,14 @@
 
     // for all face nodes of all elements
     // face 0 & 5
-    for(int j=0;j<p_Nq;++j;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
-        for(int k=0;k<p_Nq;++k){
+        for(int k = 0; k < p_Nq; ++k)
           r_div[k] = 0.;
-        }
 
-        const dlong sk0 = e*p_Nfp*p_Nfaces + 0*p_Nfp + i + j*p_Nq;
-        const dlong sk5 = e*p_Nfp*p_Nfaces + 5*p_Nfp + i + j*p_Nq;
+        const dlong sk0 = e * p_Nfp * p_Nfaces + 0 * p_Nfp + i + j * p_Nq;
+        const dlong sk5 = e * p_Nfp * p_Nfaces + 5 * p_Nfp + i + j * p_Nq;
 
         surfaceTermsTOMBO(sk0,0,0,i,j);
         surfaceTermsTOMBO(sk5,5,1,i,j);
@@ -206,89 +201,82 @@
     @barrier("local");
 
     // face 0 & 5
-    for(int j=0;j<p_Nq;++j;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int j = 0; j < p_Nq; ++j; @inner(1))
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         //face 0
         r_div[0] += s_fluxDiv[0][j][i];
 
         //face 5
-        r_div[p_Nq-1] += s_fluxDiv[1][j][i];
+        r_div[p_Nq - 1] += s_fluxDiv[1][j][i];
       }
-    }
 
-    @barrier("local");    
+    @barrier("local");
 
     // face 1 & 3
-    for(int k=0;k<p_Nq;++k;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
-        const dlong sk1 = e*p_Nfp*p_Nfaces + 1*p_Nfp + i + k*p_Nq;
-        const dlong sk3 = e*p_Nfp*p_Nfaces + 3*p_Nfp + i + k*p_Nq;
+    for(int k = 0; k < p_Nq; ++k; @inner(1))
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const dlong sk1 = e * p_Nfp * p_Nfaces + 1 * p_Nfp + i + k * p_Nq;
+        const dlong sk3 = e * p_Nfp * p_Nfaces + 3 * p_Nfp + i + k * p_Nq;
 
         surfaceTermsTOMBO(sk1,1,0,i,k);
         surfaceTermsTOMBO(sk3,3,1,i,k);
       }
-    }
 
     @barrier("local");
 
     // face 1 & 3
-    for(int j=0;j<p_Nq;++j;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
-        if (j==0) {//face 1
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        if (j == 0) {//face 1
 #pragma unroll p_Nq
-          for (int k=0;k<p_Nq;k++) {
+          for (int k = 0; k < p_Nq; k++)
             r_div[k] += s_fluxDiv[0][k][i];
-          }
         }
-        if (j==p_Nq-1) {//face 3
+        if (j == p_Nq - 1) {//face 3
 #pragma unroll p_Nq
-          for (int k=0;k<p_Nq;k++) {
+          for (int k = 0; k < p_Nq; k++)
             r_div[k] += s_fluxDiv[1][k][i];
-          }
         }
-      }
-    }
-
-    @barrier("local");    
-
-    // face 2 & 4
-    for(int k=0;k<p_Nq;++k;@inner(1)){
-      for(int j=0;j<p_Nq;++j;@inner(0)){
-        const dlong sk2 = e*p_Nfp*p_Nfaces + 2*p_Nfp + j + k*p_Nq;
-        const dlong sk4 = e*p_Nfp*p_Nfaces + 4*p_Nfp + j + k*p_Nq;
-
-        surfaceTermsTOMBO(sk2,2,0,j,k);
-        surfaceTermsTOMBO(sk4,4,1,j,k);
       }
     }
 
     @barrier("local");
 
     // face 2 & 4
-    for(int j=0;j<p_Nq;++j;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
-        if (i==p_Nq-1) {//face 2
+    for(int k = 0; k < p_Nq; ++k; @inner(1))
+      for(int j = 0; j < p_Nq; ++j; @inner(0)) {
+        const dlong sk2 = e * p_Nfp * p_Nfaces + 2 * p_Nfp + j + k * p_Nq;
+        const dlong sk4 = e * p_Nfp * p_Nfaces + 4 * p_Nfp + j + k * p_Nq;
+
+        surfaceTermsTOMBO(sk2,2,0,j,k);
+        surfaceTermsTOMBO(sk4,4,1,j,k);
+      }
+
+    @barrier("local");
+
+    // face 2 & 4
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        if (i == p_Nq - 1) {//face 2
 #pragma unroll p_Nq
-          for (int k=0;k<p_Nq;k++) {
+          for (int k = 0; k < p_Nq; k++)
             r_div[k] += s_fluxDiv[0][k][j];
-          }
         }
-        if (i==0) {//face 4
+        if (i == 0) {//face 4
 #pragma unroll p_Nq
-          for (int k=0;k<p_Nq;k++) {
+          for (int k = 0; k < p_Nq; k++)
             r_div[k] += s_fluxDiv[1][k][j];
-          }
         }
       }
     }
 
-    @barrier("local");   
+    @barrier("local");
 
-    for(int j=0;j<p_Nq;++j;@inner(1)){
-      for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
-        for(int k=0;k<p_Nq;++k){
-          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+        for(int k = 0; k < p_Nq; ++k) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
           divU[id] += r_div[k];
         }
@@ -296,4 +284,4 @@
     }
   }
 }
-#undef surfaceTermsTOMBO  
+#undef surfaceTermsTOMBO

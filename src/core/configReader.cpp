@@ -11,28 +11,30 @@
 #include "inipp.hpp"
 #include "nrs.hpp"
 
-#define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); }
-#define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); }
+#define UPPER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::toupper)); \
+}
+#define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); \
+}
 
 void configRead(MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
-  
+
   string install_dir;
   install_dir.assign(getenv("NEKRS_HOME"));
   string configFile = install_dir + "/nekrs.conf";
 
-  const char *ptr = realpath(configFile.c_str(), NULL);
+  const char* ptr = realpath(configFile.c_str(), NULL);
   if (!ptr) {
-     if (rank == 0) cout << "\nERROR: Cannot find " << configFile << "!\n";
-     ABORT(1);
+    if (rank == 0) cout << "\nERROR: Cannot find " << configFile << "!\n";
+    ABORT(1);
   }
 
-  char *rbuf;
-  long fsize; 
+  char* rbuf;
+  long fsize;
   if(rank == 0) {
-    FILE *f = fopen(configFile.c_str(), "rb");
+    FILE* f = fopen(configFile.c_str(), "rb");
     fseek(f, 0, SEEK_END);
     fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -40,9 +42,9 @@ void configRead(MPI_Comm comm)
     fread(rbuf, 1, fsize, f);
     fclose(f);
   }
-  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm); 
+  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
   if(rank != 0) rbuf = new char[fsize];
-  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm); 
+  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
   stringstream is;
   is.write(rbuf, fsize);
 

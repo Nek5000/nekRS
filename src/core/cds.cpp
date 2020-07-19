@@ -1,13 +1,13 @@
 #include "nrs.hpp"
 
-occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
+occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
 {
-
-  mesh_t *mesh; 
+  mesh_t* mesh;
   (is) ? mesh = cds->meshV : mesh = cds->mesh;
-  elliptic_t *solver = cds->solver[is];
+  elliptic_t* solver = cds->solver[is];
 
-  cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal*sizeof(dfloat), 0, is*cds->fieldOffset*sizeof(dfloat)); 
+  cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal * sizeof(dfloat), 0,
+                       is * cds->fieldOffset * sizeof(dfloat));
 
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_ggeo,
@@ -33,7 +33,8 @@ occa::memory cdsSolve(const int is, cds_t *cds, dfloat time)
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
 
   //copy current solution fields as initial guess
-  cds->o_wrk0.copyFrom(cds->o_S, cds->Ntotal*sizeof(dfloat), 0, is*cds->fieldOffset*sizeof(dfloat)); 
+  cds->o_wrk0.copyFrom(cds->o_S, cds->Ntotal * sizeof(dfloat), 0,
+                       is * cds->fieldOffset * sizeof(dfloat));
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk0);
 
   cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);

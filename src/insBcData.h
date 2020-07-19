@@ -1,26 +1,26 @@
 // used in boundary device functions
 struct bcData
 {
-   int idM;
-   int fieldOffset;
-   int id;
+  int idM;
+  int fieldOffset;
+  int id;
 
-   int scalarId;
+  int scalarId;
 
-   dfloat time;
-   dfloat x, y, z;
-   dfloat nx, ny, nz;
+  dfloat time;
+  dfloat x, y, z;
+  dfloat nx, ny, nz;
 
-   dfloat uM, vM, wM;
-   dfloat uP, vP, wP;
-   dfloat uxP, uyP, uzP;
-   dfloat vxP, vyP, vzP;
-   dfloat wxP, wyP, wzP;
+  dfloat uM, vM, wM;
+  dfloat uP, vP, wP;
+  dfloat uxP, uyP, uzP;
+  dfloat vxP, vyP, vzP;
+  dfloat wxP, wyP, wzP;
 
-   dfloat pM;
-   dfloat pP;
+  dfloat pM;
+  dfloat pP;
 
-   @globalPtr const dfloat* wrk;
+  @globalPtr const dfloat* wrk;
 
-   dfloat sM, sP, sF; 
+  dfloat sM, sP, sF;
 };

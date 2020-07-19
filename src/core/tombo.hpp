@@ -3,11 +3,10 @@
 
 #include "nekrs.hpp"
 
-namespace tombo {
-
-occa::memory pressureSolve(ins_t *ins, dfloat time);
-occa::memory velocitySolve(ins_t *ins, dfloat time);
-
+namespace tombo
+{
+occa::memory pressureSolve(ins_t* ins, dfloat time);
+occa::memory velocitySolve(ins_t* ins, dfloat time);
 }
 
 #endif
