@@ -464,7 +464,6 @@ ins_t *insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->pSolver->wrk = scratch + ins->ellipticWrkOffset; 
   ins->pSolver->o_wrk = o_scratch.slice(ins->ellipticWrkOffset*sizeof(dfloat)); 
   ins->pSolver->mesh = mesh;
-  ins->pSolver->options = ins->pOptions;
   ins->pSolver->dim = ins->dim;
   ins->pSolver->elementType = ins->elementType;
   ins->pSolver->BCType = (int*) calloc(nbrBIDs+1,sizeof(int));
@@ -477,27 +476,64 @@ ins_t *insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->pSolver->o_lambda = ins->o_ellipticCoeff;
   ins->pSolver->loffset = 0;
 
-  std::map<int,std::vector<int>> mg_level_lookup = 
-  {
-    {1,{1}},
-    {2,{2,1}},
-    {3,{3,1}},
-    {4,{4,2,1}},
-    {5,{5,3,1}},
-    {6,{6,3,1}},
-    {7,{7,3,1}},
-    {8,{8,5,1}},
-    {9,{9,5,1}},
-  };
-  if(ins->pOptions.compareArgs("MULTIGRID SMOOTHER","ASM") ||
-     ins->pOptions.compareArgs("MULTIGRID SMOOTHER","RAS")){
+  string p_mglevels;
+  if(ins->pOptions.getArgs("MULTIGRID COARSENING", p_mglevels)) {
+    std::vector<std::string> mgLevelList;
+    mgLevelList = serializeString(p_mglevels);
+    ins->pSolver->nLevels = mgLevelList.size();
+    ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
+    for(int i=0; i<ins->pSolver->nLevels; ++i) {
+      ins->pSolver->levels[i] = std::atoi(mgLevelList.at(i).c_str());
+    }
+    ins->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
+  } else if(ins->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","ASM") ||
+     ins->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","RAS")){
+
+    std::map<int,std::vector<int>> mg_level_lookup = 
+    {
+      {1,{1}},
+      {2,{2,1}},
+      {3,{3,1}},
+      {4,{4,2,1}},
+      {5,{5,3,1}},
+      {6,{6,3,1}},
+      {7,{7,3,1}},
+      {8,{8,5,1}},
+      {9,{9,5,1}},
+    };
+
     const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq-1);
     ins->pSolver->nLevels = levels.size();
     ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
     for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
       ins->pSolver->levels[i] = levels.at(i);
     }
+    ins->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
+  } else if(ins->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JAC")) {
+
+    std::map<int,std::vector<int>> mg_level_lookup = 
+    {
+      {1,{1}},
+      {2,{2,1}},
+      {3,{3,1}},
+      {4,{4,2,1}},
+      {5,{5,3,1}},
+      {6,{6,4,2,1}},
+      {7,{7,5,3,1}},
+      {8,{8,6,4,1}},
+      {9,{9,7,5,1}},
+    };
+
+    const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq-1);
+    ins->pSolver->nLevels = levels.size();
+    ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
+    for(int i = 0 ;  i < ins->pSolver->nLevels; ++i){
+      ins->pSolver->levels[i] = levels.at(i);
+    }
+    ins->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
   }
+
+  ins->pSolver->options = ins->pOptions;
   ellipticSolveSetup(ins->pSolver, kernelInfoP);
 
   // setup boundary mapping

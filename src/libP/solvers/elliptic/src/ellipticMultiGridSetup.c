@@ -61,11 +61,11 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t* precon
   int numMGLevels;
   int *levelDegree;
 
-  if (elliptic_->levels){
-    numMGLevels = elliptic_->nLevels;
+  if (options.compareArgs("MULTIGRID COARSENING","CUSTOM")) {
+    numMGLevels = elliptic->nLevels;
     levelDegree = (int*) calloc(numMGLevels,sizeof(int));
     for(int i = 0 ; i < numMGLevels; ++i){
-      levelDegree[i] = elliptic_->levels[i];
+      levelDegree[i] = elliptic->levels[i];
     }
   }
   else if (options.compareArgs("MULTIGRID COARSENING","ALLDEGREES")) {
