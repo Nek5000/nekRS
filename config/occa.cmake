@@ -16,6 +16,3 @@ else()
 endif()
 
 add_subdirectory(${OCCA_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${occa_content_BINARY_DIR})
-target_compile_options(libocca PRIVATE "SHELL:${OCCA_CXXFLAGS}")
-target_compile_options(occa PRIVATE "SHELL:${OCCA_CXXFLAGS}")
-
