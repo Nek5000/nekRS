@@ -113,14 +113,14 @@ c-----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
       subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
-     $                      npscal_in, p32) 
+     $                      npscal_in, p32, meshp_in) 
 
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in, iftmsh_in, ifflow_in, p32
+      integer comm_in, iftmsh_in, ifflow_in, meshp_in, p32
       character session_in*(*),path_in*(*)
 
       common /rdump/ ntdump
@@ -148,6 +148,7 @@ c-----------------------------------------------------------------------
       csize = sizeof(ctest)
 
       llelt = lelt
+      meshPartitioner = meshp_in
 
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
@@ -159,7 +160,7 @@ c-----------------------------------------------------------------------
       call initdat
       call files
 
-      call read_re2_hdr(ifbswap)
+      call read_re2_hdr(ifbswap, .true.)
 
       call setDefaultParam
       param(1)  = 1.0

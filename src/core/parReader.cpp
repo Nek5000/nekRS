@@ -258,6 +258,11 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     exit("GENERAL::filtering = explicit not supported!", EXIT_FAILURE);
   }
 
+  // MESH
+  string meshPartitioner; 
+  if(ini.extract("mesh", "partitioner", meshPartitioner))
+    options.setArgs("MESH PARTITIONER", meshPartitioner);
+
   // PROBLEMTYPE
   bool variableProperties = false;
   ini.extract("problemtype", "variableproperties", variableProperties);
