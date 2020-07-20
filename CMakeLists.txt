@@ -132,11 +132,12 @@ include(config/hypre.cmake)
 include(config/nek5000.cmake)
 
 ###############################################################################
-# Define gslib target, libP sources, and ogs sources
+# Definitions for libP, gslib, and blaslapack
 ###############################################################################
 
-include(config/libp_sources.cmake)
+include(config/libp.cmake)
 include(config/gslib.cmake)
+include(config/blaslapack.cmake)
 
 ###############################################################################
 # Build NekRS
@@ -167,7 +168,7 @@ set(SRC
     src/plugins/RANSktau.cpp
     ## To get fortran flags
     src/dummy.f
-    ${BLASLAPACK_LIBP_SOURCES}
+    ${BLASLAPACK_SOURCES}
     ${OGS_SOURCES}
     ${LIBP_SOURCES}
     ${PARALMOND_SOURCES}
