@@ -32,7 +32,6 @@ if (NOT nek5000_content_POPULATED)
   FetchContent_Populate(nek5000_content)
 endif()
 
-FetchContent_GetProperties(nek5000_content)
 set(NEK5000_SOURCE_DIR ${nek5000_content_SOURCE_DIR})
 
 # blasLapack
