@@ -15,6 +15,7 @@ void fparRCB_partMesh(int *part,double *vtx,int *nel,int *nv,
   *err=parRCB_partMesh(part,vtx,*nel,*nv,options,c);
 }
 
+// vtx = [nel,nv,ndim]
 int parRCB_partMesh(int *part,double *vtx,int nel,int nv,
   int *options,MPI_Comm comm)
 {
@@ -33,12 +34,18 @@ int parRCB_partMesh(int *part,double *vtx,int nel,int nv,
 
   int ndim=(nv==8)?3:2;
 
-  int e, n;
+  int e,n,v;
+
   for(e=0;e<nel;++e){
     data[e].id=nelg_start+(e+1);
     data[e].orig=rank;
-    for(int n=0;n<ndim;n++)
-      data[e].coord[n]=vtx[e*ndim+n];
+    data[e].coord[0]=data[e].coord[1]=data[e].coord[2]=0.0;
+    for(v=0;v<nv;v++){
+      for(n=0;n<ndim;n++)
+        data[e].coord[n]+=vtx[e*ndim*nv+v*ndim+n];
+    }
+    for(n=0;n<ndim;n++)
+      data[e].coord[n]/=8;
   }
   a.n=nel;
 
