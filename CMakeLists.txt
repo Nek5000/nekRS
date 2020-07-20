@@ -259,7 +259,7 @@ add_custom_target(uninstall
 # Make tarball
 #################################################################################
 
-set(DEST_DIR "nekRS")
+set(DEST_DIR "nekRS-v${PROJECT_VERSION}")
 set(TAR_NAME "nekRS-v${PROJECT_VERSION}.tar.gz")
 
 add_custom_target(tar
