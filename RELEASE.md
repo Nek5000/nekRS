@@ -1,11 +1,10 @@
-# Release v20.1-pre
+# Release v20.1
 
 ## What is new? 
 
 * Additive V-cycle with overlapping coarse grid solve
 * (Chebyshev accelerated) ASM and RAS smoother
 * Residual projection
-* RANS k-tau model
 * Runtime averages
 * Improved CPU performance
 * Various bug fixes 

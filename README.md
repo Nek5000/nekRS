@@ -27,14 +27,14 @@ Requirements:
 * POSIX compilant OS
 * GNU Fortran and C Compiler version 6.2 or later
 * MPI-3.1 or later
-* CMake version 3.1 or later
+* CMake version 3.11 or later
 * Login shell bash or zsh
 
 Download the latest release tarball
 
 ```sh
-wget https://github.com/Nek5000/nekRS/releases/download/v20.0/nekRS-v20.0.tar.gz 
-tar -zxf nekRS-v20.0.tar.gz 
+wget https://github.com/Nek5000/nekRS/releases/download/v20.1/nekRS-v20.1.tar.gz 
+tar -zxf nekRS-v20.1.tar.gz 
 ```
 
 
