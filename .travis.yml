@@ -34,7 +34,7 @@ jobs:
      script: cd $NEKRS_EXAMPLES/ethier && rm -rf .cache && nrspre ethier 1  
    - stage: test
      name: "ethier default"
-     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 1 
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 1 1 
    - stage: test
      name: "ethier subcycle"
      script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 2 

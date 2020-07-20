@@ -63,7 +63,7 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
              if (rank == 0)
                printf("relative error to target: vx=%g pr=%g s1=%g s2=%g pIter=%d\n", 
                       vxErr, prErr, s1Err, s2Err, pIterErr);
-             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 1) ? (PASS) : (FAIL); 
+             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 2) ? (PASS) : (FAIL); 
              break;
   }
 }
