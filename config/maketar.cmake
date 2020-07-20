@@ -31,6 +31,7 @@ file(COPY
 file(COPY
   ${NEK5000_SOURCE_DIR}/
   DESTINATION ${DEST_DIR}/3rd_party/nek5000
+  REGEX "${NEK5000_SOURCE_DIR}/examples/*" EXCLUDE
   PATTERN ".git" EXCLUDE
   REGEX ".*\\.o$" EXCLUDE
   REGEX ".*\\.a$" EXCLUDE)
