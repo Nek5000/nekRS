@@ -58,6 +58,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     dryRun(options, sizeTarget);
+    return;
   }
 
   MPI_Barrier(comm);

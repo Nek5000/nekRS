@@ -127,7 +127,7 @@ int main(int argc, char** argv)
   if (cmdOpt->buildOnly) {
     MPI_Finalize();
     fflush(stdout);
-    std::exit(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
   }
 
   const int outputStep = nekrs::outputStep();
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
 
   MPI_Finalize();
   fflush(stdout);
-  std::exit(EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }
 
 static cmdOptions* processCmdLineOptions(int argc, char** argv)
