@@ -2,7 +2,8 @@
 # unwanted files in this temporary directory
 file(REMOVE_RECURSE ${DEST_DIR})
 file(MAKE_DIRECTORY ${DEST_DIR})
-file(COPY 
+file(COPY
+  3rd_party
   makenrs 
   CMakeLists.txt
   LICENSE

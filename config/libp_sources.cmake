@@ -1,5 +1,4 @@
 set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/libP)
-set(OGS_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/gatherScatter)
 set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/libs/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
 set(BLASLAPACK_LIBP_DIR ${LIBP_SOURCE_DIR}/3rdParty/BlasLapack)
@@ -153,31 +152,6 @@ set(BLASLAPACK_LIBP_SOURCES
         ${BLASLAPACK_LIBP_DIR}/zswap.f
         ${BLASLAPACK_LIBP_DIR}/ztrsm.f
         ${BLASLAPACK_LIBP_DIR}/ztrsv.f)
-
-set(OGS_SOURCES
-        ${OGS_SOURCE_DIR}/src/ogsGather.cpp
-        ${OGS_SOURCE_DIR}/src/ogsGatherMany.cpp
-        ${OGS_SOURCE_DIR}/src/ogsGatherScatter.cpp
-        ${OGS_SOURCE_DIR}/src/ogsGatherScatterMany.cpp
-        ${OGS_SOURCE_DIR}/src/ogsGatherScatterVec.cpp
-        ${OGS_SOURCE_DIR}/src/ogsGatherVec.cpp
-        ${OGS_SOURCE_DIR}/src/ogsHostGather.c
-        ${OGS_SOURCE_DIR}/src/ogsHostGatherMany.c
-        ${OGS_SOURCE_DIR}/src/ogsHostGatherScatter.c
-        ${OGS_SOURCE_DIR}/src/ogsHostGatherScatterMany.c
-        ${OGS_SOURCE_DIR}/src/ogsHostGatherScatterVec.c
-        ${OGS_SOURCE_DIR}/src/ogsHostGatherVec.c
-        ${OGS_SOURCE_DIR}/src/ogsHostScatter.c
-        ${OGS_SOURCE_DIR}/src/ogsHostScatterMany.c
-        ${OGS_SOURCE_DIR}/src/ogsHostScatterVec.c
-        ${OGS_SOURCE_DIR}/src/ogsHostSetup.c
-        ${OGS_SOURCE_DIR}/src/ogsKernels.cpp
-        ${OGS_SOURCE_DIR}/src/ogsMappedAlloc.cpp
-        ${OGS_SOURCE_DIR}/src/ogsScatter.cpp
-        ${OGS_SOURCE_DIR}/src/ogsScatterMany.cpp
-        ${OGS_SOURCE_DIR}/src/ogsScatterVec.cpp
-        ${OGS_SOURCE_DIR}/src/ogsSetup.cpp
-        ${OGS_SOURCE_DIR}/src/oogs.cpp)
 
 set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/hash.c
@@ -333,13 +307,6 @@ install(DIRECTORY
   ${LIBP_SOURCE_DIR}/okl 
   DESTINATION libparanumal
   FILES_MATCHING REGEX ${file_pattern})
-
-install(DIRECTORY
-  ${OGS_SOURCE_DIR}/include 
-  ${OGS_SOURCE_DIR}/okl 
-  DESTINATION gatherScatter
-  FILES_MATCHING REGEX ${file_pattern})
-install(FILES ${OGS_SOURCE_DIR}/ogs.hpp DESTINATION gatherScatter)
 
 install(DIRECTORY
   ${PARALMOND_SOURCE_DIR}/include
