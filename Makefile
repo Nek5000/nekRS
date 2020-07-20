@@ -3,37 +3,32 @@ PAUL ?= 1
 CC ?= mpicc
 CFLAGS ?= -O2
 
-SRCROOT=.
+MKFILEPATH = $(abspath $(lastword $(MAKEFILE_LIST)))
+SRCROOT_ ?= $(patsubst %/,%,$(dir $(MKFILEPATH)))
+SRCROOT=$(realpath $(SRCROOT_))
+
 GSLIBDIR=$(GSLIBPATH)
 
-SRCDIR  =$(SRCROOT)/src
-BUILDDIR=$(SRCROOT)/build
-TESTDIR =$(SRCROOT)/example
+SRCDIR    =$(SRCROOT)/src
+SORTDIR   =$(SRCROOT)/src/sort
+BUILDDIR  =$(SRCROOT)/build
+EXAMPLEDIR=$(SRCROOT)/example
+TESTDIR   =$(SRCROOT)/tests
 
 TARGET=parRSB
-TESTS=$(TESTDIR)/example
-LIB=src/lib$(TARGET).a
+LIB=$(BUILDDIR)/lib/lib$(TARGET).a
+EXAMPLE=$(EXAMPLEDIR)/example
 
-INCFLAGS=-I$(SRCDIR) -I$(GSLIBDIR)/include
+INCFLAGS=-I$(SRCDIR) -I$(SORTDIR) -I$(GSLIBDIR)/include
+LDFLAGS:=-L$(BUILDDIR)/lib -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm
 
-TESTLDFLAGS:=-L$(BUILDDIR)/lib -l$(TARGET) -L $(GSLIBDIR)/lib -lgs -lm $(LDFLAGS)
+SRCS    =$(wildcard $(SRCDIR)/*.c)
+SORTSRCS=$(wildcard $(SORTDIR)/*.c)
+TESTSRCS=$(wildcard $(TESTDIR)/*.c)
 
-ifneq (,$(strip $(DESTDIR)))
-INSTALL_ROOT = $(DESTDIR)
-else
-INSTALL_ROOT = $(SRCROOT)/build
-endif
-
-CSRCS:= $(SRCDIR)/genmap.c \
-  	$(SRCDIR)/genmap-vector.c $(SRCDIR)/genmap-handle.c $(SRCDIR)/genmap-comm.c \
-	$(SRCDIR)/genmap-eigen.c $(SRCDIR)/genmap-laplacian.c $(SRCDIR)/genmap-lanczos.c \
-	$(SRCDIR)/genmap-rsb.c \
-	$(SRCDIR)/parrsb-binsort.c \
-	$(SRCDIR)/genmap-chelpers.c \
-	$(SRCDIR)/parRSB.c 
-COBJS:=$(CSRCS:.c=.o)
-
-SRCOBJS:=$(COBJS)
+SRCOBJS =$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SRCS))
+SRCOBJS+=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SORTSRCS))
+TESTOBJS=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(TESTSRCS))
 
 PP=
 
@@ -45,50 +40,58 @@ ifneq ($(PAUL),0)
   PP += -DGENMAP_PAUL
 endif
 
+INSTALLDIR=
+ifneq (,$(strip $(DESTDIR)))
+	INSTALLDIR=$(realpath $(DESTDIR))
+endif
+
 .PHONY: default
 default: check lib install
 
 .PHONY: all
-all: check lib tests install
+all: check lib tests example install
 
 .PHONY: install
 install: lib
-	@mkdir -p $(INSTALL_ROOT)/lib 2>/dev/null
-	@cp -v $(LIB) $(INSTALL_ROOT)/lib 2>/dev/null
-	@mkdir -p $(INSTALL_ROOT)/include 2>/dev/null
-	@cp $(SRCDIR)/parRSB.h $(INSTALL_ROOT)/include 2>/dev/null
+ifneq ($(INSTALLDIR),)
+	@mkdir -p $(INSTALLDIR)/lib 2>/dev/null
+	@cp -v $(LIB) $(INSTALLDIR)/lib 2>/dev/null
+	@mkdir -p $(INSTALLDIR)/include 2>/dev/null
+	@cp $(SRCDIR)/*.h $(SORTDIR)/*.h $(INSTALLDIR)/include 2>/dev/null
+endif
 
-
-.PHONY: $(TARGET)
+.PHONY: lib
 lib: $(SRCOBJS)
+	@mkdir -p $(BUILDDIR)/lib
 	@$(AR) cr $(LIB) $(SRCOBJS)
 	@ranlib $(LIB)
 
 .PHONY: check
 check: 
 ifeq ($(GSLIBPATH),)
-	$(error Specify GSLIBPATH=<path to gslib>/build)
+  $(error Specify GSLIBPATH=<path to gslib>/build)
 endif
 
-$(COBJS): %.o: %.c
+$(BUILDDIR)/src/%.o: $(SRCROOT)/src/%.c
 	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) -c $< -o $@
 
-.PHONY: tests
-tests: $(TESTS)
+.PHONY: examples
+examples: $(EXAMPLE)
 
-$(TESTS): lib install
-	$(CC) $(CFLAGS) -I$(GSLIBDIR)/include -I$(BUILDDIR)/include $@.c -o $@ $(TESTLDFLAGS)
+$(EXAMPLE): install
+	$(CC) $(CFLAGS) -I$(GSLIBDIR)/include -I$(SRCDIR) -I$(SORTDIR) $@.c -o $@ $(LDFLAGS)
+
+.PHONY: tests
+tests: install $(TESTOBJS)
+	@cp $(TESTDIR)/run-tests.sh $(BUILDDIR)/tests/
+	@cd $(BUILDDIR)/tests && ./run-tests.sh
+
+$(BUILDDIR)/tests/%: $(SRCROOT)/tests/%.c
+	$(CC) $(CFLAGS) -I$(GSLIBDIR)/include -I$(SRCDIR) -I$(SORTDIR) $< -o $@ $(LDFLAGS)
 
 .PHONY: clean
 clean:
-	@rm -f $(SRCOBJS) $(LIB) $(TESTS) $(TESTS).o
-
-.PHONY: astyle
-astyle:
-	astyle --style=google --indent=spaces=2 --max-code-length=80 \
-	    --keep-one-line-statements --keep-one-line-blocks --lineend=linux \
-            --suffix=none --preserve-date --formatted --pad-oper \
-	    --unpad-paren example/*.[ch] src/*.[ch]
+	@rm -rf $(BUILDDIR) $(EXAMPLE) $(EXAMPLE).o
 
 print-%:
 	$(info [ variable name]: $*)
@@ -97,3 +100,6 @@ print-%:
 	$(info [expanded value]: $($*))
 	$(info)
 	@true
+
+$(shell mkdir -p $(BUILDDIR)/src/sort)
+$(shell mkdir -p $(BUILDDIR)/tests)

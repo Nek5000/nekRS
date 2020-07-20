@@ -1,3 +1,8 @@
+#ifndef _CONREADER_H_
+#define _CONREADER_H_
+
+#include <math.h>
+
 struct con {
   int nv;
   int nelg;
@@ -31,7 +36,7 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
 
   float byte_test;
   MPI_File_read_all(fh, &byte_test, 4, MPI_BYTE, MPI_STATUS_IGNORE);
-  if(abs(byte_test - 6.543210) > 1e-7) {
+  if(fabs(byte_test - 6.543210) > 1e-7) {
     if(myid == 0) printf("ERROR byte_test failed! %f\n", byte_test);
     return 1;
   }
@@ -69,3 +74,5 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
   free(buf);
   return 0;
 }
+
+#endif

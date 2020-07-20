@@ -17,7 +17,6 @@ int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
   h_->dbgLevel = 0;
   h_->printStat = 0;
 
-  GenmapMalloc(1,&h_->histogram);
   return 0;
 }
 
@@ -28,8 +27,6 @@ int GenmapFinalize(GenmapHandle h) {
     GenmapDestroyComm(h->local);
 
   array_free(&(h->elementArray));
-
-  GenmapFree(h->histogram);
 
   GenmapFree(h);
 

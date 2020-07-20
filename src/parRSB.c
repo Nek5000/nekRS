@@ -127,7 +127,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     }
 
     if(id == 0 && h->dbgLevel > 0)
-      printf("\nfinished in %lfs\n", comm_time() - time0);
+      printf(" finished in %lfs\n", comm_time() - time0);
 
     GenmapFinalize(h);
     fflush(stdout);

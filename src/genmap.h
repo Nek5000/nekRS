@@ -26,7 +26,6 @@ typedef struct GenmapComm_private *GenmapComm;
 typedef struct GenmapHandle_private *GenmapHandle;
 typedef struct GenmapVector_private *GenmapVector;
 typedef struct GenmapElement_private *GenmapElements;
-typedef struct parRSBHistogram_private *parRSBHistogram;
 
 int GenmapInit(GenmapHandle *h, GenmapCommExternal ce);
 int GenmapFinalize(GenmapHandle h);
