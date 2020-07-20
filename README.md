@@ -25,7 +25,7 @@ Note, the code is an early prototype so it's very likely that you run into undis
 
 Requirements:
 * POSIX compilant OS
-* GNU Fortran and C Compiler version 6.2 or later
+* GNU compiler collection version 6.2 or later
 * MPI-3.1 or later
 * CMake version 3.11 or later
 * Login shell bash or zsh
