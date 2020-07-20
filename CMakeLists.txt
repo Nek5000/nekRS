@@ -27,7 +27,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherSc
 set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING 
   "Preprocessor macros for Nek5000")
 
-set(NEKINTERFACEDIR "${CMAKE_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
+set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
   "Directory for Nek5000 inteface source files")
 
 set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING 
@@ -38,6 +38,7 @@ set(OCCA_CXXFLAGS "" CACHE STRING "C++ Flags for OCCA")
 set(OCCA_TAG "main" CACHE STRING "Git branch, tag, or hash for cloning OCCA")
 set(NEK5000_TAG "master" CACHE STRING "Git branch, tag, or hash for cloning Nek5000")
 set(HYPRE_VER "2.18.2" CACHE STRING "Version number of HYPRE to download")
+set(USE_OCCA_MEM_BYTE_ALIGN "64" CACHE STRING "Memory allignment for OCCA kernels")
 
 # From OCCA's CMakeLists. All default to ON, but are verified in config tests
 #   - ENABLE_OPENMP
@@ -142,6 +143,8 @@ include(config/blaslapack.cmake)
 ###############################################################################
 # Build NekRS
 ###############################################################################
+
+add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
 
 set(SRC 
     src/nekrs.cpp
