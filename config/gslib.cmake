@@ -1,6 +1,6 @@
-set(LIBP_GS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gslib/)
-set(LIBP_GS_LIB 3rd_party/gslib/libgs.a)
-set(OGS_SOURCE_DIR ${LIBP_GS_SOURCE_DIR}/ogs)
+set(GS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gslib/)
+set(GS_LIB 3rd_party/gslib/libgs.a)
+set(OGS_SOURCE_DIR ${GS_SOURCE_DIR}/ogs)
 
 # =============================================================
 # Build gslib
@@ -9,23 +9,23 @@ set(OGS_SOURCE_DIR ${LIBP_GS_SOURCE_DIR}/ogs)
 # Copy source into CMake build dir.  We do this since gslib is built in-source,
 # and we want to keep source tree clean.
 FetchContent_Declare(
-    libp_gs_content
+    gs_content
     URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gslib
 )
-FetchContent_GetProperties(libp_gs_content)
-if (NOT libp_gs_content)
-    FetchContent_Populate(libp_gs_content)
+FetchContent_GetProperties(gs_content)
+if (NOT gs_content)
+    FetchContent_Populate(gs_content)
 endif()
-set(LIBP_GS_SOURCE_DIR ${libp_gs_content_SOURCE_DIR})
+set(GS_SOURCE_DIR ${gs_content_SOURCE_DIR})
 
 # Build gslib
 ExternalProject_Add(
-        libp_gs_build
-        SOURCE_DIR ${LIBP_GS_SOURCE_DIR}
+        gs_build
+        SOURCE_DIR ${GS_SOURCE_DIR}
         BUILD_IN_SOURCE on
         CONFIGURE_COMMAND ""
         BUILD_COMMAND 
-          ${CMAKE_CURRENT_LIST_DIR}/run_libp_gs_install.sh 
+          ${CMAKE_CURRENT_LIST_DIR}/run_gs_install.sh
           "CC=${CMAKE_C_COMPILER}"
           "CFLAGS=-fPIC ${CMAKE_C_FLAGS}"
         INSTALL_COMMAND ""
@@ -33,10 +33,10 @@ ExternalProject_Add(
 )
 
 # Target for libraries
-add_library(libp_gs STATIC IMPORTED)
-set_target_properties(libp_gs PROPERTIES IMPORTED_LOCATION ${LIBP_GS_SOURCE_DIR}/lib/libgs.a)
-target_include_directories(libp_gs INTERFACE ${LIBP_GS_SOURCE_DIR}/src)
-add_dependencies(libp_gs libp_gs_build)
+add_library(gs STATIC IMPORTED)
+set_target_properties(gs PROPERTIES IMPORTED_LOCATION ${GS_SOURCE_DIR}/lib/libgs.a)
+target_include_directories(gs INTERFACE ${GS_SOURCE_DIR}/src)
+add_dependencies(gs gs_build)
 
 # =============================================================
 # OGS Sources
