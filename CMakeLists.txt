@@ -176,7 +176,7 @@ set(SRC
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${LIBP_GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     ${LIBP_DEFINES}
@@ -211,7 +211,7 @@ target_include_directories(nekrs-lib
   ${HYPRE_SOURCE_DIR}/src/krylov
   ${HYPRE_BINARY_DIR})
 
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE libp_gs HYPRE)
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)

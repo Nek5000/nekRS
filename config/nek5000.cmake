@@ -43,32 +43,32 @@ set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 # gslib
 # =====
 
-set(GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib)
-set(GS_TAR ${GS_DIR}/v${GS_VERSION}.tar.gz)
+set(NEK5000_GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib)
+set(NEK5000_GS_TAR ${NEK5000_GS_DIR}/v${NEK5000_GS_VERSION}.tar.gz)
 
-if (EXISTS ${GS_TAR})
-  message(STATUS "Using gslib source from ${GS_TAR}")
+if (EXISTS ${NEK5000_GS_TAR})
+  message(STATUS "Using gslib source from ${NEK5000_GS_TAR}")
 else()
   FetchContent_Declare(
-    gs_content
-    URL http://github.com/gslib/gslib/archive/v${GS_VERSION}.tar.gz
-    URL_HASH SHA1=${GS_HASH}
-    DOWNLOAD_DIR ${GS_DIR}
+    nek5000_gs_content
+    URL http://github.com/gslib/gslib/archive/v${NEK5000_GS_VERSION}.tar.gz
+    URL_HASH SHA1=${NEK5000_GS_HASH}
+    DOWNLOAD_DIR ${NEK5000_GS_DIR}
     DOWNLOAD_NO_EXTRACT on
   )
-  if (NOT gs_content_POPULATED)
-    FetchContent_Populate(gs_content)
+  if (NOT nek5000_gs_content_POPULATED)
+    FetchContent_Populate(nek5000_gs_content)
   endif()
 endif()
 
-set(GS_SOURCE_DIR ${GS_DIR}/gslib/src)
-set(GS_INCLUDE_DIR ${GS_DIR}/include)
-set(GS_LIB_DIR ${GS_DIR}/lib)
+set(NEK5000_GS_SOURCE_DIR ${NEK5000_GS_DIR}/gslib/src)
+set(NEK5000_GS_INCLUDE_DIR ${NEK5000_GS_DIR}/include)
+set(NEK5000_GS_LIB_DIR ${NEK5000_GS_DIR}/lib)
 
 # These directories need to exist for target_include_directories
 # but do not need to be populated with headers at configure time
-file(MAKE_DIRECTORY ${GS_SOURCE_DIR})
-file(MAKE_DIRECTORY ${GS_INCLUDE_DIR})
+file(MAKE_DIRECTORY ${NEK5000_GS_SOURCE_DIR})
+file(MAKE_DIRECTORY ${NEK5000_GS_INCLUDE_DIR})
 
 # parRSB
 # ======
@@ -120,11 +120,11 @@ ExternalProject_Add(
   USES_TERMINAL_BUILD on
 )
 
-add_library(gs STATIC IMPORTED)
-set_target_properties(gs PROPERTIES IMPORTED_LOCATION ${GS_LIB_DIR}/libgs.a)
-target_include_directories(gs INTERFACE ${GS_SOURCE_DIR} ${GS_INCLUDE_DIR})
+add_library(nek5000_gs STATIC IMPORTED)
+set_target_properties(nek5000_gs PROPERTIES IMPORTED_LOCATION ${NEK5000_GS_LIB_DIR}/libgs.a)
+target_include_directories(nek5000_gs INTERFACE ${NEK5000_GS_SOURCE_DIR} ${NEK5000_GS_INCLUDE_DIR})
 
-add_dependencies(gs nek5000_deps)
+add_dependencies(nek5000_gs nek5000_deps)
 
 add_library(blasLapack STATIC IMPORTED)
 set_target_properties(blasLapack PROPERTIES IMPORTED_LOCATION ${BLASLAPACK_DIR}/libblasLapack.a)
@@ -147,8 +147,8 @@ install(DIRECTORY ${NEK5000_SOURCE_DIR}/core DESTINATION nek5000
 
 install(PROGRAMS ${NEK5000_SOURCE_DIR}/bin/nekconfig DESTINATION nek5000/bin)
 
-install(FILES ${GS_LIB_DIR}/libgs.a DESTINATION nek5000/3rd_party/gslib/lib)
-install(DIRECTORY ${GS_INCLUDE_DIR} DESTINATION nek5000/3rd_party/gslib)
+install(FILES ${NEK5000_GS_LIB_DIR}/libgs.a DESTINATION nek5000/3rd_party/gslib/lib)
+install(DIRECTORY ${NEK5000_GS_INCLUDE_DIR} DESTINATION nek5000/3rd_party/gslib)
 
 install(FILES ${BLASLAPACK_DIR}/libblasLapack.a DESTINATION nek5000/3rd_party/blasLapack)
 
