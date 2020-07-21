@@ -216,21 +216,19 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic, const dlong _maxNu
   Ntotal = elliptic.mesh->Np*elliptic.mesh->Nelements;
   timestep = 0;
   const dlong Nblock = elliptic.Nblock;
-  const dlong m = maxNumVecsProjection;
   numVecsProjection = 0;
   initialized = false;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
-  alpha.resize(m);
-  work.resize(m);
-  o_alpha = elliptic.mesh->device.malloc<dfloat>(m);
+  alpha.resize(maxNumVecsProjection);
+  work.resize(maxNumVecsProjection);
+  o_alpha = elliptic.mesh->device.malloc<dfloat>(maxNumVecsProjection);
   o_xbar = elliptic.mesh->device.malloc<dfloat>(Ntotal);
-  o_xx = elliptic.mesh->device.malloc<dfloat>(Ntotal*m);
-  o_bb = elliptic.mesh->device.malloc<dfloat>(Ntotal*m);
+  o_xx = elliptic.mesh->device.malloc<dfloat>(Ntotal*maxNumVecsProjection);
+  o_bb = elliptic.mesh->device.malloc<dfloat>(Ntotal*maxNumVecsProjection);
 
   useWeightedFormulation = true;
   char fileName[BUFSIZ], kernelName[BUFSIZ];
   for (int r=0;r<2;r++){
-    MPI_Barrier(elliptic.mesh->comm);
     if ((r==0 && elliptic.mesh->rank==0) || (r==1 && elliptic.mesh->rank>0)) {
       occa::properties properties;
       properties += elliptic.mesh->device.properties();
