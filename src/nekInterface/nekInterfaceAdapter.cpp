@@ -448,7 +448,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   if (retval) goto err;
 
   // Copy Nek5000/core from install_dir to cache_dir
-  sprintf(buf, "cp -pr %s %s", nek5000_dir, cache_dir);
+  sprintf(buf, "cp -pr %s %s", nek5000_dir, cache_dir); 
   retval = system(buf);
   if (retval) goto err;
 
@@ -456,13 +456,13 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../ \"");
   sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
 
-  sprintf(buf, "cd %s && FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
+  sprintf(buf, "cd %s && yes n | FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
           "CFLAGS=%s PPLIST=\"${NEKRS_NEK5000_PPLIST}\" NEK_SOURCE_ROOT=%s/nek5000 "
-          "%s/nek5000/bin/nekconfig %s >>build.log 2>&1", cache_dir, fflags,
+          "%s/nek5000/bin/nekconfig %s >build.log 2>&1", cache_dir, fflags,
           cflags, cache_dir, cache_dir, casename);
   retval = system(buf);
-  if (retval) goto err;
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -f %s/Makefile nekInterface "
+  //if (retval) goto err;
+  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile nekInterface "
           ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
   retval = system(buf);
   if (retval) goto err;
