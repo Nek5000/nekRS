@@ -239,8 +239,8 @@ install(TARGETS nekrs-lib nekrs-bin
 )
 
 # Trailing slash prevents parent directory from being copied
-install(DIRECTORY examples/ DESTINATION examples)
-install(DIRECTORY scripts/ DESTINATION bin 
+install(SCRIPT config/install_examples.cmake)
+install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
