@@ -33,7 +33,8 @@ set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH
 set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING 
   "Preprocessor macros for libparanumal")
 
-set(OCCA_CXXFLAGS "" CACHE STRING "C++ Flags for OCCA")
+set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
+set(OCCA_CXXFLAGS "" CACHE STRING "C++ flags for OCCA JIT compile")
 
 set(OCCA_TAG "main" CACHE STRING "Git branch, tag, or hash for cloning OCCA")
 set(NEK5000_TAG "master" CACHE STRING "Git branch, tag, or hash for cloning Nek5000")
