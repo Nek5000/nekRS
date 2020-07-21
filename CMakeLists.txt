@@ -239,13 +239,17 @@ install(TARGETS nekrs-lib nekrs-bin
 )
 
 # Trailing slash prevents parent directory from being copied
-install(SCRIPT config/install_examples.cmake)
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
+
+# Examples will follow a different policy -- only copy if source tree is newer than install tree
+file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
+configure_file(config/examples_manifest.cmake.in examples_manifest.cmake @ONLY)
+install(SCRIPT config/install_examples.cmake)
 
 #################################################################################
 # Uninstall
