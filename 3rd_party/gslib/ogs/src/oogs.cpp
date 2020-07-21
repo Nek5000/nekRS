@@ -224,6 +224,7 @@ oogs_t* oogs::setup(dlong N, hlong *ids, const char *type, MPI_Comm &comm,
       if(elapsed < elapsedLast) fastestMode = gs->mode;
       elapsedLast = elapsed;
     }
+    MPI_Bcast(&fastestMode, 1, MPI_INT, 0, comm);
     gs->mode = fastestMode;
     o_q.free();
   } else {

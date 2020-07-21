@@ -29,6 +29,8 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
   mesh_t* mesh = ins->mesh;
   cds_t* cds = ins->cds;
 
+  mesh->device.finish();
+  MPI_Barrier(mesh->comm);
   double tStart = MPI_Wtime();
 
   ins->dt = dt;
@@ -68,6 +70,9 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
 
   const dfloat cfl = computeCFL(ins, time + dt, tstep);
 
+  mesh->device.finish();
+  MPI_Barrier(mesh->comm);
+  const double tElapsedStep = MPI_Wtime() - tStart;
   if(mesh->rank == 0) {
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + dt, dt, cfl);
@@ -82,7 +87,6 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
     for(int is = 0; is < ins->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
 
-    const double tElapsedStep = MPI_Wtime() - tStart;
     tElapsed += tElapsedStep;
     printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
   }
