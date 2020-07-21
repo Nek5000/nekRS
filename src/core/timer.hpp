@@ -27,7 +27,7 @@ double hostElapsed(const std::string tag);
 double deviceElapsed(const std::string tag);
 int count(const std::string tag);
 double query(const std::string tag,std::string metric);
-void printStat();
+void printRunStat();
 }
 
 #endif
