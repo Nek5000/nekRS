@@ -208,7 +208,7 @@ double query(const std::string tag,const std::string metric)
   return NEKRS_TIMER_INVALID_METRIC;
 }
 
-void printStat()
+void printRunStat()
 {
   int rank;
   MPI_Comm_rank(comm_, &rank);

@@ -131,6 +131,8 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
   }
 
+
+  const int runTimeStatFreq = 500;
   const int outputStep = nekrs::outputStep();
   const int NtimeSteps = nekrs::NtimeSteps();
   const double startTime = nekrs::startTime();
@@ -155,11 +157,13 @@ int main(int argc, char** argv)
       nekrs::nekOutfld();
     }
 
+    if (tStep && tStep % runTimeStatFreq == 0) nekrs::printRuntimeStatistics();
+
     ++tStep;
   }
   MPI_Pcontrol(0);
 
-  nekrs::printRuntimeStatistics();
+  if ((tStep-1) % runTimeStatFreq != 0) nekrs::printRuntimeStatistics();
 
   if(rank == 0) std::cout << "\nEnd." << "\n";
 

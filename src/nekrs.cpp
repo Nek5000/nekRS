@@ -204,7 +204,7 @@ void* nekPtr(const char* id)
 
 void printRuntimeStatistics()
 {
-  timer::printStat();
+  timer::printRunStat();
 }
 } // namespace
 
