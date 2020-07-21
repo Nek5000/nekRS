@@ -817,7 +817,6 @@ void MGLevel::build(
 
   char fileName[BUFSIZ], kernelName[BUFSIZ];
   for (int r=0;r<2;r++){
-    MPI_Barrier(mesh->comm);
     if ((r==0 && mesh->rank==0) || (r==1 && mesh->rank>0)) {
       occa::properties properties;
       properties += mesh->device.properties();
