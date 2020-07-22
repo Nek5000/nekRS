@@ -12,7 +12,7 @@
 : ${NEKRS_CXXFLAGS:="-g -O2"}
 : ${NEKRS_DEBUG:=0}
 
-: ${OCCA_CXX:="gcc"}
+: ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 
 ###############################################################################
