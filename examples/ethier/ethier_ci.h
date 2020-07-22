@@ -44,26 +44,27 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_userchk();
 
   double *err = nekData.cbscnrs;
-  double vxErr, prErr, s1Err, s2Err;
-  int pIterErr;
 
-  vxErr = abs((err[0] - 1.19E-04)/err[0]);
-  prErr = abs((err[1] - 6.49E-04)/err[1]);
-  s1Err = abs((err[2] - 1.01E-04)/err[2]);
-  s2Err = abs((err[3] - 1.01E-04)/err[3]);
+  const double vxErr = abs((err[0] - 1.19E-04)/err[0]);
+  const double prErr = abs((err[1] - 6.49E-04)/err[1]);
+  const double s1Err = abs((err[2] - 1.01E-04)/err[2]);
+  const double s2Err = abs((err[3] - 1.01E-04)/err[3]);
+  
+  const int pIterErr = abs(ins->NiterP - 7);
+  int velIterErr;
 
   switch (ciMode) {
-    case 1 : pIterErr = abs(ins->NiterP - 7); 
-             if (rank == 0)
-               printf("relative error to target: vx=%g pr=%g s1=%g s2=%g pIter=%d\n", 
-                      vxErr, prErr, s1Err, s2Err, pIterErr);
-             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 1) ? (PASS) : (FAIL); 
+    case 1 : velIterErr = abs(ins->NiterU - 5);
              break;
-    case  2: pIterErr = abs(ins->NiterP - 7); 
-             if (rank == 0)
-               printf("relative error to target: vx=%g pr=%g s1=%g s2=%g pIter=%d\n", 
-                      vxErr, prErr, s1Err, s2Err, pIterErr);
-             (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && pIterErr <= 2) ? (PASS) : (FAIL); 
+    case  2: velIterErr = abs(ins->NiterU - 6);
              break;
   }
+
+  if (rank == 0)
+    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d\n", 
+           vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr);
+
+
+  (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
+  velIterErr <= 1 && pIterErr <= 2) ? (PASS) : (FAIL); 
 }
