@@ -51,9 +51,9 @@ SOFTWARE.
 
        
     // prefetch lamda 0
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id    = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
            const dlong base = e*p_Nggeo*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
@@ -78,9 +78,9 @@ SOFTWARE.
     @barrier("local");
 
     // loop over slabs
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id          = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
           dfloat r_q              = 1.0f;
           const int if_not_masked = (mapB[id] !=1 ) ? 1:0;  
@@ -149,9 +149,9 @@ SOFTWARE.
     @exclusive int r_masked; 
     
     // prefetch lamda 0
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id    = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
            const dlong base = e*p_Nggeo*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
@@ -175,9 +175,9 @@ SOFTWARE.
     @barrier("local");
 
     // loop over slabs
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id   = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
           if(r_masked){
           r_q = 0.f; // first make it zero
@@ -239,9 +239,9 @@ SOFTWARE.
     @shared dfloat s_Gss[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_Gtt[p_Nq][p_Nq][p_Nq];
     // prefetch lamda 0
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id    = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
            const dlong base = e*p_Nggeo*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
@@ -263,9 +263,9 @@ SOFTWARE.
     @barrier("local");
 
     // loop over slabs
-    for(int k=0;k<p_Nq;++k;@inner(2)){
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
+    for(int k=0;k<p_Nq;++k;@inner(1)){
+      for(int j=0;j<p_Nq;++j;@inner(0)){
+        for(int i=0;i<p_Nq;++i){
           const dlong id          = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
           dfloat r_q              = 1.0f;
 
