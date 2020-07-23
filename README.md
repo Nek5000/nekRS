@@ -44,13 +44,12 @@ or clone our GitHub repository:
 git clone https://github.com/Nek5000/nekRS.git
 ```
 
-To install the code just run:
+To build and install the code just run:
 
 ```sh
-cd nekRS
 ./makenrs
 ```
-Please edit the make script to customize build settings.
+Build settings can be customized in the script.
 
 
 ## Setting the Enviroment
