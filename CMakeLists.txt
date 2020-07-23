@@ -106,12 +106,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE on)
 # external projects, we need to explicitly include both sets of flags
 
 function(set_external_flags lang)
-  set(EXTERNAL_${lang}_FLAGS
-"${CMAKE_${lang}_FLAGS} \
-$<$<CONFIG:DEBUG>:${CMAKE_${lang}_FLAGS_DEBUG}> \
-$<$<CONFIG:RELEASE>:${CMAKE_${lang}_FLAGS_RELEASE}> \
-$<$<CONFIG:RELWITHDEBINFO>:${CMAKE_${lang}_FLAGS_RELWITHDEBINFO}>"
-      PARENT_SCOPE)
+  string(TOUPPER ${CMAKE_BUILD_TYPE} mode)
+  set(EXTERNAL_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${mode}}"
+          PARENT_SCOPE)
 endfunction()
 
 set_external_flags("C")
