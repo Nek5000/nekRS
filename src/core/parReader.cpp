@@ -321,7 +321,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     string p_mglevels;
-    if(ini.extract("pressure", "multigridcoarsening", p_mglevels))
+    if(ini.extract("pressure", "pmultigridcoarsening", p_mglevels))
       options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
 
     string p_smoother;

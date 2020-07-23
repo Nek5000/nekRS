@@ -1,33 +1,38 @@
 /*
 
-The MIT License (MIT)
+   The MIT License (MIT)
 
-Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 
-*/
+ */
 
 #include "mesh3D.h"
 
-void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels, dfloat *levels, dfloat tol){
-
+void meshPlotAdaptiveContour3D(mesh_t* mesh,
+                               char* fname,
+                               dfloat* u,
+                               int Nlevels,
+                               dfloat* levels,
+                               dfloat tol)
+{
   // function PlotAdaptiveContour3D(u, levels, tol)
   // Purpose: adaptively refine the mesh to approximately locate isocontours
 
@@ -63,71 +68,68 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
 
   int MAXLEVELS = 0;
 
-  int plotNp = 4;  
+  int plotNp = 4;
   int Nelements = mesh->Nelements;
   int Np = mesh->Np;
-  
-  dfloat *refu = (dfloat*) calloc(Nelements*Np, sizeof(dfloat));
-  dfloat *refx = (dfloat*) calloc(Nelements*Np, sizeof(dfloat));
-  dfloat *refy = (dfloat*) calloc(Nelements*Np, sizeof(dfloat));
-  dfloat *refz = (dfloat*) calloc(Nelements*Np, sizeof(dfloat));
-  
+
+  dfloat* refu = (dfloat*) calloc(Nelements * Np, sizeof(dfloat));
+  dfloat* refx = (dfloat*) calloc(Nelements * Np, sizeof(dfloat));
+  dfloat* refy = (dfloat*) calloc(Nelements * Np, sizeof(dfloat));
+  dfloat* refz = (dfloat*) calloc(Nelements * Np, sizeof(dfloat));
+
   //copy in data
-  for(int n=0;n<Np*Nelements;++n){
+  for(int n = 0; n < Np * Nelements; ++n) {
     refu[n] = u[n];
     refx[n] = mesh->x[n];
     refy[n] = mesh->y[n];
     refz[n] = mesh->z[n];
   }
-  
-  dfloat *newu, *newx, *newy, *newz;
-  
+
+  dfloat* newu, * newx, * newy, * newz;
+
   dfloat err = 1;
   int refLevel = 0;
-  while ((err>tol) &&(refLevel<MAXLEVELS)){
-    
-    int *refineFlag = (int*) calloc(Nelements,sizeof(int));
+  while ((err > tol) && (refLevel < MAXLEVELS)) {
+    int* refineFlag = (int*) calloc(Nelements,sizeof(int));
     int Nrefine = 0;
-    for(int e=0;e<Nelements;++e){
-      dfloat umin = refu[e*Np+0];
-      dfloat umax = refu[e*Np+0];
-      
-      for(int n=1;n<Np;++n){
-        umin = mymin(umin, refu[e*Np+n]);
-        umax = mymax(umax, refu[e*Np+n]);
+    for(int e = 0; e < Nelements; ++e) {
+      dfloat umin = refu[e * Np + 0];
+      dfloat umax = refu[e * Np + 0];
+
+      for(int n = 1; n < Np; ++n) {
+        umin = mymin(umin, refu[e * Np + n]);
+        umax = mymax(umax, refu[e * Np + n]);
       }
-      
-      for (int lev=0;lev<Nlevels;lev++){
-        if((umin<=levels[lev]) && (umax>=levels[lev])){
+
+      for (int lev = 0; lev < Nlevels; lev++)
+        if((umin <= levels[lev]) && (umax >= levels[lev])) {
           refineFlag[e] = 1;
           ++Nrefine;
           break;
-        }  
-      }
+        }
     }
-    
-    int newNelements = 8*Nrefine;
 
-    newu = (dfloat*) calloc(Np*newNelements, sizeof(dfloat));
-    newx = (dfloat*) calloc(Np*newNelements, sizeof(dfloat));
-    newy = (dfloat*) calloc(Np*newNelements, sizeof(dfloat));
-    newz = (dfloat*) calloc(Np*newNelements, sizeof(dfloat));
-    int cnt =0;
-    for(int e=0;e<Nelements;++e){
-      if (refineFlag[e]==0) continue;
-      for(int m=0;m<8*Np;++m){
-        for(int i=0;i<Np;++i){
+    int newNelements = 8 * Nrefine;
+
+    newu = (dfloat*) calloc(Np * newNelements, sizeof(dfloat));
+    newx = (dfloat*) calloc(Np * newNelements, sizeof(dfloat));
+    newy = (dfloat*) calloc(Np * newNelements, sizeof(dfloat));
+    newz = (dfloat*) calloc(Np * newNelements, sizeof(dfloat));
+    int cnt = 0;
+    for(int e = 0; e < Nelements; ++e) {
+      if (refineFlag[e] == 0) continue;
+      for(int m = 0; m < 8 * Np; ++m)
+        for(int i = 0; i < Np; ++i) {
           // note layout
-          newu[8*Np*cnt+m] += mesh->contourInterp[m*Np + i]*refu[e*Np+i];
-          newx[8*Np*cnt+m] += mesh->contourInterp[m*Np + i]*refx[e*Np+i];
-          newy[8*Np*cnt+m] += mesh->contourInterp[m*Np + i]*refy[e*Np+i];
-          newz[8*Np*cnt+m] += mesh->contourInterp[m*Np + i]*refz[e*Np+i];
+          newu[8 * Np * cnt + m] += mesh->contourInterp[m * Np + i] * refu[e * Np + i];
+          newx[8 * Np * cnt + m] += mesh->contourInterp[m * Np + i] * refx[e * Np + i];
+          newy[8 * Np * cnt + m] += mesh->contourInterp[m * Np + i] * refy[e * Np + i];
+          newz[8 * Np * cnt + m] += mesh->contourInterp[m * Np + i] * refz[e * Np + i];
           cnt++;
         }
-      }
     }
     free(refineFlag);
-    
+
     free(refu);
     free(refx);
     free(refy);
@@ -140,60 +142,56 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
     refz = newz;
 
     err = 0;
-    for(int e=0;e<Nelements;++e){
-      for(int n=0;n<Np;++n){
-        dfloat errn = -refu[e*Np+n];
-        for(int m=0;m<Np;++m)
-          errn += mesh->contourFilter[n*Np+m]*refu[e*Np+m];
+    for(int e = 0; e < Nelements; ++e)
+      for(int n = 0; n < Np; ++n) {
+        dfloat errn = -refu[e * Np + n];
+        for(int m = 0; m < Np; ++m)
+          errn += mesh->contourFilter[n * Np + m] * refu[e * Np + m];
         err = mymax(err, fabs(errn));
       }
-    }
     refLevel++;
   }
-  
-  int *refineFlag = (int*) calloc(Nelements,sizeof(int));
+
+  int* refineFlag = (int*) calloc(Nelements,sizeof(int));
   int Nrefine = 0;
-  for(int e=0;e<Nelements;++e){
-    dfloat umin = refu[e*Np+0];
-    dfloat umax = refu[e*Np+0];
-      
-    for(int n=1;n<Np;++n){
-      umin = mymin(umin, refu[e*Np+n]);
-      umax = mymax(umax, refu[e*Np+n]);
+  for(int e = 0; e < Nelements; ++e) {
+    dfloat umin = refu[e * Np + 0];
+    dfloat umax = refu[e * Np + 0];
+
+    for(int n = 1; n < Np; ++n) {
+      umin = mymin(umin, refu[e * Np + n]);
+      umax = mymax(umax, refu[e * Np + n]);
     }
-      
-    for (int lev=0;lev<Nlevels;lev++){
-      if((umin<=levels[lev]) && (umax>=levels[lev])){
+
+    for (int lev = 0; lev < Nlevels; lev++)
+      if((umin <= levels[lev]) && (umax >= levels[lev])) {
         refineFlag[e] = 1;
         ++Nrefine;
         break;
-      }  
-    }
+      }
   }
-  
-  
 
-  FILE *fp = fopen(fname, "w");
+  FILE* fp = fopen(fname, "w");
 
   fprintf(fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
   fprintf(fp, "  <UnstructuredGrid>\n");
-  fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\">\n", 
-          Nrefine*mesh->plotNp, 
-          Nrefine*mesh->plotNelements);
-  
+  fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\">\n",
+          Nrefine * mesh->plotNp,
+          Nrefine * mesh->plotNelements);
+
   // write out nodes
   fprintf(fp, "      <Points>\n");
   fprintf(fp, "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" Format=\"ascii\">\n");
-  
+
   // compute plot node coordinates on the fly
-  for(int e=0;e<mesh->Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<mesh->plotNp;++n){
+  for(int e = 0; e < mesh->Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < mesh->plotNp; ++n) {
       dfloat plotxn = 0, plotyn = 0, plotzn = 0;
-      for(int m=0;m<mesh->Np;++m){
-        plotxn += mesh->plotInterp[n*mesh->Np+m]*refx[m+e*mesh->Np];
-        plotyn += mesh->plotInterp[n*mesh->Np+m]*refy[m+e*mesh->Np];
-        plotzn += mesh->plotInterp[n*mesh->Np+m]*refz[m+e*mesh->Np];
+      for(int m = 0; m < mesh->Np; ++m) {
+        plotxn += mesh->plotInterp[n * mesh->Np + m] * refx[m + e * mesh->Np];
+        plotyn += mesh->plotInterp[n * mesh->Np + m] * refy[m + e * mesh->Np];
+        plotzn += mesh->plotInterp[n * mesh->Np + m] * refz[m + e * mesh->Np];
       }
       fprintf(fp, "       ");
       fprintf(fp, "%g %g %g\n", plotxn,plotyn,plotzn);
@@ -201,17 +199,17 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
   }
   fprintf(fp, "        </DataArray>\n");
   fprintf(fp, "      </Points>\n");
-  
+
   fprintf(fp, "      <PointData Scalars=\"scalars\">\n");
   fprintf(fp, "        <DataArray type=\"Float32\" Name=\"Vorticity\" Format=\"ascii\">\n");
-  
-  for(int e=0;e<mesh->Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<mesh->plotNp;++n){
+
+  for(int e = 0; e < mesh->Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < mesh->plotNp; ++n) {
       dfloat plotpn = 0;
-      for(int m=0;m<mesh->Np;++m){
-        dfloat pm = refu[m+e*mesh->Np];
-        plotpn += mesh->plotInterp[n*mesh->Np+m]*pm;
+      for(int m = 0; m < mesh->Np; ++m) {
+        dfloat pm = refu[m + e * mesh->Np];
+        plotpn += mesh->plotInterp[n * mesh->Np + m] * pm;
       }
       fprintf(fp, "       ");
       fprintf(fp, "%g\n", plotpn);
@@ -220,41 +218,40 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
 
   fprintf(fp, "       </DataArray>\n");
   fprintf(fp, "     </PointData>\n");
-  
+
   fprintf(fp, "    <Cells>\n");
   fprintf(fp, "      <DataArray type=\"Int32\" Name=\"connectivity\" Format=\"ascii\">\n");
-  
+
   int cnt = 0;
-  for(int e=0;e<mesh->Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<mesh->plotNelements;++n){
+  for(int e = 0; e < mesh->Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < mesh->plotNelements; ++n) {
       fprintf(fp, "       ");
-      for(int m=0;m<mesh->plotNverts;++m){
-        fprintf(fp, "%d ", cnt*mesh->plotNp + mesh->plotEToV[n*mesh->plotNverts+m]);
-      }
+      for(int m = 0; m < mesh->plotNverts; ++m)
+        fprintf(fp, "%d ", cnt * mesh->plotNp + mesh->plotEToV[n * mesh->plotNverts + m]);
       fprintf(fp, "\n");
     }
     cnt++;
   }
-  
+
   fprintf(fp, "        </DataArray>\n");
-  
+
   fprintf(fp, "        <DataArray type=\"Int32\" Name=\"offsets\" Format=\"ascii\">\n");
-  cnt=0;
-  for(int e=0;e<mesh->Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<mesh->plotNelements;++n){
+  cnt = 0;
+  for(int e = 0; e < mesh->Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < mesh->plotNelements; ++n) {
       cnt += mesh->plotNverts;
       fprintf(fp, "       ");
       fprintf(fp, "%d\n", cnt);
     }
   }
   fprintf(fp, "       </DataArray>\n");
-  
+
   fprintf(fp, "       <DataArray type=\"Int32\" Name=\"types\" Format=\"ascii\">\n");
-  for(int e=0;e<mesh->Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<mesh->plotNelements;++n){
+  for(int e = 0; e < mesh->Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < mesh->plotNelements; ++n) {
       fprintf(fp, "10\n"); // TET code ?
     }
   }
@@ -267,95 +264,92 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
 
   free(refineFlag);
 
-#if 0 
-  dfloat *plotx = (dfloat*) calloc(4*Nrefine,sizeof(dfloat));
-  dfloat *ploty = (dfloat*) calloc(4*Nrefine,sizeof(dfloat));
-  dfloat *plotz = (dfloat*) calloc(4*Nrefine,sizeof(dfloat));
-  dfloat *plotu = (dfloat*) calloc(4*Nrefine,sizeof(dfloat));
+#if 0
+  dfloat* plotx = (dfloat*) calloc(4 * Nrefine,sizeof(dfloat));
+  dfloat* ploty = (dfloat*) calloc(4 * Nrefine,sizeof(dfloat));
+  dfloat* plotz = (dfloat*) calloc(4 * Nrefine,sizeof(dfloat));
+  dfloat* plotu = (dfloat*) calloc(4 * Nrefine,sizeof(dfloat));
 
-  int cnt =0;
-  for(int e=0;e<Nelements;++e){
-    if (refineFlag[e]==0) continue;
-    for(int n=0;n<plotNp;++n){
-      
+  int cnt = 0;
+  for(int e = 0; e < Nelements; ++e) {
+    if (refineFlag[e] == 0) continue;
+    for(int n = 0; n < plotNp; ++n) {
       dfloat px = 0, py = 0, pz = 0, pu = 0;
-      
-      for(int m=0;m<Np;++m){
-        px += mesh->contourInterp1[n*Np+m]*refx[e*Np+m];
-        py += mesh->contourInterp1[n*Np+m]*refy[e*Np+m];
-        pz += mesh->contourInterp1[n*Np+m]*refz[e*Np+m];
-        pu += mesh->contourInterp1[n*Np+m]*refu[e*Np+m];
+
+      for(int m = 0; m < Np; ++m) {
+        px += mesh->contourInterp1[n * Np + m] * refx[e * Np + m];
+        py += mesh->contourInterp1[n * Np + m] * refy[e * Np + m];
+        pz += mesh->contourInterp1[n * Np + m] * refz[e * Np + m];
+        pu += mesh->contourInterp1[n * Np + m] * refu[e * Np + m];
       }
-      
-      plotx[cnt*plotNp+n] = px;
-      ploty[cnt*plotNp+n] = py;
-      plotz[cnt*plotNp+n] = pz;
-      plotu[cnt*plotNp+n] = pu;
+
+      plotx[cnt * plotNp + n] = px;
+      ploty[cnt * plotNp + n] = py;
+      plotz[cnt * plotNp + n] = pz;
+      plotu[cnt * plotNp + n] = pu;
       cnt++;
     }
   }
-  
-  Nelements = Nrefine; 
+
+  Nelements = Nrefine;
   int plotNelements = Nelements;
 
-  FILE *fp = fopen(fname, "w");
-  
+  FILE* fp = fopen(fname, "w");
+
   fprintf(fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
   fprintf(fp, "  <UnstructuredGrid>\n");
-  fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\">\n", 
-    plotNelements*plotNp,
-    plotNelements);
-  
+  fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\">\n",
+          plotNelements * plotNp,
+          plotNelements);
+
   // write out nodes
   fprintf(fp, "      <Points>\n");
   fprintf(fp, "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" Format=\"ascii\">\n");
-  
+
   // compute plot node coordinates on the fly
-  for(int n=0;n<plotNelements*plotNp;++n){
+  for(int n = 0; n < plotNelements * plotNp; ++n) {
     fprintf(fp, "       ");
     fprintf(fp, "%g %g %g\n", plotx[n],ploty[n],plotz[n]);
   }
   fprintf(fp, "        </DataArray>\n");
   fprintf(fp, "      </Points>\n");
-  
+
   // write out pressure
   fprintf(fp, "      <PointData Scalars=\"scalars\">\n");
   fprintf(fp, "        <DataArray type=\"Float32\" Name=\"Vorticity\" Format=\"ascii\">\n");
-  
-  for(int e=0;e<plotNelements;++e){
-    for(int n=0;n<plotNp;++n){
+
+  for(int e = 0; e < plotNelements; ++e)
+    for(int n = 0; n < plotNp; ++n) {
       fprintf(fp, "       ");
-      fprintf(fp, "%g\n", plotu[e*plotNp+n]);
+      fprintf(fp, "%g\n", plotu[e * plotNp + n]);
     }
-  }
-  
+
   fprintf(fp, "       </DataArray>\n");
   fprintf(fp, "     </PointData>\n");
-  
+
   fprintf(fp, "    <Cells>\n");
   fprintf(fp, "      <DataArray type=\"Int32\" Name=\"connectivity\" Format=\"ascii\">\n");
-  
-  for(int e=0;e<plotNelements;++e){
+
+  for(int e = 0; e < plotNelements; ++e) {
     fprintf(fp, "       ");
-    for(int m=0;m<mesh->plotNverts;++m){
-      fprintf(fp, "%d ", e*plotNp + m);
-    }
+    for(int m = 0; m < mesh->plotNverts; ++m)
+      fprintf(fp, "%d ", e * plotNp + m);
     fprintf(fp, "\n");
   }
-  
+
   fprintf(fp, "        </DataArray>\n");
-  
+
   fprintf(fp, "        <DataArray type=\"Int32\" Name=\"offsets\" Format=\"ascii\">\n");
   int cnt = 0;
-  for(int e=0;e<plotNelements;++e){
+  for(int e = 0; e < plotNelements; ++e) {
     cnt += mesh->plotNverts;
     fprintf(fp, "       ");
     fprintf(fp, "%d\n", cnt);
   }
   fprintf(fp, "       </DataArray>\n");
-  
+
   fprintf(fp, "       <DataArray type=\"Int32\" Name=\"types\" Format=\"ascii\">\n");
-  for(int e=0;e<plotNelements;++e){
+  for(int e = 0; e < plotNelements; ++e) {
     fprintf(fp, "10\n"); // TET code ?
   }
   fprintf(fp, "        </DataArray>\n");
@@ -364,5 +358,5 @@ void meshPlotAdaptiveContour3D(mesh_t *mesh, char *fname, dfloat *u, int Nlevels
   fprintf(fp, "  </UnstructuredGrid>\n");
   fprintf(fp, "</VTKFile>\n");
   fclose(fp);
-#endif 
+#endif
 }

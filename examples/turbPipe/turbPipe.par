@@ -23,6 +23,10 @@ filterModes = 20
 
 [PRESSURE]
 residualTol = 1e-04
+#preconditioner = multigrid+additive+overlapCrsSolve
+#smootherType = Chebyshev+ASM
+#pMultigridCoarsening = 7,3,1
+#galerkinCoarseOperator = true
 
 [VELOCITY]
 solver = pcg+block

@@ -5,10 +5,12 @@
 BK5
 
 [DATA FILE]
-data/ellipticHomogeneous3D.h
+data / ellipticHomogeneous3D.h
 
 [MESH FILE]
-../../meshes/cavityHexH005.msh,../../meshes/cavityHexH0125.msh,../../meshes/cavityHexH016.msh,../../meshes/cavityHexH01.msh,../../meshes/cavityHexH02.msh,../../meshes/cavityHexH03.msh,../../meshes/cavityHexH04.msh
+../../ meshes / cavityHexH005.msh,../../ meshes / cavityHexH0125.msh,
+../../ meshes / cavityHexH016.msh,../../ meshes / cavityHexH01.msh,../../ meshes / cavityHexH02.msh,
+../../ meshes / cavityHexH03.msh,../../ meshes / cavityHexH04.msh
 
 [MESH DIMENSION]
 3
@@ -33,7 +35,7 @@ CUDA
 
 # can add FLEXIBLE to PCG
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 
 # can be IPDG, or CONTINUOUS
 [DISCRETIZATION]
@@ -46,29 +48,28 @@ NODAL
 # can be NONE, JACOBI, MASSMATRIX, FULLALMOND, SEMFEM, or MULTIGRID
 [PRECONDITIONER]
 JACOBI
-#MULTIGRID,
+#MULTIGRID ,
 
-
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
 HALFDEGREES
-#HALFDOFS,HALFDEGREES,ALLDEGREES
+#HALFDOFS ,HALFDEGREES,ALLDEGREES
 
 # can be LOCALPATCH, or DAMPEDJACOBI
 # LOCALPATCH smoother can include EXACT
 # can include CHEBYSHEV for smoother acceleration
 [MULTIGRID SMOOTHER]
-DAMPEDJACOBI+CHEBYSHEV
+DAMPEDJACOBI + CHEBYSHEV
 
 # can be any integer >0
 [MULTIGRID CHEBYSHEV DEGREE]
 2
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -97,7 +98,7 @@ DEFAULT
 MAX
 #MIN
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0

@@ -119,6 +119,11 @@ SOFTWARE.
 #include "mpi.h"
 #include "types.h"
 
+#define OGS_ENABLE_TIMER
+#ifdef OGS_ENABLE_TIMER
+#include "timer.hpp"
+#endif
+
 #define ogsFloat  "float"
 #define ogsDouble "double"
 #define ogsDfloat dfloatString
