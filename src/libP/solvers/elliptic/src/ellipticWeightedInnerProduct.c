@@ -28,6 +28,9 @@ SOFTWARE.
 
 dfloat ellipticWeightedInnerProduct(elliptic_t *elliptic, occa::memory &o_w, occa::memory &o_a, occa::memory &o_b){
 
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif  
   setupAide &options = elliptic->options;
 
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
@@ -65,9 +68,9 @@ dfloat ellipticWeightedInnerProduct(elliptic_t *elliptic, occa::memory &o_w, occ
   }
   
   /* add a second sweep if Nblock>Ncutoff */
-  dlong Ncutoff = 100;
+  dlong Ncutoff = 4000;
   dlong Nfinal;
-  if(Nblock>Ncutoff){
+  if(Nblock>=Ncutoff){
 
     mesh->sumKernel(Nblock, o_tmp, o_tmp2);
 
@@ -91,7 +94,9 @@ dfloat ellipticWeightedInnerProduct(elliptic_t *elliptic, occa::memory &o_w, occ
   dfloat globalwab = 0;
   MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
 
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif  
+
   return globalwab;
 }
-
-

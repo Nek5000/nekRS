@@ -292,12 +292,19 @@ void oogs::finish(occa::memory o_v, const char *type, const char *op, oogs_t *gs
 
   if (ogs->NhaloGather) {
     ogs->device.setStream(ogs::dataStream);
+
+#ifdef OGS_ENABLE_TIMER
+  timer::tic("gsMPI",1);
+#endif
     if(gs->mode == OOGS_DEFAULT) {
       ogs->device.finish(); // waiting for gs::haloBuf copy to finish 
       ogsHostGatherScatter(ogs::haloBuf, type, op, ogs->haloGshSym);
     } else {
       _ogsHostGatherScatter(ogs::o_haloBuf, type, op, gs);
     }   
+#ifdef OGS_ENABLE_TIMER
+  timer::toc("gsMPI");
+#endif
  
     if(gs->mode == OOGS_DEFAULT) { 
       ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes, 0, "async: true");

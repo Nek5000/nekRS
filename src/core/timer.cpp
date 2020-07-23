@@ -222,6 +222,8 @@ void printRunStat()
   dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
   dEtime[6] = timer::query("preSolveProjection", "DEVICE:MAX");
   dEtime[6] += timer::query("postSolveProjection", "DEVICE:MAX");
+  dEtime[7] = timer::query("gsMPI", "DEVICE:MAX");
+  dEtime[8] = timer::query("dotp", "DEVICE:MAX");
 
   double hEtime[10];
   hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
@@ -235,16 +237,23 @@ void printRunStat()
               << "  pressureSolve         " << dEtime[2] << " s\n";
 
     if(dEtime[6] > 0)
-      std::cout << "    residual projection " << dEtime[6] << " s\n";
+    std::cout << "    residual projection " << dEtime[6] << " s\n";
 
     std::cout << "    preconditioner      " << dEtime[5] << " s\n"
-              << "      coarse grid       " << hEtime[0] << " s\n"
-              << std::endl;
+              << "      coarse grid       " << hEtime[0] << " s\n";
 
     if(dEtime[4] > 0)
-      std::cout << "  makeq               " << dEtime[3] << " s\n"
-                << "  scalarSolve         " << dEtime[4] << " s\n"
-                << std::endl;
+    std::cout << "  makeq                 " << dEtime[3] << " s\n"
+              << "  scalarSolve           " << dEtime[4] << " s\n"
+              << std::endl;
+
+
+    if(dEtime[7] > 0)
+    std::cout << "  gsMPI                 " << dEtime[7] << " s\n";
+    if(dEtime[8] > 0)
+    std::cout << "  dotp                  " << dEtime[8] << " s\n";
+
+    std::cout << std::endl;
 
     std::cout.unsetf ( std::ios::scientific );
   }

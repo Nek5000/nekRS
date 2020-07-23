@@ -40,6 +40,9 @@ SOFTWARE.
 // block size for reduction (hard coded)
 #define blockSize 256
 
+#include "timer.hpp"
+#define ELLIPTIC_ENABLE_TIMER
+
 class ResidualProjection;
 
 extern "C" { // C Linkage

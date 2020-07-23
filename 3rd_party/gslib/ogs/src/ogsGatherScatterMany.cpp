@@ -67,6 +67,7 @@ void ogsGatherScatterManyStart(occa::memory o_v,
                           const char *type, 
                           const char *op, 
                           ogs_t *ogs){
+
   size_t Nbytes;
   if (!strcmp(type, "float")) 
     Nbytes = sizeof(float);
@@ -126,8 +127,14 @@ void ogsGatherScatterManyFinish(occa::memory o_v,
     void* H[k];
     for (int i=0;i<k;i++) H[i] = (char*)ogs::haloBuf + i*ogs->NhaloGather*Nbytes;
 
+#ifdef OGS_ENABLE_TIMER
+  timer::tic("gsMPI",1);
+#endif
     // MPI based gather scatter using libgs
     ogsHostGatherScatterMany(H, k, type, op, ogs->haloGshSym);
+#ifdef OGS_ENABLE_TIMER
+  timer::toc("gsMPI");
+#endif
 
     // copy totally gather halo data back from HOST to DEVICE
     ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
