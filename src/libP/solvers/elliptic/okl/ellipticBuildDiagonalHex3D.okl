@@ -41,15 +41,16 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    // AK: too much shared !!!!!
-    @shared dfloat s_lambda0[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Grr[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gss[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gtt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_lambda0[p_Nq][p_Nq];
+    @shared dfloat s_Grr[p_Nq][p_Nq];
+    @shared dfloat s_Gss[p_Nq][p_Nq];
+    @exclusive dfloat s_Gtt[p_Nq];
+    @exclusive dfloat s_lambdat[p_Nq];
 
     // prefetch lamda 0
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -57,23 +58,24 @@
           if(k == 0)
             s_D[j][i] = D[i + p_Nq * j]; // column major
 
-          s_lambda0[k][j][i] = lambda[id + 0 * offset];
-          s_Grr[k][j][i]     = ggeo[base + p_G00ID * p_Np];
-          s_Gss[k][j][i]     = ggeo[base + p_G11ID * p_Np];
-          s_Gtt[k][j][i]     = ggeo[base + p_G22ID * p_Np];
-
-          // AK: issues with serial mode ?
-          // // true if the node is not masked
-          // r_masked          = (mapB[id] !=1 ) ? 1:0;
-          // // if the node is masked, initialize to one to make diag invertable
-          // r_q               = 1.f;
+          s_lambda0[j][i] = lambda[id + 0 * offset];
+          s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
+          s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
+          if(k==0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
+              s_lambdat[l]     = lambda[other_id + 0 * offset];
+            }
+          }
         }
+      }
+      @barrier("local");
 
-    @barrier("local");
-
-    // loop over slabs
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+      // loop over slabs
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0f;
@@ -89,16 +91,16 @@
             dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
 
             dfloat lambda_1 = lambda[id + 1 * offset];
-            dfloat lambda_0 = s_lambda0[k][j][i];
+            dfloat lambda_0 = s_lambda0[j][i];
 
             r_q += 2.f * grs * lambda_0 * s_D[i][i] * s_D[j][j];
             r_q += 2.f * grt * lambda_0 * s_D[i][i] * s_D[k][k];
             r_q += 2.f * gst * lambda_0 * s_D[j][j] * s_D[k][k];
             //
             for(int m = 0; m < p_Nq; m++) {
-              r_q += s_Grr[k][j][m] * s_lambda0[k][j][m] * s_D[m][i] * s_D[m][i];
-              r_q += s_Gss[k][m][i] * s_lambda0[k][m][i] * s_D[m][j] * s_D[m][j];
-              r_q += s_Gtt[m][j][i] * s_lambda0[m][j][i] * s_D[m][k] * s_D[m][k];
+              r_q += s_Grr[j][m] * s_lambda0[j][m] * s_D[m][i] * s_D[m][i];
+              r_q += s_Gss[m][i] * s_lambda0[m][i] * s_D[m][j] * s_D[m][j];
+              r_q += s_Gtt[m] * s_lambdat[m] * s_D[m][k] * s_D[m][k];
             }
 
             r_q  += gwJ * lambda_1;
@@ -108,6 +110,9 @@
           }
           Aq[id] = r_q;
         }
+      }
+      @barrier("local");
+    }
   }
 }
 
@@ -127,18 +132,19 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    // AK: too much shared !!!!!
-    @shared dfloat s_lambda0[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Grr[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gss[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gtt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_lambda0[p_Nq][p_Nq];
+    @shared dfloat s_Grr[p_Nq][p_Nq];
+    @shared dfloat s_Gss[p_Nq][p_Nq];
+    @exclusive dfloat s_Gtt[p_Nq];
+    @exclusive dfloat s_lambdat[p_Nq];
 
     @exclusive dfloat r_q;
     @exclusive int r_masked;
 
     // prefetch lamda 0
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -146,22 +152,27 @@
           if(k == 0)
             s_D[j][i] = D[i + p_Nq * j]; // column major
 
-          s_lambda0[k][j][i] = lambda[id + 0 * offset];
-          s_Grr[k][j][i]     = ggeo[base + p_G00ID * p_Np];
-          s_Gss[k][j][i]     = ggeo[base + p_G11ID * p_Np];
-          s_Gtt[k][j][i]     = ggeo[base + p_G22ID * p_Np];
+          s_lambda0[j][i] = lambda[id + 0 * offset];
+          s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
+          s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
+          if( k == 0 ) {
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
+              s_lambdat[l]     = lambda[other_id + 0 * offset];
+            }
+          }
 
           // true if the node is not masked
           r_masked          = (mapB[id] != 1 ) ? 1:0;
           // if the node is masked, initialize to one to make diag invertable
           r_q               = 1.f;
         }
-
-    @barrier("local");
-
-    // loop over slabs
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+      }
+      @barrier("local");
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id   = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           if(r_masked) {
@@ -174,16 +185,16 @@
             dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
 
             dfloat lambda_1 = lambda[id + 1 * offset];
-            dfloat lambda_0 = s_lambda0[k][j][i];
+            dfloat lambda_0 = s_lambda0[j][i];
 
             r_q += 2.f * grs * lambda_0 * s_D[i][i] * s_D[j][j];
             r_q += 2.f * grt * lambda_0 * s_D[i][i] * s_D[k][k];
             r_q += 2.f * gst * lambda_0 * s_D[j][j] * s_D[k][k];
             //
             for(int m = 0; m < p_Nq; m++) {
-              r_q += s_Grr[k][j][m] * s_lambda0[k][j][m] * s_D[m][i] * s_D[m][i];
-              r_q += s_Gss[k][m][i] * s_lambda0[k][m][i] * s_D[m][j] * s_D[m][j];
-              r_q += s_Gtt[m][j][i] * s_lambda0[m][j][i] * s_D[m][k] * s_D[m][k];
+              r_q += s_Grr[j][m] * s_lambda0[j][m] * s_D[m][i] * s_D[m][i];
+              r_q += s_Gss[m][i] * s_lambda0[m][i] * s_D[m][j] * s_D[m][j];
+              r_q += s_Gtt[m] * s_lambdat[m] * s_D[m][k] * s_D[m][k];
             }
 
             r_q  += gwJ * lambda_1;
@@ -193,6 +204,8 @@
           }
           Aq[id] = r_q;
         }
+      }
+    }
   }
 }
 
@@ -212,14 +225,15 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    // AK: too much shared !!!!!
-    @shared dfloat s_lambda0[p_eNfields][p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Grr[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gss[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Gtt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_lambda0[p_eNfields][p_Nq][p_Nq];
+    @shared dfloat s_Grr[p_Nq][p_Nq];
+    @shared dfloat s_Gss[p_Nq][p_Nq];
+    @exclusive dfloat s_Gtt[p_Nq];
+    @exclusive dfloat s_lambdat[p_eNfields][p_Nq];
     // prefetch lamda 0
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -227,19 +241,27 @@
           if(k == 0)
             s_D[j][i] = D[i + p_Nq * j]; // column major
           //
-          s_Grr[k][j][i]     = ggeo[base + p_G00ID * p_Np];
-          s_Gss[k][j][i]     = ggeo[base + p_G11ID * p_Np];
-          s_Gtt[k][j][i]     = ggeo[base + p_G22ID * p_Np];
+          s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
+          s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
 
           for(int l = 0; l < p_eNfields; l++)
-            s_lambda0[l][k][j][i] = lambda[id + 0 * offset + l * loffset];
+            s_lambda0[l][j][i] = lambda[id + 0 * offset + l * loffset];
+          if( k == 0 ) {
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
+              for(int field = 0; field < p_eNfields; field++)
+                s_lambdat[field][l] = lambda[other_id + 0 * offset + field * loffset];
+            }
+          }
         }
+      }
 
-    @barrier("local");
+      @barrier("local");
 
-    // loop over slabs
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0f;
@@ -257,16 +279,16 @@
               dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
 
               dfloat lambda_1 = lambda[id + 1 * offset + l * loffset];
-              dfloat lambda_0 = s_lambda0[l][k][j][i];
+              dfloat lambda_0 = s_lambda0[l][j][i];
 
               r_q += 2.f * grs * lambda_0 * s_D[i][i] * s_D[j][j];
               r_q += 2.f * grt * lambda_0 * s_D[i][i] * s_D[k][k];
               r_q += 2.f * gst * lambda_0 * s_D[j][j] * s_D[k][k];
               //
               for(int m = 0; m < p_Nq; m++) {
-                r_q += s_Grr[k][j][m] * s_lambda0[l][k][j][m] * s_D[m][i] * s_D[m][i];
-                r_q += s_Gss[k][m][i] * s_lambda0[l][k][m][i] * s_D[m][j] * s_D[m][j];
-                r_q += s_Gtt[m][j][i] * s_lambda0[l][m][j][i] * s_D[m][k] * s_D[m][k];
+                r_q += s_Grr[j][m] * s_lambda0[l][j][m] * s_D[m][i] * s_D[m][i];
+                r_q += s_Gss[m][i] * s_lambda0[l][m][i] * s_D[m][j] * s_D[m][j];
+                r_q += s_Gtt[m] * s_lambdat[l][m] * s_D[m][k] * s_D[m][k];
               }
 
               r_q  += gwJ * lambda_1;
@@ -277,5 +299,7 @@
             Aq[id + l * offset] = r_q;
           }
         }
+      }
+    }
   }
 }
