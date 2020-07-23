@@ -22,10 +22,6 @@ filterModes = 1
 
 [PRESSURE]
 residualTol = 1e-04
-#preconditioner = multigrid+additive+overlapCrsSolve
-#smootherType = RAS #ASM
-#galerkinCoarseOperator = true
-
 
 [VELOCITY]
 solver = pcg+block

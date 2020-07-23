@@ -2,8 +2,8 @@
 1.0
 
 [DATA FILE]
-#data/ellipticHomogeneous2D.h
-data/ellipticSine2D.h
+#data /ellipticHomogeneous2D.h
+data / ellipticSine2D.h
 
 [BOX DOMAIN]
 TRUE
@@ -12,7 +12,7 @@ TRUE
 2
 
 [MESH FILE]
-../../meshes/meshSine2D.msh
+../../ meshes / meshSine2D.msh
 
 [ELEMENT TYPE] # number of edges
 4
@@ -46,7 +46,7 @@ CUDA
 
 # can add FLEXIBLE to PCG
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 
 # can be IPDG, or CONTINUOUS
 [DISCRETIZATION]
@@ -76,7 +76,7 @@ NODAL
 [MAXIMUM ITERATIONS]
 1000
 
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -92,10 +92,9 @@ DAMPEDJACOBI,CHEBYSHEV
 [MULTIGRID CHEBYSHEV DEGREE]
 2
 
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-###########################################
-
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option

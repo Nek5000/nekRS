@@ -2,10 +2,10 @@
 1.0
 
 [DATA FILE]
-data/ellipticHomogeneous2D.h
+data / ellipticHomogeneous2D.h
 
 [MESH FILE]
-../../meshes/cavityH00125.msh
+../../ meshes / cavityH00125.msh
 
 [MESH DIMENSION]
 2
@@ -30,7 +30,7 @@ CUDA
 
 # can add FLEXIBLE to PCG
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 
 # can be IPDG, or CONTINUOUS
 [DISCRETIZATION]
@@ -44,8 +44,7 @@ NODAL
 [PRECONDITIONER]
 MULTIGRID
 
-
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -61,9 +60,9 @@ DAMPEDJACOBI,CHEBYSHEV
 [MULTIGRID CHEBYSHEV DEGREE]
 2
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -92,7 +91,7 @@ DEFAULT
 MAX
 #MIN
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0

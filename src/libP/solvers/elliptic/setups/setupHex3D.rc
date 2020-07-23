@@ -5,9 +5,9 @@
 SOLVE
 
 [DATA FILE]
-#data/ellipticSine3D.h
-data/ellipticBlockSine3D.h
-#data/ellipticHomogeneous3D.h
+#data /ellipticSine3D.h
+data / ellipticBlockSine3D.h
+#data /ellipticHomogeneous3D.h
 
 [BOX DOMAIN]
 #TRUE
@@ -38,13 +38,13 @@ FALSE
 1.0
 
 [MESH FILE]
-#cubeHex.msh
+#cubeHex .msh
 cubeHexCoarse.msh
 
 [MESH DIMENSION]
 3
 
-[ELEMENT TYPE] 
+[ELEMENT TYPE]
 12
 
 [POLYNOMIAL DEGREE]
@@ -88,11 +88,11 @@ VARIABLE
 # can add FLEXIBLE to PCG
 # can add NONBLOCKING (disable FLEXIBLE for the moment)
 [KRYLOV SOLVER]
-PCG 
-#PCG+FLEXIBLE+NONBLOCKING
-#+NONBLOCKING+FLEXIBLE
-#+FLEXIBLE
-#+FLEXIBLE+NONBLOCKING
+PCG
+#PCG +FLEXIBLE+NONBLOCKING
+#+ NONBLOCKING+FLEXIBLE
+#+ FLEXIBLE
+#+ FLEXIBLE+NONBLOCKING
 
 [SOLVER TOLERANCE]
 1.e-9
@@ -118,7 +118,7 @@ JACOBI
 [MULTIGRID VARIABLE COEFFICIENT]
 FALSE
 
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -130,15 +130,15 @@ HALFDEGREES
 # LOCALPATCH smoother can include EXACT
 # can include CHEBYSHEV for smoother acceleration
 [MULTIGRID SMOOTHER]
-DAMPEDJACOBI+CHEBYSHEV
+DAMPEDJACOBI + CHEBYSHEV
 
 # can be any integer >0
 [MULTIGRID CHEBYSHEV DEGREE]
 2
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -148,7 +148,7 @@ KCYCLE
 
 # can be DAMPEDJACOBI or CHEBYSHEV
 [PARALMOND SMOOTHER]
-CHEBYSHEV+DAMPEDJACOBI
+CHEBYSHEV + DAMPEDJACOBI
 
 # can be any integer >0
 [PARALMOND CHEBYSHEV DEGREE]
@@ -168,7 +168,7 @@ DEFAULT
 MAX
 #MIN
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0

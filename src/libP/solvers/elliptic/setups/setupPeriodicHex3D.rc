@@ -5,8 +5,8 @@
 SOLVE
 
 [DATA FILE]
-data/ellipticSineTest3D.h
-#data/ellipticHomogeneous3D.h
+data / ellipticSineTest3D.h
+#data /ellipticHomogeneous3D.h
 
 [BOX DOMAIN]
 TRUE
@@ -21,21 +21,19 @@ TRUE
 20
 
 [BOX XMIN]
--1.0
+- 1.0
 [BOX XMAX]
 1.0
 
 [BOX YMIN]
--1.0
+- 1.0
 [BOX YMAX]
 1.0
 
 [BOX ZMIN]
--1.0
+- 1.0
 [BOX ZMAX]
 1.0
-
-
 
 [MESH DIMENSION]
 3
@@ -71,11 +69,11 @@ CUDA
 # can add FLEXIBLE to PCG
 # can add NONBLOCKING (disable FLEXIBLE for the moment)
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
-#+NONBLOCKING
-#+NONBLOCKING+FLEXIBLE
-#+FLEXIBLE
-#+FLEXIBLE+NONBLOCKING
+PCG + FLEXIBLE
+#+ NONBLOCKING
+#+ NONBLOCKING+FLEXIBLE
+#+ FLEXIBLE
+#+ FLEXIBLE+NONBLOCKING
 
 [SOLVER TOLERANCE]
 1.e-7
@@ -98,9 +96,7 @@ MULTIGRID
 #SEMFEM
 #FULLALMOND
 
-
-
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -112,15 +108,15 @@ HALFDEGREES
 # LOCALPATCH smoother can include EXACT
 # can include CHEBYSHEV for smoother acceleration
 [MULTIGRID SMOOTHER]
-DAMPEDJACOBI+CHEBYSHEV
+DAMPEDJACOBI + CHEBYSHEV
 
 # can be any integer >0
 [MULTIGRID CHEBYSHEV DEGREE]
 1
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -130,7 +126,7 @@ KCYCLE
 
 # can be DAMPEDJACOBI or CHEBYSHEV
 [PARALMOND SMOOTHER]
-CHEBYSHEV+DAMPEDJACOBI
+CHEBYSHEV + DAMPEDJACOBI
 
 # can be any integer >0
 [PARALMOND CHEBYSHEV DEGREE]
@@ -157,7 +153,7 @@ TRUE
 [PARALMOND SMOOTH COARSEST DEGREE]
 20
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0
@@ -183,8 +179,8 @@ TRUE
 [FIXED ITERATION COUNT]
 FALSE
 
-# TRUE: assume binaries are precompiled
-# FALSE: rely on occa caching
-# NONROOT: rank>0 assume rank==0 compiles binaries or occa binaries are already in cache
+# TRUE : assume binaries are precompiled
+# FALSE : rely on occa caching
+# NONROOT : rank>0 assume rank==0 compiles binaries or occa binaries are already in cache
 [USE PRECOMPILED BINARIES]
 FALSE

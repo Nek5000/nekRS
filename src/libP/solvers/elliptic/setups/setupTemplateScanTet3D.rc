@@ -2,10 +2,14 @@
 1.0
 
 [DATA FILE]
-data/ellipticHomogeneous3D.h
+data / ellipticHomogeneous3D.h
 
 [MESH FILE]
-../../meshes/cavityTetH0075.msh,../../meshes/cavityTetH009.msh,../../meshes/cavityTetH01.msh,../../meshes/cavityTetH02.msh,../../meshes/cavityTetH04.msh,../../meshes/cavityTetH00625.msh,../../meshes/cavityTetH008.msh,../../meshes/cavityTetH0125.msh,../../meshes/cavityTetH025.msh,../../meshes/cavityTetH03.msh,../../meshes/cavityTetH05.msh
+../../ meshes / cavityTetH0075.msh,../../ meshes / cavityTetH009.msh,
+../../ meshes / cavityTetH01.msh,../../ meshes / cavityTetH02.msh,../../ meshes / cavityTetH04.msh,
+../../ meshes / cavityTetH00625.msh,../../ meshes / cavityTetH008.msh,
+../../ meshes / cavityTetH0125.msh,../../ meshes / cavityTetH025.msh,
+../../ meshes / cavityTetH03.msh,../../ meshes / cavityTetH05.msh
 
 [MESH DIMENSION]
 3
@@ -30,7 +34,7 @@ CUDA
 
 # can add FLEXIBLE to PCG
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 
 # can be IPDG, or CONTINUOUS
 [DISCRETIZATION]
@@ -45,8 +49,7 @@ NODAL
 [PRECONDITIONER]
 MULTIGRID,JACOBI
 
-
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -56,15 +59,15 @@ HALFDEGREES
 # LOCALPATCH smoother can include EXACT
 # can include CHEBYSHEV for smoother acceleration
 [MULTIGRID SMOOTHER]
-DAMPEDJACOBI+CHEBYSHEV
+DAMPEDJACOBI + CHEBYSHEV
 
 # can be any integer >0
 [MULTIGRID CHEBYSHEV DEGREE]
 2
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -95,7 +98,7 @@ DEFAULT
 MAX
 #MIN
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0

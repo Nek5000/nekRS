@@ -1,9 +1,9 @@
 [FORMAT]
 1.0
 [DATA FILE]
-data/ellipticHomogeneous2D.h
+data / ellipticHomogeneous2D.h
 [MESH FILE]
-../../meshes/cavityH05.msh
+../../ meshes / cavityH05.msh
 [MESH DIMENSION]
 2
 [ELEMENT TYPE]
@@ -19,7 +19,7 @@ CUDA
 [LAMBDA]
 10
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 [DISCRETIZATION]
 IPDG
 [BASIS]

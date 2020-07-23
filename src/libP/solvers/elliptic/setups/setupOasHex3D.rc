@@ -7,23 +7,23 @@ SOLVE
 #BP5
 
 [DATA FILE]
-data/ellipticSineTest3D.h
-#data/ellipticHomogeneous3D.h
+data / ellipticSineTest3D.h
+#data /ellipticHomogeneous3D.h
 
 [MESH FILE]
-#../../meshes/cubeHexE8Thilina.msh
-#../../meshes/cavityHexH025.msh
-#../../meshes/cavityHexH0125.msh
-#../../meshes/cavityHexH0075.msh
-#../../meshes/cubeHexE00008.msh
-#../../meshes/cubeHexE00064.msh
-#../../meshes/cubeHexE00216.msh
-#../../meshes/cubeHexE00512.msh
-#../../meshes/cubeHexE01000.msh
-#../../meshes/cubeHexE01728.msh
-../../meshes/cubeHexE04096.msh
-#../../meshes/cubeHexE05832.msh
-#../../meshes/cubeHexE08000.msh
+#. ./../meshes/cubeHexE8Thilina.msh
+#. ./../meshes/cavityHexH025.msh
+#. ./../meshes/cavityHexH0125.msh
+#. ./../meshes/cavityHexH0075.msh
+#. ./../meshes/cubeHexE00008.msh
+#. ./../meshes/cubeHexE00064.msh
+#. ./../meshes/cubeHexE00216.msh
+#. ./../meshes/cubeHexE00512.msh
+#. ./../meshes/cubeHexE01000.msh
+#. ./../meshes/cubeHexE01728.msh
+../../ meshes / cubeHexE04096.msh
+#. ./../meshes/cubeHexE05832.msh
+#. ./../meshes/cubeHexE08000.msh
 
 [MESH DIMENSION]
 3
@@ -58,7 +58,7 @@ CUDA
 
 # can add FLEXIBLE to PCG
 [KRYLOV SOLVER]
-PCG+FLEXIBLE
+PCG + FLEXIBLE
 
 # can be IPDG, or CONTINUOUS
 [DISCRETIZATION]
@@ -77,9 +77,7 @@ OAS
 #SEMFEM
 #FULLALMOND
 
-
-
-########## MULTIGRID Options ##############
+## ## ## ## ## MULTIGRID Options ## ## ## ## ## ## ##
 
 # can be ALLDEGREES, HALFDEGREES, HALFDOFS
 [MULTIGRID COARSENING]
@@ -91,15 +89,15 @@ HALFDEGREES
 # LOCALPATCH smoother can include EXACT
 # can include CHEBYSHEV for smoother acceleration
 [MULTIGRID SMOOTHER]
-DAMPEDJACOBI+CHEBYSHEV
+DAMPEDJACOBI + CHEBYSHEV
 
 # can be any integer >0
 [MULTIGRID CHEBYSHEV DEGREE]
 1
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-########## ParAlmond Options ##############
+## ## ## ## ## ParAlmond Options ## ## ## ## ## ## ##
 
 # can be KCYCLE, or VCYCLE
 # can add the EXACT and NONSYM option
@@ -109,7 +107,7 @@ KCYCLE
 
 # can be DAMPEDJACOBI or CHEBYSHEV
 [PARALMOND SMOOTHER]
-CHEBYSHEV+DAMPEDJACOBI
+CHEBYSHEV + DAMPEDJACOBI
 
 # can be any integer >0
 [PARALMOND CHEBYSHEV DEGREE]
@@ -129,7 +127,7 @@ DEFAULT
 MAX
 #MIN
 
-###########################################
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
 [RESTART FROM FILE]
 0

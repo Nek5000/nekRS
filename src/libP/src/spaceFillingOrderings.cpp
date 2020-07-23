@@ -1,28 +1,28 @@
 /*
 
-The MIT License (MIT)
+   The MIT License (MIT)
 
-Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 
-*/
+ */
 
 #include <stdlib.h>
 
@@ -35,86 +35,80 @@ unsigned int MortonToHilbert2D( const unsigned int morton, const unsigned int bi
   unsigned int hilbert = 0;
   unsigned int remap = 0xb4;
   unsigned int block = ( bits << 1 );
-  while( block )
-    {
-      block -= 2;
-      unsigned int mcode = ( ( morton >> block ) & 3 );
-      unsigned int hcode = ( ( remap >> ( mcode << 1 ) ) & 3 );
-      remap ^= ( 0x82000028 >> ( hcode << 3 ) );
-      hilbert = ( ( hilbert << 2 ) + hcode );
-    }
-  return( hilbert );
+  while( block ) {
+    block -= 2;
+    unsigned int mcode = ( ( morton >> block ) & 3 );
+    unsigned int hcode = ( ( remap >> ( mcode << 1 ) ) & 3 );
+    remap ^= ( 0x82000028 >> ( hcode << 3 ) );
+    hilbert = ( ( hilbert << 2 ) + hcode );
+  }
+  return hilbert;
 }
 unsigned int HilbertToMorton2D( const unsigned int hilbert, const unsigned int bits )
 {
   unsigned int morton = 0;
   unsigned int remap = 0xb4;
   unsigned int block = ( bits << 1 );
-  while( block )
-    {
-      block -= 2;
-      unsigned int hcode = ( ( hilbert >> block ) & 3 );
-      unsigned int mcode = ( ( remap >> ( hcode << 1 ) ) & 3 );
-      remap ^= ( 0x330000cc >> ( hcode << 3 ) );
-      morton = ( ( morton << 2 ) + mcode );
-    }
-  return( morton );
+  while( block ) {
+    block -= 2;
+    unsigned int hcode = ( ( hilbert >> block ) & 3 );
+    unsigned int mcode = ( ( remap >> ( hcode << 1 ) ) & 3 );
+    remap ^= ( 0x330000cc >> ( hcode << 3 ) );
+    morton = ( ( morton << 2 ) + mcode );
+  }
+  return morton;
 }
 unsigned int MortonToHilbert3D( const unsigned int morton, const unsigned int bits )
 {
   unsigned int hilbert = morton;
-  if( bits > 1 )
-    {
-      unsigned int block = ( ( bits * 3 ) - 3 );
-      unsigned int hcode = ( ( hilbert >> block ) & 7 );
-      unsigned int mcode, shift, signs;
-      shift = signs = 0;
-      while( block )
-        {
-          block -= 3;
-          hcode <<= 2;
-          mcode = ( ( 0x20212021 >> hcode ) & 3 );
-          shift = ( ( 0x48 >> ( 7 - shift - mcode ) ) & 3 );
-          signs = ( ( signs | ( signs << 3 ) ) >> mcode );
-          signs = ( ( signs ^ ( 0x53560300 >> hcode ) ) & 7 );
-          mcode = ( ( hilbert >> block ) & 7 );
-          hcode = mcode;
-          hcode = ( ( ( hcode | ( hcode << 3 ) ) >> shift ) & 7 );
-          hcode ^= signs;
-          hilbert ^= ( ( mcode ^ hcode ) << block );
-        }
+  if( bits > 1 ) {
+    unsigned int block = ( ( bits * 3 ) - 3 );
+    unsigned int hcode = ( ( hilbert >> block ) & 7 );
+    unsigned int mcode, shift, signs;
+    shift = signs = 0;
+    while( block ) {
+      block -= 3;
+      hcode <<= 2;
+      mcode = ( ( 0x20212021 >> hcode ) & 3 );
+      shift = ( ( 0x48 >> ( 7 - shift - mcode ) ) & 3 );
+      signs = ( ( signs | ( signs << 3 ) ) >> mcode );
+      signs = ( ( signs ^ ( 0x53560300 >> hcode ) ) & 7 );
+      mcode = ( ( hilbert >> block ) & 7 );
+      hcode = mcode;
+      hcode = ( ( ( hcode | ( hcode << 3 ) ) >> shift ) & 7 );
+      hcode ^= signs;
+      hilbert ^= ( ( mcode ^ hcode ) << block );
     }
+  }
   hilbert ^= ( ( hilbert >> 1 ) & 0x92492492 );
   hilbert ^= ( ( hilbert & 0x92492492 ) >> 1 );
-  return( hilbert );
+  return hilbert;
 }
 unsigned int HilbertToMorton3D( const unsigned int hilbert, const unsigned int bits )
 {
   unsigned int morton = hilbert;
   morton ^= ( ( morton & 0x92492492 ) >> 1 );
   morton ^= ( ( morton >> 1 ) & 0x92492492 );
-  if( bits > 1 )
-    {
-      unsigned int block = ( ( bits * 3 ) - 3 );
-      unsigned int hcode = ( ( morton >> block ) & 7 );
-      unsigned int mcode, shift, signs;
-      shift = signs = 0;
-      while( block )
-        {
-          block -= 3;
-          hcode <<= 2;
-          mcode = ( ( 0x20212021 >> hcode ) & 3 );
-          shift = ( ( 0x48 >> ( 4 - shift + mcode ) ) & 3 );
-          signs = ( ( signs | ( signs << 3 ) ) >> mcode );
-          signs = ( ( signs ^ ( 0x53560300 >> hcode ) ) & 7 );
-          hcode = ( ( morton >> block ) & 7 );
-          mcode = hcode;
-          mcode ^= signs;
-          mcode = ( ( ( mcode | ( mcode << 3 ) ) >> shift ) & 7 );
-          morton ^= ( ( hcode ^ mcode ) << block );
-        }
+  if( bits > 1 ) {
+    unsigned int block = ( ( bits * 3 ) - 3 );
+    unsigned int hcode = ( ( morton >> block ) & 7 );
+    unsigned int mcode, shift, signs;
+    shift = signs = 0;
+    while( block ) {
+      block -= 3;
+      hcode <<= 2;
+      mcode = ( ( 0x20212021 >> hcode ) & 3 );
+      shift = ( ( 0x48 >> ( 4 - shift + mcode ) ) & 3 );
+      signs = ( ( signs | ( signs << 3 ) ) >> mcode );
+      signs = ( ( signs ^ ( 0x53560300 >> hcode ) ) & 7 );
+      hcode = ( ( morton >> block ) & 7 );
+      mcode = hcode;
+      mcode ^= signs;
+      mcode = ( ( ( mcode | ( mcode << 3 ) ) >> shift ) & 7 );
+      morton ^= ( ( hcode ^ mcode ) << block );
     }
-  return( morton );
+  }
+  return morton;
 }
 unsigned int Morton_2D_Encode_5bit( unsigned int index1, unsigned int index2 )
 { // pack 2 5-bit indices into a 10-bit Morton code
@@ -128,7 +122,7 @@ unsigned int Morton_2D_Encode_5bit( unsigned int index1, unsigned int index2 )
   index2 *= 0x00108421;
   index1 &= 0x15500000;
   index2 &= 0x15500000;
-  return( ( index1 >> 20 ) | ( index2 >> 19 ) );
+  return ( index1 >> 20 ) | ( index2 >> 19 );
 }
 void Morton_2D_Decode_5bit( const unsigned int morton, unsigned int& index1, unsigned int& index2 )
 { // unpack 2 5-bit indices from a 10-bit Morton code
@@ -171,7 +165,7 @@ unsigned int Morton_2D_Encode_16bit( unsigned int index1, unsigned int index2 )
   index2 |= ( index2 << 1 );
   index1 &= 0x55555555;
   index2 &= 0x55555555;
-  return( index1 | ( index2 << 1 ) );
+  return index1 | ( index2 << 1 );
 }
 void Morton_2D_Decode_16bit( const unsigned int morton, unsigned int& index1, unsigned int& index2 )
 { // unpack 2 16-bit indices from a 32-bit Morton code
@@ -215,10 +209,10 @@ unsigned int Morton_3D_Encode_5bit( unsigned int index1, unsigned int index2, un
   index1 &= 0x12490000;
   index2 &= 0x12490000;
   index3 &= 0x12490000;
-  return( ( index1 >> 16 ) | ( index2 >> 15 ) | ( index3 >> 14 ) );
+  return ( index1 >> 16 ) | ( index2 >> 15 ) | ( index3 >> 14 );
 }
 void Morton_3D_Decode_5bit( const unsigned int morton,
-			    unsigned int& index1, unsigned int& index2, unsigned int& index3 )
+                            unsigned int& index1, unsigned int& index2, unsigned int& index3 )
 { // unpack 3 5-bit indices from a 15-bit Morton code
   unsigned int value1 = morton;
   unsigned int value2 = ( value1 >> 1 );
@@ -277,10 +271,10 @@ unsigned int Morton_3D_Encode_10bit( unsigned int index1, unsigned int index2, u
   index1 &= 0x09249249;
   index2 &= 0x09249249;
   index3 &= 0x09249249;
-  return( index1 | ( index2 << 1 ) | ( index3 << 2 ) );
+  return index1 | ( index2 << 1 ) | ( index3 << 2 );
 }
 void Morton_3D_Decode_10bit( const unsigned int morton,
-			     unsigned int& index1, unsigned int& index2, unsigned int& index3 )
+                             unsigned int& index1, unsigned int& index2, unsigned int& index3 )
 { // unpack 3 10-bit indices from a 30-bit Morton code
   unsigned int value1 = morton;
   unsigned int value2 = ( value1 >> 1 );
@@ -317,20 +311,15 @@ void Morton_3D_Decode_10bit( const unsigned int morton,
   index3 = value3;
 }
 
-
-
-unsigned int hilbert2D(unsigned int index1, unsigned int index2){
-
+unsigned int hilbert2D(unsigned int index1, unsigned int index2)
+{
   unsigned int morton = Morton_2D_Encode_16bit(index1,index2);
 
   return MortonToHilbert2D(morton, 16);
 }
 
-unsigned int morton2D(unsigned int index1, unsigned int index2){
-
+unsigned int morton2D(unsigned int index1, unsigned int index2)
+{
   return Morton_2D_Encode_16bit(index1,index2);
 }
-
-
-
 }
