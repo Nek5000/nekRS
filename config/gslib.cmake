@@ -27,7 +27,7 @@ ExternalProject_Add(
         BUILD_COMMAND 
           ${CMAKE_CURRENT_LIST_DIR}/run_gs_install.sh
           "CC=${CMAKE_C_COMPILER}"
-          "CFLAGS=-fPIC ${CMAKE_C_FLAGS}"
+          "CFLAGS=-fPIC ${EXTERNAL_C_FLAGS}"
         INSTALL_COMMAND ""
         USES_TERMINAL_BUILD on
 )
@@ -73,7 +73,3 @@ install(DIRECTORY
         DESTINATION gatherScatter
         FILES_MATCHING REGEX ${file_pattern})
 install(FILES ${OGS_SOURCE_DIR}/ogs.hpp DESTINATION gatherScatter)
-
-
-
-

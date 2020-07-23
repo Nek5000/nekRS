@@ -34,7 +34,8 @@ set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING
   "Preprocessor macros for libparanumal")
 
 set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
-set(OCCA_CXXFLAGS "" CACHE STRING "C++ flags for OCCA JIT compile")
+set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
+        CACHE STRING "C++ flags for OCCA JIT compile")
 
 set(OCCA_TAG "main" CACHE STRING "Git branch, tag, or hash for cloning OCCA")
 set(NEK5000_TAG "master" CACHE STRING "Git branch, tag, or hash for cloning Nek5000")
@@ -97,14 +98,32 @@ set (CMAKE_CXX_STANDARD 14)
 ###############################################################################
 # Set compiler flags                                                          #
 ###############################################################################
+
+set(CMAKE_POSITION_INDEPENDENT_CODE on)
+
+# For CMake targets, CMAKE_<LANG>_FLAGS and CMAKE_<LANG>_FLAGS_<CONFIG> are
+# both included automatically, based on the current <CONFIG>.  However, for
+# external projects, we need to explicitly include both sets of flags
+
+function(set_external_flags lang)
+  set(EXTERNAL_${lang}_FLAGS
+"${CMAKE_${lang}_FLAGS} \
+$<$<CONFIG:DEBUG>:${CMAKE_${lang}_FLAGS_DEBUG}> \
+$<$<CONFIG:RELEASE>:${CMAKE_${lang}_FLAGS_RELEASE}> \
+$<$<CONFIG:RELWITHDEBINFO>:${CMAKE_${lang}_FLAGS_RELWITHDEBINFO}>"
+      PARENT_SCOPE)
+endfunction()
+
+set_external_flags("C")
+set_external_flags("CXX")
+set_external_flags("Fortran")
+
 find_package(OpenMP)
 if (OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
-
-set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
