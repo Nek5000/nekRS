@@ -57,6 +57,11 @@ private:
                               const dlong a_offset,
                               occa::memory& o_b,
                               const dlong b_offset);
+  void multiWeightedInnerProduct(occa::memory& o_w,
+                              occa::memory& o_a,
+                              const dlong m,
+                              occa::memory& o_b,
+                              const dlong offset);
   elliptic_t& elliptic;
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
@@ -72,14 +77,18 @@ private:
   occa::kernel scalarMultiplyKernel;
   occa::kernel scaledAddwOffsetTwoVecKernel;
   occa::kernel scaledAddwOffsetKernel;
+  occa::kernel multiScaledAddwOffsetKernel;
+  occa::kernel subtractedMultiScaledAddwOffsetKernel;
   occa::kernel placeVectorKernel;
   occa::kernel extractVectorKernel;
   occa::kernel weightedInnerProduct2Kernel;
+  occa::kernel multiWeightedInnerProduct2Kernel;
   occa::kernel innerProductKernel;
   occa::kernel accumulateKernel;
 
   std::vector<dfloat> alpha; // host shadow
   std::vector<dfloat> work; // O(m) work array
+  std::vector<dfloat> multiwork; // O(Nblock*m) work array
 
   dlong numVecsProjection;
   dlong Ntotal; // vector size

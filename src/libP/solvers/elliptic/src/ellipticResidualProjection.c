@@ -64,10 +64,9 @@ void ResidualProjection::reOrthogonalize()
                             + computeInnerProduct(o_bb,j,o_xx,k));
       }
       gop(alpha.data() + k,work.data(),(m - k) + 1);
-      for(int j = m - 1; j >= k + 1; j--) {
-        scaledAddwOffsetKernel(Ntotal, -alpha[j], o_xx,j, one, k);
-        scaledAddwOffsetKernel(Ntotal, -alpha[j], o_bb,j, one, k);
-      }
+      o_alpha.copyFrom(alpha.data(),sizeof(dfloat)*((m-k)+1));
+      subtractedMultiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_xx, one, k);
+      subtractedMultiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_bb, one, k);
       dfloat normp = sqrt(alpha[k]);
       dfloat normk = 0.0;
       if(useWeightedFormulation) {
@@ -114,20 +113,19 @@ void ResidualProjection::updateProjectionSpace()
   dlong m = numVecsProjection;
   if(m <= 0) return;
   if(useWeightedFormulation) {
-    for(int k = 0; k < m; ++k)
-      alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,k,o_bb,m - 1);
+    multiWeightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx, m, o_bb, m-1);
   } else {
     for(int k = 0; k < m; ++k)
       alpha[k] = computeInnerProduct(o_xx,k,o_bb,m - 1);
   }
   gop(alpha.data(),work.data(),m);
+  o_alpha.copyFrom(alpha.data(),sizeof(dfloat)*m);
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
+  multiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_xx, one, m-1);
+  multiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_bb, one, m-1);
   for(int k = 0; k < m - 1; ++k) {
-    const dfloat scale = -alpha[k];
-    scaledAddwOffsetKernel(Ntotal, scale, o_xx,k, one, m - 1);
-    scaledAddwOffsetKernel(Ntotal, scale, o_bb,k, one, m - 1);
     norm_new = norm_new - alpha[k] * alpha[k];
   }
   norm_new = sqrt(norm_new);
@@ -153,8 +151,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   const int m = numVecsProjection;
   if(m <= 0) return;
   if(useWeightedFormulation) {
-    for(int k = 0; k < m; ++k)
-      alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_r,0,o_xx,k);
+    multiWeightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,m,o_r,0);
   } else {
     for(int k = 0; k < m; ++k)
       alpha[k] = computeInnerProduct(o_r,0,o_xx,k);
@@ -211,6 +208,7 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha.resize(maxNumVecsProjection);
   work.resize(maxNumVecsProjection);
+  multiwork.resize(Nblock*maxNumVecsProjection);
   o_alpha = elliptic.mesh->device.malloc < dfloat > (maxNumVecsProjection);
   o_xbar = elliptic.mesh->device.malloc < dfloat > (Ntotal);
   o_xx = elliptic.mesh->device.malloc < dfloat > (Ntotal * maxNumVecsProjection);
@@ -222,7 +220,9 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
     if ((r == 0 && elliptic.mesh->rank == 0) || (r == 1 && elliptic.mesh->rank > 0)) {
       occa::properties properties;
       properties += elliptic.mesh->device.properties();
-      properties["defines/p_threadBlockSize"] = 256;
+      properties["defines/p_threadBlockSize"] = blockSize;
+      properties["defines/p_blockSize"] = blockSize;
+      properties["defines/p_maxMultiVectors"] = maxNumVecsProjection;
       properties["defines/dfloat"] = dfloatString;
       properties["defines/dlong"] = dlongString;
 
@@ -238,9 +238,18 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
       scaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
                                                                  "scaledAddwOffset",
                                                                  properties);
+      multiScaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
+                                                                 "multiScaledAddwOffset",
+                                                                 properties);
+      subtractedMultiScaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
+                                                                 "subtractedMultiScaledAddwOffset",
+                                                                 properties);
       placeVectorKernel = elliptic.mesh->device.buildKernel(fileName, "placeVector", properties);
       weightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(fileName,
                                                                       "weightedInnerProduct2",
+                                                                      properties);
+      multiWeightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(fileName,
+                                                                      "multiWeightedInnerProduct2",
                                                                       properties);
       innerProductKernel = elliptic.mesh->device.buildKernel(fileName, "innerProduct", properties);
       accumulateKernel = elliptic.mesh->device.buildKernel(fileName, "accumulate", properties);
@@ -353,4 +362,33 @@ dfloat ResidualProjection::weightedInnerProduct(occa::memory &o_w,
     wab += tmp[n];
 
   return wab;
+}
+void ResidualProjection::multiWeightedInnerProduct(occa::memory &o_w,
+                                                occa::memory &o_a,
+                                                const dlong m,
+                                                occa::memory &o_b,
+                                                const dlong offset)
+{
+  setupAide &options = elliptic.options;
+
+  const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
+  const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  int enableReductions = 1;
+  options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
+
+  mesh_t* mesh = elliptic.mesh;
+
+  const dlong Nlocal = mesh->Np * mesh->Nelements;
+  const dlong Nblock = elliptic.Nblock;
+
+  multiWeightedInnerProduct2Kernel(Nlocal, Nblock, m, o_w, o_a, o_b, offset, elliptic.o_wrk);
+  elliptic.o_wrk.copyTo(multiwork.data(), sizeof(dfloat)*m*Nblock);
+  for(dlong k = 0 ; k < m; ++k){
+    dfloat accum = 0.0;
+    for(dlong n = 0; n < Nblock; ++n){
+      accum += multiwork[n+k*Nblock];
+    }
+    alpha[k] = accum;
+  }
+  o_alpha.copyFrom(alpha.data(),sizeof(double)*m);
 }
