@@ -113,8 +113,6 @@ void ResidualProjection::updateProjectionSpace()
   dlong m = numVecsProjection;
   if(m <= 0) return;
   if(useWeightedFormulation) {
-    //for(int k = 0; k < m; ++k)
-    //  alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,k,o_bb,m - 1);
     multiWeightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx, m, o_bb, m-1);
   } else {
     for(int k = 0; k < m; ++k)
@@ -153,8 +151,6 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   const int m = numVecsProjection;
   if(m <= 0) return;
   if(useWeightedFormulation) {
-    //for(int k = 0; k < m; ++k)
-    //  alpha[k] = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_r,0,o_xx,k);
     multiWeightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,m,o_r,0);
   } else {
     for(int k = 0; k < m; ++k)

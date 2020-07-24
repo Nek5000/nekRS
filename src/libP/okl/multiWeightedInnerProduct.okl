@@ -45,7 +45,7 @@ SOFTWARE.
       const int id = t + p_blockSize*b;
       
       for (int l=0;l<L;l++) {
-        s_wxy[t+l*p_blockSize] = (id<N) ? w[id]*x[id+l*N]*y[id+(L-1)*N] : 0.f;  
+        s_wxy[t+l*p_blockSize] = (id<N) ? w[id]*x[id+l*N]*y[id] : 0.f;  
       }
     }
 
