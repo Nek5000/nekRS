@@ -106,7 +106,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE on)
 # external projects, we need to explicitly include both sets of flags
 
 function(set_external_flags lang)
-  string(TOUPPER ${CMAKE_BUILD_TYPE} mode)
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" mode)
   set(EXTERNAL_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${mode}}"
           PARENT_SCOPE)
 endfunction()
@@ -265,8 +265,9 @@ install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp
 
 # Examples will follow a different policy -- only copy if source tree is newer than install tree
 file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
-configure_file(config/examples_manifest.cmake.in examples_manifest.cmake @ONLY)
-install(SCRIPT config/install_examples.cmake)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
+install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
 #################################################################################
 # Uninstall
