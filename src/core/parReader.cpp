@@ -53,6 +53,9 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
+  options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
+  options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
+  options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
   options.setArgs("VARIABLE VISCOSITY", "FALSE");
   options.setArgs("LOWMACH", "FALSE");
@@ -452,12 +455,28 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     string vsolver;
     int flow = 1;
+    bool v_rproj;
+    if(ini.extract("velocity", "residualproj", v_rproj)) {
+      if(v_rproj)
+        options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+      else
+        options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
+
+      int v_nProjVec;
+      if(ini.extract("velocity", "residualprojectionvectors", v_nProjVec))
+        options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", std::to_string(v_nProjVec));
+      int v_nProjStep;
+      if(ini.extract("velocity", "residualprojectionstart", v_nProjStep))
+        options.setArgs("VELOCITY RESIDUAL PROJECTION START", std::to_string(v_nProjStep));
+    }
     ini.extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
       options.setArgs("VELOCITY SOLVER", "NONE");
       flow = 0;
     } else if(std::strstr(vsolver.c_str(), "block")) {
       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+      if(options.compareArgs("VELOCITY RESIDUAL PROJECTION","TRUE"))
+        exit("Residual projection is not enabled for the velocity block solver!", EXIT_FAILURE);
     }
 
     double v_residualTol;
