@@ -9,8 +9,7 @@
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_CXXFLAGS:="-g -O2"}
-: ${NEKRS_DEBUG:=0}
+: ${NEKRS_CXXFLAGS:=""}
 
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
@@ -163,11 +162,6 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-NEKRS_BUILD_TYPE=RelWithDebInfo
-if [ ${NEKRS_DEBUG} -ne 0 ]; then
-  NEKRS_BUILD_TYPE=Debug
-fi
-
 # =======================
 # Run CMake
 # =======================
@@ -177,7 +171,7 @@ mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
 # ENABLE_CUDA, ENABLE_OPENCL, etc., are used by OCCA's CMakeLists
 cmake -Wno-dev \
-      -DCMAKE_BUILD_TYPE="${NEKRS_BUILD_TYPE}" \
+      -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
       -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
