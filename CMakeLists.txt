@@ -101,19 +101,7 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-# For CMake targets, CMAKE_<LANG>_FLAGS and CMAKE_<LANG>_FLAGS_<CONFIG> are
-# both included automatically, based on the current <CONFIG>.  However, for
-# external projects, we need to explicitly include both sets of flags
-
-function(set_external_flags lang)
-  string(TOUPPER "${CMAKE_BUILD_TYPE}" mode)
-  set(EXTERNAL_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${mode}}"
-          PARENT_SCOPE)
-endfunction()
-
-set_external_flags("C")
-set_external_flags("CXX")
-set_external_flags("Fortran")
+add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -121,6 +109,26 @@ if (OPENMP_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
+
+# For CMake targets, CMAKE_<LANG>_FLAGS, CMAKE_<LANG>_FLAGS_<CONFIG>, and
+# COMPILE_DEFINITIONS are included automatically, based on the current <CONFIG>.
+# For # external projects, we explicitly collect them
+function(set_external_flags lang)
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" mode)
+  set(ext_flags "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${mode}}")
+
+  get_directory_property(compile_defs
+          DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMPILE_DEFINITIONS )
+  foreach(def "${compile_defs}")
+    set(ext_flags "${ext_flags} -D${def}")
+  endforeach()
+
+  set(EXTERNAL_${lang}_FLAGS "${ext_flags}" PARENT_SCOPE)
+endfunction()
+
+set_external_flags("C")
+set_external_flags("CXX")
+set_external_flags("Fortran")
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
@@ -160,8 +168,6 @@ include(config/blaslapack.cmake)
 ###############################################################################
 # Build NekRS
 ###############################################################################
-
-add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
 
 set(SRC 
     src/nekrs.cpp
