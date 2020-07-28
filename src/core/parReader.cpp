@@ -528,6 +528,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     } else {
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
       bool t_rproj;
       if(ini.extract("temperature", "residualproj", t_rproj)) {
         if(t_rproj)
@@ -604,6 +606,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       continue;
     }
     options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
     bool t_rproj;
     if(ini.extract("scalar" + sidPar, "residualproj", t_rproj)) {
       if(t_rproj)
