@@ -949,6 +949,9 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
     cds->options.setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));
     cds->options.setArgs("SOLVER TOLERANCE",
                          options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
+    cds->options.setArgs("RESIDUAL PROJECTION",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION"));
+    cds->options.setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
+    cds->options.setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
 
     cds->solver[is] = new elliptic_t();
     cds->solver[is]->blockSolver = 0;

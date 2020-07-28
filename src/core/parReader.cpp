@@ -527,6 +527,21 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+      bool t_rproj;
+      if(ini.extract("temperature", "residualproj", t_rproj)) {
+        if(t_rproj)
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
+        else
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+
+        int t_nProjVec;
+        if(ini.extract("temperature", "residualprojectionvectors", t_nProjVec))
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+        int t_nProjStep;
+        if(ini.extract("temperature", "residualprojectionstart", t_nProjStep))
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
+      }
 
       double s_residualTol;
       if(ini.extract("temperature", "residualtol", s_residualTol))
@@ -587,6 +602,21 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       continue;
+    }
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+    bool t_rproj;
+    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj)) {
+      if(t_rproj)
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
+      else
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+
+      int t_nProjVec;
+      if(ini.extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+      int t_nProjStep;
+      if(ini.extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
     }
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
