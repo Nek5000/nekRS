@@ -24,6 +24,15 @@ const double startTime(void);
 const double finalTime(void);
 
 void* nekPtr(const char* id);
-}
+
+namespace mesh
+{
+const dfloat* EX();
+const dfloat* EY();
+const dfloat* EZ();
+const dfloat* MM();
+} // namespace mesh
+
+} // namespace nekrs
 
 #endif

@@ -208,6 +208,11 @@ void printRuntimeStatistics()
 }
 } // namespace
 
+const dfloat* nekrs::mesh::EX() { return ins->mesh->EX; }
+const dfloat* nekrs::mesh::EY() { return ins->mesh->EY; }
+const dfloat* nekrs::mesh::EZ() { return ins->mesh->EZ; }
+const dfloat* nekrs::mesh::MM() { return ins->mesh->MM; }
+
 static void dryRun(libParanumal::setupAide &options, int npTarget)
 {
   if (rank == 0)
