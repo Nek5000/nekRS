@@ -171,7 +171,7 @@ oogs_t* oogs::setup(dlong N, hlong *ids, const char *type, MPI_Comm &comm,
   const unsigned Nhalo = ogs->NhaloGather;
   const unsigned unit_size = sizeof(double); // hardwire just need to be big enough
 
-  if(Nhalo == 0) gs;
+  if(Nhalo == 0) return gs;
 
   occa::properties props;
   props["mapped"] = true;
@@ -252,11 +252,7 @@ void oogs::start(occa::memory o_v, const char *type, const char *op, oogs_t *gs)
   if (ogs->NhaloGather) {
     if (ogs::o_haloBuf.size() < ogs->NhaloGather*Nbytes) {
       if (ogs::o_haloBuf.size()) ogs::o_haloBuf.free();
-
-      occa::properties props;
-      props["mapped"] = true;
-      ogs::o_haloBuf = ogs->device.malloc(ogs->NhaloGather*Nbytes, props);
-      ogs::haloBuf = ogs::o_haloBuf.ptr();
+      ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*Nbytes, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
     }
   }
 
