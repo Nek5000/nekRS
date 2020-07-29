@@ -208,12 +208,12 @@ void printRuntimeStatistics()
 }
 } // namespace
 
-int nekrs::mesh::Nelements(){ return ins->mesh->Nelements; }
-int nekrs::mesh::Np() { return ins->mesh->Np; }
+int nekrs::mesh::nElements() { return ins->mesh->Nelements; }
+int nekrs::mesh::polyDeg() { return ins->mesh->N; }
 const dfloat* nekrs::mesh::x() { return ins->mesh->x; }
 const dfloat* nekrs::mesh::y() { return ins->mesh->y; }
 const dfloat* nekrs::mesh::z() { return ins->mesh->z; }
-const dfloat* nekrs::mesh::MM() { return ins->mesh->MM; }
+const dfloat* nekrs::mesh::mm() { return ins->mesh->MM; }
 
 static void dryRun(libParanumal::setupAide &options, int npTarget)
 {

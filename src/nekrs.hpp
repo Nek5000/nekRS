@@ -27,12 +27,12 @@ void* nekPtr(const char* id);
 
 namespace mesh
 {
-int Nelements();
-int Np();
+int nElements();
+int polyDeg();
 const dfloat* x();
 const dfloat* y();
 const dfloat* z();
-const dfloat* MM();
+const dfloat* mm();
 } // namespace mesh
 
 } // namespace nekrs
