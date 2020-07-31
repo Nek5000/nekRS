@@ -32,8 +32,18 @@ int polyDeg();
 const dfloat* x();
 const dfloat* y();
 const dfloat* z();
-const dfloat* mm();
+const dfloat* massMatrix();
 } // namespace mesh
+
+const dfloat* mue();  // vdiff
+const dfloat* rho();  // vtrans
+
+namespace cds
+{
+const dfloat* scalarFields();
+int nScalarFields();
+long fieldOffset();
+}
 
 } // namespace nekrs
 
