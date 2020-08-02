@@ -496,7 +496,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double rho;
-    if(ini.extract("velocity", "density", rho))
+    if(ini.extract("velocity", "density", rho) || ini.extract("velocity", "rho", rho))
       options.setArgs("DENSITY", to_string_f(rho));
     else
       if(!variableProperties && flow)
