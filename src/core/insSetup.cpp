@@ -494,6 +494,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->pSolver->levels = (int*) calloc(ins->pSolver->nLevels,sizeof(int));
       for(int i = 0; i < ins->pSolver->nLevels; ++i)
         ins->pSolver->levels[i] = std::atoi(mgLevelList.at(i).c_str());
+
+      if(ins->pSolver->levels[0] > mesh->N || 
+         ins->pSolver->levels[ins->pSolver->nLevels-1] < 1) {
+        if(mesh->rank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
+        EXIT(1);
+      }
       ins->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
     } else if(ins->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","ASM") ||
               ins->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","RAS")) {
