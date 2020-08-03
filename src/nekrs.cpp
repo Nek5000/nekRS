@@ -214,6 +214,7 @@ const dfloat* nekrs::mesh::x() { return ins->mesh->x; }
 const dfloat* nekrs::mesh::y() { return ins->mesh->y; }
 const dfloat* nekrs::mesh::z() { return ins->mesh->z; }
 const dfloat* nekrs::mesh::massMatrix() { return ins->mesh->MM; }
+const dlong* nekrs::mesh::elementInfo() { return ins->elementInfo; };
 const dfloat* nekrs::mue() { return ins->prop; }
 const dfloat* nekrs::rho() { return &ins->prop[ins->fieldOffset]; }
 const dfloat* nekrs::cds::scalarFields() { return ins->cds->S; }

@@ -33,6 +33,7 @@ const dfloat* x();
 const dfloat* y();
 const dfloat* z();
 const dfloat* massMatrix();
+const dlong* elementInfo();
 } // namespace mesh
 
 const dfloat* mue();  // vdiff
