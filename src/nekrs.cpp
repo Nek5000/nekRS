@@ -208,15 +208,18 @@ void printRuntimeStatistics()
 }
 } // namespace
 
-int nekrs::mesh::nElements() { return ins->mesh->Nelements; }
-int nekrs::mesh::polyDeg() { return ins->mesh->N; }
-const dfloat* nekrs::mesh::x() { return ins->mesh->x; }
-const dfloat* nekrs::mesh::y() { return ins->mesh->y; }
-const dfloat* nekrs::mesh::z() { return ins->mesh->z; }
-const dfloat* nekrs::mesh::massMatrix() { return ins->mesh->MM; }
-const dlong* nekrs::mesh::elementInfo() { return ins->elementInfo; };
+int nekrs::meshT::nElements() { return ins->meshT->Nelements; }
+int nekrs::meshT::polyDeg() { return ins->meshT->N; }
+const dfloat* nekrs::meshT::x() { return ins->meshT->x; }
+const dfloat* nekrs::meshT::y() { return ins->meshT->y; }
+const dfloat* nekrs::meshT::z() { return ins->meshT->z; }
+const dfloat* nekrs::meshT::massMatrix() { return ins->meshT->MM; }
+
+const dlong* nekrs::elementInfo() { return ins->elementInfo; };
 const dfloat* nekrs::mue() { return ins->prop; }
 const dfloat* nekrs::rho() { return &ins->prop[ins->fieldOffset]; }
+bool nekrs::cht() { return ins->cht == 1; }
+
 const dfloat* nekrs::cds::scalarFields() { return ins->cds->S; }
 int nekrs::cds::nScalarFields() { return ins->cds->NSfields; }
 long nekrs::cds::fieldOffset() { return ins->cds->fieldOffset; }

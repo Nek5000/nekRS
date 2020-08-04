@@ -25,7 +25,7 @@ const double finalTime(void);
 
 void* nekPtr(const char* id);
 
-namespace mesh
+namespace meshT
 {
 int nElements();
 int polyDeg();
@@ -33,9 +33,10 @@ const dfloat* x();
 const dfloat* y();
 const dfloat* z();
 const dfloat* massMatrix();
-const dlong* elementInfo();
 } // namespace mesh
 
+bool cht();
+const dlong* elementInfo();
 const dfloat* mue();  // vdiff
 const dfloat* rho();  // vtrans
 
