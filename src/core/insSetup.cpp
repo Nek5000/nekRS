@@ -850,9 +850,12 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_wrk6 = ins->o_wrk6;
 
   cds->gsh = ins->gsh;
+  
   if(ins->cht) {
     meshParallelGatherScatterSetup(mesh, cds->Nlocal, mesh->globalIds, mesh->comm, 0);
     cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
+  } else {
+    cds->gshT = cds->gsh;
   }
 
   // Solution storage at interpolation nodes
