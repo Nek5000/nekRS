@@ -26,6 +26,8 @@ typedef struct
 
   setupAide options;
 
+  oogs_t *gsh, *gshT;
+
   dlong vFieldOffset;
   dlong fieldOffset;
   dlong Nlocal, Ntotal;

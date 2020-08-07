@@ -105,7 +105,7 @@ ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
   MPI_Comm_size(ogs->comm, &size);
 
   //make a host gs handle (calls gslib)
-  ogs->hostGsh = ogsHostSetup(comm, N, ids, 0, 0);
+  ogs->hostGsh = ogsHostSetup(comm, N, ids, 0, 1);
 
   //use the host gs to find what nodes are local to this rank
   int *minRank = (int *) calloc(N,sizeof(int));
@@ -384,7 +384,7 @@ void ogsFree(ogs_t *ogs) {
     ogs->o_gatherInvDegree.free();
   }
 
-  free(ogs);
+  delete[] ogs;
 
   ogs::Nrefs--;
   if (!ogs::Nrefs) ogs::freeKernels();

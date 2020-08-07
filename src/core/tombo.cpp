@@ -14,8 +14,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
                   ins->o_Ue,
                   ins->o_wrk0);
 
-  ogsGatherScatterMany(ins->o_wrk0, ins->NVfields, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(ins->o_wrk0, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
   ins->invMassMatrixKernel(
     mesh->Nelements,
@@ -63,8 +62,8 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_wrk0,
     ins->o_wrk6);
 
-  ogsGatherScatterMany(ins->o_wrk6, ins->NVfields, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
+
+  oogs::startFinish(ins->o_wrk6, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
   ins->invMassMatrixKernel(
     mesh->Nelements,
@@ -119,7 +118,8 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
 
   elliptic_t* solver = ins->pSolver;
 
-  ogsGatherScatter(ins->o_wrk3, ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(ins->o_wrk3, 1, 0, ogsDfloat, ogsAdd, ins->gsh);
+
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, ins->o_wrk3);
 
   ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);
@@ -208,8 +208,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->o_ellipticCoeff,
     ins->o_wrk3);
 
-  ogsGatherScatterMany(ins->o_wrk3, ins->NVfields, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(ins->o_wrk3, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
   // Use old velocity as initial condition
   ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));

@@ -52,7 +52,7 @@ void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-    ogsGatherScatter(o_Rx, ogsDfloat, ogsAdd, (ogs_t*) elliptic->ogs);
+    oogs::startFinish(o_Rx, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
     if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
   }
 }

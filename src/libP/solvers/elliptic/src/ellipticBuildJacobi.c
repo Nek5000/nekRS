@@ -83,19 +83,14 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
                                  elliptic->o_lambda,
                                  precon->o_invDiagA);
 
+  oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+
   const dfloat one = 1.0;
-  if(elliptic->blockSolver) {
-    ogsGatherScatterMany(precon->o_invDiagA,
-                         elliptic->Nfields,
-                         elliptic->Ntotal,
-                         ogsDfloat,
-                         ogsAdd,
-                         elliptic->ogs);
+  if(elliptic->blockSolver) 
     elliptic->scalarDivideManyKernel(Nlocal, elliptic->Ntotal, one, precon->o_invDiagA);
-  }else {
-    ogsGatherScatter(precon->o_invDiagA, ogsDfloat, ogsAdd, elliptic->ogs);
+  else
     elliptic->scalarDivideKernel(Nlocal, one, precon->o_invDiagA);
-  }
+  
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)

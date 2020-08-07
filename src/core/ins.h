@@ -21,6 +21,8 @@ typedef struct
   elliptic_t* pSolver;
   cds_t* cds;
 
+  oogs_t *gsh;
+
   dlong ellipticWrkOffset;
 
   int flow;
