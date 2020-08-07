@@ -32,11 +32,17 @@ C-----------------------------------------------------------------------
       real pre  (lx2,ly2,lz2,lelv)
       real prerr(lx2,ly2,lz2,lelv)
 
+      real err(4)
+      save err 
+
       common /SCRNS/ wo1(lx1,ly1,lz1,lelv)
      &              ,wo2(lx1,ly1,lz1,lelv)
      &              ,omg(lx1*ly1*lz1*lelv,ldim)
 
-      common /SCNRS/ wrk(4)
+      COMMON /NRSSCPTR/ nrs_scptr(1)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(err)
 
       n  = nelv*nx1*ny1*nz1
       n2 = nelv*nx2*ny2*nz2
@@ -68,10 +74,10 @@ C-----------------------------------------------------------------------
       prerrl2 = glsc3(prerr,bm2,prerr,n2)
       prerrl2 = sqrt(prerrl2)
 
-      wrk(1) = uxerrl2
-      wrk(2) = prerrl2
-      wrk(3) = terrl2
-      wrk(4) = serrl2
+      err(1) = uxerrl2
+      err(2) = prerrl2
+      err(3) = terrl2
+      err(4) = serrl2
 
       if (nid.eq.nio) write(6,*) istep,time,uxerrl2,prerrl2,
      &                           terrl2,serrl2,' L2 err'

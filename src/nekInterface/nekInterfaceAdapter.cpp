@@ -23,6 +23,7 @@ static void (* userqtl_ptr)(void);
 static void (* usrsetvert_ptr)(void);
 
 static void (* nek_ptr_ptr)(void**, char*, int*);
+static void (* nek_scptr_ptr)(int*, void*);
 static void (* nek_outfld_ptr)(char*);
 static void (* nek_resetio_ptr)(void);
 static void (* nek_setio_ptr)(double*, int*, int*, int*, int*, int*, int*);
@@ -50,6 +51,13 @@ void* nek_ptr(const char* id)
   void* ptr;
   int len = strlen(id);
   (*nek_ptr_ptr)(&ptr, (char*)id, &len);
+  return ptr;
+}
+
+void* nek_scPtr(int id)
+{
+  void* ptr;
+  (*nek_scptr_ptr)(&id, &ptr);
   return ptr;
 }
 
@@ -236,6 +244,8 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
 
   nek_ptr_ptr = (void (*)(void**, char*, int*))dlsym(handle, fname("nekf_ptr"));
+  check_error(dlerror());
+  nek_scptr_ptr = (void (*)(int*, void*))dlsym(handle, fname("nekf_scptr"));
   check_error(dlerror());
   nek_setup_ptr =
     (void (*)(int*, char*, char*, int*, int*, int*, int*, int, int))dlsym(handle, fname("nekf_setup"));
@@ -561,7 +571,6 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t** ins_in)
   nekData.zc = (double*) nek_ptr("zc");
 
   nekData.glo_num = (long long*) nek_ptr("glo_num");
-  nekData.cbscnrs = (double*) nek_ptr("cb_scnrs");
   nekData.cbc = (char*) nek_ptr("cbc");
 
   nekData.boundaryID  = (int*) nek_ptr("boundaryID");

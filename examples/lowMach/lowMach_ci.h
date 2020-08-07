@@ -35,7 +35,7 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_ocopyFrom(time, tstep);
   nek_userchk();
 
-  double *err = nekData.cbscnrs;
+  double *err = (double *) nek_scPtr(1);
   double vxErr, prErr, sErr;
 
   switch (ciMode) {

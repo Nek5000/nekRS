@@ -43,7 +43,7 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_ocopyFrom(time, tstep);
   nek_userchk();
 
-  double *err = nekData.cbscnrs;
+  double *err = (double *) nek_scPtr(1);
 
   const double vxErr = abs((err[0] - 1.19E-04)/err[0]);
   const double prErr = abs((err[1] - 6.49E-04)/err[1]);

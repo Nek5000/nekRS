@@ -36,8 +36,6 @@ c-----------------------------------------------------------------------
          ptr = loc(ndim)
       elseif (id .eq. 'nx1') then 
          ptr = loc(nx1)
-      elseif (id .eq. 'cb_scnrs') then
-         ptr = loc(sc_nrs(1)) 
       elseif (id .eq. 'glo_num') then
          ptr = loc(glo_num(1)) 
       elseif (id .eq. 'xc') then
@@ -755,3 +753,24 @@ c        write(6,*) 'cht t cbc_bmap:', (cbc_bmap(i,ifld), i=1,6)
 
       return
       end
+c-----------------------------------------------------------------------
+      subroutine nekf_scptr(id,ptr)
+
+      implicit none
+
+      integer id
+
+      integer i8
+      integer*8 ptr
+      pointer(ptr,i8)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+     
+      ptr = nrs_scptr(id)  
+
+      return
+      end
+c-----------------------------------------------------------------------
+
