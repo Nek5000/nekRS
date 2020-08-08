@@ -37,6 +37,8 @@ typedef struct
 
   int* ifgetu, * ifgetp, * ifgett, * ifgetps;
 
+  double* cbscnrs;
+
   /* global vertex ids */
   long long* glo_num;
 

@@ -273,6 +273,8 @@
     @shared dfloat s_S[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
+    @exclusive dlong element;
+
     for(int k = 0; k < p_Nq; ++k; @inner(2))
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {

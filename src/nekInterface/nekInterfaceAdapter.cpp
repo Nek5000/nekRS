@@ -571,6 +571,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t** ins_in)
   nekData.zc = (double*) nek_ptr("zc");
 
   nekData.glo_num = (long long*) nek_ptr("glo_num");
+  nekData.cbscnrs = (double*) nek_ptr("cb_scnrs");
   nekData.cbc = (char*) nek_ptr("cbc");
 
   nekData.boundaryID  = (int*) nek_ptr("boundaryID");
