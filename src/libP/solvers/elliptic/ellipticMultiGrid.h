@@ -64,6 +64,7 @@ public:
   static occa::memory o_smootherResidual2;
   static occa::memory o_smootherUpdate;
   occa::kernel preFDMKernel;
+  bool overlap;
   occa::kernel fusedFDMKernel;
   occa::kernel postFDMKernel;
   occa::kernel collocateKernel;

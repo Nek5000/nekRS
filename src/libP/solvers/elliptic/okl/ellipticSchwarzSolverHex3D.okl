@@ -168,7 +168,10 @@
     }
   }
 }
-@kernel void fusedFDM(dlong Nelements,
+@kernel void fusedFDM(
+                      dlong Nelements,
+                      dlong localNelements,
+                      @restrict const dlong*  elementList,
                       @restrict pfloat* Su,
                       @restrict const pfloat* S_x,
                       @restrict const pfloat* S_y,
@@ -176,7 +179,11 @@
                       @restrict const pfloat* inv_L,
                       @restrict pfloat* u)
 {
-  for (dlong e = 0; e < Nelements; ++e; @outer) {
+#if p_overlap
+  for (dlong my_elem = 0; my_elem < localNelements; ++my_elem; @outer) {
+#else
+  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem; @outer) {
+#endif
     @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
@@ -185,10 +192,16 @@
     @shared pfloat S_z_eT[p_Nq_e][p_Nq_e];
     @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
     @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
+    @exclusive dlong element;
     for(int k = 0; k < p_Nq_e; ++k) {
       for(int j = 0; j < p_Nq_e; ++j; @inner) {
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
-          const dlong elem_offset = e * p_Nq_e * p_Nq_e * p_Nq_e;
+          #if p_overlap
+          element = elementList[my_elem];
+          #else
+          element = my_elem;
+          #endif
+          const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = u[idx];
         }
@@ -228,9 +241,9 @@
     for (int i = 0; i < p_Nq_e; i++; @inner)
       for (int j = 0; j < p_Nq_e; j++; @inner) {
         const int ij = j + i * p_Nq_e;
-        S_x_e[i][j] = S_x[ij + e * p_Nq_e * p_Nq_e];
-        S_y_e[i][j] = S_y[ij + e * p_Nq_e * p_Nq_e];
-        S_z_e[i][j] = S_z[ij + e * p_Nq_e * p_Nq_e];
+        S_x_e[i][j] = S_x[ij + element * p_Nq_e * p_Nq_e];
+        S_y_e[i][j] = S_y[ij + element * p_Nq_e * p_Nq_e];
+        S_z_e[i][j] = S_z[ij + element * p_Nq_e * p_Nq_e];
         S_x_eT[j][i] = S_x_e[i][j];
         S_y_eT[j][i] = S_y_e[i][j];
         S_z_eT[j][i] = S_z_e[i][j];
@@ -240,7 +253,7 @@
       for (int j = 0; j < p_Nq_e; j++; @inner) {
 #pragma unroll
         for (int i = 0; i < p_Nq_e; i++) {
-          const pfloat* u_e = u + e * p_Nq_e * p_Nq_e * p_Nq_e;
+          const pfloat* u_e = u + element * p_Nq_e * p_Nq_e * p_Nq_e;
           pfloat value = 0.0;
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
@@ -271,7 +284,7 @@
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_z_eT[k][l] * work1[j][i][l];
-          work2[k][j][i] = value * inv_L[v + e * p_Nq_e * p_Nq_e * p_Nq_e];
+          work2[k][j][i] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
         }
       }
     }
@@ -312,7 +325,7 @@
 
 #if (!p_restrict)
           const int v = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
-          pfloat* Su_e = Su + e * p_Nq_e * p_Nq_e * p_Nq_e;
+          pfloat* Su_e = Su + element * p_Nq_e * p_Nq_e * p_Nq_e;
           Su_e[v] = value;
 #endif
           work1[k][j][i] = value;
@@ -351,7 +364,7 @@
     for(int k = 0; k < p_Nq_e; ++k) {
       for(int j = 0; j < p_Nq_e; ++j; @inner) {
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
-          const dlong elem_offset = e * p_Nq_e * p_Nq_e * p_Nq_e;
+          const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           u[idx] = work2[k][j][i];
         }
