@@ -25,6 +25,8 @@ c-----------------------------------------------------------------------
 
       if (istep.lt.1) return
 
+      nrs_scptr(1) = loc(err(1))
+
       call printdiverr
 
       ntot = nx1*ny1*nz1*nelv

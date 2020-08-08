@@ -25,6 +25,8 @@ c-----------------------------------------------------------------------
 
       real  wrk(lx1,ly1,lz1,lelt,3)
 
+      nrs_scptr(1) = loc(err(1))
+
       nv = nx1*ny1*nz1*nelv
       nt = nx1*ny1*nz1*nelt
 
