@@ -7,5 +7,8 @@
       COMMON /NRSSCPTR/ nrs_scptr(100)
       integer*8         nrs_scptr
 
+      COMMON /SCNRS/ sc_nrs(LX1*LY1*LZ1*LELT)
+      real           sc_nrs
+
       common /INTNRS/ getu, getp, gett, getps, llelt
       integer         getu, getp, gett, getps, llelt
