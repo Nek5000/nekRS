@@ -769,12 +769,15 @@ void MGLevel::build(
   delete op;
   delete lengths;
 
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, elliptic->Nfields, 
                                     elliptic->Ntotal, ogsPfloat, extendedMesh->comm, 1, extendedMesh->device,
-                                    NULL, OOGS_AUTO);
+                                    NULL, oogsMode);
   ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, elliptic->Nfields,
                             elliptic->Ntotal, ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
-                            NULL, OOGS_AUTO);
+                            NULL, oogsMode);
 
   meshFree(extendedMesh);
 

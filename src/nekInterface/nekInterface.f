@@ -9,8 +9,7 @@ c-----------------------------------------------------------------------
 
       integer len 
       character*(len) id
-      integer i8
-      integer*8 ptr
+      integer*8 i8
       pointer(ptr,i8)
 
       include 'SIZE'
@@ -759,9 +758,7 @@ c-----------------------------------------------------------------------
       implicit none
 
       integer id
-
-      integer i8
-      integer*8 ptr
+      integer*8 i8
       pointer(ptr,i8)
 
       include 'SIZE'

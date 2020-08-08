@@ -232,7 +232,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   } else {
     gs->mode = gsMode;
   }
-  if(rank == 0) printf(" (used mode: %d)\n", gs->mode);
+  if(rank == 0) printf("used oogs mode: %d\n", gs->mode);
 
   return gs; 
 }
