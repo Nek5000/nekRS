@@ -303,6 +303,7 @@
 }
 
 @kernel void insSubCycleStrongVolumeHex3D(const dlong Nelements,
+                                          @restrict const dlong*  elementList,
                                           @restrict const dfloat*  vgeo,
                                           @restrict const dfloat*  D,
                                           const dlong offset,
@@ -318,14 +319,17 @@
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
+    @exclusive dlong element;
+
     for(int k = 0; k < p_Nq; ++k; @inner(2))
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
+          element = elementList[e];
           if(k == 0)
             s_D[0][id] = D[id];
 
-          id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
           const dfloat Udn = Ud[id + 0 * offset];
           const dfloat Vdn = Ud[id + 1 * offset];
@@ -341,7 +345,7 @@
     for(int k = 0; k < p_Nq; ++k; @inner(2)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat drdx = vgeo[gid + p_RXID * p_Np];
           const dfloat drdy = vgeo[gid + p_RYID * p_Np];
           const dfloat drdz = vgeo[gid + p_RZID * p_Np];
@@ -387,7 +391,7 @@
           dfloat dwddy = drdy * dwddr + dsdy * dwdds + dtdy * dwddt;
           dfloat dwddz = drdz * dwddr + dsdz * dwdds + dtdz * dwddt;
 
-          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
           dfloat u = U[id + 0 * offset];
           dfloat v = U[id + 1 * offset];

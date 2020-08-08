@@ -477,7 +477,8 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
             ins->o_wrk6);
         else
           ins->subCycleStrongVolumeKernel(
-            mesh->Nelements,
+            mesh->NglobalGatherElements,
+            mesh->o_globalGatherElementList,
             mesh->o_vgeo,
             mesh->o_Dmatrices,
             ins->fieldOffset,
@@ -511,7 +512,8 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
             ins->o_wrk6);
         else
           ins->subCycleStrongVolumeKernel(
-            mesh->Nelements,
+            mesh->NlocalGatherElements,
+            mesh->o_localGatherElementList,
             mesh->o_vgeo,
             mesh->o_Dmatrices,
             ins->fieldOffset,
@@ -619,7 +621,8 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
             cds->o_wrk2);
         else
           cds->subCycleStrongVolumeKernel(
-            mesh->Nelements,
+            mesh->NglobalGatherElements,
+            mesh->o_globalGatherElementList,
             cds->vFieldOffset,
             rk * cds->fieldOffset,
             mesh->o_vgeo,
@@ -652,7 +655,8 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
             cds->o_wrk2);
         else
           cds->subCycleStrongVolumeKernel(
-            mesh->Nelements,
+            mesh->NlocalGatherElements,
+            mesh->o_localGatherElementList,
             cds->vFieldOffset,
             rk * cds->fieldOffset,
             mesh->o_vgeo,
