@@ -3,7 +3,14 @@
 occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
 {
   mesh_t* mesh;
-  (is) ? mesh = cds->meshV : mesh = cds->mesh;
+  oogs_t* gsh;
+  if(is) {
+    mesh = cds->meshV;
+    gsh = cds->gsh;
+  } else {
+    mesh = cds->mesh;
+    gsh = cds->gshT;
+  }
   elliptic_t* solver = cds->solver[is];
 
   cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal * sizeof(dfloat), 0,
@@ -29,7 +36,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                             *(cds->o_usrwrk),
                             cds->o_wrk1);
 
-  ogsGatherScatter(cds->o_wrk1, ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(cds->o_wrk1, 1, cds->fieldOffset, ogsDfloat, ogsAdd, gsh);
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
 
   //copy current solution fields as initial guess

@@ -290,6 +290,11 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   const int nbrBIDs = bcMap::size(0);
   int NBCType = nbrBIDs + 1;
 
+  meshParallelGatherScatterSetup(mesh, ins->Nlocal, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  ins->gsh = oogs::setup(mesh->ogs, ins->NVfields, ins->fieldOffset, ogsDfloat, NULL, oogsMode);
+
   if (ins->flow) {
     if (mesh->rank == 0) printf("==================VELOCITY SETUP=========================\n");
 
@@ -845,6 +850,17 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_wrk4 = ins->o_wrk4;
   cds->o_wrk5 = ins->o_wrk5;
   cds->o_wrk6 = ins->o_wrk6;
+
+  cds->gsh = ins->gsh;
+  
+  if(ins->cht) {
+    meshParallelGatherScatterSetup(mesh, cds->Nlocal, mesh->globalIds, mesh->comm, 0);
+    oogs_mode oogsMode = OOGS_AUTO; 
+    if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+    cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
+  } else {
+    cds->gshT = cds->gsh;
+  }
 
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity

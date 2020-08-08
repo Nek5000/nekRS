@@ -60,6 +60,8 @@ typedef struct
   precon_t* precon;
 
   ogs_t* ogs;
+  oogs_t* oogs;
+  oogs_t* oogsAx;
 
   setupAide options;
 

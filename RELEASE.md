@@ -11,7 +11,7 @@
 
 ## What you may have to change to be compatible 
 
-* n/a 
+* common block SCRNS was replaced by pointer array NRSSCPTR (see ethier example) 
 
 ## Known Bugs 
 

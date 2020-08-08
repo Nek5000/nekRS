@@ -79,26 +79,15 @@ void ellipticSerialOperator(elliptic_t* elliptic,
                            o_Aq);
     }
 
-/*
-    ogs_t *ellipticOgs = elliptic->ogs;
-    if(elliptic->blockSolver){
-      void *V[elliptic->Nfields];
-      for(int fld=0; fld<elliptic->Nfields; fld++)
-        V[fld] = (char*) o_Aq.ptr() + fld*elliptic->Ntotal*sizeof(dfloat);
-       ogsHostGatherScatterMany(V, elliptic->Nfields, dfloatString, "add", ellipticOgs->hostGsh);
-    }else{
-      ogsHostGatherScatter(o_Aq.ptr(), dfloatString, "add", ellipticOgs->hostGsh);
-    }
- */
-    ogsGatherScatterMany(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd,
-                         elliptic->ogs);
-
-    //post-mask
+    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
     if (elliptic->Nmasked)
       mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
+
   } else if(ipdg) {
+
     printf("WARNING: DEBUGGING C0\n");
     MPI_Finalize();
+
     exit(-1);
   }
 }
@@ -130,14 +119,13 @@ void ellipticOperator(elliptic_t* elliptic,
   dfloat* tmp = elliptic->tmp;
   occa::memory &o_tmp = elliptic->o_tmp;
 
-  if(continuous) {
-    // TW: turned off for debugging
-    if(serial) {
-      ellipticSerialOperator(elliptic, o_q, o_Aq, precision);
-      return;
-    }
+  if(serial) {
+    ellipticSerialOperator(elliptic, o_q, o_Aq, precision);
+    return;
+  }
 
-    ogs_t* ogs = elliptic->ogs;
+  if(continuous) {
+    oogs_t* oogsAx = elliptic->oogsAx;
 
     int mapType = (elliptic->elementType == HEXAHEDRA &&
                    options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
@@ -232,24 +220,10 @@ void ellipticOperator(elliptic_t* elliptic,
           }
         }
       }
-      //      else{
-      // elliptic->partialCubatureAxKernel(mesh->NglobalGatherElements,
-      //                                  mesh->o_globalGatherElementList,
-      //                                  mesh->o_cubggeo,
-      //                                  mesh->o_cubD,
-      //                                  mesh->o_cubInterpT,
-      //                                  lambda, o_q, o_Aq);
-      //      }
     }
 
-    if(enableGatherScatters) {
-      // printf("1-----gather-scatter Aq \n");
-      if(elliptic->blockSolver)
-        ogsGatherScatterManyStart(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd,
-                                  ogs);
-      else
-        ogsGatherScatterStart(o_Aq, ogsDfloat, ogsAdd, ogs);
-    }
+    if(enableGatherScatters)
+      oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
 
     if(mesh->NlocalGatherElements) {
       if(integrationType == 0) { // GLL or non-hex
@@ -335,29 +309,13 @@ void ellipticOperator(elliptic_t* elliptic,
           }
         }
       }
-// else{
-//      elliptic->partialCubatureAxKernel(mesh->NlocalGatherElements,
-//                                        mesh->o_localGatherElementList,
-//                                        mesh->o_cubggeo,
-//                                        mesh->o_cubD,
-//                                        mesh->o_cubInterpT,
-//                                        lambda,
-//                                        o_q,
-//                                        o_Aq);
-//       }
     }
 
-    // finalize gather using local and global contributions
-    if(enableGatherScatters) {
-      if(elliptic->blockSolver)
-        ogsGatherScatterManyFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd,
-                                   ogs);
-      else
-        ogsGatherScatterFinish(o_Aq, ogsDfloat, ogsAdd, ogs);
-    }
+    if(enableGatherScatters)
+      oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
 
-    //post-mask
     if (elliptic->Nmasked)
       mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
+
   }
 }

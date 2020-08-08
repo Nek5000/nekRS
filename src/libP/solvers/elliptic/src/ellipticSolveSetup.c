@@ -359,7 +359,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, mesh->comm, verbose);
+  if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, mesh->comm, verbose);
 
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
@@ -377,15 +377,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
             elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = mymin(BCFlag,
-                                                                                elliptic->mapB[fid +
-                                                                                               e *
-                                                                                               mesh
-                                                                                               ->Np
-                                                                                               + fld
-                                                                                               *
-                                                                                               elliptic
-                                                                                               ->
-                                                                                               Ntotal]);
+                                                  elliptic->mapB[fid + e *mesh->Np + fld*elliptic->Ntotal]);
           }
         }
       }
@@ -424,6 +416,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   if (elliptic->Nmasked) elliptic->o_maskIds = mesh->device.malloc(
       elliptic->Nmasked * sizeof(dlong),
       elliptic->maskIds);
+
 
   if(elliptic->blockSolver) { // Create a gs handle independent from BC handler
     elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, mesh->comm, verbose, mesh->device);
@@ -1011,6 +1004,39 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   long long int pre = mesh->device.memoryAllocated();
 
+  oogs_mode oogsMode = OOGS_AUTO;
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
+  auto callback = [&]() // hardwired to FP64 variable coeff
+    {
+      occa::kernel &partialAxKernel = elliptic->partialAxKernel;
+      if(elliptic->blockSolver)
+          partialAxKernel(mesh->NlocalGatherElements,
+                          elliptic->Ntotal,
+                          elliptic->loffset,
+                          mesh->o_localGatherElementList,
+                          mesh->o_ggeo,
+                          mesh->o_Dmatrices,
+                          mesh->o_Smatrices,
+                          mesh->o_MM,
+                          elliptic->o_lambda,
+                          elliptic->o_p,
+                          elliptic->o_Ap);
+        else
+          partialAxKernel(mesh->NlocalGatherElements,
+                          elliptic->Ntotal,
+                          mesh->o_localGatherElementList,
+                          mesh->o_ggeo,
+                          mesh->o_Dmatrices,
+                          mesh->o_Smatrices,
+                          mesh->o_MM,
+                          elliptic->o_lambda,
+                          elliptic->o_p,
+                          elliptic->o_Ap);
+    };
+  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
+  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
+
   ellipticPreconditionerSetup(elliptic, elliptic->ogs, kernelInfo);
 
   long long int usedBytes = mesh->device.memoryAllocated() - pre;
@@ -1053,4 +1079,5 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
     }
     elliptic->residualProjection = new ResidualProjection(* elliptic, nVecsProject, nStepsStart);
   }
+
 }

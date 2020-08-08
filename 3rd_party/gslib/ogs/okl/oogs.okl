@@ -1,0 +1,97 @@
+@kernel void packBuf_float(const dlong Nscatter,
+                             const   int Nentries,
+                   @restrict const  dlong *  scatterStarts,
+                   @restrict const  dlong *  scatterIds,
+                   @restrict const  float *  q,
+                   @restrict float *  scatterq){
+
+  for(dlong s=0;s<Nscatter*Nentries;++s;@tile(256,@outer,@inner)){
+
+    const float qs = q[s];
+
+    const dlong sid = s%Nscatter;
+    const int k = s/Nscatter;
+    const dlong start = scatterStarts[sid];
+    const dlong end = scatterStarts[sid+1];
+    
+    for(dlong n=start;n<end;++n){
+      const dlong id = scatterIds[n];
+      scatterq[id*Nentries+k] = qs;
+    }
+  }
+}
+
+@kernel void packBuf_double(const dlong Nscatter,
+                             const   int Nentries,
+                   @restrict const  dlong *  scatterStarts,
+                   @restrict const  dlong *  scatterIds,
+                   @restrict const  double *  q,
+                   @restrict double *  scatterq){
+
+  for(dlong s=0;s<Nscatter*Nentries;++s;@tile(256,@outer,@inner)){
+
+    const double qs = q[s];
+    
+    const dlong sid = s%Nscatter;
+    const int k = s/Nscatter;
+    const dlong start = scatterStarts[sid];
+    const dlong end = scatterStarts[sid+1];
+    
+    for(dlong n=start;n<end;++n){
+      const dlong id = scatterIds[n];
+      scatterq[id*Nentries+k] = qs;
+    }
+  }
+}
+
+@kernel void unpackBuf_float(const dlong Ngather,
+                             const  int      Nentries,
+		   @restrict const  dlong *  gatherStarts,
+		   @restrict const  dlong *  gatherIds,
+		   @restrict const  float *  q,
+		   @restrict float *  gatherq){
+
+  for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
+
+    const dlong gid = g%Ngather;
+    const int k = g/Ngather;
+    const dlong start = gatherStarts[gid];
+    const dlong end = gatherStarts[gid+1];
+     
+    float gq = 0.f;
+    for(dlong n=start;n<end;++n){
+    	const dlong id = gatherIds[n];
+    	gq += q[id*Nentries+k];
+    }
+
+    //contiguously packed
+    gatherq[g] += gq;
+  }
+}
+
+@kernel void unpackBuf_double(const dlong Ngather,
+                 const  int      Nentries,
+       @restrict const  dlong *  gatherStarts,
+       @restrict const  dlong *  gatherIds,
+       @restrict const  double *  q,
+       @restrict double *  gatherq){
+
+  for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
+
+    const dlong gid = g%Ngather;
+    const int k = g/Ngather;
+    const dlong start = gatherStarts[gid];
+    const dlong end = gatherStarts[gid+1];
+     
+    double gq = 0.f;
+    for(dlong n=start;n<end;++n){
+      const dlong id = gatherIds[n];
+      gq += q[id*Nentries+k];
+    }
+
+    //contiguously packed
+    gatherq[g] += gq;
+  }
+}
+
+

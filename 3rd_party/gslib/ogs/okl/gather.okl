@@ -47,28 +47,6 @@ SOFTWARE.
   }
 }
 
-@kernel void gather_floatAddSelf(const dlong Ngather,
-		   @restrict const  dlong *  gatherStarts,
-		   @restrict const  dlong *  gatherIds,
-		   @restrict const  float *  q,
-		   @restrict float *  gatherq){
-
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
-
-    const dlong start = gatherStarts[g];
-    const dlong end = gatherStarts[g+1];
-     
-    float gq = 0.f;
-    for(dlong n=start;n<end;++n){
-    	const dlong id = gatherIds[n];
-    	gq += q[id];
-    }
-
-    //contiguously packed
-    gatherq[g] += gq;
-  }
-}
-
 @kernel void gather_doubleAdd(const dlong Ngather,
        @restrict const  dlong *  gatherStarts,
        @restrict const  dlong *  gatherIds,
@@ -88,28 +66,6 @@ SOFTWARE.
 
     //contiguously packed
     gatherq[g] = gq;
-  }
-}
-
-@kernel void gather_doubleAddSelf(const dlong Ngather,
-       @restrict const  dlong *  gatherStarts,
-       @restrict const  dlong *  gatherIds,
-       @restrict const  double *  q,
-       @restrict double *  gatherq){
-
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
-
-    const dlong start = gatherStarts[g];
-    const dlong end = gatherStarts[g+1];
-     
-    double gq = 0.f;
-    for(dlong n=start;n<end;++n){
-      const dlong id = gatherIds[n];
-      gq += q[id];
-    }
-
-    //contiguously packed
-    gatherq[g] += gq;
   }
 }
 

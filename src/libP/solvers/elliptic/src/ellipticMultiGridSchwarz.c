@@ -714,20 +714,14 @@ void MGLevel::generate_weights()
     work2[i] = 1.0;
   }
   extrude(work2, 0, zero, work1, 0, one, elliptic->mesh);
-#ifdef USE_OOGS
-  oogs::gatherScatter(work1, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
-#else
-  ogsGatherScatter(work1, ogsPfloat, ogsAdd, (ogs_t*) extendedOgs);
-#endif
+
+  oogs::startFinish(work1, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
+
   extrude(work1, 0, one, work2, 0, onem, elliptic->mesh);
   extrude(work1, 2, one, work1, 0, one, elliptic->mesh);
   to_reg(wts, work1, elliptic->mesh);
 
-#ifdef USE_OOGS
-  oogs::gatherScatter(wts, ogsPfloat, ogsAdd, (oogs_t*) ogs);
-#else
-  ogsGatherScatter(wts, ogsPfloat, ogsAdd, (ogs_t*) ogs);
-#endif
+  oogs::startFinish(wts, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
 
   for(dlong i = 0; i < weightSize; ++i)
     wts[i] = 1.0 / wts[i];
@@ -775,20 +769,16 @@ void MGLevel::build(
   delete op;
   delete lengths;
 
-#ifdef USE_OOGS
-  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, ogsPfloat,
-                                    extendedMesh->comm, 1, extendedMesh->device, OOGS_AUTO);
-  ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, ogsPfloat,
-                            elliptic->mesh->comm, 1, elliptic->mesh->device, OOGS_AUTO);
-#else
-  extendedOgs = (void*) ogsSetup(Nelements * Np_e,
-                                 extendedMesh->maskedGlobalIds,
-                                 extendedMesh->comm,
-                                 0,
-                                 extendedMesh->device);
-  ogs = (void*) elliptic->ogs;
-#endif
-  extendedMesh->ogs = nullptr;
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+
+  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, elliptic->Nfields, 
+                                    elliptic->Ntotal, ogsPfloat, extendedMesh->comm, 1, extendedMesh->device,
+                                    NULL, oogsMode);
+  ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, elliptic->Nfields,
+                            elliptic->Ntotal, ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
+                            NULL, oogsMode);
+
   meshFree(extendedMesh);
 
   const dlong weightSize = Np * Nelements;
@@ -836,20 +826,12 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     const dlong Nelements = elliptic->mesh->Nelements;
     preFDMKernel(Nelements, o_u, o_work1);
 
-#ifdef USE_OOGS
-    oogs::gatherScatter(o_work1, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
-#else
-    ogsGatherScatter(o_work1, ogsPfloat, ogsAdd, (ogs_t*) extendedOgs);
-#endif
+    oogs::startFinish(o_work1, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 
     if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
       fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
-#ifdef USE_OOGS
-      oogs::gatherScatter(o_work2, ogsPfloat, ogsAdd, (oogs_t*) ogs);
-#else
-      ogsGatherScatter(o_work2, ogsPfloat, ogsAdd, (ogs_t*) ogs);
-#endif
+      oogs::startFinish(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
 
       collocateKernel(elliptic->mesh->Nelements * elliptic->mesh->Np,
                       elliptic->ogs->o_invDegree,
@@ -858,19 +840,11 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     } else {
       fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
-#ifdef USE_OOGS
-      oogs::gatherScatter(o_work2, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
-#else
-      ogsGatherScatter(o_work2, ogsPfloat, ogsAdd, (ogs_t*) extendedOgs);
-#endif
+      oogs::startFinish(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 
       postFDMKernel(Nelements,o_work1,o_work2,o_work3);
 
-#ifdef USE_OOGS
-      oogs::gatherScatter(o_work3, ogsPfloat, ogsAdd, (oogs_t*) ogs);
-#else
-      ogsGatherScatter(o_work3, ogsPfloat, ogsAdd, (ogs_t*) ogs);
-#endif
+      oogs::startFinish(o_work3, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
 
       collocateKernel(elliptic->mesh->Nelements * elliptic->mesh->Np, o_wts, o_work3, o_Su);
     }

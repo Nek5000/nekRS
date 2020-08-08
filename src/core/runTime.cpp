@@ -490,8 +490,7 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
         if(rk == 1) o_rhs = ins->o_wrk9;
         if(rk == 2) o_rhs = ins->o_wrk12;
         if(rk == 3) o_rhs = ins->o_wrk15;
-        ogsGatherScatterMany(o_rhs, ins->NVfields, ins->fieldOffset,
-                             ogsDfloat, ogsAdd, mesh->ogs);
+        oogs::startFinish(o_rhs, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);                     
         ins->invMassMatrixKernel(
           mesh->Nelements,
           ins->fieldOffset,
@@ -604,7 +603,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
         if(rk == 1) o_rhs = cds->o_wrk3;
         if(rk == 2) o_rhs = cds->o_wrk4;
         if(rk == 3) o_rhs = cds->o_wrk5;
-        ogsGatherScatter(o_rhs, ogsDfloat, ogsAdd, mesh->ogs);
+        oogs::startFinish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
         cds->invMassMatrixKernel(
           mesh->Nelements,
           cds->fieldOffset,
@@ -643,8 +642,7 @@ void qthermal(ins_t* ins, dfloat time, occa::memory o_div)
     cds->o_S,
     cds->o_wrk0);
 
-  ogsGatherScatterMany(cds->o_wrk0, ins->NVfields, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(cds->o_wrk0, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
   ins->invMassMatrixKernel(
     mesh->Nelements,
@@ -671,8 +669,7 @@ void qthermal(ins_t* ins, dfloat time, occa::memory o_div)
     cds->o_wrk3,
     o_div);
 
-  ogsGatherScatterMany(o_div, 1, ins->fieldOffset,
-                       ogsDfloat, ogsAdd, mesh->ogs);
+  oogs::startFinish(o_div, 1, ins->fieldOffset, ogsDfloat, ogsAdd, ins->gsh);
 
   ins->invMassMatrixKernel(
     mesh->Nelements,
