@@ -194,7 +194,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   if(gsMode == OOGS_AUTO) {
-    if(rank == 0) printf("timing gs modes: ");
+    if(rank == 0) printf("timing oogs modes: ");
     const int Ntests = 10;
     double elapsedLast = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
@@ -232,7 +232,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   } else {
     gs->mode = gsMode;
   }
-  if(rank == 0) printf("used oogs mode: %d\n", gs->mode);
+  if(rank == 0) printf("used mode: %d\n", gs->mode);
 
   return gs; 
 }

@@ -25,6 +25,7 @@
  */
 
 @kernel void insSubCycleStrongCubatureVolumeHex3D(const dlong Nelements,
+                                                  @restrict const dlong*  elementList,
                                                   @restrict const dfloat*  vgeo,
                                                   @restrict const dfloat*  cubvgeo,
                                                   @restrict const dfloat*  cubD,
@@ -62,9 +63,12 @@
     @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
     @exclusive dfloat r_Ud[p_cubNq], r_Vd[p_cubNq], r_Wd[p_cubNq];
 
+    @exclusive dlong element;
+
     for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
       for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
         const int id = i + j * p_cubNq;
+        element = elementList[e];
         if (id < p_Nq * p_cubNq) {
           s_cubInterpT[0][id] = cubInterpT[id];
           s_cubProjectT[0][id] = cubProjectT[id];
@@ -90,7 +94,7 @@
         for(int a = 0; a < p_cubNq; ++a; @inner(0))
           if(a < p_Nq && b < p_Nq) {
             // this can be improved
-            const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
 
             // U.grad Ud
             s_U[b][a] = U[id + 0 * offset];
@@ -205,7 +209,7 @@
             Wdt += Dkn * r_Wd[n];
           }
 
-          const dlong gid = e * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          const dlong gid = element * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
           const dfloat drdx = cubvgeo[gid + p_RXID * p_cubNp];
           const dfloat drdy = cubvgeo[gid + p_RYID * p_cubNp];
           const dfloat drdz = cubvgeo[gid + p_RZID * p_cubNp];
@@ -289,7 +293,7 @@
               rhsW += Iia * s_Wd[b][i];
             }
 
-            const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
             NU[id + 0 * offset + NUOffset] = rhsU;
             NU[id + 1 * offset + NUOffset] = rhsV;
             NU[id + 2 * offset + NUOffset] = rhsW;
