@@ -1009,6 +1009,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
     {
+      if(mesh->NlocalGatherElements == 0) return;
       occa::kernel &partialAxKernel = elliptic->partialAxKernel;
       if(elliptic->blockSolver)
           partialAxKernel(mesh->NlocalGatherElements,

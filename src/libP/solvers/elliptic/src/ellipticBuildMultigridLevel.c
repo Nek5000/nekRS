@@ -994,6 +994,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwaire to FP64 const coeff
     {
+      if(mesh->NlocalGatherElements == 0) return;
       occa::kernel &partialAxKernel = elliptic->partialAxKernel;
       partialAxKernel(mesh->NlocalGatherElements,
                       mesh->o_localGatherElementList,
