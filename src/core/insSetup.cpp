@@ -724,6 +724,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->scalarScaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      kernelName = "maskCopy";
+      ins->maskCopyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       // ===========================================================================
 
       fileName = oklpath + "insFilterRT" + suffix + ".okl";
@@ -1089,6 +1093,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       cds->setScalarKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = oklpath + "math.okl";
+      kernelName = "maskCopy";
+      cds->maskCopyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
       kernelName = "cdsSumMakef" + suffix;
       cds->sumMakefKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1097,8 +1106,8 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       kernelName = "cdsHelmholtzBC" + suffix;
       cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      kernelName = "cdsHelmholtzAddBC" + suffix;
-      cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
+      kernelName = "cdsDirichletBC";
+      cds->dirichletBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       fileName = oklpath + "setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";

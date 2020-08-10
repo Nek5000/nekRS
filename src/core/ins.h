@@ -217,6 +217,8 @@ typedef struct
   occa::kernel invMassMatrixKernel;
   occa::kernel massMatrixKernel;
 
+  occa::kernel maskCopyKernel;
+
   int* EToB;
   occa::memory o_EToB;
 
