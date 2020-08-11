@@ -1,8 +1,3 @@
-/*
- * TODO:
- *  - Support other operations than just add 
- */
-
 #include <limits>
 #include <occa.hpp>
 #include "ogs.hpp"
@@ -151,9 +146,11 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
       gs->packBufDoubleKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_double", ogs::kernelInfo);
-      gs->unpackBufDoubleKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_double", ogs::kernelInfo);
       gs->packBufFloatKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_float", ogs::kernelInfo);
-      gs->unpackBufFloatKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_float", ogs::kernelInfo);
+      gs->unpackBufDoubleAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleAdd", ogs::kernelInfo);
+      gs->unpackBufFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", ogs::kernelInfo);
+      gs->unpackBufDoubleMinKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMin", ogs::kernelInfo);
+      gs->unpackBufDoubleMaxKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMax", ogs::kernelInfo);
     }
     MPI_Barrier(comm->c);
   }
@@ -244,21 +241,60 @@ oogs_t* oogs::setup(dlong N, hlong *ids, int nVec, dlong stride, const char *typ
   return setup(ogs, nVec, stride, type, callback, gsMode);
 }
 
+static void packBuf(oogs_t *gs,
+                    const  dlong Ngather,
+                    const int k,
+                    occa::memory o_starts,
+                    occa::memory o_ids,
+                    const char* type,
+                    occa::memory  o_v,
+                    occa::memory  o_gv)
+{
+  if      ((!strcmp(type, "float"))) {
+    gs->packBufFloatKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))) {
+    gs->packBufDoubleKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else {
+    printf("oogs: unsupported datatype %s!\n", type);
+    exit(1);
+  }
+}
+
+static void unpackBuf(oogs_t *gs,
+                      const  dlong Ngather,
+                      const int k,
+                      occa::memory o_starts,
+                      occa::memory o_ids,
+                      const char* type,
+                      const char* op,
+                      occa::memory  o_v,
+                      occa::memory  o_gv)
+{
+  if      ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
+    gs->unpackBufFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "add"))) {
+    gs->unpackBufDoubleAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "min"))) {
+    gs->unpackBufDoubleMinKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "max"))) {
+    gs->unpackBufDoubleMaxKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else {
+    printf("oogs: unsupported datatype %s and operatior %s!\n", type, op);
+    exit(1);
+  }
+}
+
 void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
-  occa::kernel packBuf;
-  if (!strcmp(type, "float")) { 
+  if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
-    packBuf = gs->packBufFloatKernel;
-  } else if (!strcmp(type, "double")) { 
+  else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
-    packBuf = gs->packBufDoubleKernel;
-  } else if (!strcmp(type, "int")) { 
+  else if (!strcmp(type, "int"))
     Nbytes = sizeof(int);
-  } else if (!strcmp(type, "long long int")) { 
+  else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
-  }
 
   ogs_t *ogs = gs->ogs; 
 
@@ -271,7 +307,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 
   if (ogs->NhaloGather) {
     occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
-    if(gs->mode != OOGS_DEFAULT) packBuf(ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, ogs::o_haloBuf, gs->o_bufSend);
+    if(gs->mode != OOGS_DEFAULT) packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
     ogs->device.finish();
 
     if(gs->mode == OOGS_DEFAULT) {
@@ -285,22 +321,10 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
-  occa::kernel unpackBuf;
-  if (!strcmp(type, "float")) { 
+  if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
-    unpackBuf = gs->unpackBufFloatKernel;
-  } else if (!strcmp(type, "double")) { 
+  else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
-    unpackBuf = gs->unpackBufDoubleKernel;
-  } else { 
-    printf("oogs: unsupported datatype %s!\n", type);
-    exit(1);
-  }
-
-  if (strcmp(op, "add")) {
-    printf("oogs: unsupported operation %s!\n", op);
-    exit(1);
-  }
 
   ogs_t *ogs = gs->ogs; 
 
@@ -330,7 +354,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     if(gs->mode == OOGS_DEFAULT) { 
       ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
     } else {
-      unpackBuf(ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, gs->o_bufRecv, ogs::o_haloBuf);
+      unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     }
 
     ogs->device.finish();
@@ -367,9 +391,13 @@ void oogs::destroy(oogs_t *gs)
   gs->o_bufSend.free();
 
   gs->packBufDoubleKernel.free(); 
-  gs->unpackBufDoubleKernel.free();
   gs->packBufFloatKernel.free();
-  gs->unpackBufFloatKernel.free();
+
+  gs->unpackBufDoubleAddKernel.free();
+  gs->unpackBufFloatAddKernel.free();
+
+  gs->unpackBufDoubleMinKernel.free();
+  gs->unpackBufDoubleMaxKernel.free();
   
   free(gs);
 }
