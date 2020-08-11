@@ -460,32 +460,34 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
                                o_U,
                                ins->o_Ue);
 
-        if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-          ins->subCycleStrongCubatureVolumeKernel(
-            mesh->NglobalGatherElements,
-            mesh->o_globalGatherElementList,
-            mesh->o_vgeo,
-            mesh->o_cubvgeo,
-            mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            ins->o_InvM,
-            ins->fieldOffset,
-            rk * ins->NVfields * ins->fieldOffset,
-            ins->o_Ue,
-            ins->o_wrk0,
-            ins->o_wrk6);
-        else
-          ins->subCycleStrongVolumeKernel(
-            mesh->NglobalGatherElements,
-            mesh->o_globalGatherElementList,
-            mesh->o_vgeo,
-            mesh->o_Dmatrices,
-            ins->fieldOffset,
-            rk * ins->NVfields * ins->fieldOffset,
-            ins->o_Ue,
-            ins->o_wrk0,
-            ins->o_wrk6);
+        if(mesh->NglobalGatherElements) {
+          if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+            ins->subCycleStrongCubatureVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              ins->o_InvM,
+              ins->fieldOffset,
+              rk * ins->NVfields * ins->fieldOffset,
+              ins->o_Ue,
+              ins->o_wrk0,
+              ins->o_wrk6);
+          else
+            ins->subCycleStrongVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              ins->fieldOffset,
+              rk * ins->NVfields * ins->fieldOffset,
+              ins->o_Ue,
+              ins->o_wrk0,
+              ins->o_wrk6);
+        }
 
         occa::memory o_rhs;
         if(rk == 0) o_rhs = ins->o_wrk6;
@@ -495,32 +497,34 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
 
         oogs::start(o_rhs, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);                     
 
-        if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-          ins->subCycleStrongCubatureVolumeKernel(
-            mesh->NlocalGatherElements,
-            mesh->o_localGatherElementList,
-            mesh->o_vgeo,
-            mesh->o_cubvgeo,
-            mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            ins->o_InvM,
-            ins->fieldOffset,
-            rk * ins->NVfields * ins->fieldOffset,
-            ins->o_Ue,
-            ins->o_wrk0,
-            ins->o_wrk6);
-        else
-          ins->subCycleStrongVolumeKernel(
-            mesh->NlocalGatherElements,
-            mesh->o_localGatherElementList,
-            mesh->o_vgeo,
-            mesh->o_Dmatrices,
-            ins->fieldOffset,
-            rk * ins->NVfields * ins->fieldOffset,
-            ins->o_Ue,
-            ins->o_wrk0,
-            ins->o_wrk6);
+        if(mesh->NlocalGatherElements) {
+          if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+            ins->subCycleStrongCubatureVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              ins->o_InvM,
+              ins->fieldOffset,
+              rk * ins->NVfields * ins->fieldOffset,
+              ins->o_Ue,
+              ins->o_wrk0,
+              ins->o_wrk6);
+          else
+            ins->subCycleStrongVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              ins->fieldOffset,
+              rk * ins->NVfields * ins->fieldOffset,
+              ins->o_Ue,
+              ins->o_wrk0,
+              ins->o_wrk6);
+        }
 
         oogs::finish(o_rhs, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);                     
         ins->invMassMatrixKernel(
@@ -605,31 +609,33 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
           o_U,
           cds->o_Ue);
 
-        if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-          cds->subCycleStrongCubatureVolumeKernel(
-            mesh->NglobalGatherElements,
-            mesh->o_globalGatherElementList,
-            cds->vFieldOffset,
-            rk * cds->fieldOffset,
-            mesh->o_vgeo,
-            mesh->o_cubvgeo,
-            mesh->o_cubDiffInterpT,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            cds->o_Ue,
-            cds->o_wrk0,
-            cds->o_wrk2);
-        else
-          cds->subCycleStrongVolumeKernel(
-            mesh->NglobalGatherElements,
-            mesh->o_globalGatherElementList,
-            cds->vFieldOffset,
-            rk * cds->fieldOffset,
-            mesh->o_vgeo,
-            mesh->o_Dmatrices,
-            cds->o_Ue,
-            cds->o_wrk0,
-            cds->o_wrk2);
+        if(mesh->NglobalGatherElements) {
+          if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+            cds->subCycleStrongCubatureVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              cds->vFieldOffset,
+              rk * cds->fieldOffset,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              cds->o_Ue,
+              cds->o_wrk0,
+              cds->o_wrk2);
+          else
+            cds->subCycleStrongVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              cds->vFieldOffset,
+              rk * cds->fieldOffset,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              cds->o_Ue,
+              cds->o_wrk0,
+              cds->o_wrk2);
+        }
 
         occa::memory o_rhs;
         if(rk == 0) o_rhs = cds->o_wrk2;
@@ -639,31 +645,33 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
 
         oogs::start(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
 
-        if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-          cds->subCycleStrongCubatureVolumeKernel(
-            mesh->NlocalGatherElements,
-            mesh->o_localGatherElementList,
-            cds->vFieldOffset,
-            rk * cds->fieldOffset,
-            mesh->o_vgeo,
-            mesh->o_cubvgeo,
-            mesh->o_cubDiffInterpT,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            cds->o_Ue,
-            cds->o_wrk0,
-            cds->o_wrk2);
-        else
-          cds->subCycleStrongVolumeKernel(
-            mesh->NlocalGatherElements,
-            mesh->o_localGatherElementList,
-            cds->vFieldOffset,
-            rk * cds->fieldOffset,
-            mesh->o_vgeo,
-            mesh->o_Dmatrices,
-            cds->o_Ue,
-            cds->o_wrk0,
-            cds->o_wrk2);
+        if(mesh->NlocalGatherElements) {
+          if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+            cds->subCycleStrongCubatureVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              cds->vFieldOffset,
+              rk * cds->fieldOffset,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              cds->o_Ue,
+              cds->o_wrk0,
+              cds->o_wrk2);
+          else
+            cds->subCycleStrongVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              cds->vFieldOffset,
+              rk * cds->fieldOffset,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              cds->o_Ue,
+              cds->o_wrk0,
+              cds->o_wrk2);
+        }
 
         oogs::finish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
         cds->invMassMatrixKernel(
