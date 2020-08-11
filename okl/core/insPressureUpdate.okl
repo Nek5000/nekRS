@@ -24,12 +24,11 @@
 
  */
 
-@kernel void insPressureUpdateTOMBO(const dlong Nelements,
-                                    const dlong offset,
-                                    @restrict const int*  mapB,
-                                    @restrict const dfloat*  PI,
-                                    @restrict const dfloat*  P,
-                                    @restrict dfloat*   Pnew)
+@kernel void insPressureUpdate(const dlong Nelements,
+                               @restrict const int*  mapB,
+                               @restrict const dfloat*  PI,
+                               @restrict const dfloat*  P,
+                               @restrict dfloat*   Pnew)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0))
     for(int n = 0; n < p_Np; ++n; @inner(0)) {
@@ -37,12 +36,7 @@
       const int bcType = mapB[id];
       const dfloat princ = PI[id];
       dfloat pr = P[id];
-
-      if(bcType == 1) // Dirichlet already updated
-        pr = princ;
-      else
-        pr += princ;
-
+      if(bcType != 1) pr += princ; // Dirichlet already updated
       Pnew[id] = pr;
     }
 }

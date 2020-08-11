@@ -586,8 +586,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   // build inverse mass matrix
   for(hlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np +
-                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
@@ -657,12 +656,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
-      kernelName = "insPressureAddBCTOMBO" + suffix;
-      ins->pressureAddBCKernel =
+      kernelName = "insPressureDirichletBC" + suffix;
+      ins->pressureDirichletBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insPressureUpdate" + ".okl";
-      kernelName = "insPressureUpdateTOMBO";
+      kernelName = "insPressureUpdate";
       ins->pressureUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
@@ -675,8 +674,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->velocityRhsBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
-      kernelName = "insVelocityAddBC" + suffix;
-      ins->velocityAddBCKernel =
+      kernelName = "insVelocityDirichletBC" + suffix;
+      ins->velocityDirichletBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insSubCycle" + suffix + ".okl";

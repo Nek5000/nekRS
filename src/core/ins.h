@@ -195,13 +195,13 @@ typedef struct
   occa::kernel divergenceStrongVolumeKernel;
   occa::kernel sumMakefKernel;
   occa::kernel pressureRhsKernel;
-  occa::kernel pressureAddBCKernel;
+  occa::kernel pressureDirichletBCKernel;
   occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
   occa::kernel velocityRhsBCKernel;
-  occa::kernel velocityAddBCKernel;
+  occa::kernel velocityDirichletBCKernel;
 
   occa::kernel setScalarKernel;
 

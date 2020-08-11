@@ -83,40 +83,42 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
   //enforce Dirichlet BCs
   ins->setScalarKernel((1+ins->NVfields)*ins->fieldOffset, std::numeric_limits<dfloat>::min(), ins->o_wrk6);
   for (int sweep = 0; sweep < 2; sweep++) {
-    ins->pressureAddBCKernel(mesh->Nelements,
-                             time,
-                             ins->dt,
-                             ins->fieldOffset,
-                             mesh->o_sgeo,
-                             mesh->o_x,
-                             mesh->o_y,
-                             mesh->o_z,
-                             mesh->o_vmapM,
-                             mesh->o_EToB,
-                             ins->o_EToB,
-                             ins->o_usrwrk,
-                             ins->o_U,
-                             ins->o_P,
-                             ins->o_wrk6);
+    ins->pressureDirichletBCKernel(mesh->Nelements,
+                                   time,
+                                   ins->dt,
+                                   ins->fieldOffset,
+                                   mesh->o_sgeo,
+                                   mesh->o_x,
+                                   mesh->o_y,
+                                   mesh->o_z,
+                                   mesh->o_vmapM,
+                                   mesh->o_EToB,
+                                   ins->o_EToB,
+                                   ins->o_usrwrk,
+                                   ins->o_U,
+                                   ins->o_P,
+                                   ins->o_wrk6);
 
-    ins->velocityAddBCKernel(mesh->Nelements,
-                             ins->fieldOffset,
-                             time,
-                             mesh->o_sgeo,
-                             mesh->o_x,
-                             mesh->o_y,
-                             mesh->o_z,
-                             mesh->o_vmapM,
-                             mesh->o_EToB,
-                             ins->o_EToB,
-                             ins->o_usrwrk,
-                             ins->o_U,
-                             ins->o_wrk7);
+    ins->velocityDirichletBCKernel(mesh->Nelements,
+                                   ins->fieldOffset,
+                                   time,
+                                   mesh->o_sgeo,
+                                   mesh->o_x,
+                                   mesh->o_y,
+                                   mesh->o_z,
+                                   mesh->o_vmapM,
+                                   mesh->o_EToB,
+                                   ins->o_EToB,
+                                   ins->o_usrwrk,
+                                   ins->o_U,
+                                   ins->o_wrk7);
 
     //take care of Neumann-Dirichlet shared edges across elements
     if (sweep == 0) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, mesh->ogs);
-    //prioritize lower value in split-brain situations
     if (sweep == 1) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, mesh->ogs);
+
+//    if (sweep == 0) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, ins->gsh);
+//    if (sweep == 1) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, ins->gsh);
   }
 
   if (ins->pSolver->Nmasked) ins->maskCopyKernel(ins->pSolver->Nmasked, 0, ins->pSolver->o_maskIds,
@@ -131,7 +133,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
 
   if (ins->uvwSolver) {
     if (ins->uvwSolver->Nmasked) ins->maskCopyKernel(ins->uvwSolver->Nmasked, 0*ins->fieldOffset, ins->uvwSolver->o_maskIds,
-                                                        ins->o_wrk7, ins->o_U);
+                                                     ins->o_wrk7, ins->o_U);
   } else {
     if (ins->uSolver->Nmasked) ins->maskCopyKernel(ins->uSolver->Nmasked, 0*ins->fieldOffset, ins->uSolver->o_maskIds, 
                                                    ins->o_wrk7, ins->o_U);
@@ -182,9 +184,27 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
 
   ins->NiterP = ellipticSolve(ins->pSolver, ins->presTOL, ins->o_wrk3, ins->o_PI);
 
+/*
+   ins->pressureAddBCKernel(mesh->Nelements,
+                             time,
+                             ins->dt,
+                             ins->fieldOffset,
+                             mesh->o_sgeo,
+                             mesh->o_x,
+                             mesh->o_y,
+                             mesh->o_z,
+                             mesh->o_vmapM,
+                             mesh->o_EToB,
+                             ins->o_EToB,
+                             ins->o_usrwrk,
+                             ins->o_U,
+                             ins->o_P,
+                             ins->o_PI);
+
+*/
+
   // update (increment) all points but not Dirichlet
   ins->pressureUpdateKernel(mesh->Nelements,
-                            ins->fieldOffset,
                             ins->pSolver->o_mapB,
                             ins->o_PI,
                             ins->o_P, // p(tn) + updated Dirichlet
