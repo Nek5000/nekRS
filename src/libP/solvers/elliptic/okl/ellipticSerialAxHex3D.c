@@ -118,6 +118,100 @@ void ellipticAxHex3D(const dlong & Nelements,
         }
   }
 }
+extern "C"
+void ellipticAxFloatHex3D(const dlong & Nelements,
+                     const pfloat* __restrict__ ggeo,
+                     const pfloat* __restrict__ D,
+                     const pfloat* __restrict__ S,
+                     const pfloat* __restrict__ MM,
+                     const pfloat & lambda,
+                     const pfloat* __restrict__ q,
+                     pfloat* __restrict__ Aq )
+{
+  pfloat s_q[p_Nq][p_Nq][p_Nq];
+  pfloat s_Gqr[p_Nq][p_Nq][p_Nq];
+  pfloat s_Gqs[p_Nq][p_Nq][p_Nq];
+  pfloat s_Gqt[p_Nq][p_Nq][p_Nq];
+
+  pfloat s_D[p_Nq][p_Nq];
+  pfloat s_S[p_Nq][p_Nq];
+
+  for(int j = 0; j < p_Nq; ++j)
+    for(int i = 0; i < p_Nq; ++i) {
+      s_D[j][i] = D[j * p_Nq + i];
+      s_S[j][i] = S[j * p_Nq + i];
+    }
+
+  for(dlong e = 0; e < Nelements; ++e) {
+    const dlong element = e;
+
+    for(int k = 0; k < p_Nq; k++)
+      for(int j = 0; j < p_Nq; ++j)
+        for(int i = 0; i < p_Nq; ++i) {
+          const dlong base = i + j * p_Nq + k * p_Nq * p_Nq + element * p_Np;
+          const pfloat qbase = q[base];
+          s_q[k][j][i] = qbase;
+        }
+
+    for(int k = 0; k < p_Nq; ++k)
+      for(int j = 0; j < p_Nq; ++j)
+        for(int i = 0; i < p_Nq; ++i) {
+          const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const pfloat r_G00 = ggeo[gbase + p_G00ID * p_Np];
+          const pfloat r_G01 = ggeo[gbase + p_G01ID * p_Np];
+          const pfloat r_G11 = ggeo[gbase + p_G11ID * p_Np];
+          const pfloat r_G12 = ggeo[gbase + p_G12ID * p_Np];
+          const pfloat r_G02 = ggeo[gbase + p_G02ID * p_Np];
+          const pfloat r_G22 = ggeo[gbase + p_G22ID * p_Np];
+
+          pfloat qr = 0.f;
+          pfloat qs = 0.f;
+          pfloat qt = 0.f;
+
+          for(int m = 0; m < p_Nq; m++) {
+            qr += s_S[m][i] * s_q[k][j][m];
+            qs += s_S[m][j] * s_q[k][m][i];
+            qt += s_S[m][k] * s_q[m][j][i];
+          }
+
+          pfloat Gqr = r_G00 * qr;
+          Gqr += r_G01 * qs;
+          Gqr += r_G02 * qt;
+
+          pfloat Gqs = r_G01 * qr;
+          Gqs += r_G11 * qs;
+          Gqs += r_G12 * qt;
+
+          pfloat Gqt = r_G02 * qr;
+          Gqt += r_G12 * qs;
+          Gqt += r_G22 * qt;
+
+          s_Gqr[k][j][i] = Gqr;
+          s_Gqs[k][j][i] = Gqs;
+          s_Gqt[k][j][i] = Gqt;
+        }
+
+    for(int k = 0; k < p_Nq; k++)
+      for(int j = 0; j < p_Nq; ++j)
+        for(int i = 0; i < p_Nq; ++i) {
+          const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const pfloat r_GwJ = ggeo[gbase + p_GWJID * p_Np];
+
+          pfloat r_Aq = r_GwJ * lambda * s_q[k][j][i];
+          pfloat r_Aqr = 0, r_Aqs = 0, r_Aqt = 0;
+
+          for(int m = 0; m < p_Nq; m++)
+            r_Aqr += s_D[m][i] * s_Gqr[k][j][m];
+          for(int m = 0; m < p_Nq; m++)
+            r_Aqs += s_D[m][j] * s_Gqs[k][m][i];
+          for(int m = 0; m < p_Nq; m++)
+            r_Aqt += s_D[m][k] * s_Gqt[m][j][i];
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          Aq[id] = r_Aqr + r_Aqs + r_Aqt + r_Aq;
+        }
+  }
+}
 
 extern "C"
 void ellipticAxVarHex3D(const dlong & Nelements,

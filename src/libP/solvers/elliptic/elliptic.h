@@ -140,6 +140,7 @@ typedef struct
   occa::memory o_ggeoNoJW; //
 
   occa::kernel AxKernel;
+  occa::kernel AxFloatKernel;
   occa::kernel partialAxKernel;
   occa::kernel partialAxKernel2;
   occa::kernel partialFloatAxKernel;
@@ -151,14 +152,20 @@ typedef struct
   occa::kernel weightedInnerProduct1Kernel;
   occa::kernel weightedInnerProduct2Kernel;
   occa::kernel scaledAddKernel;
+  occa::kernel scaledAddFloatKernel;
   occa::kernel scaledAddNormKernel;
   occa::kernel setScalarKernel;
   occa::kernel collocateKernel;
   occa::kernel dotMultiplyKernel;
+  occa::kernel dotMultiplyFloatKernel;
   occa::kernel dotMultiplyAddKernel;
   occa::kernel dotDivideKernel;
   occa::kernel scalarDivideKernel;
   occa::kernel scalarDivideManyKernel;
+  occa::kernel toFloatKernel;
+  occa::kernel fromFloatKernel;
+  occa::kernel fusedScaledAddTwoKernel;
+  occa::kernel fusedScaledAddOneKernel;
 
   occa::kernel weightedNorm2Kernel;
   occa::kernel norm2Kernel;

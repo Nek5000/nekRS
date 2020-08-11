@@ -110,6 +110,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
 
       occa::properties AxKernelInfo = dfloatKernelInfo;
+      AxKernelInfo["defines/pfloat"] = pfloatString;
       sprintf(fileName, DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
       sprintf(kernelName, "ellipticAx%s", suffix);
       if(serial) {
@@ -117,6 +118,10 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+      if(!strstr(pfloatString,dfloatString)){
+        sprintf(kernelName, "ellipticAxFloat%s", suffix);
+        elliptic->AxFloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+      }
 
       // check for trilinear
       if(elliptic->elementType != HEXAHEDRA) {

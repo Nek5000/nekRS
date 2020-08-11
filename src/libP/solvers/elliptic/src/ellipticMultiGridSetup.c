@@ -301,7 +301,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
 {
   // extra storage for smoothing op
-  size_t Nbytes = level->Ncols * sizeof(dfloat);
+  size_t Nbytes = level->Ncols * sizeof(pfloat);
   if (MGLevel::smootherResidualBytes < Nbytes) {
     if (MGLevel::o_smootherResidual.size()) {
       free(MGLevel::smootherResidual);
@@ -310,7 +310,7 @@ void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
       MGLevel::o_smootherUpdate.free();
     }
 
-    MGLevel::smootherResidual = (dfloat*) calloc(level->Ncols,sizeof(dfloat));
+    MGLevel::smootherResidual = (pfloat*) calloc(level->Ncols,sizeof(pfloat));
     MGLevel::o_smootherResidual = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
     MGLevel::o_smootherResidual2 = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
     MGLevel::o_smootherUpdate = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);

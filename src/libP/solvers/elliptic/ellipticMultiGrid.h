@@ -31,7 +31,6 @@ typedef enum {RICHARDSON = 1,
               CHEBYSHEV = 2,
               SCHWARZ = 3} SmoothType;
 typedef enum {JACOBI = 1,
-              LOCALPATCH = 2,
               SCHWARZ_SMOOTH = 3} SmootherType;
 
 class MGLevel : public parAlmond::multigridLevel
@@ -59,11 +58,12 @@ public:
   int ChebyshevIterations;
 
   static size_t smootherResidualBytes;
-  static dfloat* smootherResidual;
+  static pfloat* smootherResidual;
   static occa::memory o_smootherResidual;
   static occa::memory o_smootherResidual2;
   static occa::memory o_smootherUpdate;
   occa::kernel preFDMKernel;
+  bool overlap;
   occa::kernel fusedFDMKernel;
   occa::kernel postFDMKernel;
   occa::kernel collocateKernel;
@@ -74,8 +74,10 @@ public:
 
   occa::memory o_work1; // scratch space
   occa::memory o_work2; // scratch space
-  occa::memory o_work3; // scratch space
   occa::memory o_wts; // weights to apply after operation
+
+  occa::memory o_float_x; // float-type o_x
+  occa::memory o_float_rhs; // float-type o_x
 
   // Eigenvalues
   occa::memory o_invL;
@@ -131,7 +133,6 @@ public:
   void smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothSchwarz (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 
-  void smootherLocalPatch(occa::memory &o_r, occa::memory &o_Sr);
   void smootherJacobi    (occa::memory &o_r, occa::memory &o_Sr);
 
   void Report();
@@ -141,6 +142,8 @@ public:
 
   void buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc);
   void buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc);
+private:
+  void fusedOneIterationSmoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 };
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype);

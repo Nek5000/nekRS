@@ -1,0 +1,106 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void fusedScaledAddOne(const dlong N,
+                      const pfloat alpha,
+                      @restrict const  pfloat *  res,
+                      const pfloat beta,
+                      @restrict pfloat *  d,
+                      const pfloat gamma,
+                      @restrict pfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const pfloat value = alpha*res[n];
+      d[n] = value;
+      x[n] = beta*value + gamma*x[n];
+    }
+  }
+}
+@kernel void fusedScaledAddTwo(const dlong N,
+                      const pfloat rhoDivDelta,
+                      const pfloat rho_np1,
+                      const pfloat rho_n,
+                      @restrict pfloat const * Ad,
+                      @restrict pfloat * res,
+                      @restrict pfloat * d,
+                      @restrict pfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const pfloat value = -1.0*Ad[n] + 1.0*res[n];
+      res[n] = value;
+      const pfloat d_value = rhoDivDelta * value + rho_np1 * rho_n * d[n];
+      d[n] = d_value;
+      x[n] = x[n] + d_value;
+    }
+  }
+}
+@kernel void scaledAddFloat(const dlong N,
+                      const pfloat alpha,
+                      @restrict const  pfloat *  x,
+                      const pfloat beta,
+                      @restrict pfloat *  y){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      y[n] = alpha*x[n] + beta*y[n];
+    }
+  }
+}
+
+
+@kernel void scaledBlockAddFloat(const dlong N,
+                      const dlong offset, 
+                      const pfloat alpha,
+                      @restrict const  pfloat *  x,
+                      const pfloat beta,
+                      @restrict pfloat *  y){
+  
+for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  if(n<N){
+    for(int fld = 0; fld<p_eNfields; fld++){
+      y[n + fld*offset] = (alpha*x[n+fld*offset] + beta*y[n+fld*offset]); 
+    }
+  }
+}
+}
+
+
+@kernel void scaledAddwOffsetFloat(const dlong N,
+                      const pfloat alpha,
+                      const dlong sourceOffset,
+                      @restrict const  pfloat *  x,
+                      const pfloat beta,
+                      const dlong destOffset,
+                      @restrict pfloat *  y){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      y[n+destOffset] = alpha*x[n+sourceOffset] + beta*y[n+destOffset];
+    }
+  }
+}

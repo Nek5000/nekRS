@@ -25,23 +25,32 @@ SOFTWARE.
 */
 
 
-@kernel void mask(const dlong Nmasked,
-                 @restrict const  dlong    *  maskIds,
-                       @restrict dfloat *  q){
+@kernel void dotMultiplyFloat(const dlong N,
+			@restrict const  pfloat *  w,
+			@restrict const  pfloat *  v,
+			@restrict pfloat *  wv){
 
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
-    if(n<Nmasked){
-      q[maskIds[n]] = 0.;
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      wv [n] = w[n]*v[n];
     }
   }
+
 }
-@kernel void maskFloat(const dlong Nmasked,
-                 @restrict const  dlong    *  maskIds,
-                       @restrict pfloat *  q){
 
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
-    if(n<Nmasked){
-      q[maskIds[n]] = 0.;
+@kernel void dotBlockMultiplyFloat(const dlong N,
+			const dlong offset, 
+			@restrict const  pfloat *  w,
+			@restrict const  pfloat *  v,
+			@restrict pfloat *  wv){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      for(int fld=0; fld<p_eNfields;fld++){
+      	const dlong id = n + fld*offset; 
+        wv[id] = w[id]*v[id];
+      }
     }
   }
+
 }

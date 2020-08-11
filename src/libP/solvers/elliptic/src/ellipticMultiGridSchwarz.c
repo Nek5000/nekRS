@@ -791,8 +791,8 @@ void MGLevel::build(
   o_Sz = mesh->device.malloc < pfloat > (Nq_e * Nq_e * Nelements);
   o_invL = mesh->device.malloc < pfloat > (Nlocal_e);
   o_work1 = mesh->device.malloc < pfloat > (Nlocal_e);
-  o_work2 = mesh->device.malloc < pfloat > (Nlocal_e);
-  o_work3 = mesh->device.malloc < pfloat > (Nelements * Np);
+  if(!options.compareArgs("MULTIGRID SMOOTHER","RAS"))
+    o_work2 = mesh->device.malloc < pfloat > (Nlocal_e);
   o_Sx.copyFrom(casted_Sx.data(), Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sy.copyFrom(casted_Sy.data(), Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sz.copyFrom(casted_Sz.data(), Nq_e * Nq_e * Nelements * sizeof(pfloat));
@@ -812,8 +812,14 @@ void MGLevel::build(
       properties["defines/dfloat"] = dfloatString;
       properties["defines/dlong"] = dlongString;
       properties["defines/p_restrict"] = 0;
+      properties["defines/p_overlap"] = 0;
+      overlap = false;
       if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
         properties["defines/p_restrict"] = 1;
+      if(Nq >= 5){
+        properties["defines/p_overlap"] = 1;
+        overlap = true;
+      }
 
       sprintf(fileName, DELLIPTIC "/okl/ellipticSchwarzSolverHex3D.okl");
       preFDMKernel = mesh->device.buildKernel(fileName, "preFDM", properties);
@@ -833,24 +839,21 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     oogs::startFinish(o_work1, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 
     if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-      fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-
-      oogs::startFinish(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
-
-      collocateKernel(elliptic->mesh->Nelements * elliptic->mesh->Np,
-                      elliptic->ogs->o_invDegree,
-                      o_work2,
-                      o_Su);
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+      oogs::start(o_Su, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
+      if(overlap)
+        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+      oogs::finish(o_Su, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
     } else {
-      fusedFDMKernel(Nelements,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      oogs::start(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
+      if(overlap)
+        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      oogs::finish(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
 
-      oogs::startFinish(o_work2, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) extendedOgs);
+      postFDMKernel(Nelements,o_work1,o_work2,o_Su, o_wts);
 
-      postFDMKernel(Nelements,o_work1,o_work2,o_work3);
-
-      oogs::startFinish(o_work3, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
-
-      collocateKernel(elliptic->mesh->Nelements * elliptic->mesh->Np, o_wts, o_work3, o_Su);
+      oogs::startFinish(o_Su, 1, 0, ogsPfloat, ogsAdd, (oogs_t*) ogs);
     }
   }
 }
