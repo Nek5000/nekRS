@@ -394,12 +394,6 @@ void fluidSolve(ins_t* ins, dfloat time, dfloat dt, occa::memory o_U)
     ins->o_ellipticCoeff);
 
   occa::memory o_Unew = tombo::velocitySolve(ins, time + dt);
-  for (int s = ins->Nstages; s > 1; s--)
-    o_U.copyFrom(
-      o_U,
-      ins->fieldOffset * ins->NVfields * sizeof(dfloat),
-      (s - 1) * ins->fieldOffset * ins->NVfields * sizeof(dfloat),
-      (s - 2) * ins->fieldOffset * ins->NVfields * sizeof(dfloat));
   o_U.copyFrom(o_Unew, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
   timer::toc("velocitySolve");
 }

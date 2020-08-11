@@ -729,10 +729,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->maskCopyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      kernelName = "maskVecCopy";
-      ins->maskVecCopyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       // ===========================================================================
 
       fileName = oklpath + "insFilterRT" + suffix + ".okl";
