@@ -39,7 +39,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
     //prioritize lower value in split-brain situations
     if(sweep == 1) ogsGatherScatter(cds->o_wrk2, ogsDfloat, ogsMin, mesh->ogs);
   }
-  cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
+  if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   //build RHS
   cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
@@ -70,7 +70,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
 
   cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);
 
-  cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
+  if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   return cds->o_wrk0;
 }
