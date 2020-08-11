@@ -65,8 +65,24 @@
 
   for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
     if(n<Nmasked){
-      const dlong id = maskIds[n] + offset;
-      out[id] = in[id];
+      const dlong id = maskIds[n];
+      out[id + offset] = in[id + offset];
+    }
+  }
+}
+
+@kernel void maskVecCopy(const dlong Nmasked,
+                         const dlong offset,
+                         @restrict const  dlong* maskIds,
+                         @restrict const dfloat* in,
+                         @restrict dfloat* out){
+
+  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
+    if(n<Nmasked){
+      const dlong id = maskIds[n];
+      out[id + 0*offset] = in[id + 0*offset];
+      out[id + 1*offset] = in[id + 1*offset];
+      out[id + 2*offset] = in[id + 2*offset];
     }
   }
 }

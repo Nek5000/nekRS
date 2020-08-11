@@ -181,6 +181,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_wrk4  = o_scratch.slice( 4 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk5  = o_scratch.slice( 5 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk6  = o_scratch.slice( 6 * ins->fieldOffset * sizeof(dfloat));
+  ins->o_wrk7  = o_scratch.slice( 7 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk9  = o_scratch.slice( 9 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk12 = o_scratch.slice(12 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk15 = o_scratch.slice(15 * ins->fieldOffset * sizeof(dfloat));
@@ -726,6 +727,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
       kernelName = "maskCopy";
       ins->maskCopyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "maskVecCopy";
+      ins->maskVecCopyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
