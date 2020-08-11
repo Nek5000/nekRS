@@ -114,11 +114,11 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
                                    ins->o_wrk7);
 
     //take care of Neumann-Dirichlet shared edges across elements
-    if (sweep == 0) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, mesh->ogs);
-    if (sweep == 1) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, mesh->ogs);
+//    if (sweep == 0) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, mesh->ogs);
+//    if (sweep == 1) ogsGatherScatterMany(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, mesh->ogs);
 
-//    if (sweep == 0) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, ins->gsh);
-//    if (sweep == 1) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, ins->gsh);
+    if (sweep == 0) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMax, ins->gsh);
+    if (sweep == 1) oogs::startFinish(ins->o_wrk6, 1+ins->NVfields, ins->fieldOffset, ogsDfloat, ogsMin, ins->gsh);
   }
 
   if (ins->pSolver->Nmasked) ins->maskCopyKernel(ins->pSolver->Nmasked, 0, ins->pSolver->o_maskIds,
