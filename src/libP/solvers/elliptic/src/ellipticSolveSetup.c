@@ -1009,31 +1009,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
     {
-      if(mesh->NlocalGatherElements == 0) return;
-      occa::kernel &partialAxKernel = elliptic->partialAxKernel;
-      if(elliptic->blockSolver)
-          partialAxKernel(mesh->NlocalGatherElements,
-                          elliptic->Ntotal,
-                          elliptic->loffset,
-                          mesh->o_localGatherElementList,
-                          mesh->o_ggeo,
-                          mesh->o_Dmatrices,
-                          mesh->o_Smatrices,
-                          mesh->o_MM,
-                          elliptic->o_lambda,
-                          elliptic->o_p,
-                          elliptic->o_Ap);
-        else
-          partialAxKernel(mesh->NlocalGatherElements,
-                          elliptic->Ntotal,
-                          mesh->o_localGatherElementList,
-                          mesh->o_ggeo,
-                          mesh->o_Dmatrices,
-                          mesh->o_Smatrices,
-                          mesh->o_MM,
-                          elliptic->o_lambda,
-                          elliptic->o_p,
-                          elliptic->o_Ap);
+      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
+                 elliptic->o_p, elliptic->o_Ap, dfloatString);
     };
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
