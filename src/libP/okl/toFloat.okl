@@ -24,24 +24,13 @@ SOFTWARE.
 
 */
 
-
-@kernel void mask(const dlong Nmasked,
-                 @restrict const  dlong    *  maskIds,
-                       @restrict dfloat *  q){
-
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
-    if(n<Nmasked){
-      q[maskIds[n]] = 0.;
-    }
-  }
-}
-@kernel void maskFloat(const dlong Nmasked,
-                 @restrict const  dlong    *  maskIds,
-                       @restrict pfloat *  q){
-
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
-    if(n<Nmasked){
-      q[maskIds[n]] = 0.;
+@kernel void toFloat(const dlong N,
+                      @restrict pfloat *  y,
+                      @restrict const dfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      y[n]=static_cast<pfloat>(x[n]);
     }
   }
 }

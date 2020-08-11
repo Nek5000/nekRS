@@ -5,15 +5,15 @@
                        @restrict const pfloat*  w,
 #endif
                        @restrict const pfloat*  v,
-                       @restrict dfloat* result)
+                       @restrict pfloat* result)
 {
   for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
     if(n < N)
-      result[n] = static_cast < dfloat > (w[n] * v[n]);
+      result[n] = static_cast < pfloat > (w[n] * v[n]);
 
 }
 @kernel void preFDM(dlong Nelements,
-                    @restrict const dfloat* u,
+                    @restrict const pfloat* u,
                     @restrict pfloat* work1)
 {
   for (dlong elem = 0; elem < Nelements; elem++; @outer) {
@@ -32,7 +32,7 @@
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
-            sWork1[k + 1][j + 1][i + 1] = static_cast < pfloat > (u[idx]);
+            sWork1[k + 1][j + 1][i + 1] = u[idx];
           }
         }
       }
@@ -79,7 +79,8 @@
 @kernel void postFDM(dlong Nelements,
                      @restrict pfloat* my_work1,
                      @restrict pfloat* my_work2,
-                     @restrict pfloat* Su)
+                     @restrict pfloat* Su,
+                     @restrict const pfloat * wts)
 {
   for (dlong elem = 0; elem < Nelements; ++elem; @outer) {
     @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
@@ -161,7 +162,7 @@
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
-            Su[idx] = work1[k + 1][j + 1][i + 1];
+            Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
         }
       }
@@ -174,7 +175,12 @@
                       @restrict const pfloat* S_y,
                       @restrict const pfloat* S_z,
                       @restrict const pfloat* inv_L,
-                      @restrict pfloat* u)
+                      @restrict pfloat* u
+                      #if p_restrict
+                      ,
+                      @restrict const dfloat* wts
+                      #endif
+                      )
 {
   for (dlong e = 0; e < Nelements; ++e; @outer) {
     @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
@@ -365,7 +371,7 @@
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = e * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
-            Su[idx] = work1[k + 1][j + 1][i + 1];
+            Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
         }
       }

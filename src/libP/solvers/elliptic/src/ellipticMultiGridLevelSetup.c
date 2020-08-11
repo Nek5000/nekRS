@@ -27,7 +27,7 @@
 #include "elliptic.h"
 
 size_t MGLevel::smootherResidualBytes;
-dfloat* MGLevel::smootherResidual;
+pfloat* MGLevel::smootherResidual;
 occa::memory MGLevel::o_smootherResidual;
 occa::memory MGLevel::o_smootherResidual2;
 occa::memory MGLevel::o_smootherUpdate;
@@ -55,6 +55,28 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
   }
 
   this->setupSmoother(ellipticBase);
+
+  o_float_x = mesh->device.malloc<pfloat>(Nrows);
+  o_float_rhs = mesh->device.malloc<pfloat>(Nrows);
+  // create float variants
+  mesh->o_float_ggeo = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+  mesh->o_float_Dmatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+  // copy
+  elliptic->toFloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+    elliptic->mesh->o_float_ggeo,
+    mesh->o_ggeo);
+  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+    elliptic->mesh->o_float_Dmatrices,
+    mesh->o_Dmatrices);
+  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+    elliptic->mesh->o_float_Smatrices,
+    mesh->o_Smatrices);
+  elliptic->toFloatKernel(mesh->Np * mesh->Np,
+    elliptic->mesh->o_float_MM,
+    mesh->o_MM);
+
 }
 
 //build a level and connect it to the previous one
@@ -97,68 +119,33 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
     this->buildCoarsenerTriTet(meshLevels, Nf, Nc);
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
+  o_float_x = mesh->device.malloc<pfloat>(Nrows);
+  o_float_rhs = mesh->device.malloc<pfloat>(Nrows);
+  // create float variants
+  mesh->o_float_ggeo = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+  mesh->o_float_Dmatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+  // copy
+  elliptic->toFloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+    elliptic->mesh->o_float_ggeo,
+    mesh->o_ggeo);
+  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+    elliptic->mesh->o_float_Dmatrices,
+    mesh->o_Dmatrices);
+  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+    elliptic->mesh->o_float_Smatrices,
+    mesh->o_Smatrices);
+  elliptic->toFloatKernel(mesh->Np * mesh->Np,
+    elliptic->mesh->o_float_MM,
+    mesh->o_MM);
 }
 
 void MGLevel::setupSmoother(
   elliptic_t* ellipticBase
   )
 {
-  //set up the fine problem smoothing
-  if(options.compareArgs("MULTIGRID SMOOTHER","LOCALPATCH")) {
-    smtypeUp = LOCALPATCH;
-    smtypeDown = LOCALPATCH;
-
-    dfloat* invAP;
-    dlong Npatches;
-    dlong* patchesIndex;
-
-    dfloat rateTolerance;    // 0 - accept no approximate patches, 1 - accept all approximate patches
-    if(options.compareArgs("MULTIGRID SMOOTHER","EXACT"))
-      rateTolerance = 0.0;
-    else
-      rateTolerance = 1.0;
-
-    //initialize the full inverse operators on each 4 element patch
-    ellipticBuildLocalPatches(elliptic, lambda, rateTolerance, &Npatches, &patchesIndex, &invAP);
-
-    o_invAP = mesh->device.malloc(Npatches * mesh->Np * mesh->Np * sizeof(dfloat),invAP);
-    o_patchesIndex = mesh->device.malloc(mesh->Nelements * sizeof(dlong), patchesIndex);
-
-    dfloat* invDegree = (dfloat*) calloc(mesh->Nelements,sizeof(dfloat));
-    for (dlong e = 0; e < mesh->Nelements; e++) invDegree[e] = 1.0;
-
-    o_invDegreeAP = mesh->device.malloc(mesh->Nelements * sizeof(dfloat),invDegree);
-
-    if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
-      stype = CHEBYSHEV;
-
-      if (!options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations))
-        ChebyshevIterations = 2; //default to degree 2
-
-      //estimate the max eigenvalue of S*A
-      dfloat rho = this->maxEigSmoothAx();
-
-      lambda1 = 1.1 * rho;
-      lambda0 = rho / 10.;
-    }else {
-      stype = RICHARDSON;
-
-      //estimate the max eigenvalue of S*A
-      dfloat rho = this->maxEigSmoothAx();
-
-      //set the stabilty weight (jacobi-type interation)
-      lambda0 = (4. / 3.) / rho;
-
-      for (dlong n = 0; n < mesh->Nelements; n++)
-        invDegree[n] *= lambda0;
-
-      //update diagonal with weight
-      o_invDegreeAP.copyFrom(invDegree);
-    }
-    free(invDegree);
-    free(invAP);
-    free(patchesIndex);
-  } else if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
+if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
              options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     stype = SCHWARZ;
     smtypeUp = JACOBI;
@@ -179,8 +166,12 @@ void MGLevel::setupSmoother(
     if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
        options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
       dfloat* invDiagA;
+      std::vector<pfloat> casted_invDiagA(mesh->Np*mesh->Nelements, 0.0);
       ellipticBuildJacobi(elliptic,&invDiagA);
-      o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), invDiagA);
+      for(dlong i = 0 ; i < mesh->Np*mesh->Nelements; ++i){
+        casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
+      }
+      o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
       if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
         smtypeUp = JACOBI;
       if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI"))
@@ -191,8 +182,12 @@ void MGLevel::setupSmoother(
     smtypeDown = JACOBI;
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
+    std::vector<pfloat> casted_invDiagA(mesh->Np*mesh->Nelements, 0.0);
+    for(dlong i = 0 ; i < mesh->Np*mesh->Nelements; ++i){
+      casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
+    }
 
-    o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), invDiagA);
+    o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
 
     if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
       stype = CHEBYSHEV;
@@ -215,10 +210,10 @@ void MGLevel::setupSmoother(
       lambda0 = (4. / 3.) / rho;
 
       for (dlong n = 0; n < mesh->Np * mesh->Nelements; n++)
-        invDiagA[n] *= lambda0;
+        casted_invDiagA[n] *= static_cast<pfloat>(lambda0);
 
       //update diagonal with weight
-      o_invDiagA.copyFrom(invDiagA);
+      o_invDiagA.copyFrom(casted_invDiagA.data());
     }
     free(invDiagA);
   }
@@ -248,10 +243,6 @@ void MGLevel::Report()
     strcpy(smootherString, "Schwarz          ");
   else if (stype == CHEBYSHEV && smtypeDown == SCHWARZ_SMOOTH)
     strcpy(smootherString, "Chebyshev+Schwarz");
-  else if (stype == RICHARDSON && smtypeDown == LOCALPATCH)
-    strcpy(smootherString, "Local Patch      ");
-  else if (stype == RICHARDSON && smtypeDown == LOCALPATCH)
-    strcpy(smootherString, "Local Patch+Cheb ");
 
   if (mesh->rank == 0) {
     printf(     "|    pMG     |    %10d  |   Matrix-free   |  %s|\n", minNrows, smootherString);
@@ -400,6 +391,8 @@ dfloat MGLevel::maxEigSmoothAx()
 
   occa::memory o_Vx  = mesh->device.malloc(M * sizeof(dfloat),Vx);
   occa::memory o_AVx = mesh->device.malloc(M * sizeof(dfloat),Vx);
+  occa::memory o_float_AVx = mesh->device.malloc(M * sizeof(dfloat));
+  occa::memory o_float_Vx = mesh->device.malloc(M * sizeof(dfloat));
 
   for(int i = 0; i <= k; i++)
     o_V[i] = mesh->device.malloc(M * sizeof(dfloat),Vx);
@@ -422,8 +415,11 @@ dfloat MGLevel::maxEigSmoothAx()
 
   for(int j = 0; j < k; j++) {
     // v[j+1] = invD*(A*v[j])
-    this->Ax(o_V[j],o_AVx);
-    this->smoother(o_AVx, o_V[j + 1], true);
+    //this->Ax(o_V[j],o_AVx);
+    ellipticOperator(elliptic,o_V[j],o_AVx,dfloatString);
+    elliptic->toFloatKernel(M, o_float_AVx, o_AVx);
+    this->smoother(o_float_AVx, o_float_Vx, true);
+    elliptic->fromFloatKernel(M, o_float_Vx, o_V[j+1]);
 
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {

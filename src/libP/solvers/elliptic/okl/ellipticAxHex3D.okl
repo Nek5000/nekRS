@@ -424,13 +424,13 @@
 
 @kernel void ellipticPartialAxHex3D_v0(const dlong Nelements,
                                        @restrict const dlong*  elementList,
-                                       @restrict const dfloat*  ggeo,
-                                       @restrict const dfloat*  D,
-                                       @restrict const dfloat*  S,
-                                       @restrict const dfloat*  MM,
-                                       const dfloat lambda,
-                                       @restrict const dfloat*  q,
-                                       @restrict dfloat*  Aq)
+                                       @restrict const pfloat*  ggeo,
+                                       @restrict const pfloat*  D,
+                                       @restrict const pfloat*  S,
+                                       @restrict const pfloat*  MM,
+                                       const pfloat lambda,
+                                       @restrict const pfloat*  q,
+                                       @restrict pfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared pfloat s_D[p_Nq][p_Nq];
