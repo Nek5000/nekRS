@@ -47,7 +47,7 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
   ins->velocityExtKernel(mesh->Nelements,
                          velocityExtrapolationOrder,
                          ins->fieldOffset,
-                         ins->o_extbdfC,
+                         ins->o_extbdfA,
                          ins->o_U,
                          ins->o_Ue);
 
@@ -111,8 +111,8 @@ void extbdfCoefficents(ins_t* ins, int order)
     memcpy(ins->extbdfA, extbdfA, 3 * sizeof(dfloat));
     memcpy(ins->extbdfC, extbdfC, 3 * sizeof(dfloat));
 
-    ins->o_extbdfB.copyFrom(extbdfB);
-    ins->o_extbdfA.copyFrom(extbdfA);
+    ins->o_extbdfB.copyFrom(extbdfB); // bdf
+    ins->o_extbdfA.copyFrom(extbdfA); // ext-bdf
     ins->o_extbdfC.copyFrom(extbdfC);
 
     ins->ExplicitOrder = 1;
@@ -133,7 +133,7 @@ void extbdfCoefficents(ins_t* ins, int order)
     ins->ExplicitOrder = 2;
   } else if(order == 3) {
     ins->g0 =  11.f / 6.f;
-    dfloat extbdfB[3] = {3.0f,-1.5f, 1.0f / 3.0f};
+    dfloat extbdfB[3] = {3.0f,-1.5f, 1.0f/3.0f};
     dfloat extbdfA[3] = {3.0f,-3.0f, 1.0f};
     dfloat extbdfC[3] = {2.0f,-1.0f, 0.0f};
 
@@ -161,6 +161,13 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_BF)
 {
   cds_t* cds   = ins->cds;
   mesh_t* mesh = cds->mesh;
+
+  for (int s = cds->Nstages; s > 1; s--)
+    cds->o_FS.copyFrom(
+      cds->o_FS,
+      cds->fieldOffset * cds->NSfields * sizeof(dfloat),
+      (s - 1) * cds->fieldOffset * cds->NSfields * sizeof(dfloat),
+      (s - 2) * cds->fieldOffset * cds->NSfields * sizeof(dfloat));
 
   cds->setScalarKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
   if(udf.sEqnSource) udf.sEqnSource(ins, time, cds->o_S, cds->o_FS);
@@ -196,7 +203,7 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_BF)
           mesh->o_cubProjectT,
           cds->vFieldOffset,
           sOffset,
-          cds->o_Ue,
+          cds->o_U,
           cds->o_S,
           cds->o_rho,
           cds->o_wrk0);
@@ -207,7 +214,7 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_BF)
           mesh->o_Dmatrices,
           cds->vFieldOffset,
           sOffset,
-          cds->o_Ue,
+          cds->o_U,
           cds->o_S,
           cds->o_rho,
           cds->o_wrk0);
@@ -225,11 +232,9 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_BF)
     cds->sumMakefKernel(
       mesh->Nelements,
       mesh->o_vgeo,
-      mesh->o_MM,
       cds->idt,
       cds->o_extbdfA,
       cds->o_extbdfB,
-      cds->o_extbdfC,
       cds->fieldOffset * cds->NSfields,
       sOffset,
       cds->o_S,
@@ -243,13 +248,6 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_BF)
 void scalarSolve(ins_t* ins, dfloat time, dfloat dt, occa::memory o_S)
 {
   cds_t* cds   = ins->cds;
-
-  for (int s = cds->Nstages; s > 1; s--)
-    cds->o_FS.copyFrom(
-      cds->o_FS,
-      cds->fieldOffset * cds->NSfields * sizeof(dfloat),
-      (s - 1) * cds->fieldOffset * cds->NSfields * sizeof(dfloat),
-      (s - 2) * cds->fieldOffset * cds->NSfields * sizeof(dfloat));
 
   timer::tic("makeq", 1);
   makeq(ins, time, cds->o_BF);
@@ -282,13 +280,6 @@ void scalarSolve(ins_t* ins, dfloat time, dfloat dt, occa::memory o_S)
         cds->o_ellipticCoeff);
 
     occa::memory o_Snew = cdsSolve(is, cds, time + dt);
-
-    for (int s = cds->Nstages; s > 1; s--)
-      o_S.copyFrom(
-        o_S,
-        cds->Ntotal * sizeof(dfloat),
-        ((s - 1) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat),
-        ((s - 2) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat));
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
   timer::toc("scalarSolve");

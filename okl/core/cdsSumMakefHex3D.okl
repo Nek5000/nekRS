@@ -26,11 +26,9 @@
 
 @kernel void cdsSumMakefHex3D(const dlong Nelements,
                               @restrict const dfloat*  vgeo,
-                              @restrict const dfloat*  MM,
                               const dfloat idt,
                               @restrict const dfloat*  extbdfA,
                               @restrict const dfloat*  extbdfB,
-                              @restrict const dfloat*  extbdfC,
                               const dlong sOffset,
                               const dlong offset,
                               @restrict const dfloat*  S,

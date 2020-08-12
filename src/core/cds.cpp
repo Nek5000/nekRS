@@ -39,6 +39,14 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
     //prioritize lower value in split-brain situations
     if(sweep == 1) ogsGatherScatter(cds->o_wrk2, ogsDfloat, ogsMin, mesh->ogs);
   }
+
+  for (int s = cds->Nstages; s > 1; s--)
+    cds->o_S.copyFrom(
+      cds->o_S,
+      cds->Ntotal * sizeof(dfloat),
+      ((s - 1) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat),
+      ((s - 2) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat));
+
   if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   //build RHS
