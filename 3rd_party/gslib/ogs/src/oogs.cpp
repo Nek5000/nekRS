@@ -81,11 +81,29 @@ static void pairwiseExchange(occa::memory o_halo, int unit_size, oogs_t *gs)
   const void* execdata = hgs->r.data; 
   const struct pw_data *pwd = (pw_data*) execdata; 
   const struct comm *comm = &hgs->comm;
-  const unsigned Nhalo = ogs->NhaloGather;
 
   // hardwired for now
   const unsigned transpose = 0;
   const unsigned recv = 0^transpose, send = 1^transpose;
+
+  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
+    occa::properties props;
+    props["mapped"] = true;
+    if(gs->o_bufSend.size()) gs->o_bufSend.free();
+    gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
+    if(gs->h_buffSend.size()) gs->h_buffSend.free();
+    gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
+    gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props);
+  }
+  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
+    occa::properties props;
+    props["mapped"] = true;
+    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
+    gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
+    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
+    gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
+    gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
+  }
 
   { // prepost recv
     comm_req *req = pwd->req; 
@@ -301,26 +319,9 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   if (ogs->NhaloGather) {
     if (ogs::o_haloBuf.size() < ogs->NhaloGather*Nbytes*k) {
       if (ogs::o_haloBuf.size()) ogs::o_haloBuf.free();
-      ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*Nbytes*k, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
+        ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*Nbytes*k, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
     }
 
-    if (gs->o_bufSend.size() < ogs->NhaloGather*Nbytes*k) {
-      if ((gs->o_bufSend.size())) gs->o_bufSend.free();
-      gs->o_bufSend = ogs->device.malloc(ogs->NhaloGather*Nbytes*k);      
-      gs->o_bufRecv = ogs->device.malloc(ogs->NhaloGather*Nbytes*k);     
-
-      occa::properties props;
-      props["mapped"] = true;
-      if ((gs->o_bufSend.size())) gs->h_buffSend.free();
-      gs->h_buffSend = ogs->device.malloc(ogs->NhaloGather*Nbytes*k, props);
-      gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props);
-      if ((gs->o_bufRecv.size())) gs->h_buffRecv.free();
-      gs->h_buffRecv = ogs->device.malloc(ogs->NhaloGather*Nbytes*k, props);
-      gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
-    }
-  }
-
-  if (ogs->NhaloGather) {
     occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
     if(gs->mode != OOGS_DEFAULT) packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
     ogs->device.finish();
