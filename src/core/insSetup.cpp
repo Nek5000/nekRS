@@ -142,7 +142,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->PI = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
 
   ins->BF = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
-  ins->FU = (dfloat*) calloc(ins->NVfields * (ins->Nstages + 1) * ins->fieldOffset,sizeof(dfloat));
+  ins->FU = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
 
   if(ins->Nsubsteps) {
     int Sorder;
@@ -197,7 +197,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_PI = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->PI);
 
   ins->o_FU =
-    mesh->device.malloc(ins->NVfields * (ins->Nstages + 1) * ins->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
                         ins->FU);
   ins->o_BF = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->BF);
 
@@ -869,7 +869,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * (cds->Nstages + 0) * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
   cds->FS    =
     (dfloat*) calloc(cds->NSfields * (cds->Nstages + 1) * cds->fieldOffset,sizeof(dfloat));
@@ -922,11 +922,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * (cds->Nstages + 0) * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
                         cds->S);
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * (cds->Nstages + 1) * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   cds->options = options;
