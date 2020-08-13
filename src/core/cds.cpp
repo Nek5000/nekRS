@@ -35,18 +35,9 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                            cds->o_wrk2);
 
     //take care of Neumann-Dirichlet shared edges across elements
-    if(sweep == 0) ogsGatherScatter(cds->o_wrk2, ogsDfloat, ogsMax, mesh->ogs);
-    //prioritize lower value in split-brain situations
-    if(sweep == 1) ogsGatherScatter(cds->o_wrk2, ogsDfloat, ogsMin, mesh->ogs);
+    if(sweep == 0) oogs::startFinish(cds->o_wrk2, 1, cds->fieldOffset, ogsDfloat, ogsMax, gsh);
+    if(sweep == 1) oogs::startFinish(cds->o_wrk2, 1, cds->fieldOffset, ogsDfloat, ogsMin, gsh);
   }
-
-  for (int s = cds->Nstages; s > 1; s--)
-    cds->o_S.copyFrom(
-      cds->o_S,
-      cds->Ntotal * sizeof(dfloat),
-      ((s - 1) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat),
-      ((s - 2) * (cds->fieldOffset * cds->NSfields) + is * cds->fieldOffset) * sizeof(dfloat));
-
   if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   //build RHS
@@ -72,12 +63,10 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                             *(cds->o_usrwrk),
                             cds->o_wrk1);
   oogs::startFinish(cds->o_wrk1, 1, cds->fieldOffset, ogsDfloat, ogsAdd, gsh);
-
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
+
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk0);
-
   cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);
-
   if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   return cds->o_wrk0;

@@ -106,7 +106,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->finalTime += ins->startTime;
   }
 
-  ins->NtimeSteps = ceil((ins->finalTime - ins->startTime) / ins->dt);
+  ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
+  if((ins->finalTime - ins->NtimeSteps*ins->dt) > ins->dt) ins->NtimeSteps++;
   options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
@@ -872,7 +873,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
     (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * (cds->Nstages + 1) * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = ins->Nsubsteps;
   if(cds->Nsubsteps) {

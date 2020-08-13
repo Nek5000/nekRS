@@ -49,23 +49,23 @@
               const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + e * p_Np * p_Nvgeo;
               const dfloat JW = vgeo[gid + p_JWID * p_Np];
               const dfloat rhoM = RHO[id + offset];
-              dfloat sum = 0;
 
+              dfloat sum1 = 0;
               if (p_SUBCYCLING) {
                 const dfloat NSm = NS[id];
-                sum += rhoM * idt * NSm;
+                sum1 += NSm;
               }else {
                 for (int s = 0; s < p_Nstages; s++) {
                   const dfloat Sm = S[id + offset + s * sOffset];
-                  sum += rhoM * idt * extbdfB[s] * Sm;
+                  sum1 += extbdfB[s] * Sm;
                 }
               }
-              // already multiplied by rho
+              dfloat sum2 = 0;
               for (int s = 0; s < p_Nstages; s++) {
                 const dfloat FSm = FS[id + offset + s * sOffset];
-                sum += extbdfA[s] * FSm;
+                sum2 += extbdfA[s] * FSm;  // already multiplied by rho
               }
-              BF[id + offset] = JW * sum;
+              BF[id + offset] = JW*(sum2 + rhoM*idt*sum1);
             }
           }
         }
