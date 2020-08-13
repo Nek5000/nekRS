@@ -206,23 +206,24 @@ void printRuntimeStatistics()
 {
   timer::printRunStat();
 }
+
+const dfloat* scalarFields() { return ins->cds->S; }
+int nScalarFields() { return ins->cds->NSfields; }
+dlong fieldOffset() { return ins->cds->fieldOffset; }
+const dfloat* mu() { return ins->prop; }
+const dfloat* rho() { return &ins->prop[ins->fieldOffset]; }
+bool cht() { return ins->cht == 1; }
+
+dlong mesh::nElements() { return ins->cds->mesh->Nelements; }
+int mesh::polyDeg() { return ins->cds->mesh->N; }
+const dfloat* mesh::x() { return ins->cds->mesh->x; }
+const dfloat* mesh::y() { return ins->cds->mesh->y; }
+const dfloat* mesh::z() { return ins->cds->mesh->z; }
+const hlong* mesh::elementInfo() { return ins->cds->mesh->elementInfo; };
+dlong mesh::nVgeo() { return ins->cds->mesh->Nvgeo; }
+const dfloat* mesh::vgeo() { return ins->cds->mesh->vgeo; }
+
 } // namespace
-
-int nekrs::meshT::nElements() { return ins->meshT->Nelements; }
-int nekrs::meshT::polyDeg() { return ins->meshT->N; }
-const dfloat* nekrs::meshT::x() { return ins->meshT->x; }
-const dfloat* nekrs::meshT::y() { return ins->meshT->y; }
-const dfloat* nekrs::meshT::z() { return ins->meshT->z; }
-const dfloat* nekrs::meshT::massMatrix() { return ins->meshT->MM; }
-
-const dlong* nekrs::elementInfo() { return ins->elementInfo; };
-const dfloat* nekrs::mue() { return ins->prop; }
-const dfloat* nekrs::rho() { return &ins->prop[ins->fieldOffset]; }
-bool nekrs::cht() { return ins->cht == 1; }
-
-const dfloat* nekrs::cds::scalarFields() { return ins->cds->S; }
-int nekrs::cds::nScalarFields() { return ins->cds->NSfields; }
-long nekrs::cds::fieldOffset() { return ins->cds->fieldOffset; }
 
 static void dryRun(libParanumal::setupAide &options, int npTarget)
 {

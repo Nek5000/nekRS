@@ -3,6 +3,7 @@
 
 #include <string>
 #include <mpi.h>
+#include <types.h>
 
 namespace nekrs
 {
@@ -25,26 +26,23 @@ const double finalTime(void);
 
 void* nekPtr(const char* id);
 
-namespace meshT
+bool cht();
+const dfloat* mue();  // vdiff
+const dfloat* rho();  // vtrans
+const dfloat* scalarFields();
+int nScalarFields();
+dlong fieldOffset();
+
+namespace mesh
 {
-int nElements();
+dlong nElements();
 int polyDeg();
 const dfloat* x();
 const dfloat* y();
 const dfloat* z();
-const dfloat* massMatrix();
-} // namespace mesh
-
-bool cht();
-const dlong* elementInfo();
-const dfloat* mue();  // vdiff
-const dfloat* rho();  // vtrans
-
-namespace cds
-{
-const dfloat* scalarFields();
-int nScalarFields();
-long fieldOffset();
+const hlong* elementInfo();
+dlong nVgeo();
+const dfloat* vgeo();
 }
 
 } // namespace nekrs
