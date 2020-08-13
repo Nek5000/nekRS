@@ -31,7 +31,6 @@
                             @restrict const dfloat*  U,
                             @restrict dfloat*  Ue)
 {
-  // Low storage Runge Kutta time step update
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     for(int n = 0; n < p_Np; ++n; @inner(0)) {
       const dlong id = n + p_Np * e;

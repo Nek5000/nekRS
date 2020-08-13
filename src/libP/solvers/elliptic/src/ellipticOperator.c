@@ -29,122 +29,76 @@
 
 #include "omp.h"
 
-//host gs
-void ellipticSerialOperator(elliptic_t* elliptic,
-                            occa::memory &o_q,
-                            occa::memory &o_Aq,
-                            const char* precision)
+void ellipticAx(elliptic_t* elliptic,
+                dlong NelementsList,
+                occa::memory &o_elementsList,
+                occa::memory &o_q,
+                occa::memory &o_Aq,
+                const char* precision)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
 
   int enableGatherScatters = 1;
   int enableReductions = 1;
-  int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
+  const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
+  const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  const int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
+  const int mapType = (elliptic->elementType == HEXAHEDRA &&
+                       options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
+  const int integrationType = (elliptic->elementType == HEXAHEDRA &&
+                               options.compareArgs("ELLIPTIC INTEGRATION", "CUBATURE")) ? 1:0;
 
   options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
   options.getArgs("DEBUG ENABLE OGS", enableGatherScatters);
-
-  dfloat* sendBuffer = elliptic->sendBuffer;
-  dfloat* recvBuffer = elliptic->recvBuffer;
-  dfloat* gradSendBuffer = elliptic->gradSendBuffer;
-  dfloat* gradRecvBuffer = elliptic->gradRecvBuffer;
-
-  dfloat alpha = 0., alphaG = 0.;
-
-  if(continuous) {
-    if(elliptic->var_coeff) {
-      if(elliptic->blockSolver)
-        elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, mesh->o_ggeo,
-                           mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
-                           o_q, o_Aq);
-      else
-        elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, mesh->o_ggeo, mesh->o_Dmatrices,
-                           mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda, o_q, o_Aq);
-    }else{
-      const dfloat lambda = elliptic->lambda[0];
-      if(elliptic->blockSolver)
-        elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, mesh->o_ggeo,
-                           mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
-                           o_q, o_Aq);
-      else
-        elliptic->AxKernel(mesh->Nelements,
-                           mesh->o_ggeo,
-                           mesh->o_Dmatrices,
-                           mesh->o_Smatrices,
-                           mesh->o_MM,
-                           lambda,
-                           o_q,
-                           o_Aq);
-    }
-
-    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
-    if (elliptic->Nmasked)
-      mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
-
-  } else if(ipdg) {
-
-    printf("WARNING: DEBUGGING C0\n");
-    MPI_Finalize();
-
-    exit(-1);
-  }
-}
-
-void ellipticOperator(elliptic_t* elliptic,
-                      occa::memory &o_q,
-                      occa::memory &o_Aq,
-                      const char* precision)
-{
-  mesh_t* mesh = elliptic->mesh;
-  setupAide &options = elliptic->options;
-
-  int enableGatherScatters = 1;
-  int enableReductions = 1;
-  int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
-
-  options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
-  options.getArgs("DEBUG ENABLE OGS", enableGatherScatters);
-
-  dfloat* sendBuffer = elliptic->sendBuffer;
-  dfloat* recvBuffer = elliptic->recvBuffer;
-  dfloat* gradSendBuffer = elliptic->gradSendBuffer;
-  dfloat* gradRecvBuffer = elliptic->gradRecvBuffer;
-
-  dfloat alpha = 0., alphaG = 0.;
-  dlong Nblock = elliptic->Nblock;
-  dfloat* tmp = elliptic->tmp;
-  occa::memory &o_tmp = elliptic->o_tmp;
 
   if(serial) {
-    ellipticSerialOperator(elliptic, o_q, o_Aq, precision);
+    if(continuous) {
+      if(elliptic->var_coeff) {
+        if(elliptic->blockSolver)
+          elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, mesh->o_ggeo,
+                             mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
+                             o_q, o_Aq);
+        else
+          elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, mesh->o_ggeo, mesh->o_Dmatrices,
+                             mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda, o_q, o_Aq);
+      }else{
+        const dfloat lambda = elliptic->lambda[0];
+        if(elliptic->blockSolver)
+          elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, mesh->o_ggeo,
+                             mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
+                             o_q, o_Aq);
+        else
+          elliptic->AxKernel(mesh->Nelements,
+                             mesh->o_ggeo,
+                             mesh->o_Dmatrices,
+                             mesh->o_Smatrices,
+                             mesh->o_MM,
+                             lambda,
+                             o_q,
+                             o_Aq);
+      }
+    } else {
+      exit(1);
+    }
     return;
   }
 
   if(continuous) {
     oogs_t* oogsAx = elliptic->oogsAx;
 
-    int mapType = (elliptic->elementType == HEXAHEDRA &&
-                   options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
-
-    int integrationType = (elliptic->elementType == HEXAHEDRA &&
-                           options.compareArgs("ELLIPTIC INTEGRATION", "CUBATURE")) ? 1:0;
-
     occa::kernel &partialAxKernel =
       (strstr(precision, "float")) ? elliptic->partialFloatAxKernel : elliptic->partialAxKernel;
 
-    if(mesh->NglobalGatherElements) {
+    if(NelementsList) {
       if(integrationType == 0) { // GLL or non-hex
         if(mapType == 0) {
           if(elliptic->var_coeff) {
             if(elliptic->blockSolver)
-              partialAxKernel(mesh->NglobalGatherElements,
+              partialAxKernel(NelementsList,
                               elliptic->Ntotal,
                               elliptic->loffset,
-                              mesh->o_globalGatherElementList,
+                              o_elementsList,
                               mesh->o_ggeo,
                               mesh->o_Dmatrices,
                               mesh->o_Smatrices,
@@ -153,9 +107,9 @@ void ellipticOperator(elliptic_t* elliptic,
                               o_q,
                               o_Aq);
             else
-              partialAxKernel(mesh->NglobalGatherElements,
+              partialAxKernel(NelementsList,
                               elliptic->Ntotal,
-                              mesh->o_globalGatherElementList,
+                              o_elementsList,
                               mesh->o_ggeo,
                               mesh->o_Dmatrices,
                               mesh->o_Smatrices,
@@ -165,10 +119,10 @@ void ellipticOperator(elliptic_t* elliptic,
                               o_Aq);
           }else{
             if(elliptic->blockSolver)
-              partialAxKernel(mesh->NglobalGatherElements,
+              partialAxKernel(NelementsList,
                               elliptic->Ntotal,
                               elliptic->loffset,
-                              mesh->o_globalGatherElementList,
+                              o_elementsList,
                               mesh->o_ggeo,
                               mesh->o_Dmatrices,
                               mesh->o_Smatrices,
@@ -177,8 +131,8 @@ void ellipticOperator(elliptic_t* elliptic,
                               o_q,
                               o_Aq);
             else
-              partialAxKernel(mesh->NglobalGatherElements,
-                              mesh->o_globalGatherElementList,
+              partialAxKernel(NelementsList,
+                              o_elementsList,
                               mesh->o_ggeo,
                               mesh->o_Dmatrices,
                               mesh->o_Smatrices,
@@ -192,9 +146,9 @@ void ellipticOperator(elliptic_t* elliptic,
             if(elliptic->blockSolver)
               printf("Trilinear version for block solver is not avalibale yet\n");
             else
-              partialAxKernel(mesh->NglobalGatherElements,
+              partialAxKernel(NelementsList,
                               elliptic->Ntotal,
-                              mesh->o_globalGatherElementList,
+                              o_elementsList,
                               elliptic->o_EXYZ,
                               elliptic->o_gllzw,
                               mesh->o_Dmatrices,
@@ -207,8 +161,8 @@ void ellipticOperator(elliptic_t* elliptic,
             if(elliptic->blockSolver)
               printf("Trilinear version for block solver is not avalibale yet\n");
             else
-              partialAxKernel(mesh->NglobalGatherElements,
-                              mesh->o_globalGatherElementList,
+              partialAxKernel(NelementsList,
+                              o_elementsList,
                               elliptic->o_EXYZ,
                               elliptic->o_gllzw,
                               mesh->o_Dmatrices,
@@ -221,101 +175,29 @@ void ellipticOperator(elliptic_t* elliptic,
         }
       }
     }
-
-    if(enableGatherScatters)
-      oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
-
-    if(mesh->NlocalGatherElements) {
-      if(integrationType == 0) { // GLL or non-hex
-        if(mapType == 0) {
-          if(elliptic->var_coeff) {
-            if(elliptic->blockSolver)
-              partialAxKernel(mesh->NlocalGatherElements,
-                              elliptic->Ntotal,
-                              elliptic->loffset,
-                              mesh->o_localGatherElementList,
-                              mesh->o_ggeo,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-            else
-              partialAxKernel(mesh->NlocalGatherElements,
-                              elliptic->Ntotal,
-                              mesh->o_localGatherElementList,
-                              mesh->o_ggeo,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-          }else{
-            if(elliptic->blockSolver)
-              partialAxKernel(mesh->NlocalGatherElements,
-                              elliptic->Ntotal,
-                              elliptic->loffset,
-                              mesh->o_localGatherElementList,
-                              mesh->o_ggeo,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-            else
-              partialAxKernel(mesh->NlocalGatherElements,
-                              mesh->o_localGatherElementList,
-                              mesh->o_ggeo,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->lambda[0],
-                              o_q,
-                              o_Aq);
-          }
-        }else {
-          if(elliptic->var_coeff) {
-            if(elliptic->blockSolver)
-              printf("Trilinear version for block solver is not avalibale yet\n");
-            else
-              partialAxKernel(mesh->NlocalGatherElements,
-                              elliptic->Ntotal,
-                              mesh->o_localGatherElementList,
-                              elliptic->o_EXYZ,
-                              elliptic->o_gllzw,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-          }else{
-            if(elliptic->blockSolver)
-              printf("Trilinear version for block solver is not avalibale yet\n");
-            else
-              partialAxKernel(mesh->NlocalGatherElements,
-                              mesh->o_localGatherElementList,
-                              elliptic->o_EXYZ,
-                              elliptic->o_gllzw,
-                              mesh->o_Dmatrices,
-                              mesh->o_Smatrices,
-                              mesh->o_MM,
-                              elliptic->lambda[0],
-                              o_q,
-                              o_Aq);
-          }
-        }
-      }
-    }
-
-    if(enableGatherScatters)
-      oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
-
-    if (elliptic->Nmasked)
-      mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
-
   }
+}
+
+void ellipticOperator(elliptic_t* elliptic,
+                      occa::memory &o_q,
+                      occa::memory &o_Aq,
+                      const char* precision)
+{
+  mesh_t* mesh = elliptic->mesh;
+  setupAide &options = elliptic->options;
+  oogs_t* oogsAx = elliptic->oogsAx;
+
+  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+
+  if(serial) {
+    occa::memory o_dummy;
+    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);
+    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+  } else {
+    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
+    oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
+    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
+    oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, oogsAx);
+  }
+  if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
 }

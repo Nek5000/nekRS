@@ -25,21 +25,21 @@
  */
 
 // We are solving for Pressure Difference
-@kernel void insPressureAddBCTOMBOHex3D(const dlong Nelements,
-                                        const dfloat time,
-                                        const dfloat dt,
-                                        const dlong offset,
-                                        @restrict const dfloat*  sgeo,
-                                        @restrict const dfloat*  x,
-                                        @restrict const dfloat*  y,
-                                        @restrict const dfloat*  z,
-                                        @restrict const dlong*  vmapM,
-                                        @restrict const int*  EToBM,
-                                        @restrict const int*  EToB,
-                                        @restrict const dfloat*  W,
-                                        @restrict const dfloat*  U,
-                                        @restrict const dfloat*  P,
-                                        @restrict dfloat*  PI)
+@kernel void insPressureDirichletBCHex3D(const dlong Nelements,
+                                         const dfloat time,
+                                         const dfloat dt,
+                                         const dlong offset,
+                                         @restrict const dfloat*  sgeo,
+                                         @restrict const dfloat*  x,
+                                         @restrict const dfloat*  y,
+                                         @restrict const dfloat*  z,
+                                         @restrict const dlong*  vmapM,
+                                         @restrict const int*  EToBM,
+                                         @restrict const int*  EToB,
+                                         @restrict const dfloat*  W,
+                                         @restrict const dfloat*  U,
+                                         @restrict const dfloat*  P,
+                                         @restrict dfloat*  PI)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
     for(int n = 0; n < p_Nfp * p_Nfaces; ++n; @inner(0)) {

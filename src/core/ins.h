@@ -98,7 +98,7 @@ typedef struct
   occa::memory o_pRecvBuffer,h_pRecvBuffer;
   occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
 
-  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6,
+  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6, o_wrk7,
                o_wrk9, o_wrk12, o_wrk15;
 
   int Nsubsteps;
@@ -195,13 +195,13 @@ typedef struct
   occa::kernel divergenceStrongVolumeKernel;
   occa::kernel sumMakefKernel;
   occa::kernel pressureRhsKernel;
-  occa::kernel pressureAddBCKernel;
+  occa::kernel pressureDirichletBCKernel;
   occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
   occa::kernel velocityRhsBCKernel;
-  occa::kernel velocityAddBCKernel;
+  occa::kernel velocityDirichletBCKernel;
 
   occa::kernel setScalarKernel;
 
@@ -216,6 +216,8 @@ typedef struct
   occa::kernel curlKernel;
   occa::kernel invMassMatrixKernel;
   occa::kernel massMatrixKernel;
+
+  occa::kernel maskCopyKernel;
 
   int* EToB;
   occa::memory o_EToB;

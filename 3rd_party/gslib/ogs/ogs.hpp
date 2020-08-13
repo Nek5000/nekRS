@@ -247,8 +247,9 @@ typedef struct {
   occa::memory o_scatterOffsets, o_gatherOffsets;
   occa::memory o_scatterIds, o_gatherIds;
 
-  occa::kernel packBufDoubleKernel, unpackBufDoubleKernel;
-  occa::kernel packBufFloatKernel, unpackBufFloatKernel;
+  occa::kernel packBufDoubleKernel, packBufFloatKernel;
+  occa::kernel unpackBufDoubleAddKernel, unpackBufDoubleMinKernel, unpackBufDoubleMaxKernel;
+  occa::kernel unpackBufFloatAddKernel;
 
   oogs_mode mode;
 

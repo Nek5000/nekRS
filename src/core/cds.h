@@ -164,11 +164,13 @@ typedef struct
 
   occa::kernel helmholtzRhsIpdgBCKernel;
   occa::kernel helmholtzRhsBCKernel;
-  occa::kernel helmholtzAddBCKernel;
+  occa::kernel dirichletBCKernel;
   occa::kernel setEllipticCoeffKernel;
 
   occa::kernel invMassMatrixKernel;
   occa::kernel massMatrixKernel;
+
+  occa::kernel maskCopyKernel;
 
   occa::properties* kernelInfo;
 }cds_t;

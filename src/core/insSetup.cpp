@@ -106,7 +106,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->finalTime += ins->startTime;
   }
 
-  ins->NtimeSteps = ceil((ins->finalTime - ins->startTime) / ins->dt);
+  ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
+  if((ins->finalTime - ins->NtimeSteps*ins->dt) > ins->dt) ins->NtimeSteps++;
   options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
@@ -142,7 +143,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->PI = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
 
   ins->BF = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
-  ins->FU = (dfloat*) calloc(ins->NVfields * (ins->Nstages + 1) * ins->fieldOffset,sizeof(dfloat));
+  ins->FU = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
 
   if(ins->Nsubsteps) {
     int Sorder;
@@ -181,6 +182,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_wrk4  = o_scratch.slice( 4 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk5  = o_scratch.slice( 5 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk6  = o_scratch.slice( 6 * ins->fieldOffset * sizeof(dfloat));
+  ins->o_wrk7  = o_scratch.slice( 7 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk9  = o_scratch.slice( 9 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk12 = o_scratch.slice(12 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk15 = o_scratch.slice(15 * ins->fieldOffset * sizeof(dfloat));
@@ -196,7 +198,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_PI = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->PI);
 
   ins->o_FU =
-    mesh->device.malloc(ins->NVfields * (ins->Nstages + 1) * ins->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
                         ins->FU);
   ins->o_BF = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->BF);
 
@@ -585,8 +587,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   // build inverse mass matrix
   for(hlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np +
-                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
@@ -656,12 +657,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insPressureBC" + suffix + ".okl";
-      kernelName = "insPressureAddBCTOMBO" + suffix;
-      ins->pressureAddBCKernel =
+      kernelName = "insPressureDirichletBC" + suffix;
+      ins->pressureDirichletBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insPressureUpdate" + ".okl";
-      kernelName = "insPressureUpdateTOMBO";
+      kernelName = "insPressureUpdate";
       ins->pressureUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
@@ -674,8 +675,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->velocityRhsBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
-      kernelName = "insVelocityAddBC" + suffix;
-      ins->velocityAddBCKernel =
+      kernelName = "insVelocityDirichletBC" + suffix;
+      ins->velocityDirichletBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insSubCycle" + suffix + ".okl";
@@ -722,6 +723,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
       kernelName = "scalarScaledAdd";
       ins->scalarScaledAddKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "maskCopy";
+      ins->maskCopyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
@@ -865,10 +870,10 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * (cds->Nstages + 0) * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * (cds->Nstages + 1) * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = ins->Nsubsteps;
   if(cds->Nsubsteps) {
@@ -918,11 +923,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * (cds->Nstages + 0) * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
                         cds->S);
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * (cds->Nstages + 1) * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   cds->options = options;
@@ -1089,6 +1094,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       cds->setScalarKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
+      fileName = oklpath + "math.okl";
+      kernelName = "maskCopy";
+      cds->maskCopyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
       kernelName = "cdsSumMakef" + suffix;
       cds->sumMakefKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1097,8 +1107,8 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       kernelName = "cdsHelmholtzBC" + suffix;
       cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      kernelName = "cdsHelmholtzAddBC" + suffix;
-      cds->helmholtzAddBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
+      kernelName = "cdsDirichletBC";
+      cds->dirichletBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       fileName = oklpath + "setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";

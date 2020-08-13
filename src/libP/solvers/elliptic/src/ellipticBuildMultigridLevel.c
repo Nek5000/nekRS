@@ -992,19 +992,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
-  auto callback = [&]() // hardwaire to FP64 const coeff
+  auto callback = [&]()
     {
-      if(mesh->NlocalGatherElements == 0) return;
-      occa::kernel &partialAxKernel = elliptic->partialAxKernel;
-      partialAxKernel(mesh->NlocalGatherElements,
-                      mesh->o_localGatherElementList,
-                      mesh->o_ggeo,
-                      mesh->o_Dmatrices,
-                      mesh->o_Smatrices,
-                      mesh->o_MM,
-                      elliptic->lambda[0],
-                      elliptic->o_p,
-                      elliptic->o_Ap);
+      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, 
+                 elliptic->o_p, elliptic->o_Ap, dfloatString);
     };
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);

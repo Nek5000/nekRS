@@ -1,8 +1,3 @@
-/*
- * TODO:
- *  - Support other operations than just add 
- */
-
 #include <limits>
 #include <occa.hpp>
 #include "ogs.hpp"
@@ -63,8 +58,8 @@ struct gs_data {
 
 static void convertPwMap(const uint *restrict map,
                          int *restrict starts,
-                         int *restrict ids){
-
+                         int *restrict ids)
+{
   uint i,j; 
   int n=0, s=0;
   while((i=*map++)!=UINT_MAX) {
@@ -79,18 +74,18 @@ static void convertPwMap(const uint *restrict map,
   }
 }
 
-static void pairwiseExchange(occa::memory o_halo, int unit_size, oogs_t *gs)
+static void pairwiseExchange(int unit_size, oogs_t *gs)
 {
   ogs_t *ogs = gs->ogs;
   struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
   const void* execdata = hgs->r.data; 
   const struct pw_data *pwd = (pw_data*) execdata; 
   const struct comm *comm = &hgs->comm;
-  const unsigned Nhalo = ogs->NhaloGather;
 
   // hardwired for now
   const unsigned transpose = 0;
   const unsigned recv = 0^transpose, send = 1^transpose;
+
 
   { // prepost recv
     comm_req *req = pwd->req; 
@@ -141,19 +136,20 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   const unsigned recv = 0^transpose, send = 1^transpose;
   const void* execdata = hgs->r.data;
   const struct pw_data *pwd = (pw_data*) execdata;
-  const unsigned Nhalo = ogs->NhaloGather;
-  const unsigned unit_size = nVec*sizeof(double); // hardwire just need to be big enough
+  const unsigned unit_size = nVec*sizeof(double); // just need to be big enough to run callcack
   const struct comm *comm = &hgs->comm;
   const int rank = comm->id;
 
-  if(Nhalo == 0) return gs;
+  if(ogs->NhaloGather == 0) return gs;
 
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
       gs->packBufDoubleKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_double", ogs::kernelInfo);
-      gs->unpackBufDoubleKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_double", ogs::kernelInfo);
       gs->packBufFloatKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_float", ogs::kernelInfo);
-      gs->unpackBufFloatKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_float", ogs::kernelInfo);
+      gs->unpackBufDoubleAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleAdd", ogs::kernelInfo);
+      gs->unpackBufFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", ogs::kernelInfo);
+      gs->unpackBufDoubleMinKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMin", ogs::kernelInfo);
+      gs->unpackBufDoubleMaxKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMax", ogs::kernelInfo);
     }
     MPI_Barrier(comm->c);
   }
@@ -163,24 +159,24 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 
   gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
   gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props); 
-  int *scatterOffsets = (int*) calloc((Nhalo+1),sizeof(int));
+  int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
   convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
 
   gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
-  gs->o_scatterOffsets = ogs->device.malloc((Nhalo+1)*sizeof(int), scatterOffsets);
+  gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
   gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
   free(scatterOffsets);
   free(scatterIds);
 
   gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
   gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
-  int* gatherOffsets  = (int*) calloc((Nhalo+1),sizeof(int));
+  int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
   convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
 
   gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
-  gs->o_gatherOffsets  = ogs->device.malloc((Nhalo+1)*sizeof(int), gatherOffsets);
+  gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
   gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
   free(gatherOffsets);
   free(gatherIds);
@@ -244,34 +240,101 @@ oogs_t* oogs::setup(dlong N, hlong *ids, int nVec, dlong stride, const char *typ
   return setup(ogs, nVec, stride, type, callback, gsMode);
 }
 
+static void packBuf(oogs_t *gs,
+                    const  dlong Ngather,
+                    const int k,
+                    occa::memory o_starts,
+                    occa::memory o_ids,
+                    const char* type,
+                    occa::memory  o_v,
+                    occa::memory  o_gv)
+{
+  if        ((!strcmp(type, "float"))) {
+    gs->packBufFloatKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))) {
+    gs->packBufDoubleKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else {
+    printf("oogs: unsupported datatype %s!\n", type);
+    exit(1);
+  }
+}
+
+static void unpackBuf(oogs_t *gs,
+                      const  dlong Ngather,
+                      const int k,
+                      occa::memory o_starts,
+                      occa::memory o_ids,
+                      const char* type,
+                      const char* op,
+                      occa::memory  o_v,
+                      occa::memory  o_gv)
+{
+  if         ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
+    gs->unpackBufFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "add"))) {
+    gs->unpackBufDoubleAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "min"))) {
+    gs->unpackBufDoubleMinKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "double"))&&(!strcmp(op, "max"))) {
+    gs->unpackBufDoubleMaxKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else {
+    printf("oogs: unsupported datatype %s and operatior %s!\n", type, op);
+    exit(1);
+  }
+}
+
+void reallocBuffers(int unit_size, oogs_t *gs)
+{
+  ogs_t *ogs = gs->ogs; 
+  const unsigned transpose = 0;
+  struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+  const unsigned recv = 0^transpose, send = 1^transpose;
+  const void* execdata = hgs->r.data;
+  const struct pw_data *pwd = (pw_data*) execdata;
+
+  if (ogs::o_haloBuf.size() < ogs->NhaloGather*unit_size) {
+    if (ogs::o_haloBuf.size()) ogs::o_haloBuf.free();
+    ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*unit_size, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
+  }
+  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
+    occa::properties props;
+    props["mapped"] = true;
+    if(gs->o_bufSend.size()) gs->o_bufSend.free();
+    gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
+    if(gs->h_buffSend.size()) gs->h_buffSend.free();
+    gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
+    gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props);
+  }
+  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
+    occa::properties props;
+    props["mapped"] = true;
+    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
+    gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
+    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
+    gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
+    gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
+  }
+}
+
 void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
-  occa::kernel packBuf;
-  if (!strcmp(type, "float")) { 
+  if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
-    packBuf = gs->packBufFloatKernel;
-  } else if (!strcmp(type, "double")) { 
+  else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
-    packBuf = gs->packBufDoubleKernel;
-  } else if (!strcmp(type, "int")) { 
+  else if (!strcmp(type, "int"))
     Nbytes = sizeof(int);
-  } else if (!strcmp(type, "long long int")) { 
+  else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
-  }
 
   ogs_t *ogs = gs->ogs; 
 
   if (ogs->NhaloGather) {
-    if (ogs::o_haloBuf.size() < ogs->NhaloGather*Nbytes*k) {
-      if (ogs::o_haloBuf.size()) ogs::o_haloBuf.free();
-      ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*Nbytes*k, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
-    }
-  }
+    reallocBuffers(Nbytes*k, gs);
 
-  if (ogs->NhaloGather) {
     occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
-    if(gs->mode != OOGS_DEFAULT) packBuf(ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, ogs::o_haloBuf, gs->o_bufSend);
+    if(gs->mode != OOGS_DEFAULT) packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
     ogs->device.finish();
 
     if(gs->mode == OOGS_DEFAULT) {
@@ -285,22 +348,10 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
-  occa::kernel unpackBuf;
-  if (!strcmp(type, "float")) { 
+  if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
-    unpackBuf = gs->unpackBufFloatKernel;
-  } else if (!strcmp(type, "double")) { 
+  else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
-    unpackBuf = gs->unpackBufDoubleKernel;
-  } else { 
-    printf("oogs: unsupported datatype %s!\n", type);
-    exit(1);
-  }
-
-  if (strcmp(op, "add")) {
-    printf("oogs: unsupported operation %s!\n", op);
-    exit(1);
-  }
 
   ogs_t *ogs = gs->ogs; 
 
@@ -321,7 +372,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
       for (int i=0;i<k;i++) H[i] = (char*)ogs::haloBuf + i*ogs->NhaloGather*Nbytes;
       ogsHostGatherScatterMany(H, k, type, op, ogs->haloGshSym);
     } else {
-      pairwiseExchange(ogs::o_haloBuf, Nbytes*k, gs);
+      pairwiseExchange(Nbytes*k, gs);
     }   
 #ifdef OGS_ENABLE_TIMER
     timer::toc("gsMPI");
@@ -330,7 +381,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     if(gs->mode == OOGS_DEFAULT) { 
       ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
     } else {
-      unpackBuf(ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, gs->o_bufRecv, ogs::o_haloBuf);
+      unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     }
 
     ogs->device.finish();
@@ -367,9 +418,13 @@ void oogs::destroy(oogs_t *gs)
   gs->o_bufSend.free();
 
   gs->packBufDoubleKernel.free(); 
-  gs->unpackBufDoubleKernel.free();
   gs->packBufFloatKernel.free();
-  gs->unpackBufFloatKernel.free();
+
+  gs->unpackBufDoubleAddKernel.free();
+  gs->unpackBufFloatAddKernel.free();
+
+  gs->unpackBufDoubleMinKernel.free();
+  gs->unpackBufDoubleMaxKernel.free();
   
   free(gs);
 }

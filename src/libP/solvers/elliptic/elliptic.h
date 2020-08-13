@@ -318,6 +318,14 @@ void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_Aq,
                       const char* precision);
 
+void ellipticAx(elliptic_t* elliptic,
+                dlong NelementsList,
+                occa::memory &o_elementsList,
+                occa::memory &o_q,
+                occa::memory &o_Aq,
+                const char* precision);
+
+
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
 
 void ellipticBuildIpdg(elliptic_t* elliptic, int basisNp, dfloat* basis, dfloat lambda,

@@ -157,13 +157,11 @@ int main(int argc, char** argv)
       nekrs::nekOutfld();
     }
 
-    if (tStep && tStep % runTimeStatFreq == 0) nekrs::printRuntimeStatistics();
+    if (tStep && tStep % runTimeStatFreq == 0 || tStep == NtimeSteps) nekrs::printRuntimeStatistics();
 
     ++tStep;
   }
   MPI_Pcontrol(0);
-
-  if ((tStep-1) % runTimeStatFreq != 0) nekrs::printRuntimeStatistics();
 
   if(rank == 0) std::cout << "\nEnd." << "\n";
 

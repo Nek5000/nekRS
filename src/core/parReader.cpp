@@ -180,7 +180,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    exit("No support for bdf3!", EXIT_FAILURE);
+    //exit("No support for bdf3!", EXIT_FAILURE);
   }
   if(timeStepper == "bdf2" || timeStepper == "tombo2")
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
