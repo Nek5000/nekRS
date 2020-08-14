@@ -26,7 +26,6 @@
 
 @kernel void insSumMakefHex3D(const dlong Nelements,
                               @restrict const dfloat*  vgeo,
-                              @restrict const dfloat*  MM,
                               const dfloat idt,
                               @restrict const dfloat*  extbdfA,
                               @restrict const dfloat*  extbdfB,

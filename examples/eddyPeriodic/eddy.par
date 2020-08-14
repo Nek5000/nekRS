@@ -14,7 +14,7 @@ writeInterval = 100
 residualTol = 1e-09
 
 [VELOCITY]
-boundaryTypeMap = null
+boundaryTypeMap = none 
 residualTol = 1e-12
 density = 1.0
 viscosity = 0.05 
