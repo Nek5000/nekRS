@@ -252,14 +252,22 @@ void MGLevel::Report()
     strcpy(smootherString, "Local Patch      ");
   else if (stype == RICHARDSON && smtypeDown == LOCALPATCH)
     strcpy(smootherString, "Local Patch+Cheb ");
+  
 
   if (mesh->rank == 0) {
-    printf(     "|    pMG     |    %10d  |   Matrix-free   |  %s|\n", minNrows, smootherString);
-    printf("     |            |    %10d  |     Degree %2d   |                   |\n",
-           maxNrows,
-           degree);
-    printf("     |            |    %10d  |                 |                   |\n",
-           (int) avgNrows);
+    if(degree == 1) {
+      strcpy(smootherString, "BoomerAMG        ");
+      printf(     "|    AMG     |    %10d  |   Matrix        | %s |\n", minNrows, smootherString);
+      printf("     |            |    %10d  |     Degree %2d   |                   |\n",
+             maxNrows,
+             degree);
+      printf("     |            |    %10d  |                 |                   |\n",
+             (int) avgNrows);
+    } else {
+      printf(     "|    pMG     |                |   Matrix-free   | %s |\n", smootherString);
+      printf("     |            |                |     Degree %2d   |                   |\n",
+             degree);
+    }
   }
 }
 

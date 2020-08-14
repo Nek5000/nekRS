@@ -281,8 +281,8 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
   if (mesh->rank == 0) { //report the upper multigrid levels
     printf("------------------Multigrid Report----------------------------------------\n");
     printf("--------------------------------------------------------------------------\n");
-    printf("level|    Type    |    dimension   |   nnz per row   |   Smoother        |\n");
-    printf("     |            |  (min,max,avg) |  (min,max,avg)  |                   |\n");
+    printf("level|    Type    |   nnz per row  |                 |     Smoother      |\n");
+    printf("     |            |  (min,max,avg) |                 |                   |\n");
     printf("--------------------------------------------------------------------------\n");
   }
 

@@ -126,9 +126,7 @@ namespace bcMap
 {
 void setup(std::vector<std::string> slist, string field)
 {
-  if (slist.size() == 0)
-  if (slist[0].compare("null") == 0) return;
-  if (slist[0].compare("none") == 0) return;
+  if (slist.size() == 0 || slist[0].compare("none") == 0) return;
 
   nbid[0] = slist.size();
   if (field.compare(0, 8, "scalar00") == 0) nbid[1] = slist.size();
@@ -226,8 +224,9 @@ void check(mesh_t* mesh, int isTmesh)
   int retval = 0;
   for (int id = 1; id <= nid; id++) {
     retval = 0;
-    for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++)
+    for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
       if (mesh->EToB[f] == id) retval = 1;
+    }
     MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
     if (retval == 0) {
       if (mesh->rank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);

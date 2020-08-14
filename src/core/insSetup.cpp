@@ -59,7 +59,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
 
   mesh->Nfields = 1;
-  ins->g0 =  1.0;
 
   ins->extbdfA = (dfloat*) calloc(3, sizeof(dfloat));
   ins->extbdfB = (dfloat*) calloc(3, sizeof(dfloat));
@@ -70,15 +69,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   if (options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     ins->Nstages = 1;
     ins->temporalOrder = 1;
-    ins->g0 = 1.0;
   } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
     ins->Nstages = 2;
     ins->temporalOrder = 2;
-    ins->g0 = 1.5;
   } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
     ins->Nstages = 3;
     ins->temporalOrder = 3;
-    ins->g0 = 11.f / 6.f;
   }
 
   ins->readRestartFile = 0;
@@ -107,7 +103,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   }
 
   ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
-  if((ins->finalTime - ins->NtimeSteps*ins->dt) > ins->dt) ins->NtimeSteps++;
+  if((ins->finalTime - ins->NtimeSteps*ins->dt)/ins->finalTime > 1e-6*ins->dt) ins->NtimeSteps++;
   options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
@@ -835,7 +831,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 
   cds->Nstages       = ins->Nstages;
   cds->temporalOrder = ins->temporalOrder;
-  cds->g0            = ins->g0;
 
   cds->o_usrwrk = &(ins->o_usrwrk);
 

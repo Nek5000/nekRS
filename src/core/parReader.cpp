@@ -226,10 +226,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   double writeInterval = 0;
   ini.extract("general", "writeinterval", writeInterval);
 
+  int writeSteps = writeInterval;
   string writeControl;
   if(ini.extract("general", "writecontrol", writeControl))
-    if(writeControl == "runtime") writeInterval = writeInterval / dt;
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(int (writeInterval)));
+    if(writeControl == "runtime") {
+      writeSteps = writeInterval / dt;
+      if((writeInterval - writeSteps*dt) / writeInterval > 1e-6*dt) writeSteps++;
+    }
+  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(writeSteps));
 
   bool dealiasing;
   if(ini.extract("general", "dealiasing", dealiasing))

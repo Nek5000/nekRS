@@ -101,43 +101,30 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
 void extbdfCoefficents(ins_t* ins, int order)
 {
   if(order == 1) {
-    ins->g0 =  1.0f;
-    dfloat extbdfB[] = {1.0f, 0.0f, 0.0f};
-    dfloat extbdfA[] = {1.0f, 0.0f, 0.0f};
-    dfloat extbdfC[] = {1.0f, 0.0f, 0.0f};
-
+    ins->g0 =  1.0;
+    dfloat extbdfB[] = {1.0, 0.0, 0.0};
+    dfloat extbdfA[] = {1.0, 0.0, 0.0};
     memcpy(ins->extbdfB, extbdfB, 3 * sizeof(dfloat));
     memcpy(ins->extbdfA, extbdfA, 3 * sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3 * sizeof(dfloat));
-
     ins->ExplicitOrder = 1;
   } else if(order == 2) {
-    ins->g0 =  1.5f;
-    dfloat extbdfB[] = {2.0f,-0.5f, 0.0f};
-    dfloat extbdfA[] = {2.0f,-1.0f, 0.0f};
-    dfloat extbdfC[] = {1.0f, 0.0f, 0.0f};
-
+    ins->g0 =  1.5;
+    dfloat extbdfB[] = {2.0,-0.5, 0.0};
+    dfloat extbdfA[] = {2.0,-1.0, 0.0};
     memcpy(ins->extbdfB, extbdfB, 3 * sizeof(dfloat));
     memcpy(ins->extbdfA, extbdfA, 3 * sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3 * sizeof(dfloat));
-
     ins->ExplicitOrder = 2;
   } else if(order == 3) {
-    ins->g0 =  11.f / 6.f;
-    dfloat extbdfB[] = {3.0f,-1.5f, 1.0f/3.0f};
-    dfloat extbdfA[] = {3.0f,-3.0f, 1.0f};
-    dfloat extbdfC[] = {2.0f,-1.0f, 0.0f};
-
+    ins->g0 =  11./6.;
+    dfloat extbdfB[] = {3.0,-1.5, 1.0/3.0};
+    dfloat extbdfA[] = {3.0,-3.0, 1.0};
     memcpy(ins->extbdfB, extbdfB, 3 * sizeof(dfloat));
     memcpy(ins->extbdfA, extbdfA, 3 * sizeof(dfloat));
-    memcpy(ins->extbdfC, extbdfC, 3 * sizeof(dfloat));
-
     ins->ExplicitOrder = 3;
   }
 
   ins->o_extbdfB.copyFrom(ins->extbdfB); // bdf
   ins->o_extbdfA.copyFrom(ins->extbdfA); // ext
-  ins->o_extbdfC.copyFrom(ins->extbdfC);
 
   ins->ig0 = 1.0 / ins->g0;
 
@@ -327,7 +314,6 @@ void makef(ins_t* ins, dfloat time, occa::memory o_FU, occa::memory o_BF)
   ins->sumMakefKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_MM,
     ins->idt,
     ins->o_extbdfA,
     ins->o_extbdfB,
@@ -411,14 +397,14 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
         const dfloat tn2 = time - 2 * ins->dt;
         switch(ins->ExplicitOrder) {
         case 1:
-          ins->extC[0] = 1.f;
-          ins->extC[1] = 0.f;
-          ins->extC[2] = 0.f;
+          ins->extC[0] = 1;
+          ins->extC[1] = 0;
+          ins->extC[2] = 0;
           break;
         case 2:
           ins->extC[0] = (t - tn1) / (tn0 - tn1);
           ins->extC[1] = (t - tn0) / (tn1 - tn0);
-          ins->extC[2] = 0.f;
+          ins->extC[2] = 0;
           break;
         case 3:
           ins->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
@@ -559,14 +545,14 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
         const dfloat tn2 = time - 2 * cds->dt;
         switch(cds->ExplicitOrder) {
         case 1:
-          cds->extC[0] = 1.f;
-          cds->extC[1] = 0.f;
-          cds->extC[2] = 0.f;
+          cds->extC[0] = 1;
+          cds->extC[1] = 0;
+          cds->extC[2] = 0;
           break;
         case 2:
           cds->extC[0] = (t - tn1) / (tn0 - tn1);
           cds->extC[1] = (t - tn0) / (tn1 - tn0);
-          cds->extC[2] = 0.f;
+          cds->extC[2] = 0;
           break;
         case 3:
           cds->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
