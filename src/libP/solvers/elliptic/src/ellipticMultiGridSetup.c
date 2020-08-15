@@ -279,11 +279,11 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
 
   //report top levels
   if (mesh->rank == 0) { //report the upper multigrid levels
-    printf("------------------Multigrid Report----------------------------------------\n");
-    printf("--------------------------------------------------------------------------\n");
-    printf("level|    Type    |   nnz per row  |                 |     Smoother      |\n");
-    printf("     |            |  (min,max,avg) |                 |                   |\n");
-    printf("--------------------------------------------------------------------------\n");
+    printf("--------------------Multigrid Report---------------------\n");
+    printf("---------------------------------------------------------\n");
+    printf("level|    Type    |                 |     Smoother      |\n");
+    printf("     |            |                 |                   |\n");
+    printf("---------------------------------------------------------\n");
   }
 
   for(int lev = 0; lev < precon->parAlmond->numLevels; lev++) {
@@ -295,7 +295,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
   }
 
   if (mesh->rank == 0)
-    printf("--------------------------------------------------------------------------\n");
+    printf("---------------------------------------------------------\n");
 }
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)

@@ -257,16 +257,11 @@ void MGLevel::Report()
   if (mesh->rank == 0) {
     if(degree == 1) {
       strcpy(smootherString, "BoomerAMG        ");
-      printf(     "|    AMG     |    %10d  |   Matrix        | %s |\n", minNrows, smootherString);
-      printf("     |            |    %10d  |     Degree %2d   |                   |\n",
-             maxNrows,
-             degree);
-      printf("     |            |    %10d  |                 |                   |\n",
-             (int) avgNrows);
+      printf(     "|    AMG     |   Matrix        | %s |\n", smootherString);
+      printf("     |            |     Degree %2d   |                   |\n", degree);
     } else {
-      printf(     "|    pMG     |                |   Matrix-free   | %s |\n", smootherString);
-      printf("     |            |                |     Degree %2d   |                   |\n",
-             degree);
+      printf(     "|    pMG     |   Matrix-free   | %s |\n", smootherString);
+      printf("     |            |     Degree %2d   |                   |\n", degree);
     }
   }
 }
