@@ -139,8 +139,6 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   const struct comm *comm = &hgs->comm;
   const int rank = comm->id;
 
-  if(ogs->NhaloGather == 0) return gs;
-
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
       gs->packBufDoubleKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_double", ogs::kernelInfo);
@@ -152,6 +150,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     }
     MPI_Barrier(comm->c);
   }
+
+  if(ogs->NhaloGather == 0) return gs;
 
   occa::properties props;
   props["mapped"] = true;
