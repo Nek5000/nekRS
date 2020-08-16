@@ -89,7 +89,9 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   } else if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
-    ellipticSEMFEMSetup(elliptic,precon);
+    //ellipticSEMFEMSetup(elliptic,precon);
+    printf("ERROR: SEMFEM does not work right now.\n");
+    exit(-1);
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
@@ -98,8 +100,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     precon->o_invDiagA = mesh->device.malloc(Ntotal * sizeof(dfloat), invDiagA);
     free(invDiagA);
   } else if(options.compareArgs("PRECONDITIONER", "OAS")) {
-    ellipticThinOasSetup(elliptic);
-
+    //ellipticThinOasSetup(elliptic);
     printf("ERROR:  OAS does not work right now.\n");
     exit(-1);
 

@@ -5,9 +5,6 @@
 #include "mesh.h"
 #include "nekInterfaceAdapter.hpp"
 
-extern int nrsBuildOnly;
-extern int isTmesh;
-
 typedef struct
 {
   int baseRank;
@@ -15,7 +12,7 @@ typedef struct
 }parallelNode_t;
 
 // uniquely label each node with a global index, used for gatherScatter
-void meshNekParallelConnectNodes(mesh_t* mesh)
+void meshNekParallelConnectNodes(mesh_t* mesh, int isTmesh)
 {
   int rank, size;
   rank = mesh->rank;
@@ -29,11 +26,11 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
     mesh->globalIds[id] = nekData.glo_num[id];
 }
 
-void meshParallelConnectNodes(mesh_t* mesh)
+void meshParallelConnectNodes(mesh_t* mesh, int isTmesh, int nrsBuildOnly)
 {
   if(!nrsBuildOnly) {
     // hotfix as libP version seems to be broken
-    meshNekParallelConnectNodes(mesh);
+    meshNekParallelConnectNodes(mesh, isTmesh);
     return;
   }
 

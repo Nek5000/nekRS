@@ -119,7 +119,9 @@ void MGLevel::setupSmoother(
       rateTolerance = 1.0;
 
     //initialize the full inverse operators on each 4 element patch
-    ellipticBuildLocalPatches(elliptic, lambda, rateTolerance, &Npatches, &patchesIndex, &invAP);
+    //ellipticBuildLocalPatches(elliptic, lambda, rateTolerance, &Npatches, &patchesIndex, &invAP);
+    printf("Local patch smoother unsupported!\n");
+    exit(1);
 
     o_invAP = mesh->device.malloc(Npatches * mesh->Np * mesh->Np * sizeof(dfloat),invAP);
     o_patchesIndex = mesh->device.malloc(mesh->Nelements * sizeof(dlong), patchesIndex);

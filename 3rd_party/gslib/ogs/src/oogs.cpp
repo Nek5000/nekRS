@@ -86,7 +86,6 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
   const unsigned transpose = 0;
   const unsigned recv = 0^transpose, send = 1^transpose;
 
-
   { // prepost recv
     comm_req *req = pwd->req; 
     const struct pw_comm_data *c = &pwd->comm[recv];
@@ -364,19 +363,19 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 
     if(gs->mode == OOGS_DEFAULT) ogs->device.finish(); // waiting for gs::haloBuf copy to finish  
 
-#ifdef OGS_ENABLE_TIMER
-    timer::tic("gsMPI",1);
-#endif
     if(gs->mode == OOGS_DEFAULT) {
       void* H[10];
       for (int i=0;i<k;i++) H[i] = (char*)ogs::haloBuf + i*ogs->NhaloGather*Nbytes;
       ogsHostGatherScatterMany(H, k, type, op, ogs->haloGshSym);
     } else {
-      pairwiseExchange(Nbytes*k, gs);
-    }   
 #ifdef OGS_ENABLE_TIMER
-    timer::toc("gsMPI");
+    timer::tic("oogsMPI",1);
 #endif
+      pairwiseExchange(Nbytes*k, gs);
+#ifdef OGS_ENABLE_TIMER
+    timer::toc("oogsMPI");
+#endif
+    }   
  
     if(gs->mode == OOGS_DEFAULT) { 
       ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
@@ -384,7 +383,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
       unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     }
 
-    ogs->device.finish();
+    ogs->device.finish(); // waiting for ogs::o_haloBuf
     ogs->device.setStream(ogs::defaultStream);
 
     occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);

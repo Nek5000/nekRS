@@ -589,10 +589,14 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   memcpy(mesh->EToV, meshRoot->EToV, mesh->Nverts * mesh->Nelements * sizeof(hlong));
 
   meshLoadReferenceNodesHex3D(mesh, mesh->N);
-  meshPhysicalNodesHex3D(mesh);
+
+  int buildOnly  = 0;
+  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
+  meshPhysicalNodesHex3D(mesh, buildOnly);
   meshHaloSetup(mesh);
   meshConnectFaceNodes3D(mesh);
-  meshParallelConnectNodes(mesh);
+  meshParallelConnectNodes(mesh, 0, buildOnly);
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
 
   const int bigNum = 1E9;

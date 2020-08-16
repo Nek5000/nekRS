@@ -35,6 +35,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
 
+  int buildOnly  = 0;
+  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
   //populate the mini-mesh using the mesh struct
   mesh_t* mesh = new mesh_t();
 
@@ -146,7 +149,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     break;
   case HEXAHEDRA:
     meshLoadReferenceNodesHex3D(mesh, Nc);
-    meshPhysicalNodesHex3D(mesh);
+    meshPhysicalNodesHex3D(mesh, buildOnly);
     meshGeometricFactorsHex3D(mesh);
     break;
   }
@@ -226,7 +229,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   // global nodes
-  meshParallelConnectNodes(mesh);
+  meshParallelConnectNodes(mesh, 0, buildOnly);
 
   //dont need these once vmap is made
   free(mesh->x);

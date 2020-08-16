@@ -500,7 +500,7 @@ void meshConnect(mesh_t *mesh);
 void meshParallelConnect(mesh_t *mesh);
 
 /* build global connectivity in parallel */
-void meshParallelConnectNodes(mesh_t *mesh);
+void meshParallelConnectNodes(mesh_t *mesh, int isTmesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t *mesh);
 
