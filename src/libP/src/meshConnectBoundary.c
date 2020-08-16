@@ -69,18 +69,6 @@ void meshConnectBoundary(mesh_t* mesh)
       if(mesh->EToE[e * mesh->Nfaces + f] == -1) // || mesh->EToE[e*mesh->Nfaces+f]==e)
         ++bcnt;
 
-  int err = 0;
-  hlong g_bcnt = bcnt;
-  MPI_Allreduce(MPI_IN_PLACE,&g_bcnt,1,MPI_HLONG,MPI_SUM,mesh->comm);
-  if (mesh->NboundaryFaces != g_bcnt) err++;
-  MPI_Allreduce(MPI_IN_PLACE,&err,1,MPI_INT,MPI_SUM,mesh->comm);
-  if(err) {
-    if(mesh->rank == 0) cout << "\nERROR: NboundaryFaces different from EToE! " 
-                             << g_bcnt << "\n";
-    fflush(stdout);
-    MPI_Barrier(mesh->comm);
-    exit(1);
-  }
 #if 0
   printf("Nbf = %d\n", mesh->NboundaryFaces);
   printf("Nfv = %d\n", mesh->NfaceVertices);

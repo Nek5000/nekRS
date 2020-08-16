@@ -222,6 +222,26 @@ void check(mesh_t* mesh, int isTmesh)
   if(isTmesh) nid = nbid[1];
 
   int retval = 0;
+
+/*
+  // cross check number of boundary faces 
+  hlong bcnt = 0;
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int f = 0; f < mesh->Nfaces; ++f)
+      if(mesh->EToE[e * mesh->Nfaces + f] == -1) ++bcnt;
+
+   etval = 0;
+   MPI_Allreduce(MPI_IN_PLACE, &bcnt, 1, MPI_HLONG, MPI_SUM, mesh->comm);
+   if (mesh->NboundaryFaces != bcnt) retval++;
+   MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
+   if (retval) {
+     if (mesh->rank == 0) cout << "NboundaryFaces different from EToE! "
+                               << bcnt << "\n";
+     ABORT(1);
+  }
+*/
+
+  retval = 0;
   for (int id = 1; id <= nid; id++) {
     retval = 0;
     for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
