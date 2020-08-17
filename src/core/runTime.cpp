@@ -413,12 +413,6 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
           break;
         }
         ins->o_extC.copyFrom(ins->extC);
-        ins->velocityExtKernel(mesh->Nelements,
-                               ins->Nstages,
-                               ins->fieldOffset,
-                               ins->o_extC,
-                               o_U,
-                               ins->o_Ue);
 
         if(mesh->NglobalGatherElements) {
           if(ins->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -427,13 +421,14 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_globalGatherElementList,
               mesh->o_vgeo,
               mesh->o_cubvgeo,
-              mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
+              mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              ins->o_InvM,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_Ue,
+              ins->o_InvM,
+              ins->o_extC,
+              o_U,
               ins->o_wrk0,
               ins->o_wrk6);
           else
@@ -444,7 +439,9 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_Dmatrices,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_Ue,
+              ins->o_InvM,
+              ins->o_extC,
+              o_U,
               ins->o_wrk0,
               ins->o_wrk6);
         }
@@ -464,13 +461,14 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_localGatherElementList,
               mesh->o_vgeo,
               mesh->o_cubvgeo,
-              mesh->o_cubDiffInterpT, //mesh->o_cubDWmatrices,
+              mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              ins->o_InvM,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_Ue,
+              ins->o_InvM,
+              ins->o_extC,
+              o_U,
               ins->o_wrk0,
               ins->o_wrk6);
           else
@@ -481,19 +479,14 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_Dmatrices,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_Ue,
+              ins->o_InvM,
+              ins->o_extC,
+              o_U,
               ins->o_wrk0,
               ins->o_wrk6);
         }
 
         oogs::finish(o_rhs, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);                     
-        ins->invMassMatrixKernel(
-          mesh->Nelements,
-          ins->fieldOffset,
-          ins->NVfields,
-          mesh->o_vgeo,
-          ins->o_InvM,
-          o_rhs);
 
         ins->subCycleRKUpdateKernel(
           mesh->Nelements,
@@ -561,13 +554,6 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
           break;
         }
         cds->o_extC.copyFrom(cds->extC);
-        cds->velocityExtKernel(
-          mesh->Nelements,
-          cds->Nstages,
-          cds->vFieldOffset,
-          cds->o_extC,
-          o_U,
-          cds->o_Ue);
 
         if(mesh->NglobalGatherElements) {
           if(cds->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -581,7 +567,9 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              cds->o_Ue,
+              cds->o_InvMV,
+              cds->o_extC,
+              o_U,
               cds->o_wrk0,
               cds->o_wrk2);
           else
@@ -592,7 +580,9 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               rk * cds->fieldOffset,
               mesh->o_vgeo,
               mesh->o_Dmatrices,
-              cds->o_Ue,
+              cds->o_InvMV,
+              cds->o_extC,
+              o_U,
               cds->o_wrk0,
               cds->o_wrk2);
         }
@@ -617,7 +607,9 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              cds->o_Ue,
+              cds->o_InvMV,
+              cds->o_extC, 
+              o_U,
               cds->o_wrk0,
               cds->o_wrk2);
           else
@@ -628,19 +620,14 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               rk * cds->fieldOffset,
               mesh->o_vgeo,
               mesh->o_Dmatrices,
-              cds->o_Ue,
+              cds->o_InvMV,
+              cds->o_extC,
+              o_U,
               cds->o_wrk0,
               cds->o_wrk2);
         }
 
         oogs::finish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
-        cds->invMassMatrixKernel(
-          mesh->Nelements,
-          cds->fieldOffset,
-          1,
-          mesh->o_vgeo,
-          cds->o_InvMV,
-          o_rhs);
 
         cds->subCycleRKUpdateKernel(
           mesh->Nelements,
