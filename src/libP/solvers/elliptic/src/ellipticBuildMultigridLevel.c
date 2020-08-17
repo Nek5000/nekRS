@@ -836,8 +836,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
       if(!strstr(pfloatString,dfloatString)){
-        sprintf(kernelName, "ellipticAxFloat%s", suffix);
+        sprintf(kernelName, "ellipticAx%s", suffix);
+        AxKernelInfo["defines/dfloat"] = pfloatString;
         elliptic->AxFloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        AxKernelInfo["defines/dfloat"] = dfloatString;
       }
 
       // check for trilinear

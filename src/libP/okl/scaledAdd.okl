@@ -24,6 +24,41 @@ SOFTWARE.
 
 */
 
+@kernel void updateSmoothedSolutionVec(const dlong N,
+                      const dfloat alpha,
+                      @restrict const  dfloat *  res,
+                      const dfloat beta,
+                      @restrict dfloat *  d,
+                      const dfloat gamma,
+                      @restrict dfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat value = alpha*res[n];
+      d[n] = value;
+      x[n] = beta*value + gamma*x[n];
+    }
+  }
+}
+@kernel void updateChebyshevSolutionVec(const dlong N,
+                      const dfloat rhoDivDelta,
+                      const dfloat rho_np1,
+                      const dfloat rho_n,
+                      @restrict dfloat const * Ad,
+                      @restrict dfloat * res,
+                      @restrict dfloat * d,
+                      @restrict dfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat value = -1.0*Ad[n] + 1.0*res[n];
+      res[n] = value;
+      const dfloat d_value = rhoDivDelta * value + rho_np1 * rho_n * d[n];
+      d[n] = d_value;
+      x[n] = x[n] + d_value;
+    }
+  }
+}
 @kernel void scaledAdd(const dlong N,
                       const dfloat alpha,
                       @restrict const  dfloat *  x,

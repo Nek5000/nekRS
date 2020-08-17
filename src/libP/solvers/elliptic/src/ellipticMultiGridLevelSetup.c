@@ -64,16 +64,16 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
   mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
   mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
   // copy
-  elliptic->toFloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
     elliptic->mesh->o_float_ggeo,
     mesh->o_ggeo);
-  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
     elliptic->mesh->o_float_Dmatrices,
     mesh->o_Dmatrices);
-  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
     elliptic->mesh->o_float_Smatrices,
     mesh->o_Smatrices);
-  elliptic->toFloatKernel(mesh->Np * mesh->Np,
+  elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
     elliptic->mesh->o_float_MM,
     mesh->o_MM);
 
@@ -127,16 +127,16 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
   mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
   // copy
-  elliptic->toFloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
     elliptic->mesh->o_float_ggeo,
     mesh->o_ggeo);
-  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
     elliptic->mesh->o_float_Dmatrices,
     mesh->o_Dmatrices);
-  elliptic->toFloatKernel(mesh->Nq * mesh->Nq,
+  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
     elliptic->mesh->o_float_Smatrices,
     mesh->o_Smatrices);
-  elliptic->toFloatKernel(mesh->Np * mesh->Np,
+  elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
     elliptic->mesh->o_float_MM,
     mesh->o_MM);
 }
@@ -419,9 +419,9 @@ dfloat MGLevel::maxEigSmoothAx()
     // v[j+1] = invD*(A*v[j])
     //this->Ax(o_V[j],o_AVx);
     ellipticOperator(elliptic,o_V[j],o_AVx,dfloatString);
-    elliptic->toFloatKernel(M, o_float_AVx, o_AVx);
+    elliptic->copyDfloatToPfloatKernel(M, o_float_AVx, o_AVx);
     this->smoother(o_float_AVx, o_float_Vx, true);
-    elliptic->fromFloatKernel(M, o_float_Vx, o_V[j+1]);
+    elliptic->copyPfloatToDfloatKernel(M, o_float_Vx, o_V[j+1]);
 
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {

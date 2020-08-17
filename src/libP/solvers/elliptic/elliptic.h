@@ -162,10 +162,10 @@ typedef struct
   occa::kernel dotDivideKernel;
   occa::kernel scalarDivideKernel;
   occa::kernel scalarDivideManyKernel;
-  occa::kernel toFloatKernel;
-  occa::kernel fromFloatKernel;
-  occa::kernel fusedScaledAddTwoKernel;
-  occa::kernel fusedScaledAddOneKernel;
+  occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel copyPfloatToDfloatKernel;
+  occa::kernel updateSmoothedSolutionVecKernel;
+  occa::kernel updateChebyshevSolutionVecKernel;
 
   occa::kernel weightedNorm2Kernel;
   occa::kernel norm2Kernel;

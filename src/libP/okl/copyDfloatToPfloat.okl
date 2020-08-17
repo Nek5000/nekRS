@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void toFloat(const dlong N,
+@kernel void copyDfloatToPfloat(const dlong N,
                       @restrict pfloat *  y,
                       @restrict const dfloat * x){
   
