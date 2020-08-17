@@ -4,12 +4,12 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL]
 #verbose = true 
-polynomialOrder = 7
+polynomialOrder = 9
 #startFrom = restart.fld
 stopAt = numSteps
-numSteps = 1000 
-dt = 2e-04
-timeStepper = tombo2
+numSteps = 100 
+dt = 2e-03
+timeStepper = tombo3
 writeControl = runTime
 writeInterval = 0.1
 
