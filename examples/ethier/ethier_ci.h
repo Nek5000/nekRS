@@ -7,7 +7,7 @@
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("7"));
+  options.setArgs("POLYNOMIAL DEGREE", string("9"));
   options.setArgs("RESTART FROM FILE", string("0"));
   options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
   options.setArgs("VISCOSITY", string("0.01"));
@@ -17,14 +17,14 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR00 DENSITY", string("1"));
   options.setArgs("SCALAR01 DIFFUSIVITY", string("0.01"));
   options.setArgs("SCALAR01 DENSITY", string("1"));
-  options.setArgs("FINAL TIME", string("0.1"));
-  options.setArgs("DT", string("2e-4"));
+  options.setArgs("FINAL TIME", string("0.2"));
+  options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
   }
-  options.setArgs("TIME INTEGRATOR", "TOMBO2");
+  options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-08"));
@@ -45,18 +45,21 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   double *err = (double *) nek_scPtr(1);
 
-  const double vxErr = abs((err[0] - 1.19E-04)/err[0]);
-  const double prErr = abs((err[1] - 6.49E-04)/err[1]);
-  const double s1Err = abs((err[2] - 1.01E-04)/err[2]);
-  const double s2Err = abs((err[3] - 1.01E-04)/err[3]);
+  const double vxErr = abs((err[0] - 2.46E-10)/err[0]);
+  const double prErr = abs((err[1] - 7.64E-10)/err[1]);
+  double s1Err, s2Err;
   
-  const int pIterErr = abs(ins->NiterP - 7);
+  const int pIterErr = abs(ins->NiterP - 4);
   int velIterErr;
 
   switch (ciMode) {
-    case 1 : velIterErr = abs(ins->NiterU - 5);
+    case 1 : velIterErr = abs(ins->NiterU - 10);
+             s1Err = abs((err[2] - 9.75E-12)/err[2]);
+             s2Err = abs((err[3] - 9.75E-12)/err[3]);
              break;
-    case  2: velIterErr = abs(ins->NiterU - 6);
+    case 2 : velIterErr = abs(ins->NiterU - 10);
+             s1Err = abs((err[2] - 1.69E-11)/err[2]);
+             s2Err = abs((err[3] - 1.69E-11)/err[3]);
              break;
   }
 
