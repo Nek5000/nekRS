@@ -56,25 +56,25 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_float_x = mesh->device.malloc<pfloat>(Nrows);
-  o_float_rhs = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
   // create float variants
-  mesh->o_float_ggeo = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-  mesh->o_float_Dmatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+  mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+  mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
   // copy
   elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-    elliptic->mesh->o_float_ggeo,
+    elliptic->mesh->o_ggeoPfloat,
     mesh->o_ggeo);
   elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_float_Dmatrices,
+    elliptic->mesh->o_DmatricesPfloat,
     mesh->o_Dmatrices);
   elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_float_Smatrices,
+    elliptic->mesh->o_SmatricesPfloat,
     mesh->o_Smatrices);
   elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-    elliptic->mesh->o_float_MM,
+    elliptic->mesh->o_MMPfloat,
     mesh->o_MM);
 
 }
@@ -119,25 +119,25 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
     this->buildCoarsenerTriTet(meshLevels, Nf, Nc);
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
-  o_float_x = mesh->device.malloc<pfloat>(Nrows);
-  o_float_rhs = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
   // create float variants
-  mesh->o_float_ggeo = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-  mesh->o_float_Dmatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_float_Smatrices = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_float_MM = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+  mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+  mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
   // copy
   elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-    elliptic->mesh->o_float_ggeo,
+    elliptic->mesh->o_ggeoPfloat,
     mesh->o_ggeo);
   elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_float_Dmatrices,
+    elliptic->mesh->o_DmatricesPfloat,
     mesh->o_Dmatrices);
   elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_float_Smatrices,
+    elliptic->mesh->o_SmatricesPfloat,
     mesh->o_Smatrices);
   elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-    elliptic->mesh->o_float_MM,
+    elliptic->mesh->o_MMPfloat,
     mesh->o_MM);
 }
 
@@ -393,8 +393,8 @@ dfloat MGLevel::maxEigSmoothAx()
 
   occa::memory o_Vx  = mesh->device.malloc(M * sizeof(dfloat),Vx);
   occa::memory o_AVx = mesh->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_float_AVx = mesh->device.malloc(M * sizeof(dfloat));
-  occa::memory o_float_Vx = mesh->device.malloc(M * sizeof(dfloat));
+  occa::memory o_AVxPfloat = mesh->device.malloc(M * sizeof(pfloat));
+  occa::memory o_VxPfloat = mesh->device.malloc(M * sizeof(pfloat));
 
   for(int i = 0; i <= k; i++)
     o_V[i] = mesh->device.malloc(M * sizeof(dfloat),Vx);
@@ -419,9 +419,9 @@ dfloat MGLevel::maxEigSmoothAx()
     // v[j+1] = invD*(A*v[j])
     //this->Ax(o_V[j],o_AVx);
     ellipticOperator(elliptic,o_V[j],o_AVx,dfloatString);
-    elliptic->copyDfloatToPfloatKernel(M, o_float_AVx, o_AVx);
-    this->smoother(o_float_AVx, o_float_Vx, true);
-    elliptic->copyPfloatToDfloatKernel(M, o_float_Vx, o_V[j+1]);
+    elliptic->copyDfloatToPfloatKernel(M, o_AVxPfloat, o_AVx);
+    this->smoother(o_AVxPfloat, o_VxPfloat, true);
+    elliptic->copyPfloatToDPfloatKernel(M, o_VxPfloat, o_V[j+1]);
 
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {

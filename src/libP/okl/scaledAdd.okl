@@ -52,9 +52,7 @@ SOFTWARE.
   for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
     if(n<N){
       const dfloat value = -1.0*Ad[n] + 1.0*res[n];
-      res[n] = value;
       const dfloat d_value = rhoDivDelta * value + rho_np1 * rho_n * d[n];
-      d[n] = d_value;
       x[n] = x[n] + d_value;
     }
   }

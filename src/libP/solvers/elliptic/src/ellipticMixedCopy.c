@@ -106,7 +106,8 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
 
       occa::properties dfloatKernelInfo = kernelInfo;
       occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = "float";
+      floatKernelInfo["defines/" "pfloat"] = pfloatString;
+      floatKernelInfo["defines/" "dfloat"] = pfloatString;
       dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
 
       occa::properties AxKernelInfo = dfloatKernelInfo;
@@ -121,7 +122,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       if(!strstr(pfloatString,dfloatString)){
         sprintf(kernelName, "ellipticAx%s", suffix);
         AxKernelInfo["defines/dfloat"] = pfloatString;
-        elliptic->AxFloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        elliptic->AxPfloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
         AxKernelInfo["defines/dfloat"] = dfloatString;
       }
 
@@ -137,7 +138,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
 
       if(!serial) {
         elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialFloatAxKernel = mesh->device.buildKernel(fileName,
+        elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName,
                                                                   kernelName,
                                                                   floatKernelInfo);
       }

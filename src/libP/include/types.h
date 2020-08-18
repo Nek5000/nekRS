@@ -39,7 +39,7 @@ SOFTWARE.
 #endif
 
 //smoother float data type
-#if 0
+#if 1
 #define pfloat float
 #define MPI_PFLOAT MPI_FLOAT
 #define pfloatFormat "%f"
