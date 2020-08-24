@@ -294,15 +294,16 @@
                                           @restrict dfloat*  NS)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_S[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_S[p_Nq][p_Nq];
+    @exclusive dfloat s_Sloc[p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
     @exclusive dfloat r_c[p_Nstages];
 
     @exclusive dlong element;
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
           element = elementList[e];
@@ -318,12 +319,19 @@
           id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
           const dfloat Sn = S[id];
-          s_S[k][j][i] = Sn;
+          s_S[j][i] = Sn;
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Sloc[l] = S[other_id];
+            }
+          }
         }
+      }
 
     @barrier("local");
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -346,9 +354,9 @@
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
 
-            dSdr += Dr * s_S[k][j][n];
-            dSds += Ds * s_S[k][n][i];
-            dSdt += Dt * s_S[n][j][i];
+            dSdr += Dr * s_S[j][n];
+            dSds += Ds * s_S[n][i];
+            dSdt += Dt * s_Sloc[n];
           }
 
           dfloat dSdx = drdx * dSdr + dsdx * dSds + dtdx * dSdt;

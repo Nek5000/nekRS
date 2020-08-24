@@ -32,24 +32,32 @@
                                     @restrict dfloat*  gradP)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
-    @shared dfloat s_P[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_P[p_Nq][p_Nq];
+    @exclusive dfloat s_Ploc[p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
-          s_P[k][j][i]  = P[id];
+          s_P[j][i]  = P[id];
 
           if (k == 0)
             s_D[j][i] = D[j * p_Nq + i];
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Ploc[l] = P[other_id];
+            }
+          }
         }
+      }
+  
 
     // Make sure all node data is loaded into @shared
     @barrier("local");
-
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -73,9 +81,9 @@
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
 
-            dpdr += Dr * s_P[k][j][n];
-            dpds += Ds * s_P[k][n][i];
-            dpdt += Dt * s_P[n][j][i];
+            dpdr += Dr * s_P[j][n];
+            dpds += Ds * s_P[n][i];
+            dpdt += Dt * s_Ploc[n];
           }
 
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
