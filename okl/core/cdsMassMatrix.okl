@@ -32,21 +32,26 @@
                                  @restrict const dfloat*  MM,
                                  @restrict dfloat*  U)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) // for all elements
+  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)){ // for all elements
 
-    for(int es = 0; es < p_NblockV; ++es; @inner(1)) // for all elements in block
-      for(int n = 0; n < p_Np; ++n; @inner(0)) {    // for all nodes in this element
-        const dlong e = eo + es; // element in block
-        if(e < Nelements) {
-          const dlong gid = n + e * p_Np * p_Nvgeo;
-          const dfloat JW = vgeo[gid + p_JWID * p_Np];
-          const dlong id = e * p_Np + n;
+    for(int es = 0; es < p_NblockV; ++es; @inner(1)){ // for all elements in block
+      #pragma unroll p_Nq
+      for(int i = 0 ; i < p_Nq; ++i){
+        for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {    // for all nodes in this element
+          const dlong e = eo + es; // element in block
+          if(e < Nelements) {
+            const dlong gid = i*p_Nq*p_Nq+j + e * p_Np * p_Nvgeo;
+            const dfloat JW = vgeo[gid + p_JWID * p_Np];
+            const dlong id = e * p_Np + i*p_Nq*p_Nq+j;
 
-          for(int fld = 0; fld < nfield; fld++)
-            U[id + fld * offset] = JW * U[id + fld * offset];
+            for(int fld = 0; fld < nfield; fld++)
+              U[id + fld * offset] = JW * U[id + fld * offset];
 
+          }
         }
       }
+    }
+  }
 }
 
 // //
@@ -57,21 +62,26 @@
                                     @restrict const dfloat*  IM,
                                     @restrict dfloat*  U)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) // for all elements
+  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)){ // for all elements
 
-    for(int es = 0; es < p_NblockV; ++es; @inner(1)) // for all elements in block
-      for(int n = 0; n < p_Np; ++n; @inner(0)) {    // for all nodes in this element
-        const dlong e = eo + es; // element in block
-        if(e < Nelements) {
-          const dlong id = e * p_Np + n;
-          const dlong gid = n + e * p_Np * p_Nvgeo;
-          const dfloat IJW = IM[id];
+    for(int es = 0; es < p_NblockV; ++es; @inner(1)){ // for all elements in block
+      #pragma unroll p_Nq
+      for(int i = 0 ; i < p_Nq; ++i){
+        for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {    // for all nodes in this element
+          const dlong e = eo + es; // element in block
+          if(e < Nelements) {
+            const dlong id = e * p_Np + i*p_Nq*p_Nq+j;
+            const dlong gid = i*p_Nq*p_Nq+j + e * p_Np * p_Nvgeo;
+            const dfloat IJW = IM[id];
 
-          for(int fld = 0; fld < nfield; fld++)
-            U[id + fld * offset] = IJW * U[id + fld * offset];
+            for(int fld = 0; fld < nfield; fld++)
+              U[id + fld * offset] = IJW * U[id + fld * offset];
 
+          }
         }
       }
+    }
+  }
 }
 
 // Computes volume contribution of div(UI)
@@ -82,21 +92,26 @@
                                 @restrict const dfloat*  MM,
                                 @restrict dfloat*  U)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) // for all elements
+  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)){ // for all elements
 
-    for(int es = 0; es < p_NblockV; ++es; @inner(1)) // for all elements in block
-      for(int n = 0; n < p_Np; ++n; @inner(0)) {    // for all nodes in this element
-        const dlong e = eo + es; // element in block
-        if(e < Nelements) {
-          const dlong gid = n + e * p_Np * p_Nvgeo;
-          const dfloat JW = vgeo[gid + p_JWID * p_Np];
-          const dlong id = e * p_Np + n;
+    for(int es = 0; es < p_NblockV; ++es; @inner(1)){ // for all elements in block
+      #pragma unroll p_Nq
+      for(int i = 0 ; i < p_Nq; ++i){
+        for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {    // for all nodes in this element
+          const dlong e = eo + es; // element in block
+          if(e < Nelements) {
+            const dlong gid = i*p_Nq*p_Nq+j + e * p_Np * p_Nvgeo;
+            const dfloat JW = vgeo[gid + p_JWID * p_Np];
+            const dlong id = e * p_Np + i*p_Nq*p_Nq+j;
 
-          for(int fld = 0; fld < nfield; fld++)
-            U[id + fld * offset] = JW * U[id + fld * offset];
+            for(int fld = 0; fld < nfield; fld++)
+              U[id + fld * offset] = JW * U[id + fld * offset];
 
+          }
         }
       }
+    }
+  }
 }
 
 @kernel void cdsInvMassMatrixHex3D(const dlong Nelements,
@@ -106,20 +121,25 @@
                                    @restrict const dfloat*  IM,
                                    @restrict dfloat*  U)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) // for all elements
+  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)){ // for all elements
 
-    for(int es = 0; es < p_NblockV; ++es; @inner(1)) // for all elements in block
-      for(int n = 0; n < p_Np; ++n; @inner(0)) {    // for all nodes in this element
-        const dlong e = eo + es; // element in block
-        if(e < Nelements) {
-          const dlong id = e * p_Np + n;
-          const dlong gid = n + e * p_Np * p_Nvgeo;
-          // const dfloat IJW = vgeo[gid + p_IJWID*p_Np];
-          const dfloat IJW = IM[id];
+    for(int es = 0; es < p_NblockV; ++es; @inner(1)){ // for all elements in block
+      #pragma unroll p_Nq
+      for(int i = 0 ; i < p_Nq; ++i){
+        for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {    // for all nodes in this element
+          const dlong e = eo + es; // element in block
+          if(e < Nelements) {
+            const dlong id = e * p_Np + i*p_Nq*p_Nq+j;
+            const dlong gid = i*p_Nq*p_Nq+j + e * p_Np * p_Nvgeo;
+            // const dfloat IJW = vgeo[gid + p_IJWID*p_Np];
+            const dfloat IJW = IM[id];
 
-          for(int fld = 0; fld < nfield; fld++)
-            U[id + fld * offset] = IJW * U[id + fld * offset];
+            for(int fld = 0; fld < nfield; fld++)
+              U[id + fld * offset] = IJW * U[id + fld * offset];
 
+          }
         }
       }
+    }
+  }
 }

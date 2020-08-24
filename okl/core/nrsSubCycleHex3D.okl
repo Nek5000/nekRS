@@ -337,9 +337,12 @@
                                           @restrict dfloat*  NU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_Ud[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Vd[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_Wd[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Ud[p_Nq][p_Nq];
+    @shared dfloat s_Vd[p_Nq][p_Nq];
+    @shared dfloat s_Wd[p_Nq][p_Nq];
+    @exclusive dfloat s_Udloc[p_Nq];
+    @exclusive dfloat s_Vdloc[p_Nq];
+    @exclusive dfloat s_Wdloc[p_Nq];
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
@@ -347,8 +350,9 @@
 
     @exclusive dlong element;
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
           element = elementList[e];
@@ -367,14 +371,27 @@
           const dfloat Vdn = Ud[id + 1 * offset];
           const dfloat Wdn = Ud[id + 2 * offset];
 
-          s_Ud[k][j][i] = Udn;
-          s_Vd[k][j][i] = Vdn;
-          s_Wd[k][j][i] = Wdn;
+          s_Ud[j][i] = Udn;
+          s_Vd[j][i] = Vdn;
+          s_Wd[j][i] = Wdn;
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat locUdn = Ud[other_id + 0 * offset];
+              const dfloat locVdn = Ud[other_id + 1 * offset];
+              const dfloat locWdn = Ud[other_id + 2 * offset];
+
+              s_Udloc[l] = locUdn;
+              s_Vdloc[l] = locVdn;
+              s_Wdloc[l] = locWdn;
+            }
+          }
         }
+      }
 
     @barrier("local");
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -398,17 +415,17 @@
             const dfloat Dr = s_D[i][n];
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
-            duddr += Dr * s_Ud[k][j][n];
-            dudds += Ds * s_Ud[k][n][i];
-            duddt += Dt * s_Ud[n][j][i];
+            duddr += Dr * s_Ud[j][n];
+            dudds += Ds * s_Ud[n][i];
+            duddt += Dt * s_Udloc[n];
 
-            dvddr += Dr * s_Vd[k][j][n];
-            dvdds += Ds * s_Vd[k][n][i];
-            dvddt += Dt * s_Vd[n][j][i];
+            dvddr += Dr * s_Vd[j][n];
+            dvdds += Ds * s_Vd[n][i];
+            dvddt += Dt * s_Vdloc[n];
 
-            dwddr += Dr * s_Wd[k][j][n];
-            dwdds += Ds * s_Wd[k][n][i];
-            dwddt += Dt * s_Wd[n][j][i];
+            dwddr += Dr * s_Wd[j][n];
+            dwdds += Ds * s_Wd[n][i];
+            dwddt += Dt * s_Wdloc[n];
           }
 
           dfloat duddx = drdx * duddr + dsdx * dudds + dtdx * duddt;

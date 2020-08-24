@@ -30,11 +30,15 @@
                                @restrict const dfloat* qtl,
                                @restrict dfloat* rhs)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0))
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const int id = e * p_Np + n;
-      const dlong gid = e * p_Np * p_Nvgeo + n;
-      const dfloat JW = vgeo[gid + p_JWID * p_Np];
-      rhs[id] += JW * lambda * qtl[id];
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)){
+    #pragma unroll p_Nq
+    for(int i = 0 ; i < p_Nq; ++i){
+      for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {
+        const int id = e * p_Np + i*p_Nq*p_Nq+j;
+        const dlong gid = e * p_Np * p_Nvgeo + i*p_Nq*p_Nq+j;
+        const dfloat JW = vgeo[gid + p_JWID * p_Np];
+        rhs[id] += JW * lambda * qtl[id];
+      }
     }
+  }
 }
