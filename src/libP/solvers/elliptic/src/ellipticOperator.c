@@ -126,8 +126,6 @@ void ellipticAx(elliptic_t* elliptic,
   }
 
   if(continuous) {
-    oogs_t* oogsAx = elliptic->oogsAx;
-
     occa::kernel &partialAxKernel =
       (!strstr(precision, dfloatString)) ? elliptic->partialAxPfloatKernel : elliptic->partialAxKernel;
 

@@ -227,6 +227,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   } else {
     gs->mode = gsMode;
   }
+
+  //gs->mode = OOGS_DEFAULT;
   if(rank == 0) printf("used mode: %d\n", gs->mode);
 
   return gs; 
@@ -329,6 +331,17 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 
   ogs_t *ogs = gs->ogs; 
 
+#if 0
+  if(gs->mode == OOGS_DEFAULT) {
+    if(k>1)
+      ogsGatherScatterManyStart(o_v, k, stride, type, op, ogs);
+    else
+      ogsGatherScatterStart(o_v, type, op, ogs);
+    
+    return;
+  }
+#endif
+
   if (ogs->NhaloGather) {
     reallocBuffers(Nbytes*k, gs);
 
@@ -354,6 +367,17 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 
   ogs_t *ogs = gs->ogs; 
 
+#if 0
+  if(gs->mode == OOGS_DEFAULT) {
+    if(k>1)
+      ogsGatherScatterManyFinish(o_v, k, stride, type, op, ogs);
+    else
+      ogsGatherScatterFinish(o_v, type, op, ogs);
+    
+    return;
+  }
+#endif
+
   if(ogs->NlocalGather) {
     occaGatherScatterMany(ogs->NlocalGather, k, stride, ogs->o_localGatherOffsets, ogs->o_localGatherIds, type, op, o_v);
   }
@@ -361,9 +385,9 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
   if (ogs->NhaloGather) {
     ogs->device.setStream(ogs::dataStream);
 
-    if(gs->mode == OOGS_DEFAULT) ogs->device.finish(); // waiting for gs::haloBuf copy to finish  
-
     if(gs->mode == OOGS_DEFAULT) {
+      ogs->device.finish(); // waiting for gs::haloBuf copy to finish 
+
       void* H[10];
       for (int i=0;i<k;i++) H[i] = (char*)ogs::haloBuf + i*ogs->NhaloGather*Nbytes;
       ogsHostGatherScatterMany(H, k, type, op, ogs->haloGshSym);
@@ -382,11 +406,11 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     } else {
       unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     }
+    occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, 
+                    ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
 
-    ogs->device.finish(); // waiting for ogs::o_haloBuf
+    ogs->device.finish(); // waiting for o_v
     ogs->device.setStream(ogs::defaultStream);
-
-    occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
   }
 }
 
@@ -396,6 +420,17 @@ void oogs::startFinish(void *v, const int k, const dlong stride, const char *typ
 }
 void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)
 {
+#if 0
+   if(h->mode == OOGS_DEFAULT) {
+    if(k>1)
+      ogsGatherScatterMany(o_v, k, stride, type, op, h->ogs);
+    else
+      ogsGatherScatter(o_v, type, op, h->ogs);
+    
+    return;
+   }
+#endif
+
    start(o_v, k, stride, type, op, h);
    finish(o_v, k, stride, type, op, h);
 }

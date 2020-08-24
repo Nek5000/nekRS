@@ -813,6 +813,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
       kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if (elliptic->dim == 2)
@@ -820,15 +821,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       else if (elliptic->dim == 3)
         boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
-      occa::properties dfloatKernelInfo = kernelInfo;
-      occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = pfloatString;
-      floatKernelInfo["defines/" "dfloat"] = pfloatString;
-      dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
-
-      occa::properties AxKernelInfo = dfloatKernelInfo;
-      AxKernelInfo["defines/pfloat"] = pfloatString;
+      occa::properties AxKernelInfo = kernelInfo;
       sprintf(fileName, DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
       sprintf(kernelName, "ellipticAx%s", suffix);
       if(serial) {
@@ -837,10 +832,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
       if(!strstr(pfloatString,dfloatString)){
+        AxKernelInfo["defines/" "dfloat"] = pfloatString;
         sprintf(kernelName, "ellipticAx%s", suffix);
-        AxKernelInfo["defines/dfloat"] = pfloatString;
         elliptic->AxPfloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
-        AxKernelInfo["defines/dfloat"] = dfloatString;
+        AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
       // check for trilinear
@@ -854,10 +849,12 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
 
       if(!serial) {
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        if(!strstr(pfloatString,dfloatString)) {
+          AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName, kernelName, AxKernelInfo);
+          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        }
       }
 
       // only for Hex3D - cubature Ax
@@ -868,7 +865,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
         elliptic->partialCubatureAxKernel = mesh->device.buildKernel(fileName,
                                                                      kernelName,
-                                                                     dfloatKernelInfo);
+                                                                     AxKernelInfo);
       }
 
       if (options.compareArgs("BASIS", "BERN")) {
@@ -880,12 +877,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         sprintf(kernelName, "ellipticPartialGradientBB%s", suffix);
         elliptic->partialGradientKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
+/*
         sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdgBB%s.okl", suffix);
         sprintf(kernelName, "ellipticAxIpdgBB%s", suffix);
         elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
         sprintf(kernelName, "ellipticPartialAxIpdgBB%s", suffix);
         elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
       } else if (options.compareArgs("BASIS", "NODAL")) {
         sprintf(fileName, DELLIPTIC "/okl/ellipticGradient%s.okl", suffix);
         sprintf(kernelName, "ellipticGradient%s", suffix);
@@ -894,13 +893,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
         sprintf(kernelName, "ellipticPartialGradient%s", suffix);
         elliptic->partialGradientKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
         sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdg%s.okl", suffix);
         sprintf(kernelName, "ellipticAxIpdg%s", suffix);
         elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
         sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
         elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
       }
     }
 
@@ -1006,10 +1006,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   auto callback = [&]()
     {
       ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, 
-                 elliptic->o_p, elliptic->o_Ap, dfloatString);
+                 elliptic->o_p, elliptic->o_Ap, pfloatString);
     };
-  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
-  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
+  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, callback, oogsMode);
+  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, NULL, oogsMode);
 
   return elliptic;
 }

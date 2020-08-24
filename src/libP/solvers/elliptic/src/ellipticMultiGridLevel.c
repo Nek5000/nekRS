@@ -162,10 +162,10 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
 }
 void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
-  //if(ChebyshevIterations == 1){
-  //  smoothChebyshevOneIteration(o_r,o_x,xIsZero);
-  //  return;
-  //}
+  if(ChebyshevIterations == 1){
+    smoothChebyshevOneIteration(o_r,o_x,xIsZero);
+    return;
+  }
   const pfloat theta = 0.5 * (lambda1 + lambda0);
   const pfloat delta = 0.5 * (lambda1 - lambda0);
   const pfloat invTheta = 1.0 / theta;

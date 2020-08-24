@@ -764,6 +764,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) NthreadsUpdatePCG; // WARNING SHOULD BE MULTIPLE OF 32
       kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (NthreadsUpdatePCG / 32); // WARNING: CUDA SPECIFIC
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if(elliptic->blockSolver) {
@@ -778,6 +779,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       }
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
       occa::properties dfloatKernelInfo = kernelInfo;
       occa::properties floatKernelInfo = kernelInfo;
@@ -801,7 +803,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
       occa::properties AxKernelInfo = dfloatKernelInfo;
       if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
-      AxKernelInfo["defines/pfloat"] = pfloatString;
       if(elliptic->blockSolver) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
@@ -844,11 +845,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             }
           }
         }
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialAxKernel2 = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        elliptic->partialAxKernel2 = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
       }
 
       // only for Hex3D - cubature Ax
@@ -929,13 +927,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           sprintf(kernelName, "ellipticPartialGradientBB%s", suffix);
           elliptic->partialGradientKernel =
             mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
           sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdgBB%s.okl", suffix);
           sprintf(kernelName, "ellipticAxIpdgBB%s", suffix);
           elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
           sprintf(kernelName, "ellipticPartialAxIpdgBB%s", suffix);
           elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
         } else if (options.compareArgs("BASIS","NODAL")) {
           sprintf(fileName, DELLIPTIC "/okl/ellipticGradient%s.okl", suffix);
           sprintf(kernelName, "ellipticGradient%s", suffix);
@@ -945,13 +944,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           sprintf(kernelName, "ellipticPartialGradient%s", suffix);
           elliptic->partialGradientKernel =
             mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
           sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdg%s.okl", suffix);
           sprintf(kernelName, "ellipticAxIpdg%s", suffix);
           elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
           sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
           elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
         }
 
         // Use the same kernel with quads for the following kenels
