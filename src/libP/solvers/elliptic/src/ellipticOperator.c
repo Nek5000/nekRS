@@ -40,8 +40,6 @@ void ellipticAx(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
 
-  int enableGatherScatters = 1;
-  int enableReductions = 1;
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
   const int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
@@ -49,9 +47,6 @@ void ellipticAx(elliptic_t* elliptic,
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
   const int integrationType = (elliptic->elementType == HEXAHEDRA &&
                                options.compareArgs("ELLIPTIC INTEGRATION", "CUBATURE")) ? 1:0;
-
-  options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
-  options.getArgs("DEBUG ENABLE OGS", enableGatherScatters);
 
   {
     bool valid = true;
@@ -97,26 +92,13 @@ void ellipticAx(elliptic_t* elliptic,
                              mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
                              o_q, o_Aq);
         else{
-          occa::memory o_ggeo = (!strstr(precision,dfloatString)) ?
-            mesh->o_ggeoPfloat : mesh->o_ggeo;
-          occa::memory o_Dmatrices = (!strstr(precision,dfloatString)) ?
-            mesh->o_DmatricesPfloat : mesh->o_Dmatrices;
-          occa::memory o_Smatrices = (!strstr(precision,dfloatString)) ?
-            mesh->o_SmatricesPfloat : mesh->o_Smatrices;
-          occa::memory o_MM = (!strstr(precision,dfloatString)) ?
-            mesh->o_MMPfloat : mesh->o_MM;
-          auto castedLambda = (!strstr(precision,dfloatString)) ?
-            static_cast<pfloat>(elliptic->lambda[0]) : elliptic->lambda[0];
-          occa::kernel &AxKernel =
-            (!strstr(precision, dfloatString)) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
-          AxKernel(mesh->Nelements,
-                             o_ggeo,
-                             o_Dmatrices,
-                             o_Smatrices,
-                             o_MM,
-                             castedLambda,
-                             o_q,
-                             o_Aq);
+          occa::memory &o_ggeo = (!strstr(precision,dfloatString)) ? mesh->o_ggeoPfloat : mesh->o_ggeo;
+          occa::memory &o_Dmatrices = (!strstr(precision,dfloatString)) ? mesh->o_DmatricesPfloat : mesh->o_Dmatrices;
+          occa::memory &o_Smatrices = (!strstr(precision,dfloatString)) ? mesh->o_SmatricesPfloat : mesh->o_Smatrices;
+          occa::memory &o_MM = (!strstr(precision,dfloatString)) ? mesh->o_MMPfloat : mesh->o_MM;
+          occa::kernel &AxKernel = (!strstr(precision,dfloatString)) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
+          AxKernel(mesh->Nelements, o_ggeo, o_Dmatrices, o_Smatrices, o_MM, elliptic->lambda[0],
+                   o_q, o_Aq);
         }
       }
     } else {
@@ -170,23 +152,17 @@ void ellipticAx(elliptic_t* elliptic,
                               o_q,
                               o_Aq);
             else{
-              occa::memory o_ggeo = (!strstr(precision,dfloatString)) ?
-                mesh->o_ggeoPfloat : mesh->o_ggeo;
-              occa::memory o_Dmatrices = (!strstr(precision,dfloatString)) ?
-                mesh->o_DmatricesPfloat : mesh->o_Dmatrices;
-              occa::memory o_Smatrices = (!strstr(precision,dfloatString)) ?
-                mesh->o_SmatricesPfloat : mesh->o_Smatrices;
-              occa::memory o_MM = (!strstr(precision,dfloatString)) ?
-                mesh->o_MMPfloat : mesh->o_MM;
-              auto lambda = (!strstr(precision,dfloatString)) ?
-                static_cast<pfloat>(elliptic->lambda[0]) : elliptic->lambda[0];
+              occa::memory &o_ggeo = (!strstr(precision,dfloatString)) ? mesh->o_ggeoPfloat : mesh->o_ggeo;
+              occa::memory &o_Dmatrices = (!strstr(precision,dfloatString)) ? mesh->o_DmatricesPfloat : mesh->o_Dmatrices;
+              occa::memory &o_Smatrices = (!strstr(precision,dfloatString)) ? mesh->o_SmatricesPfloat : mesh->o_Smatrices;
+              occa::memory &o_MM = (!strstr(precision,dfloatString)) ? mesh->o_MMPfloat : mesh->o_MM;
               partialAxKernel(NelementsList,
                               o_elementsList,
                               o_ggeo,
                               o_Dmatrices,
                               o_Smatrices,
                               o_MM,
-                              lambda,
+                              elliptic->lambda[0],
                               o_q,
                               o_Aq);
             }
@@ -236,22 +212,19 @@ void ellipticOperator(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
   oogs_t* oogsAx = elliptic->oogsAx;
-  const char* ogsDataTypeString = (!strstr(precision, dfloatString)) ?
-    ogsPfloat : ogsDfloat;
-  occa::kernel maskKernel = (!strstr(precision, dfloatString)) ?
-    mesh->maskPfloatKernel : mesh->maskKernel;
-
+  const char* ogsDataTypeString = (!strstr(precision, dfloatString)) ? ogsPfloat: ogsDfloat;
   int serial = options.compareArgs("THREAD MODEL", "SERIAL");
 
   if(serial) {
     occa::memory o_dummy;
     ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);
-    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, elliptic->oogs);
+    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   } else {
     ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
     oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
     oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   }
+  occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;
   if (elliptic->Nmasked) maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
 }

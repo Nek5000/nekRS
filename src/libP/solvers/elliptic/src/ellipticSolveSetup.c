@@ -1062,8 +1062,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
                  elliptic->o_p, elliptic->o_Ap, dfloatString);
     };
-  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
+  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
   ellipticPreconditionerSetup(elliptic, elliptic->ogs, kernelInfo);
 

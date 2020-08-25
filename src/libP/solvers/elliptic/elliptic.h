@@ -41,7 +41,7 @@
 #define blockSize 256
 
 #include "timer.hpp"
-#define ELLIPTIC_ENABLE_TIMER
+//#define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
 
@@ -266,7 +266,7 @@ typedef struct
 #include "ellipticResidualProjection.h"
 
 elliptic_t* ellipticSetup(mesh2D* mesh, occa::properties &kernelInfo, setupAide options);
-elliptic_t* newEllipticConstCoeff(elliptic_t* elliptic);
+elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);

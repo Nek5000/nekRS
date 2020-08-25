@@ -58,24 +58,6 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
   o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
-  // create float variants
-  mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-  mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
-  // copy
-  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-    elliptic->mesh->o_ggeoPfloat,
-    mesh->o_ggeo);
-  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_DmatricesPfloat,
-    mesh->o_Dmatrices);
-  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_SmatricesPfloat,
-    mesh->o_Smatrices);
-  elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-    elliptic->mesh->o_MMPfloat,
-    mesh->o_MM);
 
 }
 
@@ -119,33 +101,16 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
     this->buildCoarsenerTriTet(meshLevels, Nf, Nc);
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
+
   o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
   o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
-  // create float variants
-  mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-  mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-  mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
-  // copy
-  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-    elliptic->mesh->o_ggeoPfloat,
-    mesh->o_ggeo);
-  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_DmatricesPfloat,
-    mesh->o_Dmatrices);
-  elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-    elliptic->mesh->o_SmatricesPfloat,
-    mesh->o_Smatrices);
-  elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-    elliptic->mesh->o_MMPfloat,
-    mesh->o_MM);
 }
 
-void MGLevel::setupSmoother(
-  elliptic_t* ellipticBase
-  )
+void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 {
-if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
+  if (degree == 1) return; // solved by coarse grid solver
+
+  if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
              options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     stype = SCHWARZ;
     smtypeUp = JACOBI;

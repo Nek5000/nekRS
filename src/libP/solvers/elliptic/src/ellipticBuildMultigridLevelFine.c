@@ -26,7 +26,7 @@
 
 #include "elliptic.h"
 
-elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
+elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
@@ -34,14 +34,32 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
   const int serial = baseElliptic->options.compareArgs("THREAD MODEL", "SERIAL");
 
   elliptic->var_coeff = 0;
-
-  // enforce lambda = 0
-  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat));
+  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0
 
   mesh_t* mesh = elliptic->mesh;
-  occa::properties kernelInfo = ellipticKernelInfo(mesh);
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+
+    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+      elliptic->mesh->o_ggeoPfloat,
+      mesh->o_ggeo);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_DmatricesPfloat,
+      mesh->o_Dmatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_SmatricesPfloat,
+      mesh->o_Smatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
+      elliptic->mesh->o_MMPfloat,
+      mesh->o_MM);
+  }
 
   char* suffix;
+  occa::properties kernelInfo = ellipticKernelInfo(mesh);
 
   if(elliptic->elementType == TRIANGLES) {
     if(elliptic->dim == 2)

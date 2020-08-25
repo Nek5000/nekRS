@@ -1001,16 +1001,24 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     }
   }
 
-  oogs_mode oogsMode = OOGS_AUTO;
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
-  if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
-  auto callback = [&]()
-    {
-      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, 
-                 elliptic->o_p, elliptic->o_Ap, pfloatString);
-    };
-  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, callback, oogsMode);
-  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, NULL, oogsMode);
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+      elliptic->mesh->o_ggeoPfloat,
+      mesh->o_ggeo);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_DmatricesPfloat,
+      mesh->o_Dmatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_SmatricesPfloat,
+      mesh->o_Smatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
+      elliptic->mesh->o_MMPfloat,
+      mesh->o_MM);
+  }
 
   return elliptic;
 }

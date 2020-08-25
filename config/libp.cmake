@@ -100,7 +100,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildJacobi.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticHaloExchange.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticKernelInfo.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticConstCoeff.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildMultigridLevelFine.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildMultigridLevel.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevel.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevelSetup.c
