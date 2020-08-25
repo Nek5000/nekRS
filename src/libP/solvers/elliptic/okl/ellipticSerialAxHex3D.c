@@ -118,7 +118,6 @@ void ellipticAxHex3D(const dlong & Nelements,
         }
   }
 }
-
 extern "C"
 void ellipticAxVarHex3D(const dlong & Nelements,
                         const dlong & offset,

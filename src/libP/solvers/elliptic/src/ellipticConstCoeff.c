@@ -96,6 +96,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
       kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if (elliptic->dim == 2)
@@ -103,13 +104,10 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       else if (elliptic->dim == 3)
         boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
-      occa::properties dfloatKernelInfo = kernelInfo;
-      occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = "float";
-      dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
+      occa::properties AxKernelInfo = kernelInfo;
 
-      occa::properties AxKernelInfo = dfloatKernelInfo;
       sprintf(fileName, DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
       sprintf(kernelName, "ellipticAx%s", suffix);
       if(serial) {
@@ -118,7 +116,13 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
 
-      // check for trilinear
+      if(!strstr(pfloatString,dfloatString)){
+        AxKernelInfo["defines/" "dfloat"] = pfloatString;
+        sprintf(kernelName, "ellipticAx%s", suffix);
+        elliptic->AxPfloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        AxKernelInfo["defines/" "dfloat"] = dfloatString;
+      }
+
       if(elliptic->elementType != HEXAHEDRA) {
         sprintf(kernelName, "ellipticPartialAx%s", suffix);
       }else{
@@ -127,14 +131,16 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         else
           sprintf(kernelName, "ellipticPartialAx%s", suffix);
       }
-
       if(!serial) {
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialFloatAxKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        if(!strstr(pfloatString,dfloatString)) {
+          AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName, kernelName, AxKernelInfo);
+          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        }
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
@@ -142,8 +148,9 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
         elliptic->partialCubatureAxKernel = mesh->device.buildKernel(fileName,
                                                                      kernelName,
-                                                                     dfloatKernelInfo);
+                                                                     AxKernelInfo);
       }
+*/
     }
 
     MPI_Barrier(mesh->comm);

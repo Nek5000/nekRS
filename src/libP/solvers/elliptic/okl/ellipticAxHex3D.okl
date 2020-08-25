@@ -148,7 +148,6 @@
     }
   }
 }
-
 @kernel void ellipticAxVarHex3D(const dlong Nelements,
                                 const dlong offset,
                                 @restrict const dfloat*  ggeo,
@@ -433,19 +432,19 @@
                                        @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq];
 
-    @shared pfloat s_Gqr[p_Nq][p_Nq];
-    @shared pfloat s_Gqs[p_Nq][p_Nq];
+    @shared dfloat s_Gqr[p_Nq][p_Nq];
+    @shared dfloat s_Gqs[p_Nq][p_Nq];
 
-    @exclusive pfloat r_qt, r_Gqt, r_Auk;
-    @exclusive pfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
-    @exclusive pfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
+    @exclusive dfloat r_qt, r_Gqt, r_Auk;
+    @exclusive dfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
+    @exclusive dfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
 
     @exclusive dlong element;
 
-    @exclusive pfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
 
     // array of threads
     for(int j = 0; j < p_Nq; ++j; @inner(1))
@@ -506,8 +505,8 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          pfloat qr = 0.f;
-          pfloat qs = 0.f;
+          dfloat qr = 0.f;
+          dfloat qs = 0.f;
 
 #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -555,7 +554,7 @@
 }
 
 #define ellipticPartialAxTrilinearHex3D_v1 ellipticPartialAxTrilinearHex3D
-#define p_eighth ((pfloat)0.125)
+#define p_eighth ((dfloat)0.125)
 
 @kernel void ellipticPartialAxTrilinearHex3D_v0(const dlong Nelements,
                                                 @restrict const dlong*  elementList,
@@ -569,22 +568,22 @@
                                                 @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq];
 
-    @shared pfloat s_Gqr[p_Nq][p_Nq];
-    @shared pfloat s_Gqs[p_Nq][p_Nq];
+    @shared dfloat s_Gqr[p_Nq][p_Nq];
+    @shared dfloat s_Gqs[p_Nq][p_Nq];
 
-    @shared pfloat s_gllwz[2][p_Nq];
-    @shared pfloat s_EXYZ[p_dim][p_Nverts];
+    @shared dfloat s_gllwz[2][p_Nq];
+    @shared dfloat s_EXYZ[p_dim][p_Nverts];
 
-    @exclusive pfloat r_qt, r_Gqt, r_Auk;
-    @exclusive pfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
-    @exclusive pfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
+    @exclusive dfloat r_qt, r_Gqt, r_Auk;
+    @exclusive dfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
+    @exclusive dfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
 
     @exclusive dlong element;
 
-    @exclusive pfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
 
     // array of threads
     for(int j = 0; j < p_Nq; ++j; @inner(1))
@@ -620,77 +619,77 @@
     for(int k = 0; k < p_Nq; k++) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const pfloat rn = s_gllwz[0][i];
-          const pfloat sn = s_gllwz[0][j];
-          const pfloat tn = s_gllwz[0][k];
+          const dfloat rn = s_gllwz[0][i];
+          const dfloat sn = s_gllwz[0][j];
+          const dfloat tn = s_gllwz[0][k];
 
 #define xe s_EXYZ[0]
 #define ye s_EXYZ[1]
 #define ze s_EXYZ[2]
 
           /* Jacobian matrix */
-          const pfloat xr = p_eighth *
+          const dfloat xr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (xe[1] - xe[0]) + (1 - tn) * (1 + sn) *
                               (xe[2] - xe[3]) +
                               (1 + tn) * (1 - sn) * (xe[5] - xe[4]) + (1 + tn) * (1 + sn) *
                               (xe[6] - xe[7]) );
-          const pfloat xs = p_eighth *
+          const dfloat xs = p_eighth *
                             ( (1 - tn) * (1 - rn) * (xe[3] - xe[0]) + (1 - tn) * (1 + rn) *
                               (xe[2] - xe[1]) +
                               (1 + tn) * (1 - rn) * (xe[7] - xe[4]) + (1 + tn) * (1 + rn) *
                               (xe[6] - xe[5]) );
-          const pfloat xt = p_eighth *
+          const dfloat xt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (xe[4] - xe[0]) + (1 + rn) * (1 - sn) *
                               (xe[5] - xe[1]) +
                               (1 + rn) * (1 + sn) * (xe[6] - xe[2]) + (1 - rn) * (1 + sn) *
                               (xe[7] - xe[3]) );
 
-          const pfloat yr = p_eighth *
+          const dfloat yr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (ye[1] - ye[0]) + (1 - tn) * (1 + sn) *
                               (ye[2] - ye[3]) +
                               (1 + tn) * (1 - sn) * (ye[5] - ye[4]) + (1 + tn) * (1 + sn) *
                               (ye[6] - ye[7]) );
-          const pfloat ys = p_eighth *
+          const dfloat ys = p_eighth *
                             ( (1 - tn) * (1 - rn) * (ye[3] - ye[0]) + (1 - tn) * (1 + rn) *
                               (ye[2] - ye[1]) +
                               (1 + tn) * (1 - rn) * (ye[7] - ye[4]) + (1 + tn) * (1 + rn) *
                               (ye[6] - ye[5]) );
-          const pfloat yt = p_eighth *
+          const dfloat yt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (ye[4] - ye[0]) + (1 + rn) * (1 - sn) *
                               (ye[5] - ye[1]) +
                               (1 + rn) * (1 + sn) * (ye[6] - ye[2]) + (1 - rn) * (1 + sn) *
                               (ye[7] - ye[3]) );
 
-          const pfloat zr = p_eighth *
+          const dfloat zr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (ze[1] - ze[0]) + (1 - tn) * (1 + sn) *
                               (ze[2] - ze[3]) +
                               (1 + tn) * (1 - sn) * (ze[5] - ze[4]) + (1 + tn) * (1 + sn) *
                               (ze[6] - ze[7]) );
-          const pfloat zs = p_eighth *
+          const dfloat zs = p_eighth *
                             ( (1 - tn) * (1 - rn) * (ze[3] - ze[0]) + (1 - tn) * (1 + rn) *
                               (ze[2] - ze[1]) +
                               (1 + tn) * (1 - rn) * (ze[7] - ze[4]) + (1 + tn) * (1 + rn) *
                               (ze[6] - ze[5]) );
-          const pfloat zt = p_eighth *
+          const dfloat zt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (ze[4] - ze[0]) + (1 + rn) * (1 - sn) *
                               (ze[5] - ze[1]) +
                               (1 + rn) * (1 + sn) * (ze[6] - ze[2]) + (1 - rn) * (1 + sn) *
                               (ze[7] - ze[3]) );
 
           /* compute geometric factors for affine coordinate transform*/
-          const pfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
+          const dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
                            (xs * yt - ys * xt);
 
           // note delayed J scaling
-          const pfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
+          const dfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
                        rz =  (xs * yt - ys * xt);
-          const pfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
+          const dfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
                        sz = -(xr * yt - yr * xt);
-          const pfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
+          const dfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
                        tz =  (xr * ys - yr * xs);
 
-          const pfloat W  = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
-          const pfloat sc = W / J;
+          const dfloat W  = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
+          const dfloat sc = W / J;
 
           // W*J*(rx/J*rx/J) ..
           r_G00 = sc * (rx * rx + ry * ry + rz * rz);
@@ -722,8 +721,8 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          pfloat qr = 0.f;
-          pfloat qs = 0.f;
+          dfloat qr = 0.f;
+          dfloat qs = 0.f;
 
 //            #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -781,24 +780,24 @@
                                                 @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
 
-    @exclusive pfloat r_Di[p_Nq], r_Dj[p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq];
+    @exclusive dfloat r_Di[p_Nq], r_Dj[p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq];
 
-    @shared pfloat s_Gqr[p_Nq][p_Nq];
-    @shared pfloat s_Gqs[p_Nq][p_Nq];
+    @shared dfloat s_Gqr[p_Nq][p_Nq];
+    @shared dfloat s_Gqs[p_Nq][p_Nq];
 
-    @shared pfloat s_gllwz[2][p_Nq];
-    @shared pfloat s_EXYZ[p_dim][p_Nverts];
+    @shared dfloat s_gllwz[2][p_Nq];
+    @shared dfloat s_EXYZ[p_dim][p_Nverts];
 
-    @exclusive pfloat r_qt, r_Gqt, r_Auk;
-    @exclusive pfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
-    @exclusive pfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
+    @exclusive dfloat r_qt, r_Gqt, r_Auk;
+    @exclusive dfloat r_q[p_Nq]; // register array to hold u(i,j,0:N) private to thread
+    @exclusive dfloat r_Aq[p_Nq];// array for results Au(i,j,0:N)
 
     @exclusive dlong element;
 
-    @exclusive pfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
 
     // array of threads
     for(int j = 0; j < p_Nq; ++j; @inner(1))
@@ -841,77 +840,77 @@
     for(int k = 0; k < p_Nq; k++) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const pfloat rn = s_gllwz[0][i];
-          const pfloat sn = s_gllwz[0][j];
-          const pfloat tn = s_gllwz[0][k];
+          const dfloat rn = s_gllwz[0][i];
+          const dfloat sn = s_gllwz[0][j];
+          const dfloat tn = s_gllwz[0][k];
 
 #define xe s_EXYZ[0]
 #define ye s_EXYZ[1]
 #define ze s_EXYZ[2]
 
           /* Jacobian matrix */
-          const pfloat xr = p_eighth *
+          const dfloat xr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (xe[1] - xe[0]) + (1 - tn) * (1 + sn) *
                               (xe[2] - xe[3]) +
                               (1 + tn) * (1 - sn) * (xe[5] - xe[4]) + (1 + tn) * (1 + sn) *
                               (xe[6] - xe[7]) );
-          const pfloat xs = p_eighth *
+          const dfloat xs = p_eighth *
                             ( (1 - tn) * (1 - rn) * (xe[3] - xe[0]) + (1 - tn) * (1 + rn) *
                               (xe[2] - xe[1]) +
                               (1 + tn) * (1 - rn) * (xe[7] - xe[4]) + (1 + tn) * (1 + rn) *
                               (xe[6] - xe[5]) );
-          const pfloat xt = p_eighth *
+          const dfloat xt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (xe[4] - xe[0]) + (1 + rn) * (1 - sn) *
                               (xe[5] - xe[1]) +
                               (1 + rn) * (1 + sn) * (xe[6] - xe[2]) + (1 - rn) * (1 + sn) *
                               (xe[7] - xe[3]) );
 
-          const pfloat yr = p_eighth *
+          const dfloat yr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (ye[1] - ye[0]) + (1 - tn) * (1 + sn) *
                               (ye[2] - ye[3]) +
                               (1 + tn) * (1 - sn) * (ye[5] - ye[4]) + (1 + tn) * (1 + sn) *
                               (ye[6] - ye[7]) );
-          const pfloat ys = p_eighth *
+          const dfloat ys = p_eighth *
                             ( (1 - tn) * (1 - rn) * (ye[3] - ye[0]) + (1 - tn) * (1 + rn) *
                               (ye[2] - ye[1]) +
                               (1 + tn) * (1 - rn) * (ye[7] - ye[4]) + (1 + tn) * (1 + rn) *
                               (ye[6] - ye[5]) );
-          const pfloat yt = p_eighth *
+          const dfloat yt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (ye[4] - ye[0]) + (1 + rn) * (1 - sn) *
                               (ye[5] - ye[1]) +
                               (1 + rn) * (1 + sn) * (ye[6] - ye[2]) + (1 - rn) * (1 + sn) *
                               (ye[7] - ye[3]) );
 
-          const pfloat zr = p_eighth *
+          const dfloat zr = p_eighth *
                             ( (1 - tn) * (1 - sn) * (ze[1] - ze[0]) + (1 - tn) * (1 + sn) *
                               (ze[2] - ze[3]) +
                               (1 + tn) * (1 - sn) * (ze[5] - ze[4]) + (1 + tn) * (1 + sn) *
                               (ze[6] - ze[7]) );
-          const pfloat zs = p_eighth *
+          const dfloat zs = p_eighth *
                             ( (1 - tn) * (1 - rn) * (ze[3] - ze[0]) + (1 - tn) * (1 + rn) *
                               (ze[2] - ze[1]) +
                               (1 + tn) * (1 - rn) * (ze[7] - ze[4]) + (1 + tn) * (1 + rn) *
                               (ze[6] - ze[5]) );
-          const pfloat zt = p_eighth *
+          const dfloat zt = p_eighth *
                             ( (1 - rn) * (1 - sn) * (ze[4] - ze[0]) + (1 + rn) * (1 - sn) *
                               (ze[5] - ze[1]) +
                               (1 + rn) * (1 + sn) * (ze[6] - ze[2]) + (1 - rn) * (1 + sn) *
                               (ze[7] - ze[3]) );
 
           /* compute geometric factors for affine coordinate transform*/
-          const pfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
+          const dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
                            (xs * yt - ys * xt);
 
           // note delayed J scaling
-          const pfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
+          const dfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
                        rz =  (xs * yt - ys * xt);
-          const pfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
+          const dfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
                        sz = -(xr * yt - yr * xt);
-          const pfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
+          const dfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
                        tz =  (xr * ys - yr * xs);
 
-          const pfloat W  = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
-          const pfloat sc = W / J;
+          const dfloat W  = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
+          const dfloat sc = W / J;
 
           // W*J*(rx/J*rx/J) ..
           r_G00 = sc * (rx * rx + ry * ry + rz * rz);
@@ -943,8 +942,8 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          pfloat qr = 0.f;
-          pfloat qs = 0.f;
+          dfloat qr = 0.f;
+          dfloat qs = 0.f;
 
 //            #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1002,20 +1001,20 @@
                                                 @restrict dfloat*  Aq)
 {
   for(dlong eo = 0; eo < Nelements; eo += 2; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
 
-    @exclusive pfloat r_Di[p_Nq], r_Dj[p_Nq];
-    @shared pfloat s_q[2][p_Nq][p_Nq];
+    @exclusive dfloat r_Di[p_Nq], r_Dj[p_Nq];
+    @shared dfloat s_q[2][p_Nq][p_Nq];
 
-    @shared pfloat s_Gqr[2][p_Nq][p_Nq];
-    @shared pfloat s_Gqs[2][p_Nq][p_Nq];
+    @shared dfloat s_Gqr[2][p_Nq][p_Nq];
+    @shared dfloat s_Gqs[2][p_Nq][p_Nq];
 
-    @shared pfloat s_gllwz[2][p_Nq];
-    @shared pfloat s_EXYZ[2][p_dim][p_Nverts];
+    @shared dfloat s_gllwz[2][p_Nq];
+    @shared dfloat s_EXYZ[2][p_dim][p_Nverts];
 
-    @exclusive pfloat r_qt[2], r_Gqt[2];
-    pfloat r_q[2][p_Nq]; // register array to hold u(i,j,0:N) private to thread
-    pfloat r_Aq[2][p_Nq];// array for results Au(i,j,0:N)
+    @exclusive dfloat r_qt[2], r_Gqt[2];
+    dfloat r_q[2][p_Nq]; // register array to hold u(i,j,0:N) private to thread
+    dfloat r_Aq[2][p_Nq];// array for results Au(i,j,0:N)
 
     @exclusive dlong element[2];
 
@@ -1091,7 +1090,7 @@
 
 //            #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
-            const pfloat Dkm = s_D[k][m];
+            const dfloat Dkm = s_D[k][m];
             r_qt[0] += Dkm * r_q[0][m];
             r_qt[1] += Dkm * r_q[1][m];
           }
@@ -1101,10 +1100,10 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const pfloat rn = s_gllwz[0][i];
-          const pfloat sn = s_gllwz[0][j];
-          const pfloat tn = s_gllwz[0][k];
-          const pfloat Wn = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
+          const dfloat rn = s_gllwz[0][i];
+          const dfloat sn = s_gllwz[0][j];
+          const dfloat tn = s_gllwz[0][k];
+          const dfloat Wn = s_gllwz[1][i] * s_gllwz[1][j] * s_gllwz[1][k];
 
 //	    #pragma unroll 2
           for(int et = 0; et < 2; ++et) {
@@ -1113,79 +1112,79 @@
 #define ze s_EXYZ[et][2]
 
             /* Jacobian matrix */
-            const pfloat xr = p_eighth *
+            const dfloat xr = p_eighth *
                               ( (1 - tn) * (1 - sn) * (xe[1] - xe[0]) + (1 - tn) * (1 + sn) *
                                 (xe[2] - xe[3]) +
                                 (1 + tn) * (1 - sn) * (xe[5] - xe[4]) + (1 + tn) * (1 + sn) *
                                 (xe[6] - xe[7]) );
-            const pfloat xs = p_eighth *
+            const dfloat xs = p_eighth *
                               ( (1 - tn) * (1 - rn) * (xe[3] - xe[0]) + (1 - tn) * (1 + rn) *
                                 (xe[2] - xe[1]) +
                                 (1 + tn) * (1 - rn) * (xe[7] - xe[4]) + (1 + tn) * (1 + rn) *
                                 (xe[6] - xe[5]) );
-            const pfloat xt = p_eighth *
+            const dfloat xt = p_eighth *
                               ( (1 - rn) * (1 - sn) * (xe[4] - xe[0]) + (1 + rn) * (1 - sn) *
                                 (xe[5] - xe[1]) +
                                 (1 + rn) * (1 + sn) * (xe[6] - xe[2]) + (1 - rn) * (1 + sn) *
                                 (xe[7] - xe[3]) );
 
-            const pfloat yr = p_eighth *
+            const dfloat yr = p_eighth *
                               ( (1 - tn) * (1 - sn) * (ye[1] - ye[0]) + (1 - tn) * (1 + sn) *
                                 (ye[2] - ye[3]) +
                                 (1 + tn) * (1 - sn) * (ye[5] - ye[4]) + (1 + tn) * (1 + sn) *
                                 (ye[6] - ye[7]) );
-            const pfloat ys = p_eighth *
+            const dfloat ys = p_eighth *
                               ( (1 - tn) * (1 - rn) * (ye[3] - ye[0]) + (1 - tn) * (1 + rn) *
                                 (ye[2] - ye[1]) +
                                 (1 + tn) * (1 - rn) * (ye[7] - ye[4]) + (1 + tn) * (1 + rn) *
                                 (ye[6] - ye[5]) );
-            const pfloat yt = p_eighth *
+            const dfloat yt = p_eighth *
                               ( (1 - rn) * (1 - sn) * (ye[4] - ye[0]) + (1 + rn) * (1 - sn) *
                                 (ye[5] - ye[1]) +
                                 (1 + rn) * (1 + sn) * (ye[6] - ye[2]) + (1 - rn) * (1 + sn) *
                                 (ye[7] - ye[3]) );
 
-            const pfloat zr = p_eighth *
+            const dfloat zr = p_eighth *
                               ( (1 - tn) * (1 - sn) * (ze[1] - ze[0]) + (1 - tn) * (1 + sn) *
                                 (ze[2] - ze[3]) +
                                 (1 + tn) * (1 - sn) * (ze[5] - ze[4]) + (1 + tn) * (1 + sn) *
                                 (ze[6] - ze[7]) );
-            const pfloat zs = p_eighth *
+            const dfloat zs = p_eighth *
                               ( (1 - tn) * (1 - rn) * (ze[3] - ze[0]) + (1 - tn) * (1 + rn) *
                                 (ze[2] - ze[1]) +
                                 (1 + tn) * (1 - rn) * (ze[7] - ze[4]) + (1 + tn) * (1 + rn) *
                                 (ze[6] - ze[5]) );
-            const pfloat zt = p_eighth *
+            const dfloat zt = p_eighth *
                               ( (1 - rn) * (1 - sn) * (ze[4] - ze[0]) + (1 + rn) * (1 - sn) *
                                 (ze[5] - ze[1]) +
                                 (1 + rn) * (1 + sn) * (ze[6] - ze[2]) + (1 - rn) * (1 + sn) *
                                 (ze[7] - ze[3]) );
 
             /* compute geometric factors for affine coordinate transform*/
-            const pfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
+            const dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr *
                              (xs * yt - ys * xt);
 
             // note delayed J scaling
-            const pfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
+            const dfloat rx =  (ys * zt - zs * yt), ry = -(xs * zt - zs * xt),
                          rz =  (xs * yt - ys * xt);
-            const pfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
+            const dfloat sx = -(yr * zt - zr * yt), sy =  (xr * zt - zr * xt),
                          sz = -(xr * yt - yr * xt);
-            const pfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
+            const dfloat tx =  (yr * zs - zr * ys), ty = -(xr * zs - zr * xs),
                          tz =  (xr * ys - yr * xs);
 
-            const pfloat sc = Wn / J;
+            const dfloat sc = Wn / J;
 
             // W*J*(rx/J*rx/J) ..
-            const pfloat r_G00 = sc * (rx * rx + ry * ry + rz * rz);
-            const pfloat r_G01 = sc * (rx * sx + ry * sy + rz * sz);
-            const pfloat r_G02 = sc * (rx * tx + ry * ty + rz * tz);
-            const pfloat r_G11 = sc * (sx * sx + sy * sy + sz * sz);
-            const pfloat r_G12 = sc * (sx * tx + sy * ty + sz * tz);
-            const pfloat r_G22 = sc * (tx * tx + ty * ty + tz * tz);
+            const dfloat r_G00 = sc * (rx * rx + ry * ry + rz * rz);
+            const dfloat r_G01 = sc * (rx * sx + ry * sy + rz * sz);
+            const dfloat r_G02 = sc * (rx * tx + ry * ty + rz * tz);
+            const dfloat r_G11 = sc * (sx * sx + sy * sy + sz * sz);
+            const dfloat r_G12 = sc * (sx * tx + sy * ty + sz * tz);
+            const dfloat r_G22 = sc * (tx * tx + ty * ty + tz * tz);
 
-            const pfloat r_GwJ = Wn * J;
+            const dfloat r_GwJ = Wn * J;
 
-            pfloat qr = 0, qs = 0;
+            dfloat qr = 0, qs = 0;
 
 //	      #pragma unroll p_Nq
             for(int m = 0; m < p_Nq; m++) {
@@ -1210,9 +1209,9 @@
 
 //            #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
-            const pfloat Dmj = s_D[m][j];
-            const pfloat Dkm = s_D[k][m];
-            const pfloat Dmi = s_D[m][i];
+            const dfloat Dmj = s_D[m][j];
+            const dfloat Dkm = s_D[k][m];
+            const dfloat Dmi = s_D[m][i];
 
 //		#pragma unroll 2
             for(int et = 0; et < 2; ++et) {
@@ -1324,13 +1323,13 @@
 {
   for(int k = 0; k < p_Nq; ++k; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-      @shared pfloat s_D[p_Nq][p_Nq];
-      @shared pfloat s_q[p_Nq][p_Nq];
+      @shared dfloat s_D[p_Nq][p_Nq];
+      @shared dfloat s_q[p_Nq][p_Nq];
 
-      @shared pfloat s_Gqr[p_Nq][p_Nq];
-      @shared pfloat s_Gqs[p_Nq][p_Nq];
+      @shared dfloat s_Gqr[p_Nq][p_Nq];
+      @shared dfloat s_Gqs[p_Nq][p_Nq];
 
-      @exclusive pfloat r_Auk, r_q;
+      @exclusive dfloat r_Auk, r_q;
 
       @exclusive dlong element;
 
@@ -1353,8 +1352,8 @@
           const dfloat r_G01 = ggeo[gbase + p_G01ID * p_Np];
           const dfloat r_GwJ = ggeo[gbase + p_GWJID * p_Np];
 
-          pfloat qr = 0.f;
-          pfloat qs = 0.f;
+          dfloat qr = 0.f;
+          dfloat qs = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1386,13 +1385,13 @@
 
   for(int j = 0; j < p_Nq; ++j; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-      @shared pfloat s_D[p_Nq][p_Nq];
-      @shared pfloat s_q[p_Nq][p_Nq];
+      @shared dfloat s_D[p_Nq][p_Nq];
+      @shared dfloat s_q[p_Nq][p_Nq];
 
-      @shared pfloat s_Gqr[p_Nq][p_Nq];
-      @shared pfloat s_Gqt[p_Nq][p_Nq];
+      @shared dfloat s_Gqr[p_Nq][p_Nq];
+      @shared dfloat s_Gqt[p_Nq][p_Nq];
 
-      @exclusive pfloat r_Auk, r_q;
+      @exclusive dfloat r_Auk, r_q;
 
       @exclusive dlong element;
 
@@ -1414,8 +1413,8 @@
           const dfloat r_G02 = ggeo[gbase + p_G02ID * p_Np];
           const dfloat r_G22 = ggeo[gbase + p_G22ID * p_Np];
 
-          pfloat qr = 0.f;
-          pfloat qt = 0.f;
+          dfloat qr = 0.f;
+          dfloat qt = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1445,13 +1444,13 @@
 
   for(int i = 0; i < p_Nq; ++i; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-      @shared pfloat s_D[p_Nq][p_Nq];
-      @shared pfloat s_q[p_Nq][p_Nq];
+      @shared dfloat s_D[p_Nq][p_Nq];
+      @shared dfloat s_q[p_Nq][p_Nq];
 
-      @shared pfloat s_Gqs[p_Nq][p_Nq];
-      @shared pfloat s_Gqt[p_Nq][p_Nq];
+      @shared dfloat s_Gqs[p_Nq][p_Nq];
+      @shared dfloat s_Gqt[p_Nq][p_Nq];
 
-      @exclusive pfloat r_Auk, r_q;
+      @exclusive dfloat r_Auk, r_q;
 
       @exclusive dlong element;
 
@@ -1473,8 +1472,8 @@
           const dfloat r_G11 = ggeo[gbase + p_G11ID * p_Np];
           const dfloat r_G12 = ggeo[gbase + p_G12ID * p_Np];
 
-          pfloat qs = 0.f;
-          pfloat qt = 0.f;
+          dfloat qs = 0.f;
+          dfloat qt = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1517,13 +1516,13 @@
 {
   for(int k = 0; k < p_Nq; ++k; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-      @shared pfloat s_D[p_Nq][p_Nq];
-      @shared pfloat s_q[p_Nq][p_Nq];
+      @shared dfloat s_D[p_Nq][p_Nq];
+      @shared dfloat s_q[p_Nq][p_Nq];
 
-      @shared pfloat s_Gqr[p_Nq][p_Nq];
-      @shared pfloat s_Gqs[p_Nq][p_Nq];
+      @shared dfloat s_Gqr[p_Nq][p_Nq];
+      @shared dfloat s_Gqs[p_Nq][p_Nq];
 
-      @exclusive pfloat r_Auk, r_q;
+      @exclusive dfloat r_Auk, r_q;
 
       @exclusive dlong element;
 
@@ -1546,8 +1545,8 @@
           const dfloat r_G01 = ggeo[gbase + p_G01ID * p_Np];
           const dfloat r_GwJ = ggeo[gbase + p_GWJID * p_Np];
 
-          pfloat qr = 0.f;
-          pfloat qs = 0.f;
+          dfloat qr = 0.f;
+          dfloat qs = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1579,13 +1578,13 @@
 
   for(int j = 0; j < p_Nq; ++j; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-      @shared pfloat s_D[p_Nq][p_Nq];
-      @shared pfloat s_q[p_Nq][p_Nq];
+      @shared dfloat s_D[p_Nq][p_Nq];
+      @shared dfloat s_q[p_Nq][p_Nq];
 
-      @shared pfloat s_Gqr[p_Nq][p_Nq];
-      @shared pfloat s_Gqt[p_Nq][p_Nq];
+      @shared dfloat s_Gqr[p_Nq][p_Nq];
+      @shared dfloat s_Gqt[p_Nq][p_Nq];
 
-      @exclusive pfloat r_Auk, r_q;
+      @exclusive dfloat r_Auk, r_q;
 
       @exclusive dlong element;
 
@@ -1607,8 +1606,8 @@
           const dfloat r_G02 = ggeo[gbase + p_G02ID * p_Np];
           const dfloat r_G22 = ggeo[gbase + p_G22ID * p_Np];
 
-          pfloat qr = 0.f;
-          pfloat qt = 0.f;
+          dfloat qr = 0.f;
+          dfloat qt = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1637,13 +1636,13 @@
 
 
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq][p_Nq];
 
-    @shared pfloat s_Gqs[p_Nq][p_Nq][p_Nq];
-    @shared pfloat s_Gqt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gqs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gqt[p_Nq][p_Nq][p_Nq];
 
-    @exclusive pfloat r_Auk, r_q;
+    @exclusive dfloat r_Auk, r_q;
 
     @exclusive dlong element;
 
@@ -1669,8 +1668,8 @@
           const dfloat r_G11 = ggeo[gbase + p_G11ID * p_Np];
           const dfloat r_G12 = ggeo[gbase + p_G12ID * p_Np];
 
-          pfloat qs = 0.f;
-          pfloat qt = 0.f;
+          dfloat qs = 0.f;
+          dfloat qt = 0.f;
 
 //#pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
@@ -1710,13 +1709,13 @@
                                        @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq][p_Nq];
 
-    @shared pfloat s_Gq1[p_Nq][p_Nq][p_Nq];
-    @shared pfloat s_Gq2[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gq1[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gq2[p_Nq][p_Nq][p_Nq];
 
-    @exclusive pfloat r_Auk, r_q, qr, qs, qt;
+    @exclusive dfloat r_Auk, r_q, qr, qs, qt;
 
     @exclusive dlong element;
 
@@ -1831,14 +1830,14 @@
                                        @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared pfloat s_D[p_Nq][p_Nq];
-    @shared pfloat s_q[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_q[p_Nq][p_Nq][p_Nq];
 
-    @shared pfloat s_Gq1[p_Nq][p_Nq][p_Nq];
-    @shared pfloat s_Gq2[p_Nq][p_Nq][p_Nq];
-    @shared pfloat s_Gq3[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gq1[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gq2[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Gq3[p_Nq][p_Nq][p_Nq];
 
-    @exclusive pfloat r_Auk, r_q;
+    @exclusive dfloat r_Auk, r_q;
 
     @exclusive dlong element;
 
