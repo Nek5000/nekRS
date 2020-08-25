@@ -849,9 +849,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         elliptic->partialAxKernel2 = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA && !elliptic->var_coeff && !elliptic->blockSolver) {
-        //  printf("BUILDING partialCubatureAxKernel\n");
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
 
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
@@ -859,6 +859,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                                                      kernelName,
                                                                      dfloatKernelInfo);
       }
+*/
 
       // combined PCG update and r.r kernel
       if(elliptic->blockSolver) {

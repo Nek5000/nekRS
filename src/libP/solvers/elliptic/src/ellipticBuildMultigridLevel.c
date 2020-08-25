@@ -857,9 +857,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         }
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA) {
-        //	printf("BUILDING partialCubatureAxKernel\n");
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
 
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
@@ -867,6 +867,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
                                                                      kernelName,
                                                                      AxKernelInfo);
       }
+*/
 
       if (options.compareArgs("BASIS", "BERN")) {
         sprintf(fileName, DELLIPTIC "/okl/ellipticGradientBB%s.okl", suffix);

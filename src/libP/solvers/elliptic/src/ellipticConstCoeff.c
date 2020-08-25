@@ -140,6 +140,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         }
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
@@ -149,6 +150,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
                                                                      kernelName,
                                                                      AxKernelInfo);
       }
+*/
     }
 
     MPI_Barrier(mesh->comm);
