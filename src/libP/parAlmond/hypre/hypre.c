@@ -74,8 +74,8 @@ struct hypre_crs_data *hypre_setup(int nrows, const long long int rowStart,
   HYPRE_BoomerAMGSetCoarsenType(solver,hypre_param[0]);
   HYPRE_BoomerAMGSetInterpType(solver,hypre_param[1]);
 
-  //HYPRE_BoomerAMGSetKeepTranspose(solver, 1);
-  //HYPRE_BoomerAMGSetChebyFraction(solver, 0.2); 
+  HYPRE_BoomerAMGSetKeepTranspose(solver, 1);
+  HYPRE_BoomerAMGSetChebyFraction(solver, 0.2); 
   if (hypre_param[5] > 0) {
     HYPRE_BoomerAMGSetCycleRelaxType(solver, hypre_param[5], 1);
     HYPRE_BoomerAMGSetCycleRelaxType(solver, hypre_param[5], 2);

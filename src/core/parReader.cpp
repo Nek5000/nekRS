@@ -76,7 +76,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("BOOMERAMG ITERATIONS", "1");
-  options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(-1));
+  //options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(-1));
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
   options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 #else
@@ -357,7 +357,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
-        options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
+        //options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
         options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.0));
         if(p_preconditioner.find("additive") != std::string::npos) {
