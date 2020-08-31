@@ -350,9 +350,10 @@ typedef struct {
 
   occa::memory o_q, o_rhsq, o_resq, o_fQM, o_fQP;
 
-  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM;
+  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
   occa::memory o_Dmatrices;
+  occa::memory o_DmatricesPfloat;
   occa::memory o_FMMT;
   occa::memory o_sMT;
 
@@ -361,6 +362,7 @@ typedef struct {
   occa::memory o_SsrT, o_SssT, o_SstT;
   occa::memory o_Srr, o_Srs, o_Srt, o_Sss, o_Sst, o_Stt; // for char4-based kernels
   occa::memory o_Smatrices;
+  occa::memory o_SmatricesPfloat;
   occa::memory o_IndT, o_IndTchar;
   occa::memory o_India, o_Indja;
   occa::memory o_StrT, o_StsT, o_SttT;
@@ -432,6 +434,7 @@ typedef struct {
   occa::memory o_pmlElementList;
   
   occa::memory o_ggeo; // second order geometric factors
+  occa::memory o_ggeoPfloat; // second order geometric factors
   occa::memory o_projectL2; // local weights for projection.
 
   occa::kernel volumeKernel;
@@ -470,6 +473,7 @@ typedef struct {
   occa::kernel ipdgKernel;
 
   occa::kernel maskKernel;
+  occa::kernel maskPfloatKernel;
 
   // Boltzmann Specific Kernels
   occa::kernel relaxationKernel;
@@ -500,7 +504,7 @@ void meshConnect(mesh_t *mesh);
 void meshParallelConnect(mesh_t *mesh);
 
 /* build global connectivity in parallel */
-void meshParallelConnectNodes(mesh_t *mesh);
+void meshParallelConnectNodes(mesh_t *mesh, int isTmesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t *mesh);
 

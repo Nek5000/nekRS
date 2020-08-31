@@ -35,6 +35,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
 
+  int buildOnly  = 0;
+  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
   //populate the mini-mesh using the mesh struct
   mesh_t* mesh = new mesh_t();
 
@@ -146,7 +149,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     break;
   case HEXAHEDRA:
     meshLoadReferenceNodesHex3D(mesh, Nc);
-    meshPhysicalNodesHex3D(mesh);
+    meshPhysicalNodesHex3D(mesh, buildOnly);
     meshGeometricFactorsHex3D(mesh);
     break;
   }
@@ -226,7 +229,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   // global nodes
-  meshParallelConnectNodes(mesh);
+  meshParallelConnectNodes(mesh, 0, buildOnly);
 
   //dont need these once vmap is made
   free(mesh->x);
@@ -810,6 +813,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
       kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if (elliptic->dim == 2)
@@ -817,13 +821,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       else if (elliptic->dim == 3)
         boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
-      occa::properties dfloatKernelInfo = kernelInfo;
-      occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = "float";
-      dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
-
-      occa::properties AxKernelInfo = dfloatKernelInfo;
+      occa::properties AxKernelInfo = kernelInfo;
       sprintf(fileName, DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
       sprintf(kernelName, "ellipticAx%s", suffix);
       if(serial) {
@@ -831,6 +831,12 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+      if(!strstr(pfloatString,dfloatString)){
+        AxKernelInfo["defines/" "dfloat"] = pfloatString;
+        sprintf(kernelName, "ellipticAx%s", suffix);
+        elliptic->AxPfloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        AxKernelInfo["defines/" "dfloat"] = dfloatString;
+      }
 
       // check for trilinear
       if(elliptic->elementType != HEXAHEDRA) {
@@ -843,22 +849,25 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
 
       if(!serial) {
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialFloatAxKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        if(!strstr(pfloatString,dfloatString)) {
+          AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName, kernelName, AxKernelInfo);
+          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        }
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA) {
-        //	printf("BUILDING partialCubatureAxKernel\n");
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
 
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
         elliptic->partialCubatureAxKernel = mesh->device.buildKernel(fileName,
                                                                      kernelName,
-                                                                     dfloatKernelInfo);
+                                                                     AxKernelInfo);
       }
+*/
 
       if (options.compareArgs("BASIS", "BERN")) {
         sprintf(fileName, DELLIPTIC "/okl/ellipticGradientBB%s.okl", suffix);
@@ -869,12 +878,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         sprintf(kernelName, "ellipticPartialGradientBB%s", suffix);
         elliptic->partialGradientKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
+/*
         sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdgBB%s.okl", suffix);
         sprintf(kernelName, "ellipticAxIpdgBB%s", suffix);
         elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
         sprintf(kernelName, "ellipticPartialAxIpdgBB%s", suffix);
         elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
       } else if (options.compareArgs("BASIS", "NODAL")) {
         sprintf(fileName, DELLIPTIC "/okl/ellipticGradient%s.okl", suffix);
         sprintf(kernelName, "ellipticGradient%s", suffix);
@@ -883,13 +894,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
         sprintf(kernelName, "ellipticPartialGradient%s", suffix);
         elliptic->partialGradientKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
         sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdg%s.okl", suffix);
         sprintf(kernelName, "ellipticAxIpdg%s", suffix);
         elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
         sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
         elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
       }
     }
 
@@ -987,6 +999,25 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         free(gllzw);
       }
     }
+  }
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+      elliptic->mesh->o_ggeoPfloat,
+      mesh->o_ggeo);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_DmatricesPfloat,
+      mesh->o_Dmatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_SmatricesPfloat,
+      mesh->o_Smatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
+      elliptic->mesh->o_MMPfloat,
+      mesh->o_MM);
   }
 
   return elliptic;

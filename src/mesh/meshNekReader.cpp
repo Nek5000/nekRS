@@ -75,7 +75,6 @@ void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
   if(!isMeshT) bid = nekData.boundaryID;
   int* eface1 = nekData.eface1;
   int* icface = nekData.icface;
-  const double eps = 1e-6;
   const dlong Nfp = nekData.nx1 * nekData.nx1;
   mesh->boundaryInfo = (hlong*) calloc(mesh->NboundaryFaces * (mesh->NfaceVertices + 1),
                                        sizeof(hlong));

@@ -359,7 +359,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, mesh->comm, verbose);
+  if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, mesh->comm, verbose);
 
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
@@ -377,15 +377,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
             elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = mymin(BCFlag,
-                                                                                elliptic->mapB[fid +
-                                                                                               e *
-                                                                                               mesh
-                                                                                               ->Np
-                                                                                               + fld
-                                                                                               *
-                                                                                               elliptic
-                                                                                               ->
-                                                                                               Ntotal]);
+                                                  elliptic->mapB[fid + e *mesh->Np + fld*elliptic->Ntotal]);
           }
         }
       }
@@ -425,6 +417,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       elliptic->Nmasked * sizeof(dlong),
       elliptic->maskIds);
 
+
   if(elliptic->blockSolver) { // Create a gs handle independent from BC handler
     elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, mesh->comm, verbose, mesh->device);
     // Create copy of invDegree so that we can accelerate vector form of masking!!!!!!
@@ -453,6 +446,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   elliptic->precon = new precon_t();
 
   //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
+  kernelInfo["defines/pfloat"] = pfloatString;
+
 
   // set kernel name suffix
   char* suffix;
@@ -478,6 +473,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
   kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
+  occa::properties pfloatKernelInfo = kernelInfo;
+  pfloatKernelInfo["defines/dfloat"] = pfloatString;
+  pfloatKernelInfo["defines/pfloat"] = pfloatString;
 
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
@@ -496,6 +494,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         mesh->device.buildKernel(DHOLMES "/okl/mask.okl",
                                  "mask",
                                  kernelInfo);
+      mesh->maskPfloatKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/mask.okl",
+                                 "mask",
+                                 pfloatKernelInfo);
 
       kernelInfo["defines/" "p_blockSize"] = blockSize;
       occa::properties kernelInfoNoOKL = kernelInfo;
@@ -558,17 +560,22 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           mesh->device.buildKernel(DHOLMES "/okl/norm2.okl",
                                    "normBlock2",
                                    kernelInfo);
+        elliptic->scaledAddPfloatKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
+                                   "scaledBlockAdd",
+                                   pfloatKernelInfo);
 
         if(serial)
           elliptic->scaledAddKernel =
             mesh->device.buildKernel(DHOLMES "/okl/serialScaledAdd.c",
                                      "scaledBlockAdd",
                                      kernelInfoNoOKL);
-        else
+        else{
           elliptic->scaledAddKernel =
             mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
                                      "scaledBlockAdd",
                                      kernelInfo);
+        }
 
         elliptic->setScalarKernel =
           mesh->device.buildKernel(DHOLMES "/okl/setScalar.okl",
@@ -578,6 +585,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
                                    "collocate",
                                    kernelInfo);
+          elliptic->dotMultiplyPfloatKernel =
+            mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
+                                     "dotBlockMultiply",
+                                     pfloatKernelInfo);
 
         if(serial)
           elliptic->dotMultiplyKernel =
@@ -631,17 +642,38 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           mesh->device.buildKernel(DHOLMES "/okl/norm2.okl",
                                    "norm2",
                                    kernelInfo);
+        elliptic->scaledAddPfloatKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
+                                   "scaledAdd",
+                                   pfloatKernelInfo);
+        elliptic->copyDfloatToPfloatKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/copyDfloatToPfloat.okl",
+                                   "copyDfloatToPfloat",
+                                   kernelInfo);
+        elliptic->copyPfloatToDPfloatKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/copyPfloatToDfloat.okl",
+                                   "copyPfloatToDfloat",
+                                   kernelInfo);
+        elliptic->updateSmoothedSolutionVecKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
+                                   "updateSmoothedSolutionVec",
+                                   pfloatKernelInfo);
+        elliptic->updateChebyshevSolutionVecKernel =
+          mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
+                                   "updateChebyshevSolutionVec",
+                                   pfloatKernelInfo);
 
         if(serial)
           elliptic->scaledAddKernel =
             mesh->device.buildKernel(DHOLMES "/okl/serialScaledAdd.c",
                                      "scaledAdd",
                                      kernelInfoNoOKL);
-        else
+        else{
           elliptic->scaledAddKernel =
             mesh->device.buildKernel(DHOLMES "/okl/scaledAdd.okl",
                                      "scaledAdd",
                                      kernelInfo);
+        }
 
         elliptic->setScalarKernel =
           mesh->device.buildKernel(DHOLMES "/okl/setScalar.okl",
@@ -651,6 +683,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
                                    "collocate",
                                    kernelInfo);
+          elliptic->dotMultiplyKernel =
+            mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
+                                     "dotMultiply",
+                                     kernelInfo);
+          elliptic->dotMultiplyPfloatKernel =
+            mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
+                                     "dotMultiply",
+                                     pfloatKernelInfo);
 
         if(serial)
           elliptic->dotMultiplyKernel =
@@ -724,6 +764,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) NthreadsUpdatePCG; // WARNING SHOULD BE MULTIPLE OF 32
       kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (NthreadsUpdatePCG / 32); // WARNING: CUDA SPECIFIC
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if(elliptic->blockSolver) {
@@ -738,10 +779,12 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       }
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
       occa::properties dfloatKernelInfo = kernelInfo;
       occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = "float";
+      floatKernelInfo["defines/" "pfloat"] = pfloatString;
+      floatKernelInfo["defines/" "dfloat"] = pfloatString;
       dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
 
       occa::properties dfloatKernelInfoNoOKL = kernelInfoNoOKL;
@@ -802,16 +845,13 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             }
           }
         }
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialAxKernel2 = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialFloatAxKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        elliptic->partialAxKernel2 = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA && !elliptic->var_coeff && !elliptic->blockSolver) {
-        //  printf("BUILDING partialCubatureAxKernel\n");
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
 
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
@@ -819,6 +859,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                                                      kernelName,
                                                                      dfloatKernelInfo);
       }
+*/
 
       // combined PCG update and r.r kernel
       if(elliptic->blockSolver) {
@@ -887,13 +928,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           sprintf(kernelName, "ellipticPartialGradientBB%s", suffix);
           elliptic->partialGradientKernel =
             mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
           sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdgBB%s.okl", suffix);
           sprintf(kernelName, "ellipticAxIpdgBB%s", suffix);
           elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
           sprintf(kernelName, "ellipticPartialAxIpdgBB%s", suffix);
           elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
         } else if (options.compareArgs("BASIS","NODAL")) {
           sprintf(fileName, DELLIPTIC "/okl/ellipticGradient%s.okl", suffix);
           sprintf(kernelName, "ellipticGradient%s", suffix);
@@ -903,13 +945,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
           sprintf(kernelName, "ellipticPartialGradient%s", suffix);
           elliptic->partialGradientKernel =
             mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
+/*
           sprintf(fileName, DELLIPTIC "/okl/ellipticAxIpdg%s.okl", suffix);
           sprintf(kernelName, "ellipticAxIpdg%s", suffix);
           elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
 
           sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
           elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
+*/
         }
 
         // Use the same kernel with quads for the following kenels
@@ -1011,6 +1054,17 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   long long int pre = mesh->device.memoryAllocated();
 
+  oogs_mode oogsMode = OOGS_AUTO;
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
+  auto callback = [&]() // hardwired to FP64 variable coeff
+    {
+      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
+                 elliptic->o_p, elliptic->o_Ap, dfloatString);
+    };
+  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
+  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
+
   ellipticPreconditionerSetup(elliptic, elliptic->ogs, kernelInfo);
 
   long long int usedBytes = mesh->device.memoryAllocated() - pre;
@@ -1053,4 +1107,5 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
     }
     elliptic->residualProjection = new ResidualProjection(* elliptic, nVecsProject, nStepsStart);
   }
+
 }

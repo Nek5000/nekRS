@@ -14,8 +14,6 @@ static ins_t* ins;
 static libParanumal::setupAide options;
 static int ioStep;
 
-int nrsBuildOnly = 0;  // hack for meshPhysicalNodes()
-
 static void setCache(string dir);
 static void setOUDF(libParanumal::setupAide &options);
 static void dryRun(libParanumal::setupAide &options, int npTarget);
@@ -32,7 +30,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   configRead(comm);
 
-  nrsBuildOnly = buildOnly;
   string setupFile = _setupFile + ".par";
   setCache(cacheDir);
 
@@ -44,6 +41,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   options = parRead(setupFile, comm);
 
+  if(buildOnly) 
+    options.setArgs("BUILD ONLY", "TRUE");
+  else
+    options.setArgs("BUILD ONLY", "FALSE");
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
@@ -53,7 +54,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   device = occaDeviceConfig(options, comm);
   timer::init(comm, device, 0);
 
-  if (nrsBuildOnly) {
+  if (buildOnly) {
     int rank, size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
@@ -96,7 +97,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nek_userchk();
 
   // init solver
-  ins = insSetup(comm, device, options, nrsBuildOnly);
+  ins = insSetup(comm, device, options, buildOnly);
 
   // set initial condition
   int readRestartFile;
@@ -257,7 +258,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   MPI_Barrier(comm);
 
   // init solver
-  ins = insSetup(comm, device, options, nrsBuildOnly);
+  ins = insSetup(comm, device, options, 1);
 
   if (rank == 0) cout << "\nBuild successful." << endl;
 }

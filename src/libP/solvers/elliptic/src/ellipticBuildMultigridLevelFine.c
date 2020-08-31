@@ -26,7 +26,7 @@
 
 #include "elliptic.h"
 
-elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
+elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
@@ -34,14 +34,32 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
   const int serial = baseElliptic->options.compareArgs("THREAD MODEL", "SERIAL");
 
   elliptic->var_coeff = 0;
-
-  // enforce lambda = 0
-  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat));
+  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0
 
   mesh_t* mesh = elliptic->mesh;
-  occa::properties kernelInfo = ellipticKernelInfo(mesh);
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+
+    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+      elliptic->mesh->o_ggeoPfloat,
+      mesh->o_ggeo);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_DmatricesPfloat,
+      mesh->o_Dmatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+      elliptic->mesh->o_SmatricesPfloat,
+      mesh->o_Smatrices);
+    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
+      elliptic->mesh->o_MMPfloat,
+      mesh->o_MM);
+  }
 
   char* suffix;
+  occa::properties kernelInfo = ellipticKernelInfo(mesh);
 
   if(elliptic->elementType == TRIANGLES) {
     if(elliptic->dim == 2)
@@ -96,6 +114,7 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
       kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
+/*
       //add standard boundary functions
       char* boundaryHeaderFileName;
       if (elliptic->dim == 2)
@@ -103,13 +122,10 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       else if (elliptic->dim == 3)
         boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
       kernelInfo["includes"] += boundaryHeaderFileName;
+*/
 
-      occa::properties dfloatKernelInfo = kernelInfo;
-      occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = "float";
-      dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
+      occa::properties AxKernelInfo = kernelInfo;
 
-      occa::properties AxKernelInfo = dfloatKernelInfo;
       sprintf(fileName, DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
       sprintf(kernelName, "ellipticAx%s", suffix);
       if(serial) {
@@ -118,7 +134,13 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
       }
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
 
-      // check for trilinear
+      if(!strstr(pfloatString,dfloatString)){
+        AxKernelInfo["defines/" "dfloat"] = pfloatString;
+        sprintf(kernelName, "ellipticAx%s", suffix);
+        elliptic->AxPfloatKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        AxKernelInfo["defines/" "dfloat"] = dfloatString;
+      }
+
       if(elliptic->elementType != HEXAHEDRA) {
         sprintf(kernelName, "ellipticPartialAx%s", suffix);
       }else{
@@ -127,14 +149,16 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         else
           sprintf(kernelName, "ellipticPartialAx%s", suffix);
       }
-
       if(!serial) {
-        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,dfloatKernelInfo);
-        elliptic->partialFloatAxKernel = mesh->device.buildKernel(fileName,
-                                                                  kernelName,
-                                                                  floatKernelInfo);
+        elliptic->partialAxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+        if(!strstr(pfloatString,dfloatString)) {
+          AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(fileName, kernelName, AxKernelInfo);
+          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        }
       }
 
+/*
       // only for Hex3D - cubature Ax
       if(elliptic->elementType == HEXAHEDRA) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticCubatureAx%s.okl", suffix);
@@ -142,8 +166,9 @@ elliptic_t* newEllipticConstCoeff(elliptic_t* baseElliptic)
         sprintf(kernelName, "ellipticCubaturePartialAx%s", suffix);
         elliptic->partialCubatureAxKernel = mesh->device.buildKernel(fileName,
                                                                      kernelName,
-                                                                     dfloatKernelInfo);
+                                                                     AxKernelInfo);
       }
+*/
     }
 
     MPI_Barrier(mesh->comm);

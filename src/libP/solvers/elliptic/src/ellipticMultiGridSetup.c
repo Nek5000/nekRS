@@ -30,7 +30,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
                             )
 {
   // setup new object with constant coeff
-  elliptic_t* elliptic = newEllipticConstCoeff(elliptic_);
+  elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
@@ -115,8 +115,23 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
   precon->parAlmond = parAlmond::Init(mesh->device, mesh->comm, options);
   parAlmond::multigridLevel** levels = precon->parAlmond->levels;
 
+  oogs_mode oogsMode = OOGS_AUTO;
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
+
   //set up the finest level
   if (Nmax > Nmin) {
+    if(mesh->rank == 0)
+      printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmax);
+
+    auto callback = [&]()
+      {
+        ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
+                   elliptic->o_p, elliptic->o_Ap, pfloatString);
+      };
+    elliptic->oogs   = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
+    elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+
     levels[0] = new MGLevel(elliptic, lambda, Nmax, options,
                             precon->parAlmond->ktype, mesh->comm);
     MGLevelAllocateStorage((MGLevel*) levels[0], 0,
@@ -133,6 +148,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nc);
 
     elliptic_t* ellipticC = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
+
+    auto callback = [&]()
+      {
+        ellipticAx(ellipticC, ellipticC->mesh->NlocalGatherElements, ellipticC->mesh->o_localGatherElementList,
+                   ellipticC->o_p, ellipticC->o_Ap, pfloatString);
+      };
+    ellipticC->oogs   = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
+    ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     //add the level manually
     levels[n] = new MGLevel(elliptic,
@@ -163,6 +186,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmin);
 
     ellipticCoarse = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
+
+    auto callback = [&]()
+      {
+        ellipticAx(ellipticCoarse, ellipticCoarse->mesh->NlocalGatherElements, ellipticCoarse->mesh->o_localGatherElementList,
+                   ellipticCoarse->o_p, ellipticCoarse->o_Ap, pfloatString);
+      };
+    ellipticCoarse->oogs   = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
+    //ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
   } else {
     ellipticCoarse = elliptic;
   }
@@ -279,11 +310,11 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
 
   //report top levels
   if (mesh->rank == 0) { //report the upper multigrid levels
-    printf("------------------Multigrid Report----------------------------------------\n");
-    printf("--------------------------------------------------------------------------\n");
-    printf("level|    Type    |    dimension   |   nnz per row   |   Smoother        |\n");
-    printf("     |            |  (min,max,avg) |  (min,max,avg)  |                   |\n");
-    printf("--------------------------------------------------------------------------\n");
+    printf("--------------------Multigrid Report---------------------\n");
+    printf("---------------------------------------------------------\n");
+    printf("level|    Type    |                 |     Smoother      |\n");
+    printf("     |            |                 |                   |\n");
+    printf("---------------------------------------------------------\n");
   }
 
   for(int lev = 0; lev < precon->parAlmond->numLevels; lev++) {
@@ -295,13 +326,13 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
   }
 
   if (mesh->rank == 0)
-    printf("--------------------------------------------------------------------------\n");
+    printf("---------------------------------------------------------\n");
 }
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
 {
   // extra storage for smoothing op
-  size_t Nbytes = level->Ncols * sizeof(dfloat);
+  size_t Nbytes = level->Ncols * sizeof(pfloat);
   if (MGLevel::smootherResidualBytes < Nbytes) {
     if (MGLevel::o_smootherResidual.size()) {
       free(MGLevel::smootherResidual);
@@ -310,7 +341,7 @@ void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
       MGLevel::o_smootherUpdate.free();
     }
 
-    MGLevel::smootherResidual = (dfloat*) calloc(level->Ncols,sizeof(dfloat));
+    MGLevel::smootherResidual = (pfloat*) calloc(level->Ncols,sizeof(pfloat));
     MGLevel::o_smootherResidual = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
     MGLevel::o_smootherResidual2 = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
     MGLevel::o_smootherUpdate = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);

@@ -2,8 +2,6 @@
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 
-int isTmesh = 0;
-
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
 
 mesh_t* createMeshDummy(MPI_Comm comm,
@@ -141,7 +139,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
     printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh);
+  meshPhysicalNodesHex3D(mesh, 1);
 
   // compute geometric factors
   libParanumal::meshGeometricFactorsHex3D(mesh);
@@ -156,7 +154,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh);
+  meshParallelConnectNodes(mesh, 0, 1);
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
@@ -198,7 +196,7 @@ mesh_t* createMeshT(MPI_Comm comm,
     printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh);
+  meshPhysicalNodesHex3D(mesh, 0);
 
   // compute geometric factors
   libParanumal::meshGeometricFactorsHex3D(mesh);
@@ -213,9 +211,7 @@ mesh_t* createMeshT(MPI_Comm comm,
   libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  isTmesh = 1;
-  meshParallelConnectNodes(mesh);
-  isTmesh = 0;
+  meshParallelConnectNodes(mesh, 1, 0);
 
   bcMap::check(mesh, isMeshT);
 
@@ -259,7 +255,7 @@ mesh_t* createMeshV(MPI_Comm comm,
 
   // compute physical (x,y) locations of the element nodes
   // mesh->x ...
-  meshPhysicalNodesHex3D(mesh);
+  meshPhysicalNodesHex3D(mesh, 0);
 
   // compute geometric factors
   // note: we only need vgeo because elliptic performs helo change
@@ -285,7 +281,7 @@ mesh_t* createMeshV(MPI_Comm comm,
 
   // uniquely label each node with a global index, used for gatherScatter
   // mesh->globalIds
-  meshParallelConnectNodes(mesh);
+  meshParallelConnectNodes(mesh, 0, 1);
 
   bcMap::check(mesh, 0);
   meshVOccaSetup3D(mesh, options, kernelInfo);

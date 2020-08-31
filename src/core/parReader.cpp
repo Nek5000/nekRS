@@ -76,7 +76,9 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("BOOMERAMG ITERATIONS", "1");
+  options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(-1));
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
+  options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 #else
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
   options.setArgs("BOOMERAMG ITERATIONS", "2");
@@ -180,7 +182,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    exit("No support for bdf3!", EXIT_FAILURE);
+    //exit("No support for bdf3!", EXIT_FAILURE);
   }
   if(timeStepper == "bdf2" || timeStepper == "tombo2")
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
@@ -226,10 +228,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   double writeInterval = 0;
   ini.extract("general", "writeinterval", writeInterval);
 
+  int writeSteps = writeInterval;
   string writeControl;
   if(ini.extract("general", "writecontrol", writeControl))
-    if(writeControl == "runtime") writeInterval = writeInterval / dt;
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(int (writeInterval)));
+    if(writeControl == "runtime") {
+      writeSteps = writeInterval / dt;
+      if((writeInterval - writeSteps*dt) / writeInterval > 1e-6*dt) writeSteps++;
+    }
+  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(writeSteps));
 
   bool dealiasing;
   if(ini.extract("general", "dealiasing", dealiasing))
@@ -331,7 +337,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(ini.extract("pressure", "smoothertype", p_smoother)) {
       if(p_smoother == "asm") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-        options.setArgs("BOOMERAMG ITERATIONS", "1");
         if(p_preconditioner.find("multigrid") != std::string::npos) {
           if(p_preconditioner.find("additive") == std::string::npos)
             exit("ASM smoother only supported for additive V-cycle!", EXIT_FAILURE);
@@ -340,7 +345,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         }
       } else if (p_smoother == "ras") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
-        options.setArgs("BOOMERAMG ITERATIONS", "1");
         if(p_preconditioner.find("multigrid") != std::string::npos) {
           if(p_preconditioner.find("additive") == std::string::npos)
             exit("RAS smoother only supported for additive V-cycle!", EXIT_FAILURE);
@@ -353,7 +357,9 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
+        options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
         options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
+        options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.0));
         if(p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
         } else {
@@ -496,7 +502,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double rho;
-    if(ini.extract("velocity", "density", rho))
+    if(ini.extract("velocity", "density", rho) || ini.extract("velocity", "rho", rho))
       options.setArgs("DENSITY", to_string_f(rho));
     else
       if(!variableProperties && flow)
@@ -527,6 +533,23 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
+      options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
+      bool t_rproj;
+      if(ini.extract("temperature", "residualproj", t_rproj)) {
+        if(t_rproj)
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
+        else
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+
+        int t_nProjVec;
+        if(ini.extract("temperature", "residualprojectionvectors", t_nProjVec))
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+        int t_nProjStep;
+        if(ini.extract("temperature", "residualprojectionstart", t_nProjStep))
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
+      }
 
       double s_residualTol;
       if(ini.extract("temperature", "residualtol", s_residualTol))
@@ -587,6 +610,23 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       continue;
+    }
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
+    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
+    bool t_rproj;
+    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj)) {
+      if(t_rproj)
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
+      else
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+
+      int t_nProjVec;
+      if(ini.extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+      int t_nProjStep;
+      if(ini.extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
     }
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 

@@ -26,13 +26,11 @@
 
 @kernel void cdsSumMakefHex3D(const dlong Nelements,
                               @restrict const dfloat*  vgeo,
-                              @restrict const dfloat*  MM,
                               const dfloat idt,
                               @restrict const dfloat*  extbdfA,
                               @restrict const dfloat*  extbdfB,
-                              @restrict const dfloat*  extbdfC,
                               const dlong sOffset,
-                              const dlong offset,
+                              const dlong isOffset,
                               @restrict const dfloat*  S,
                               @restrict const dfloat*  NS,
                               @restrict const dfloat*  FS,
@@ -47,27 +45,28 @@
           if(e < Nelements) {
 #pragma unroll p_Nq
             for(int k = 0; k < p_Nq; ++k) {
-              const dlong id  = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
+              const dlong id  = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e; 
+              const dlong ids = id + isOffset;
               const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + e * p_Np * p_Nvgeo;
               const dfloat JW = vgeo[gid + p_JWID * p_Np];
-              const dfloat rhoM = RHO[id + offset];
-              dfloat sum = 0;
+              const dfloat rhoM = RHO[id + isOffset];
 
+              dfloat sum1 = 0;
               if (p_SUBCYCLING) {
                 const dfloat NSm = NS[id];
-                sum += rhoM * idt * NSm;
+                sum1 += NSm;
               }else {
                 for (int s = 0; s < p_Nstages; s++) {
-                  const dfloat Sm = S[id + offset + s * sOffset];
-                  sum += rhoM * idt * extbdfB[s] * Sm;
+                  const dfloat Sm = S[ids + s * sOffset];
+                  sum1 += extbdfB[s] * Sm;
                 }
               }
-              // already multiplied by rho
+              dfloat sum2 = 0;
               for (int s = 0; s < p_Nstages; s++) {
-                const dfloat FSm = FS[id + offset + s * sOffset];
-                sum += extbdfA[s] * FSm;
+                const dfloat FSm = FS[ids + s * sOffset];
+                sum2 += extbdfA[s] * FSm;  // already multiplied by rho
               }
-              BF[id + offset] = JW * sum;
+              BF[ids] = JW*(sum2 + rhoM*idt*sum1);
             }
           }
         }

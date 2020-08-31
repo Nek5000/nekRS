@@ -17,9 +17,15 @@ c-----------------------------------------------------------------------
       real pre,vT_err,VX_err,QTL_err, pr_err
 
       real sumqw,l2_err,exact,max_err,XD,sech
-      common /SCNRS/ wrk(3)
+
+      real err(3)
+      save err
+      COMMON /NRSSCPTR/ nrs_scptr(1)
+      integer*8         nrs_scptr
 
       if (istep.lt.1) return
+
+      nrs_scptr(1) = loc(err(1))
 
       call printdiverr
 
@@ -43,7 +49,7 @@ c-----------------------------------------------------------------------
  100  continue 
 
       max_err = glmax(VX_err,ntot)
-      wrk(1) = max_err
+      err(1) = max_err
       l2_err  = glsc3(VX_err,bm1,VX_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)
@@ -51,7 +57,7 @@ c-----------------------------------------------------------------------
     1 format(i8,1p3e12.4,' ERROR VX: MAX/L2')
 
       max_err = glmax(T_err,ntot)
-      wrk(3) = max_err
+      err(3) = max_err
       l2_err  = glsc3(T_err,bm1,T_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)
@@ -72,7 +78,7 @@ c    3 format(i8,1p3e12.4,' ERROR QTL: MAX/L2')
       call sub3(pr_err,PR,pre,ntot)
 
       max_err = glamax(pr_err,ntot)
-      wrk(2) = max_err
+      err(2) = max_err
       l2_err  = glsc3(pr_err,bm1,pr_err,ntot)/VOLVM1
       if (l2_err.gt.0) l2_err = sqrt(l2_err)
       if(nid.eq.0)

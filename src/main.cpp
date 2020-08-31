@@ -91,7 +91,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv);
 int main(int argc, char** argv)
 {
   {
-    int request = MPI_THREAD_FUNNELED;
+    int request = MPI_THREAD_SINGLE;
     const char* env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
     if(env_val)
       if(std::stoi(env_val)) request = MPI_THREAD_MULTIPLE;
@@ -157,13 +157,11 @@ int main(int argc, char** argv)
       nekrs::nekOutfld();
     }
 
-    if (tStep && tStep % runTimeStatFreq == 0) nekrs::printRuntimeStatistics();
+    if (tStep && tStep % runTimeStatFreq == 0 || tStep == NtimeSteps) nekrs::printRuntimeStatistics();
 
     ++tStep;
   }
   MPI_Pcontrol(0);
-
-  if ((tStep-1) % runTimeStatFreq != 0) nekrs::printRuntimeStatistics();
 
   if(rank == 0) std::cout << "\nEnd." << "\n";
 

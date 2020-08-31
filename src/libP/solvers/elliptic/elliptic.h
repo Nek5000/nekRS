@@ -41,7 +41,7 @@
 #define blockSize 256
 
 #include "timer.hpp"
-#define ELLIPTIC_ENABLE_TIMER
+//#define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
 
@@ -60,6 +60,8 @@ typedef struct
   precon_t* precon;
 
   ogs_t* ogs;
+  oogs_t* oogs;
+  oogs_t* oogsAx;
 
   setupAide options;
 
@@ -138,9 +140,10 @@ typedef struct
   occa::memory o_ggeoNoJW; //
 
   occa::kernel AxKernel;
+  occa::kernel AxPfloatKernel;
   occa::kernel partialAxKernel;
   occa::kernel partialAxKernel2;
-  occa::kernel partialFloatAxKernel;
+  occa::kernel partialAxPfloatKernel;
   occa::kernel partialCubatureAxKernel;
 
   occa::kernel rhsBCKernel;
@@ -149,14 +152,20 @@ typedef struct
   occa::kernel weightedInnerProduct1Kernel;
   occa::kernel weightedInnerProduct2Kernel;
   occa::kernel scaledAddKernel;
+  occa::kernel scaledAddPfloatKernel;
   occa::kernel scaledAddNormKernel;
   occa::kernel setScalarKernel;
   occa::kernel collocateKernel;
   occa::kernel dotMultiplyKernel;
+  occa::kernel dotMultiplyPfloatKernel;
   occa::kernel dotMultiplyAddKernel;
   occa::kernel dotDivideKernel;
   occa::kernel scalarDivideKernel;
   occa::kernel scalarDivideManyKernel;
+  occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel copyPfloatToDPfloatKernel;
+  occa::kernel updateSmoothedSolutionVecKernel;
+  occa::kernel updateChebyshevSolutionVecKernel;
 
   occa::kernel weightedNorm2Kernel;
   occa::kernel norm2Kernel;
@@ -257,7 +266,7 @@ typedef struct
 #include "ellipticResidualProjection.h"
 
 elliptic_t* ellipticSetup(mesh2D* mesh, occa::properties &kernelInfo, setupAide options);
-elliptic_t* newEllipticConstCoeff(elliptic_t* elliptic);
+elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
@@ -315,6 +324,14 @@ void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,
                       const char* precision);
+
+void ellipticAx(elliptic_t* elliptic,
+                dlong NelementsList,
+                occa::memory &o_elementsList,
+                occa::memory &o_q,
+                occa::memory &o_Aq,
+                const char* precision);
+
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
 

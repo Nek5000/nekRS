@@ -25,33 +25,33 @@
  */
 
 #define surfaceTerms(sk,face,i, j)                          \
-  {                         \
+  {                                                         \
     struct bcData bc;                                       \
     bc.idM = vmapM[sk];                                     \
     bc.time = time;                                         \
-    bc.id  = EToBM[face + p_Nfaces * e];                      \
-    bc.nx  = sgeo[sk * p_Nsgeo + p_NXID];                       \
-    bc.ny  = sgeo[sk * p_Nsgeo + p_NYID];                       \
-    bc.nz  = sgeo[sk * p_Nsgeo + p_NZID];                       \
+    bc.id  = EToBM[face + p_Nfaces * e];                    \
+    bc.nx  = sgeo[sk * p_Nsgeo + p_NXID];                   \
+    bc.ny  = sgeo[sk * p_Nsgeo + p_NYID];                   \
+    bc.nz  = sgeo[sk * p_Nsgeo + p_NZID];                   \
     bc.x   = x[bc.idM];                                     \
     bc.y   = y[bc.idM];                                     \
     bc.z   = z[bc.idM];                                     \
     bc.fieldOffset = offset;                                \
     bc.wrk = W;                                             \
                                                             \
-    const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];            \
+    const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];        \
     const dlong bcType = mapB[bc.idM];                      \
-    bc.sF = 0.f; bc.sP = 0.f;                                  \
+    bc.sF = 0.f; bc.sP = 0.f;                               \
     bc.scalarId = scalarId;                                 \
-    if(bcType == 1) {                                         \
-      cdsDirichletConditions3D(&bc);                        \
+    if(bcType == 1) {                                       \
+      bc.sP = U[bc.idM];                                    \
     }                                                       \
-    if(bcType == 3) {                                         \
+    if(bcType == 3) {                                       \
       cdsNeumannConditions3D(&bc);                          \
     }                                                       \
                                                             \
-    s_U  [j][i] =  bc.sP;                             \
-    s_ndU[j][i] = -WsJ * (bc.sF);                             \
+    s_U  [j][i] =  bc.sP;                                   \
+    s_ndU[j][i] = -WsJ * (bc.sF);                           \
   }
 
 //RHS contributions for continuous solver
@@ -70,6 +70,7 @@
                                  @restrict const dfloat*  x,
                                  @restrict const dfloat*  y,
                                  @restrict const dfloat*  z,
+                                 @restrict const dfloat*  U,
                                  @restrict const int*  mapB,
                                  @restrict const dfloat*  lambda,
                                  @restrict const dfloat*  W,
@@ -335,19 +336,19 @@
   }
 }
 
-@kernel void cdsHelmholtzAddBCHex3D(const dlong Nelements,
-                                    const dlong offset,
-                                    const dlong scalarId,
-                                    const dfloat time,
-                                    @restrict const dfloat*  sgeo,
-                                    @restrict const dfloat*  x,
-                                    @restrict const dfloat*  y,
-                                    @restrict const dfloat*  z,
-                                    @restrict const dlong*  vmapM,
-                                    @restrict const int*  EToBM,
-                                    @restrict const int*  EToB,
-                                    @restrict const dfloat*  W,
-                                    @restrict dfloat*  S)
+@kernel void cdsDirichletBC(const dlong Nelements,
+                            const dlong offset,
+                            const dlong scalarId,
+                            const dfloat time,
+                            @restrict const dfloat*  sgeo,
+                            @restrict const dfloat*  x,
+                            @restrict const dfloat*  y,
+                            @restrict const dfloat*  z,
+                            @restrict const dlong*  vmapM,
+                            @restrict const int*  EToBM,
+                            @restrict const int*  EToB,
+                            @restrict const dfloat*  W,
+                            @restrict dfloat*  S)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
     for(int f = 0; f < p_Nfaces; f++) {

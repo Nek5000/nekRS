@@ -278,7 +278,8 @@ static void radix_sortp(
   } while(0)
 #define MERGE_SORT() \
   do {                                                                 \
-    uint i=0, n=An, base=-n, odd=0, c=0, b=1;                          \
+    uint i=0, n=An, odd=0, c=0, b=1;                                   \
+    sint base=-n;                                                      \
     for(;;) {                                                          \
       DATA *restrict p;                                                \
       if((c&1)==0) {                                                   \

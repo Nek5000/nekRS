@@ -221,8 +221,8 @@ void printRunStat()
   dEtime[4] = timer::query("scalarSolve", "DEVICE:MAX");
   dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
   dEtime[6] = timer::query("preSolveProjection", "DEVICE:MAX");
-  dEtime[6] += timer::query("postSolveProjection", "DEVICE:MAX");
-  dEtime[7] = timer::query("gsMPI", "DEVICE:MAX");
+  dEtime[6]+= timer::query("postSolveProjection", "DEVICE:MAX");
+  dEtime[7] = timer::query("oogsMPI", "DEVICE:MAX");
   dEtime[8] = timer::query("dotp", "DEVICE:MAX");
 
   double hEtime[10];

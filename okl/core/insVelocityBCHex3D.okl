@@ -428,19 +428,19 @@
   }
 }
 
-@kernel void insVelocityAddBCHex3D(const dlong Nelements,
-                                   const dlong offset,
-                                   const dfloat time,
-                                   @restrict const dfloat*  sgeo,
-                                   @restrict const dfloat*  x,
-                                   @restrict const dfloat*  y,
-                                   @restrict const dfloat*  z,
-                                   @restrict const dlong*  vmapM,
-                                   @restrict const int*  EToBM,
-                                   @restrict const int*  EToB,
-                                   @restrict const dfloat*  W,
-                                   @restrict const dfloat*  U,
-                                   @restrict dfloat*  UH)
+@kernel void insVelocityDirichletBCHex3D(const dlong Nelements,
+                                         const dlong offset,
+                                         const dfloat time,
+                                         @restrict const dfloat*  sgeo,
+                                         @restrict const dfloat*  x,
+                                         @restrict const dfloat*  y,
+                                         @restrict const dfloat*  z,
+                                         @restrict const dlong*  vmapM,
+                                         @restrict const int*  EToBM,
+                                         @restrict const int*  EToB,
+                                         @restrict const dfloat*  W,
+                                         @restrict const dfloat*  U,
+                                         @restrict dfloat*  UH)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
     for(int f = 0; f < p_Nfaces; f++) {

@@ -47,27 +47,12 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTet3D.c
         ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTri2D.c
         ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTri3D.c
-        ${LIBP_SOURCE_DIR}/src/meshPlotVTU2D.c
-        ${LIBP_SOURCE_DIR}/src/meshPlotVTU3D.c
-        ${LIBP_SOURCE_DIR}/src/meshPrint2D.c
-        ${LIBP_SOURCE_DIR}/src/meshPrint3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetup.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupBoxHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupBoxQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshSetupTri3D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsHex3D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsQuad2D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsQuad3D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTet3D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTri2D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTri3D.c
-        ${LIBP_SOURCE_DIR}/src/meshVTU2D.c
-        ${LIBP_SOURCE_DIR}/src/meshVTU3D.c
         ${LIBP_SOURCE_DIR}/src/mysort.c
         ${LIBP_SOURCE_DIR}/src/occaHostMallocPinned.c
         ${LIBP_SOURCE_DIR}/src/parallelSort.c
@@ -113,27 +98,22 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildContinuousGalerkin.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildIpdg.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildJacobi.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildLocalPatches.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildMultigridLevel.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticHaloExchange.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticKernelInfo.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticMixedCopy.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildMultigridLevelFine.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticBuildMultigridLevel.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevel.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticResidualProjection.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridLevelSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSchwarz.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticMultiGridSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticOperator.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticPlotVTUHex3D.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticPreconditioner.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticPreconditionerSetup.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticSEMFEMSetup.c
+        ${ELLIPTIC_SOURCE_DIR}/src/ellipticResidualProjection.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticScaledAdd.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticSetScalar.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticSolve.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticSolveSetup.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticThinOas.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticThinOasSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticUpdateNBFPCG.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticUpdateNBPCG.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticUpdatePCG.c

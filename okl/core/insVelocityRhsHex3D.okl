@@ -31,7 +31,6 @@
                                       @restrict const dfloat*  extbdfA,
                                       @restrict const dfloat*  extbdfB,
                                       const dlong fieldOffset,
-                                      @restrict const dfloat*  U,
                                       @restrict const dfloat*  BF,
                                       @restrict const dfloat*  FU,
                                       @restrict const dfloat*  GP,

@@ -23,6 +23,7 @@ static void (* userqtl_ptr)(void);
 static void (* usrsetvert_ptr)(void);
 
 static void (* nek_ptr_ptr)(void**, char*, int*);
+static void (* nek_scptr_ptr)(int*, void*);
 static void (* nek_outfld_ptr)(char*);
 static void (* nek_resetio_ptr)(void);
 static void (* nek_setio_ptr)(double*, int*, int*, int*, int*, int*, int*);
@@ -50,6 +51,13 @@ void* nek_ptr(const char* id)
   void* ptr;
   int len = strlen(id);
   (*nek_ptr_ptr)(&ptr, (char*)id, &len);
+  return ptr;
+}
+
+void* nek_scPtr(int id)
+{
+  void* ptr;
+  (*nek_scptr_ptr)(&id, &ptr);
   return ptr;
 }
 
@@ -236,6 +244,8 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
 
   nek_ptr_ptr = (void (*)(void**, char*, int*))dlsym(handle, fname("nekf_ptr"));
+  check_error(dlerror());
+  nek_scptr_ptr = (void (*)(int*, void*))dlsym(handle, fname("nekf_scptr"));
   check_error(dlerror());
   nek_setup_ptr =
     (void (*)(int*, char*, char*, int*, int*, int*, int*, int, int))dlsym(handle, fname("nekf_setup"));
@@ -456,7 +466,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../ \"");
   sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
 
-  sprintf(buf, "cd %s && yes n | FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
+  sprintf(buf, "cd %s && yes n 2>/dev/null | FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
           "CFLAGS=%s PPLIST=\"${NEKRS_NEK5000_PPLIST}\" NEK_SOURCE_ROOT=%s/nek5000 "
           "%s/nek5000/bin/nekconfig %s >build.log 2>&1", cache_dir, fflags,
           cflags, cache_dir, cache_dir, casename);

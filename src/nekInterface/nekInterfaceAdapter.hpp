@@ -91,6 +91,7 @@ DECLARE_USER_FUNC(userqtl)
 #endif
 
 void*  nek_ptr(const char* id);
+void*  nek_scPtr(int id);
 void   nek_outfld(void);
 void   nek_outfld(const char* suffix);
 void   nek_outfld(const char* suffix, dfloat t, int coords,

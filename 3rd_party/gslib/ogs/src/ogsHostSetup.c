@@ -58,7 +58,7 @@ void *ogsHostSetup(MPI_Comm meshComm,
     id[n] = (slong) gatherGlobalNodes[n];
   }
 
-  struct gs_data *gsh = gs_setup(id, NuniqueBases, &com, nonsymm, gs_pairwise, verbose); // gs_auto, gs_crystal_router, gs_pw
+  struct gs_data *gsh = gs_setup(id, NuniqueBases, &com, nonsymm, gs_pairwise, 0); // gs_auto, gs_crystal_router, gs_pw
 
   free(id);
 

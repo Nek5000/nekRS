@@ -30,8 +30,6 @@
 #include "libParanumal.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-extern int nrsBuildOnly;
-
 void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
 {
   mesh->x = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
@@ -111,7 +109,7 @@ void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
   }
 }
 
-void meshPhysicalNodesHex3D(mesh3D* mesh)
+void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
 {
   if (nrsBuildOnly) {
     meshPhysicalBoxNodesHex3D(mesh);

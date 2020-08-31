@@ -31,13 +31,13 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   nek_ocopyFrom(time, tstep);
   nek_userchk();
 
-  double *norm = nekData.cbscnrs;
+  double *err = (double *) nek_scPtr(1);
   double vxErr, sErr;
 
   switch (ciMode) {
     // cross compare solution to nek5000
-    case 1: vxErr = abs((norm[0] - 2.06559)/norm[0]);
-            sErr  = abs((norm[1] - 28.3833)/norm[1]);
+    case 1: vxErr = abs((err[0] - 2.06559)/err[0]);
+            sErr  = abs((err[1] - 28.3833)/err[1]);
             break;
   }
 
