@@ -195,7 +195,7 @@ void RANSktau::setup(ins_t* insIn, dfloat mueIn, dfloat rhoIn,
 
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    ins->setScalarKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    ins->fillKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

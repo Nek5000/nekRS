@@ -139,6 +139,8 @@ typedef struct
 
   occa::memory o_ggeoNoJW; //
 
+  occa::kernel fillKernel;
+
   occa::kernel AxKernel;
   occa::kernel AxPfloatKernel;
   occa::kernel partialAxKernel;
@@ -154,7 +156,6 @@ typedef struct
   occa::kernel scaledAddKernel;
   occa::kernel scaledAddPfloatKernel;
   occa::kernel scaledAddNormKernel;
-  occa::kernel setScalarKernel;
   occa::kernel collocateKernel;
   occa::kernel dotMultiplyKernel;
   occa::kernel dotMultiplyPfloatKernel;
@@ -309,7 +310,7 @@ void ellipticScaledAdd(elliptic_t* elliptic,
                        occa::memory &o_a,
                        dfloat beta,
                        occa::memory &o_b);
-void ellipticSetScalar(elliptic_t* elliptic, dfloat alpha, occa::memory &o_a);
+
 dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_w,
                                     occa::memory &o_a,

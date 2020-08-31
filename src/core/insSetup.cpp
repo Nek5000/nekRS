@@ -48,6 +48,13 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   }
   mesh_t* mesh = ins->mesh;
 
+
+  { 
+    dlong retVal; 
+    MPI_Allreduce(&mesh->NinternalElements,&retVal,1,MPI_DLONG,MPI_MIN,mesh->comm);
+    if(mesh->rank == 0) printf("NinternalElements: %d (%4.2f)\n", retVal, (double)retVal/mesh->Nelements);
+  }
+
   occa::properties kernelInfoV  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
@@ -702,17 +709,16 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = install_dir + "/libparanumal/okl/addScalar.okl";
-      kernelName = "setScalar";
-      ins->setScalarKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       fileName = install_dir + "/libparanumal/okl/dotMultiply.okl";
       kernelName = "dotMultiply";
       ins->dotMultiplyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "math" + ".okl";
+      kernelName = "fill";
+      ins->fillKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       kernelName = "max";
       ins->maxKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -769,7 +775,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    ins->setScalarKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
+    ins->fillKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
     ogsGatherScatter(ins->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
     ins->dotMultiplyKernel(
       Nlocal,
@@ -1084,12 +1090,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 
       // ===========================================================================
 
-      fileName = install_dir + "/libparanumal/okl/addScalar.okl";
-      kernelName = "setScalar";
-      cds->setScalarKernel =
+      fileName = oklpath + "math.okl";
+      kernelName = "fill";
+      cds->fillKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "math.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);

@@ -8,7 +8,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
   mesh_t* mesh = ins->mesh;
 
   //enforce Dirichlet BCs
-  ins->setScalarKernel((1+ins->NVfields)*ins->fieldOffset, std::numeric_limits<dfloat>::min(), ins->o_wrk6);
+  ins->fillKernel((1+ins->NVfields)*ins->fieldOffset, std::numeric_limits<dfloat>::min(), ins->o_wrk6);
   for (int sweep = 0; sweep < 2; sweep++) {
     ins->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -170,7 +170,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
   oogs::startFinish(ins->o_wrk3, 1, 0, ogsDfloat, ogsAdd, ins->gsh);
   if (ins->pSolver->Nmasked) mesh->maskKernel(ins->pSolver->Nmasked, ins->pSolver->o_maskIds, ins->o_wrk3);
 
-  ins->setScalarKernel(ins->Ntotal, 0.0, ins->o_PI);
+  ins->fillKernel(ins->Ntotal, 0.0, ins->o_PI);
   ins->NiterP = ellipticSolve(ins->pSolver, ins->presTOL, ins->o_wrk3, ins->o_PI);
   ins->pressureUpdateKernel(mesh->Nelements,
                             ins->pSolver->o_mapB,

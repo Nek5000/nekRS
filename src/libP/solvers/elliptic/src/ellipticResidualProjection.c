@@ -112,6 +112,7 @@ void ResidualProjection::updateProjectionSpace()
 {
   dlong m = numVecsProjection;
   if(m <= 0) return;
+
   if(useWeightedFormulation) {
     multiWeightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx, m, o_bb, m-1);
   } else {
@@ -168,6 +169,7 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
 {
   const dfloat one = 1.0;
   const dfloat zero = 0.0;
+
   if(numVecsProjection == 0) {
     // reset bases
     numVecsProjection = 1;
@@ -179,12 +181,13 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   } else {
     numVecsProjection++;
     // xx[m-1] = x
-    scaledAddwOffsetTwoVecKernel(Ntotal, one, o_x, 0, zero, o_xx, numVecsProjection - 1);
+    o_xx.copyFrom(o_x, Ntotal*sizeof(dfloat), (numVecsProjection - 1)*Ntotal*sizeof(dfloat), 0);
     // x = x + xbar
     elliptic.scaledAddKernel(Ntotal, one, o_xbar, one, o_x);
   }
   const dlong m_save = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
+
   updateProjectionSpace();
   if (numVecsProjection < m_save) { // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
@@ -232,9 +235,7 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
                                                                properties);
       extractVectorKernel =
         elliptic.mesh->device.buildKernel(fileName, "extractVector", properties);
-      scaledAddwOffsetTwoVecKernel = elliptic.mesh->device.buildKernel(fileName,
-                                                                       "scaledAddwOffsetTwoVec",
-                                                                       properties);
+
       scaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
                                                                  "scaledAddwOffset",
                                                                  properties);
@@ -262,6 +263,7 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
   ++timestep;
   if(timestep < numTimeSteps)
     return;
+
   const int m = numVecsProjection;
   if(m <= 0) return;
   dfloat priorResidualNorm = 0.0;
@@ -380,8 +382,8 @@ void ResidualProjection::multiWeightedInnerProduct(occa::memory &o_w,
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Nblock = elliptic.Nblock;
-
   multiWeightedInnerProduct2Kernel(Nlocal, Nblock, m, o_w, o_a, o_b, offset, elliptic.o_wrk);
+
   elliptic.o_wrk.copyTo(multiwork.data(), sizeof(dfloat)*m*Nblock);
   for(dlong k = 0 ; k < m; ++k){
     dfloat accum = 0.0;

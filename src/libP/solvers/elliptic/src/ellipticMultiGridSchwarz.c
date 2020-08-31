@@ -765,10 +765,13 @@ void MGLevel::build(
                                     NULL, oogsMode);
   meshFree(extendedMesh);
 
-  //if(overlap) callback = ...
+/*
   ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, 1, 0,
                             ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
                             NULL, oogsMode);
+*/
+
+  ogs = (void*) elliptic->oogs;
 
   /** create the element lengths, using the most refined level **/
   ElementLengths* lengths = compute_element_lengths(pSolver);

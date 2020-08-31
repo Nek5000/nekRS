@@ -70,3 +70,29 @@
     }
   }
 }
+
+@kernel void fill(const dlong N,
+                  const dfloat alpha,
+                  @restrict dfloat *  x){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      x[n] = alpha;
+    }
+  }
+}
+
+
+@kernel void fillBlock(const dlong N,
+                       const dlong offset,
+                       const dfloat alpha,
+                       @restrict dfloat *  x){
+
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      for(int fld=0; fld<p_eNfields; fld++){
+        x[n + fld*offset] = alpha;
+      }
+    }
+  }
+}
