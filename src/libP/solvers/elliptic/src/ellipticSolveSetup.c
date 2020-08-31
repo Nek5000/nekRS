@@ -577,10 +577,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      kernelInfo);
         }
 
-        elliptic->setScalarKernel =
-          mesh->device.buildKernel(DHOLMES "/okl/setScalar.okl",
-                                   "setBlockScalar",
-                                   kernelInfo);
         elliptic->collocateKernel =
           mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
                                    "collocate",
@@ -675,10 +671,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      kernelInfo);
         }
 
-        elliptic->setScalarKernel =
-          mesh->device.buildKernel(DHOLMES "/okl/setScalar.okl",
-                                   "setScalar",
-                                   kernelInfo);
         elliptic->collocateKernel =
           mesh->device.buildKernel(DHOLMES "/okl/dotMultiply.okl",
                                    "collocate",
@@ -703,6 +695,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      "dotMultiply",
                                      kernelInfo);
       }
+
+      elliptic->fillKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/fill.okl",
+                                 "fill",
+                                 kernelInfo);
 
       elliptic->dotMultiplyAddKernel =
         mesh->device.buildKernel(DHOLMES "/okl/dotMultiplyAdd.okl",

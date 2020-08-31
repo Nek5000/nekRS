@@ -111,7 +111,6 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticPreconditionerSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticResidualProjection.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticScaledAdd.c
-        ${ELLIPTIC_SOURCE_DIR}/src/ellipticSetScalar.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticSolve.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticSolveSetup.c
         ${ELLIPTIC_SOURCE_DIR}/src/ellipticUpdateNBFPCG.c

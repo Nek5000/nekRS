@@ -331,7 +331,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 
   ogs_t *ogs = gs->ogs; 
 
-#if 0
+#if 1
   if(gs->mode == OOGS_DEFAULT) {
     if(k>1)
       ogsGatherScatterManyStart(o_v, k, stride, type, op, ogs);
@@ -367,7 +367,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 
   ogs_t *ogs = gs->ogs; 
 
-#if 0
+#if 1
   if(gs->mode == OOGS_DEFAULT) {
     if(k>1)
       ogsGatherScatterManyFinish(o_v, k, stride, type, op, ogs);
@@ -420,7 +420,7 @@ void oogs::startFinish(void *v, const int k, const dlong stride, const char *typ
 }
 void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)
 {
-#if 0
+#if 1
    if(h->mode == OOGS_DEFAULT) {
     if(k>1)
       ogsGatherScatterMany(o_v, k, stride, type, op, h->ogs);

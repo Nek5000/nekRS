@@ -203,7 +203,7 @@ typedef struct
   occa::kernel velocityRhsBCKernel;
   occa::kernel velocityDirichletBCKernel;
 
-  occa::kernel setScalarKernel;
+  occa::kernel fillKernel;
 
   occa::kernel cflKernel;
   occa::kernel maxKernel;

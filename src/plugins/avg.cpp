@@ -154,23 +154,23 @@ void avg::setup(ins_t* ins_)
 
   o_Uavg = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
   o_Urms = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
-  ins->setScalarKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Uavg);
-  ins->setScalarKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urms);
+  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Uavg);
+  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urms);
 
   o_Urm2 = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
-  ins->setScalarKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urm2);
+  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urm2);
 
   o_Pavg = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat));
   o_Prms = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat));
-  ins->setScalarKernel(ins->fieldOffset, 0.0, o_Pavg);
-  ins->setScalarKernel(ins->fieldOffset, 0.0, o_Prms);
+  ins->fillKernel(ins->fieldOffset, 0.0, o_Pavg);
+  ins->fillKernel(ins->fieldOffset, 0.0, o_Prms);
 
   if(ins->Nscalar) {
     cds_t* cds = ins->cds;
     o_Savg = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
     o_Srms = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    ins->setScalarKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    ins->setScalarKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    ins->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
+    ins->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;

@@ -220,7 +220,7 @@ void scalarSolve(ins_t* ins, dfloat time, dfloat dt, occa::memory o_S)
   cds_t* cds   = ins->cds;
 
   timer::tic("makeq", 1);
-  cds->setScalarKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+  cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
   makeq(ins, time, cds->o_FS, cds->o_BF);
   timer::toc("makeq");
 
@@ -329,7 +329,7 @@ void fluidSolve(ins_t* ins, dfloat time, dfloat dt, occa::memory o_U)
   mesh_t* mesh = ins->mesh;
 
   timer::tic("makef", 1);
-  ins->setScalarKernel(ins->fieldOffset * ins->NVfields, 0.0, ins->o_FU);
+  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, ins->o_FU);
   makef(ins, time, ins->o_FU, ins->o_BF);
   timer::toc("makef");
 
@@ -672,7 +672,7 @@ void qthermal(ins_t* ins, dfloat time, occa::memory o_div)
   if(udf.sEqnSource)
     udf.sEqnSource(ins, time, cds->o_S, cds->o_wrk3);
   else
-    ins->setScalarKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+    ins->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
 
   ins->qtlKernel(
     mesh->Nelements,
