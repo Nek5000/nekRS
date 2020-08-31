@@ -634,11 +634,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      "weightedNorm2",
                                      kernelInfo);
 
-        elliptic->fillKernel =
-          mesh->device.buildKernel(DHOLMES "/okl/fill.okl",
-                                   "fill",
-                                   kernelInfo);
-
         elliptic->norm2Kernel =
           mesh->device.buildKernel(DHOLMES "/okl/norm2.okl",
                                    "norm2",
@@ -700,6 +695,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      "dotMultiply",
                                      kernelInfo);
       }
+
+      elliptic->fillKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/fill.okl",
+                                 "fill",
+                                 kernelInfo);
 
       elliptic->dotMultiplyAddKernel =
         mesh->device.buildKernel(DHOLMES "/okl/dotMultiplyAdd.okl",
