@@ -27,9 +27,10 @@ const double finalTime(void);
 void* nekPtr(const char* id);
 
 bool cht();
-const dfloat* mue();  // vdiff
-const dfloat* rho();  // vtrans
+const dfloat* mu();
+const dfloat* rhoCp();
 const dfloat* scalarFields();
+int nStages(void);
 int nScalarFields();
 dlong fieldOffset();
 

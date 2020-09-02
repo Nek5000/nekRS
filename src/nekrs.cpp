@@ -210,9 +210,10 @@ void printRuntimeStatistics()
 
 const dfloat* scalarFields() { return ins->cds->S; }
 int nScalarFields() { return ins->cds->NSfields; }
+int nStages() { return ins->cds->Nstages; }
 dlong fieldOffset() { return ins->cds->fieldOffset; }
-const dfloat* mu() { return ins->prop; }
-const dfloat* rho() { return &ins->prop[ins->fieldOffset]; }
+const dfloat* mu() { return ins->cds->prop; }
+const dfloat* rhoCp() { return &ins->cds->prop[ins->cds->fieldOffset]; }
 bool cht() { return ins->cht == 1; }
 
 dlong mesh::nElements() { return ins->cds->mesh->Nelements; }
