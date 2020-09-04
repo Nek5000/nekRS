@@ -191,7 +191,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   if(gsMode == OOGS_AUTO) {
     if(rank == 0) printf("timing oogs modes: ");
     const int Ntests = 10;
-    double elapsedLast = std::numeric_limits<double>::max();
+    double elapsedMin = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
     occa::memory o_q;
     if(!stride)
@@ -218,8 +218,10 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
       MPI_Barrier(comm->c);
       const double elapsed = (MPI_Wtime() - tStart)/Ntests;
       if(rank == 0) printf("%gs ", elapsed);
-      if(elapsed < elapsedLast) fastestMode = gs->mode;
-      elapsedLast = elapsed;
+      if(elapsed < elapsedMin){
+        fastestMode = gs->mode;
+        elapsedMin = elapsed;
+      }
     }
     MPI_Bcast(&fastestMode, 1, MPI_INT, 0, comm->c);
     gs->mode = fastestMode;
