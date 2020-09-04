@@ -47,7 +47,7 @@ private:
   void reOrthogonalize();
   bool checkOrthogonalize();
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
-  void gop(dfloat*,dfloat*, const dlong);
+  void gop(dfloat*, const dlong);
   dfloat computeInnerProduct(occa::memory& o_a,
                              const dlong a_offset,
                              occa::memory& o_b,
@@ -79,8 +79,6 @@ private:
   occa::kernel scaledAddwOffsetKernel;
   occa::kernel multiScaledAddwOffsetKernel;
   occa::kernel subtractedMultiScaledAddwOffsetKernel;
-  occa::kernel placeVectorKernel;
-  occa::kernel extractVectorKernel;
   occa::kernel weightedInnerProduct2Kernel;
   occa::kernel multiWeightedInnerProduct2Kernel;
   occa::kernel innerProductKernel;
