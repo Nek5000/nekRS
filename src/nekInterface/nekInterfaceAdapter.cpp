@@ -520,9 +520,9 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t** ins_in)
   int flow = 1;
   if(options->compareArgs("VELOCITY", "FALSE")) flow = 0;
 
-  int meshPartType = 1; // RSB
-  if(options->compareArgs("MESH PARTITIONER", "RCB")) meshPartType = 2;
-  if(options->compareArgs("MESH PARTITIONER", "RCB+RSB")) meshPartType = 3;
+  int meshPartType = 3; // RCB+RSB
+  if(options->compareArgs("MESH PARTITIONER", "rcb")) meshPartType = 2;
+  if(options->compareArgs("MESH PARTITIONER", "rcb+rsb")) meshPartType = 3;
 
   int nBcRead = 1;
   int bcInPar = 1;

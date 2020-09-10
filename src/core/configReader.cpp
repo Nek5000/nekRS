@@ -95,9 +95,6 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_cxxflags", buf);
   if(!getenv("OCCA_CXXFLAGS")) setenv("OCCA_CXXFLAGS", buf.c_str(), 1);
 
-  buf = install_dir + "/occa";
-  setenv("OCCA_DIR", buf.c_str(), 1);
-
   buf = install_dir;
   setenv("NEKRS_INSTALL_DIR", buf.c_str(), 1);
 }

@@ -147,7 +147,6 @@ c-----------------------------------------------------------------------
       csize = sizeof(ctest)
 
       llelt = lelt
-      meshPartitioner = meshp_in
 
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
@@ -168,7 +167,7 @@ c-----------------------------------------------------------------------
       param(8)  = 1.0
       param(27) = 1  ! torder 1 to save mem
       param(99) = -1 ! no dealiasing to save mem
-
+      meshPartitioner = meshp_in 
 
       param(32) = p32 ! number of BC fields read from re2
 

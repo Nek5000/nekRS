@@ -14,7 +14,7 @@ static ins_t* ins;
 static libParanumal::setupAide options;
 static int ioStep;
 
-static void setCache(string dir);
+static void setOccaVars(string dir);
 static void setOUDF(libParanumal::setupAide &options);
 static void dryRun(libParanumal::setupAide &options, int npTarget);
 
@@ -31,11 +31,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   configRead(comm);
 
   string setupFile = _setupFile + ".par";
-  setCache(cacheDir);
+  setOccaVars(cacheDir);
 
   if (rank == 0) {
 #include "printHeader.inc"
     cout << "MPI tasks: " << size << endl << endl;
+    cout << "using OCCA_DIR: " << occa::env::OCCA_DIR << endl;
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
@@ -317,12 +318,15 @@ static void setOUDF(libParanumal::setupAide &options)
   options.setArgs("DATA FILE", dataFile);
 }
 
-static void setCache(string dir)
+static void setOccaVars(string dir)
 {
   char buf[FILENAME_MAX];
   getcwd(buf, sizeof(buf));
   string cwd;
   cwd.assign(buf);
+
+  string install_dir;
+  install_dir.assign(getenv("NEKRS_HOME"));
 
   if (dir.empty())
     sprintf(buf,"%s/.cache", cwd.c_str());
@@ -337,4 +341,7 @@ static void setCache(string dir)
 
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
+
+  if (!getenv("OCCA_DIR"))
+    occa::env::OCCA_DIR = install_dir + "/occa/";
 }
