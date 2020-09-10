@@ -20,9 +20,15 @@ void configRead(MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
-
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_HOME"));
+  
+  char* nekrs_home = getenv("NEKRS_HOME");
+  if (nekrs_home == nullptr) {
+    if (rank == 0) {
+      cout << "\nERROR: The environment variable NEKRS_HOME could not be found!\n";
+    }
+    ABORT(1);
+  }
+  string install_dir{nekrs_home};
   string configFile = install_dir + "/nekrs.conf";
 
   const char* ptr = realpath(configFile.c_str(), NULL);
