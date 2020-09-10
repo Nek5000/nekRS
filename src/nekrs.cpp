@@ -343,5 +343,5 @@ static void setOccaVars(string dir)
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 
   if (!getenv("OCCA_DIR"))
-    occa::env::OCCA_DIR = install_dir + "/occa/";
+    occa::env::OCCA_DIR = install_dir + "/";
 }
