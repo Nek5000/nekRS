@@ -288,7 +288,7 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
 }
 void ResidualProjection::gop(dfloat* a, const dlong size)
 {
-  MPI_Allreduce(a, MPI_IN_PLACE, size, MPI_DFLOAT, MPI_SUM, elliptic.mesh->comm);
+  MPI_Allreduce(MPI_IN_PLACE, a, size, MPI_DFLOAT, MPI_SUM, elliptic.mesh->comm);
 }
 void ResidualProjection::postSolveProjection(occa::memory& o_x)
 {
