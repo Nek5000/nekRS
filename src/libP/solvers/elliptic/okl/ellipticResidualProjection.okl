@@ -33,24 +33,6 @@
     if(n < N)
       x[n + offset * N] = alpha * x[n + offset * N];
 }
-@kernel void extractVector(const dlong N,
-                           @restrict const dfloat*  x,
-                           @restrict dfloat* y,
-                           const dlong column)
-{
-  for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
-    if(n < N)
-      y[n] = x[n + column * N];
-}
-@kernel void placeVector(const dlong N,
-                         @restrict const dfloat*  x,
-                         @restrict dfloat* y,
-                         const dlong column)
-{
-  for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
-    if(n < N)
-      y[n + column * N] = x[n];
-}
 @kernel void scaledAddwOffset(const dlong N,
                               const dfloat alpha,
                               @restrict dfloat*  x,

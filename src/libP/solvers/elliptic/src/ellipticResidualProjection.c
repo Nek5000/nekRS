@@ -63,7 +63,7 @@ void ResidualProjection::reOrthogonalize()
           alpha[j] = 0.5 * (computeInnerProduct(o_xx,j,o_bb,k)
                             + computeInnerProduct(o_bb,j,o_xx,k));
       }
-      gop(alpha.data() + k,work.data(),(m - k) + 1);
+      gop(alpha.data() + k,(m - k) + 1);
       o_alpha.copyFrom(alpha.data(),sizeof(dfloat)*((m-k)+1));
       subtractedMultiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_xx, one, k);
       subtractedMultiScaledAddwOffsetKernel(Ntotal, m, o_alpha, o_bb, one, k);
@@ -71,10 +71,10 @@ void ResidualProjection::reOrthogonalize()
       dfloat normk = 0.0;
       if(useWeightedFormulation) {
         normk = weightedInnerProduct(elliptic.mesh->ogs->o_invDegree, o_xx,k, o_bb,k);
-        gop(&normk,work.data(),1);
+        gop(&normk,1);
       } else {
         normk = computeInnerProduct(o_xx,k, o_bb,k);
-        gop(&normk,work.data(),1);
+        gop(&normk,1);
       }
       normk = sqrt(normk);
       if(normk > tol * normp) {
@@ -103,10 +103,10 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong x_offset)
 {
   // o_x_tmp = o_x[x_offset]
-  extractVectorKernel(Ntotal,o_x,elliptic.o_rtmp,x_offset);
+  elliptic.o_rtmp.copyFrom(o_x, Ntotal * sizeof(dfloat), 0, x_offset * Ntotal * sizeof(dfloat));
   ellipticOperator(&elliptic, elliptic.o_rtmp, elliptic.o_Ap, dfloatString);
   // o_Ax[Ax_offset] = o_Ax_tmp
-  placeVectorKernel(Ntotal,elliptic.o_Ap,o_Ax,Ax_offset);
+  o_Ax.copyFrom(elliptic.o_Ap, Ntotal * sizeof(dfloat), Ntotal * Ax_offset * sizeof(dfloat), 0);
 }
 void ResidualProjection::updateProjectionSpace()
 {
@@ -119,7 +119,7 @@ void ResidualProjection::updateProjectionSpace()
     for(int k = 0; k < m; ++k)
       alpha[k] = computeInnerProduct(o_xx,k,o_bb,m - 1);
   }
-  gop(alpha.data(),work.data(),m);
+  gop(alpha.data(),m);
   o_alpha.copyFrom(alpha.data(),sizeof(dfloat)*m);
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
@@ -157,7 +157,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
     for(int k = 0; k < m; ++k)
       alpha[k] = computeInnerProduct(o_r,0,o_xx,k);
   }
-  gop(alpha.data(),work.data(),m);
+  gop(alpha.data(),m);
 
   o_alpha.copyFrom(alpha.data(), m * sizeof(dfloat));
 
@@ -233,9 +233,6 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
       scalarMultiplyKernel = elliptic.mesh->device.buildKernel(fileName,
                                                                "scalarMultiply",
                                                                properties);
-      extractVectorKernel =
-        elliptic.mesh->device.buildKernel(fileName, "extractVector", properties);
-
       scaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
                                                                  "scaledAddwOffset",
                                                                  properties);
@@ -245,7 +242,6 @@ ResidualProjection::ResidualProjection(elliptic_t& _elliptic,
       subtractedMultiScaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(fileName,
                                                                  "subtractedMultiScaledAddwOffset",
                                                                  properties);
-      placeVectorKernel = elliptic.mesh->device.buildKernel(fileName, "placeVector", properties);
       weightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(fileName,
                                                                       "weightedInnerProduct2",
                                                                       properties);
@@ -290,10 +286,9 @@ void ResidualProjection::preSolveProjection(occa::memory& o_r)
               << postResidualNorm << ", "
               << ratio << "\n";
 }
-void ResidualProjection::gop(dfloat* a, dfloat* work, const dlong size)
+void ResidualProjection::gop(dfloat* a, const dlong size)
 {
-  MPI_Allreduce(a, work, size, MPI_DFLOAT, MPI_SUM, elliptic.mesh->comm);
-  memcpy(a,work,size * sizeof(dfloat));
+  MPI_Allreduce(a, MPI_IN_PLACE, size, MPI_DFLOAT, MPI_SUM, elliptic.mesh->comm);
 }
 void ResidualProjection::postSolveProjection(occa::memory& o_x)
 {
