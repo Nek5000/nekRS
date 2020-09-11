@@ -15,7 +15,6 @@ env:
 cache:
   directories:
     - $HOME/.local/nekrs
-    - $TRAVIS_BUILD_DIR/build
 
 sudo: required
 
@@ -28,7 +27,7 @@ jobs:
   include:
    - stage: prepare
      name: "install"
-     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && ./makenrs 
+     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && rm -rf build && ./makenrs 
    - stage: warmup
      name: "warm-up"
      script: cd $NEKRS_EXAMPLES/ethier && rm -rf .cache && nrspre ethier 1  
