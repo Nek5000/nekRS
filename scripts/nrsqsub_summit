@@ -19,6 +19,11 @@ export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 #export OCCA_VERBOSE=1
 #export OMPI_LD_PRELOAD_POSTPEND=$OLCF_SPECTRUM_MPI_ROOT/lib/libmpitrace.so
 
+#export PAMI_ENABLE_STRIPING=1
+#export PAMI_IBV_ADAPTER_AFFINITY=1
+#export PAMI_IBV_DEVICE_NAME="mlx5_0:1,mlx5_3:1"
+#export PAMI_IBV_DEVICE_NAME_1="mlx5_3:1,mlx5_0:1"
+
 if [ -z "$PROJ_ID" ]; then
   echo "ERROR: PROJ_ID is empty"
   exit 1
@@ -29,6 +34,7 @@ if [ $# -ne 3 ]; then
   exit 0
 fi
 
+module unload darshan-runtime
 module load gcc
 
 bin=$NEKRS_HOME/bin/nekrs
