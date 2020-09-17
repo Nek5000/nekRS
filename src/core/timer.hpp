@@ -23,6 +23,8 @@ void deviceTic(const std::string tag);
 void deviceTic(const std::string tag,int ifSync);
 void deviceToc(const std::string tag);
 
+void set(const std::string tag, double time);
+
 double hostElapsed(const std::string tag);
 double deviceElapsed(const std::string tag);
 int count(const std::string tag);

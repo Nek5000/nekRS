@@ -63,8 +63,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     return;
   }
 
-  MPI_Barrier(comm);
-  double t0 = MPI_Wtime();
+  timer::tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -130,15 +129,18 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins->startTime, 0);
 
+  timer::toc("setup");
+  const double setupTime = timer::query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
-    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl;
+    cout << "initialization took " <<  setupTime << " seconds" << endl;
   }
   fflush(stdout);
 
   timer::reset();
+  timer::set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -153,6 +155,7 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
+  timer::tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     ins->isOutputStep = 1;
@@ -162,6 +165,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   ins->isOutputStep = 0;
+  timer::toc("udfExecuteStep");
 }
 
 void nekUserchk(void)

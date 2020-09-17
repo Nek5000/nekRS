@@ -38,6 +38,20 @@ void init(MPI_Comm comm,occa::device device,int ifSync)
   comm_ = comm;
 }
 
+void set(const std::string tag, double time)
+{
+  m_[tag].startTime = time;	
+  auto it = m_.find(tag);
+  if(it == m_.end()) {
+    printf("Error in set: Invalid tag name. %s:%u\n",__FILE__,__LINE__);
+    MPI_Abort(comm_,1);
+  }
+
+  it->second.hostElapsed = time; 
+  it->second.deviceElapsed = it->second.hostElapsed;
+  it->second.count++;
+}
+
 void reset()
 {
   m_.clear();
@@ -213,7 +227,7 @@ void printRunStat()
   int rank;
   MPI_Comm_rank(comm_, &rank);
 
-  double dEtime[10];
+  double dEtime[20];
   dEtime[0] = timer::query("makef", "DEVICE:MAX");
   dEtime[1] = timer::query("velocitySolve", "DEVICE:MAX");
   dEtime[2] = timer::query("pressureSolve", "DEVICE:MAX");
@@ -222,17 +236,33 @@ void printRunStat()
   dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
   dEtime[6] = timer::query("preSolveProjection", "DEVICE:MAX");
   dEtime[6]+= timer::query("postSolveProjection", "DEVICE:MAX");
-  dEtime[7] = timer::query("oogsMPI", "DEVICE:MAX");
+
   dEtime[8] = timer::query("dotp", "DEVICE:MAX");
+
+  dEtime[9] = timer::query("solve", "DEVICE:MAX");
+  dEtime[10] = timer::query("setup", "DEVICE:MAX");
+  dEtime[11] = timer::query("checkpointing", "DEVICE:MAX");
+
+  dEtime[12] = timer::query("udfExecuteStep", "DEVICE:MAX");
+  dEtime[13] = timer::query("udfUEqnSource", "DEVICE:MAX");
+  dEtime[14] = timer::query("udfSEqnSource", "DEVICE:MAX");
+  dEtime[15] = timer::query("udfProperties", "DEVICE:MAX");
 
   double hEtime[10];
   hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
+  hEtime[1] = timer::query("oogsMPI", "HOST:MAX");
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );
 
     std::cout << "runtime statistics\n\n"
-              << "  makef                 " << dEtime[0] << " s\n"
+  	      << "  setup                 " << dEtime[10]<< " s\n";
+
+    if(dEtime[11] > 0)
+    std::cout << "  checkpointing         " << dEtime[11]<< " s\n";
+
+    std::cout << "  total solve           " << dEtime[9] << " s\n"
+  	      << "  makef                 " << dEtime[0] << " s\n"
               << "  velocitySolve         " << dEtime[1] << " s\n"
               << "  pressureSolve         " << dEtime[2] << " s\n";
 
@@ -247,9 +277,18 @@ void printRunStat()
               << "  scalarSolve           " << dEtime[4] << " s\n"
               << std::endl;
 
+    if(dEtime[12] > 0)
+    std::cout << "  udfExecuteStep        " << dEtime[12] << " s\n";
+    if(dEtime[13] > 0)
+    std::cout << "  udfUEqnSource         " << dEtime[13] << " s\n";
+    if(dEtime[14] > 0)
+    std::cout << "  udfSEqnSource         " << dEtime[14] << " s\n";
+    if(dEtime[15] > 0)
+    std::cout << "  udfProperties         " << dEtime[15] << " s\n"
+              << std::endl;
 
-    if(dEtime[7] > 0)
-    std::cout << "  gsMPI                 " << dEtime[7] << " s\n";
+    if(hEtime[1] > 0)
+    std::cout << "  gsMPI                 " << hEtime[1] << " s (without overlap)\n";
     if(dEtime[8] > 0)
     std::cout << "  dotp                  " << dEtime[8] << " s\n";
 
