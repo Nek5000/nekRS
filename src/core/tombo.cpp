@@ -170,7 +170,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
 {
   mesh_t* mesh = ins->mesh;
 
-  dfloat scale = 1./3;
+  dfloat scale = -1./3;
   if(ins->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
   ins->pqKernel(
