@@ -43,11 +43,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   //build RHS
   cds->o_wrk1.copyFrom(cds->o_BF, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
   cds->helmholtzRhsBCKernel(mesh->Nelements,
-                            mesh->o_ggeo,
                             mesh->o_sgeo,
-                            mesh->o_Dmatrices,
-                            mesh->o_Smatrices,
-                            mesh->o_MM,
                             mesh->o_vmapM,
                             mesh->o_EToB,
                             mesh->o_sMT,
@@ -59,15 +55,12 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                             mesh->o_z,
                             cds->o_wrk0,
                             cds->o_mapB[is],
-                            cds->o_ellipticCoeff,
                             *(cds->o_usrwrk),
                             cds->o_wrk1);
   oogs::startFinish(cds->o_wrk1, 1, cds->fieldOffset, ogsDfloat, ogsAdd, gsh);
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
 
-  if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk0);
   cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);
-  if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
 
   return cds->o_wrk0;
 }

@@ -607,10 +607,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->advectionStrongCubatureVolumeKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "insPressureAx" + suffix + ".okl";
-      kernelName = "insPressureAx" + suffix;
-      ins->pressureAxKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
       fileName = oklpath + "insCurl" + suffix + ".okl";
       kernelName = "insCurl" + suffix;
       ins->curlKernel =
@@ -668,10 +664,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
-      kernelName = "insVelocityBC" + suffix;
-      ins->velocityRhsBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
       kernelName = "insVelocityDirichletBC" + suffix;
       ins->velocityDirichletBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
