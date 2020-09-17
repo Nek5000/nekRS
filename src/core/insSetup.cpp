@@ -52,7 +52,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   { 
     dlong retVal; 
     MPI_Allreduce(&mesh->NinternalElements,&retVal,1,MPI_DLONG,MPI_MIN,mesh->comm);
-    if(mesh->rank == 0) printf("NinternalElements: %d (%4.2f)\n", retVal, (double)retVal/mesh->Nelements);
+    if(mesh->rank == 0) printf("min NinternalElements: %d (ratio: %4.2f)\n", retVal, (double)retVal/mesh->Nelements);
   }
 
   occa::properties kernelInfoV  = kernelInfo;
@@ -96,21 +96,15 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   options.getArgs("DENSITY", rho);
 
   options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
-
-  dfloat dt;
-  options.getArgs("DT", dt);
-  ins->dt = dt;
-
-  options.getArgs("FINAL TIME", ins->finalTime);
+  options.getArgs("DT", ins->dt);
   options.getArgs("START TIME", ins->startTime);
-  if(ins->startTime > 0.0) {
-    int numSteps;
-    if(options.getArgs("NUMBER TIMESTEPS", numSteps))
-      ins->finalTime += ins->startTime;
-  }
+  options.getArgs("FINAL TIME", ins->finalTime);
+  if(ins->startTime > 0.0) ins->finalTime += ins->startTime; 
+  options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
 
   ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
-  if((ins->finalTime - ins->NtimeSteps*ins->dt)/ins->finalTime > 1e-6*ins->dt) ins->NtimeSteps++;
+  if(ins->finalTime - (ins->startTime + ins->NtimeSteps*ins->dt) >= ins->dt) ins->NtimeSteps++;
+
   options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
