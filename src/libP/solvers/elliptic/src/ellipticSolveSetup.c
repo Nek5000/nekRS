@@ -33,7 +33,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   setupAide options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
-  elliptic->resNormFactor = 1 / mesh->volume;
+  elliptic->resNormFactor = 1 / (elliptic->Nfields*mesh->volume);
 
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
 
