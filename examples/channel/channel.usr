@@ -1,0 +1,168 @@
+#include "casedata.h"
+
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+c      ntot=nx2*ny2*nz2*nelv
+c      xmu = param(2)
+c      if (istep.lt.1) then
+c         do i=1,ntot
+c            xx = xm2(i,1,1,1)
+c            pr(i,1,1,1) = 2.0*(8.0-xm2(i,1,1,1))*xmu
+c         enddo
+c        call outpost2(vx,vy,vz,pr,t,ldimt,'   ')
+c      endif
+
+      call post_err
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      external analyt_soln
+      real nu
+
+      nu=param(2)
+
+      ux = analyt_soln(y,nu,ANUT)
+      uy  = 0.0
+      uz  = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat   ! This routine to modify element vertices
+      include 'SIZE'      ! _before_ mesh is generated, which 
+      include 'TOTAL'     ! guarantees GLL mapping of mesh.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      call rescale_x(xm1,0.0,10.0)
+      call rescale_x(ym1,-1.0,1.0)
+      call rescale_x(zm1,0.0,1.0)
+
+      do iel=1,nelt
+      do ifc=5,6
+         cbc(ifc,iel,1) = 'P  ' ! required for kludge (see below)
+      enddo
+      enddo
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'on ') boundaryID(ifc,iel) = 3
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
+      integer*8 glo_num(1)
+
+      ! kludge for periodic bc in z
+      nxy  = nx*ny
+      nxyz = nx*ny*nz
+      do iel = 1,nel
+         ioff = nxyz*(iel-1)
+         do ixy = 1,nxy
+            glo_num(ioff + nxy*(nz-1) + ixy) = glo_num(ioff + ixy)
+         enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine post_err
+      include 'SIZE'
+      include 'TOTAL'
+
+      external analyt_soln
+
+      real err(lx1,ly1,lz1,lelv)
+      real nu, err_max
+
+      n = nx1*ny1*nz1*nelt
+      call rzero(dfe,n)
+      nu=param(2)
+
+      umax = glmax(vx,n)
+      umin = glmin(vx,n)
+      tmax = glmax(t ,n)
+      tmin = glmin(t ,n)
+
+      do ie = 1,nelv
+      do k = 1,nz1
+      do j = 1,ny1
+      do i = 1,nx1
+         xloc = xm1(i,j,k,ie)
+         yloc = ym1(i,j,k,ie)
+         err(i,j,k,ie) = abs(vx(i,j,k,ie) - analyt_soln(yloc,nu,ANUT))
+      enddo
+      enddo
+      enddo
+      enddo
+
+      err_max = glmax(err,n)
+
+      if (nid.eq.0) then
+         write(6,2) istep,dt,time,err_max,' UX err'
+ 2       format(i9,3e15.5,a8)
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      real function analyt_soln(yl,nu,Anut)
+
+      real uex, yl, nu
+      external analyt_integral
+
+      asq = 1.0 + 1.0/Anut
+      cnst= LOG(asq-1.0)
+      aint_ex = analyt_integral(Anut)
+      ap  = 2.0*nu*Anut/( cnst - 0.5*aint_ex)
+
+      nut  = ( 1.0+Anut*(1.0-yl*yl) ) * nu
+      uex  = (ap/2.0/nu/Anut)*( LOG(asq-1.0)-LOG(asq-yl*yl) )
+      analyt_soln = uex
+
+      return
+      end
+c-----------------------------------------------------------------------
+      real function analyt_integral(Anut)
+
+      a2=       1.0+1.0/Anut
+      a =  sqrt(1.0+1.0/Anut)
+
+      coef = (2.0*a)
+      x1   = -1.0
+      xnum1= x1
+      val1 = x1*log(a2-x1*x1) + a*(log(a+x1)-log(a-x1)) - 2.0*x1
+      x2   =  1.0
+      xnum2= x2
+      val2 = x2*log(a2-x2*x2) + a*(log(a+x2)-log(a-x2)) - 2.0*x2
+
+      analyt_integral = val2 - val1
+
+      return
+      end

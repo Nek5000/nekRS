@@ -1,0 +1,64 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+#include "casedata.h"
+/* User Functions */
+
+occa::kernel mueKernel; 
+
+void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  mesh_t *mesh = ins->mesh;
+
+  dfloat rho;
+  ins->options.getArgs("DENSITY", rho); 
+
+  ins->fillKernel(ins->o_rho, ins->Ntotal, rho);
+  mueKernel(ins->Ntotal, mesh->o_x, mesh->o_y, ins->o_mue);
+}
+
+void UDF_LoadKernels(ins_t *ins)
+{
+  occa::properties& kernelInfo = *ins->kernelInfo;
+  setupAide &options = ins->options;
+
+  dfloat rho, mue;
+  ins->options.getArgs("VISCOSITY", mue); 
+  ins->options.getArgs("DENSITY", rho); 
+
+  kernelInfo["defines/p_nu"] = mue/rho;
+  kernelInfo["defines/p_Anut"] = ANUT;
+
+  const dfloat a2 = 1.0 + 1.0/ANUT;
+  const dfloat a= sqrt(a2);
+  const dfloat x1 = -1.0;
+  const dfloat x2 =  1.0; 
+  const dfloat AINT = x2*log(a2-x2*x2) + a*(log(a+x2)-log(a-x2)) - 2.0*x2
+                    - x1*log(a2-x1*x1) + a*(log(a+x1)-log(a-x1)) - 2.0*x1;
+  kernelInfo["defines/p_Aint"] = AINT;
+
+  mueKernel = udfBuildKernel(ins, "mue");
+}
+
+void UDF_Setup(ins_t *ins)
+{
+  mesh_t *mesh = ins->mesh;
+  cds_t *cds = ins->cds;
+
+  // get IC from nek
+  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+
+  udf.properties = &uservp;
+}
+
+void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+{
+  if (ins->isOutputStep) {
+    nek_ocopyFrom(time, tstep);
+    nek_userchk();
+  }
+}
