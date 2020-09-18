@@ -63,13 +63,6 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   rdotz1 = 1;
 
   dfloat rdotr0;
-
-  // compute A*x
-  ellipticOperator(elliptic, o_x, o_Ap, dfloatString);
-
-  // subtract r = b - A*x
-  ellipticScaledAdd(elliptic, -1.f, o_Ap, 1.f, o_r);
-
   if(enableReductions)
     rdotr0 = ellipticWeightedNorm2(elliptic, o_weight, o_r) * elliptic->resNormFactor;
   else
