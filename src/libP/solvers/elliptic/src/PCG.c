@@ -75,7 +75,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     printf("CG: initial res norm %12.12f WE NEED TO GET TO %12.12f \n",
            sqrt(rdotr0), sqrt(TOL));
 
-  if (rdotr0 <= TOL && !fixedIterationCountFlag) return 0;
+  //if (rdotr0 <= TOL && !fixedIterationCountFlag) return 0;
 
   int iter;
   for(iter = 1; iter <= MAXIT; ++iter) {
