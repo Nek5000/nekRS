@@ -291,13 +291,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
-    if(ini.extract("pressure", "residualtol", p_residualTol))
+    if(ini.extract("pressure", "residualtol", p_residualTol) ||
+       ini.extract("pressure", "residualtoltolerance", p_residualTol))
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE);
 
     bool p_rproj;
-    if(ini.extract("pressure", "residualproj", p_rproj)) {
+    if(ini.extract("pressure", "residualproj", p_rproj) || 
+       ini.extract("pressure", "residualprojection", p_rproj)) {
       if(p_rproj)
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
       else
@@ -462,7 +464,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     string vsolver;
     int flow = 1;
     bool v_rproj;
-    if(ini.extract("velocity", "residualproj", v_rproj)) {
+    if(ini.extract("velocity", "residualproj", v_rproj) ||
+       ini.extract("velocity", "residualprojection", v_rproj)) {
       if(v_rproj)
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
       else
@@ -486,7 +489,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double v_residualTol;
-    if(ini.extract("velocity", "residualtol", v_residualTol))
+    if(ini.extract("velocity", "residualtol", v_residualTol) ||
+       ini.extract("velocity", "residualtoltolerance", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
     if(flow) exit("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE);
@@ -537,7 +541,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
       bool t_rproj;
-      if(ini.extract("temperature", "residualproj", t_rproj)) {
+      if(ini.extract("temperature", "residualproj", t_rproj) || 
+         ini.extract("temperature", "residualprojection", t_rproj)) {
         if(t_rproj)
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
         else
@@ -552,7 +557,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
 
       double s_residualTol;
-      if(ini.extract("temperature", "residualtol", s_residualTol))
+      if(ini.extract("temperature", "residualtol", s_residualTol) ||
+         ini.extract("temperature", "residualtolerance", s_residualTol))
         options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
 
       if(ini.extract("temperature", "conductivity", sbuf)) {
@@ -615,7 +621,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
     options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
     bool t_rproj;
-    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj)) {
+    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj) || 
+       ini.extract("scalar" + sidPar, "residualprojection", t_rproj)) {
       if(t_rproj)
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
       else
@@ -631,7 +638,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
-    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol))
+    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol) ||
+       ini.extract("scalar" + sidPar, "residualtolerance", s_residualTol))
       options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
 
     if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
