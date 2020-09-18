@@ -614,6 +614,34 @@ void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa
 #else
 void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem);
 #endif
+
+void matrixRightSolve(int NrowsA, int NcolsA, dfloat *A, int NrowsB, int NcolsB, dfloat *B, dfloat *C);
+void matrixEig(int N, dfloat *A, dfloat *VR, dfloat *WR, dfloat *WI);
+void matrixTranspose(const int M, const int N,
+                     const dfloat  *A, const int LDA,
+                           dfloat *AT, const int LDAT);
+
+// 1D mesh basis functions
+void Nodes1D(int _N, dfloat *_r);
+void EquispacedNodes1D(int _N, dfloat *_r);
+void OrthonormalBasis1D(dfloat a, int i, dfloat *P);
+void GradOrthonormalBasis1D(dfloat a, int i, dfloat *Pr);
+void Vandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *V);
+void GradVandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *Vr);
+void MassMatrix1D(int _Np, dfloat *V, dfloat *_MM);
+void Dmatrix1D(int _N, int NpointsIn, dfloat *_rIn,
+                               int NpointsOut, dfloat *_rOut, dfloat *_Dr);
+void InterpolationMatrix1D(int _N,
+                               int NpointsIn, dfloat *rIn,
+                               int NpointsOut, dfloat *rOut,
+                               dfloat *I);
+void DegreeRaiseMatrix1D(int Nc, int Nf, dfloat *P);
+void CubatureWeakDmatrix1D(int _Nq, int _cubNq,
+                                     dfloat *_cubProject, dfloat *_cubD, dfloat *_cubPDT);
+dfloat JacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
+dfloat GradJacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
+void JacobiGLL(int _N, dfloat *_x, dfloat *_w = nullptr);
+void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat *_x, dfloat *_w);
 } // end C Linkage
 #endif
 
