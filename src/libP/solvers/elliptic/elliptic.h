@@ -51,7 +51,7 @@ typedef struct
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
   int var_coeff;   // flag for variable coefficient
-  int blockSolver, Nfields; // flag for vector solver and number of fields
+  int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
 
   dlong Ntotal; // offset
 
@@ -142,6 +142,7 @@ typedef struct
   occa::kernel fillKernel;
 
   occa::kernel AxKernel;
+  occa::kernel AxStressKernel;
   occa::kernel AxPfloatKernel;
   occa::kernel partialAxKernel;
   occa::kernel partialAxKernel2;
@@ -331,7 +332,8 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_elementsList,
                 occa::memory &o_q,
                 occa::memory &o_Aq,
-                const char* precision);
+                const char* precision,
+                const bool runtest = false);
 
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);

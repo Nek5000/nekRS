@@ -803,10 +803,20 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       if(elliptic->blockSolver) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
-        else
-          sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+          if(elliptic->stressForm){
+            sprintf(kernelName, "ellipticStressAxVar%s", suffix);
+          } else {
+            sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
+          }
+        }
+        else{
+          if(elliptic->stressForm){
+            sprintf(kernelName, "ellipticStressAx%s", suffix);
+          } else {
+            sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+          }
+        }
       }else{
         sprintf(fileName,  DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
@@ -815,6 +825,25 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         else
           sprintf(kernelName, "ellipticAx%s", suffix);
       }
+      elliptic->AxStressKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+      if(elliptic->blockSolver) {
+        sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
+        if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+            sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
+        }
+        else{
+            sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+        }
+      }else{
+        sprintf(fileName,  DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
+        if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
+          sprintf(kernelName, "ellipticAxVar%s", suffix);
+        else
+          sprintf(kernelName, "ellipticAx%s", suffix);
+      }
+      // Keep other kernel around
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
 
       if(!serial) {
@@ -830,10 +859,20 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             sprintf(kernelName, "ellipticPartialAxTrilinear%s", suffix);
           }else {
             if(elliptic->blockSolver) {
-              if(elliptic->var_coeff)
-                sprintf(kernelName, "ellipticBlockPartialAxVar%s_N%d", suffix, elliptic->Nfields);
-              else
-                sprintf(kernelName, "ellipticBlockPartialAx%s_N%d", suffix, elliptic->Nfields);
+              if(elliptic->var_coeff){
+                if(elliptic->stressForm){
+                  sprintf(kernelName, "ellipticStressPartialAxVar%s", suffix);
+                } else {
+                  sprintf(kernelName, "ellipticBlockPartialAxVar%s_N%d", suffix, elliptic->Nfields);
+                }
+              }
+              else{
+                if(elliptic->stressForm){
+                  sprintf(kernelName, "ellipticStessPartialAx%s", suffix);
+                } else {
+                  sprintf(kernelName, "ellipticBlockPartialAx%s_N%d", suffix, elliptic->Nfields);
+                }
+              }
             }else {
               if(elliptic->var_coeff)
                 sprintf(kernelName, "ellipticPartialAxVar%s", suffix);

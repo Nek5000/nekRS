@@ -280,8 +280,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   bool stressFormulation;
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
-    if(stressFormulation) exit("PROBLEMTYPE::stressFormulation = Yes not supported!", EXIT_FAILURE);
-
+    if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
   string equation;
   if(ini.extract("problemtype", "equation", equation))

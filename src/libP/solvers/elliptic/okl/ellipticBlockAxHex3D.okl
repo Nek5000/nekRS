@@ -1908,3 +1908,797 @@
     }
   }
 }
+@kernel void ellipticStressAxVarHex3D(const dlong Nelements,
+                                 const dlong offset,
+                                 const dlong loffset,
+                                 @restrict const dfloat *vgeo,
+                                 @restrict const dfloat *D,
+                                 @restrict const  dfloat *  S,
+                                 @restrict const  dfloat *  MM,
+                                 @restrict const dfloat *lambda,
+                                 @restrict const dfloat *q,
+                                 @restrict dfloat *Aq){
+
+
+for(dlong e=0; e<Nelements; ++e; @outer(0)){
+  // AK: heavy memory usage, optimize later
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    #define s_SUr s_U
+    #define s_SUs s_V
+    #define s_SUt s_W
+
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
+    //
+    @exclusive dfloat rx , ry, rz; 
+    @exclusive dfloat sx , sy, sz; 
+    @exclusive dfloat tx , ty, tz; 
+    
+    // Symmetric Stress Tensor
+    @exclusive dfloat s11,s12,s13; 
+    @exclusive dfloat s21,s22,s23; 
+    @exclusive dfloat s31,s32,s33; 
+
+
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
+
+   // prefetch q
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          if(k==0) s_D[j][i] = D[p_Nq*j+i];
+            const dlong id = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+            s_U[k][j][i] = q[id + 0*offset];
+            s_V[k][j][i] = q[id + 1*offset];
+            s_W[k][j][i] = q[id + 2*offset];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){   
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
+          rx = vgeo[gid + p_RXID*p_Np];
+          ry = vgeo[gid + p_RYID*p_Np];
+          rz = vgeo[gid + p_RZID*p_Np];
+          
+          sx = vgeo[gid + p_SXID*p_Np];
+          sy = vgeo[gid + p_SYID*p_Np];
+          sz = vgeo[gid + p_SZID*p_Np];
+          
+          tx = vgeo[gid + p_TXID*p_Np];
+          ty = vgeo[gid + p_TYID*p_Np];
+          tz = vgeo[gid + p_TZID*p_Np];
+          
+          const dfloat JW = vgeo[gid + p_JWID*p_Np];
+
+          // compute 1D derivatives
+          dfloat ur = 0.f, us = 0.f, ut = 0.f;
+          dfloat vr = 0.f, vs = 0.f, vt = 0.f;
+          dfloat wr = 0.f, ws = 0.f, wt = 0.f;
+          for(int m=0;m<p_Nq;++m){
+            const dfloat Dim = s_D[i][m]; // Dr
+            const dfloat Djm = s_D[j][m]; // Ds
+            const dfloat Dkm = s_D[k][m]; // Dt
+
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
+            //
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
+            //
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
+          }
+
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+          // not sure that we need anistropic diffusion!!!! 
+          // con be simplified for istropic diffusion    
+          const dfloat u_lam0 = lambda[id + 0*offset + 0*loffset]; 
+          const dfloat u_lam1 = lambda[id + 1*offset + 0*loffset];
+          const dfloat v_lam0 = lambda[id + 0*offset + 1*loffset]; 
+          const dfloat v_lam1 = lambda[id + 1*offset + 1*loffset];
+          const dfloat w_lam0 = lambda[id + 0*offset + 2*loffset]; 
+          const dfloat w_lam1 = lambda[id + 1*offset + 2*loffset];
+
+          const dfloat dudx = rx*ur + sx*us + tx*ut; 
+          const dfloat dudy = ry*ur + sy*us + ty*ut; 
+          const dfloat dudz = rz*ur + sz*us + tz*ut; 
+
+          const dfloat dvdx = rx*vr + sx*vs + tx*vt; 
+          const dfloat dvdy = ry*vr + sy*vs + ty*vt; 
+          const dfloat dvdz = rz*vr + sz*vs + tz*vt; 
+
+          const dfloat dwdx = rx*wr + sx*ws + tx*wt; 
+          const dfloat dwdy = ry*wr + sy*ws + ty*wt; 
+          const dfloat dwdz = rz*wr + sz*ws + tz*wt; 
+
+          s11 = u_lam0*JW*(dudx + dudx); 
+          s12 = u_lam0*JW*(dudy + dvdx); 
+          s13 = u_lam0*JW*(dudz + dwdx); 
+
+          s21 = v_lam0*JW*(dvdx + dudy); 
+          s22 = v_lam0*JW*(dvdy + dvdy); 
+          s23 = v_lam0*JW*(dvdz + dwdy); 
+
+          s31 = w_lam0*JW*(dwdx + dudz); 
+          s32 = w_lam0*JW*(dwdy + dvdz); 
+          s33 = w_lam0*JW*(dwdz + dwdz); 
+          // store in register
+          r_Au =  u_lam1*JW*s_U[k][j][i]; 
+          r_Av =  v_lam1*JW*s_V[k][j][i];
+          r_Aw =  w_lam1*JW*s_W[k][j][i];
+
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+
+         s_SUr[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_SUs[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_SUt[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
+         //
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
+         //
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
+
+        }
+      }
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+           #pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            const dfloat Dim = s_D[m][i]; // Dr'
+            const dfloat Djm = s_D[m][j]; // Ds'
+            const dfloat Dkm = s_D[m][k]; // Dt'
+
+            r_Au += Dim*s_SUr[k][j][m];
+            r_Au += Djm*s_SUs[k][m][i];
+            r_Au += Dkm*s_SUt[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
+          }
+          const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
+        
+        }
+      }
+    }
+  }
+}
+
+//
+@kernel void ellipticStressPartialAxVarHex3D(const dlong Nelements,
+                                 const dlong offset,
+                                 const dlong loffset,
+                                 @restrict const  dlong *elementList,
+                                 @restrict const dfloat *vgeo,
+                                 @restrict const dfloat *D,
+                                 @restrict const  dfloat *  S,
+                                 @restrict const  dfloat *  MM,
+                                 @restrict const dfloat *lambda,
+                                 @restrict const dfloat *q,
+                                 @restrict dfloat *Aq){
+
+
+for(dlong e=0; e<Nelements; ++e; @outer(0)){
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    #define s_SUr s_U
+    #define s_SUs s_V
+    #define s_SUt s_W
+
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
+
+    //
+    @exclusive dfloat rx , ry, rz; 
+    @exclusive dfloat sx , sy, sz; 
+    @exclusive dfloat tx , ty, tz; 
+    // Symmetric Stress Tensor
+    @exclusive dfloat s11,s12,s13; 
+    @exclusive dfloat s21,s22,s23; 
+    @exclusive dfloat s31,s32,s33; 
+
+
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
+    @exclusive dlong element;
+
+   // prefetch q
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          element = elementList[e];
+          if(k==0) s_D[j][i] = D[p_Nq*j+i];
+            const dlong id = element*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+            s_U[k][j][i] =q[id + 0*offset];
+            s_V[k][j][i] =q[id + 1*offset];
+            s_W[k][j][i] =q[id + 2*offset];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){   
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + element*p_Np*p_Nvgeo;
+          rx = vgeo[gid + p_RXID*p_Np];
+          ry = vgeo[gid + p_RYID*p_Np];
+          rz = vgeo[gid + p_RZID*p_Np];
+          
+          sx = vgeo[gid + p_SXID*p_Np];
+          sy = vgeo[gid + p_SYID*p_Np];
+          sz = vgeo[gid + p_SZID*p_Np];
+          
+          tx = vgeo[gid + p_TXID*p_Np];
+          ty = vgeo[gid + p_TYID*p_Np];
+          tz = vgeo[gid + p_TZID*p_Np];
+          
+          const dfloat JW = vgeo[gid + p_JWID*p_Np];
+
+          // compute 1D derivatives
+          dfloat ur = 0.f, us = 0.f, ut = 0.f;
+          dfloat vr = 0.f, vs = 0.f, vt = 0.f;
+          dfloat wr = 0.f, ws = 0.f, wt = 0.f;
+          for(int m=0;m<p_Nq;++m){
+            const dfloat Dim = s_D[i][m]; // Dr
+            const dfloat Djm = s_D[j][m]; // Ds
+            const dfloat Dkm = s_D[k][m]; // Dt
+
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
+            //
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
+            //
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
+          }
+
+          const dlong id = element*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+          
+          const dfloat u_lam0 = lambda[id + 0*offset + 0*loffset]; 
+          const dfloat u_lam1 = lambda[id + 1*offset + 0*loffset];
+          const dfloat v_lam0 = lambda[id + 0*offset + 1*loffset]; 
+          const dfloat v_lam1 = lambda[id + 1*offset + 1*loffset];
+          const dfloat w_lam0 = lambda[id + 0*offset + 2*loffset]; 
+          const dfloat w_lam1 = lambda[id + 1*offset + 2*loffset];
+
+          const dfloat dudx = rx*ur + sx*us + tx*ut; 
+          const dfloat dudy = ry*ur + sy*us + ty*ut; 
+          const dfloat dudz = rz*ur + sz*us + tz*ut; 
+
+          const dfloat dvdx = rx*vr + sx*vs + tx*vt; 
+          const dfloat dvdy = ry*vr + sy*vs + ty*vt; 
+          const dfloat dvdz = rz*vr + sz*vs + tz*vt; 
+
+          const dfloat dwdx = rx*wr + sx*ws + tx*wt; 
+          const dfloat dwdy = ry*wr + sy*ws + ty*wt; 
+          const dfloat dwdz = rz*wr + sz*ws + tz*wt; 
+
+          s11 = u_lam0*JW*(dudx + dudx); 
+          s12 = u_lam0*JW*(dudy + dvdx); 
+          s13 = u_lam0*JW*(dudz + dwdx); 
+
+          s21 = v_lam0*JW*(dvdx + dudy); 
+          s22 = v_lam0*JW*(dvdy + dvdy); 
+          s23 = v_lam0*JW*(dvdz + dwdy); 
+
+          s31 = w_lam0*JW*(dwdx + dudz); 
+          s32 = w_lam0*JW*(dwdy + dvdz); 
+          s33 = w_lam0*JW*(dwdz + dwdz); 
+          // store in register
+          r_Au =  u_lam1*JW*s_U[k][j][i]; 
+          r_Av =  v_lam1*JW*s_V[k][j][i];
+          r_Aw =  w_lam1*JW*s_W[k][j][i];
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+         s_SUr[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_SUs[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_SUt[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
+         //
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
+         //
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
+
+        }
+      }
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          #pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            const dfloat Dim = s_D[m][i]; // Dr'
+            const dfloat Djm = s_D[m][j]; // Ds'
+            const dfloat Dkm = s_D[m][k]; // Dt'
+
+            r_Au += Dim*s_SUr[k][j][m];
+            r_Au += Djm*s_SUs[k][m][i];
+            r_Au += Dkm*s_SUt[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
+          }
+          const dlong id = element*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
+        
+        }
+      }
+    }
+  }
+}
+
+
+
+
+
+//
+@kernel void ellipticStressAxHex3D(const dlong Nelements,
+                                 const dlong offset,
+                                 const dlong loffset,
+                                 @restrict const dfloat *vgeo,
+                                 @restrict const dfloat *D,
+                                 @restrict const  dfloat *  S,
+                                 @restrict const  dfloat *  MM,
+                                 @restrict const dfloat *lambda,
+                                 @restrict const dfloat *q,
+                                 @restrict dfloat *Aq){
+
+
+for(dlong e=0; e<Nelements; ++e; @outer(0)){
+  // AK: heavy memory usage, optimize later
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    #define s_SUr s_U
+    #define s_SUs s_V
+    #define s_SUt s_W
+
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
+    //
+    @exclusive dfloat rx , ry, rz; 
+    @exclusive dfloat sx , sy, sz; 
+    @exclusive dfloat tx , ty, tz; 
+    
+    // Symmetric Stress Tensor
+    @exclusive dfloat s11,s12,s13; 
+    @exclusive dfloat s21,s22,s23; 
+    @exclusive dfloat s31,s32,s33; 
+
+
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
+
+   // prefetch q
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          if(k==0) s_D[j][i] = D[p_Nq*j+i];
+            const dlong id = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+            s_U[k][j][i] = q[id + 0*offset];
+            s_V[k][j][i] = q[id + 1*offset];
+            s_W[k][j][i] = q[id + 2*offset];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){   
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
+          rx = vgeo[gid + p_RXID*p_Np];
+          ry = vgeo[gid + p_RYID*p_Np];
+          rz = vgeo[gid + p_RZID*p_Np];
+          
+          sx = vgeo[gid + p_SXID*p_Np];
+          sy = vgeo[gid + p_SYID*p_Np];
+          sz = vgeo[gid + p_SZID*p_Np];
+          
+          tx = vgeo[gid + p_TXID*p_Np];
+          ty = vgeo[gid + p_TYID*p_Np];
+          tz = vgeo[gid + p_TZID*p_Np];
+          
+          const dfloat JW = vgeo[gid + p_JWID*p_Np];
+
+          // compute 1D derivatives
+          dfloat ur = 0.f, us = 0.f, ut = 0.f;
+          dfloat vr = 0.f, vs = 0.f, vt = 0.f;
+          dfloat wr = 0.f, ws = 0.f, wt = 0.f;
+          for(int m=0;m<p_Nq;++m){
+            const dfloat Dim = s_D[i][m]; // Dr
+            const dfloat Djm = s_D[j][m]; // Ds
+            const dfloat Dkm = s_D[k][m]; // Dt
+
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
+            //
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
+            //
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
+          }
+
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+         
+          const dfloat dudx = rx*ur + sx*us + tx*ut; 
+          const dfloat dudy = ry*ur + sy*us + ty*ut; 
+          const dfloat dudz = rz*ur + sz*us + tz*ut; 
+
+          const dfloat dvdx = rx*vr + sx*vs + tx*vt; 
+          const dfloat dvdy = ry*vr + sy*vs + ty*vt; 
+          const dfloat dvdz = rz*vr + sz*vs + tz*vt; 
+
+          const dfloat dwdx = rx*wr + sx*ws + tx*wt; 
+          const dfloat dwdy = ry*wr + sy*ws + ty*wt; 
+          const dfloat dwdz = rz*wr + sz*ws + tz*wt; 
+
+          s11 = JW*(dudx + dudx); 
+          s12 = JW*(dudy + dvdx); 
+          s13 = JW*(dudz + dwdx); 
+
+          s21 = JW*(dvdx + dudy); 
+          s22 = JW*(dvdy + dvdy); 
+          s23 = JW*(dvdz + dwdy); 
+
+          s31 = JW*(dwdx + dudz); 
+          s32 = JW*(dwdy + dvdz); 
+          s33 = JW*(dwdz + dwdz); 
+          // store in register
+          r_Au =  lambda[id+ 1 * offset + 0*loffset]*JW*s_U[k][j][i]; 
+          r_Av =  lambda[id+ 1 * offset + 1*loffset]*JW*s_V[k][j][i];
+          r_Aw =  lambda[id+ 1 * offset + 2*loffset]*JW*s_W[k][j][i];
+
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+
+         s_SUr[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_SUs[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_SUt[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
+         //
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
+         //
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
+
+        }
+      }
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+           #pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            const dfloat Dim = s_D[m][i]; // Dr'
+            const dfloat Djm = s_D[m][j]; // Ds'
+            const dfloat Dkm = s_D[m][k]; // Dt'
+
+            r_Au += Dim*s_SUr[k][j][m];
+            r_Au += Djm*s_SUs[k][m][i];
+            r_Au += Dkm*s_SUt[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
+          }
+          const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
+        
+        }
+      }
+    }
+  }
+}
+
+//
+@kernel void ellipticStressPartialAxHex3D(const dlong Nelements,
+                                 const dlong offset,
+                                 const dlong loffset,
+                                 @restrict const  dlong *elementList,
+                                 @restrict const dfloat *vgeo,
+                                 @restrict const dfloat *D,
+                                 @restrict const  dfloat *  S,
+                                 @restrict const  dfloat *  MM,
+                                 @restrict const dfloat *lambda,
+                                 @restrict const dfloat *q,
+                                 @restrict dfloat *Aq){
+
+
+for(dlong e=0; e<Nelements; ++e; @outer(0)){
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+
+    #define s_SUr s_U
+    #define s_SUs s_V
+    #define s_SUt s_W
+
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
+
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
+
+    //
+    @exclusive dfloat rx , ry, rz; 
+    @exclusive dfloat sx , sy, sz; 
+    @exclusive dfloat tx , ty, tz; 
+    // Symmetric Stress Tensor
+    @exclusive dfloat s11,s12,s13; 
+    @exclusive dfloat s21,s22,s23; 
+    @exclusive dfloat s31,s32,s33; 
+
+
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
+    @exclusive dlong element;
+
+   // prefetch q
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          element = elementList[e];
+          if(k==0) s_D[j][i] = D[p_Nq*j+i];
+            const dlong id = element*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
+            s_U[k][j][i] =q[id + 0*offset];
+            s_V[k][j][i] =q[id + 1*offset];
+            s_W[k][j][i] =q[id + 2*offset];
+        }
+      }
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){   
+          const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + element*p_Np*p_Nvgeo;
+          rx = vgeo[gid + p_RXID*p_Np];
+          ry = vgeo[gid + p_RYID*p_Np];
+          rz = vgeo[gid + p_RZID*p_Np];
+          
+          sx = vgeo[gid + p_SXID*p_Np];
+          sy = vgeo[gid + p_SYID*p_Np];
+          sz = vgeo[gid + p_SZID*p_Np];
+          
+          tx = vgeo[gid + p_TXID*p_Np];
+          ty = vgeo[gid + p_TYID*p_Np];
+          tz = vgeo[gid + p_TZID*p_Np];
+          
+          const dfloat JW = vgeo[gid + p_JWID*p_Np];
+
+          // compute 1D derivatives
+          dfloat ur = 0.f, us = 0.f, ut = 0.f;
+          dfloat vr = 0.f, vs = 0.f, vt = 0.f;
+          dfloat wr = 0.f, ws = 0.f, wt = 0.f;
+          for(int m=0;m<p_Nq;++m){
+            const dfloat Dim = s_D[i][m]; // Dr
+            const dfloat Djm = s_D[j][m]; // Ds
+            const dfloat Dkm = s_D[k][m]; // Dt
+
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
+            //
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
+            //
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
+          }
+
+          const dfloat dudx = rx*ur + sx*us + tx*ut; 
+          const dfloat dudy = ry*ur + sy*us + ty*ut; 
+          const dfloat dudz = rz*ur + sz*us + tz*ut; 
+
+          const dfloat dvdx = rx*vr + sx*vs + tx*vt; 
+          const dfloat dvdy = ry*vr + sy*vs + ty*vt; 
+          const dfloat dvdz = rz*vr + sz*vs + tz*vt; 
+
+          const dfloat dwdx = rx*wr + sx*ws + tx*wt; 
+          const dfloat dwdy = ry*wr + sy*ws + ty*wt; 
+          const dfloat dwdz = rz*wr + sz*ws + tz*wt; 
+
+          s11 = JW*(dudx + dudx); 
+          s12 = JW*(dudy + dvdx); 
+          s13 = JW*(dudz + dwdx); 
+
+          s21 = JW*(dvdx + dudy); 
+          s22 = JW*(dvdy + dvdy); 
+          s23 = JW*(dvdz + dwdy); 
+
+          s31 = JW*(dwdx + dudz); 
+          s32 = JW*(dwdy + dvdz); 
+          s33 = JW*(dwdz + dwdz); 
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+
+          r_Au =  lambda[id + 1*offset + 0*loffset]*JW*s_U[k][j][i]; 
+          r_Av =  lambda[id + 1*offset + 1*loffset]*JW*s_V[k][j][i];
+          r_Aw =  lambda[id + 1*offset + 2*loffset]*JW*s_W[k][j][i];
+        }
+      }
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+         s_SUr[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_SUs[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_SUt[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
+         //
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
+         //
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
+
+        }
+      }
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          #pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            const dfloat Dim = s_D[m][i]; // Dr'
+            const dfloat Djm = s_D[m][j]; // Ds'
+            const dfloat Dkm = s_D[m][k]; // Dt'
+
+            r_Au += Dim*s_SUr[k][j][m];
+            r_Au += Djm*s_SUs[k][m][i];
+            r_Au += Dkm*s_SUt[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
+          }
+          const dlong id = element*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
+        
+        }
+      }
+    }
+  }
+}
