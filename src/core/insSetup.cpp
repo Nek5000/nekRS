@@ -523,6 +523,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         {7,{7,3,1}},
         {8,{8,5,1}},
         {9,{9,5,1}},
+        {10,{10,6,1}},
+        {11,{11,6,1}},
+        {12,{12,7,1}},
+        {13,{13,7,1}},
+        {14,{14,8,1}},
+        {15,{15,9,1}},
       };
 
       const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq - 1);
@@ -543,6 +549,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         {7,{7,5,3,1}},
         {8,{8,6,4,1}},
         {9,{9,7,5,1}},
+        {10,{10,8,5,1}},
+        {11,{11,9,5,1}},
+        {12,{12,10,5,1}},
+        {13,{13,11,5,1}},
+        {14,{14,12,5,1}},
+        {15,{15,13,5,1}},
       };
 
       const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq - 1);
