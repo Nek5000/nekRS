@@ -687,8 +687,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
       fileName = oklpath + "insVelocityRhsWeak" + suffix + ".okl";
       kernelName = "insVelocityRhsWeak" + suffix;
-      ins->velocityRhsWeakKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      //ins->velocityRhsWeakKernel =
+      //  mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
       kernelName = "insVelocityDirichletBC" + suffix;
