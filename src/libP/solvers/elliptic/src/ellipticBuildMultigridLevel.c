@@ -778,6 +778,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   char fileName[BUFSIZ], kernelName[BUFSIZ];
 
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0)  printf("loading elliptic MG kernels ... "); fflush(stdout); 
+
   for (int r = 0; r < 2; r++) {
     MPI_Barrier(mesh->comm);
 
@@ -907,6 +911,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
     MPI_Barrier(mesh->comm);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   //new precon struct
   elliptic->precon = new precon_t();

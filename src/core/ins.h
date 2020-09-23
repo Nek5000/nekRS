@@ -138,6 +138,8 @@ typedef struct
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel velocityExtKernel;
 
+  occa::kernel velocityRhsWeakKernel;
+
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 

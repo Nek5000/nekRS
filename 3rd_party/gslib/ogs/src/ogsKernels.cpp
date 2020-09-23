@@ -199,7 +199,9 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
    ogs::kernelInfo["compiler_flags"] += " --fmad=true "; // compiler option for cuda
   }
 
-  if (rank==0) printf("Compiling GatherScatter Kernels...");fflush(stdout);
+  MPI_Barrier(comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(rank == 0)  printf("loading NS-solver kernels ... "); fflush(stdout);
 
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
@@ -345,7 +347,9 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
     }
     MPI_Barrier(comm);
   }
-  if(rank==0) printf("done.\n");
+
+  MPI_Barrier(comm);
+  if(rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 }
 
 void ogs::freeKernels() {

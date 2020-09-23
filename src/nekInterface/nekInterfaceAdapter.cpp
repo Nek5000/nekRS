@@ -425,8 +425,8 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
 
 int buildNekInterface(const char* casename, int ldimt, int N, int np)
 {
-  printf("building nek ... ");
-  fflush(stdout);
+  printf("loading nek ... "); fflush(stdout);
+  double tStart = MPI_Wtime();
 
   char buf[BUFSIZ];
   char fflags[BUFSIZ];
@@ -484,7 +484,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   retval = system(buf);
   if (retval) goto err;
 
-  printf("done\n\n");
+  printf("done (%gs)\n\n", MPI_Wtime() - tStart);
   fflush(stdout);
   return 0;
 

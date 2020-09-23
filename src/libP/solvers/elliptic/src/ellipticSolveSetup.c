@@ -477,6 +477,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
 
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime(); 
+  if(mesh->rank == 0)  printf("loading elliptic kernels ... "); fflush(stdout);
+
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
       //mesh kernels
@@ -1042,6 +1046,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
     MPI_Barrier(mesh->comm);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(elliptic->blockSolver) {
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));

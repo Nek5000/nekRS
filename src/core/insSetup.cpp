@@ -271,9 +271,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   // jit compile udf kernels
   if (udf.loadKernels) {
-    if (mesh->rank == 0) cout << "building udf kernels ...";
+    if (mesh->rank == 0) cout << "loading udf kernels ... ";
     udf.loadKernels(ins);
-    if (mesh->rank == 0) cout << " done" << endl;
+    if (mesh->rank == 0) cout << "done" << endl;
   }
 
   occa::properties kernelInfoBC = kernelInfo;
@@ -601,6 +601,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   const string suffix = "Hex3D";
   const string oklpath = install_dir + "/okl/core/";
 
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0)  printf("loading NS-solver kernels ... "); fflush(stdout);
+
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
       fileName = oklpath + "insAdvection" + suffix + ".okl";
@@ -666,6 +670,11 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
       kernelName = "insVelocityRhsTOMBO" + suffix;
       ins->velocityRhsKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insVelocityRhsWeak" + suffix + ".okl";
+      kernelName = "insVelocityRhsWeak" + suffix;
+      ins->velocityRhsWeakKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
@@ -760,6 +769,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     }
     MPI_Barrier(mesh->comm);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(!buildOnly) {
     int err = 0;
