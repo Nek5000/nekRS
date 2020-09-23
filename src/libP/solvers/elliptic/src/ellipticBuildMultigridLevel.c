@@ -43,6 +43,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
 #ifndef OCCA_VERSION_1_0
   memcpy(mesh,baseElliptic->mesh,sizeof(mesh_t));
+  fflush(stdout);
+
 #else
 
   mesh->rank = baseElliptic->mesh->rank;
@@ -53,6 +55,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   mesh->dim = baseElliptic->mesh->dim;
   mesh->Nverts        = baseElliptic->mesh->Nverts;
   mesh->Nfaces        = baseElliptic->mesh->Nfaces;
+
   mesh->NfaceVertices = baseElliptic->mesh->NfaceVertices;
 
   mesh->Nfields = baseElliptic->mesh->Nfields;
@@ -148,7 +151,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     meshPhysicalNodesTet3D(mesh);
     break;
   case HEXAHEDRA:
-    meshLoadReferenceNodesHex3D(mesh, Nc);
+    meshLoadReferenceNodesHex3D(mesh, Nc, 1);
     meshPhysicalNodesHex3D(mesh, buildOnly);
     meshGeometricFactorsHex3D(mesh);
     break;

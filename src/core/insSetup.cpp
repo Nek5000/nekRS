@@ -23,9 +23,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   kernelInfo["flags"].asObject();
   kernelInfo["include_paths"].asArray();
 
-  int N;
+  int N, cubN;
   string install_dir;
   options.getArgs("POLYNOMIAL DEGREE", N);
+  options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
   options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   options.getArgs("MESH DIMENSION", ins->dim);
@@ -39,12 +40,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
 
   if (buildOnly) {
-    ins->meshT = createMeshDummy(comm, N, options, device, kernelInfo);
+    ins->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMeshT(comm, N, ins->cht, options, device, kernelInfo);
+    ins->meshT = createMeshT(comm, N, cubN, ins->cht, options, device, kernelInfo);
     ins->mesh = ins->meshT;
-    if (ins->cht) ins->mesh = createMeshV(comm, N, ins->meshT, options, kernelInfo);
+    if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, options, kernelInfo);
   }
   mesh_t* mesh = ins->mesh;
 

@@ -579,6 +579,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   mesh->Np = (mesh->N + 1) * (mesh->N + 1) * (mesh->N + 1);
   mesh->Nelements = meshRoot->Nelements;
   mesh->Nverts = meshRoot->Nverts;
+  mesh->Nfaces = meshRoot->Nfaces;
   mesh->EX = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EY = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EZ = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
@@ -588,12 +589,16 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   mesh->EToV = (hlong*) calloc(mesh->Nverts * mesh->Nelements, sizeof(hlong));
   memcpy(mesh->EToV, meshRoot->EToV, mesh->Nverts * mesh->Nelements * sizeof(hlong));
 
-  meshLoadReferenceNodesHex3D(mesh, mesh->N);
+  meshParallelConnect(mesh);
+  meshConnectBoundary(mesh);
+
+  meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
 
   int buildOnly  = 0;
   if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
 
   meshPhysicalNodesHex3D(mesh, buildOnly);
+
   meshHaloSetup(mesh);
   meshConnectFaceNodes3D(mesh);
   meshParallelConnectNodes(mesh, 0, buildOnly);

@@ -29,10 +29,11 @@
 #include "mesh3D.h"
 #define NODE_GEN
 
-void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N)
+void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
 {
   mesh->N = N;
   mesh->Nq = N + 1;
+  mesh->cubNq = cubN + 1;
   mesh->Nfp = (N + 1) * (N + 1);
   mesh->Np = (N + 1) * (N + 1) * (N + 1);
   mesh->Nverts = 8;
@@ -60,7 +61,6 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N)
   DegreeRaiseMatrix1D(mesh->N, mesh->N+1, mesh->interpRaise);
   DegreeRaiseMatrix1D(mesh->N-1, mesh->N, mesh->interpLower);
 
-  mesh->cubNq = 3 * mesh->N / 2 + 1;
   mesh->cubNfp = mesh->cubNq * mesh->cubNq;
   mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
   // cubN+1 point Gauss-Legendre quadrature
@@ -70,7 +70,6 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N)
 
   mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
   InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
-
 
   //cubature project cubProject = cubInterp^T
   mesh->cubProject = (dfloat*) calloc(mesh->cubNq*mesh->Nq, sizeof(dfloat));

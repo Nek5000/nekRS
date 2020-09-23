@@ -82,7 +82,7 @@ void meshPhysicalNodesTet3D(mesh3D *mesh);
 void meshPhysicalNodesHex3D(mesh3D *mesh, int nrsBuildOnly);
 
 void meshLoadReferenceNodesTet3D(mesh3D *mesh, int N);
-void meshLoadReferenceNodesHex3D(mesh3D *mesh, int N);
+void meshLoadReferenceNodesHex3D(mesh3D *mesh, int N, int cubN);
 
 void meshGradientTet3D(mesh3D *mesh, dfloat *q, dfloat *dqdx, dfloat *dqdy, dfloat *dqdz);
 void meshGradientHex3D(mesh3D *mesh, dfloat *q, dfloat *dqdx, dfloat *dqdy, dfloat *dqdz);

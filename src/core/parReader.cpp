@@ -172,6 +172,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   else
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
 
+  int cubN = round(3./2 * (N+1) - 1) - 1;
+  ini.extract("general", "cubaturepolynomialorder", cubN);
+  options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
+
   double dt;
   if(ini.extract("general", "dt", dt))
     options.setArgs("DT", to_string_f(dt));

@@ -6,6 +6,7 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
 
 mesh_t* createMeshDummy(MPI_Comm comm,
                         int N,
+                        int cubN,
                         setupAide &options,
                         occa::device device,
                         occa::properties& kernelInfo)
@@ -134,9 +135,9 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   libParanumal::meshParallelConnect(mesh);
 
   // load reference (r,s,t) element nodes
-  libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+  libParanumal::meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (mesh->rank == 0)
-    printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh, 1);
@@ -164,6 +165,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 
 mesh_t* createMeshT(MPI_Comm comm,
                     int N,
+                    int cubN,
                     int isMeshT,
                     setupAide &options,
                     occa::device device,
@@ -191,9 +193,9 @@ mesh_t* createMeshT(MPI_Comm comm,
   libParanumal::meshConnectBoundary(mesh);
 
   // load reference (r,s,t) element nodes
-  libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+  libParanumal::meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (mesh->rank == 0)
-    printf("using nodes file Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh, 0);
@@ -228,6 +230,7 @@ mesh_t* createMeshT(MPI_Comm comm,
 
 mesh_t* createMeshV(MPI_Comm comm,
                     int N,
+                    int cubN,
                     mesh_t* meshT,
                     setupAide &options,
                     occa::properties& kernelInfo)
