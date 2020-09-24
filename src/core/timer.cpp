@@ -234,8 +234,8 @@ void printRunStat()
   dEtime[3] = timer::query("makeq", "DEVICE:MAX");
   dEtime[4] = timer::query("scalarSolve", "DEVICE:MAX");
   dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
-  dEtime[6] = timer::query("preSolveProjection", "DEVICE:MAX");
-  dEtime[6]+= timer::query("postSolveProjection", "DEVICE:MAX");
+  dEtime[6] = timer::query("pre", "DEVICE:MAX");
+  dEtime[6]+= timer::query("post", "DEVICE:MAX");
 
   dEtime[8] = timer::query("dotp", "DEVICE:MAX");
 
