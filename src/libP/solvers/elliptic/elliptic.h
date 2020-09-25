@@ -115,6 +115,7 @@ typedef struct
   occa::stream dataStream;
 
   occa::memory o_x;
+  occa::memory o_x0;
   occa::memory o_r;
   occa::memory o_s;
   occa::memory o_shat;

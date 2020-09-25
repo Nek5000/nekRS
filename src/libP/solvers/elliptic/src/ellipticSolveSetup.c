@@ -131,8 +131,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
     elliptic->o_rtmp =
       elliptic->o_wrk.slice(3 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
-    elliptic->o_grad =
-      elliptic->o_wrk.slice(4 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+    //elliptic->o_grad =
+    //  elliptic->o_wrk.slice(4 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
   } else {
     elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
     elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
@@ -151,6 +151,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       elliptic->Ntotal * elliptic->Nfields * 4 * sizeof(dfloat),
       elliptic->grad);
   }
+
+  elliptic->o_x0 = mesh->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
   elliptic->tmp = (dfloat*) calloc(Nblock, sizeof(dfloat));
   elliptic->o_tmp = mesh->device.malloc(Nblock * sizeof(dfloat), elliptic->tmp);
