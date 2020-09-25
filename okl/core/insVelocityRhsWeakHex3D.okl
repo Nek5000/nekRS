@@ -55,15 +55,15 @@
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
 
-            dpdr += Dr * s_P[k][j][n];
-            dpds += Ds * s_P[k][n][i];
-            dpdt += Dt * s_P[n][j][i];
+            dpdr += Dr * JW*s_P[k][j][n];
+            dpds += Ds * JW*s_P[k][n][i];
+            dpdt += Dt * JW*s_P[n][j][i];
           }
 
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          RHS[id + 0 * offset] = JW * (drdx * dpdr + dsdx * dpds + dtdx * dpdt);
-          RHS[id + 1 * offset] = JW * (drdy * dpdr + dsdy * dpds + dtdy * dpdt);
-          RHS[id + 2 * offset] = JW * (drdz * dpdr + dsdz * dpds + dtdz * dpdt);
+          RHS[id + 0 * offset] = -(drdx * dpdr + dsdx * dpds + dtdx * dpdt);
+          RHS[id + 1 * offset] = -(drdy * dpdr + dsdy * dpds + dtdy * dpdt);
+          RHS[id + 2 * offset] = -(drdz * dpdr + dsdz * dpds + dtdz * dpdt);
         }
       }
     }

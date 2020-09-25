@@ -190,6 +190,8 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->o_wrk3,
     ins->o_wrk0);
 #else
+  // TODO: add non-zero outflow handling 
+
   ins->velocityRhsWeakKernel(
     mesh->Nelements,
     scale,
@@ -199,7 +201,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->o_mue,
     ins->o_div,
     ins->o_P,
-    ins->o_wrk0);    
+    ins->o_wrk0);  
 #endif
 
   ins->velocityRhsKernel(

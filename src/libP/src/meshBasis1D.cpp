@@ -124,15 +124,14 @@ void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT){
 
   int _Nq = _N+1;
 
-/*
   for(int n=0;n<_Nq;++n){
     for(int m=0;m<_Nq;++m){
       _DT[n*_Nq+m] = 0.0;
       for(int k=0;k<_Nq;++k) _DT[n*_Nq+m] += _D[m*_Nq+k];
     }
   }
-*/
 
+/*
   dfloat *r1D  = (dfloat *) calloc(_Nq, sizeof(dfloat));
   dfloat *w1D  = (dfloat *) calloc(_Nq, sizeof(dfloat));
   JacobiGLL(_N, r1D, w1D); // i.e. 1D gll points and correspondin weights from mass lumping
@@ -147,7 +146,7 @@ void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT){
     for(int m=0;m<_Nq;++m){
       dfloat dw = 0;
       for(int i=0; i<_Nq; i++) dw += V1D[n*_Nq + i]*V1Dr[m*_Nq + i];
-      _DT[n*_Nq+m] = dw*w1D[m]; // scale by w
+      _DT[n*_Nq+m] = dw; //*w1D[m]; // scale by w
     }
   }
 
@@ -155,6 +154,7 @@ void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT){
   free(w1D);
   free(V1D);
   free(V1Dr);
+*/
 }
 
 void InterpolationMatrix1D(int _N,
