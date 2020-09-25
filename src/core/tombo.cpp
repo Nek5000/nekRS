@@ -173,6 +173,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
   dfloat scale = -1./3;
   if(ins->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
+#if 1
   ins->pqKernel(
        mesh->Nelements*mesh->Np,
        scale,
@@ -188,6 +189,18 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->fieldOffset,
     ins->o_wrk3,
     ins->o_wrk0);
+#else
+  ins->velocityRhsWeakKernel(
+    mesh->Nelements,
+    scale,
+    mesh->o_vgeo,
+    mesh->o_DW,
+    ins->fieldOffset,
+    ins->o_mue,
+    ins->o_div,
+    ins->o_P,
+    ins->o_wrk0);    
+#endif
 
   ins->velocityRhsKernel(
     mesh->Nelements,

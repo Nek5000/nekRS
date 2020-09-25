@@ -145,6 +145,7 @@ typedef struct {
   int Nq, NqP, NpP;
   
   dfloat *D; // 1D differentiation matrix (for tensor-product)
+  dfloat *DW; // weak 1D differentiation matrix (for tensor-product)
   dfloat *gllz; // 1D GLL quadrature nodes
   dfloat *gllw; // 1D GLL quadrature weights
 
@@ -358,6 +359,7 @@ typedef struct {
   occa::memory o_sMT;
 
   occa::memory o_D; // tensor product differentiation matrix (for Hexes)
+  occa::memory o_DW; // tensor product differentiation matrix (for Hexes)
   occa::memory o_SrrT, o_SrsT, o_SrtT; //element stiffness matrices
   occa::memory o_SsrT, o_SssT, o_SstT;
   occa::memory o_Srr, o_Srs, o_Srt, o_Sss, o_Sst, o_Stt; // for char4-based kernels
@@ -631,6 +633,8 @@ void GradVandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *Vr);
 void MassMatrix1D(int _Np, dfloat *V, dfloat *_MM);
 void Dmatrix1D(int _N, int NpointsIn, dfloat *_rIn,
                                int NpointsOut, dfloat *_rOut, dfloat *_Dr);
+void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT);
+
 void InterpolationMatrix1D(int _N,
                                int NpointsIn, dfloat *rIn,
                                int NpointsOut, dfloat *rOut,
