@@ -141,12 +141,13 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     mesh->o_EToB,
     ins->o_EToB,
     time,
-    -(ins->g0 * ins->idt),
+    ins->g0 * ins->idt,
     mesh->o_x,
     mesh->o_y,
     mesh->o_z,
     ins->fieldOffset,
     ins->o_usrwrk,
+    ins->o_wrk6,
     ins->o_U,
     ins->o_wrk3);
 

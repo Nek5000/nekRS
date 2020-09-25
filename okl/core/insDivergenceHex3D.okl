@@ -117,9 +117,8 @@
   }
 }
 
-// Adding slip BC to Pressure Rhs i.e. dp/dn = 0 =>dp/dn -n \dot F = -n \dot F for slip
-// or dp/dn -n\dot F = -g0/dt n \dot u^(n+1) for other BC's
-
+// adding dp/dn -n\dot F 
+// if slip (dp/dn == 0) -n\dot F else -g0/dt n \dot u^(n+1)
 #define surfaceTermsTOMBO(sk,face,m, i, j)                                              \
   {                                                                                     \
     struct bcData bc;                                                                   \
@@ -143,12 +142,17 @@
     bc.wrk = W;                                                                         \
     bc.id  = EToBM[face + p_Nfaces * e];                                                \
     const dlong bcType = EToB[face + p_Nfaces * e];                                     \
-    if(bcType > 0 && bcType != 3) {                                                     \
+    if(bcType == 2) {                                                                   \
       bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                                      \
     }                                                                                   \
-    dfloat scale = coef;                                                                \
-    if(bcType == 4 || bcType == 5 || bcType == 6 ) scale = -1.f;                        \
-    s_fluxDiv[m][j][i] = scale * WSJ * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP); \
+    dfloat flux = coef * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP);               \
+    if(bcType == 4 || bcType == 5 || bcType == 6 ) {                                    \
+      const dfloat fx = F[idM + 0 * offset];                                            \
+      const dfloat fy = F[idM + 1 * offset];                                            \
+      const dfloat fz = F[idM + 2 * offset];                                            \
+      flux = bc.nx * fx + bc.ny * fy + bc.nz * fz;                                      \
+    }                                                                                   \
+    s_fluxDiv[m][j][i] = -WSJ*flux;                                                     \
   }
 
 @kernel void insDivergenceSurfaceTOMBOHex3D(const dlong Nelements,
@@ -164,6 +168,7 @@
                                             @restrict const dfloat*  z,
                                             const dlong offset,
                                             @restrict const dfloat*  W,
+                                            @restrict const dfloat*  F,
                                             @restrict const dfloat*  U,
                                             @restrict dfloat*  divU)
 {
