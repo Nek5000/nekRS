@@ -26,7 +26,6 @@
 #include "elliptic.h"
 #include "ellipticResidualProjection.h"
 #include <iostream>
-#include <algorithm>
 #include <timer.hpp>
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
@@ -34,17 +33,9 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
                                 occa::memory& o_x,
                                 const dlong x_offset)
 {
-#if 1
-  // o_x_tmp = o_x[x_offset]
-  o_rtmp.copyFrom(o_x, Nlocal * sizeof(dfloat), 0, x_offset * fieldOffset * sizeof(dfloat));
-  matvecOperator(o_rtmp, o_Ap);
-  // o_Ax[Ax_offset] = o_Ax_tmp
-  o_Ax.copyFrom(o_Ap, Nlocal * sizeof(dfloat), fieldOffset * Ax_offset * sizeof(dfloat), 0);
-#else
   occa::memory o_xtmp = o_x + fieldOffset * x_offset * sizeof(dfloat);
   occa::memory o_Axtmp = o_Ax + fieldOffset * Ax_offset * sizeof(dfloat);
   matvecOperator(o_xtmp, o_Axtmp);
-#endif
 }
 void ResidualProjection::updateProjectionSpace()
 {
@@ -52,8 +43,8 @@ void ResidualProjection::updateProjectionSpace()
   if(m <= 0) return;
 
   multiWeightedInnerProduct(o_xx, m, o_bb, m-1);
-  gop(alpha.data(),m);
-  o_alpha.copyFrom(alpha.data(),sizeof(dfloat)*m);
+  gop(alpha,m);
+  o_alpha.copyFrom(alpha,sizeof(dfloat)*m);
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
@@ -85,9 +76,9 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   const int m = numVecsProjection;
   if(m <= 0) return;
   multiWeightedInnerProduct(o_xx,m,o_r,0);
-  gop(alpha.data(),m);
+  gop(alpha,m);
 
-  o_alpha.copyFrom(alpha.data(), m * sizeof(dfloat));
+  o_alpha.copyFrom(alpha, m * sizeof(dfloat));
 
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_bb, o_rtmp);
@@ -150,13 +141,13 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   const dlong Nblock = elliptic.Nblock;
   numVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
-  alpha.resize(maxNumVecsProjection);
-  work.resize(maxNumVecsProjection);
-  multiwork.resize(Nblock*maxNumVecsProjection);
-  o_alpha = elliptic.mesh->device.malloc < dfloat > (maxNumVecsProjection);
-  o_xbar = elliptic.mesh->device.malloc < dfloat > (Nlocal);
-  o_xx = elliptic.mesh->device.malloc < dfloat > (fieldOffset * maxNumVecsProjection);
-  o_bb = elliptic.mesh->device.malloc < dfloat > (fieldOffset * maxNumVecsProjection);
+  alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
+  work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
+  multiwork = (dfloat*) calloc(Nblock*maxNumVecsProjection, sizeof(dfloat));
+  o_alpha = elliptic.mesh->device.malloc(maxNumVecsProjection * sizeof(dfloat));
+  o_xbar = elliptic.mesh->device.malloc(Nlocal * sizeof(dfloat));
+  o_xx = elliptic.mesh->device.malloc(fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  o_bb = elliptic.mesh->device.malloc(fieldOffset * maxNumVecsProjection * sizeof(dfloat));
 
   char fileName[BUFSIZ], kernelName[BUFSIZ];
   for (int r = 0; r < 2; r++) {
@@ -237,7 +228,7 @@ void ResidualProjection::multiWeightedInnerProduct(
 
   multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, offset*fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
-  o_wrk.copyTo(multiwork.data(), sizeof(dfloat)*m*Nblock);
+  o_wrk.copyTo(multiwork, sizeof(dfloat)*m*Nblock);
   for(dlong k = 0 ; k < m; ++k){
     dfloat accum = 0.0;
     for(dlong n = 0; n < Nblock; ++n){

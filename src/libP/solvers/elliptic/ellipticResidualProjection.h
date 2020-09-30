@@ -76,9 +76,9 @@ private:
   occa::kernel scaledAddKernel;
   occa::kernel sumKernel;
 
-  std::vector<dfloat> alpha; // host shadow
-  std::vector<dfloat> work; // O(m) work array
-  std::vector<dfloat> multiwork; // O(Nblock*m) work array
+  dfloat * alpha;
+  dfloat * work;
+  dfloat * multiwork;
   dfloat* tmp;
 
   dlong numVecsProjection;

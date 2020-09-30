@@ -27,11 +27,13 @@ SOFTWARE.
 
 //float data type
 #if 0
+#define DFLOAT_SINGLE
 #define dfloat float
 #define MPI_DFLOAT MPI_FLOAT
 #define dfloatFormat "%f"
 #define dfloatString "float"
 #else
+#define DFLOAT_DOUBLE
 #define dfloat double
 #define MPI_DFLOAT MPI_DOUBLE
 #define dfloatFormat "%lf"

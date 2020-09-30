@@ -56,8 +56,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
-  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
 
 }
 
@@ -102,8 +102,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
-  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
