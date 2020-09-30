@@ -72,6 +72,7 @@ void AMGSetup(solver_t *MM,
 
   M->AMGSetup(A);
 
+  MPI_Barrier(M->comm);
   if(rank==0) printf("done (%gs)\n", MPI_Wtime()-startTime);
 }
 

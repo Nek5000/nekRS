@@ -37,6 +37,7 @@
     bc.y   = y[bc.idM];                                     \
     bc.z   = z[bc.idM];                                     \
     bc.fieldOffset = offset;                                \
+    bc.sM = S[bc.idM];                                      \
     bc.wrk = W;                                             \
                                                             \
     const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];        \
@@ -61,7 +62,7 @@
                                  @restrict const dfloat*  x,
                                  @restrict const dfloat*  y,
                                  @restrict const dfloat*  z,
-                                 @restrict const dfloat*  U,
+                                 @restrict const dfloat*  S,
                                  @restrict const int*  mapB,
                                  @restrict const dfloat*  W,
                                  @restrict dfloat*  rhsU)
@@ -210,6 +211,16 @@
             if(EToBM[e * p_Nfaces + 4] > 0)
               r_rhsU[k] += s_ndU[k][j];
           }
+        }
+      }
+    }
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+        for(int k = 0; k < p_Nq; k++) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          rhsU[id] -= r_rhsU[k];
         }
       }
     }
