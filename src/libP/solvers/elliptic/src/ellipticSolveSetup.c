@@ -735,7 +735,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         kernelInfo["defines/" "p_NqCoarse"] = 2;
       }
 
-      kernelInfo["defines/" "p_NpFEM"] = mesh->NpFEM;
+      //kernelInfo["defines/" "p_NpFEM"] = mesh->NpFEM;
 
       int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
       kernelInfo["defines/" "p_Nmax"] = Nmax;
