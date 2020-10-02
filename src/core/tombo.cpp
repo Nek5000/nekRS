@@ -85,6 +85,14 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_wrk0,
     ins->o_wrk3);
 
+  ins->gradientVolumeKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_Dmatrices,
+    ins->fieldOffset,
+    ins->o_div,
+    ins->o_wrk0);
+
   if (ins->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
     ins->pressureStressKernel(
       mesh->Nelements,
@@ -95,14 +103,6 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
       ins->o_Ue,
       ins->o_div,
       ins->o_wrk3);
-
-  ins->gradientVolumeKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_Dmatrices,
-    ins->fieldOffset,
-    ins->o_div,
-    ins->o_wrk0);
 
   occa::memory o_irho = ins->o_ellipticCoeff;
   ins->pressureRhsKernel(
@@ -133,6 +133,13 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_wrk6,
     ins->o_wrk3);
 
+  ins->pressureAddQtlKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    ins->g0 * ins->idt,
+    ins->o_div,
+    ins->o_wrk3);
+
   ins->divergenceSurfaceKernel(
     mesh->Nelements,
     mesh->o_vgeo,
@@ -151,15 +158,8 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_U,
     ins->o_wrk3);
 
-  ins->pressureAddQtlKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    ins->g0 * ins->idt,
-    ins->o_div,
-    ins->o_wrk3);
-
   oogs::startFinish(ins->o_wrk3, 1, 0, ogsDfloat, ogsAdd, ins->gsh);
-  if (ins->pSolver->Nmasked) mesh->maskKernel(ins->pSolver->Nmasked, ins->pSolver->o_maskIds, ins->o_wrk3);
+  //if (ins->pSolver->Nmasked) mesh->maskKernel(ins->pSolver->Nmasked, ins->pSolver->o_maskIds, ins->o_wrk3);
 
   ins->o_wrk1.copyFrom(ins->o_P, ins->Ntotal * sizeof(dfloat));
   ins->NiterP = ellipticSolve(ins->pSolver, ins->presTOL, ins->o_wrk3, ins->o_wrk1);
@@ -174,8 +174,8 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
   dfloat scale = -1./3;
   if(ins->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
-#if 1
-  ins->pqKernel(
+#if 0
+  ins->PQKernel(
        mesh->Nelements*mesh->Np,
        scale,
        ins->o_mue,
@@ -191,30 +191,45 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->o_wrk3,
     ins->o_wrk0);
 #else
-  // TODO: add non-zero outflow handling 
+  // TODO: add traction + non-zero outflow surface terms to BF 
 
-  ins->velocityRhsWeakKernel(
+  ins->mueDivKernel(
+       mesh->Nelements*mesh->Np,
+       scale,
+       ins->o_mue,
+       ins->o_div,
+       ins->o_wrk3); 
+
+  ins->gradientVolumeKernel(
     mesh->Nelements,
-    scale,
     mesh->o_vgeo,
-    mesh->o_DW,
+    mesh->o_Dmatrices,
     ins->fieldOffset,
-    ins->o_mue,
-    ins->o_div,
+    ins->o_wrk3,
+    ins->o_wrk0);
+
+  ins->wgradientVolumeKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_Dmatrices,
+    ins->fieldOffset,
     ins->o_P,
-    ins->o_wrk0);  
+    ins->o_wrk3); 
+
+  ins->scaledAddKernel(
+    ins->NVfields*ins->fieldOffset,
+    1.0,
+    0*ins->fieldOffset,
+    ins->o_wrk3,
+    1.0,
+    0*ins->fieldOffset,
+    ins->o_wrk0);
 #endif
 
   ins->velocityRhsKernel(
     mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_MM,
-    ins->idt,
-    ins->o_extbdfA,
-    ins->o_extbdfB,
     ins->fieldOffset,
     ins->o_BF,
-    ins->o_FU,
     ins->o_wrk0,
     ins->o_rho,
     ins->o_wrk3);
@@ -225,12 +240,13 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
   ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
 
   if(ins->uvwSolver) {
-    if (ins->uvwSolver->Nmasked) mesh->maskKernel(ins->uvwSolver->Nmasked,
-                                                  ins->uvwSolver->o_maskIds,
-                                                  ins->o_wrk3);
+//    if (ins->uvwSolver->Nmasked) mesh->maskKernel(ins->uvwSolver->Nmasked,
+//                                                  ins->uvwSolver->o_maskIds,
+//                                                  ins->o_wrk3);
 
     ins->NiterU = ellipticSolve(ins->uvwSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
   } else {
+/*
     if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked,
                                                 ins->uSolver->o_maskIds,
                                                 ins->o_wrk3);
@@ -240,6 +256,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked,
                                                 ins->wSolver->o_maskIds,
                                                 ins->o_wrk5);
+*/
 
     ins->NiterU = ellipticSolve(ins->uSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
     ins->NiterV = ellipticSolve(ins->vSolver, ins->velTOL, ins->o_wrk4, ins->o_wrk1);

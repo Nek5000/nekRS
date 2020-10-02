@@ -105,11 +105,7 @@
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; ++k) {
-          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
-          // const dfloat invJW = vgeo[gid + p_IJWID*p_Np];
-
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          // divU[id] = -invJW*r_div[k];
           divU[id] = r_div[k];
         }
       }
@@ -138,13 +134,10 @@
     bc.uM  = U[idM + 0 * offset];                                                       \
     bc.vM  = U[idM + 1 * offset];                                                       \
     bc.wM  = U[idM + 2 * offset];                                                       \
-    bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                                             \
     bc.wrk = W;                                                                         \
     bc.id  = EToBM[face + p_Nfaces * e];                                                \
     const dlong bcType = EToB[face + p_Nfaces * e];                                     \
-    if(bcType == 2) {                                                                   \
-      bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                                      \
-    }                                                                                   \
+    bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                                        \
     dfloat flux = coef * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP);               \
     if(bcType == 4 || bcType == 5 || bcType == 6 ) {                                    \
       const dfloat fx = F[idM + 0 * offset];                                            \

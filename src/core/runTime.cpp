@@ -65,6 +65,7 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
     else
       qthermal(ins, time + dt, ins->o_div);
   }
+  //ins->fillKernel(ins->fieldOffset, 0.0, ins->o_div);
 
   if(ins->flow) fluidSolve(ins, time, dt, ins->o_U); 
 

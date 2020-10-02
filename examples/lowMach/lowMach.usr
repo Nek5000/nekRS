@@ -121,9 +121,11 @@ C-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      logical ifaln,ifnorx,ifnory,ifnorz
+
       call rescale_x(xm1,-1.0,1.0)
       call rescale_x(ym1, 0.0,1.0)
-      call rescale_x(zm1, 0.0,0.1)
+      call rescale_x(zm1, 0.0,1.0)
 
       do iel=1,nelt
       do ifc=5,6
@@ -131,9 +133,13 @@ C-----------------------------------------------------------------------
       enddo
       enddo
 
+
       do iel=1,nelt
       do ifc=1,2*ndim
-         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+         call chknord(ifaln,ifnorx,ifnory,ifnorz,ifc,iel)
+         if (cbc(ifc,iel,1) .eq. 'v  ' .and. ifnorx) then 
+           boundaryID(ifc,iel) = 1
+         endif
          if (cbc(ifc,iel,1) .eq. 'v  ') cbc(ifc,iel,2) = 't  ' 
          if (cbc(ifc,iel,1) .eq. 'P  ') cbc(ifc,iel,2) = 'P  ' 
       enddo

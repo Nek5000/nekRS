@@ -1,5 +1,5 @@
 [OCCA]
-backend = SERIAL
+backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 

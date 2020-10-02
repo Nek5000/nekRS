@@ -649,6 +649,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       kernelName = "insGradientVolume" + suffix;
       ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
+      kernelName = "inswGradientVolume" + suffix;
+      ins->wgradientVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
       fileName = oklpath + "insSumMakef" + suffix + ".okl";
       kernelName = "insSumMakef" + suffix;
       ins->sumMakefKernel =
@@ -685,11 +689,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
       kernelName = "insVelocityRhsTOMBO" + suffix;
       ins->velocityRhsKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insVelocityRhsWeak" + suffix + ".okl";
-      kernelName = "insVelocityRhsWeak" + suffix;
-      ins->velocityRhsWeakKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
@@ -779,7 +778,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
       fileName = oklpath + "insPQ.okl";
       kernelName = "insPQ";
-      ins->pqKernel =
+      ins->PQKernel =
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = oklpath + "insMueDiv.okl";
+      kernelName = "insMueDiv";
+      ins->mueDivKernel =
         mesh->device.buildKernel(fileName, kernelName, kernelInfo);
     }
     MPI_Barrier(mesh->comm);

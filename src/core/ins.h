@@ -128,7 +128,8 @@ typedef struct
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
-  occa::kernel pqKernel;
+  occa::kernel PQKernel;
+  occa::kernel mueDivKernel;
   occa::kernel dotMultiplyKernel;
 
   occa::kernel scalarScaledAddKernel;
@@ -138,7 +139,7 @@ typedef struct
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel velocityExtKernel;
 
-  occa::kernel velocityRhsWeakKernel;
+  occa::kernel wgradientVolumeKernel;
 
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
