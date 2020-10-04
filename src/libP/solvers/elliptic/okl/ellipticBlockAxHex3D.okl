@@ -1945,13 +1945,6 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
     @exclusive dfloat r_Au[p_Nq];
     @exclusive dfloat r_Av[p_Nq];
     @exclusive dfloat r_Aw[p_Nq];
-    @exclusive dfloat rx , ry, rz; 
-    @exclusive dfloat sx , sy, sz; 
-    @exclusive dfloat tx , ty, tz; 
-    // Symmetric Stress Tensor
-    @exclusive dfloat s11,s12,s13; 
-    @exclusive dfloat s21,s22,s23; 
-    @exclusive dfloat s31,s32,s33; 
 
    // prefetch q
     #pragma unroll p_Nq
@@ -2133,22 +2126,17 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    @shared dfloat s_U[p_Nq][p_Nq];
-    @shared dfloat s_V[p_Nq][p_Nq];
-    @shared dfloat s_W[p_Nq][p_Nq];
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
 
-    @exclusive dfloat s_Uloc[p_Nq];
-    @exclusive dfloat s_Vloc[p_Nq];
-    @exclusive dfloat s_Wloc[p_Nq];
-    @exclusive dfloat s_SUtloc[p_Nq];
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
 
-    @shared dfloat s_SVr[p_Nq][p_Nq];
-    @shared dfloat s_SVs[p_Nq][p_Nq];
-    @exclusive dfloat s_SVtloc[p_Nq];
-
-    @shared dfloat s_SWr[p_Nq][p_Nq];
-    @shared dfloat s_SWs[p_Nq][p_Nq];
-    @exclusive dfloat s_SWtloc[p_Nq];
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
 
     //
     @exclusive dfloat rx , ry, rz; 
@@ -2160,34 +2148,28 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
     @exclusive dfloat s31,s32,s33; 
 
 
-    @exclusive dfloat r_Au[p_Nq];
-    @exclusive dfloat r_Av[p_Nq];
-    @exclusive dfloat r_Aw[p_Nq];
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
     @exclusive dlong element;
 
    // prefetch q
-    #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
           element = elementList[e];
           if(k==0) s_D[j][i] = D[p_Nq*j+i];
             const dlong id = element*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
-            s_U[j][i] =q[id + 0*offset];
-            s_V[j][i] =q[id + 1*offset];
-            s_W[j][i] =q[id + 2*offset];
-            if(k==0){
-              #pragma unroll p_Nq
-              for(int l = 0 ; l < p_Nq; ++l){
-                const dlong other_id = element*p_Np+l*p_Nq*p_Nq+j*p_Nq+i;
-                s_Uloc[l] =q[other_id + 0*offset];
-                s_Vloc[l] =q[other_id + 1*offset];
-                s_Wloc[l] =q[other_id + 2*offset];
-              }
-            }
+            s_U[k][j][i] =q[id + 0*offset];
+            s_V[k][j][i] =q[id + 1*offset];
+            s_W[k][j][i] =q[id + 2*offset];
         }
       }
-      @barrier("local");
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){   
           const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + element*p_Np*p_Nvgeo;
@@ -2214,17 +2196,17 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
             const dfloat Djm = s_D[j][m]; // Ds
             const dfloat Dkm = s_D[k][m]; // Dt
 
-            ur += Dim*s_U[j][m];
-            us += Djm*s_U[m][i];
-            ut += Dkm*s_Uloc[m];
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
             //
-            vr += Dim*s_V[j][m];
-            vs += Djm*s_V[m][i];
-            vt += Dkm*s_Vloc[m];
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
             //
-            wr += Dim*s_W[j][m];
-            ws += Djm*s_W[m][i];
-            wt += Dkm*s_Wloc[m];
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
           }
 
           const dlong id = element*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
@@ -2260,64 +2242,63 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
           s32 = w_lam0*JW*(dwdy + dvdz); 
           s33 = w_lam0*JW*(dwdz + dwdz); 
           // store in register
-          r_Au[k] =  u_lam1*JW*s_U[j][i]; 
-          r_Av[k] =  v_lam1*JW*s_V[j][i];
-          r_Aw[k] =  w_lam1*JW*s_W[j][i];
+          r_Au =  u_lam1*JW*s_U[k][j][i]; 
+          r_Av =  v_lam1*JW*s_V[k][j][i];
+          r_Aw =  w_lam1*JW*s_W[k][j][i];
         }
       }
-      @barrier("local");
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
-         s_U[j][i] =  rx*s11 + ry*s12 + rz*s13;
-         s_V[j][i] =  sx*s11 + sy*s12 + sz*s13;
-         s_SUtloc[k] =  tx*s11 + ty*s12 + tz*s13;
+         s_U[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_V[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_W[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
          //
-         s_SVr[j][i] =  rx*s21 + ry*s22 + rz*s23;
-         s_SVs[j][i] =  sx*s21 + sy*s22 + sz*s23;
-         s_SVtloc[k] =  tx*s21 + ty*s22 + tz*s23;
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
          //
-         s_SWr[j][i] =  rx*s31 + ry*s32 + rz*s33;
-         s_SWs[j][i] =  sx*s31 + sy*s32 + sz*s33;
-         s_SWtloc[k] =  tx*s31 + ty*s32 + tz*s33;
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
 
         }
       }
-      @barrier("local");
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
           #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
             const dfloat Dim = s_D[m][i]; // Dr'
             const dfloat Djm = s_D[m][j]; // Ds'
-
-            r_Au[k] += Dim*s_U[j][m];
-            r_Au[k] += Djm*s_V[m][i];
-
-            r_Av[k] += Dim*s_SVr[j][m];
-            r_Av[k] += Djm*s_SVs[m][i];
-
-            r_Aw[k] += Dim*s_SWr[j][m];
-            r_Aw[k] += Djm*s_SWs[m][i];
-          }
-        }
-      }
-    }
-    #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
-          #pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
             const dfloat Dkm = s_D[m][k]; // Dt'
 
-            r_Au[k] += Dkm*s_SUtloc[m];
-            r_Av[k] += Dkm*s_SVtloc[m];
-            r_Aw[k] += Dkm*s_SWtloc[m];
+            r_Au += Dim*s_U[k][j][m];
+            r_Au += Djm*s_V[k][m][i];
+            r_Au += Dkm*s_W[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
           }
           const dlong id = element*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
-          Aq[id+0*offset] = r_Au[k];
-          Aq[id+1*offset] = r_Av[k];
-          Aq[id+2*offset] = r_Aw[k];
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
         
         }
       }
@@ -2343,23 +2324,20 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
 
 
 for(dlong e=0; e<Nelements; ++e; @outer(0)){
+  // AK: heavy memory usage, optimize later
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    @shared dfloat s_U[p_Nq][p_Nq];
-    @shared dfloat s_V[p_Nq][p_Nq];
-    @shared dfloat s_W[p_Nq][p_Nq];
-    @exclusive dfloat s_Uloc[p_Nq];
-    @exclusive dfloat s_Vloc[p_Nq];
-    @exclusive dfloat s_Wloc[p_Nq];
-    @exclusive dfloat s_SUtloc[p_Nq];
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
 
-    @shared dfloat s_SVr[p_Nq][p_Nq];
-    @shared dfloat s_SVs[p_Nq][p_Nq];
-    @shared dfloat s_SVtloc[p_Nq];
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
 
-    @shared dfloat s_SWr[p_Nq][p_Nq];
-    @shared dfloat s_SWs[p_Nq][p_Nq];
-    @shared dfloat s_SWtloc[p_Nq];
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
     //
     @exclusive dfloat rx , ry, rz; 
     @exclusive dfloat sx , sy, sz; 
@@ -2371,32 +2349,26 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
     @exclusive dfloat s31,s32,s33; 
 
 
-    @exclusive dfloat r_Au[p_Nq];
-    @exclusive dfloat r_Av[p_Nq];
-    @exclusive dfloat r_Aw[p_Nq];
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
 
    // prefetch q
-    #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
           if(k==0) s_D[j][i] = D[p_Nq*j+i];
             const dlong id = e*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
-            s_U[j][i] = q[id + 0*offset];
-            s_V[j][i] = q[id + 1*offset];
-            s_W[j][i] = q[id + 2*offset];
-            if(k==0){
-              #pragma unroll p_Nq
-              for(int l = 0 ; l < p_Nq; ++l){
-                const dlong other_id = e*p_Np+l*p_Nq*p_Nq+j*p_Nq+i;
-                s_Uloc[l] = q[other_id + 0*offset];
-                s_Vloc[l] = q[other_id + 1*offset];
-                s_Wloc[l] = q[other_id + 2*offset];
-              }
-            }
+            s_U[k][j][i] = q[id + 0*offset];
+            s_V[k][j][i] = q[id + 1*offset];
+            s_W[k][j][i] = q[id + 2*offset];
         }
       }
-      @barrier("local");
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){   
           const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + e*p_Np*p_Nvgeo;
@@ -2423,17 +2395,17 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
             const dfloat Djm = s_D[j][m]; // Ds
             const dfloat Dkm = s_D[k][m]; // Dt
 
-            ur += Dim*s_U[j][m];
-            us += Djm*s_U[m][i];
-            ut += Dkm*s_Uloc[m];
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
             //
-            vr += Dim*s_V[j][m];
-            vs += Djm*s_V[m][i];
-            vt += Dkm*s_Vloc[m];
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
             //
-            wr += Dim*s_W[j][m];
-            ws += Djm*s_W[m][i];
-            wt += Dkm*s_Wloc[m];
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
           }
 
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
@@ -2462,67 +2434,65 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
           s32 = JW*(dwdy + dvdz); 
           s33 = JW*(dwdz + dwdz); 
           // store in register
-          r_Au[k] =  lambda[id+ 1 * offset + 0*loffset]*JW*s_U[j][i]; 
-          r_Av[k] =  lambda[id+ 1 * offset + 1*loffset]*JW*s_V[j][i];
-          r_Aw[k] =  lambda[id+ 1 * offset + 2*loffset]*JW*s_W[j][i];
+          r_Au =  lambda[id+ 1 * offset + 0*loffset]*JW*s_U[k][j][i]; 
+          r_Av =  lambda[id+ 1 * offset + 1*loffset]*JW*s_V[k][j][i];
+          r_Aw =  lambda[id+ 1 * offset + 2*loffset]*JW*s_W[k][j][i];
 
         }
       }
-      @barrier("local");
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
 
-         s_U[j][i] =  rx*s11 + ry*s12 + rz*s13;
-         s_V[j][i] =  sx*s11 + sy*s12 + sz*s13;
-         s_SUtloc[k] =  tx*s11 + ty*s12 + tz*s13;
+         s_U[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_V[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_W[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
          //
-         s_SVr[j][i] =  rx*s21 + ry*s22 + rz*s23;
-         s_SVs[j][i] =  sx*s21 + sy*s22 + sz*s23;
-         s_SVtloc[k] =  tx*s21 + ty*s22 + tz*s23;
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
          //
-         s_SWr[j][i] =  rx*s31 + ry*s32 + rz*s33;
-         s_SWs[j][i] =  sx*s31 + sy*s32 + sz*s33;
-         s_SWtloc[k] =  tx*s31 + ty*s32 + tz*s33;
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
 
         }
       }
-      @barrier("local");
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
            #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
             const dfloat Dim = s_D[m][i]; // Dr'
             const dfloat Djm = s_D[m][j]; // Ds'
-
-            r_Au[k] += Dim*s_U[j][m];
-            r_Au[k] += Djm*s_V[m][i];
-
-            r_Av[k] += Dim*s_SVr[j][m];
-            r_Av[k] += Djm*s_SVs[m][i];
-
-            r_Aw[k] += Dim*s_SWr[j][m];
-            r_Aw[k] += Djm*s_SWs[m][i];
-          }
-        }
-      }
-      @barrier("local");
-    }
-    #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
-           #pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
             const dfloat Dkm = s_D[m][k]; // Dt'
 
-            r_Au[k] += Dkm*s_SUtloc[m];
-            r_Av[k] += Dkm*s_SVtloc[m];
-            r_Aw[k] += Dkm*s_SWtloc[m];
+            r_Au += Dim*s_U[k][j][m];
+            r_Au += Djm*s_V[k][m][i];
+            r_Au += Dkm*s_W[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
           }
           const dlong id = e*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
-          Aq[id+0*offset] = r_Au[k];
-          Aq[id+1*offset] = r_Av[k];
-          Aq[id+2*offset] = r_Aw[k];
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
         
         }
       }
@@ -2548,22 +2518,17 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    @shared dfloat s_U[p_Nq][p_Nq];
-    @shared dfloat s_V[p_Nq][p_Nq];
-    @shared dfloat s_W[p_Nq][p_Nq];
-    @exclusive dfloat s_Uloc[p_Nq];
-    @exclusive dfloat s_Vloc[p_Nq];
-    @exclusive dfloat s_Wloc[p_Nq];
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
 
-    @exclusive dfloat s_SUtloc[p_Nq];
+    @shared dfloat s_SVr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SVt[p_Nq][p_Nq][p_Nq];
 
-    @shared dfloat s_SVr[p_Nq][p_Nq];
-    @shared dfloat s_SVs[p_Nq][p_Nq];
-    @exclusive dfloat s_SVtloc[p_Nq];
-
-    @shared dfloat s_SWr[p_Nq][p_Nq];
-    @shared dfloat s_SWs[p_Nq][p_Nq];
-    @exclusive dfloat s_SWtloc[p_Nq];
+    @shared dfloat s_SWr[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_SWt[p_Nq][p_Nq][p_Nq];
 
     //
     @exclusive dfloat rx , ry, rz; 
@@ -2575,34 +2540,28 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
     @exclusive dfloat s31,s32,s33; 
 
 
-    @exclusive dfloat r_Au[p_Nq];
-    @exclusive dfloat r_Av[p_Nq];
-    @exclusive dfloat r_Aw[p_Nq];
+    @exclusive dfloat r_Au, r_Av, r_Aw; 
     @exclusive dlong element;
 
    // prefetch q
-     #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
           element = elementList[e];
           if(k==0) s_D[j][i] = D[p_Nq*j+i];
             const dlong id = element*p_Np+k*p_Nq*p_Nq+j*p_Nq+i;
-            s_U[j][i] =q[id + 0*offset];
-            s_V[j][i] =q[id + 1*offset];
-            s_W[j][i] =q[id + 2*offset];
-            if(k==0){
-              #pragma unroll p_Nq
-              for(int l = 0 ; l < p_Nq; ++l){
-                const dlong other_id = element*p_Np+l*p_Nq*p_Nq+j*p_Nq+i;
-                s_Uloc[l] =q[other_id + 0*offset];
-                s_Vloc[l] =q[other_id + 1*offset];
-                s_Wloc[l] =q[other_id + 2*offset];
-              }
-            }
+            s_U[k][j][i] =q[id + 0*offset];
+            s_V[k][j][i] =q[id + 1*offset];
+            s_W[k][j][i] =q[id + 2*offset];
         }
       }
-      @barrier("local");
+    }
+    
+    @barrier("local");
+
+
+    // loop over slabs
+     for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){   
           const dlong gid = i + j*p_Nq + k*p_Nq*p_Nq + element*p_Np*p_Nvgeo;
@@ -2629,17 +2588,17 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
             const dfloat Djm = s_D[j][m]; // Ds
             const dfloat Dkm = s_D[k][m]; // Dt
 
-            ur += Dim*s_U[j][m];
-            us += Djm*s_U[m][i];
-            ut += Dkm*s_Uloc[m];
+            ur += Dim*s_U[k][j][m];
+            us += Djm*s_U[k][m][i];
+            ut += Dkm*s_U[m][j][i];
             //
-            vr += Dim*s_V[j][m];
-            vs += Djm*s_V[m][i];
-            vt += Dkm*s_Vloc[m];
+            vr += Dim*s_V[k][j][m];
+            vs += Djm*s_V[k][m][i];
+            vt += Dkm*s_V[m][j][i];
             //
-            wr += Dim*s_W[j][m];
-            ws += Djm*s_W[m][i];
-            wt += Dkm*s_Wloc[m];
+            wr += Dim*s_W[k][j][m];
+            ws += Djm*s_W[k][m][i];
+            wt += Dkm*s_W[m][j][i];
           }
 
           const dfloat dudx = rx*ur + sx*us + tx*ut; 
@@ -2667,66 +2626,63 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
           s33 = JW*(dwdz + dwdz); 
           const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
 
-          r_Au[k] =  lambda[id + 1*offset + 0*loffset]*JW*s_U[j][i]; 
-          r_Av[k] =  lambda[id + 1*offset + 1*loffset]*JW*s_V[j][i];
-          r_Aw[k] =  lambda[id + 1*offset + 2*loffset]*JW*s_W[j][i];
+          r_Au =  lambda[id + 1*offset + 0*loffset]*JW*s_U[k][j][i]; 
+          r_Av =  lambda[id + 1*offset + 1*loffset]*JW*s_V[k][j][i];
+          r_Aw =  lambda[id + 1*offset + 2*loffset]*JW*s_W[k][j][i];
         }
       }
-      @barrier("local");
+    }
+
+    @barrier("local");
+
+    // reload shared
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
-         s_U[j][i] =  rx*s11 + ry*s12 + rz*s13;
-         s_V[j][i] =  sx*s11 + sy*s12 + sz*s13;
-         s_SUtloc[k]=  tx*s11 + ty*s12 + tz*s13;
+         s_U[k][j][i] =  rx*s11 + ry*s12 + rz*s13;
+         s_V[k][j][i] =  sx*s11 + sy*s12 + sz*s13;
+         s_W[k][j][i] =  tx*s11 + ty*s12 + tz*s13;
          //
-         s_SVr[j][i] =  rx*s21 + ry*s22 + rz*s23;
-         s_SVs[j][i] =  sx*s21 + sy*s22 + sz*s23;
-         s_SVtloc[k]=  tx*s21 + ty*s22 + tz*s23;
+         s_SVr[k][j][i] =  rx*s21 + ry*s22 + rz*s23;
+         s_SVs[k][j][i] =  sx*s21 + sy*s22 + sz*s23;
+         s_SVt[k][j][i] =  tx*s21 + ty*s22 + tz*s23;
          //
-         s_SWr[j][i] =  rx*s31 + ry*s32 + rz*s33;
-         s_SWs[j][i] =  sx*s31 + sy*s32 + sz*s33;
-         s_SWtloc[k]=  tx*s31 + ty*s32 + tz*s33;
+         s_SWr[k][j][i] =  rx*s31 + ry*s32 + rz*s33;
+         s_SWs[k][j][i] =  sx*s31 + sy*s32 + sz*s33;
+         s_SWt[k][j][i] =  tx*s31 + ty*s32 + tz*s33;
 
         }
       }
-      @barrier("local");
+    }
+   
+    @barrier("local");
+
+// loop over slabs
+    for(int k=0;k<p_Nq;++k;@inner(2)){ 
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
           #pragma unroll p_Nq
           for(int m = 0; m < p_Nq; m++) {
             const dfloat Dim = s_D[m][i]; // Dr'
             const dfloat Djm = s_D[m][j]; // Ds'
-
-            r_Au[k] += Dim*s_U[j][m];
-            r_Au[k] += Djm*s_V[m][i];
-
-            r_Av[k] += Dim*s_SVr[j][m];
-            r_Av[k] += Djm*s_SVs[m][i];
-
-            r_Aw[k] += Dim*s_SWr[j][m];
-            r_Aw[k] += Djm*s_SWs[m][i];
-          }
-        }
-      }
-      @barrier("local");
-    }
-
-    #pragma unroll p_Nq
-    for(int k=0;k<p_Nq;++k){ 
-      for(int j=0;j<p_Nq;++j;@inner(1)){
-        for(int i=0;i<p_Nq;++i;@inner(0)){
-          #pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
             const dfloat Dkm = s_D[m][k]; // Dt'
 
-            r_Au[k] += Dkm*s_SUtloc[m];
-            r_Av[k] += Dkm*s_SVtloc[m];
-            r_Aw[k] += Dkm*s_SWtloc[m];
+            r_Au += Dim*s_U[k][j][m];
+            r_Au += Djm*s_V[k][m][i];
+            r_Au += Dkm*s_W[m][j][i];
+
+            r_Av += Dim*s_SVr[k][j][m];
+            r_Av += Djm*s_SVs[k][m][i];
+            r_Av += Dkm*s_SVt[m][j][i];
+
+            r_Aw += Dim*s_SWr[k][j][m];
+            r_Aw += Djm*s_SWs[k][m][i];
+            r_Aw += Dkm*s_SWt[m][j][i];
           }
           const dlong id = element*p_Np +k*p_Nq*p_Nq+ j*p_Nq + i;
-          Aq[id+0*offset] = r_Au[k];
-          Aq[id+1*offset] = r_Av[k];
-          Aq[id+2*offset] = r_Aw[k];
+          Aq[id+0*offset] = r_Au;
+          Aq[id+1*offset] = r_Av;
+          Aq[id+2*offset] = r_Aw;
         
         }
       }
