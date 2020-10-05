@@ -65,12 +65,7 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
     timer::toc("udfProperties");
   }
 
-  if(ins->lowMach) {
-    if(udf.div)
-      udf.div(ins, time + dt, ins->o_div);
-    else
-      qthermal(ins, time + dt, ins->o_div);
-  }
+  if(udf.div) udf.div(ins, time + dt, ins->o_div);
   //ins->fillKernel(ins->fieldOffset, 0.0, ins->o_div);
 
   if(ins->flow) fluidSolve(ins, time, dt, ins->o_U); 

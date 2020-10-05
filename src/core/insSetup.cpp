@@ -215,8 +215,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_mue = ins->o_prop.slice(0 * ins->fieldOffset * sizeof(dfloat));
   ins->o_rho = ins->o_prop.slice(1 * ins->fieldOffset * sizeof(dfloat));
 
-  ins->lowMach = 0;
-  if(options.compareArgs("LOWMACH", "TRUE")) ins->lowMach = 1;
   ins->div   = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
   ins->o_div = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->div);
 

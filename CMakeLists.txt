@@ -192,6 +192,7 @@ set(SRC
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
+    src/plugins/lowMach.cpp
     ## To get fortran flags
     src/dummy.f
     ${BLASLAPACK_SOURCES}

@@ -105,7 +105,6 @@ typedef struct
   dfloat* Ue, sdt;
   occa::memory o_Ue;
 
-  int lowMach;
   dfloat* div;
   occa::memory o_div;
 

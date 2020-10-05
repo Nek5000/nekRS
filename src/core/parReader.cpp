@@ -594,9 +594,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
   }
 
-  if(equation == "lowmachns" && ini.sections.count("temperature") == 0)
-    exit("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!", EXIT_FAILURE);
-
   //
   for (auto & sec : ini.sections) {
     string key = sec.first;
