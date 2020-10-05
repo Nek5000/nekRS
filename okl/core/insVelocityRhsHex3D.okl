@@ -50,9 +50,9 @@
               const dfloat BFy = BF[id + 1 * fieldOffset];
               const dfloat BFz = BF[id + 2 * fieldOffset];
 
-              rhsU[id + 0 * fieldOffset] = rhoM * BFx - GPx;
-              rhsU[id + 1 * fieldOffset] = rhoM * BFy - GPy;
-              rhsU[id + 2 * fieldOffset] = rhoM * BFz - GPz;
+              rhsU[id + 0 * fieldOffset] = rhoM * BFx + GPx;
+              rhsU[id + 1 * fieldOffset] = rhoM * BFy + GPy;
+              rhsU[id + 2 * fieldOffset] = rhoM * BFz + GPz;
             }
           }
         }

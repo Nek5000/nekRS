@@ -46,8 +46,8 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   double *err = (double *) nek_scPtr(1);
 
-  const double vxErr = abs((err[0] - 2.46E-10)/err[0]);
-  const double prErr = abs((err[1] - 7.64E-10)/err[1]);
+  const double vxErr = abs((err[0] - 3.65E-10)/err[0]);
+  const double prErr = abs((err[1] - 6.71E-10)/err[1]);
   double s1Err, s2Err;
   
   int pIterErr;
@@ -55,13 +55,14 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   switch (ciMode) {
     case 1 : velIterErr = abs(ins->NiterU - 10);
-             s1Err = abs((err[2] - 9.75E-12)/err[2]);
-             s2Err = abs((err[3] - 9.75E-12)/err[3]);
+<<<<<<< HEAD
+             s1Err = abs((err[2] - 1.00E-11)/err[2]);
+             s2Err = abs((err[3] - 1.00E-11)/err[3]);
              pIterErr = abs(ins->NiterP - 4);
              break;
     case 2 : velIterErr = abs(ins->NiterU - 10);
-             s1Err = abs((err[2] - 1.69E-11)/err[2]);
-             s2Err = abs((err[3] - 1.69E-11)/err[3]);
+             s1Err = abs((err[2] - 1.71E-11)/err[2]);
+             s2Err = abs((err[3] - 1.71E-11)/err[3]);
              pIterErr = abs(ins->NiterP - 1);
              break;
   }

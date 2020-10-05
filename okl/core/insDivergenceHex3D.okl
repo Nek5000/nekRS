@@ -23,13 +23,12 @@
 
  */
 
-// Compute Gradient volume term in weak Form
-@kernel void insDivergenceVolumeTOMBOHex3D(const dlong Nelements,
-                                           @restrict const dfloat*  vgeo,
-                                           @restrict const dfloat*  D,
-                                           const dlong offset,
-                                           @restrict const dfloat*  U,
-                                           @restrict dfloat*  divU)
+@kernel void insDivergenceVolumeHex3D(const dlong Nelements,
+                                      @restrict const dfloat*  vgeo,
+                                      @restrict const dfloat*  D,
+                                      const dlong offset,
+                                      @restrict const dfloat*  U,
+                                      @restrict dfloat*  divU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -115,7 +114,7 @@
 
 // adding dp/dn -n\dot F 
 // if slip (dp/dn == 0) -n\dot F else -g0/dt n \dot u^(n+1)
-#define surfaceTermsTOMBO(sk,face,m, i, j)                                              \
+#define surfaceTerms(sk,face,m, i, j)                                                   \
   {                                                                                     \
     struct bcData bc;                                                                   \
     const dlong idM = vmapM[sk];                                                        \
@@ -183,8 +182,8 @@
         const dlong sk0 = e * p_Nfp * p_Nfaces + 0 * p_Nfp + i + j * p_Nq;
         const dlong sk5 = e * p_Nfp * p_Nfaces + 5 * p_Nfp + i + j * p_Nq;
 
-        surfaceTermsTOMBO(sk0,0,0,i,j);
-        surfaceTermsTOMBO(sk5,5,1,i,j);
+        surfaceTerms(sk0,0,0,i,j);
+        surfaceTerms(sk5,5,1,i,j);
       }
     }
 
@@ -208,8 +207,8 @@
         const dlong sk1 = e * p_Nfp * p_Nfaces + 1 * p_Nfp + i + k * p_Nq;
         const dlong sk3 = e * p_Nfp * p_Nfaces + 3 * p_Nfp + i + k * p_Nq;
 
-        surfaceTermsTOMBO(sk1,1,0,i,k);
-        surfaceTermsTOMBO(sk3,3,1,i,k);
+        surfaceTerms(sk1,1,0,i,k);
+        surfaceTerms(sk3,3,1,i,k);
       }
 
     @barrier("local");
@@ -238,8 +237,8 @@
         const dlong sk2 = e * p_Nfp * p_Nfaces + 2 * p_Nfp + j + k * p_Nq;
         const dlong sk4 = e * p_Nfp * p_Nfaces + 4 * p_Nfp + j + k * p_Nq;
 
-        surfaceTermsTOMBO(sk2,2,0,j,k);
-        surfaceTermsTOMBO(sk4,4,1,j,k);
+        surfaceTerms(sk2,2,0,j,k);
+        surfaceTerms(sk4,4,1,j,k);
       }
 
     @barrier("local");
@@ -274,4 +273,4 @@
     }
   }
 }
-#undef surfaceTermsTOMBO
+#undef surfaceTerms

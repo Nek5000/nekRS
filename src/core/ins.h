@@ -203,7 +203,7 @@ typedef struct
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
-  occa::kernel velocityRhsBCKernel;
+  occa::kernel velocityNeumannBCKernel;
   occa::kernel velocityDirichletBCKernel;
 
   occa::kernel fillKernel;

@@ -198,9 +198,9 @@
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; ++k) {
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          gradP[id + 0 * offset] = -r_gradU[k];
-          gradP[id + 1 * offset] = -r_gradV[k];
-          gradP[id + 2 * offset] = -r_gradW[k];
+          gradP[id + 0 * offset] = r_gradU[k];
+          gradP[id + 1 * offset] = r_gradV[k];
+          gradP[id + 2 * offset] = r_gradW[k];
         }
       }
     }

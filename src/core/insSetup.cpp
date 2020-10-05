@@ -659,7 +659,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "insDivergence" + suffix + ".okl";
-      kernelName = "insDivergenceVolumeTOMBO" + suffix;
+      kernelName = "insDivergenceVolume" + suffix;
       ins->divergenceVolumeKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
@@ -694,6 +694,10 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       fileName = oklpath + "insVelocityBC" + suffix + ".okl";
       kernelName = "insVelocityDirichletBC" + suffix;
       ins->velocityDirichletBCKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      kernelName = "insVelocityNeumannBC" + suffix;
+      ins->velocityNeumannBCKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "insSubCycle" + suffix + ".okl";

@@ -159,7 +159,6 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_wrk3);
 
   oogs::startFinish(ins->o_wrk3, 1, 0, ogsDfloat, ogsAdd, ins->gsh);
-  //if (ins->pSolver->Nmasked) mesh->maskKernel(ins->pSolver->Nmasked, ins->pSolver->o_maskIds, ins->o_wrk3);
 
   ins->o_wrk1.copyFrom(ins->o_P, ins->Ntotal * sizeof(dfloat));
   ins->NiterP = ellipticSolve(ins->pSolver, ins->presTOL, ins->o_wrk3, ins->o_wrk1);
@@ -177,7 +176,7 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
 #if 0
   ins->PQKernel(
        mesh->Nelements*mesh->Np,
-       scale,
+       -scale,
        ins->o_mue,
        ins->o_div,
        ins->o_P,
@@ -191,8 +190,6 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     ins->o_wrk3,
     ins->o_wrk0);
 #else
-  // TODO: add traction + non-zero outflow surface terms to BF 
-
   ins->mueDivKernel(
        mesh->Nelements*mesh->Np,
        scale,
@@ -221,10 +218,25 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
     1.0,
     0*ins->fieldOffset,
     ins->o_wrk3,
-    1.0,
+    -1.0,
     0*ins->fieldOffset,
     ins->o_wrk0);
 #endif
+
+  ins->velocityNeumannBCKernel(
+       mesh->Nelements,
+       ins->fieldOffset,
+       mesh->o_sgeo,
+       mesh->o_vmapM,
+       mesh->o_EToB,
+       ins->o_EToB,
+       time,
+       mesh->o_x,
+       mesh->o_y,
+       mesh->o_z,
+       ins->o_usrwrk,
+       ins->o_U,
+       ins->o_wrk0); 
 
   ins->velocityRhsKernel(
     mesh->Nelements,
@@ -236,28 +248,10 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
 
   oogs::startFinish(ins->o_wrk3, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
-  // Use old velocity as initial condition
   ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
-
   if(ins->uvwSolver) {
-//    if (ins->uvwSolver->Nmasked) mesh->maskKernel(ins->uvwSolver->Nmasked,
-//                                                  ins->uvwSolver->o_maskIds,
-//                                                  ins->o_wrk3);
-
     ins->NiterU = ellipticSolve(ins->uvwSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
   } else {
-/*
-    if (ins->uSolver->Nmasked) mesh->maskKernel(ins->uSolver->Nmasked,
-                                                ins->uSolver->o_maskIds,
-                                                ins->o_wrk3);
-    if (ins->vSolver->Nmasked) mesh->maskKernel(ins->vSolver->Nmasked,
-                                                ins->vSolver->o_maskIds,
-                                                ins->o_wrk4);
-    if (ins->wSolver->Nmasked) mesh->maskKernel(ins->wSolver->Nmasked,
-                                                ins->wSolver->o_maskIds,
-                                                ins->o_wrk5);
-*/
-
     ins->NiterU = ellipticSolve(ins->uSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
     ins->NiterV = ellipticSolve(ins->vSolver, ins->velTOL, ins->o_wrk4, ins->o_wrk1);
     ins->NiterW = ellipticSolve(ins->wSolver, ins->velTOL, ins->o_wrk5, ins->o_wrk2);
