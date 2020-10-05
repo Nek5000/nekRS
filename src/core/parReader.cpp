@@ -57,6 +57,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
+  options.setArgs("STRESSFORMULATION", "FALSE");
+
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
@@ -278,12 +280,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   //  if(variableProperties) options.setArgs("VARIABLEPROPERTIES", "TRUE");
 
   bool stressFormulation;
-  if(ini.extract("general", "stressformulation", stressFormulation))
+  if(ini.extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
-  string equation;
-  if(ini.extract("problemtype", "equation", equation))
-    if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
+  bool stressFormulation;
+  if(ini.extract("general", "stressformulation", stressFormulation))
+    if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
   int bcInPar = 1;
   if(ini.sections.count("velocity")) {

@@ -11,7 +11,7 @@ timeStepper = tombo2
 writeInterval = 100
 
 [PRESSURE]
-residualTol = 1e-10
+residualTol = 1e-08
 residualProj = false
 
 [VELOCITY]
