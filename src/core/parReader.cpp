@@ -57,9 +57,6 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
-  options.setArgs("VARIABLE VISCOSITY", "FALSE");
-  options.setArgs("LOWMACH", "FALSE");
-
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
@@ -276,14 +273,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
-  // PROBLEMTYPE
-  bool variableProperties = false;
-  ini.extract("problemtype", "variableproperties", variableProperties);
-  if(variableProperties)
-    options.setArgs("VARIABLEPROPERTIES", "TRUE");
+  //bool variableProperties;
+  //if(ini.extract("general", "variableproperties", variableProperties))
+  //  if(variableProperties) options.setArgs("VARIABLEPROPERTIES", "TRUE");
 
   bool stressFormulation;
-  if(ini.extract("problemtype", "stressformulation", stressFormulation))
+  if(ini.extract("general", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
   string equation;
@@ -511,9 +506,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     double rho;
     if(ini.extract("velocity", "density", rho) || ini.extract("velocity", "rho", rho))
       options.setArgs("DENSITY", to_string_f(rho));
-    else
-      if(!variableProperties && flow)
-        exit("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE);
 
     if(ini.extract("velocity", "viscosity", sbuf)) {
       int err = 0;
@@ -521,8 +513,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) exit("Invalid expression for viscosity!", EXIT_FAILURE);
       if(viscosity < 0) viscosity = fabs(1 / viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
-    } else if(!variableProperties && flow)
-      exit("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE);
+    }
   } else {
     options.setArgs("VELOCITY", "FALSE");
   }
@@ -570,16 +561,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         if(err) exit("Invalid expression for conductivity!", EXIT_FAILURE);
         if(diffusivity < 0) diffusivity = fabs(1 / diffusivity);
         options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
-      } else if(!variableProperties)
-        exit("Cannot find mandatory parameter TEMPERATURE::conductivity!", EXIT_FAILURE);
+      }
 
       if(ini.extract("temperature", "rhocp", sbuf)) {
         int err = 0;
         double rhoCp = te_interp(sbuf.c_str(), &err);
         if(err) exit("Invalid expression for rhoCp!", EXIT_FAILURE);
         options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
-      } else if(!variableProperties)
-        exit("Cannot find mandatory parameter TEMPERATURE::rhoCp!", EXIT_FAILURE);
+      }
 
       string s_bcMap;
       if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
@@ -648,16 +637,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) exit("Invalid expression for diffusivity!", EXIT_FAILURE);
       if(diffusivity < 0) diffusivity = fabs(1 / diffusivity);
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
-    } else if(!variableProperties)
-      exit("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!", EXIT_FAILURE);
+    }
 
     if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       double rho = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for rho!", EXIT_FAILURE);
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
-    } else if(!variableProperties)
-      exit("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!", EXIT_FAILURE);
+    }
 
     string s_bcMap;
     if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {

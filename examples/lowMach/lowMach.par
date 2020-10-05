@@ -10,10 +10,6 @@ dt = 1e-03
 timeStepper = tombo2
 writeInterval = 100
 
-[PROBLEMTYPE]
-equation = lowMachNS
-variableProperties = yes
-
 [PRESSURE]
 residualTol = 1e-10
 residualProj = false

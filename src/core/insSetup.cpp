@@ -299,6 +299,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->velTOL  = 1E-6;
     ins->uvwSolver = NULL;
 
+    //if(options.compareArgs("VARIABLEPROPERTIES", "TRUE"))
+    //   options.setArgs("STRESSFORMULATION", "TRUE");
+
     if(options.compareArgs("STRESSFORMULATION", "TRUE"))
        options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
 
