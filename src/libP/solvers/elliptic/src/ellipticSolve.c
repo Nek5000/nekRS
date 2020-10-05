@@ -55,9 +55,9 @@ int ellipticSolve(elliptic_t* elliptic, dfloat tol,
     ellipticZeroMean(elliptic, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("preSolveProjection",1);
-    elliptic->residualProjection->preSolveProjection(o_r);
-    timer::toc("preSolveProjection");
+    timer::tic("pre",1);
+    elliptic->residualProjection->pre(o_r);
+    timer::toc("pre");
   }
 
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
@@ -75,9 +75,9 @@ int ellipticSolve(elliptic_t* elliptic, dfloat tol,
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
-    timer::tic("postSolveProjection",1);
-    elliptic->residualProjection->postSolveProjection(o_x);
-    timer::toc("postSolveProjection");
+    timer::tic("post",1);
+    elliptic->residualProjection->post(o_x);
+    timer::toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   }
 
