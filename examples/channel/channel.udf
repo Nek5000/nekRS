@@ -17,8 +17,8 @@ void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
   dfloat rho;
   ins->options.getArgs("DENSITY", rho); 
 
-  ins->fillKernel(ins->o_rho, ins->Ntotal, rho);
-  mueKernel(ins->Ntotal, mesh->o_x, mesh->o_y, ins->o_mue);
+  ins->fillKernel(ins->Nlocal, rho, ins->o_rho);
+  mueKernel(ins->Nlocal, mesh->o_y, ins->o_mue);
 }
 
 void UDF_LoadKernels(ins_t *ins)
@@ -38,7 +38,7 @@ void UDF_LoadKernels(ins_t *ins)
   const dfloat x1 = -1.0;
   const dfloat x2 =  1.0; 
   const dfloat AINT = x2*log(a2-x2*x2) + a*(log(a+x2)-log(a-x2)) - 2.0*x2
-                    - x1*log(a2-x1*x1) + a*(log(a+x1)-log(a-x1)) - 2.0*x1;
+                   - (x1*log(a2-x1*x1) + a*(log(a+x1)-log(a-x1)) - 2.0*x1);
   kernelInfo["defines/p_Aint"] = AINT;
 
   mueKernel = udfBuildKernel(ins, "mue");

@@ -120,8 +120,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   if(udf.properties) {
-    udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S,
-                   ins->o_prop, ins->cds->o_prop);
+    occa::memory o_S = ins->o_wrk0;
+    occa::memory o_SProp = ins->o_wrk0;
+    if(ins->Nscalar) {
+      o_S = ins->cds->o_S;
+      o_SProp = ins->cds->o_prop;
+    }
+    udf.properties(ins, ins->startTime, ins->o_U, o_S,
+                   ins->o_prop, o_SProp);
     ins->o_prop.copyTo(ins->prop);
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
   }

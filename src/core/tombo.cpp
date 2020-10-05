@@ -93,16 +93,17 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->o_div,
     ins->o_wrk0);
 
-  if (ins->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
+  //if (ins->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
+  if(ins->options.compareArgs("STRESSFORMULATION", "TRUE"))
     ins->pressureStressKernel(
-      mesh->Nelements,
-      mesh->o_vgeo,
-      mesh->o_Dmatrices,
-      ins->fieldOffset,
-      ins->o_mue,
-      ins->o_Ue,
-      ins->o_div,
-      ins->o_wrk3);
+         mesh->Nelements,
+         mesh->o_vgeo,
+         mesh->o_Dmatrices,
+         ins->fieldOffset,
+         ins->o_mue,
+         ins->o_Ue,
+         ins->o_div,
+         ins->o_wrk3);
 
   occa::memory o_irho = ins->o_ellipticCoeff;
   ins->pressureRhsKernel(

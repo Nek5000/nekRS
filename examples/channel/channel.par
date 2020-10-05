@@ -10,8 +10,12 @@ endTime = 1
 dt = 1e-03
 timeStepper = tombo3
 
-writeControl = runTime
+#writeControl = runTime
 writeInterval = 50
+
+[PROBLEMTYPE]
+stressFormulation = true
+variableProperties = true
 
 [PRESSURE]
 residualTol = 1e-10

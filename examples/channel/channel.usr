@@ -61,7 +61,7 @@ c-----------------------------------------------------------------------
       do iel=1,nelt
       do ifc=1,2*ndim
          if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
-         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 2
          if (cbc(ifc,iel,1) .eq. 'on ') boundaryID(ifc,iel) = 3
       enddo
       enddo
@@ -102,13 +102,8 @@ c-----------------------------------------------------------------------
       real nu, err_max
 
       n = nx1*ny1*nz1*nelt
-      call rzero(dfe,n)
+      call rzero(err,n)
       nu=param(2)
-
-      umax = glmax(vx,n)
-      umin = glmin(vx,n)
-      tmax = glmax(t ,n)
-      tmin = glmin(t ,n)
 
       do ie = 1,nelv
       do k = 1,nz1
@@ -116,13 +111,16 @@ c-----------------------------------------------------------------------
       do i = 1,nx1
          xloc = xm1(i,j,k,ie)
          yloc = ym1(i,j,k,ie)
-         err(i,j,k,ie) = abs(vx(i,j,k,ie) - analyt_soln(yloc,nu,ANUT))
+         if (xloc.le.4.0)
+     $     err(i,j,k,ie) = abs(vx(i,j,k,ie) - analyt_soln(yloc,nu,ANUT))
       enddo
       enddo
       enddo
       enddo
 
       err_max = glmax(err,n)
+
+      if(istep.gt.0) call copy(vx,err,n)
 
       if (nid.eq.0) then
          write(6,2) istep,dt,time,err_max,' UX err'

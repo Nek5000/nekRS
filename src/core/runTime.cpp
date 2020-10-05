@@ -55,7 +55,13 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
 
   if(udf.properties) {
     timer::tic("udfProperties", 1);
-    udf.properties(ins, time + dt, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
+    occa::memory o_S = ins->o_wrk0;
+    occa::memory o_SProp = ins->o_wrk0;
+    if(ins->Nscalar) {
+      o_S = cds->o_S;
+      o_SProp = cds->o_prop;
+    }
+    udf.properties(ins, time + dt, ins->o_U, o_S, ins->o_prop, o_SProp);
     timer::toc("udfProperties");
   }
 
