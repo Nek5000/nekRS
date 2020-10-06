@@ -160,9 +160,7 @@ void cdsDirichletConditions3D(bcData *bc)
 void cdsNeumannConditions3D(bcData *bc)
 {                                                                        
   // flux = mue * grad(u) \cdot \hat{n}
-  dfloat u, v, w, p;
   dfloat grad_u_x, grad_u_y, grad_u_z;
-  exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
   grad_u(&grad_u_x, &grad_u_y, &grad_u_z, bc->x, bc->y, bc->z, bc->time, p_nu);
   bc->sF = grad_u_x * bc->nx + grad_u_y * bc->ny + grad_u_z * bc->nz;
   bc->sF *= p_nu;
