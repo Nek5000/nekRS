@@ -34,8 +34,7 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_elementsList,
                 occa::memory &o_q,
                 occa::memory &o_Aq,
-                const char* precision,
-                const bool testrun)
+                const char* precision)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
@@ -88,7 +87,6 @@ void ellipticAx(elliptic_t* elliptic,
             elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
                                mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
                                o_q, o_Aq);
-            if(testrun) comparisonTest(elliptic, o_q, o_Aq);
           }
         }
         else
@@ -106,7 +104,6 @@ void ellipticAx(elliptic_t* elliptic,
             elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
                                mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
                                o_q, o_Aq);
-            if(testrun) comparisonTest(elliptic, o_q, o_Aq);
           }
         }
         else{
@@ -238,12 +235,12 @@ void ellipticOperator(elliptic_t* elliptic,
   int serial = options.compareArgs("THREAD MODEL", "SERIAL");
   if(serial) {
     occa::memory o_dummy;
-    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);
     oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   } else {
-    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
     oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
-    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
     oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   }
   occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;
