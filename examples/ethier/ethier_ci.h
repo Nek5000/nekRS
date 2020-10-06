@@ -55,14 +55,13 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   switch (ciMode) {
     case 1 : velIterErr = abs(ins->NiterU - 10);
-<<<<<<< HEAD
              s1Err = abs((err[2] - 1.00E-11)/err[2]);
-             s2Err = abs((err[3] - 1.00E-11)/err[3]);
+             s2Err = abs((err[3] - 1.31E-11)/err[3]);
              pIterErr = abs(ins->NiterP - 4);
              break;
     case 2 : velIterErr = abs(ins->NiterU - 10);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
-             s2Err = abs((err[3] - 1.71E-11)/err[3]);
+             s2Err = abs((err[3] - 2.00E-11)/err[3]);
              pIterErr = abs(ins->NiterP - 1);
              break;
   }
