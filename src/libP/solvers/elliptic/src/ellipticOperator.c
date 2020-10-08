@@ -29,42 +29,12 @@
 #include <iostream>
 
 #include "omp.h"
-void comparisonTest(elliptic_t* elliptic,
-  occa::memory & o_q,
-  occa::memory & o_Aq)
-{
-  mesh_t * mesh = elliptic->mesh;
-  //occa::memory & o_Aq_comp = elliptic->o_wrk;
-  occa::memory o_q_comp = mesh->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  occa::memory o_Aq_comp = mesh->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  o_q_comp.copyFrom(o_q, elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  o_Aq_comp.copyFrom(o_q, elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  
-  elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, mesh->o_ggeo,
-                     mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
-                     o_q_comp, o_Aq_comp);
-  std::vector<dfloat> Aq_comp(elliptic->Nfields * elliptic->Ntotal, 0.0);
-  std::vector<dfloat> Aq(elliptic->Nfields * elliptic->Ntotal, 0.0);
-  o_Aq.copyTo(Aq.data(), elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-  o_Aq_comp.copyTo(Aq_comp.data(), elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-  dfloat Linf_err = 0.0;
-  dfloat Linf_norm = 0.0;
-  for(unsigned i = 0 ; i < elliptic->Ntotal * elliptic->Nfields; ++i){
-      Linf_norm = std::max(Linf_norm, std::abs(Aq_comp[i]));
-      Linf_err = std::max(Linf_err, std::abs(Aq[i] - Aq_comp[i]));
-  }
-  const dfloat rel_Linf_err = Linf_err / Linf_norm;
-  if(mesh->rank == 0)
-    std::cout << "Relative l_inf error : " << rel_Linf_err << "\n";
-  
-}
 void ellipticAx(elliptic_t* elliptic,
                 dlong NelementsList,
                 occa::memory &o_elementsList,
                 occa::memory &o_q,
                 occa::memory &o_Aq,
-                const char* precision,
-                const bool testrun)
+                const char* precision)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
@@ -117,7 +87,6 @@ void ellipticAx(elliptic_t* elliptic,
             elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
                                mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
                                o_q, o_Aq);
-            if(testrun) comparisonTest(elliptic, o_q, o_Aq);
           }
         }
         else
@@ -135,7 +104,6 @@ void ellipticAx(elliptic_t* elliptic,
             elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
                                mesh->o_Dmatrices, mesh->o_Smatrices, mesh->o_MM, elliptic->o_lambda,
                                o_q, o_Aq);
-            if(testrun) comparisonTest(elliptic, o_q, o_Aq);
           }
         }
         else{
@@ -267,12 +235,12 @@ void ellipticOperator(elliptic_t* elliptic,
   int serial = options.compareArgs("THREAD MODEL", "SERIAL");
   if(serial) {
     occa::memory o_dummy;
-    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);
     oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   } else {
-    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
     oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
-    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision, false);
+    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
     oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   }
   occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;

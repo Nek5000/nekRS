@@ -80,6 +80,42 @@ void exact(dfloat *u, dfloat *v, dfloat *w, dfloat *p,
                            ez * ez + 2.0 * szx * cyz * exy);
 
 }   
+void grad_u(dfloat *grad_u_x, dfloat *grad_u_y, dfloat *grad_u_z,
+           const dfloat x, const dfloat y, const dfloat z,
+           const dfloat t, const dfloat visc)
+{                                                                        
+  dfloat a = p_A;                                                   
+  dfloat d = p_D;                                                   
+  dfloat ex,ey,ez;                                                       
+  dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
+
+  const dfloat xx = x - p_U0*t;
+  const dfloat yy = y - p_V0*t;
+  const dfloat zz = z - p_W0*t;
+
+  ex  = exp(a*xx);                                                        
+  ey  = exp(a*yy);                                                        
+  ez  = exp(a*zz);                                                        
+  e2t = exp(-visc*d*d*t);                                                  
+                                                                         
+  exy = exp(a*(xx + yy));                                                 
+  eyz = exp(a*(yy + zz));                                                  
+  ezx = exp(a*(zz + xx));                                                  
+                                                                         
+  sxy = sin(a*xx + d*yy);                                                  
+  syz = sin(a*yy + d*zz);                                                  
+  szx = sin(a*zz + d*xx);                                                  
+                                                                         
+  cxy = cos(a*xx + d*yy);                                                  
+  cyz = cos(a*yy + d*zz);                                                  
+  czx = cos(a*zz + d*xx);                                                  
+                                                                         
+  //*(u)= -a*(ex*syz + ez*cxy)*e2t;
+  *(grad_u_x)= -a*((a*ex)*syz -a*ez*sxy)*e2t;
+  *(grad_u_y)= -a*(ex*(a*cyz) + ez*(-d*sxy))*e2t;
+  *(grad_u_z)= -a*(ex*(d*cyz) + (a*ez)*cxy)*e2t;
+
+}   
 
 @kernel void exactUVWP(const dlong Ntotal,
                        const dfloat time, 
@@ -120,4 +156,10 @@ void cdsDirichletConditions3D(bcData *bc)
   dfloat u, v, w, p;
   exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
   bc->sP = u;
+}
+void cdsNeumannConditions3D(bcData *bc)
+{                                                                        
+  dfloat grad_u_x, grad_u_y, grad_u_z;
+  grad_u(&grad_u_x, &grad_u_y, &grad_u_z, bc->x, bc->y, bc->z, bc->time, p_nu);
+  bc->sF = p_nu * (grad_u_x * bc->nx + grad_u_y * bc->ny + grad_u_z * bc->nz);
 }

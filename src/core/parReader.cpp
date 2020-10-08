@@ -283,10 +283,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
-  bool stressFormulation;
-  if(ini.extract("general", "stressformulation", stressFormulation))
-    if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
-
   int bcInPar = 1;
   if(ini.sections.count("velocity")) {
     // PRESSURE

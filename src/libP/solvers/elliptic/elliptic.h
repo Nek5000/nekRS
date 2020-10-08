@@ -333,8 +333,7 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_elementsList,
                 occa::memory &o_q,
                 occa::memory &o_Aq,
-                const char* precision,
-                const bool runtest = false);
+                const char* precision);
 
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
