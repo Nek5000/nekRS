@@ -127,6 +127,7 @@ typedef struct {
   dfloat *Dr, *Ds, *Dt; // collocation differentiation matrices
   dfloat *Dmatrices;
   dfloat *MM, *invMM;           // reference mass matrix
+  dfloat *LMM, *invLMM;
   dfloat *Srr,*Srs, *Srt; //element stiffness matrices
   dfloat *Ssr,*Sss, *Sst;
   dfloat *Str,*Sts, *Stt;
@@ -351,8 +352,9 @@ typedef struct {
 
   occa::memory o_q, o_rhsq, o_resq, o_fQM, o_fQP;
 
-  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_MMPfloat;
+  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
+  occa::memory o_LMM, o_invLMM;
   occa::memory o_Dmatrices;
   occa::memory o_DmatricesPfloat;
   occa::memory o_FMMT;

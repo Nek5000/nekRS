@@ -74,7 +74,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->fieldOffset,
     ins->NVfields,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     ins->o_wrk0);
 
   ins->curlKernel(
@@ -123,7 +123,7 @@ occa::memory pressureSolve(ins_t* ins, dfloat time)
     ins->fieldOffset,
     ins->NVfields,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     ins->o_wrk6);
 
   ins->divergenceVolumeKernel(

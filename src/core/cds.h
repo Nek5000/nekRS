@@ -12,7 +12,6 @@
 
 #define NSCALAR_MAX 100
 
-extern "C" { // Begin C Linkage
 typedef struct
 {
   int dim, elementType;
@@ -131,15 +130,10 @@ typedef struct
 
   //ARK data
   occa::memory o_rkC;
-  occa::memory o_erkA, o_irkA, o_prkA;
-  occa::memory o_erkB, o_irkB, o_prkB;
-  occa::memory o_erkE, o_irkE, o_prkE;
 
   //EXTBDF data
   occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
   occa::memory o_extC;
-
-  occa::memory o_InvM, o_InvMV;
 
 // Will be depreceated.....AK
   occa::kernel haloExtractKernel;
@@ -176,6 +170,5 @@ typedef struct
 }cds_t;
 
 occa::memory cdsSolve(int i, cds_t* cds, dfloat time);
-} // end C Linkage
 
 #endif

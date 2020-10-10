@@ -6,7 +6,6 @@
                                      @restrict const dfloat* ggeo,
                                      @restrict const dfloat* D,
                                      @restrict const dfloat*  S,
-                                     @restrict const dfloat*  MM,
                                      @restrict const dfloat* lambda,
                                      @restrict const dfloat* q,
                                      @restrict dfloat* Aq)
@@ -126,7 +125,6 @@
                                      @restrict const dfloat* ggeo,
                                      @restrict const dfloat* D,
                                      @restrict const dfloat*  S,
-                                     @restrict const dfloat*  MM,
                                      @restrict const dfloat* lambda,
                                      @restrict const dfloat* q,
                                      @restrict dfloat* Aq)
@@ -285,7 +283,6 @@
                                      @restrict const dfloat* ggeo,
                                      @restrict const dfloat* D,
                                      @restrict const dfloat*  S,
-                                     @restrict const dfloat*  MM,
                                      @restrict const dfloat* lambda,
                                      @restrict const dfloat* q,
                                      @restrict dfloat* Aq)
@@ -472,7 +469,6 @@
                                             @restrict const dfloat* ggeo,
                                             @restrict const dfloat* D,
                                             @restrict const dfloat*  S,
-                                            @restrict const dfloat*  MM,
                                             @restrict const dfloat* lambda,
                                             @restrict const dfloat* q,
                                             @restrict dfloat* Aq)
@@ -598,7 +594,6 @@
                                             @restrict const dfloat* ggeo,
                                             @restrict const dfloat* D,
                                             @restrict const dfloat*  S,
-                                            @restrict const dfloat*  MM,
                                             @restrict const dfloat* lambda,
                                             @restrict const dfloat* q,
                                             @restrict dfloat* Aq)
@@ -760,7 +755,6 @@
                                             @restrict const dfloat* ggeo,
                                             @restrict const dfloat* D,
                                             @restrict const dfloat*  S,
-                                            @restrict const dfloat*  MM,
                                             @restrict const dfloat* lambda,
                                             @restrict const dfloat* q,
                                             @restrict dfloat* Aq)
@@ -950,7 +944,6 @@
                                         @restrict const dfloat* ggeo,
                                         @restrict const dfloat* D,
                                         @restrict const dfloat*  S,
-                                        @restrict const dfloat*  MM,
                                         @restrict const dfloat* lambda,
                                         @restrict const dfloat* q,
                                         @restrict dfloat* Aq)
@@ -1075,7 +1068,6 @@
                                         @restrict const dfloat* ggeo,
                                         @restrict const dfloat* D,
                                         @restrict const dfloat*  S,
-                                        @restrict const dfloat*  MM,
                                         @restrict const dfloat* lambda,
                                         @restrict const dfloat* q,
                                         @restrict dfloat* Aq)
@@ -1243,7 +1235,6 @@
                                         @restrict const dfloat* ggeo,
                                         @restrict const dfloat* D,
                                         @restrict const dfloat*  S,
-                                        @restrict const dfloat*  MM,
                                         @restrict const dfloat* lambda,
                                         @restrict const dfloat* q,
                                         @restrict dfloat* Aq)
@@ -1436,7 +1427,6 @@
                                                @restrict const dfloat* ggeo,
                                                @restrict const dfloat* D,
                                                @restrict const dfloat*  S,
-                                               @restrict const dfloat*  MM,
                                                @restrict const dfloat* lambda,
                                                @restrict const dfloat* q,
                                                @restrict dfloat* Aq)
@@ -1561,7 +1551,6 @@
                                                @restrict const dfloat* ggeo,
                                                @restrict const dfloat* D,
                                                @restrict const dfloat*  S,
-                                               @restrict const dfloat*  MM,
                                                @restrict const dfloat* lambda,
                                                @restrict const dfloat* q,
                                                @restrict dfloat* Aq)
@@ -1726,7 +1715,6 @@
                                                @restrict const dfloat* ggeo,
                                                @restrict const dfloat* D,
                                                @restrict const dfloat*  S,
-                                               @restrict const dfloat*  MM,
                                                @restrict const dfloat* lambda,
                                                @restrict const dfloat* q,
                                                @restrict dfloat* Aq)
@@ -1914,7 +1902,6 @@
                                  @restrict const dfloat *vgeo,
                                  @restrict const dfloat *D,
                                  @restrict const  dfloat *  S,
-                                 @restrict const  dfloat *  MM,
                                  @restrict const dfloat *lambda,
                                  @restrict const dfloat *q,
                                  @restrict dfloat *Aq){
@@ -2129,7 +2116,6 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
                                  @restrict const dfloat *vgeo,
                                  @restrict const dfloat *D,
                                  @restrict const  dfloat *  S,
-                                 @restrict const  dfloat *  MM,
                                  @restrict const dfloat *lambda,
                                  @restrict const dfloat *q,
                                  @restrict dfloat *Aq){
@@ -2344,7 +2330,6 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
                                  @restrict const dfloat *vgeo,
                                  @restrict const dfloat *D,
                                  @restrict const  dfloat *  S,
-                                 @restrict const  dfloat *  MM,
                                  @restrict const dfloat *lambda,
                                  @restrict const dfloat *q,
                                  @restrict dfloat *Aq){
@@ -2549,7 +2534,6 @@ for(dlong e=0; e<Nelements; ++e; @outer(0)){
                                  @restrict const dfloat *vgeo,
                                  @restrict const dfloat *D,
                                  @restrict const  dfloat *  S,
-                                 @restrict const  dfloat *  MM,
                                  @restrict const dfloat *lambda,
                                  @restrict const dfloat *q,
                                  @restrict dfloat *Aq){

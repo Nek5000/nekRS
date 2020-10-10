@@ -266,12 +266,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
     free(vgeoSendBuffer);
   }
 
-  //build inverse of mass matrix
-  mesh->invMM = (dfloat*) calloc(mesh->Np * mesh->Np,sizeof(dfloat));
-  for (int n = 0; n < mesh->Np * mesh->Np; n++)
-    mesh->invMM[n] = mesh->MM[n];
-  matrixInverse(mesh->Np,mesh->invMM);
-
   // count total number of elements
   hlong NelementsLocal = mesh->Nelements;
   hlong NelementsGlobal = 0;

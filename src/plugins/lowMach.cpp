@@ -46,7 +46,7 @@ void lowMach::qtl(ins_t* ins, dfloat time, occa::memory o_div)
     ins->fieldOffset,
     ins->NVfields,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     cds->o_wrk0);
 
   if(udf.sEqnSource) {
@@ -76,6 +76,6 @@ void lowMach::qtl(ins_t* ins, dfloat time, occa::memory o_div)
     ins->fieldOffset,
     1,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     o_div);
 }

@@ -227,12 +227,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_extbdfB = mesh->device.malloc(3 * sizeof(dfloat));
   ins->o_extbdfC = mesh->device.malloc(3 * sizeof(dfloat));
   ins->o_extC    = mesh->device.malloc(3 * sizeof(dfloat));
-  ins->o_prkA    = ins->o_extbdfC;
-  ins->o_prkB    = ins->o_extbdfC;
-
-  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  ins->o_InvM =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), lumpedMassMatrix);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = ins->NVfields;
@@ -274,6 +268,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     udf.loadKernels(ins);
     if (mesh->rank == 0) cout << "done" << endl;
   }
+
+  ins->linAlg = new linAlg_t(mesh->device, ins->kernelInfo, mesh->comm);
 
   occa::properties kernelInfoBC = kernelInfo;
   const string bcDataFile = install_dir + "/include/insBcData.h";
@@ -602,14 +598,16 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), ins->VmapB);
   } // flow
 
-  // build inverse mass matrix
+  // build mass + inverse mass matrix
+  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
   for(hlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
       lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  ins->mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  ins->o_InvM.copyFrom(lumpedMassMatrix);
+  ins->mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
   free(lumpedMassMatrix);
 
   // build kernels
@@ -1063,18 +1061,17 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
     free(sBCType);
   }
 
-  // build inverse mass matrix
+  // build mass + inverse mass matrix
   dfloat* lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
   for(hlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
       lumpedMassMatrix[e * mesh->Np +
                        n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  cds->o_InvM =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), lumpedMassMatrix);
-  cds->o_InvMV = ins->o_InvM;
+  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
   free(lumpedMassMatrix);
 
   // time stepper
@@ -1084,8 +1081,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_extbdfB = ins->o_extbdfB;
   cds->o_extbdfC = ins->o_extbdfC;
   cds->o_extC    = ins->o_extC;
-  cds->o_prkA    = ins->o_extbdfC;
-  cds->o_prkB    = ins->o_extbdfC;
 
   // build kernels
   occa::properties kernelInfo = *ins->kernelInfo;

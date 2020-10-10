@@ -114,7 +114,6 @@ typedef struct
   parAlmond::solver_t* parAlmond;
 
   // block Jacobi precon
-  occa::memory o_invMM;
   occa::kernel blockJacobiKernel;
   occa::kernel partialblockJacobiKernel;
 

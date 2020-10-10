@@ -42,7 +42,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
     mesh->o_ggeoPfloat = mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
     mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq*sizeof(pfloat));
     mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
-    mesh->o_MMPfloat = mesh->device.malloc(mesh->Np * mesh->Np * sizeof(pfloat));
 
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
       elliptic->mesh->o_ggeoPfloat,
@@ -53,9 +52,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
       elliptic->mesh->o_SmatricesPfloat,
       mesh->o_Smatrices);
-    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-      elliptic->mesh->o_MMPfloat,
-      mesh->o_MM);
   }
 
   char* suffix;
