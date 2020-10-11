@@ -7,8 +7,6 @@
 
 /* User Functions */
 
-occa::kernel userfKernel; 
-
 void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   dfloat mue, rho;
@@ -16,7 +14,9 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
   ins->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho/mue; 
   const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
-  userfKernel(ins->Nlocal, ins->fieldOffset, DPDZ, o_FU);
+
+  occa::memory o_FUz = o_FU + 2*ins->fieldOffset*sizeof(dfloat);
+  ins->linAlg->fill(ins->Nlocal, DPDZ, o_FUz);
 }
 
 
@@ -24,7 +24,6 @@ void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 void UDF_LoadKernels(ins_t *ins)
 {
-  userfKernel = udfBuildKernel(ins, "cfillz");
 }
 
 void UDF_Setup(ins_t *ins)

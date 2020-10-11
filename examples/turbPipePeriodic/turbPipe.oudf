@@ -1,12 +1,1 @@
-@kernel void cfillz(const dlong Ntotal,
-                    const dlong offset,
-                    const dfloat CONST,
-                    @restrict dfloat * NU) 
-{
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
-    if(n<Ntotal){
-      const dlong id = n + 2*offset;
-      NU[id] = CONST;
-    }
-  }
-}
+//

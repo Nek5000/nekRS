@@ -185,10 +185,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_wrk12 = o_scratch.slice(12 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk15 = o_scratch.slice(15 * ins->fieldOffset * sizeof(dfloat));
 
-  // dummy decleration for user work space
-  //ins->usrwrk   = (dfloat*) calloc(1, sizeof(dfloat));
-  //ins->o_usrwrk = mesh->device.malloc(1*sizeof(dfloat), ins->usrwrk);
-
   ins->o_U  = mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
                                   ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->Ue);
@@ -603,11 +599,13 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   for(hlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
       lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  ins->mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_LMM.copyTo(mesh->LMM);
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  ins->mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_invLMM.copyTo(mesh->invLMM);
   free(lumpedMassMatrix);
 
   // build kernels
@@ -960,16 +958,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->options.setArgs("KRYLOV SOLVER",        options.getArgs("SCALAR SOLVER"));
   cds->options.setArgs("DISCRETIZATION",       options.getArgs("SCALAR DISCRETIZATION"));
   cds->options.setArgs("BASIS",                options.getArgs("SCALAR BASIS"));
-  /*
-     cds->options.setArgs("MULTIGRID COARSENING", options.getArgs("SCALAR MULTIGRID COARSENING"));
-     cds->options.setArgs("MULTIGRID SMOOTHER",   options.getArgs("SCALAR MULTIGRID SMOOTHER"));
-     cds->options.setArgs("MULTIGRID CHEBYSHEV DEGREE",  options.getArgs("SCALAR MULTIGRID CHEBYSHEV DEGREE"));
-     cds->options.setArgs("PARALMOND CYCLE",      options.getArgs("SCALAR PARALMOND CYCLE"));
-     cds->options.setArgs("PARALMOND SMOOTHER",   options.getArgs("SCALAR PARALMOND SMOOTHER"));
-     cds->options.setArgs("PARALMOND PARTITION",  options.getArgs("SCALAR PARALMOND PARTITION"));
-     cds->options.setArgs("PARALMOND CHEBYSHEV DEGREE",  options.getArgs("SCALAR PARALMOND CHEBYSHEV DEGREE"));
-     cds->options.setArgs("PARALMOND AGGREGATION STRATEGY", options.getArgs("SCALAR PARALMOND AGGREGATION STRATEGY"));
-   */
+
   cds->options.setArgs("DEBUG ENABLE OGS", "1");
   cds->options.setArgs("DEBUG ENABLE REDUCTIONS", "1");
 
@@ -1069,9 +1058,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
                        n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
   mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_LMM.copyTo(mesh->LMM);
   for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
     lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
   mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_invLMM.copyTo(mesh->invLMM);
   free(lumpedMassMatrix);
 
   // time stepper
