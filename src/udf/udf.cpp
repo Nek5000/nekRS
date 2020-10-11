@@ -14,11 +14,11 @@ void udfBuild(const char* udfFile)
   char* ptr;
   int retval;
 
+  double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  printf("building udf ... ");
-  fflush(stdout);
+  printf("loading udf ... "); fflush(stdout);
   sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && rm -rf CMake* Makefile cmake_install.cmake",
           cache_dir, cache_dir);
   system(cmd);
@@ -40,7 +40,7 @@ void udfBuild(const char* udfFile)
   retval = system(cmd);
   if(retval) goto err;
 
-  printf("done\n");
+  printf("done (%gs)\n", MPI_Wtime() - tStart);
   fflush(stdout);
   return;
 

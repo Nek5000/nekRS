@@ -26,15 +26,13 @@
 
 #include "elliptic.h"
 
-void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
-                            )
+void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
   // setup new object with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  // AK: Currently only constant coefficient
   const dfloat lambda = elliptic->lambda[0];
 
   //read all the nodes files and load them in a dummy mesh array
@@ -56,7 +54,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon
       meshLoadReferenceNodesTet3D(meshLevels[n], n);
       break;
     case HEXAHEDRA:
-      meshLoadReferenceNodesHex3D(meshLevels[n], n);
+      meshLoadReferenceNodesHex3D(meshLevels[n], n, 1);
       break;
     }
   }

@@ -1,1 +1,0 @@
-function rmap = blend1D(N, alpha)req = linspace(-1,1,N+1)';rmap = req + alpha*(1+req).*(1-req).*req;

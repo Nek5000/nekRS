@@ -63,19 +63,25 @@ void* nek_scPtr(int id)
 
 void nek_outfld()
 {
+  timer::tic("checkpointing", 1);
   const char suffix[] = "   ";
   (*nek_outfld_ptr)((char*)suffix);
+  timer::toc("checkpointing");
 }
 
 void nek_outfld(const char* suffix)
 {
+  timer::tic("checkpointing", 1);
   (*nek_outfld_ptr)((char*)suffix);
+  timer::toc("checkpointing");
 }
 
 void nek_outfld(const char* suffix, dfloat t, int coords,
                 occa::memory o_u, occa::memory o_p, occa::memory o_s,
                 int NSfields, int FP64)
 {
+
+  timer::tic("checkpointing", 1);
   mesh_t* mesh = (*ins)->mesh;
   cds_t* cds = (*ins)->cds;
   dlong Nlocal = mesh->Nelements * mesh->Np;
@@ -118,6 +124,7 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
   (*nek_setio_ptr)(&t, &xo, &vo, &po, &so, &NSfields, &FP64);
   (*nek_outfld_ptr)((char*)suffix);
   (*nek_resetio_ptr)();
+  timer::toc("checkpointing");
 }
 
 void nek_uic(int ifield)
@@ -418,8 +425,8 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
 
 int buildNekInterface(const char* casename, int ldimt, int N, int np)
 {
-  printf("building nek ... ");
-  fflush(stdout);
+  printf("loading nek ... "); fflush(stdout);
+  double tStart = MPI_Wtime();
 
   char buf[BUFSIZ];
   char fflags[BUFSIZ];
@@ -477,7 +484,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   retval = system(buf);
   if (retval) goto err;
 
-  printf("done\n\n");
+  printf("done (%gs)\n\n", MPI_Wtime() - tStart);
   fflush(stdout);
   return 0;
 

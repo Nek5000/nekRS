@@ -512,11 +512,20 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     free(iy);
     free(iz);
 
+    mesh->LMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+    mesh->o_LMM =
+      mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+    mesh->invLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+    mesh->o_invLMM =
+      mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+
     mesh->o_MM =
       mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat),
                           mesh->MM); //dummy
 
     mesh->o_D = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+
+    mesh->o_DW = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
 
     mesh->o_Dmatrices = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 

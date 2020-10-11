@@ -127,6 +127,7 @@ typedef struct {
   dfloat *Dr, *Ds, *Dt; // collocation differentiation matrices
   dfloat *Dmatrices;
   dfloat *MM, *invMM;           // reference mass matrix
+  dfloat *LMM, *invLMM;
   dfloat *Srr,*Srs, *Srt; //element stiffness matrices
   dfloat *Ssr,*Sss, *Sst;
   dfloat *Str,*Sts, *Stt;
@@ -145,6 +146,7 @@ typedef struct {
   int Nq, NqP, NpP;
   
   dfloat *D; // 1D differentiation matrix (for tensor-product)
+  dfloat *DW; // weak 1D differentiation matrix (for tensor-product)
   dfloat *gllz; // 1D GLL quadrature nodes
   dfloat *gllw; // 1D GLL quadrature weights
 
@@ -350,14 +352,16 @@ typedef struct {
 
   occa::memory o_q, o_rhsq, o_resq, o_fQM, o_fQP;
 
-  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_MMPfloat;
+  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
+  occa::memory o_LMM, o_invLMM;
   occa::memory o_Dmatrices;
   occa::memory o_DmatricesPfloat;
   occa::memory o_FMMT;
   occa::memory o_sMT;
 
   occa::memory o_D; // tensor product differentiation matrix (for Hexes)
+  occa::memory o_DW; // tensor product differentiation matrix (for Hexes)
   occa::memory o_SrrT, o_SrsT, o_SrtT; //element stiffness matrices
   occa::memory o_SsrT, o_SssT, o_SstT;
   occa::memory o_Srr, o_Srs, o_Srt, o_Sss, o_Sst, o_Stt; // for char4-based kernels
@@ -614,6 +618,36 @@ void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa
 #else
 void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem);
 #endif
+
+void matrixRightSolve(int NrowsA, int NcolsA, dfloat *A, int NrowsB, int NcolsB, dfloat *B, dfloat *C);
+void matrixEig(int N, dfloat *A, dfloat *VR, dfloat *WR, dfloat *WI);
+void matrixTranspose(const int M, const int N,
+                     const dfloat  *A, const int LDA,
+                           dfloat *AT, const int LDAT);
+
+// 1D mesh basis functions
+void Nodes1D(int _N, dfloat *_r);
+void EquispacedNodes1D(int _N, dfloat *_r);
+void OrthonormalBasis1D(dfloat a, int i, dfloat *P);
+void GradOrthonormalBasis1D(dfloat a, int i, dfloat *Pr);
+void Vandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *V);
+void GradVandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *Vr);
+void MassMatrix1D(int _Np, dfloat *V, dfloat *_MM);
+void Dmatrix1D(int _N, int NpointsIn, dfloat *_rIn,
+                               int NpointsOut, dfloat *_rOut, dfloat *_Dr);
+void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT);
+
+void InterpolationMatrix1D(int _N,
+                               int NpointsIn, dfloat *rIn,
+                               int NpointsOut, dfloat *rOut,
+                               dfloat *I);
+void DegreeRaiseMatrix1D(int Nc, int Nf, dfloat *P);
+void CubatureWeakDmatrix1D(int _Nq, int _cubNq,
+                                     dfloat *_cubProject, dfloat *_cubD, dfloat *_cubPDT);
+dfloat JacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
+dfloat GradJacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
+void JacobiGLL(int _N, dfloat *_x, dfloat *_w = nullptr);
+void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat *_x, dfloat *_w);
 } // end C Linkage
 #endif
 

@@ -5,6 +5,13 @@
 #include "ogsInterface.h"
 #include <list>
 
+//#define DISABLE_OOGS
+//#define OGS_ENABLE_TIMER
+
+#ifdef OGS_ENABLE_TIMER
+#include "timer.hpp"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -100,11 +107,8 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
     }
   }
 
-  if(gs->mode == OOGS_HOSTMPI)
-    gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*unit_size, 0, "async: true");
-
   { // pw exchange
-    if(gs->mode != OOGS_DEVICEMPI) ogs->device.finish(); // waiting for buffers to be ready
+    if(gs->mode != OOGS_DEVICEMPI) ogs->device.finish(); // waiting for send buffers to be ready
 
     comm_req *req = &pwd->req[pwd->comm[recv].n]; 
     const struct pw_comm_data *c = &pwd->comm[send];
@@ -119,9 +123,6 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
     }
     MPI_Waitall(pwd->comm[send].n + pwd->comm[recv].n,pwd->req,MPI_STATUSES_IGNORE);
   }
-
-  if(gs->mode == OOGS_HOSTMPI)
-    gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*unit_size, 0, "async: true");
 }
 
 oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::function<void()> callback, oogs_mode gsMode)
@@ -230,7 +231,9 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     gs->mode = gsMode;
   }
 
-  //gs->mode = OOGS_DEFAULT;
+#ifdef DISABLE_OOGS
+  gs->mode = OOGS_DEFAULT;
+#endif
   if(rank == 0) printf("used mode: %d\n", gs->mode);
 
   return gs; 
@@ -333,8 +336,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 
   ogs_t *ogs = gs->ogs; 
 
-#if 1
-  if(gs->mode == OOGS_DEFAULT) {
+  if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
       ogsGatherScatterManyStart(o_v, k, stride, type, op, ogs);
     else
@@ -342,20 +344,15 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
     
     return;
   }
-#endif
 
   if (ogs->NhaloGather) {
     reallocBuffers(Nbytes*k, gs);
 
-    occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
-    if(gs->mode != OOGS_DEFAULT) packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
-    ogs->device.finish();
+    occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, 
+		   ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
 
-    if(gs->mode == OOGS_DEFAULT) {
-      ogs->device.setStream(ogs::dataStream);
-      ogs::o_haloBuf.copyTo(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
-      ogs->device.setStream(ogs::defaultStream);
-    }
+    packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
+    ogs->device.finish();
   }
 }
 
@@ -369,8 +366,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 
   ogs_t *ogs = gs->ogs; 
 
-#if 1
-  if(gs->mode == OOGS_DEFAULT) {
+  if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
       ogsGatherScatterManyFinish(o_v, k, stride, type, op, ogs);
     else
@@ -378,36 +374,34 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     
     return;
   }
-#endif
 
-  if(ogs->NlocalGather) {
-    occaGatherScatterMany(ogs->NlocalGather, k, stride, ogs->o_localGatherOffsets, ogs->o_localGatherIds, type, op, o_v);
-  }
+  if(ogs->NlocalGather) 
+    occaGatherScatterMany(ogs->NlocalGather, k, stride, ogs->o_localGatherOffsets, 
+		          ogs->o_localGatherIds, type, op, o_v);
 
   if (ogs->NhaloGather) {
     ogs->device.setStream(ogs::dataStream);
 
-    if(gs->mode == OOGS_DEFAULT) {
-      ogs->device.finish(); // waiting for gs::haloBuf copy to finish 
+    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+    const void* execdata = hgs->r.data;
+    const struct pw_data *pwd = (pw_data*) execdata;
+    const unsigned transpose = 0; // hardwired for now
+    const unsigned recv = 0^transpose, send = 1^transpose;
+    if(gs->mode == OOGS_HOSTMPI)
+      gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
 
-      void* H[10];
-      for (int i=0;i<k;i++) H[i] = (char*)ogs::haloBuf + i*ogs->NhaloGather*Nbytes;
-      ogsHostGatherScatterMany(H, k, type, op, ogs->haloGshSym);
-    } else {
 #ifdef OGS_ENABLE_TIMER
-    timer::tic("oogsMPI",1);
+    timer::hostTic("oogsMPI",1);
 #endif
-      pairwiseExchange(Nbytes*k, gs);
+    pairwiseExchange(Nbytes*k, gs);
 #ifdef OGS_ENABLE_TIMER
-    timer::toc("oogsMPI");
+    timer::hostToc("oogsMPI");
 #endif
-    }   
+
+    if(gs->mode == OOGS_HOSTMPI)
+      gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
  
-    if(gs->mode == OOGS_DEFAULT) { 
-      ogs::o_haloBuf.copyFrom(ogs::haloBuf, ogs->NhaloGather*Nbytes*k, 0, "async: true");
-    } else {
-      unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
-    }
+    unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, 
                     ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
 
@@ -422,17 +416,6 @@ void oogs::startFinish(void *v, const int k, const dlong stride, const char *typ
 }
 void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)
 {
-#if 1
-   if(h->mode == OOGS_DEFAULT) {
-    if(k>1)
-      ogsGatherScatterMany(o_v, k, stride, type, op, h->ogs);
-    else
-      ogsGatherScatter(o_v, type, op, h->ogs);
-    
-    return;
-   }
-#endif
-
    start(o_v, k, stride, type, op, h);
    finish(o_v, k, stride, type, op, h);
 }

@@ -53,17 +53,20 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
   if(ins->Nscalar)
     scalarSolve(ins, time, dt, cds->o_S);
 
-  timer::tic("udfProperties", 1);
-  if(udf.properties)
-    udf.properties(ins, time + dt, ins->o_U, cds->o_S, ins->o_prop, cds->o_prop);
-  timer::toc("udfProperties");
-
-  if(ins->lowMach) {
-    if(udf.div)
-      udf.div(ins, time + dt, ins->o_div);
-    else
-      qthermal(ins, time + dt, ins->o_div);
+  if(udf.properties) {
+    timer::tic("udfProperties", 1);
+    occa::memory o_S = ins->o_wrk0;
+    occa::memory o_SProp = ins->o_wrk0;
+    if(ins->Nscalar) {
+      o_S = cds->o_S;
+      o_SProp = cds->o_prop;
+    }
+    udf.properties(ins, time + dt, ins->o_U, o_S, ins->o_prop, o_SProp);
+    timer::toc("udfProperties");
   }
+
+  if(udf.div) udf.div(ins, time + dt, ins->o_div);
+  //ins->fillKernel(ins->fieldOffset, 0.0, ins->o_div);
 
   if(ins->flow) fluidSolve(ins, time, dt, ins->o_U); 
 
@@ -72,6 +75,8 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
   mesh->device.finish();
   MPI_Barrier(mesh->comm);
   const double tElapsedStep = MPI_Wtime() - tStart;
+  tElapsed += tElapsedStep;
+  timer::set("solve", tElapsed);
   if(mesh->rank == 0) {
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + dt, dt, cfl);
@@ -86,7 +91,6 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
     for(int is = 0; is < ins->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
 
-    tElapsed += tElapsedStep;
     printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
   }
 
@@ -140,7 +144,11 @@ void makeq(ins_t* ins, dfloat time, occa::memory o_FS, occa::memory o_BF)
   cds_t* cds   = ins->cds;
   mesh_t* mesh = cds->mesh;
 
-  if(udf.sEqnSource) udf.sEqnSource(ins, time, cds->o_S, o_FS);
+  if(udf.sEqnSource) {
+    timer::tic("udfSEqnSource", 1);
+    udf.sEqnSource(ins, time, cds->o_S, o_FS);
+    timer::toc("udfSEqnSource");
+  }
 
   for(int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
@@ -266,7 +274,11 @@ void makef(ins_t* ins, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = ins->mesh;
 
-  if(udf.uEqnSource) udf.uEqnSource(ins, time, ins->o_U, o_FU);
+  if(udf.uEqnSource) {
+    timer::tic("udfUEqnSource", 1);
+    udf.uEqnSource(ins, time, ins->o_U, o_FU);
+    timer::toc("udfUEqnSource");
+  }
 
   if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     ins->filterRTKernel(
@@ -426,7 +438,7 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_cubProjectT,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_InvM,
+              ins->mesh->o_invLMM,
               ins->o_extC,
               o_U,
               ins->o_wrk0,
@@ -439,7 +451,7 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_Dmatrices,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_InvM,
+              ins->mesh->o_invLMM,
               ins->o_extC,
               o_U,
               ins->o_wrk0,
@@ -466,7 +478,7 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_cubProjectT,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_InvM,
+              ins->mesh->o_invLMM,
               ins->o_extC,
               o_U,
               ins->o_wrk0,
@@ -479,7 +491,7 @@ occa::memory velocityStrongSubCycle(ins_t* ins, dfloat time, occa::memory o_U)
               mesh->o_Dmatrices,
               ins->fieldOffset,
               rk * ins->NVfields * ins->fieldOffset,
-              ins->o_InvM,
+              ins->mesh->o_invLMM,
               ins->o_extC,
               o_U,
               ins->o_wrk0,
@@ -567,7 +579,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              cds->o_InvMV,
+              cds->meshV->o_invLMM,
               cds->o_extC,
               o_U,
               cds->o_wrk0,
@@ -580,7 +592,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               rk * cds->fieldOffset,
               mesh->o_vgeo,
               mesh->o_Dmatrices,
-              cds->o_InvMV,
+              cds->meshV->o_invLMM,
               cds->o_extC,
               o_U,
               cds->o_wrk0,
@@ -607,7 +619,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              cds->o_InvMV,
+              cds->meshV->o_invLMM,
               cds->o_extC, 
               o_U,
               cds->o_wrk0,
@@ -620,7 +632,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               rk * cds->fieldOffset,
               mesh->o_vgeo,
               mesh->o_Dmatrices,
-              cds->o_InvMV,
+              cds->meshV->o_invLMM,
               cds->o_extC,
               o_U,
               cds->o_wrk0,
@@ -666,13 +678,16 @@ void qthermal(ins_t* ins, dfloat time, occa::memory o_div)
     ins->fieldOffset,
     ins->NVfields,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     cds->o_wrk0);
 
-  if(udf.sEqnSource)
+  if(udf.sEqnSource) {
+    timer::tic("udfSEqnSource", 1);
     udf.sEqnSource(ins, time, cds->o_S, cds->o_wrk3);
-  else
+    timer::toc("udfSEqnSource");
+  } else {
     ins->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+  }
 
   ins->qtlKernel(
     mesh->Nelements,
@@ -693,6 +708,6 @@ void qthermal(ins_t* ins, dfloat time, occa::memory o_div)
     ins->fieldOffset,
     1,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     o_div);
 }

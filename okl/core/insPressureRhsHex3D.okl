@@ -23,8 +23,8 @@
       const dfloat gDIVy = gDIV[n + 1 * fieldOffset];
       const dfloat gDIVz = gDIV[n + 2 * fieldOffset];
 
-      rhsU[n + 0 * fieldOffset] = BFx - nu * (NCx - 4 / 3.f * gDIVx);
-      rhsU[n + 1 * fieldOffset] = BFy - nu * (NCy - 4 / 3.f * gDIVy);
-      rhsU[n + 2 * fieldOffset] = BFz - nu * (NCz - 4 / 3.f * gDIVz);
+      rhsU[n + 0 * fieldOffset] = BFx - nu * (NCx - 4./3 * gDIVx);
+      rhsU[n + 1 * fieldOffset] = BFy - nu * (NCy - 4./3 * gDIVy);
+      rhsU[n + 2 * fieldOffset] = BFz - nu * (NCz - 4./3 * gDIVz);
     }
 }

@@ -39,10 +39,9 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   mesh_t* mesh = elliptic->mesh;
 
   if(!strstr(pfloatString,dfloatString)) {
-    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+    mesh->o_ggeoPfloat = mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
+    mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq*sizeof(pfloat));
+    mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
 
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
       elliptic->mesh->o_ggeoPfloat,
@@ -53,9 +52,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
       elliptic->mesh->o_SmatricesPfloat,
       mesh->o_Smatrices);
-    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-      elliptic->mesh->o_MMPfloat,
-      mesh->o_MM);
   }
 
   char* suffix;

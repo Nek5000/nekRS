@@ -189,9 +189,11 @@ set(SRC
     src/core/configReader.cpp
     src/core/tinyexpr.c
     src/core/timer.cpp
+    src/linAlg/linAlg.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
+    src/plugins/lowMach.cpp
     ## To get fortran flags
     src/dummy.f
     ${BLASLAPACK_SOURCES}
@@ -219,6 +221,7 @@ target_include_directories(nekrs-lib
   src/mesh
   src/core
   src/udf
+  src/linAlg
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}

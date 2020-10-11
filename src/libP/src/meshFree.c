@@ -86,6 +86,7 @@ void meshFree(mesh_t* mesh)
   if(mesh->Dmatrices) free(mesh->Dmatrices);
   if(mesh->MM) free(mesh->MM);
   if(mesh->invMM) free(mesh->invMM);             // reference mass matrix
+  if(mesh->invLMM) free(mesh->invLMM);
   if(mesh->Srr) free(mesh->Srr);
   if(mesh->Srs) free(mesh->Srs);
   if(mesh->Srt) free(mesh->Srt);   //element stiffness matrices

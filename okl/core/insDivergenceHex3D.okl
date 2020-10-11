@@ -23,13 +23,12 @@
 
  */
 
-// Compute Gradient volume term in weak Form
-@kernel void insDivergenceVolumeTOMBOHex3D(const dlong Nelements,
-                                           @restrict const dfloat*  vgeo,
-                                           @restrict const dfloat*  D,
-                                           const dlong offset,
-                                           @restrict const dfloat*  U,
-                                           @restrict dfloat*  divU)
+@kernel void insDivergenceVolumeHex3D(const dlong Nelements,
+                                      @restrict const dfloat*  vgeo,
+                                      @restrict const dfloat*  D,
+                                      const dlong offset,
+                                      @restrict const dfloat*  U,
+                                      @restrict dfloat*  divU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -105,11 +104,7 @@
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; ++k) {
-          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
-          // const dfloat invJW = vgeo[gid + p_IJWID*p_Np];
-
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          // divU[id] = -invJW*r_div[k];
           divU[id] = r_div[k];
         }
       }
@@ -117,10 +112,9 @@
   }
 }
 
-// Adding slip BC to Pressure Rhs i.e. dp/dn = 0 =>dp/dn -n \dot F = -n \dot F for slip
-// or dp/dn -n\dot F = -g0/dt n \dot u^(n+1) for other BC's
-
-#define surfaceTermsTOMBO(sk,face,m, i, j)                                              \
+// adding dp/dn -n\dot F 
+// if slip (dp/dn == 0) -n\dot F else -g0/dt n \dot u^(n+1)
+#define surfaceTerms(sk,face,m, i, j)                                                   \
   {                                                                                     \
     struct bcData bc;                                                                   \
     const dlong idM = vmapM[sk];                                                        \
@@ -139,16 +133,18 @@
     bc.uM  = U[idM + 0 * offset];                                                       \
     bc.vM  = U[idM + 1 * offset];                                                       \
     bc.wM  = U[idM + 2 * offset];                                                       \
-    bc.uP  = 0.f; bc.vP = 0.f; bc.wP = 0.f;                                             \
     bc.wrk = W;                                                                         \
     bc.id  = EToBM[face + p_Nfaces * e];                                                \
     const dlong bcType = EToB[face + p_Nfaces * e];                                     \
-    if(bcType > 0 && bcType != 3) {                                                     \
-      bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                                      \
+    bc.uP = bc.uM; bc.vP = bc.vM; bc.wP = bc.wM;                                        \
+    dfloat flux = coef * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP);               \
+    if(bcType == 4 || bcType == 5 || bcType == 6 ) {                                    \
+      const dfloat fx = F[idM + 0 * offset];                                            \
+      const dfloat fy = F[idM + 1 * offset];                                            \
+      const dfloat fz = F[idM + 2 * offset];                                            \
+      flux = bc.nx * fx + bc.ny * fy + bc.nz * fz;                                      \
     }                                                                                   \
-    dfloat scale = coef;                                                                \
-    if(bcType == 4 || bcType == 5 || bcType == 6 ) scale = -1.f;                        \
-    s_fluxDiv[m][j][i] = scale * WSJ * (bc.nx * bc.uP + bc.ny * bc.vP + bc.nz * bc.wP); \
+    s_fluxDiv[m][j][i] = -WSJ*flux;                                                     \
   }
 
 @kernel void insDivergenceSurfaceTOMBOHex3D(const dlong Nelements,
@@ -164,6 +160,7 @@
                                             @restrict const dfloat*  z,
                                             const dlong offset,
                                             @restrict const dfloat*  W,
+                                            @restrict const dfloat*  F,
                                             @restrict const dfloat*  U,
                                             @restrict dfloat*  divU)
 {
@@ -185,8 +182,8 @@
         const dlong sk0 = e * p_Nfp * p_Nfaces + 0 * p_Nfp + i + j * p_Nq;
         const dlong sk5 = e * p_Nfp * p_Nfaces + 5 * p_Nfp + i + j * p_Nq;
 
-        surfaceTermsTOMBO(sk0,0,0,i,j);
-        surfaceTermsTOMBO(sk5,5,1,i,j);
+        surfaceTerms(sk0,0,0,i,j);
+        surfaceTerms(sk5,5,1,i,j);
       }
     }
 
@@ -210,8 +207,8 @@
         const dlong sk1 = e * p_Nfp * p_Nfaces + 1 * p_Nfp + i + k * p_Nq;
         const dlong sk3 = e * p_Nfp * p_Nfaces + 3 * p_Nfp + i + k * p_Nq;
 
-        surfaceTermsTOMBO(sk1,1,0,i,k);
-        surfaceTermsTOMBO(sk3,3,1,i,k);
+        surfaceTerms(sk1,1,0,i,k);
+        surfaceTerms(sk3,3,1,i,k);
       }
 
     @barrier("local");
@@ -240,8 +237,8 @@
         const dlong sk2 = e * p_Nfp * p_Nfaces + 2 * p_Nfp + j + k * p_Nq;
         const dlong sk4 = e * p_Nfp * p_Nfaces + 4 * p_Nfp + j + k * p_Nq;
 
-        surfaceTermsTOMBO(sk2,2,0,j,k);
-        surfaceTermsTOMBO(sk4,4,1,j,k);
+        surfaceTerms(sk2,2,0,j,k);
+        surfaceTerms(sk4,4,1,j,k);
       }
 
     @barrier("local");
@@ -276,4 +273,4 @@
     }
   }
 }
-#undef surfaceTermsTOMBO
+#undef surfaceTerms

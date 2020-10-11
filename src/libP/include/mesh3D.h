@@ -82,7 +82,7 @@ void meshPhysicalNodesTet3D(mesh3D *mesh);
 void meshPhysicalNodesHex3D(mesh3D *mesh, int nrsBuildOnly);
 
 void meshLoadReferenceNodesTet3D(mesh3D *mesh, int N);
-void meshLoadReferenceNodesHex3D(mesh3D *mesh, int N);
+void meshLoadReferenceNodesHex3D(mesh3D *mesh, int N, int cubN);
 
 void meshGradientTet3D(mesh3D *mesh, dfloat *q, dfloat *dqdx, dfloat *dqdy, dfloat *dqdz);
 void meshGradientHex3D(mesh3D *mesh, dfloat *q, dfloat *dqdx, dfloat *dqdy, dfloat *dqdz);
@@ -221,6 +221,10 @@ void interpolateHex3D(dfloat *Inter, dfloat *x, int N, dfloat *Ix, int M);
 
 mesh3D *meshSetupBoxHex3D(int N, setupAide &options);
 void meshConnectPeriodicFaceNodes3D(mesh3D *mesh, dfloat xper, dfloat yper, dfloat zper);
+
+// Mesh generation
+void NodesHex3D(int _N, dfloat *_r, dfloat *_s, dfloat *_t);
+void FaceNodesHex3D(int _N, dfloat *_r, dfloat *_s, dfloat *_t, int *_faceNodes);
 
 } // end C Linkage
 #endif

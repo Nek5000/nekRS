@@ -36,39 +36,53 @@ int ellipticSolve(elliptic_t* elliptic, dfloat tol,
   int Niter = 0;
   int maxIter = 1000;
 
+  options.getArgs("MAXIMUM ITERATIONS", maxIter);
+  options.getArgs("SOLVER TOLERANCE", tol);
+
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
-  if(elliptic->allNeumann)  // zero mean of RHS
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
+    elliptic->o_x0.copyFrom(o_x, elliptic->Ntotal*sizeof(dfloat));
+  }
+
+  // compute initial residual 
+  ellipticOperator(elliptic, o_x, elliptic->o_Ap, dfloatString);
+  ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
+  if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
+
+  if(elliptic->allNeumann)
     ellipticZeroMean(elliptic, o_r);
 
-  options.getArgs("MAXIMUM ITERATIONS", maxIter);
-
-  options.getArgs("SOLVER TOLERANCE", tol);
-
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("preSolveProjection",1);
-    elliptic->residualProjection->preSolveProjection(o_r);
-    timer::toc("preSolveProjection");
+    timer::tic("pre",1);
+    elliptic->residualProjection->pre(o_r);
+    timer::toc("pre");
   }
 
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
     Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
   }else{
+    printf("NONBLOCKING Krylov solvers currently not supported!");
+    exit(1);
+/*
     if(!options.compareArgs("KRYLOV SOLVER", "FLEXIBLE"))
       Niter = nbpcg (elliptic, o_r, o_x, tol, maxIter);
     else
       Niter = nbfpcg (elliptic, o_r, o_x, tol, maxIter);
+*/
   }
-
-  if(elliptic->allNeumann)  // zero mean of RHS
-    ellipticZeroMean(elliptic, o_x);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("postSolveProjection",1);
-    elliptic->residualProjection->postSolveProjection(o_x);
-    timer::toc("postSolveProjection");
+    ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
+    timer::tic("post",1);
+    elliptic->residualProjection->post(o_x);
+    timer::toc("post");
+    ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   }
+
+  if(elliptic->allNeumann)
+    ellipticZeroMean(elliptic, o_x);
 
   return Niter;
 }

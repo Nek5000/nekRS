@@ -5,8 +5,8 @@
 #include "mesh3D.h"
 #include "elliptic.h"
 #include "cds.h"
+#include "linAlg.hpp"
 
-extern "C" { // Begin C Linkage
 typedef struct
 {
   int dim, elementType;
@@ -19,9 +19,12 @@ typedef struct
   elliptic_t* wSolver;
   elliptic_t* uvwSolver;
   elliptic_t* pSolver;
+
   cds_t* cds;
 
-  oogs_t *gsh;
+  oogs_t* gsh;
+
+  linAlg_t* linAlg;
 
   dlong ellipticWrkOffset;
 
@@ -70,10 +73,6 @@ typedef struct
   //ARK data
   int Nrk;
   dfloat* rkC;
-  dfloat* erkA, * irkA, * prkA;
-  dfloat* erkB, * irkB, * prkB;
-  dfloat* erkE, * irkE, * prkE;
-  int embeddedRKFlag;
 
   //EXTBDF data
   dfloat* extbdfA, * extbdfB, * extbdfC;
@@ -85,19 +84,6 @@ typedef struct
   dlong* elementInfo;
   occa::memory o_elementInfo;
 
-  //halo data
-  dfloat* vSendBuffer;
-  dfloat* vRecvBuffer;
-  dfloat* pSendBuffer;
-  dfloat* pRecvBuffer;
-  dfloat* velocityHaloGatherTmp;
-
-  occa::memory o_vSendBuffer,h_vSendBuffer;
-  occa::memory o_vRecvBuffer,h_vRecvBuffer;
-  occa::memory o_pSendBuffer,h_pSendBuffer;
-  occa::memory o_pRecvBuffer,h_pRecvBuffer;
-  occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
-
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6, o_wrk7,
                o_wrk9, o_wrk12, o_wrk15;
 
@@ -105,7 +91,6 @@ typedef struct
   dfloat* Ue, sdt;
   occa::memory o_Ue;
 
-  int lowMach;
   dfloat* div;
   occa::memory o_div;
 
@@ -128,7 +113,8 @@ typedef struct
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
-  occa::kernel pqKernel;
+  occa::kernel PQKernel;
+  occa::kernel mueDivKernel;
   occa::kernel dotMultiplyKernel;
 
   occa::kernel scalarScaledAddKernel;
@@ -137,6 +123,8 @@ typedef struct
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel velocityExtKernel;
+
+  occa::kernel wgradientVolumeKernel;
 
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
@@ -163,23 +151,13 @@ typedef struct
 
   //ARK data
   occa::memory o_rkC;
-  occa::memory o_erkA, o_irkA, o_prkA;
-  occa::memory o_erkB, o_irkB, o_prkB;
-  occa::memory o_erkE, o_irkE, o_prkE;
 
   //EXTBDF data
   occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
   occa::memory o_extC;
 
-  occa::kernel velocityHaloExtractKernel;
-  occa::kernel velocityHaloScatterKernel;
-  occa::kernel pressureHaloExtractKernel;
-  occa::kernel pressureHaloScatterKernel;
-
   occa::kernel advectionVolumeKernel;
-  occa::kernel advectionSurfaceKernel;
   occa::kernel advectionCubatureVolumeKernel;
-  occa::kernel advectionCubatureSurfaceKernel;
 
   occa::kernel advectionStrongVolumeKernel;
   occa::kernel advectionStrongCubatureVolumeKernel;
@@ -200,7 +178,7 @@ typedef struct
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
-  occa::kernel velocityRhsBCKernel;
+  occa::kernel velocityNeumannBCKernel;
   occa::kernel velocityDirichletBCKernel;
 
   occa::kernel fillKernel;
@@ -211,7 +189,6 @@ typedef struct
   occa::kernel setEllipticCoeffKernel;
   occa::kernel setEllipticCoeffPressureKernel;
 
-  int TOMBO;
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
   occa::kernel invMassMatrixKernel;
@@ -222,9 +199,7 @@ typedef struct
   int* EToB;
   occa::memory o_EToB;
 
-  occa::memory o_InvM;
   occa::properties* kernelInfo;
 }ins_t;
-} // end C Linkage
 
 #endif

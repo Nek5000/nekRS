@@ -84,8 +84,6 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
       precon->o_rhsG = mesh->device.malloc(baseLevel->Ncols * sizeof(dfloat));
       precon->o_xG   = mesh->device.malloc(baseLevel->Ncols * sizeof(dfloat));
     }
-  } else if (options.compareArgs("PRECONDITIONER", "MASSMATRIX")) {
-    precon->o_invMM = mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat), mesh->invMM);
   } else if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {

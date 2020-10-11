@@ -25,14 +25,8 @@
  */
 
 @kernel void insVelocityRhsTOMBOHex3D(const dlong Nelements,
-                                      @restrict const dfloat*  vgeo,
-                                      @restrict const dfloat*  MM,
-                                      const dfloat idt,
-                                      @restrict const dfloat*  extbdfA,
-                                      @restrict const dfloat*  extbdfB,
                                       const dlong fieldOffset,
                                       @restrict const dfloat*  BF,
-                                      @restrict const dfloat*  FU,
                                       @restrict const dfloat*  GP,
                                       @restrict const dfloat*  RHO,
                                       @restrict dfloat*  rhsU)
@@ -56,9 +50,9 @@
               const dfloat BFy = BF[id + 1 * fieldOffset];
               const dfloat BFz = BF[id + 2 * fieldOffset];
 
-              rhsU[id + 0 * fieldOffset] = rhoM * BFx - GPx;
-              rhsU[id + 1 * fieldOffset] = rhoM * BFy - GPy;
-              rhsU[id + 2 * fieldOffset] = rhoM * BFz - GPz;
+              rhsU[id + 0 * fieldOffset] = rhoM * BFx + GPx;
+              rhsU[id + 1 * fieldOffset] = rhoM * BFy + GPy;
+              rhsU[id + 2 * fieldOffset] = rhoM * BFz + GPz;
             }
           }
         }

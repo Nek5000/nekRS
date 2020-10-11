@@ -79,7 +79,6 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
                                  mesh->o_ggeo,
                                  mesh->o_Dmatrices,
                                  mesh->o_Smatrices,
-                                 mesh->o_MM,
                                  elliptic->o_lambda,
                                  precon->o_invDiagA);
 

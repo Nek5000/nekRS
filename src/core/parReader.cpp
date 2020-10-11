@@ -57,8 +57,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
-  options.setArgs("VARIABLE VISCOSITY", "FALSE");
-  options.setArgs("LOWMACH", "FALSE");
+  options.setArgs("STRESSFORMULATION", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
   options.setArgs("MAXIMUM ITERATIONS", "200");
@@ -76,7 +75,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("BOOMERAMG ITERATIONS", "1");
-  options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(-1));
+  options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
   options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 #else
@@ -171,6 +170,10 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
   else
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
+
+  int cubN = round(3./2 * (N+1) - 1) - 1;
+  ini.extract("general", "cubaturepolynomialorder", cubN);
+  options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
   double dt;
   if(ini.extract("general", "dt", dt))
@@ -272,32 +275,27 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
-  // PROBLEMTYPE
-  bool variableProperties = false;
-  ini.extract("problemtype", "variableproperties", variableProperties);
-  if(variableProperties)
-    options.setArgs("VARIABLEPROPERTIES", "TRUE");
+  //bool variableProperties;
+  //if(ini.extract("general", "variableproperties", variableProperties))
+  //  if(variableProperties) options.setArgs("VARIABLEPROPERTIES", "TRUE");
 
   bool stressFormulation;
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
-    if(stressFormulation) exit("PROBLEMTYPE::stressFormulation = Yes not supported!", EXIT_FAILURE);
-
-
-  string equation;
-  if(ini.extract("problemtype", "equation", equation))
-    if(equation == "lowmachns") options.setArgs("LOWMACH", "TRUE");
+    if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
   int bcInPar = 1;
   if(ini.sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
-    if(ini.extract("pressure", "residualtol", p_residualTol))
+    if(ini.extract("pressure", "residualtol", p_residualTol) ||
+       ini.extract("pressure", "residualtoltolerance", p_residualTol))
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE);
 
     bool p_rproj;
-    if(ini.extract("pressure", "residualproj", p_rproj)) {
+    if(ini.extract("pressure", "residualproj", p_rproj) || 
+       ini.extract("pressure", "residualprojection", p_rproj)) {
       if(p_rproj)
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
       else
@@ -462,7 +460,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     string vsolver;
     int flow = 1;
     bool v_rproj;
-    if(ini.extract("velocity", "residualproj", v_rproj)) {
+    if(ini.extract("velocity", "residualproj", v_rproj) ||
+       ini.extract("velocity", "residualprojection", v_rproj)) {
       if(v_rproj)
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
       else
@@ -486,7 +485,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double v_residualTol;
-    if(ini.extract("velocity", "residualtol", v_residualTol))
+    if(ini.extract("velocity", "residualtol", v_residualTol) ||
+       ini.extract("velocity", "residualtoltolerance", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
     if(flow) exit("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE);
@@ -504,9 +504,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     double rho;
     if(ini.extract("velocity", "density", rho) || ini.extract("velocity", "rho", rho))
       options.setArgs("DENSITY", to_string_f(rho));
-    else
-      if(!variableProperties && flow)
-        exit("Cannot find mandatory parameter VELOCITY::density!", EXIT_FAILURE);
 
     if(ini.extract("velocity", "viscosity", sbuf)) {
       int err = 0;
@@ -514,8 +511,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) exit("Invalid expression for viscosity!", EXIT_FAILURE);
       if(viscosity < 0) viscosity = fabs(1 / viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
-    } else if(!variableProperties && flow)
-      exit("Cannot find mandatory parameter VELOCITY::viscosity!", EXIT_FAILURE);
+    }
   } else {
     options.setArgs("VELOCITY", "FALSE");
   }
@@ -537,7 +533,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
       bool t_rproj;
-      if(ini.extract("temperature", "residualproj", t_rproj)) {
+      if(ini.extract("temperature", "residualproj", t_rproj) || 
+         ini.extract("temperature", "residualprojection", t_rproj)) {
         if(t_rproj)
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
         else
@@ -552,7 +549,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
 
       double s_residualTol;
-      if(ini.extract("temperature", "residualtol", s_residualTol))
+      if(ini.extract("temperature", "residualtol", s_residualTol) ||
+         ini.extract("temperature", "residualtolerance", s_residualTol))
         options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
 
       if(ini.extract("temperature", "conductivity", sbuf)) {
@@ -561,16 +559,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
         if(err) exit("Invalid expression for conductivity!", EXIT_FAILURE);
         if(diffusivity < 0) diffusivity = fabs(1 / diffusivity);
         options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
-      } else if(!variableProperties)
-        exit("Cannot find mandatory parameter TEMPERATURE::conductivity!", EXIT_FAILURE);
+      }
 
       if(ini.extract("temperature", "rhocp", sbuf)) {
         int err = 0;
         double rhoCp = te_interp(sbuf.c_str(), &err);
         if(err) exit("Invalid expression for rhoCp!", EXIT_FAILURE);
         options.setArgs("SCALAR00 DENSITY", to_string_f(rhoCp));
-      } else if(!variableProperties)
-        exit("Cannot find mandatory parameter TEMPERATURE::rhoCp!", EXIT_FAILURE);
+      }
 
       string s_bcMap;
       if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
@@ -584,9 +580,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
     }
   }
-
-  if(equation == "lowmachns" && ini.sections.count("temperature") == 0)
-    exit("PROBLEMTYPE::equation = lowMachNS requires solving for temperature!", EXIT_FAILURE);
 
   //
   for (auto & sec : ini.sections) {
@@ -615,7 +608,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
     options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
     bool t_rproj;
-    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj)) {
+    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj) || 
+       ini.extract("scalar" + sidPar, "residualprojection", t_rproj)) {
       if(t_rproj)
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
       else
@@ -631,7 +625,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
-    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol))
+    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol) ||
+       ini.extract("scalar" + sidPar, "residualtolerance", s_residualTol))
       options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
 
     if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
@@ -640,16 +635,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       if(err) exit("Invalid expression for diffusivity!", EXIT_FAILURE);
       if(diffusivity < 0) diffusivity = fabs(1 / diffusivity);
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
-    } else if(!variableProperties)
-      exit("Cannot find mandatory parameter SCALAR" + sidPar + "::diffusivity!", EXIT_FAILURE);
+    }
 
     if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       double rho = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for rho!", EXIT_FAILURE);
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rho));
-    } else if(!variableProperties)
-      exit("Cannot find mandatory parameter SCALAR" + sidPar + "::rho!", EXIT_FAILURE);
+    }
 
     string s_bcMap;
     if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {

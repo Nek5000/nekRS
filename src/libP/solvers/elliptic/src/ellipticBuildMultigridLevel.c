@@ -43,6 +43,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
 #ifndef OCCA_VERSION_1_0
   memcpy(mesh,baseElliptic->mesh,sizeof(mesh_t));
+  fflush(stdout);
+
 #else
 
   mesh->rank = baseElliptic->mesh->rank;
@@ -53,6 +55,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   mesh->dim = baseElliptic->mesh->dim;
   mesh->Nverts        = baseElliptic->mesh->Nverts;
   mesh->Nfaces        = baseElliptic->mesh->Nfaces;
+
   mesh->NfaceVertices = baseElliptic->mesh->NfaceVertices;
 
   mesh->Nfields = baseElliptic->mesh->Nfields;
@@ -148,7 +151,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     meshPhysicalNodesTet3D(mesh);
     break;
   case HEXAHEDRA:
-    meshLoadReferenceNodesHex3D(mesh, Nc);
+    meshLoadReferenceNodesHex3D(mesh, Nc, 1);
     meshPhysicalNodesHex3D(mesh, buildOnly);
     meshGeometricFactorsHex3D(mesh);
     break;
@@ -667,10 +670,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     free(vgeoSendBuffer);
   }
 
-  mesh->o_MM =
-    mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat),
-                        mesh->MM);
-
   mesh->o_vmapM =
     mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(int),
                         mesh->vmapM);
@@ -777,6 +776,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     suffix = strdup("Hex3D");
 
   char fileName[BUFSIZ], kernelName[BUFSIZ];
+
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0)  printf("loading elliptic MG kernels ... "); fflush(stdout); 
 
   for (int r = 0; r < 2; r++) {
     MPI_Barrier(mesh->comm);
@@ -908,6 +911,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     MPI_Barrier(mesh->comm);
   }
 
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+
   //new precon struct
   elliptic->precon = new precon_t();
 
@@ -1002,10 +1008,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   if(!strstr(pfloatString,dfloatString)) {
-    mesh->o_ggeoPfloat = mesh->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
-    mesh->o_DmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-    mesh->o_SmatricesPfloat = mesh->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
-    mesh->o_MMPfloat = mesh->device.malloc<pfloat>(mesh->Np * mesh->Np);
+    mesh->o_ggeoPfloat = mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
+    mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
       elliptic->mesh->o_ggeoPfloat,
       mesh->o_ggeo);
@@ -1015,9 +1020,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
       elliptic->mesh->o_SmatricesPfloat,
       mesh->o_Smatrices);
-    elliptic->copyDfloatToPfloatKernel(mesh->Np * mesh->Np,
-      elliptic->mesh->o_MMPfloat,
-      mesh->o_MM);
   }
 
   return elliptic;

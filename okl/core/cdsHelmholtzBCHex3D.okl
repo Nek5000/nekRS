@@ -37,30 +37,22 @@
     bc.y   = y[bc.idM];                                     \
     bc.z   = z[bc.idM];                                     \
     bc.fieldOffset = offset;                                \
+    bc.sM = S[bc.idM];                                      \
     bc.wrk = W;                                             \
                                                             \
     const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];        \
     const dlong bcType = mapB[bc.idM];                      \
     bc.sF = 0.f; bc.sP = 0.f;                               \
     bc.scalarId = scalarId;                                 \
-    if(bcType == 1) {                                       \
-      bc.sP = U[bc.idM];                                    \
-    }                                                       \
     if(bcType == 3) {                                       \
       cdsNeumannConditions3D(&bc);                          \
     }                                                       \
-                                                            \
-    s_U  [j][i] =  bc.sP;                                   \
     s_ndU[j][i] = -WsJ * (bc.sF);                           \
   }
 
 //RHS contributions for continuous solver
 @kernel void cdsHelmholtzBCHex3D(const dlong Nelements,
-                                 @restrict const dfloat*  ggeo,
                                  @restrict const dfloat*  sgeo,
-                                 @restrict const dfloat*  D,
-                                 @restrict const dfloat*  S,
-                                 @restrict const dfloat*  MM,
                                  @restrict const dlong*  vmapM,
                                  @restrict const int*  EToBM,
                                  @restrict const dlong*  sMT,
@@ -70,38 +62,26 @@
                                  @restrict const dfloat*  x,
                                  @restrict const dfloat*  y,
                                  @restrict const dfloat*  z,
-                                 @restrict const dfloat*  U,
+                                 @restrict const dfloat*  S,
                                  @restrict const int*  mapB,
-                                 @restrict const dfloat*  lambda,
                                  @restrict const dfloat*  W,
                                  @restrict dfloat*  rhsU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_D[p_Nq][p_Nq];
-    @shared dfloat s_U[p_Nq][p_Nq];
     @shared dfloat s_ndU[p_Nq][p_Nq];
 
 #define s_Gur s_ndU
 
-    @shared dfloat s_Gus[p_Nq][p_Nq];
     @exclusive dfloat r_ut, r_Gut, r_Auk;
-    @exclusive dfloat r_U[p_Nq];//  array to hold u(i,j,0:N) private to thread
     @exclusive dfloat r_rhsU[p_Nq]; // array  for results Au(i,j,0:N)
-
-    @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
-    @exclusive dfloat lambda0, lambda1;
 
     // for all face nodes of all elements
     // face 0
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-        //load D into local memory
-        // s_D[i][j] = d \phi_i at node j
-        s_D[j][i] = D[p_Nq * j + i]; // D is column major
 
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; ++k) {
-          r_U[k] = 0.f;
           r_rhsU[k] = 0.f;
         }
 
@@ -116,7 +96,6 @@
     for(int j = 0; j < p_Nq; ++j; @inner(1))
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         //face 0
-        r_U   [0]  = s_U  [j][i];
         if(EToBM[e * p_Nfaces + 0] > 0)
           r_rhsU[0] += s_ndU[j][i];
       }
@@ -136,7 +115,6 @@
     for(int j = 0; j < p_Nq; ++j; @inner(1))
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         //face 5
-        r_U   [p_Nq - 1]  = s_U  [j][i];
         if(EToBM[e * p_Nfaces + 5] > 0)
           r_rhsU[p_Nq - 1] += s_ndU[j][i];
       }
@@ -158,7 +136,6 @@
         if (j == 0) {//face 1
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
-            r_U   [k]  = s_U  [k][i];
             if(EToBM[e * p_Nfaces + 1] > 0)
               r_rhsU[k] += s_ndU[k][i];
           }
@@ -183,7 +160,6 @@
         if (j == p_Nq - 1) {//face 3
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
-            r_U[k]  = s_U[k][i];
             if(EToBM[e * p_Nfaces + 3] > 0)
               r_rhsU[k] += s_ndU[k][i];
           }
@@ -208,7 +184,6 @@
         if (i == p_Nq - 1) {//face 2
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
-            r_U[k] = s_U[k][j];
             if(EToBM[e * p_Nfaces + 2] > 0)
               r_rhsU[k] += s_ndU[k][j];
           }
@@ -233,96 +208,12 @@
         if (i == 0) {//face 4
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
-            r_U[k]  = s_U[k][j];
             if(EToBM[e * p_Nfaces + 4] > 0)
               r_rhsU[k] += s_ndU[k][j];
           }
         }
       }
     }
-
-    @barrier("local");
-
-    // Layer by layer
-#pragma unroll p_Nq
-    for(int k = 0; k < p_Nq; k++) {
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          // prefetch geometric factors
-          const dlong gbase = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-
-          r_G00 = ggeo[gbase + p_G00ID * p_Np];
-          r_G01 = ggeo[gbase + p_G01ID * p_Np];
-          r_G02 = ggeo[gbase + p_G02ID * p_Np];
-
-          r_G11 = ggeo[gbase + p_G11ID * p_Np];
-          r_G12 = ggeo[gbase + p_G12ID * p_Np];
-          r_G22 = ggeo[gbase + p_G22ID * p_Np];
-
-          r_GwJ = ggeo[gbase + p_GWJID * p_Np];
-
-          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          lambda0 = lambda[0 * offset + id];
-          lambda1 = lambda[1 * offset + id];
-        }
-
-      @barrier("local");
-
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          // share u(:,:,k)
-          s_U[j][i] = r_U[k];
-          r_ut = 0;
-#pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
-            const dfloat Dt = s_D[k][m];
-            r_ut += Dt * r_U[m];
-          }
-        }
-      }
-
-      @barrier("local");
-
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          dfloat ur = 0.f;
-          dfloat us = 0.f;
-
-#pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
-            const dfloat Dr = s_D[i][m];
-            const dfloat Ds = s_D[j][m];
-            ur += Dr * s_U[j][m];
-            us += Ds * s_U[m][i];
-          }
-
-          s_Gus[j][i] = lambda0 * (r_G01 * ur + r_G11 * us + r_G12 * r_ut);
-          s_Gur[j][i] = lambda0 * (r_G00 * ur + r_G01 * us + r_G02 * r_ut);
-          // put this here for a performance bump
-          r_Gut = lambda0 * (r_G02 * ur + r_G12 * us + r_G22 * r_ut);
-          r_Auk = r_GwJ * lambda1 * r_U[k];
-        }
-      }
-
-      @barrier("local");
-
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll p_Nq
-          for(int m = 0; m < p_Nq; m++) {
-            const dfloat Dr = s_D[m][i];
-            const dfloat Ds = s_D[m][j];
-            const dfloat Dt = s_D[k][m];
-            r_Auk     += Dr * s_Gur[j][m];
-            r_Auk     += Ds * s_Gus[m][i];
-            r_rhsU[m] += Dt * r_Gut; // DT(m,k)*ut(i,j,k,e)
-          }
-          r_rhsU[k] += r_Auk;
-        }
-      }
-    }
-
-    // write out
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {

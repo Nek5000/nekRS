@@ -63,8 +63,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     return;
   }
 
-  MPI_Barrier(comm);
-  double t0 = MPI_Wtime();
+  timer::tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -105,6 +104,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart();
   if(udf.setup) udf.setup(ins);
+
+/*
   if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
     if(!udf.properties) {
       if (rank ==
@@ -112,6 +113,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
       EXIT(1);
     }
   }
+*/
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
   ins->o_prop.copyFrom(ins->prop);
@@ -121,8 +123,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   if(udf.properties) {
-    udf.properties(ins, ins->startTime, ins->o_U, ins->cds->o_S,
-                   ins->o_prop, ins->cds->o_prop);
+    occa::memory o_S = ins->o_wrk0;
+    occa::memory o_SProp = ins->o_wrk0;
+    if(ins->Nscalar) {
+      o_S = ins->cds->o_S;
+      o_SProp = ins->cds->o_prop;
+    }
+    udf.properties(ins, ins->startTime, ins->o_U, o_S,
+                   ins->o_prop, o_SProp);
     ins->o_prop.copyTo(ins->prop);
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
   }
@@ -130,15 +138,18 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins->startTime, 0);
 
+  timer::toc("setup");
+  const double setupTime = timer::query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dMB = ins->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
-    cout << "initialization took " << MPI_Wtime() - t0 << " seconds" << endl;
+    cout << "initialization took " <<  setupTime << " seconds" << endl;
   }
   fflush(stdout);
 
   timer::reset();
+  timer::set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -153,6 +164,7 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
+  timer::tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     ins->isOutputStep = 1;
@@ -162,6 +174,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   ins->isOutputStep = 0;
+  timer::toc("udfExecuteStep");
 }
 
 void nekUserchk(void)

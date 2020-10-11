@@ -51,7 +51,7 @@ typedef struct
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
   int var_coeff;   // flag for variable coefficient
-  int blockSolver, Nfields; // flag for vector solver and number of fields
+  int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
 
   dlong Ntotal; // offset
 
@@ -115,6 +115,7 @@ typedef struct
   occa::stream dataStream;
 
   occa::memory o_x;
+  occa::memory o_x0;
   occa::memory o_r;
   occa::memory o_s;
   occa::memory o_shat;
@@ -142,6 +143,7 @@ typedef struct
   occa::kernel fillKernel;
 
   occa::kernel AxKernel;
+  occa::kernel AxStressKernel;
   occa::kernel AxPfloatKernel;
   occa::kernel partialAxKernel;
   occa::kernel partialAxKernel2;

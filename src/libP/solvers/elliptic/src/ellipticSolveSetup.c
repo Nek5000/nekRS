@@ -33,7 +33,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   setupAide options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
-  elliptic->resNormFactor = 1 / mesh->volume;
+  elliptic->resNormFactor = 1 / (elliptic->Nfields*mesh->volume);
 
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
 
@@ -131,8 +131,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
     elliptic->o_rtmp =
       elliptic->o_wrk.slice(3 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
-    elliptic->o_grad =
-      elliptic->o_wrk.slice(4 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+    //elliptic->o_grad =
+    //  elliptic->o_wrk.slice(4 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
   } else {
     elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
     elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
@@ -151,6 +151,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       elliptic->Ntotal * elliptic->Nfields * 4 * sizeof(dfloat),
       elliptic->grad);
   }
+
+  elliptic->o_x0 = mesh->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
   elliptic->tmp = (dfloat*) calloc(Nblock, sizeof(dfloat));
   elliptic->o_tmp = mesh->device.malloc(Nblock * sizeof(dfloat), elliptic->tmp);
@@ -263,12 +265,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       mesh->device.malloc((Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat), mesh->vgeo);
     free(vgeoSendBuffer);
   }
-
-  //build inverse of mass matrix
-  mesh->invMM = (dfloat*) calloc(mesh->Np * mesh->Np,sizeof(dfloat));
-  for (int n = 0; n < mesh->Np * mesh->Np; n++)
-    mesh->invMM[n] = mesh->MM[n];
-  matrixInverse(mesh->Np,mesh->invMM);
 
   // count total number of elements
   hlong NelementsLocal = mesh->Nelements;
@@ -476,6 +472,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
   occa::properties pfloatKernelInfo = kernelInfo;
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
+
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime(); 
+  if(mesh->rank == 0)  printf("loading elliptic kernels ... "); fflush(stdout);
 
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
@@ -729,7 +729,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         kernelInfo["defines/" "p_NqCoarse"] = 2;
       }
 
-      kernelInfo["defines/" "p_NpFEM"] = mesh->NpFEM;
+      //kernelInfo["defines/" "p_NpFEM"] = mesh->NpFEM;
 
       int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
       kernelInfo["defines/" "p_Nmax"] = Nmax;
@@ -803,10 +803,20 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
       if(elliptic->blockSolver) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
-        else
-          sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+          if(elliptic->stressForm){
+            sprintf(kernelName, "ellipticStressAxVar%s", suffix);
+          } else {
+            sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
+          }
+        }
+        else{
+          if(elliptic->stressForm){
+            sprintf(kernelName, "ellipticStressAx%s", suffix);
+          } else {
+            sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+          }
+        }
       }else{
         sprintf(fileName,  DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
@@ -815,6 +825,25 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
         else
           sprintf(kernelName, "ellipticAx%s", suffix);
       }
+      elliptic->AxStressKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
+      if(elliptic->blockSolver) {
+        sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
+        if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+            sprintf(kernelName, "ellipticBlockAxVar%s_N%d", suffix, elliptic->Nfields);
+        }
+        else{
+            sprintf(kernelName, "ellipticBlockAx%s_N%d", suffix, elliptic->Nfields);
+        }
+      }else{
+        sprintf(fileName,  DELLIPTIC "/okl/ellipticAx%s.okl", suffix);
+        if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
+          sprintf(kernelName, "ellipticAxVar%s", suffix);
+        else
+          sprintf(kernelName, "ellipticAx%s", suffix);
+      }
+      // Keep other kernel around
       elliptic->AxKernel = mesh->device.buildKernel(fileName,kernelName,AxKernelInfo);
 
       if(!serial) {
@@ -830,10 +859,20 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
             sprintf(kernelName, "ellipticPartialAxTrilinear%s", suffix);
           }else {
             if(elliptic->blockSolver) {
-              if(elliptic->var_coeff)
-                sprintf(kernelName, "ellipticBlockPartialAxVar%s_N%d", suffix, elliptic->Nfields);
-              else
-                sprintf(kernelName, "ellipticBlockPartialAx%s_N%d", suffix, elliptic->Nfields);
+              if(elliptic->var_coeff){
+                if(elliptic->stressForm){
+                  sprintf(kernelName, "ellipticStressPartialAxVar%s", suffix);
+                } else {
+                  sprintf(kernelName, "ellipticBlockPartialAxVar%s_N%d", suffix, elliptic->Nfields);
+                }
+              }
+              else{
+                if(elliptic->stressForm){
+                  sprintf(kernelName, "ellipticStessPartialAx%s", suffix);
+                } else {
+                  sprintf(kernelName, "ellipticBlockPartialAx%s_N%d", suffix, elliptic->Nfields);
+                }
+              }
             }else {
               if(elliptic->var_coeff)
                 sprintf(kernelName, "ellipticPartialAxVar%s", suffix);
@@ -1003,6 +1042,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
     MPI_Barrier(mesh->comm);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(elliptic->blockSolver) {
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));

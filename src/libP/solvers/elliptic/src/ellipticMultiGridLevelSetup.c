@@ -56,8 +56,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
-  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
 
 }
 
@@ -102,8 +102,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  o_xPfloat = mesh->device.malloc<pfloat>(Nrows);
-  o_rhsPfloat = mesh->device.malloc<pfloat>(Nrows);
+  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
@@ -200,14 +200,16 @@ void MGLevel::Report()
   MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, mesh->comm);
 
   char smootherString[BUFSIZ];
-  if (stype == RICHARDSON && smtypeDown == JACOBI)
-    strcpy(smootherString, "Damped Jacobi    ");
-  else if (stype == CHEBYSHEV && smtypeDown == JACOBI)
-    strcpy(smootherString, "Chebyshev+Jacobi ");
-  else if (stype == SCHWARZ)
-    strcpy(smootherString, "Schwarz          ");
-  else if (stype == CHEBYSHEV && smtypeDown == SCHWARZ_SMOOTH)
-    strcpy(smootherString, "Chebyshev+Schwarz");
+  if (degree != 1){
+    if (stype == RICHARDSON && smtypeDown == JACOBI)
+      strcpy(smootherString, "Damped Jacobi    ");
+    else if (stype == CHEBYSHEV && smtypeDown == JACOBI)
+      strcpy(smootherString, "Chebyshev+Jacobi ");
+    else if (stype == SCHWARZ)
+      strcpy(smootherString, "Schwarz          ");
+    else if (stype == CHEBYSHEV && smtypeDown == SCHWARZ_SMOOTH)
+      strcpy(smootherString, "Chebyshev+Schwarz");
+  }
 
   if (mesh->rank == 0) {
     if(degree == 1) {

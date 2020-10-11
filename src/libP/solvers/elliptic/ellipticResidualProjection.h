@@ -31,6 +31,7 @@
 #include <vector>
 #include <sstream>
 #include <elliptic.h>
+#include <functional>
 
 class ResidualProjection final
 {
@@ -38,61 +39,61 @@ public:
   ResidualProjection(elliptic_t& _elliptic,
                      const dlong _maxNumVecsProjection = 8,
                      const dlong _numTimeSteps = 5);
-  void preSolveProjection(occa::memory& o_r);
-  void postSolveProjection(occa::memory& o_x);
+  void pre(occa::memory& o_r);
+  void post(occa::memory& o_x);
 private:
   void computePreProjection(occa::memory& o_r);
   void computePostProjection(occa::memory& o_x);
   void updateProjectionSpace();
-  void reOrthogonalize();
-  bool checkOrthogonalize();
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
   void gop(dfloat*, const dlong);
-  dfloat computeInnerProduct(occa::memory& o_a,
-                             const dlong a_offset,
-                             occa::memory& o_b,
-                             const dlong b_offset);
-  dfloat weightedInnerProduct(occa::memory& o_w,
-                              occa::memory& o_a,
-                              const dlong a_offset,
-                              occa::memory& o_b,
-                              const dlong b_offset);
-  void multiWeightedInnerProduct(occa::memory& o_w,
+  void multiWeightedInnerProduct(
                               occa::memory& o_a,
                               const dlong m,
                               occa::memory& o_b,
                               const dlong offset);
-  elliptic_t& elliptic;
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
   dlong timestep;
-  bool initialized;
   bool verbose;
 
   occa::memory o_xbar;
   occa::memory o_xx;
   occa::memory o_bb;
   occa::memory o_alpha;
+  // references to memory on elliptic
+  occa::memory& o_invDegree;
+  occa::memory& o_rtmp;
+  occa::memory& o_Ap;
+  occa::memory& o_tmp;
+  occa::memory& o_tmp2;
+  occa::memory& o_wrk;
 
   occa::kernel scalarMultiplyKernel;
-  occa::kernel scaledAddwOffsetTwoVecKernel;
-  occa::kernel scaledAddwOffsetKernel;
   occa::kernel multiScaledAddwOffsetKernel;
-  occa::kernel subtractedMultiScaledAddwOffsetKernel;
-  occa::kernel weightedInnerProduct2Kernel;
   occa::kernel multiWeightedInnerProduct2Kernel;
-  occa::kernel innerProductKernel;
   occa::kernel accumulateKernel;
+  occa::kernel scaledAddKernel;
+  occa::kernel sumKernel;
 
-  std::vector<dfloat> alpha; // host shadow
-  std::vector<dfloat> work; // O(m) work array
-  std::vector<dfloat> multiwork; // O(Nblock*m) work array
+  dfloat * alpha;
+  dfloat * work;
+  dfloat * multiwork;
+  dfloat* tmp;
 
   dlong numVecsProjection;
-  dlong Ntotal; // vector size
-  bool useWeightedFormulation;
+  const dlong Nlocal; // vector size
+  const dlong fieldOffset; // offset
+  const dlong Nblock;
+  const dlong Nblock2;
+  const dfloat resNormFactor;
+  const int rank;
+  const int size;
+  MPI_Comm comm;
 
-  // logging...
-  std::ostringstream log;
+  std::function<void(occa::memory&,occa::memory&)> matvecOperator;
+  std::function<dfloat(occa::memory&)> weightedNorm;
+
+
 };
 #endif

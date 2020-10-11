@@ -20,15 +20,16 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("FINAL TIME", string("0.2"));
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   }
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-08"));
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
   options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
@@ -45,21 +46,23 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
 
   double *err = (double *) nek_scPtr(1);
 
-  const double vxErr = abs((err[0] - 2.46E-10)/err[0]);
-  const double prErr = abs((err[1] - 7.64E-10)/err[1]);
+  const double vxErr = abs((err[0] - 3.65E-10)/err[0]);
+  const double prErr = abs((err[1] - 6.71E-10)/err[1]);
   double s1Err, s2Err;
   
-  const int pIterErr = abs(ins->NiterP - 4);
+  int pIterErr;
   int velIterErr;
 
   switch (ciMode) {
     case 1 : velIterErr = abs(ins->NiterU - 10);
-             s1Err = abs((err[2] - 9.75E-12)/err[2]);
-             s2Err = abs((err[3] - 9.75E-12)/err[3]);
+             s1Err = abs((err[2] - 1.00E-11)/err[2]);
+             s2Err = abs((err[3] - 1.31E-11)/err[3]);
+             pIterErr = abs(ins->NiterP - 4);
              break;
     case 2 : velIterErr = abs(ins->NiterU - 10);
-             s1Err = abs((err[2] - 1.69E-11)/err[2]);
-             s2Err = abs((err[3] - 1.69E-11)/err[3]);
+             s1Err = abs((err[2] - 1.71E-11)/err[2]);
+             s2Err = abs((err[3] - 2.00E-11)/err[3]);
+             pIterErr = abs(ins->NiterP - 1);
              break;
   }
 

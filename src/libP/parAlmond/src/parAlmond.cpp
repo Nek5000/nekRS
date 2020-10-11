@@ -56,6 +56,8 @@ void AMGSetup(solver_t *MM,
   hlong TotalRows = globalRowStarts[M->size];
   dlong numLocalRows = (dlong) (globalRowStarts[M->rank+1]-globalRowStarts[M->rank]);
 
+  MPI_Barrier(M->comm);
+  double startTime = MPI_Wtime();
   if(rank==0) printf("Setting up AMG...");fflush(stdout);
 
   //populate null space vector
@@ -70,7 +72,8 @@ void AMGSetup(solver_t *MM,
 
   M->AMGSetup(A);
 
-  if(rank==0) printf("done.\n");
+  MPI_Barrier(M->comm);
+  if(rank==0) printf("done (%gs)\n", MPI_Wtime()-startTime);
 }
 
 void Precon(solver_t *M, occa::memory o_x, occa::memory o_rhs) {

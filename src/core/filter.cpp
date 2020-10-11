@@ -55,7 +55,7 @@ void filterSetup(ins_t* ins)
     ABORT(EXIT_FAILURE);
   }
 
-  // Some ugly operations to perform V*A*V^-1 in row major, watchout the transposes AK. !!!
+  // V*A*V^-1 in row major
   char TRANSA = 'T';
   char TRANSB = 'T';
   double ALPHA = 1.0, BETA = 0.0;
@@ -73,13 +73,12 @@ void filterSetup(ins_t* ins)
   TRANSB = 'N';
   dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, V, &LDA, C, &LDB, &BETA, A, &LDC);
 
-  // store filter matrix, row major again !!!
+  // store filter matrix (row major)
   ins->filterM = (dfloat*) calloc(Nmodes * Nmodes, sizeof(dfloat));
   for(int c = 0; c < Nmodes; c++)
     for(int r = 0; r < Nmodes; r++)
       ins->filterM[c + r * Nmodes] = A[r + c * Nmodes];
 
-  // Copy To Device
   ins->o_filterMT =  mesh->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
 
   if(mesh->rank == 0)

@@ -143,7 +143,7 @@ void RANSktau::updateSourceTerms()
     ins->fieldOffset,
     NSOfields,
     mesh->o_vgeo,
-    ins->o_InvM,
+    ins->mesh->o_invLMM,
     o_SijOij);
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,

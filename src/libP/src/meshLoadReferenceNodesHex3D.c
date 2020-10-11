@@ -27,125 +27,72 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mesh3D.h"
+#define NODE_GEN
 
-void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N)
+void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
 {
-  char fname[BUFSIZ];
-  sprintf(fname, DHOLMES "/nodes/hexN%02d.dat", N);
-
-  FILE* fp = fopen(fname, "r");
-
-  if (!fp) {
-    printf("ERROR: Cannot open file: '%s'\n", fname);
-    exit(-1);
-  }
-
   mesh->N = N;
   mesh->Nq = N + 1;
+  mesh->cubNq = cubN + 1;
   mesh->Nfp = (N + 1) * (N + 1);
   mesh->Np = (N + 1) * (N + 1) * (N + 1);
   mesh->Nverts = 8;
 
   int Nrows, Ncols;
 
-  /* Nodal Data */
-  readDfloatArray(fp, "Nodal r-coordinates", &(mesh->r),&Nrows,&Ncols);
-  readDfloatArray(fp, "Nodal s-coordinates", &(mesh->s),&Nrows,&Ncols);
-  readDfloatArray(fp, "Nodal t-coordinates", &(mesh->t),&Nrows,&Ncols);
+  mesh->r = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
+  mesh->s = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
+  mesh->t = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
+  NodesHex3D(mesh->N, mesh->r, mesh->s, mesh->t);
 
-  if (0) { //may not be present in the node file
-    readDfloatArray(fp, "Nodal Dr differentiation matrix", &(mesh->Dr), &Nrows, &Ncols);
-    readDfloatArray(fp, "Nodal Ds differentiation matrix", &(mesh->Ds), &Nrows, &Ncols);
-    readDfloatArray(fp, "Nodal Dt differentiation matrix", &(mesh->Dt), &Nrows, &Ncols);
-    readDfloatArray(fp, "Nodal Lift Matrix", &(mesh->LIFT), &Nrows, &Ncols);
-  }
+  mesh->faceNodes = (int *) malloc(mesh->Nfaces*mesh->Nfp*sizeof(int));
+  FaceNodesHex3D(mesh->N, mesh->r, mesh->s, mesh->t, mesh->faceNodes);
 
-  readIntArray   (fp, "Nodal Face nodes", &(mesh->faceNodes), &Nrows, &Ncols);
+  //GLL quadrature
+  mesh->gllz = (dfloat *) malloc((mesh->N+1)*sizeof(dfloat));
+  mesh->gllw = (dfloat *) malloc((mesh->N+1)*sizeof(dfloat));
+  JacobiGLL(mesh->N, mesh->gllz, mesh->gllw);
 
-  readDfloatArray(fp, "Nodal 1D GLL Nodes", &(mesh->gllz), &Nrows, &Ncols);
-  readDfloatArray(fp, "Nodal 1D GLL Weights", &(mesh->gllw), &Nrows, &Ncols);
-  readDfloatArray(fp, "Nodal 1D differentiation matrix", &(mesh->D), &Nrows, &Ncols);
+  mesh->D = (dfloat *) malloc(mesh->Nq*mesh->Nq*sizeof(dfloat));
+  Dmatrix1D(mesh->N, mesh->Nq, mesh->gllz, mesh->Nq, mesh->gllz, mesh->D);
 
-  readDfloatArray(fp, "1D degree raise matrix", &(mesh->interpRaise), &Nrows, &Ncols);
-  readDfloatArray(fp, "1D degree lower matrix", &(mesh->interpLower), &Nrows, &Ncols);
+  mesh->DW = (dfloat *) malloc(mesh->Nq*mesh->Nq*sizeof(dfloat));
+  DWmatrix1D(mesh->N, mesh->D, mesh->DW);
 
-  /* Plotting data */
-  readDfloatArray(fp, "Plotting r-coordinates", &(mesh->plotR),&Nrows,&Ncols);
-  readDfloatArray(fp, "Plotting s-coordinates", &(mesh->plotS),&Nrows,&Ncols);
-  readDfloatArray(fp, "Plotting t-coordinates", &(mesh->plotT),&Nrows,&Ncols);
-  mesh->plotNp = Nrows;
+  mesh->interpRaise = (dfloat * ) calloc(mesh->Nq*(mesh->Nq+1),sizeof(dfloat));
+  mesh->interpLower = (dfloat * ) calloc((mesh->Nq-1)*(mesh->Nq),sizeof(dfloat));
+  DegreeRaiseMatrix1D(mesh->N, mesh->N+1, mesh->interpRaise);
+  DegreeRaiseMatrix1D(mesh->N-1, mesh->N, mesh->interpLower);
 
-  readDfloatArray(fp, "Plotting Interpolation Matrix", &(mesh->plotInterp),&Nrows,&Ncols);
-  readIntArray   (fp, "Plotting triangulation", &(mesh->plotEToV), &Nrows, &Ncols);
-  mesh->plotNelements = Nrows;
-  mesh->plotNverts = Ncols;
-
-  /* Quadrature data */
-  readDfloatArray(fp, "Quadrature r-coordinates", &(mesh->cubr),&Nrows,&Ncols);
-  readDfloatArray(fp, "Quadrature weights", &(mesh->cubw),&Nrows,&Ncols);
-  mesh->cubNq = Nrows;
   mesh->cubNfp = mesh->cubNq * mesh->cubNq;
   mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
+  // cubN+1 point Gauss-Legendre quadrature
+  mesh->cubr = (dfloat *) malloc(mesh->cubNq*sizeof(dfloat));
+  mesh->cubw = (dfloat *) malloc(mesh->cubNq*sizeof(dfloat));
+  JacobiGLL(mesh->cubNq-1, mesh->cubr, mesh->cubw);
 
-  readDfloatArray(fp, "Quadrature Interpolation Matrix", &(mesh->cubInterp),&Nrows,&Ncols);
-  readDfloatArray(fp, "Quadrature Weak D Differentiation Matrix", &(mesh->cubDW),&Nrows,&Ncols);
-  readDfloatArray(fp, "Quadrature Differentiation Matrix", &(mesh->cubD),&Nrows,&Ncols);
-  readDfloatArray(fp, "Quadrature Projection Matrix", &(mesh->cubProject),&Nrows,&Ncols);
+  mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
+  InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
 
-  if (0) { //may not be present in the node file
-    readDfloatArray(fp, "Cubature r-coordinates", &(mesh->cubr),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature s-coordinates", &(mesh->cubs),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature t-coordinates", &(mesh->cubt),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature weights", &(mesh->cubw),&Nrows,&Ncols);
-    mesh->cubNp = Nrows;
+  //cubature project cubProject = cubInterp^T
+  mesh->cubProject = (dfloat*) calloc(mesh->cubNq*mesh->Nq, sizeof(dfloat));
+  matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
 
-    readDfloatArray(fp, "Cubature Interpolation Matrix", &(mesh->cubInterp),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature Weak Dr Differentiation Matrix", &(mesh->cubDrW),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature Weak Ds Differentiation Matrix", &(mesh->cubDsW),&Nrows,&Ncols);
-    readDfloatArray(fp, "Cubature Projection Matrix", &(mesh->cubProject),&Nrows,&Ncols);
+  //cubature derivates matrix, cubD: differentiate on cubature nodes
+  mesh->cubD = (dfloat *) malloc(mesh->cubNq*mesh->cubNq*sizeof(dfloat));
+  Dmatrix1D(mesh->cubNq-1, mesh->cubNq, mesh->cubr, mesh->cubNq, mesh->cubr, mesh->cubD);
+  // weak cubature derivative = cubD^T
+  mesh->cubDW  = (dfloat*) calloc(mesh->cubNq*mesh->cubNq, sizeof(dfloat));
+  for(int i = 0 ; i < mesh->cubNq; ++i){
+    for(int j = 0 ; j < mesh->cubNq; ++j){
+      mesh->cubDW[j+i*mesh->cubNq] = mesh->cubD[i+j*mesh->cubNq];
+    }
   }
 
-  if (0) { //may not be present in the node file
-    readDfloatArray(fp, "Cubature Surface Interpolation Matrix", &(mesh->intInterp),&Nrows,&Ncols);
-    mesh->intNfp = Nrows / mesh->Nfaces; //number of interpolation points per face
-
-    readDfloatArray(fp, "Cubature Surface Lift Matrix", &(mesh->intLIFT),&Nrows,&Ncols);
-  }
   mesh->intNfp = 0;
   mesh->intLIFT = NULL;
   mesh->max_EL_nnz = 0;
   mesh->intNfp = 0;
-
-  /* C0 patch data */
-  readDfloatArray(fp, "C0 overlapping patch forward matrix", &(mesh->oasForward), &Nrows, &Ncols);
-  readDfloatArray(fp, "C0 overlapping patch diagonal scaling", &(mesh->oasDiagOp), &Nrows, &Ncols);
-  readDfloatArray(fp, "C0 overlapping patch backward matrix", &(mesh->oasBack), &Nrows, &Ncols);
-  /* IPDG patch data */
-  readDfloatArray(fp, "IPDG overlapping patch forward matrix", &(mesh->oasForwardDg), &Nrows,
-                  &Ncols);
-  readDfloatArray(fp,
-                  "IPDG overlapping patch diagonal scaling",
-                  &(mesh->oasDiagOpDg),
-                  &Nrows,
-                  &Ncols);
-  readDfloatArray(fp, "IPDG overlapping patch backward matrix", &(mesh->oasBackDg), &Nrows, &Ncols);
-  mesh->NpP = Nrows; //overlapping patch size
-
-  readIntArray   (fp, "SEMFEM reference mesh", &(mesh->FEMEToV), &Nrows, &Ncols);
-  mesh->NelFEM = Nrows;
-  mesh->NpFEM = mesh->Np;
-
-  readDfloatArray(fp, "Gauss Legendre 1D quadrature nodes", &(mesh->gjr), &Nrows, &Ncols);
-  readDfloatArray(fp, "Gauss Legendre 1D quadrature weights", &(mesh->gjw), &Nrows, &Ncols);
-  readDfloatArray(fp, "GLL to Gauss Legendre interpolation matrix", &(mesh->gjI), &Nrows, &Ncols);
-  readDfloatArray(fp, "GLL to Gauss Legendre differentiation matrix", &(mesh->gjD), &Nrows, &Ncols);
-  readDfloatArray(fp,
-                  "Gauss Legendre to Gauss Legendre differentiation matrix",
-                  &(mesh->gjD2),
-                  &Nrows,
-                  &Ncols);
-
-  fclose(fp);
 
   // find node indices of vertex nodes
   dfloat NODETOL = 1e-6;

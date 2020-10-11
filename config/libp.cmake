@@ -6,6 +6,11 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/hash.c
         ${LIBP_SOURCE_DIR}/src/matrixConditionNumber.c
         ${LIBP_SOURCE_DIR}/src/matrixInverse.c
+        ${LIBP_SOURCE_DIR}/src/matrixEig.cpp
+        ${LIBP_SOURCE_DIR}/src/matrixTranspose.cpp
+        ${LIBP_SOURCE_DIR}/src/matrixRightSolve.cpp
+        ${LIBP_SOURCE_DIR}/src/meshBasis1D.cpp
+        ${LIBP_SOURCE_DIR}/src/meshBasisHex3D.cpp
         ${LIBP_SOURCE_DIR}/src/meshApplyElementMatrix.c
         ${LIBP_SOURCE_DIR}/src/meshConnect.c
         ${LIBP_SOURCE_DIR}/src/meshConnectBoundary.c
