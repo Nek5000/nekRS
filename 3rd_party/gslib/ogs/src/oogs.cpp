@@ -325,8 +325,10 @@ void reallocBuffers(int unit_size, oogs_t *gs)
 void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
+  ogs_t *ogs = gs->ogs; 
+  const size_t factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
   if (!strcmp(type, "float"))
-    Nbytes = sizeof(float);
+    Nbytes = sizeof(float)/factor;
   else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
   else if (!strcmp(type, "int"))
@@ -334,7 +336,6 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
 
-  ogs_t *ogs = gs->ogs; 
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
@@ -359,12 +360,13 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
+  ogs_t *ogs = gs->ogs; 
+  const size_t factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
   if (!strcmp(type, "float"))
-    Nbytes = sizeof(float);
+    Nbytes = sizeof(float)/factor;
   else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
 
-  ogs_t *ogs = gs->ogs; 
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
