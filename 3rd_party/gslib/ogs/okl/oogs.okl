@@ -16,7 +16,24 @@
     
     for(dlong n=start;n<end;++n){
       const dlong id = scatterIds[n];
-      scatterq[id*Nentries+k] = static_cast<dhalf>(qs);
+      dhalf half_qs;
+      {
+          unsigned int x, u, shift, exponent, mantissa, sign, rem;
+          memcpy(&x, &qs, sizeof(qs));
+          
+          u = (x & static_cast<unsigned int>(0x7fffffff));
+          sign = ((x >> 16) & static_cast<unsigned int>(0x8000));
+          exponent = u >> 23;
+          mantissa = (u & static_cast<unsigned int>(0x7fffff));
+          shift = static_cast<unsigned int>(0x7e) - exponent;
+          mantissa |= static_cast<unsigned int>(0x800000);
+          rem = mantissa << (32 - shift);
+          half_qs = static_cast<unsigned short>(sign | (mantissa >> shift));
+          if (rem > static_cast<unsigned int>(0x80000000) || 
+            rem == static_cast<unsigned int>(0x80000000) && (half_qs & 0x1))
+            half_qs++;
+      }
+      scatterq[id*Nentries+k] = half_qs;
     }
   }
 }
@@ -61,7 +78,17 @@
     float gq = 0.f;
     for(dlong n=start;n<end;++n){
     	const dlong id = gatherIds[n];
-    	gq += static_cast<float>(q[id*Nentries+k]);
+      float cast_q = 0.0;
+      dhalf half_q = q[id*Nentries+k];
+      {
+        unsigned int sign = ((half_q >> 15) & 1);
+        unsigned int exponent = ((half_q >> 10) & 0x1f);
+        unsigned int mantissa = ((half_q & 0x3ff) << 13);
+        exponent += static_cast<unsigned int>(0x70);
+        unsigned int u = ((sign << 31) | (exponent << 23) | mantissa);
+        memcpy(&cast_q, &u, sizeof(u));
+      }
+    	gq += cast_q;
     }
 
     //contiguously packed

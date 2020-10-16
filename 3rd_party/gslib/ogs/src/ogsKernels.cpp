@@ -186,7 +186,7 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
    ogs::kernelInfo["defines/" "dfloat4"]= "float4";
   }
 
-  ogs::kernelInfo["defines/" "dhalf"]= "float";
+  ogs::kernelInfo["defines/" "dhalf"]= "unsigned short";
 
   if(device.mode()=="OpenCL"){
    //ogs::kernelInfo["compiler_flags"] += "-cl-opt-disable";
@@ -198,13 +198,6 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
    ogs::kernelInfo["compiler_flags"] += " --prec-sqrt=false ";
    ogs::kernelInfo["compiler_flags"] += " --use_fast_math ";
    ogs::kernelInfo["compiler_flags"] += " --fmad=true "; // compiler option for cuda
-   ogs::kernelInfo["includes"] += "cuda_fp16.h";
-   ogs::kernelInfo["defines/" "dhalf"]= "half";
-  }
-
-  if(device.mode()=="HIP"){
-    ogs::kernelInfo["includes"] += "hip/hip_fp16.h";
-    ogs::kernelInfo["defines/" "dhalf"]= "half";
   }
 
   MPI_Barrier(comm);
