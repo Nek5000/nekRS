@@ -123,7 +123,7 @@ SOFTWARE.
 #define ogsFloat  "float"
 #define ogsDouble "double"
 #define ogsDfloat dfloatString
-#define ogsPfloat pfloatString
+#define ogsPfloat pfloatOgsString
 #define ogsInt  "int"
 #define ogsLong "long long int"
 #define ogsDlong dlongString
@@ -255,13 +255,9 @@ typedef struct {
 namespace oogs{
 
 void start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h);
-void start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h);
 void finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h);
-void finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h);
 void startFinish(void *v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h);
 void startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h);
-void startFinish(void *v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h);
-void startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h);
 oogs_t *setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::function<void()> callback, oogs_mode gsMode);
 oogs_t *setup(dlong N, hlong *ids, const int k, const dlong stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);

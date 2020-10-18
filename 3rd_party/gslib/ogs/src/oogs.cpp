@@ -153,15 +153,16 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   // Modifications for special FP 32 -> FP16 mode
+  occa::properties halfKernelInfo = ogs::kernelInfo;
   if(device.mode() == "HIP" || device.mode() == "CUDA")
   {
-    ogs::kernelInfo["defines/" "dhalf"] = "unsigned short";
-    ogs::kernelInfo["defines/" "CONVERT_TO_FP16"] = "1";
+    halfKernelInfo["defines/" "dhalf"] = "unsigned short";
+    halfKernelInfo["defines/" "CONVERT_TO_FP16"] = "1";
   }
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
-      gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_float", ogs::kernelInfo);
-      gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", ogs::kernelInfo);
+      gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_float", halfKernelInfo);
+      gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", halfKernelInfo);
     }
     MPI_Barrier(comm->c);
   }
@@ -269,29 +270,14 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_v,
                     occa::memory  o_gv)
 {
-  if        ((!strcmp(type, "float"))) {
+  if ((!strcmp(type, "float2half"))) {
+    gs->packBufFloatToHalfKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "float"))) {
     gs->packBufFloatKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "double"))) {
     gs->packBufDoubleKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else {
     printf("oogs: unsupported datatype %s!\n", type);
-    exit(1);
-  }
-}
-static void packBuf(oogs_t *gs,
-                    const  dlong Ngather,
-                    const int k,
-                    occa::memory o_starts,
-                    occa::memory o_ids,
-                    const char* type,
-                    const char* conversion,
-                    occa::memory  o_v,
-                    occa::memory  o_gv)
-{
-  if        ((!strcmp(type, "float")) && (!strcmp(conversion, "float2half"))) {
-    gs->packBufFloatToHalfKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
-  } else {
-    printf("oogs: unsupported datatype %s and conversion %s!\n", type, conversion);
     exit(1);
   }
 }
@@ -306,7 +292,9 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_v,
                       occa::memory  o_gv)
 {
-  if         ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
+  if ((!strcmp(type, "float2half"))&&(!strcmp(op, "add"))) {
+    gs->unpackBufHalfToFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
     gs->unpackBufFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "double"))&&(!strcmp(op, "add"))) {
     gs->unpackBufDoubleAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
@@ -319,25 +307,6 @@ static void unpackBuf(oogs_t *gs,
     exit(1);
   }
 }
-static void unpackBuf(oogs_t *gs,
-                      const  dlong Ngather,
-                      const int k,
-                      occa::memory o_starts,
-                      occa::memory o_ids,
-                      const char* type,
-                      const char* conversion,
-                      const char* op,
-                      occa::memory  o_v,
-                      occa::memory  o_gv)
-{
-  if         ((!strcmp(type, "float"))&&(!strcmp(op, "add")) &&(!strcmp(conversion, "float2half"))) {
-    gs->unpackBufHalfToFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
-  } else {
-    printf("oogs: unsupported datatype %s, conversion %s, and operatior %s!\n", type, conversion, op);
-    exit(1);
-  }
-}
-
 void reallocBuffers(int unit_size, oogs_t *gs)
 {
   ogs_t *ogs = gs->ogs; 
@@ -375,7 +344,10 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
-  if (!strcmp(type, "float"))
+  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
+  if (!strcmp(type, "float2half"))
+    Nbytes = sizeof(float)/factor;
+  else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
@@ -384,12 +356,16 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
 
+  // MTP:
+  // Only the pack/unpack operations are done in FP16
+  // Hence, the remaining operators must be done in FP32.
+  const char * default_type = (!strcmp(type, "float2half")) ? "float" : type;
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
-      ogsGatherScatterManyStart(o_v, k, stride, type, op, ogs);
+      ogsGatherScatterManyStart(o_v, k, stride, default_type, op, ogs);
     else
-      ogsGatherScatterStart(o_v, type, op, ogs);
+      ogsGatherScatterStart(o_v, default_type, op, ogs);
     
     return;
   }
@@ -398,42 +374,9 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
     reallocBuffers(Nbytes*k, gs);
 
     occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, 
-		   ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
+		   ogs->o_haloGatherIds, default_type, op, o_v, ogs::o_haloBuf);
 
     packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
-    ogs->device.finish();
-  }
-}
-void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *gs) 
-{
-  size_t Nbytes;
-  ogs_t *ogs = gs->ogs; 
-  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
-  if (!strcmp(type, "float") && !strcmp(conversion, "float2half"))
-    Nbytes = sizeof(float)/factor;
-  else{
-    // For all others, default to single type oogs::start
-    oogs::start(o_v, k, stride, type, op, gs);
-    return;
-  }
-
-
-  if(gs->mode == OOGS_DEFAULT) { 
-    if(k>1)
-      ogsGatherScatterManyStart(o_v, k, stride, type, op, ogs);
-    else
-      ogsGatherScatterStart(o_v, type, op, ogs);
-    
-    return;
-  }
-
-  if (ogs->NhaloGather) {
-    reallocBuffers(Nbytes*k, gs);
-
-    occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, 
-		   ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
-
-    packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, conversion, ogs::o_haloBuf, gs->o_bufSend);
     ogs->device.finish();
   }
 }
@@ -442,24 +385,31 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
-  if (!strcmp(type, "float"))
+  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
+  if (!strcmp(type, "float2half"))
+    Nbytes = sizeof(float)/factor;
+  else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
 
+  // MTP:
+  // Only the pack/unpack operations are done in FP16
+  // Hence, the remaining operators must be done in FP32.
+  const char * default_type = (!strcmp(type, "float2half")) ? "float" : type;
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
-      ogsGatherScatterManyFinish(o_v, k, stride, type, op, ogs);
+      ogsGatherScatterManyFinish(o_v, k, stride, default_type, op, ogs);
     else
-      ogsGatherScatterFinish(o_v, type, op, ogs);
+      ogsGatherScatterFinish(o_v, default_type, op, ogs);
     
     return;
   }
 
   if(ogs->NlocalGather) 
     occaGatherScatterMany(ogs->NlocalGather, k, stride, ogs->o_localGatherOffsets, 
-		          ogs->o_localGatherIds, type, op, o_v);
+		          ogs->o_localGatherIds, default_type, op, o_v);
 
   if (ogs->NhaloGather) {
     ogs->device.setStream(ogs::dataStream);
@@ -485,64 +435,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
  
     unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
     occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, 
-                    ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
-
-    ogs->device.finish(); // waiting for o_v
-    ogs->device.setStream(ogs::defaultStream);
-  }
-}
-void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *gs) 
-{
-  size_t Nbytes;
-  ogs_t *ogs = gs->ogs; 
-  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
-  if (!strcmp(type, "float") && !strcmp(conversion, "float2half"))
-    Nbytes = sizeof(float)/factor;
-  else {
-    // For all others, default to single type oogs::start
-    oogs::finish(o_v, k, stride, type, op, gs);
-    return;
-  }
-
-
-  if(gs->mode == OOGS_DEFAULT) { 
-    if(k>1)
-      ogsGatherScatterManyFinish(o_v, k, stride, type, op, ogs);
-    else
-      ogsGatherScatterFinish(o_v, type, op, ogs);
-    
-    return;
-  }
-
-  if(ogs->NlocalGather) 
-    occaGatherScatterMany(ogs->NlocalGather, k, stride, ogs->o_localGatherOffsets, 
-		          ogs->o_localGatherIds, type, op, o_v);
-
-  if (ogs->NhaloGather) {
-    ogs->device.setStream(ogs::dataStream);
-
-    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
-    const void* execdata = hgs->r.data;
-    const struct pw_data *pwd = (pw_data*) execdata;
-    const unsigned transpose = 0; // hardwired for now
-    const unsigned recv = 0^transpose, send = 1^transpose;
-    if(gs->mode == OOGS_HOSTMPI)
-      gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
-
-#ifdef OGS_ENABLE_TIMER
-    timer::hostTic("oogsMPI",1);
-#endif
-    pairwiseExchange(Nbytes*k, gs);
-#ifdef OGS_ENABLE_TIMER
-    timer::hostToc("oogsMPI");
-#endif
-
-    if(gs->mode == OOGS_HOSTMPI)
-      gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
- 
-    unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, conversion, op, gs->o_bufRecv, ogs::o_haloBuf);
-    occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, 
-                    ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
+                    ogs->o_haloGatherIds, default_type, op, ogs::o_haloBuf, o_v);
 
     ogs->device.finish(); // waiting for o_v
     ogs->device.setStream(ogs::defaultStream);
@@ -557,15 +450,6 @@ void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const 
 {
    start(o_v, k, stride, type, op, h);
    finish(o_v, k, stride, type, op, h);
-}
-void oogs::startFinish(void *v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h)
-{
-  ogsGatherScatterMany(v, k, stride, type, op, h->ogs);
-}
-void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *conversion, const char *op, oogs_t *h)
-{
-   start(o_v, k, stride, type, conversion, op, h);
-   finish(o_v, k, stride, type, conversion, op, h);
 }
 
 void oogs::destroy(oogs_t *gs)
@@ -586,9 +470,11 @@ void oogs::destroy(oogs_t *gs)
 
   gs->packBufDoubleKernel.free(); 
   gs->packBufFloatKernel.free();
+  gs->packBufFloatToHalfKernel.free();
 
   gs->unpackBufDoubleAddKernel.free();
   gs->unpackBufFloatAddKernel.free();
+  gs->unpackBufHalfToFloatAddKernel.free();
 
   gs->unpackBufDoubleMinKernel.free();
   gs->unpackBufDoubleMaxKernel.free();

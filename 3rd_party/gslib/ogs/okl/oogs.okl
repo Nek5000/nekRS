@@ -16,7 +16,7 @@
     
     for(dlong n=start;n<end;++n){
       const dlong id = scatterIds[n];
-#ifdef CONVERT_TO_FP16
+#if CONVERT_TO_FP16
       // TODO: Simplify once we know how to include cuda_fp16.h correctly
       dhalf half_qs;
       {
@@ -107,7 +107,7 @@
     float gq = 0.f;
     for(dlong n=start;n<end;++n){
     	const dlong id = gatherIds[n];
-#ifdef CONVERT_TO_FP16
+#if CONVERT_TO_FP16
       // TODO: Simplify once we know how to include cuda_fp16.h correctly
       float cast_q = 0.0;
       dhalf half_q = q[id*Nentries+k];
