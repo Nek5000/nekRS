@@ -46,11 +46,13 @@ SOFTWARE.
 #define MPI_PFLOAT MPI_FLOAT
 #define pfloatFormat "%f"
 #define pfloatString "float"
+#define pfloatConversionString "float2half"
 #else
 #define pfloat double
 #define MPI_PFLOAT MPI_DOUBLE
 #define pfloatFormat "%lf"
 #define pfloatString "double"
+#define pfloatConversionString "double"
 #endif
 
 //host index data type

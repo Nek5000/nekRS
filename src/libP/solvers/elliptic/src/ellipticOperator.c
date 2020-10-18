@@ -231,9 +231,15 @@ void ellipticOperator(elliptic_t* elliptic,
     oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   } else {
     ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
-    oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+    if(!strcmp(precision,"float"))
+      oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, pfloatConversionString, ogsAdd, oogsAx);
+    else
+      oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
-    oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+    if(!strcmp(precision,"float"))
+      oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, pfloatConversionString, ogsAdd, oogsAx);
+    else
+      oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   }
   occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;
   if (elliptic->Nmasked) maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
