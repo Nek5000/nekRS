@@ -16,6 +16,8 @@
     
     for(dlong n=start;n<end;++n){
       const dlong id = scatterIds[n];
+#ifdef CONVERT_TO_FP16
+      // TODO: Simplify once we know how to include cuda_fp16.h correctly
       dhalf half_qs;
       {
         unsigned int x, u, shift, exponent, mantissa, sign, remainder;
@@ -58,6 +60,9 @@
           half_qs++;
       }
       scatterq[id*Nentries+k] = half_qs;
+#else
+      scatterq[id*Nentries+k] = qs;
+#endif
     }
   }
 }
@@ -102,6 +107,8 @@
     float gq = 0.f;
     for(dlong n=start;n<end;++n){
     	const dlong id = gatherIds[n];
+#ifdef CONVERT_TO_FP16
+      // TODO: Simplify once we know how to include cuda_fp16.h correctly
       float cast_q = 0.0;
       dhalf half_q = q[id*Nentries+k];
       {
@@ -129,6 +136,9 @@
         memcpy(&cast_q, &u, sizeof(u));
       }
     	gq += cast_q;
+#else
+    	gq += q[id*Nentries+k];
+#endif
     }
 
     //contiguously packed
