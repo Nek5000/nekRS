@@ -295,15 +295,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     else
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE);
 
-    double p_minEigMultiplier;
-    if(ini.extract("pressure", "mineigmultiplier", p_minEigMultiplier)){
-      options.setArgs("PRESSURE MIN EIG MULTIPLIER", to_string_f(p_minEigMultiplier));
-    }
-    double p_maxEigMultiplier;
-    if(ini.extract("pressure", "maxeigmultiplier", p_maxEigMultiplier)){
-      options.setArgs("PRESSURE MAX EIG MULTIPLIER", to_string_f(p_maxEigMultiplier));
-    }
-
     bool p_rproj;
     if(ini.extract("pressure", "residualproj", p_rproj) || 
        ini.extract("pressure", "residualprojection", p_rproj)) {
