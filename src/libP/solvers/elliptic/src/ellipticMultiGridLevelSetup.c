@@ -125,8 +125,11 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
         ChebyshevIterations = 2;   //default to degree 2
       //estimate the max eigenvalue of S*A
       dfloat rho = this->maxEigSmoothAx();
-      lambda1 = 1.1 * rho;
-      lambda0 = rho / 10.;
+      const double maxEigMultiplier = std::stod(options.getArgs("MAX EIG MULTIPLIER"));
+      const double minEigMultiplier = std::stod(options.getArgs("MIN EIG MULTIPLIER"));
+
+      lambda1 = maxEigMultiplier * rho;
+      lambda0 = rho * minEigMultiplier;
     }
     if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
        options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
@@ -163,8 +166,11 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       //estimate the max eigenvalue of S*A
       dfloat rho = this->maxEigSmoothAx();
 
-      lambda1 = 1.1 * rho;
-      lambda0 = rho / 10.;
+      const double maxEigMultiplier = std::stod(options.getArgs("MAX EIG MULTIPLIER"));
+      const double minEigMultiplier = std::stod(options.getArgs("MIN EIG MULTIPLIER"));
+
+      lambda1 = maxEigMultiplier * rho;
+      lambda0 = rho * minEigMultiplier;
     }else {
       stype = RICHARDSON;
 

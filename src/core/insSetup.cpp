@@ -471,6 +471,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->pOptions.setArgs("DEBUG ENABLE OGS", "1");
     ins->pOptions.setArgs("DEBUG ENABLE REDUCTIONS", "1");
     ins->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
+    ins->pOptions.setArgs("MIN EIG MULTIPLIER", options.getArgs("PRESSURE MIN EIG MULTIPLIER"));
+    ins->pOptions.setArgs("MAX EIG MULTIPLIER", options.getArgs("PRESSURE MAX EIG MULTIPLIER"));
 
     ins->pSolver = new elliptic_t();
     ins->pSolver->blockSolver = 0;

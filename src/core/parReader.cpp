@@ -93,6 +93,8 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
   options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
+  options.setArgs("PRESSURE MIN EIG MULTIPLIER", "0.1");
+  options.setArgs("PRESSURE MAX EIG MULTIPLIER", "1.1");
 }
 
 libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
@@ -292,6 +294,15 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE);
+
+    double p_minEigMultiplier;
+    if(ini.extract("pressure", "mineigmultiplier", p_minEigMultiplier)){
+      options.setArgs("PRESSURE MIN EIG MULTIPLIER", to_string_f(p_minEigMultiplier));
+    }
+    double p_maxEigMultiplier;
+    if(ini.extract("pressure", "maxeigmultiplier", p_maxEigMultiplier)){
+      options.setArgs("PRESSURE MAX EIG MULTIPLIER", to_string_f(p_maxEigMultiplier));
+    }
 
     bool p_rproj;
     if(ini.extract("pressure", "residualproj", p_rproj) || 
