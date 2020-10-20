@@ -36,6 +36,3 @@ boundaryTypeMap = inlet, flux
 residualTol = 1e-06
 rhoCp = 1.0
 conductivity = -50e3
-
-[BOOMERAMG]
-iterations = 1

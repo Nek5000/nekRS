@@ -104,7 +104,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
 
   ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
-  if(ins->finalTime - (ins->startTime + ins->NtimeSteps*ins->dt) >= ins->dt) ins->NtimeSteps++;
+  if(ins->startTime + ins->NtimeSteps*ins->dt < ins->finalTime) ins->NtimeSteps++;
 
   options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
