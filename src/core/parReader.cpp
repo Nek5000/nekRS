@@ -93,6 +93,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
   options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
+  options.setArgs("HALF PRECISION GATHERSCATTER", "FALSE");
 }
 
 libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)

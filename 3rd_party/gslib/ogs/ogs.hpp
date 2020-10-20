@@ -123,7 +123,7 @@ SOFTWARE.
 #define ogsFloat  "float"
 #define ogsDouble "double"
 #define ogsDfloat dfloatString
-#define ogsPfloat pfloatOgsString
+#define ogsPfloat pfloatString
 #define ogsInt  "int"
 #define ogsLong "long long int"
 #define ogsDlong dlongString
