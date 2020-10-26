@@ -1,3 +1,8 @@
+#if OKL_MODE == "CUDA"
+#include <cuda_fp16.h>
+#elif OKL_MODE == "HIP"
+#include <hip/hip_fp16.h>
+#endif
 @kernel void packBuf_float(const dlong Nscatter,
                            const   int Nentries,
                            @restrict const  dlong *  scatterStarts,
@@ -16,53 +21,7 @@
     
     for(dlong n=start;n<end;++n){
       const dlong id = scatterIds[n];
-#if CONVERT_TO_FP16
-      // TODO: Simplify once we know how to include cuda_fp16.h correctly
-      dhalf half_qs;
-      {
-        unsigned int x, u, shift, exponent, mantissa, sign, remainder;
-        memcpy(&x, &qs, sizeof(qs));
-        u = (x & static_cast<unsigned int>(0x7fffffff));
-        sign = ((x >> 16) & static_cast<unsigned int>(0x8000));
-        // NaN/+Inf/-Inf
-        if (u >= static_cast<unsigned int>(0x7f800000)) {
-            remainder = 0;
-            half_qs = static_cast<unsigned short>((u == static_cast<unsigned int>(0x7f800000)) ?
-              (sign | static_cast<unsigned int>(0x7c00)) : static_cast<unsigned int>(0x7fff));
-        }
-        // Overflows
-        else if (u > static_cast<unsigned int>(0x477fefff)) {
-            remainder = static_cast<unsigned int>(0x80000000);
-            half_qs = static_cast<unsigned short>(sign | static_cast<unsigned int>(0x7bff));
-        }
-        // Normal numbers
-        else if (u >= static_cast<unsigned int>(0x38800000)) {
-            remainder = u << 19;
-            u -= static_cast<unsigned int>(0x38000000);
-            half_qs = static_cast<unsigned short>(sign | (u >> 13));
-        }
-        // +0/-0
-        else if (u < static_cast<unsigned int>(0x33000001)) {
-            remainder = u;
-            half_qs = static_cast<unsigned short>(sign);
-        }
-        else {
-          // Denormal numbers
-          exponent = u >> 23;
-          mantissa = (u & static_cast<unsigned int>(0x7fffff));
-          shift = static_cast<unsigned int>(0x7e) - exponent;
-          mantissa |= static_cast<unsigned int>(0x800000);
-          remainder = mantissa << (32 - shift);
-          half_qs = static_cast<unsigned short>(sign | (mantissa >> shift));
-        }
-        if (remainder > static_cast<unsigned int>(0x80000000) 
-          || (remainder == static_cast<unsigned int>(0x80000000) && (half_qs & 0x1)))
-          half_qs++;
-      }
-      scatterq[id*Nentries+k] = half_qs;
-#else
-      scatterq[id*Nentries+k] = qs;
-#endif
+      scatterq[id*Nentries+k] = static_cast<dhalf>(qs);
     }
   }
 }
@@ -107,38 +66,7 @@
     float gq = 0.f;
     for(dlong n=start;n<end;++n){
     	const dlong id = gatherIds[n];
-#if CONVERT_TO_FP16
-      // TODO: Simplify once we know how to include cuda_fp16.h correctly
-      float cast_q = 0.0;
-      dhalf half_q = q[id*Nentries+k];
-      {
-        unsigned int sign = ((half_q >> 15) & 1);
-        unsigned int exponent = ((half_q >> 10) & 0x1f);
-        unsigned int mantissa = ((half_q & 0x3ff) << 13);
-        if (exponent == static_cast<unsigned int>(0x1f)) { /* NaN or Inf */
-            mantissa = (mantissa ? (sign = 0, static_cast<unsigned int>(0x7fffff)) : 0);
-            exponent = static_cast<unsigned int>(0xff);
-        } else if (!exponent) { /* Denorm or Zero */
-            if (mantissa) {
-                unsigned int msb = 0;
-                exponent = static_cast<unsigned int>(0x71);
-                while(!msb){
-                  msb = (mantissa & static_cast<unsigned int>(0x400000));
-                  mantissa <<= 1; /* normalize */
-                  --exponent;
-                }
-                mantissa &= static_cast<unsigned int>(0x7fffff); /* 1.mantissa is implicit */
-            }
-        } else {
-            exponent += static_cast<unsigned int>(0x70);
-        }
-        unsigned int u = ((sign << 31) | (exponent << 23) | mantissa);
-        memcpy(&cast_q, &u, sizeof(u));
-      }
-    	gq += cast_q;
-#else
-    	gq += q[id*Nentries+k];
-#endif
+    	gq += static_cast<float>(q[id*Nentries+k]);
     }
 
     //contiguously packed
