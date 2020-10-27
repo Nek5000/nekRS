@@ -270,6 +270,18 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_gv)
 {
   if ((!strcmp(type, "float2half"))) {
+    if(device.mode() == "SERIAL"){
+      printf("oogs: float2half is not supported for SERIAL mode!\n");
+      exit(1);
+    }
+    // Must set run time dimensions for CUDA kernel
+    const int threadBlockSize = 256;
+    occa::dim outer, inner;
+    outer.dims = 1;
+    inner.dims = 1;
+    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
+    inner[0] = threadBlockSize;
+    gs->packBufFloatToHalfKernel.setRunDims(outer, inner);
     gs->packBufFloatToHalfKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "float"))) {
     gs->packBufFloatKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
@@ -292,6 +304,18 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_gv)
 {
   if ((!strcmp(type, "float2half"))&&(!strcmp(op, "add"))) {
+    if(device.mode() == "SERIAL"){
+      printf("oogs: float2half is not supported for SERIAL mode!\n");
+      exit(1);
+    }
+    // Must set run time dimensions for CUDA kernel
+    const int threadBlockSize = 256;
+    occa::dim outer, inner;
+    outer.dims = 1;
+    inner.dims = 1;
+    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
+    inner[0] = threadBlockSize;
+    gs->unpackBufHalfToFloatAddKernel.setRunDims(outer, inner);
     gs->unpackBufHalfToFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
     gs->unpackBufFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
@@ -343,7 +367,9 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
-  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
+  // MTP some kernels still work on the default type,
+  // so we can't reduce the factor here
+  const int factor = 1;
   if (!strcmp(type, "float2half"))
     Nbytes = sizeof(float)/factor;
   else if (!strcmp(type, "float"))
