@@ -270,10 +270,6 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_gv)
 {
   if ((!strcmp(type, "float2half"))) {
-    if(device.mode() == "SERIAL"){
-      printf("oogs: float2half is not supported for SERIAL mode!\n");
-      exit(1);
-    }
     // Must set run time dimensions for CUDA kernel
     const int threadBlockSize = 256;
     occa::dim outer, inner;
@@ -304,10 +300,6 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_gv)
 {
   if ((!strcmp(type, "float2half"))&&(!strcmp(op, "add"))) {
-    if(device.mode() == "SERIAL"){
-      printf("oogs: float2half is not supported for SERIAL mode!\n");
-      exit(1);
-    }
     // Must set run time dimensions for CUDA kernel
     const int threadBlockSize = 256;
     occa::dim outer, inner;
