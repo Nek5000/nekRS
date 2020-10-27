@@ -1,14 +1,9 @@
-#if OKL_MODE == "CUDA"
-#include <cuda_fp16.h>
-#elif OKL_MODE == "HIP"
-#include <hip/hip_fp16.h>
-#endif
 @kernel void packBuf_float(const dlong Nscatter,
                            const   int Nentries,
                            @restrict const  dlong *  scatterStarts,
                            @restrict const  dlong *  scatterIds,
                            @restrict const  float *  q,
-                           @restrict dhalf *  scatterq){
+                           @restrict float *  scatterq){
 
   for(dlong s=0;s<Nscatter*Nentries;++s;@tile(256,@outer,@inner)){
 
@@ -21,7 +16,7 @@
     
     for(dlong n=start;n<end;++n){
       const dlong id = scatterIds[n];
-      scatterq[id*Nentries+k] = static_cast<dhalf>(qs);
+      scatterq[id*Nentries+k] = static_cast<float>(qs);
     }
   }
 }
@@ -53,7 +48,7 @@
                                 const  int      Nentries,
 		                @restrict const  dlong *  gatherStarts,
 		                @restrict const  dlong *  gatherIds,
-		                @restrict const  dhalf *  q,
+		                @restrict const  float *  q,
 		                @restrict float *  gatherq){
 
   for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){

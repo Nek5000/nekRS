@@ -156,13 +156,12 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   occa::properties halfKernelInfo = ogs::kernelInfo;
   if(device.mode() == "HIP" || device.mode() == "CUDA")
   {
-    halfKernelInfo["defines/" "dhalf"] = "unsigned short";
-    halfKernelInfo["defines/" "CONVERT_TO_FP16"] = "1";
+    halfKernelInfo["okl/enabled"] = false;
   }
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
-      gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_float", halfKernelInfo);
-      gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", halfKernelInfo);
+      gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.okl", "packBuf_half", halfKernelInfo);
+      gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.okl", "unpackBuf_halfAdd", halfKernelInfo);
     }
     MPI_Barrier(comm->c);
   }
