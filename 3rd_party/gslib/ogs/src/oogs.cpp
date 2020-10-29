@@ -367,9 +367,8 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   ogs_t *ogs = gs->ogs; 
   // MTP some kernels still work on the default type,
   // so we can't reduce the factor here
-  const int factor = 1;
   if (!strcmp(type, "floatCommHalf"))
-    Nbytes = sizeof(float)/factor;
+    Nbytes = sizeof(float);
   else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
@@ -419,9 +418,8 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
-  const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
   if (!strcmp(type, "floatCommHalf"))
-    Nbytes = sizeof(float)/factor;
+    Nbytes = sizeof(float)/2;
   else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
