@@ -124,6 +124,7 @@ SOFTWARE.
 #define ogsDouble "double"
 #define ogsDfloat dfloatString
 #define ogsPfloat pfloatString
+#define ogsFloatCommHalf "floatCommHalf"
 #define ogsInt  "int"
 #define ogsLong "long long int"
 #define ogsDlong dlongString

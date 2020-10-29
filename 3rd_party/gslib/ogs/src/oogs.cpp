@@ -269,7 +269,7 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_v,
                     occa::memory  o_gv)
 {
-  if ((!strcmp(type, "float2half"))) {
+  if ((!strcmp(type, "floatCommHalf"))) {
     // Must set run time dimensions for CUDA kernel
     const int threadBlockSize = 256;
     occa::dim outer, inner;
@@ -299,7 +299,7 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_v,
                       occa::memory  o_gv)
 {
-  if ((!strcmp(type, "float2half"))&&(!strcmp(op, "add"))) {
+  if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, "add"))) {
     // Must set run time dimensions for CUDA kernel
     const int threadBlockSize = 256;
     occa::dim outer, inner;
@@ -362,7 +362,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   // MTP some kernels still work on the default type,
   // so we can't reduce the factor here
   const int factor = 1;
-  if (!strcmp(type, "float2half"))
+  if (!strcmp(type, "floatCommHalf"))
     Nbytes = sizeof(float)/factor;
   else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
@@ -376,7 +376,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   // MTP:
   // Only the pack/unpack operations are done in FP16
   // Hence, the remaining operators must be done in FP32.
-  const char * default_type = (!strcmp(type, "float2half")) ? "float" : type;
+  const char * default_type = (!strcmp(type, "floatCommHalf")) ? "float" : type;
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
@@ -403,7 +403,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
   const int factor = (ogs->device.mode() == "HIP" || ogs->device.mode() == "CUDA") ? 2 : 1;
-  if (!strcmp(type, "float2half"))
+  if (!strcmp(type, "floatCommHalf"))
     Nbytes = sizeof(float)/factor;
   else if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
@@ -413,7 +413,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
   // MTP:
   // Only the pack/unpack operations are done in FP16
   // Hence, the remaining operators must be done in FP32.
-  const char * default_type = (!strcmp(type, "float2half")) ? "float" : type;
+  const char * default_type = (!strcmp(type, "floatCommHalf")) ? "float" : type;
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)

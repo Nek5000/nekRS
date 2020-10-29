@@ -891,8 +891,8 @@ void MGLevel::build(
 }
 void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 {
-  const char* ogsDataTypeString = (strstr(ogsPfloat,"float") && options.compareArgs("HALF PRECISION GATHERSCATTER","TRUE")) ?
-    "float2half" : ogsPfloat;
+  const char* ogsDataTypeString = (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
+    ogsFloatCommHalf : ogsPfloat;
   if(xIsZero) {
     const dlong Nelements = elliptic->mesh->Nelements;
     preFDMKernel(Nelements, o_u, o_work1);
