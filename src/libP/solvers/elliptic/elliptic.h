@@ -268,7 +268,7 @@ typedef struct
 #include "ellipticMultiGrid.h"
 #include "ellipticResidualProjection.h"
 
-elliptic_t* ellipticSetup(mesh2D* mesh, occa::properties &kernelInfo, setupAide options);
+elliptic_t* ellipticSetup(mesh2D* mesh, occa::properties kernelInfo, setupAide options);
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
@@ -276,7 +276,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
 
 int  ellipticSolve(elliptic_t* elliptic, dfloat tol, occa::memory &o_r, occa::memory &o_x);
 
-void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo);
+void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo);
 void ellipticBlockSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo);
 
 void ellipticStartHaloExchange(elliptic_t* elliptic,

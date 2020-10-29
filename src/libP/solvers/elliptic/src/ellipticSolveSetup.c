@@ -27,7 +27,7 @@
 #include "elliptic.h"
 #include <string>
 
-void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
+void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 {
   mesh_t* mesh      = elliptic->mesh;
   setupAide options = elliptic->options;
@@ -469,9 +469,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
   kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
+  kernelInfo["defines/" "p_blockSize"] = blockSize;
+
   occa::properties pfloatKernelInfo = kernelInfo;
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
+
+  occa::properties kernelInfoNoOKL = kernelInfo;
+  if(serial) kernelInfoNoOKL["okl/enabled"] = false;
 
   MPI_Barrier(mesh->comm);
   double tStartLoadKernel = MPI_Wtime(); 
@@ -499,13 +504,29 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                  "mask",
                                  pfloatKernelInfo);
 
-      kernelInfo["defines/" "p_blockSize"] = blockSize;
-      occa::properties kernelInfoNoOKL = kernelInfo;
-      if(serial) kernelInfoNoOKL["okl/enabled"] = false;
-
       mesh->sumKernel =
         mesh->device.buildKernel(DHOLMES "/okl/sum.okl",
                                  "sum",
+                                 kernelInfo);
+
+      elliptic->fillKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/fill.okl",
+                                 "fill",
+                                 kernelInfo);
+
+      elliptic->dotMultiplyAddKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/dotMultiplyAdd.okl",
+                                 "dotMultiplyAdd",
+                                 kernelInfo);
+
+      elliptic->dotDivideKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/dotDivide.okl",
+                                 "dotDivide",
+                                 kernelInfo);
+
+      elliptic->scalarDivideKernel =
+        mesh->device.buildKernel(DHOLMES "/okl/dotDivide.okl",
+                                 "scalarDivide",
                                  kernelInfo);
 
       if(elliptic->blockSolver) {
@@ -695,97 +716,65 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                      "dotMultiply",
                                      kernelInfo);
       }
+    }
+    MPI_Barrier(mesh->comm);
+  }
 
-      elliptic->fillKernel =
-        mesh->device.buildKernel(DHOLMES "/okl/fill.okl",
-                                 "fill",
-                                 kernelInfo);
+  // add custom defines
+  kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
 
-      elliptic->dotMultiplyAddKernel =
-        mesh->device.buildKernel(DHOLMES "/okl/dotMultiplyAdd.okl",
-                                 "dotMultiplyAdd",
-                                 kernelInfo);
+  //sizes for the coarsen and prolongation kernels. degree N to degree 1
+  kernelInfo["defines/" "p_NpFine"] = mesh->Np;
+  kernelInfo["defines/" "p_NpCoarse"] = mesh->Nverts;
 
-      elliptic->dotDivideKernel =
-        mesh->device.buildKernel(DHOLMES "/okl/dotDivide.okl",
-                                 "dotDivide",
-                                 kernelInfo);
+  if (elliptic->elementType == QUADRILATERALS || elliptic->elementType == HEXAHEDRA) {
+    kernelInfo["defines/" "p_NqFine"] = mesh->N + 1;
+    kernelInfo["defines/" "p_NqCoarse"] = 2;
+  }
 
-      elliptic->scalarDivideKernel =
-        mesh->device.buildKernel(DHOLMES "/okl/dotDivide.okl",
-                                 "scalarDivide",
-                                 kernelInfo);
+  int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
+  kernelInfo["defines/" "p_Nmax"] = Nmax;
 
-      // add custom defines
-      kernelInfo["defines/" "p_NpP"] = (mesh->Np + mesh->Nfp * mesh->Nfaces);
-      kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
+  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
+  kernelInfo["defines/" "p_maxNodes"] = maxNodes;
 
-      //sizes for the coarsen and prolongation kernels. degree N to degree 1
-      kernelInfo["defines/" "p_NpFine"] = mesh->Np;
-      kernelInfo["defines/" "p_NpCoarse"] = mesh->Nverts;
+  int NblockV = mymax(1,maxNthreads / mesh->Np); // works for CUDA
+  int NnodesV = 1; //hard coded for now
+  kernelInfo["defines/" "p_NblockV"] = NblockV;
+  kernelInfo["defines/" "p_NnodesV"] = NnodesV;
+  kernelInfo["defines/" "p_NblockVFine"] = NblockV;
+  kernelInfo["defines/" "p_NblockVCoarse"] = NblockV;
 
-      if (elliptic->elementType == QUADRILATERALS || elliptic->elementType == HEXAHEDRA) {
-        kernelInfo["defines/" "p_NqFine"] = mesh->N + 1;
-        kernelInfo["defines/" "p_NqCoarse"] = 2;
-      }
+  int NblockS = mymax(1,maxNthreads / maxNodes); // works for CUDA
+  kernelInfo["defines/" "p_NblockS"] = NblockS;
 
-      //kernelInfo["defines/" "p_NpFEM"] = mesh->NpFEM;
+  int NblockP = mymax(1,maxNthreads / (4 * mesh->Np)); // get close to maxNthreads threads
+  kernelInfo["defines/" "p_NblockP"] = NblockP;
 
-      int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
-      kernelInfo["defines/" "p_Nmax"] = Nmax;
+  int NblockG;
+  if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
+  else NblockG = maxNthreads / mesh->Np;
+  kernelInfo["defines/" "p_NblockG"] = NblockG;
 
-      int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-      kernelInfo["defines/" "p_maxNodes"] = maxNodes;
+  kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
+  kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
-      int NblockV = mymax(1,maxNthreads / mesh->Np); // works for CUDA
-      int NnodesV = 1; //hard coded for now
-      kernelInfo["defines/" "p_NblockV"] = NblockV;
-      kernelInfo["defines/" "p_NnodesV"] = NnodesV;
-      kernelInfo["defines/" "p_NblockVFine"] = NblockV;
-      kernelInfo["defines/" "p_NblockVCoarse"] = NblockV;
+  kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) NthreadsUpdatePCG; // WARNING SHOULD BE MULTIPLE OF 32
+  kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (NthreadsUpdatePCG / 32); // WARNING: CUDA SPECIFIC
 
-      int NblockS = mymax(1,maxNthreads / maxNodes); // works for CUDA
-      kernelInfo["defines/" "p_NblockS"] = NblockS;
+  occa::properties dfloatKernelInfo = kernelInfo;
+  occa::properties floatKernelInfo = kernelInfo;
+  floatKernelInfo["defines/" "pfloat"] = pfloatString;
+  floatKernelInfo["defines/" "dfloat"] = pfloatString;
+  dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
 
-      int NblockP = mymax(1,maxNthreads / (4 * mesh->Np)); // get close to maxNthreads threads
-      kernelInfo["defines/" "p_NblockP"] = NblockP;
+  occa::properties AxKernelInfo = dfloatKernelInfo;
+  occa::properties dfloatKernelInfoNoOKL = kernelInfoNoOKL;
+  dfloatKernelInfoNoOKL["defines/" "pfloat"] = dfloatString;
+  if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
 
-      int NblockG;
-      if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-      else NblockG = maxNthreads / mesh->Np;
-      kernelInfo["defines/" "p_NblockG"] = NblockG;
-
-      kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
-      kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
-
-      kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) NthreadsUpdatePCG; // WARNING SHOULD BE MULTIPLE OF 32
-      kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (NthreadsUpdatePCG / 32); // WARNING: CUDA SPECIFIC
-
-/*
-      //add standard boundary functions
-      char* boundaryHeaderFileName;
-      if(elliptic->blockSolver) {
-        if (elliptic->dim == 2)
-          boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBlockBoundary2D.h");
-        else if (elliptic->dim == 3)
-          boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBlockBoundary3D.h");
-      }else{
-        if (elliptic->dim == 2)
-          boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary2D.h");
-        else if (elliptic->dim == 3)
-          boundaryHeaderFileName = strdup(DELLIPTIC "/data/ellipticBoundary3D.h");
-      }
-      kernelInfo["includes"] += boundaryHeaderFileName;
-*/
-
-      occa::properties dfloatKernelInfo = kernelInfo;
-      occa::properties floatKernelInfo = kernelInfo;
-      floatKernelInfo["defines/" "pfloat"] = pfloatString;
-      floatKernelInfo["defines/" "dfloat"] = pfloatString;
-      dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
-
-      occa::properties dfloatKernelInfoNoOKL = kernelInfoNoOKL;
-      dfloatKernelInfoNoOKL["defines/" "pfloat"] = dfloatString;
+  for (int r = 0; r < 2; r++) {
+    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
 
       if(elliptic->var_coeff) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticBuildDiagonal%s.okl", suffix);
@@ -798,8 +787,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo)
                                                                   dfloatKernelInfo);
       }
 
-      occa::properties AxKernelInfo = dfloatKernelInfo;
-      if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
       if(elliptic->blockSolver) {
         sprintf(fileName,  DELLIPTIC "/okl/ellipticBlockAx%s.okl", suffix);
         if(serial) sprintf(fileName,  DELLIPTIC "/okl/ellipticSerialAx%s.c", suffix);
