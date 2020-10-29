@@ -1,4 +1,5 @@
-#include <cuda_fp16.h>
+#include "hip/hip_runtime.h"
+#include <hip/hip_fp16.h>
 
 #define p_blockSize 256
 
@@ -22,8 +23,7 @@ extern "C" __global__ void packBuf_half(
       const int end = scatterStarts[sid + 1];
       for (int n = start; n < end; ++n) {
         const int id = scatterIds[n];
-        //scatterq[id * Nentries + k] = __float2half(qs);
-        scatterq[id * Nentries + k] = static_cast<half>(qs);
+        scatterq[id * Nentries + k] = __float2half(qs);
       }
     }
   }
@@ -47,8 +47,7 @@ extern "C" __global__ void unpackBuf_halfAdd(const int Ngather,
         float gq = 0.00000000e+00f;
         for (int n = start; n < end; ++n) {
           const int id = gatherIds[n];
-          //gq += __half2float(q[id * Nentries + k]);
-          gq += static_cast<float>(q[id * Nentries + k]);
+          gq += __half2float(q[id * Nentries + k]);
         }
 
         //contiguously packed

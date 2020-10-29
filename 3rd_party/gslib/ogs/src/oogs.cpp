@@ -160,8 +160,14 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
   for (int r=0;r<2;r++) {
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
-      gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.okl", "packBuf_half", halfKernelInfo);
-      gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.okl", "unpackBuf_halfAdd", halfKernelInfo);
+      if(device.mode() == "CUDA"){
+        gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.cu", "packBuf_half", halfKernelInfo);
+        gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.cu", "unpackBuf_halfAdd", halfKernelInfo);
+      }
+      if(device.mode() == "HIP"){
+        gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.hip", "packBuf_half", halfKernelInfo);
+        gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.hip", "unpackBuf_halfAdd", halfKernelInfo);
+      }
     }
     MPI_Barrier(comm->c);
   }
