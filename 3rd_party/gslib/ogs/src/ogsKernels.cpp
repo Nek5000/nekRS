@@ -186,9 +186,6 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
    ogs::kernelInfo["defines/" "dfloat4"]= "float4";
   }
 
-  ogs::kernelInfo["defines/" "dhalf"]= "float";
-  ogs::kernelInfo["defines/" "CONVERT_TO_FP16"] = "0";
-
   if(device.mode()=="OpenCL"){
    //ogs::kernelInfo["compiler_flags"] += "-cl-opt-disable";
   }
