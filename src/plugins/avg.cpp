@@ -188,8 +188,8 @@ void avg::outfld()
 
   const int Nscalar = ins->Nscalar;
   if(ins->Nscalar) {
-    occa::memory o_Tavg  = o_Savg;
-    occa::memory o_Trms = o_Srms;
+    o_Tavg = o_Savg;
+    o_Trms = o_Srms;
   }
 
   nek_outfld("avg", atime, coords,
