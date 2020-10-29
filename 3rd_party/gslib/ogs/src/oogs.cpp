@@ -379,6 +379,17 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
 
+  // Catch case when floatCommHalf is used with serial mode
+  if (!strcmp(type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+    const struct comm *comm = &hgs->comm;
+    const int rank = comm->id;
+    if(rank == 0){
+      std::cout << "ERROR: Cannot use floatCommHalf with SERIAL mode!\n";
+    }
+    exit(-1);
+  }
+
   // MTP:
   // Only the pack/unpack operations are done in FP16
   // Hence, the remaining operators must be done in FP32.
@@ -415,6 +426,17 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
     Nbytes = sizeof(double);
+
+  // Catch case when floatCommHalf is used with serial mode
+  if (!strcmp(type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+    const struct comm *comm = &hgs->comm;
+    const int rank = comm->id;
+    if(rank == 0){
+      std::cout << "ERROR: Cannot use floatCommHalf with SERIAL mode!\n";
+    }
+    exit(-1);
+  }
 
   // MTP:
   // Only the pack/unpack operations are done in FP16
