@@ -41,6 +41,7 @@ void UDF_LoadKernels(ins_t *ins)
   kernelInfo["defines/p_TsGrad"]    = ILSTRENGTH * LREF/TREF;
   kernelInfo["defines/p_T0s"]       = TS0/TREF;
   kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
+  kernelInfo["defines/p_YLEN"]      = YLEN;
 
   coriolisKernel = udfBuildKernel(ins, "coriolis");
 }

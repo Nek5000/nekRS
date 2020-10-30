@@ -13,7 +13,7 @@
       const dfloat v    = U[n + 1*offset];
       const dfloat w    = U[n + 2*offset];
 
-      const dfloat fac = exp(-4.*(4-y));
+      const dfloat fac = exp(-p_YLEN*(p_YLEN-y));
 
       OUT[n + 0*offset] =  p_fcor*w     + (1-u)*fac;
       OUT[n + 1*offset] =  p_bcor*w     + temp*p_gacc;
