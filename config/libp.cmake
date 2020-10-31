@@ -132,7 +132,7 @@ set_source_files_properties(${ELLIPTIC_SOURCES} PROPERTIES LANGUAGE CXX)
 # install
 # ---------------------------------------------------------
 
-set(file_pattern "\.okl$|\.c$|\.hpp$|\.tpp$|\.h$|hex.*\.dat$")
+set(file_pattern "\.cu$|\.hip$|\.okl$|\.c$|\.hpp$|\.tpp$|\.h$|hex.*\.dat$")
 
 install(DIRECTORY 
   ${LIBP_SOURCE_DIR}/include 

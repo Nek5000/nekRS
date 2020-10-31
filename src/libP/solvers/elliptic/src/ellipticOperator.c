@@ -223,7 +223,10 @@ void ellipticOperator(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
   oogs_t* oogsAx = elliptic->oogsAx;
-  const char* ogsDataTypeString = (!strstr(precision, dfloatString)) ? ogsPfloat: ogsDfloat;
+  const char* ogsDataTypeString = (!strstr(precision, dfloatString)) ? 
+    options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE") ? ogsFloatCommHalf : ogsPfloat
+    :
+    ogsDfloat;
   int serial = options.compareArgs("THREAD MODEL", "SERIAL");
   if(serial) {
     occa::memory o_dummy;

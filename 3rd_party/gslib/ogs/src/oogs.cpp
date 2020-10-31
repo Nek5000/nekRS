@@ -152,6 +152,26 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     MPI_Barrier(comm->c);
   }
 
+  // Modifications for special FP 32 -> FP16 mode
+  occa::properties halfKernelInfo = ogs::kernelInfo;
+  if(device.mode() == "HIP" || device.mode() == "CUDA")
+  {
+    halfKernelInfo["okl/enabled"] = false;
+  }
+  for (int r=0;r<2;r++) {
+    if ((r==0 && rank==0) || (r==1 && rank>0)) {
+      if(device.mode() == "CUDA"){
+        gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.cu", "packBuf_half", halfKernelInfo);
+        gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.cu", "unpackBuf_halfAdd", halfKernelInfo);
+      }
+      if(device.mode() == "HIP"){
+        gs->packBufFloatToHalfKernel = device.buildKernel(DOGS "/okl/oogs-half.hip", "packBuf_half", halfKernelInfo);
+        gs->unpackBufHalfToFloatAddKernel = device.buildKernel(DOGS "/okl/oogs-half.hip", "unpackBuf_halfAdd", halfKernelInfo);
+      }
+    }
+    MPI_Barrier(comm->c);
+  }
+
   if(ogs->NhaloGather == 0) return gs;
 
   occa::properties props;
@@ -255,7 +275,17 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_v,
                     occa::memory  o_gv)
 {
-  if        ((!strcmp(type, "float"))) {
+  if ((!strcmp(type, "floatCommHalf"))) {
+    // Must set run time dimensions for CUDA kernel
+    const int threadBlockSize = 256;
+    occa::dim outer, inner;
+    outer.dims = 1;
+    inner.dims = 1;
+    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
+    inner[0] = threadBlockSize;
+    gs->packBufFloatToHalfKernel.setRunDims(outer, inner);
+    gs->packBufFloatToHalfKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "float"))) {
     gs->packBufFloatKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "double"))) {
     gs->packBufDoubleKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
@@ -275,7 +305,17 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_v,
                       occa::memory  o_gv)
 {
-  if         ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
+  if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, "add"))) {
+    // Must set run time dimensions for CUDA kernel
+    const int threadBlockSize = 256;
+    occa::dim outer, inner;
+    outer.dims = 1;
+    inner.dims = 1;
+    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
+    inner[0] = threadBlockSize;
+    gs->unpackBufHalfToFloatAddKernel.setRunDims(outer, inner);
+    gs->unpackBufHalfToFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
+  } else if ((!strcmp(type, "float"))&&(!strcmp(op, "add"))) {
     gs->unpackBufFloatAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
   } else if ((!strcmp(type, "double"))&&(!strcmp(op, "add"))) {
     gs->unpackBufDoubleAddKernel(Ngather, k, o_starts, o_ids, o_v, o_gv);
@@ -288,7 +328,6 @@ static void unpackBuf(oogs_t *gs,
     exit(1);
   }
 }
-
 void reallocBuffers(int unit_size, oogs_t *gs)
 {
   ogs_t *ogs = gs->ogs; 
@@ -322,9 +361,11 @@ void reallocBuffers(int unit_size, oogs_t *gs)
   }
 }
 
-void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
+void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
+  ogs_t *ogs = gs->ogs; 
+  const char* type = (!strcmp(_type,"floatCommHalf")) ? "float" : _type;
   if (!strcmp(type, "float"))
     Nbytes = sizeof(float);
   else if (!strcmp(type, "double"))
@@ -334,7 +375,15 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
 
-  ogs_t *ogs = gs->ogs; 
+  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+    const struct comm *comm = &hgs->comm;
+    const int rank = comm->id;
+    if(rank == 0){
+      std::cout << "ERROR: Cannot use floatCommHalf with SERIAL mode!\n";
+    }
+    exit(-1);
+  }
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
@@ -351,20 +400,33 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
     occaGatherMany(ogs->NhaloGather, k, stride, ogs->NhaloGather, ogs->o_haloGatherOffsets, 
 		   ogs->o_haloGatherIds, type, op, o_v, ogs::o_haloBuf);
 
-    packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, type, ogs::o_haloBuf, gs->o_bufSend);
+    packBuf(gs, ogs->NhaloGather, k, gs->o_scatterOffsets, gs->o_scatterIds, _type, ogs::o_haloBuf, gs->o_bufSend);
     ogs->device.finish();
   }
 }
 
-void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *gs) 
+void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
-  if (!strcmp(type, "float"))
+  ogs_t *ogs = gs->ogs; 
+  const char* type = (!strcmp(_type,"floatCommHalf")) ? "float" : _type;
+  if (!strcmp(_type, "floatCommHalf"))
+    Nbytes = sizeof(float)/2;
+  else if (!strcmp(_type, "float"))
     Nbytes = sizeof(float);
-  else if (!strcmp(type, "double"))
+  else if (!strcmp(_type, "double"))
     Nbytes = sizeof(double);
 
-  ogs_t *ogs = gs->ogs; 
+  // Catch case when floatCommHalf is used with serial mode
+  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+    struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+    const struct comm *comm = &hgs->comm;
+    const int rank = comm->id;
+    if(rank == 0){
+      std::cout << "ERROR: Cannot use floatCommHalf with SERIAL mode!\n";
+    }
+    exit(-1);
+  }
 
   if(gs->mode == OOGS_DEFAULT) { 
     if(k>1)
@@ -401,7 +463,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
  
-    unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, type, op, gs->o_bufRecv, ogs::o_haloBuf);
+    unpackBuf(gs, ogs->NhaloGather, k, gs->o_gatherOffsets, gs->o_gatherIds, _type, op, gs->o_bufRecv, ogs::o_haloBuf);
     occaScatterMany(ogs->NhaloGather, k, ogs->NhaloGather, stride, ogs->o_haloGatherOffsets, 
                     ogs->o_haloGatherIds, type, op, ogs::o_haloBuf, o_v);
 
@@ -438,9 +500,11 @@ void oogs::destroy(oogs_t *gs)
 
   gs->packBufDoubleKernel.free(); 
   gs->packBufFloatKernel.free();
+  gs->packBufFloatToHalfKernel.free();
 
   gs->unpackBufDoubleAddKernel.free();
   gs->unpackBufFloatAddKernel.free();
+  gs->unpackBufHalfToFloatAddKernel.free();
 
   gs->unpackBufDoubleMinKernel.free();
   gs->unpackBufDoubleMaxKernel.free();

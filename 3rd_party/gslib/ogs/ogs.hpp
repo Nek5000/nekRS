@@ -124,6 +124,7 @@ SOFTWARE.
 #define ogsDouble "double"
 #define ogsDfloat dfloatString
 #define ogsPfloat pfloatString
+#define ogsFloatCommHalf "floatCommHalf"
 #define ogsInt  "int"
 #define ogsLong "long long int"
 #define ogsDlong dlongString
@@ -243,8 +244,10 @@ typedef struct {
   occa::memory o_scatterIds, o_gatherIds;
 
   occa::kernel packBufDoubleKernel, packBufFloatKernel;
+  occa::kernel packBufFloatToHalfKernel;
   occa::kernel unpackBufDoubleAddKernel, unpackBufDoubleMinKernel, unpackBufDoubleMaxKernel;
   occa::kernel unpackBufFloatAddKernel;
+  occa::kernel unpackBufHalfToFloatAddKernel;
 
   oogs_mode mode;
 
