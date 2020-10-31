@@ -63,7 +63,6 @@ typedef struct
 
   dfloat* U, * P;
   dfloat* BF, * FU;
-  dfloat* PI;
 
   //RK Subcycle Data
   int SNrk;
@@ -122,7 +121,7 @@ typedef struct
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
-  occa::kernel velocityExtKernel;
+  occa::kernel extrapolateKernel;
 
   occa::kernel wgradientVolumeKernel;
 
@@ -141,7 +140,6 @@ typedef struct
   occa::memory o_prop, o_ellipticCoeff;
 
   occa::memory o_UH;
-  occa::memory o_PI;
 
   occa::memory o_vHaloBuffer, o_pHaloBuffer;
   occa::memory o_velocityHaloGatherTmp;

@@ -249,7 +249,23 @@ occa::memory velocitySolve(ins_t* ins, dfloat time)
 
   oogs::startFinish(ins->o_wrk3, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
 
-  ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
+  if(ins->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
+    ins->o_wrk0.copyFrom(ins->o_Ue, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
+    if (ins->uvwSolver) {
+      if (ins->uvwSolver->Nmasked) ins->maskCopyKernel(ins->uvwSolver->Nmasked, 0*ins->fieldOffset, ins->uvwSolver->o_maskIds,
+                                                       ins->o_U, ins->o_wrk0);
+    } else {
+      if (ins->uSolver->Nmasked) ins->maskCopyKernel(ins->uSolver->Nmasked, 0*ins->fieldOffset, ins->uSolver->o_maskIds,
+                                                     ins->o_U, ins->o_wrk0);
+      if (ins->vSolver->Nmasked) ins->maskCopyKernel(ins->vSolver->Nmasked, 1*ins->fieldOffset, ins->vSolver->o_maskIds,
+                                                     ins->o_U, ins->o_wrk0);
+      if (ins->wSolver->Nmasked) ins->maskCopyKernel(ins->wSolver->Nmasked, 2*ins->fieldOffset, ins->wSolver->o_maskIds,
+                                                     ins->o_U, ins->o_wrk0);
+    }
+  } else {
+    ins->o_wrk0.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
+  }
+
   if(ins->uvwSolver) {
     ins->NiterU = ellipticSolve(ins->uvwSolver, ins->velTOL, ins->o_wrk3, ins->o_wrk0);
   } else {

@@ -24,9 +24,37 @@
 
  */
 
-@kernel void insVelocityExt(const dlong Nelements,
+@kernel void insMultiExtrapolate(const dlong Nelements,
+                                 const int Nfields,
+                                 const int Nstages,
+                                 const dlong fieldOffset,
+                                 @restrict const dfloat*  c,
+                                 @restrict const dfloat*  U,
+                                 @restrict dfloat*  Ue)
+{
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for(int n = 0; n < p_Np; ++n; @inner(0)) {
+      const dlong id = n + p_Np * e;
+
+      for (int i = 0; i < Nfields; i++) {
+        dfloat Un = 0.;
+
+        for (int s = 0; s < Nstages; s++) {
+          const dlong idm = id + i * fieldOffset + s * Nfields * fieldOffset;
+          const dfloat Um = U[idm];
+          Un += c[s] * Um;
+        }
+
+        Ue[id + i * fieldOffset] = Un;
+      }
+    }
+  }
+}
+
+@kernel void insExtrapolate(const dlong Nelements,
                             const int Nstages,
                             const dlong fieldOffset,
+                            const dlong stageOffset,
                             @restrict const dfloat*  c,
                             @restrict const dfloat*  U,
                             @restrict dfloat*  Ue)
@@ -35,18 +63,15 @@
     for(int n = 0; n < p_Np; ++n; @inner(0)) {
       const dlong id = n + p_Np * e;
 
-#pragma unroll p_NVfields
-      for (int i = 0; i < p_NVfields; i++) {
-        dfloat Un = 0.;
+      dfloat Un = 0.;
 
-        for (int s = 0; s < Nstages; s++) {
-          const dlong idm = id + i * fieldOffset + s * p_NVfields * fieldOffset;
-          const dfloat Um = U[idm];
-          Un += c[s] * Um;
-        }
-
-        Ue[id + i * fieldOffset] = Un;
+      for (int s = 0; s < Nstages; s++) {
+        const dlong idm = id + fieldOffset + s * stageOffset;
+        const dfloat Um = U[idm];
+        Un += c[s] * Um;
       }
+
+      Ue[id] = Un;
     }
   }
 }

@@ -41,14 +41,23 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
   else if(tstep <= 3 && ins->temporalOrder >= 3)
     extbdfCoefficents(ins,tstep);
 
-  // First extrapolate velocity to t^(n+1)
+  // extrapolate
   if(ins->flow) 
-    ins->velocityExtKernel(mesh->Nelements,
+    ins->extrapolateKernel(mesh->Nelements,
+                           ins->NVfields,
                            ins->ExplicitOrder,
                            ins->fieldOffset,
                            ins->o_extbdfA,
                            ins->o_U,
                            ins->o_Ue);
+  if(ins->Nscalar) 
+    ins->extrapolateKernel(mesh->Nelements,
+                           cds->NSfields,
+                           cds->ExplicitOrder,
+                           cds->fieldOffset,
+                           cds->o_extbdfA,
+                           cds->o_S,
+                           cds->o_Se);
 
   if(ins->Nscalar)
     scalarSolve(ins, time, dt, cds->o_S);

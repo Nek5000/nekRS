@@ -14,7 +14,6 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   }
   elliptic_t* solver = cds->solver[is];
 
-  //copy current solution fields as initial guess
   cds->o_wrk0.copyFrom(cds->o_S, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
 
   //enforce Dirichlet BCs
@@ -59,6 +58,11 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                             cds->o_wrk1);
   oogs::startFinish(cds->o_wrk1, 1, cds->fieldOffset, ogsDfloat, ogsAdd, gsh);
   if (solver->Nmasked) mesh->maskKernel(solver->Nmasked, solver->o_maskIds, cds->o_wrk1);
+
+  if(cds->options.compareArgs("SCALAR INITIAL GUESS DEFAULT", "EXTRAPOLATION")) {
+    cds->o_wrk0.copyFrom(cds->o_Se, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+    if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
+  }
 
   cds->Niter[is] = ellipticSolve(solver, cds->TOL, cds->o_wrk1, cds->o_wrk0);
 

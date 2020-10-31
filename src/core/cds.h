@@ -105,6 +105,7 @@ typedef struct
 
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
 
+  occa::kernel extrapolateKernel;
   occa::kernel fillKernel;
   occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
@@ -119,7 +120,7 @@ typedef struct
   // occa::kernel constrainKernel;
 
   occa::memory o_U;
-  occa::memory o_S;
+  occa::memory o_S, o_Se;
 
   // occa::memory o_Vort, o_Div; // Not sure to keep it
   occa::memory o_haloBuffer;

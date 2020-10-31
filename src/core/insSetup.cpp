@@ -138,7 +138,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->Ue = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
 
   ins->P  = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
-  ins->PI = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
 
   ins->BF = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
   ins->FU = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
@@ -189,7 +188,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
                                   ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->Ue);
   ins->o_P  = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->P);
-  ins->o_PI = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->PI);
 
   ins->o_FU =
     mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
@@ -712,9 +710,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       ins->subCycleRKUpdateKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "insVelocityExt" + ".okl";
-      kernelName = "insVelocityExt";
-      ins->velocityExtKernel =
+      fileName = oklpath + "insExtrapolate" + ".okl";
+      kernelName = "insMultiExtrapolate";
+      ins->extrapolateKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
@@ -947,8 +945,9 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_U  = ins->o_U;
   cds->o_Ue = ins->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
-                        cds->S);
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
+  cds->o_Se =
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
     mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
@@ -1143,6 +1142,11 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
       kernelName = "scaledAddwOffset";
       cds->scaledAddKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insExtrapolate" + ".okl";
+      kernelName = "insExtrapolate";
+      cds->extrapolateKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps) {
