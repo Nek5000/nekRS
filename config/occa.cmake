@@ -15,4 +15,4 @@ else()
   set(OCCA_SOURCE_DIR ${occa_content_SOURCE_DIR})
 endif()
 
-add_subdirectory(${OCCA_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${occa_content_BINARY_DIR})
+add_subdirectory(${OCCA_SOURCE_DIR} ${occa_content_BINARY_DIR})
