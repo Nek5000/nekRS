@@ -1,5 +1,6 @@
 #include <sort-impl.h>
 #include <float.h>
+#include <genmap-impl.h>  //FIXME - include genmap-statistics
 
 int set_dest(uint *proc,uint np,ulong start,uint size,ulong nelem)
 {
@@ -72,7 +73,8 @@ double get_scalar(struct array *a,uint i,uint offset,uint usize,
   return data;
 }
 
-void get_extrema(void *extrema_,sort_data data,uint field,struct comm* c)
+void get_extrema(void *extrema_,struct sort *data,
+  uint field,struct comm* c)
 {
   struct array *a=data->a;
   uint usize     =data->unit_size;
@@ -95,7 +97,7 @@ void get_extrema(void *extrema_,sort_data data,uint field,struct comm* c)
   extrema[0]*=-1;
 }
 
-int parallel_sort_private(sort_data data,struct comm *c){
+int parallel_sort_private(struct sort *data,struct comm *c){
   struct comm dup; comm_dup(&dup,c);
 
   int balance =data->balance;
@@ -104,29 +106,33 @@ int parallel_sort_private(sort_data data,struct comm *c){
   struct array *a=data->a;
   size_t usize   =data->unit_size;
 
-  hypercube_sort_data hdata;
+  struct hypercube hdata;
 
   switch(algo){
     case bin_sort:
       parallel_bin_sort(data,c);
       break;
     case hypercube_sort:
-      GenmapMalloc(1,&hdata);
-      hdata->data=data; hdata->probes=NULL; hdata->probe_cnt=NULL;
-      parallel_hypercube_sort(hdata,&dup);
-      GenmapFree(hdata->probes); GenmapFree(hdata->probe_cnt);
-      GenmapFree(hdata);
+      hdata.data=data; hdata.probes=NULL; hdata.probe_cnt=NULL;
+      parallel_hypercube_sort(&hdata,&dup);
+      free(hdata.probes); free(hdata.probe_cnt);
       break;
     default:
       break;
   }
 
+  metric_tic(c,LOADBALANCE0);
   if(balance){
+    metric_tic(c,LOADBALANCE1);
     struct crystal cr; crystal_init(&cr,c);
     load_balance(a,usize,c,&cr);
+    metric_toc(c,LOADBALANCE1);
+    metric_tic(c,LOCALSORT);
     sort_local(data);
+    metric_toc(c,LOCALSORT);
     crystal_free(&cr);
   }
+  metric_toc(c,LOADBALANCE0);
 
   comm_free(&dup);
 

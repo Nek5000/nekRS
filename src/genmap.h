@@ -100,10 +100,19 @@ GenmapScalar GenmapNormVector(GenmapVector x, GenmapInt p);
 int GenmapPrintVector(GenmapVector x);
 int GenmapDestroyVector(GenmapVector x);
 
-int GenmapInitLaplacian(GenmapHandle h, GenmapComm c, GenmapVector weights);
-int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
-                    GenmapVector weights, GenmapVector v);
+/* Laplacian */
+struct array *GenmapFindNeighbors(GenmapHandle h,GenmapComm c);
 
+int GenmapInitLaplacianWeighted(GenmapHandle h, GenmapComm c,
+                        GenmapVector weights);
+int GenmapInitLaplacian(GenmapHandle h, GenmapComm c);
+
+int GenmapLaplacianWeighted(GenmapHandle h, GenmapComm c, GenmapVector u,
+                    GenmapVector weights, GenmapVector v);
+int GenmapLaplacian(GenmapHandle h, GenmapComm c, GenmapVector u,
+                    GenmapVector v);
+
+/* Eigen */
 int GenmapInvPowerIter(GenmapVector eVector, GenmapVector alpha,
                        GenmapVector beta, GenmapVector init, int iter);
 int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
@@ -111,6 +120,8 @@ int GenmapTQLI(GenmapHandle h, GenmapVector diagonal, GenmapVector upper,
 
 int GenmapOrthogonalizebyOneVector(GenmapHandle h, GenmapComm c,
                                    GenmapVector q1, GenmapLong n);
+
+/* Lanczos */
 int GenmapLanczosLegendary(GenmapHandle h, GenmapComm c, GenmapVector f,
                            GenmapInt niter, GenmapVector **rr, GenmapVector diag,
                            GenmapVector upper);
@@ -118,8 +129,13 @@ int GenmapLanczos(GenmapHandle h, GenmapComm c, GenmapVector init,
                   GenmapInt iter, GenmapVector **q, GenmapVector alpha,
                   GenmapVector beta);
 
-int GenmapFiedler(GenmapHandle h, GenmapComm c, int maxIter, int global);
-void GenmapRSB(GenmapHandle h);
+/* Fiedler */
+int GenmapFiedlerLanczos(GenmapHandle h,GenmapComm c,int maxIter,
+  int global);
+int GenmapFiedlerRQI(GenmapHandle h,GenmapComm c,int maxIter,int global);
+
+/* RSB */
+void GenmapRSB(GenmapHandle h,int verbose);
 
 double GenmapGetMaxRss();
 void GenmapPrintStack();

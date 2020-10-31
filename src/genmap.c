@@ -1,8 +1,7 @@
-#include "genmap-impl.h"
-#include "genmap-io.h"
-
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <genmap-impl.h>
 
 int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
   GenmapMalloc(1, h);

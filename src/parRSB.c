@@ -3,9 +3,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "genmap.h"
-#include "genmap-impl.h"
-#include "parRSB.h"
+#include <genmap-impl.h>
+#include <parRSB.h>
 
 #define MAXNV 8 /* maximum number of vertices per element */
 typedef struct {
@@ -15,17 +14,18 @@ typedef struct {
   long long vtx[MAXNV];
 } elm_data;
 
-void fparRSB_partMesh(int *part, long long *vtx, int *nel, int *nve,
-                      int *options, int *comm, int *err) {
+void fparRSB_partMesh(int *part,long long *vtx,int *nel,int *nve,
+  int *options,int *comm,int *err)
+{
   *err = 1;
-
   GenmapCommExternal c;
   c = MPI_Comm_f2c(*comm);
   *err = parRSB_partMesh(part, vtx, *nel, *nve, options, c);
 }
 
-int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
-                    MPI_Comm comm) {
+int parRSB_partMesh(int *part,long long *vtx,int nel,int nve,
+  int *options,MPI_Comm comm)
+{
   int rank,size;
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
@@ -90,8 +90,9 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     GenmapInt size_ = GenmapCommSize(GenmapGetGlobalComm(h));
     if((GenmapLong)size_ > nelg) {
       if(id == 0)
-        printf("Total number of elements is smaller than the number of processors.\n"
-               "Run with smaller number of processors.\n");
+        printf("Total number of elements is smaller than the "
+          "number of processors.\n"
+          "Run with smaller number of processors.\n");
       return 1;
     }
     GenmapElements e = GenmapGetElements(h);
@@ -105,7 +106,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
       }
     }
 
-    GenmapRSB(h);
+    GenmapRSB(h,h->dbgLevel>1);
 
     e = GenmapGetElements(h);
     for(j = 0; j < GenmapGetNLocalElements(h); j++) {
@@ -119,7 +120,7 @@ int parRSB_partMesh(int *part, long long *vtx, int nel, int nve, int *options,
     assert(GenmapGetNLocalElements(h) == nel);
 
     e = GenmapGetElements(h);
-    sarray_sort(struct GenmapElement_private, e, (unsigned int)nel, globalId,
+    sarray_sort(struct GenmapElement_private,e,(unsigned int)nel,globalId,
                 TYPE_LONG, &buf);
 
     for(i = 0; i < nel; i++) {

@@ -3,7 +3,7 @@
 #include <sys/resource.h>
 #include <string.h>
 
-#include "genmap.h"
+#include <genmap.h>
 
 #if defined __GLIBC__
 

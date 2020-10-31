@@ -16,10 +16,10 @@ int sort_field(struct array *arr,size_t usize,gs_dom t,uint off,
             nunits,usize);
       break;
 #endif
-    case gs_long:
+    case gs_long: //FIXME gs_ulong
       gslib_sortp_ull(buf,keep,(ulong *)((char*)ptr+off),nunits,usize);
       break;
-    case gs_int:
+    case gs_int: //FIXME gs_uint
       gslib_sortp_ui (buf,keep,(uint  *)((char*)ptr+off),nunits,usize);
       break;
     default:
@@ -29,18 +29,18 @@ int sort_field(struct array *arr,size_t usize,gs_dom t,uint off,
   return 0;
 }
 
-int sort_local(sort_data sd)
+int sort_local(struct sort *s)
 {
-  struct array *a=sd->a;
-  buffer *buf    =&sd->buf;
-  size_t usize   =sd->unit_size;
-  int i          =sd->nfields-1;
+  struct array *a=s->a;
+  buffer *buf    =&s->buf;
+  size_t usize   =s->unit_size;
+  int i          =s->nfields-1;
 
-  sort_field(a,usize,sd->t[i],sd->offset[i],buf,0),i--;
+  sort_field(a,usize,s->t[i],s->offset[i],buf,0),i--;
   while(i>=0)
-    sort_field(a,usize,sd->t[i],sd->offset[i],buf,1),i--;
+    sort_field(a,usize,s->t[i],s->offset[i],buf,1),i--;
 
-  sarray_permute_buf_(sd->align,usize,a->ptr,a->n,buf);
+  sarray_permute_buf_(s->align,usize,a->ptr,a->n,buf);
 
   return 0;
 }

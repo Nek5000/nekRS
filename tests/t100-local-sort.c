@@ -22,7 +22,7 @@ int main(int argc,char *argv[]){
   }
   arr.n=N;
 
-  sort_data_private sd;
+  struct sort sd;
   sd.align=ALIGNOF(Data),sd.unit_size=sizeof(Data);
   sd.nfields=2;
   sd.offset[0]=offsetof(Data,ds),sd.t[0]=gs_double;

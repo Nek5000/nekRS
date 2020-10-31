@@ -10,10 +10,10 @@
 #define max(a,b) ((a)>(b) ? (a) : (b))
 
 double get_scalar(struct array *a,uint i,uint off,uint usize,gs_dom type);
-void get_extrema(void *extrema,sort_data data,uint field,struct comm *c);
-int  set_dest(uint *proc,uint np,ulong start,uint size,ulong nelem);
-int  load_balance(struct array *a,size_t size,struct comm *c,
+void get_extrema(void *extrema,struct sort *s,uint field,struct comm *c);
+int set_dest(uint *proc,uint np,ulong start,uint size,ulong nelem);
+int load_balance(struct array *a,size_t size,struct comm *c,
     struct crystal *cr);
-int sort_local(sort_data data);
+int sort_local(struct sort *s);
 
 #endif

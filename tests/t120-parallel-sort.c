@@ -63,15 +63,14 @@ int main(int argc,char *argv[]){
   }
   arr.n=N;
 
-  parallel_sort_2(Data,&arr,offsetof(Data,ds),gs_double,
-      offsetof(Data,dl),gs_long,&c);
+  parallel_sort_2(Data,&arr,ds,gs_double,dl,gs_long,0,1,&c);
   check(&arr,&c);
 
   //TODO: Test hypercube sort
 
   array_free(&arr);
-
   comm_free(&c);
+
   MPI_Finalize();
 
   return 0;

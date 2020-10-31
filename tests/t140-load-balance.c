@@ -22,7 +22,7 @@ int main(int argc,char *argv[]){
       d.ds=(rand()%100)/100.0,ptr[i]=d;
   arr.n=N;
 
-  parallel_sort(Data,&arr,offsetof(Data,ds),gs_double,&c);
+  parallel_sort(Data,&arr,ds,gs_double,0,1,&c);
   assert(arr.n==N);
 
   array_free(&arr);
