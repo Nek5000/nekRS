@@ -947,7 +947,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->o_S  =
     mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
+    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat));
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
     mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),

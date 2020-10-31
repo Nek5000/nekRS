@@ -196,7 +196,7 @@ c-----------------------------------------------------------------------
 
       call chkParam
       call mapelpr 
-      call read_re2_data(ifbswap)
+      call read_re2_data(ifbswap, .true., .true., .true.)
 
       call izero(boundaryID, size(boundaryID))
       ifld_bId = 2
