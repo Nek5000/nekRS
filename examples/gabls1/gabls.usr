@@ -21,7 +21,7 @@ c-----------------------------------------------------------------------
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
 
-      yarge  = 4.*(4.-y)
+      yarge  = YLEN*(YLEN-y)
       factor = exp(-yarge)
 
       ffx =                              fcor * uz + (1.-ux)*factor
