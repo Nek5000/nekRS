@@ -37,6 +37,10 @@ void metric_toc(struct comm *c,metric m){
   comm_barrier(c);
 }
 
+double metric_get_value(int level,metric m){
+  return stack[level*MAXMETS+m];
+}
+
 void metric_push_level(){
   assert(stack_size<=stack_max && "stack_size > stack_max");
 
@@ -50,6 +54,10 @@ void metric_push_level(){
     metrics[i]=0.0;
   }
   stack_size++;
+}
+
+uint metric_get_levels(){
+  return stack_size;
 }
 
 void metric_print(struct comm *c){

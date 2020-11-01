@@ -80,7 +80,9 @@ void metric_finalize();
 void metric_acc(metric m,double count);
 void metric_tic(struct comm *c,metric m);
 void metric_toc(struct comm *c,metric m);
+double metric_get_value(int level,metric m);
 void metric_push_level();
+uint metric_get_levels();
 void metric_print(struct comm *c);
 
 struct GenmapHandle_private {
