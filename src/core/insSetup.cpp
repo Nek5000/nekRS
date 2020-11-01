@@ -1144,11 +1144,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       cds->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "insExtrapolate" + ".okl";
-      kernelName = "insExtrapolate";
-      cds->extrapolateKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       if(cds->Nsubsteps) {
         fileName = oklpath + "cdsSubCycle" + suffix + ".okl";
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
@@ -1165,10 +1160,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
         if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       }
-      fileName = oklpath + "insVelocityExt" + ".okl";
-      kernelName = "insVelocityExt";
-      cds->velocityExtKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
     }
     MPI_Barrier(mesh->comm);
   }
