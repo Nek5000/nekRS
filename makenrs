@@ -169,8 +169,10 @@ fi
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 #rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
+
 # ENABLE_CUDA, ENABLE_OPENCL, etc., are used by OCCA's CMakeLists
 cmake -Wno-dev \
+      -Wfatal-errors \
       -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
@@ -207,7 +209,7 @@ fi
 # Otherwise, make install
 # =========================
 
-make -j4 install
+make -j6 install
 
 if [ $? -ne 0 ]; then
   echo
