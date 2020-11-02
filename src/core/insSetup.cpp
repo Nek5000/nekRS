@@ -272,9 +272,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    filterSetup(ins);
-
   const int nbrBIDs = bcMap::size(0);
   int NBCType = nbrBIDs + 1;
 
@@ -282,6 +279,41 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   oogs_mode oogsMode = OOGS_AUTO; 
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   ins->gsh = oogs::setup(mesh->ogs, ins->NVfields, ins->fieldOffset, ogsDfloat, NULL, oogsMode);
+
+  if(!buildOnly) {
+    int err = 0;
+    dlong gNelements = mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
+    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
+    ins->linAlg->fillKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
+    ogsGatherScatter(ins->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
+    ins->linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, ins->o_wrk0); 
+    dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
+    ins->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
+    dfloat sum1 = 0;
+    for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    sum1 = abs(sum1 - sum2) / sum2;
+    if(sum1 > 1e-15) {
+      if(mesh->rank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
+      fflush(stdout);
+      err++;
+    }
+
+    mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
+    double* vmult = (double*) nek_ptr("vmult");
+    sum1 = 0;
+    for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    if(sum1 > 1e-15) {
+      if(mesh->rank == 0) printf("multiplicity test err=%g!\n", sum1);
+      fflush(stdout);
+      err++;
+    }
+
+    if(err) ABORT(1);
+    free(tmp);
+  }
 
   if (ins->flow) {
     if (mesh->rank == 0) printf("==================VELOCITY SETUP=========================\n");
@@ -791,44 +823,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   MPI_Barrier(mesh->comm);
   if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
-  if(!buildOnly) {
-    int err = 0;
-    dlong gNelements = mesh->Nelements;
-    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
-    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    ins->fillKernel(ins->fieldOffset, 1.0, ins->o_wrk0);
-    ogsGatherScatter(ins->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    ins->dotMultiplyKernel(
-      Nlocal,
-      mesh->ogs->o_invDegree,
-      ins->o_wrk0,
-      ins->o_wrk1);
-    dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    ins->o_wrk1.copyTo(tmp, Nlocal * sizeof(dfloat));
-    dfloat sum1 = 0;
-    for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    sum1 = abs(sum1 - sum2) / sum2;
-    if(sum1 > 1e-15) {
-      if(mesh->rank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
-      fflush(stdout);
-      err++;
-    }
-
-    mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
-    double* vmult = (double*) nek_ptr("vmult");
-    sum1 = 0;
-    for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    if(sum1 > 1e-15) {
-      if(mesh->rank == 0) printf("multiplicity test err=%g!\n", sum1);
-      fflush(stdout);
-      err++;
-    }
-
-    if(err) ABORT(1);
-    free(tmp);
-  }
+  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+    filterSetup(ins);
 
   return ins;
 }
