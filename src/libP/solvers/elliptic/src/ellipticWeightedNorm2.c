@@ -47,6 +47,10 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
 
   dfloat wa2;
 
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif
+
   if(continuous == 1) {
     if(elliptic->blockSolver)
       elliptic->weightedNorm2Kernel(Nlocal, elliptic->Ntotal, o_w, o_a, o_tmp);
@@ -79,6 +83,10 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
 
   dfloat globalwa2 = 0;
   MPI_Allreduce(&wa2, &globalwa2, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif
 
   return globalwa2;
 }

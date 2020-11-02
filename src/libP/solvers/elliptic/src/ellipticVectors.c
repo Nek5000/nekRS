@@ -108,6 +108,10 @@ dfloat ellipticInnerProduct(elliptic_t* elliptic, occa::memory &o_a, occa::memor
 
   occa::memory &o_tmp = elliptic->o_tmp;
 
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif
+
   if(elliptic->blockSolver)
     elliptic->innerProductKernel(Nlocal, elliptic->Ntotal, o_a, o_b, o_tmp);
   else
@@ -121,6 +125,10 @@ dfloat ellipticInnerProduct(elliptic_t* elliptic, occa::memory &o_a, occa::memor
 
   dfloat globalab = 0;
   MPI_Allreduce(&ab, &globalab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif
 
   return globalab;
 }

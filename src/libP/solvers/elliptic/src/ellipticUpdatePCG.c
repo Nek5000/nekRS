@@ -56,12 +56,19 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                               o_x,
                               o_r,
                               elliptic->o_tmpNormr);
+
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
     if(enableReductions)
       MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
     else
       globalrdotr1 = 1;
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif
 
     return globalrdotr1;
   }

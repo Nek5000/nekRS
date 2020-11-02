@@ -225,7 +225,9 @@ void ResidualProjection::multiWeightedInnerProduct(
                                                 occa::memory &o_b,
                                                 const dlong offset)
 {
-
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif
   multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, offset*fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
   o_wrk.copyTo(multiwork, sizeof(dfloat)*m*Nblock);
@@ -236,4 +238,7 @@ void ResidualProjection::multiWeightedInnerProduct(
     }
     alpha[k] = accum;
   }
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif
 }

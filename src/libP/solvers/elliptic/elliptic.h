@@ -41,7 +41,7 @@
 #define blockSize 256
 
 #include "timer.hpp"
-//#define ELLIPTIC_ENABLE_TIMER
+#define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
 

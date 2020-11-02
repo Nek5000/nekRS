@@ -52,6 +52,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
                                           elliptic->o_invDegree,
                                           o_q,
                                           o_tmp);
+#ifdef ELLIPTIC_ENABLE_TIMER
+        timer::tic("dotp",1);
+#endif
         // finish reduction
         o_tmp.copyTo(tmp);
         qmeanLocal = 0;
@@ -60,6 +63,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 
         // globalize reduction
         MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+#ifdef ELLIPTIC_ENABLE_TIMER
+        timer::toc("dotp");
+#endif
 
         qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
 
@@ -73,6 +79,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     mesh->sumKernel(mesh->Nelements * mesh->Np, o_q, o_tmp);
 #endif
 
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::tic("dotp",1);
+#endif
     o_tmp.copyTo(tmp);
 
     // finish reduction
@@ -82,6 +91,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 
     // globalize reduction
     MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+#ifdef ELLIPTIC_ENABLE_TIMER
+  timer::toc("dotp");
+#endif
 
     // normalize
 #if USE_WEIGHTED == 1
