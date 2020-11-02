@@ -204,10 +204,6 @@ void ResidualProjection::pre(occa::memory& o_r)
               << postResidualNorm << ", "
               << ratio << "\n";
 }
-void ResidualProjection::gop(dfloat* a, const dlong size)
-{
-  MPI_Allreduce(MPI_IN_PLACE, a, size, MPI_DFLOAT, MPI_SUM, comm);
-}
 void ResidualProjection::post(occa::memory& o_x)
 {
   if(timestep < numTimeSteps)
@@ -233,7 +229,7 @@ void ResidualProjection::multiWeightedInnerProduct(
     }
     alpha[k] = accum;
   }
-  gop(alpha,m);
+  MPI_Allreduce(MPI_IN_PLACE, alpha, m, MPI_DFLOAT, MPI_SUM, comm);
   o_alpha.copyFrom(alpha,sizeof(dfloat)*m);
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");

@@ -46,7 +46,6 @@ private:
   void computePostProjection(occa::memory& o_x);
   void updateProjectionSpace();
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
-  void gop(dfloat*, const dlong);
   void multiWeightedInnerProduct(
                               occa::memory& o_a,
                               const dlong m,
