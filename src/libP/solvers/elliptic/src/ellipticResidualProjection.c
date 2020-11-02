@@ -43,8 +43,6 @@ void ResidualProjection::updateProjectionSpace()
   if(m <= 0) return;
 
   multiWeightedInnerProduct(o_xx, m, o_bb, m-1);
-  gop(alpha,m);
-  o_alpha.copyFrom(alpha,sizeof(dfloat)*m);
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
@@ -76,9 +74,6 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   const int m = numVecsProjection;
   if(m <= 0) return;
   multiWeightedInnerProduct(o_xx,m,o_r,0);
-  gop(alpha,m);
-
-  o_alpha.copyFrom(alpha, m * sizeof(dfloat));
 
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_bb, o_rtmp);
@@ -209,10 +204,6 @@ void ResidualProjection::pre(occa::memory& o_r)
               << postResidualNorm << ", "
               << ratio << "\n";
 }
-void ResidualProjection::gop(dfloat* a, const dlong size)
-{
-  MPI_Allreduce(MPI_IN_PLACE, a, size, MPI_DFLOAT, MPI_SUM, comm);
-}
 void ResidualProjection::post(occa::memory& o_x)
 {
   if(timestep < numTimeSteps)
@@ -238,6 +229,8 @@ void ResidualProjection::multiWeightedInnerProduct(
     }
     alpha[k] = accum;
   }
+  MPI_Allreduce(MPI_IN_PLACE, alpha, m, MPI_DFLOAT, MPI_SUM, comm);
+  o_alpha.copyFrom(alpha,sizeof(dfloat)*m);
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif
