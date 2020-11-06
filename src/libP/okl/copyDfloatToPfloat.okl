@@ -30,7 +30,7 @@ SOFTWARE.
   
   for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
     if(n<N){
-      y[n]=static_cast<pfloat>(x[n]);
+      y[n]=x[n];
     }
   }
 }
