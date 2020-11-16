@@ -23,6 +23,10 @@ typedef struct
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields
 
+  // Whether one of the scalars represents temperature; if temperature is a passive
+  // scalar, then temperature is the first passive scalar
+  bool temperature_solution;
+
   setupAide options;
 
   oogs_t *gsh, *gshT;

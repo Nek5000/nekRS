@@ -99,6 +99,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // init solver
   ins = insSetup(comm, device, options, buildOnly);
 
+  // tell the cds solver whether one of the passive scalars represents temperature
+  if (ins->Nscalar) {
+    auto temp = options.getArgs("TEMPERATURE_SOLUTION");
+    ins->cds->temperature_solution = temp == "TRUE" ? true : false;
+  }
+  else
+    ins->cds->temperature_solution = false;
+
   // set initial condition
   int readRestartFile;
   options.getArgs("RESTART FROM FILE", readRestartFile);
@@ -221,6 +229,17 @@ void printRuntimeStatistics()
 {
   timer::printRunStat();
 }
+
+const bool hasTemperatureSolution()
+{
+  // if there are scalars, check the convection-diffusion solver for temperature;
+  // otherwise, a lack of scalars means that there is definitely no temperature
+  if (ins->Nscalar)
+    return ins->cds->temperature_solution;
+  else
+    return false;
+}
+
 } // namespace
 
 static void dryRun(libParanumal::setupAide &options, int npTarget)

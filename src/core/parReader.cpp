@@ -521,6 +521,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   int nscal = 0;
   int isStart = 0;
   if(ini.sections.count("temperature")) {
+    options.setArgs("TEMPERATURE_SOLUTION", "TRUE");
     nscal++;
     isStart++;
 
@@ -581,6 +582,8 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
     }
   }
+  else
+    options.setArgs("TEMPERATURE_SOLUTION", "FALSE");
 
   //
   for (auto & sec : ini.sections) {
