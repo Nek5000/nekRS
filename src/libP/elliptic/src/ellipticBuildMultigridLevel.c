@@ -126,30 +126,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   setupAide options = elliptic->options;
 
   switch(elliptic->elementType) {
-  case TRIANGLES:
-    meshLoadReferenceNodesTri2D(mesh, Nc);
-    if(elliptic->dim == 2) {
-      meshPhysicalNodesTri2D(mesh);
-      meshGeometricFactorsTri2D(mesh);
-    }else{
-      meshPhysicalNodesTri3D(mesh);
-      meshGeometricFactorsTri3D(mesh);
-    }
-    break;
-  case QUADRILATERALS: {
-    meshLoadReferenceNodesQuad2D(mesh, Nc);
-    if(elliptic->dim == 2) {
-      meshPhysicalNodesQuad2D(mesh);
-      meshGeometricFactorsQuad2D(mesh);
-    }else{
-      meshPhysicalNodesQuad3D(mesh);
-      meshGeometricFactorsQuad3D(mesh);
-    }
-  } break;
-  case TETRAHEDRA:
-    meshLoadReferenceNodesTet3D(mesh, Nc);
-    meshPhysicalNodesTet3D(mesh);
-    break;
   case HEXAHEDRA:
     meshLoadReferenceNodesHex3D(mesh, Nc, 1);
     meshPhysicalNodesHex3D(mesh, buildOnly);
@@ -175,36 +151,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   switch(elliptic->elementType) {
-  case TRIANGLES:
-    if(elliptic->dim == 2)
-      meshConnectFaceNodes2D(mesh);
-    else
-      meshConnectFaceNodes3D(mesh);
-    break;
-  case QUADRILATERALS: {
-    if(elliptic->dim == 2) {
-      if(!options.compareArgs("BOX DOMAIN", "TRUE")) {
-        meshConnectFaceNodes2D(mesh);
-        meshSurfaceGeometricFactorsQuad2D(mesh);
-      }else {
-        if(mesh->rank == 0) printf("WARNING: connecting periodic box\n");
-        dfloat XMIN = -1, XMAX = +1; // default bi-unit cube
-        dfloat YMIN = -1, YMAX = +1;
-        options.getArgs("BOX XMIN", XMIN);
-        options.getArgs("BOX YMIN", YMIN);
-        options.getArgs("BOX XMAX", XMAX);
-        options.getArgs("BOX YMAX", YMAX);
-        meshConnectPeriodicFaceNodes2D(mesh, XMAX - XMIN, YMAX - YMIN);
-        meshSurfaceGeometricFactorsQuad2D(mesh);
-      }
-    }else{
-      meshConnectFaceNodes3D(mesh);
-      meshSurfaceGeometricFactorsQuad3D(mesh);
-    }
-  } break;
-  case TETRAHEDRA:
-    meshConnectFaceNodes3D(mesh);
-    break;
   case HEXAHEDRA:
 
     if(!options.compareArgs("BOX DOMAIN", "TRUE")) {

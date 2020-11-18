@@ -1,6 +1,6 @@
 set(LIBP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/libP)
 set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/parAlmond)
-set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/solvers/elliptic)
+set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/elliptic)
 
 set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/hash.c
@@ -14,50 +14,22 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/meshApplyElementMatrix.c
         ${LIBP_SOURCE_DIR}/src/meshConnect.c
         ${LIBP_SOURCE_DIR}/src/meshConnectBoundary.c
-        ${LIBP_SOURCE_DIR}/src/meshConnectFaceNodes2D.c
         ${LIBP_SOURCE_DIR}/src/meshConnectFaceNodes3D.c
-        ${LIBP_SOURCE_DIR}/src/meshConnectPeriodicFaceNodes2D.c
         ${LIBP_SOURCE_DIR}/src/meshConnectPeriodicFaceNodes3D.c
         ${LIBP_SOURCE_DIR}/src/meshFree.c
         ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricFactorsTri3D.c
-        ${LIBP_SOURCE_DIR}/src/meshGeometricPartition2D.c
         ${LIBP_SOURCE_DIR}/src/meshGeometricPartition3D.c
         ${LIBP_SOURCE_DIR}/src/meshHaloExchange.c
         ${LIBP_SOURCE_DIR}/src/meshHaloExtract.c
         ${LIBP_SOURCE_DIR}/src/meshHaloSetup.c
         ${LIBP_SOURCE_DIR}/src/meshLoadReferenceNodesHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshLoadReferenceNodesQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshLoadReferenceNodesTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshLoadReferenceNodesTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshOccaSetup2D.c
         ${LIBP_SOURCE_DIR}/src/meshOccaSetup3D.c
-        ${LIBP_SOURCE_DIR}/src/meshOccaSetupQuad3D.c
         ${LIBP_SOURCE_DIR}/src/meshParallelConnectOpt.c
         ${LIBP_SOURCE_DIR}/src/meshParallelConsecutiveGlobalNumbering.c
         ${LIBP_SOURCE_DIR}/src/meshParallelGatherScatterSetup.c
         ${LIBP_SOURCE_DIR}/src/meshParallelReaderHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderTri3D.c
         ${LIBP_SOURCE_DIR}/src/meshPartitionStatistics.c
-        ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshPhysicalNodesTri3D.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsHex3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsQuad2D.c
-        ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsQuad3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTet3D.c
-        ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTri2D.c
-        ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsTri3D.c
         ${LIBP_SOURCE_DIR}/src/mysort.c
         ${LIBP_SOURCE_DIR}/src/occaHostMallocPinned.c
         ${LIBP_SOURCE_DIR}/src/parallelSort.c
