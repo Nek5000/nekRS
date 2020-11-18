@@ -88,6 +88,12 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
   kernelInfo["defines/" "p_BLOCKSIZE"]= BLOCKSIZE;
 
   if(device.mode()=="OpenCL"){
+    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
+    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
+    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
+    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
+    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
+    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
     //kernelInfo["compiler_flags"] += "-cl-opt-disable";
   }
 

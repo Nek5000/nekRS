@@ -88,12 +88,12 @@ SOFTWARE.
 @kernel void scatter_long(const dlong Nscatter,
                    @restrict const  dlong *  scatterStarts,
                    @restrict const  dlong *  scatterIds,
-                   @restrict const  long long int *  q,
-                   @restrict long long int *  scatterq){
+                   @restrict const  hlong *  q,
+                   @restrict hlong *  scatterq){
 
   for(dlong s=0;s<Nscatter;++s;@tile(256,@outer,@inner)){
 
-    const long long int qs = q[s];
+    const hlong qs = q[s];
     
     const dlong start = scatterStarts[s];
     const dlong end = scatterStarts[s+1];
