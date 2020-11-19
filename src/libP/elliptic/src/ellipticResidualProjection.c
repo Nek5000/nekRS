@@ -26,7 +26,7 @@
 #include "elliptic.h"
 #include "ellipticResidualProjection.h"
 #include <iostream>
-#include <timer.hpp>
+#include "timer.hpp"
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,

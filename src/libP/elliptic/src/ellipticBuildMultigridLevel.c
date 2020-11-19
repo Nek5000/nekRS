@@ -178,7 +178,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   // global nodes
-  meshParallelConnectNodes(mesh, 0, buildOnly);
+  meshParallelConnectNodes(mesh, buildOnly);
 
   //dont need these once vmap is made
   free(mesh->x);

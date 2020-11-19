@@ -18,7 +18,7 @@
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); \
 }
 
-void setDefaultSettings(libParanumal::setupAide &options, string casename, int rank)
+void setDefaultSettings(setupAide &options, string casename, int rank)
 {
   options.setArgs("FORMAT", string("1.0"));
 
@@ -53,9 +53,6 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
   options.setArgs("STRESSFORMULATION", "FALSE");
 
@@ -83,9 +80,13 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("BOOMERAMG ITERATIONS", "2");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
 #endif
+
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
+
+  options.setArgs("SCALAR INITIAL GUESS DEFAULT","EXTRAPOLATION");
+  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
 
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
@@ -96,7 +97,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
 }
 
-libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
+setupAide parRead(std::string &setupFile, MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
@@ -107,7 +108,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT(1);
   }
 
-  libParanumal::setupAide options;
+  setupAide options;
 
   string casename = setupFile.substr(0, setupFile.find(".par"));
   setDefaultSettings(options, casename, rank);

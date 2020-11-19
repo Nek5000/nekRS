@@ -51,7 +51,7 @@ void runStep(ins_t* ins, dfloat time, dfloat dt, int tstep)
                            ins->o_U,
                            ins->o_Ue);
   if(ins->Nscalar) 
-    ins->extrapolateKernel(mesh->Nelements,
+    ins->extrapolateKernel(cds->mesh->Nelements,
                            cds->NSfields,
                            cds->ExplicitOrder,
                            cds->fieldOffset,

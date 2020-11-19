@@ -3,7 +3,6 @@ set(PARALMOND_SOURCE_DIR ${LIBP_SOURCE_DIR}/parAlmond)
 set(ELLIPTIC_SOURCE_DIR ${LIBP_SOURCE_DIR}/elliptic)
 
 set(LIBP_SOURCES
-        ${LIBP_SOURCE_DIR}/src/hash.c
         ${LIBP_SOURCE_DIR}/src/matrixConditionNumber.c
         ${LIBP_SOURCE_DIR}/src/matrixInverse.c
         ${LIBP_SOURCE_DIR}/src/matrixEig.cpp
@@ -27,15 +26,13 @@ set(LIBP_SOURCES
         ${LIBP_SOURCE_DIR}/src/meshParallelConnectOpt.c
         ${LIBP_SOURCE_DIR}/src/meshParallelConsecutiveGlobalNumbering.c
         ${LIBP_SOURCE_DIR}/src/meshParallelGatherScatterSetup.c
-        ${LIBP_SOURCE_DIR}/src/meshParallelReaderHex3D.c
         ${LIBP_SOURCE_DIR}/src/meshPartitionStatistics.c
         ${LIBP_SOURCE_DIR}/src/meshSurfaceGeometricFactorsHex3D.c
         ${LIBP_SOURCE_DIR}/src/mysort.c
         ${LIBP_SOURCE_DIR}/src/occaHostMallocPinned.c
         ${LIBP_SOURCE_DIR}/src/parallelSort.c
         ${LIBP_SOURCE_DIR}/src/readArray.c
-        ${LIBP_SOURCE_DIR}/src/setupAide.c
-        ${LIBP_SOURCE_DIR}/src/timer.c)
+        ${LIBP_SOURCE_DIR}/src/setupAide.c)
 
 set_source_files_properties(${LIBP_SOURCES} PROPERTIES LANGUAGE CXX)
 

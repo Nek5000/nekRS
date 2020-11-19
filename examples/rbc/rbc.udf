@@ -4,7 +4,7 @@
 #include <math.h>
 #include "udf.hpp"
 
-occa::kernel fillFUKernel; 
+static occa::kernel fillFUKernel; 
 
 void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
 {

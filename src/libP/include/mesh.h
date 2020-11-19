@@ -28,6 +28,7 @@ SOFTWARE.
 #define MESH_H 1
 
 #include <unistd.h>
+#include <assert.h>
 
 #include "mpi.h"
 #include <math.h>
@@ -36,8 +37,6 @@ SOFTWARE.
 
 #include "types.h"
 #include "ogs.hpp"
-
-#include "timer.h"
 
 #include "setupAide.hpp"
 
@@ -54,6 +53,8 @@ typedef struct {
   
   int dim;
   int Nverts, Nfaces, NfaceVertices;
+
+  int cht;
 
   hlong Nnodes;
   dfloat *EX; // coordinates of vertices for each element
@@ -498,9 +499,6 @@ void parallelSort(int size, int rank, MPI_Comm comm,
 #define mymax(a,b) (((a)>(b))?(a):(b))
 #define mymin(a,b) (((a)<(b))?(a):(b))
 
-/* hash function */
-unsigned int hash(const unsigned int value) ;
-
 /* dimension independent mesh operations */
 void meshConnect(mesh_t *mesh);
 
@@ -508,7 +506,7 @@ void meshConnect(mesh_t *mesh);
 void meshParallelConnect(mesh_t *mesh);
 
 /* build global connectivity in parallel */
-void meshParallelConnectNodes(mesh_t *mesh, int isTmesh, int nrsBuildOnly);
+void meshParallelConnectNodes(mesh_t *mesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t *mesh);
 

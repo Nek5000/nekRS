@@ -11,12 +11,12 @@ static int rank, size;
 static MPI_Comm comm;
 static occa::device device;
 static ins_t* ins;
-static libParanumal::setupAide options;
+static setupAide options;
 static int ioStep;
 
 static void setOccaVars(string dir);
-static void setOUDF(libParanumal::setupAide &options);
-static void dryRun(libParanumal::setupAide &options, int npTarget);
+static void setOUDF(setupAide &options);
+static void dryRun(setupAide &options, int npTarget);
 
 namespace nekrs
 {
@@ -223,7 +223,7 @@ void printRuntimeStatistics()
 }
 } // namespace
 
-static void dryRun(libParanumal::setupAide &options, int npTarget)
+static void dryRun(setupAide &options, int npTarget)
 {
   if (rank == 0)
     cout << "performing dry-run for "
@@ -260,7 +260,7 @@ static void dryRun(libParanumal::setupAide &options, int npTarget)
   if (rank == 0) cout << "\nBuild successful." << endl;
 }
 
-static void setOUDF(libParanumal::setupAide &options)
+static void setOUDF(setupAide &options)
 {
   std::string oklFile;
   options.getArgs("UDF OKL FILE",oklFile);

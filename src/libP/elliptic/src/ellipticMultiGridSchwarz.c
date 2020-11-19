@@ -631,7 +631,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
 
   meshHaloSetup(mesh);
   meshConnectFaceNodes3D(mesh);
-  meshParallelConnectNodes(mesh, 0, buildOnly);
+  meshParallelConnectNodes(mesh, buildOnly);
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
 
   const int bigNum = 1E9;

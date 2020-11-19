@@ -25,7 +25,7 @@
  */
 
 #include "elliptic.h"
-#include <timer.hpp>
+#include "timer.hpp"
 
 int ellipticSolve(elliptic_t* elliptic, dfloat tol,
                   occa::memory &o_r, occa::memory &o_x)

@@ -43,12 +43,11 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMeshT(comm, N, cubN, ins->cht, options, device, kernelInfo);
+    ins->meshT = createMesh(comm, N, cubN, ins->cht, options, device, kernelInfo);
     ins->mesh = ins->meshT;
     if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, options, kernelInfo);
   }
   mesh_t* mesh = ins->mesh;
-
 
   { 
     dlong retVal; 

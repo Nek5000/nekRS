@@ -68,7 +68,5 @@ occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm)
   omp_set_num_threads(Nthreads);
   //if(rank==0) printf("Number of OMP threads: %d\n", omp_get_num_threads());
 
-  occa::initTimer(device);
-
   return device;
 }
