@@ -40,18 +40,18 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
-    mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq*sizeof(pfloat));
+    mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
 
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-      elliptic->mesh->o_ggeoPfloat,
-      mesh->o_ggeo);
+                                       elliptic->mesh->o_ggeoPfloat,
+                                       mesh->o_ggeo);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-      elliptic->mesh->o_DmatricesPfloat,
-      mesh->o_Dmatrices);
+                                       elliptic->mesh->o_DmatricesPfloat,
+                                       mesh->o_Dmatrices);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-      elliptic->mesh->o_SmatricesPfloat,
-      mesh->o_Smatrices);
+                                       elliptic->mesh->o_SmatricesPfloat,
+                                       mesh->o_Smatrices);
   }
 
   string suffix;
@@ -109,7 +109,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       }
       elliptic->AxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
 
-      if(!strstr(pfloatString,dfloatString)){
+      if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
         elliptic->AxPfloatKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
@@ -125,7 +125,8 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         elliptic->partialAxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
-          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
+          elliptic->partialAxPfloatKernel =
+            mesh->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }

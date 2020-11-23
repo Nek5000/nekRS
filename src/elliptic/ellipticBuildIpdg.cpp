@@ -140,7 +140,6 @@ void ellipticBuildIpdgTri2D(elliptic_t* elliptic, int basisNp, dfloat* basis,
       }
     }
 
-
   // reset non-zero counter
   dlong nnz = 0;
 
@@ -414,7 +413,6 @@ void ellipticBuildIpdgTri3D(elliptic_t* elliptic, int basisNp, dfloat* basis,
         MS[m + n * Nfp + f * Nfp * Nfp]  = MSnm;
       }
     }
-
 
   // reset non-zero counter
   dlong nnz = 0;

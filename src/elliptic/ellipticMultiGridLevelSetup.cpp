@@ -56,9 +56,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
-  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
-
+  o_xPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
 }
 
 //build a level and connect it to the previous one
@@ -102,8 +101,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   else
     this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  o_xPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
-  o_rhsPfloat = mesh->device.malloc(Nrows*sizeof(pfloat));
+  o_xPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
+  o_rhsPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
@@ -111,7 +110,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
   if (degree == 1) return; // solved by coarse grid solver
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
-             options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
+      options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     stype = SCHWARZ;
     smtypeUp = JACOBI;
     smtypeDown = JACOBI;
@@ -131,11 +130,10 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
        options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
       dfloat* invDiagA;
-      std::vector<pfloat> casted_invDiagA(mesh->Np*mesh->Nelements, 0.0);
+      std::vector<pfloat> casted_invDiagA(mesh->Np * mesh->Nelements, 0.0);
       ellipticBuildJacobi(elliptic,&invDiagA);
-      for(dlong i = 0 ; i < mesh->Np*mesh->Nelements; ++i){
+      for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
         casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
-      }
       o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
       if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
         smtypeUp = JACOBI;
@@ -147,10 +145,9 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     smtypeDown = JACOBI;
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
-    std::vector<pfloat> casted_invDiagA(mesh->Np*mesh->Nelements, 0.0);
-    for(dlong i = 0 ; i < mesh->Np*mesh->Nelements; ++i){
+    std::vector<pfloat> casted_invDiagA(mesh->Np * mesh->Nelements, 0.0);
+    for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
       casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
-    }
 
     o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
 
@@ -200,7 +197,7 @@ void MGLevel::Report()
   MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, mesh->comm);
 
   char smootherString[BUFSIZ];
-  if (degree != 1){
+  if (degree != 1) {
     if (stype == RICHARDSON && smtypeDown == JACOBI)
       strcpy(smootherString, "Damped Jacobi    ");
     else if (stype == CHEBYSHEV && smtypeDown == JACOBI)
@@ -388,7 +385,7 @@ dfloat MGLevel::maxEigSmoothAx()
     ellipticOperator(elliptic,o_V[j],o_AVx,dfloatString);
     elliptic->copyDfloatToPfloatKernel(M, o_AVxPfloat, o_AVx);
     this->smoother(o_AVxPfloat, o_VxPfloat, true);
-    elliptic->copyPfloatToDPfloatKernel(M, o_VxPfloat, o_V[j+1]);
+    elliptic->copyPfloatToDPfloatKernel(M, o_VxPfloat, o_V[j + 1]);
 
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {

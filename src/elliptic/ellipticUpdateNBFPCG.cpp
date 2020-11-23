@@ -130,37 +130,37 @@ void ellipticSerialUpdate0NBFPCG(const int Nq, const hlong Nelements, int useWei
 
   switch(Nq) {
   case  2: ellipticSerialUpdate0NBFPCGKernel <  2 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  3: ellipticSerialUpdate0NBFPCGKernel <  3 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  4: ellipticSerialUpdate0NBFPCGKernel <  4 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  5: ellipticSerialUpdate0NBFPCGKernel <  5 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  6: ellipticSerialUpdate0NBFPCGKernel <  6 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  7: ellipticSerialUpdate0NBFPCGKernel <  7 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  8: ellipticSerialUpdate0NBFPCGKernel <  8 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  9: ellipticSerialUpdate0NBFPCGKernel <  9 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 10: ellipticSerialUpdate0NBFPCGKernel < 10 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 11: ellipticSerialUpdate0NBFPCGKernel < 11 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 12: ellipticSerialUpdate0NBFPCGKernel < 12 >
-    (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   }
 }
@@ -188,37 +188,37 @@ void ellipticBlockSerialUpdate0NBFPCG(const int Nfields,
 
   switch(Nq) {
   case  2: ellipticBlockSerialUpdate0NBFPCGKernel <  2 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  3: ellipticBlockSerialUpdate0NBFPCGKernel <  3 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  4: ellipticBlockSerialUpdate0NBFPCGKernel <  4 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  5: ellipticBlockSerialUpdate0NBFPCGKernel <  5 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  6: ellipticBlockSerialUpdate0NBFPCGKernel <  6 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  7: ellipticBlockSerialUpdate0NBFPCGKernel <  7 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  8: ellipticBlockSerialUpdate0NBFPCGKernel <  8 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case  9: ellipticBlockSerialUpdate0NBFPCGKernel <  9 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 10: ellipticBlockSerialUpdate0NBFPCGKernel < 10 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 11: ellipticBlockSerialUpdate0NBFPCGKernel < 11 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   case 12: ellipticBlockSerialUpdate0NBFPCGKernel < 12 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_u, cpu_r, cpu_w, localdots);
     break;
   }
 }
@@ -265,7 +265,6 @@ void ellipticNonBlockingUpdate0NBFPCG(elliptic_t* elliptic,
                                   o_r,
                                   o_w,
                                   localdots);
-
   }else {
     // (u.r)
     // (u.w)
@@ -417,48 +416,48 @@ void ellipticSerialUpdate1NBFPCG(const int Nq,
 
   switch(Nq) {
   case  2: ellipticSerialUpdate1NBFPCGKernel <  2 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  3: ellipticSerialUpdate1NBFPCGKernel <  3 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  4: ellipticSerialUpdate1NBFPCGKernel <  4 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  5: ellipticSerialUpdate1NBFPCGKernel <  5 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  6: ellipticSerialUpdate1NBFPCGKernel <  6 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  7: ellipticSerialUpdate1NBFPCGKernel <  7 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  8: ellipticSerialUpdate1NBFPCGKernel <  8 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case  9: ellipticSerialUpdate1NBFPCGKernel <  9 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case 10: ellipticSerialUpdate1NBFPCGKernel < 10 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case 11: ellipticSerialUpdate1NBFPCGKernel < 11 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   case 12: ellipticSerialUpdate1NBFPCGKernel < 12 >
-    (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
-     cpu_w, localdots);
+      (Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x, cpu_r, cpu_u,
+      cpu_w, localdots);
     break;
   }
 }
@@ -578,48 +577,48 @@ void ellipticBlockSerialUpdate1NBFPCG(const int Nfields,
 
   switch(Nq) {
   case  2: ellipticBlockSerialUpdate1NBFPCGKernel <  2 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  3: ellipticBlockSerialUpdate1NBFPCGKernel <  3 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  4: ellipticBlockSerialUpdate1NBFPCGKernel <  4 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  5: ellipticBlockSerialUpdate1NBFPCGKernel <  5 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  6: ellipticBlockSerialUpdate1NBFPCGKernel <  6 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  7: ellipticBlockSerialUpdate1NBFPCGKernel <  7 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  8: ellipticBlockSerialUpdate1NBFPCGKernel <  8 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case  9: ellipticBlockSerialUpdate1NBFPCGKernel <  9 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case 10: ellipticBlockSerialUpdate1NBFPCGKernel < 10 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case 11: ellipticBlockSerialUpdate1NBFPCGKernel < 11 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   case 12: ellipticBlockSerialUpdate1NBFPCGKernel < 12 >
-    (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
-     cpu_r, cpu_u, cpu_w, localdots);
+      (Nfields, offset, Nelements, useWeight, cpu_invDegree, cpu_p, cpu_s, cpu_q, cpu_z, alpha, cpu_x,
+      cpu_r, cpu_u, cpu_w, localdots);
     break;
   }
 }

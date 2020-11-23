@@ -42,11 +42,10 @@ int ellipticSolve(elliptic_t* elliptic, dfloat tol,
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    elliptic->o_x0.copyFrom(o_x, elliptic->Ntotal*sizeof(dfloat));
-  }
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE"))
+    elliptic->o_x0.copyFrom(o_x, elliptic->Ntotal * sizeof(dfloat));
 
-  // compute initial residual 
+  // compute initial residual
   ellipticOperator(elliptic, o_x, elliptic->o_Ap, dfloatString);
   ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
   if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
@@ -70,7 +69,7 @@ int ellipticSolve(elliptic_t* elliptic, dfloat tol,
       Niter = nbpcg (elliptic, o_r, o_x, tol, maxIter);
     else
       Niter = nbfpcg (elliptic, o_r, o_x, tol, maxIter);
-*/
+ */
   }
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {

@@ -426,7 +426,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
       mesh->sgeo[baseP * mesh->Nsgeo + IHID] = mymax(hinvM,hinvP);
     }
 
-
   free(xre);
   free(xse);
   free(xte);

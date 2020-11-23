@@ -59,6 +59,7 @@ int compareVertices(const void* a,
 
   return 0;
 }
+
 /* comparison function that orders element/face
    based on their indexes */
 int compareFaces(const void* a,
@@ -123,7 +124,6 @@ void meshConnect(mesh_t* mesh)
       faces[cnt + 1].elementNeighbor = faces[cnt].element;
       faces[cnt + 1].faceNeighbor = faces[cnt].face;
     }
-
 
   /* resort faces back to the original element/face ordering */
   qsort(faces,

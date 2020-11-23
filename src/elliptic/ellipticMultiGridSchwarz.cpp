@@ -35,22 +35,22 @@
 
 struct ElementLengths
 {
-  dfloat * length_left_x;
-  dfloat * length_left_y;
-  dfloat * length_left_z;
-  dfloat * length_middle_x;
-  dfloat * length_middle_y;
-  dfloat * length_middle_z;
-  dfloat * length_right_x;
-  dfloat * length_right_y;
-  dfloat * length_right_z;
+  dfloat* length_left_x;
+  dfloat* length_left_y;
+  dfloat* length_left_z;
+  dfloat* length_middle_x;
+  dfloat* length_middle_y;
+  dfloat* length_middle_z;
+  dfloat* length_right_x;
+  dfloat* length_right_y;
+  dfloat* length_right_z;
 };
 struct FDMOperators
 {
-  dfloat * Sx;
-  dfloat * Sy;
-  dfloat * Sz;
-  dfloat * D;
+  dfloat* Sx;
+  dfloat* Sy;
+  dfloat* Sz;
+  dfloat* D;
 };
 void harmonic_mean_element_length(
   ElementLengths* lengths,
@@ -133,6 +133,7 @@ void harmonic_mean_element_length(
     lengths->length_middle_z[e] = 1.0 / sqrt(lt2);
   }
 }
+
 void
 compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
 {
@@ -180,8 +181,8 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
     }
   }
 
-  dfloat * l = (dfloat*) calloc(mesh->Np * Nelements, sizeof(dfloat));
-  for(unsigned i = 0 ; i < mesh->Np * Nelements; ++i)
+  dfloat* l = (dfloat*) calloc(mesh->Np * Nelements, sizeof(dfloat));
+  for(unsigned i = 0; i < mesh->Np * Nelements; ++i)
     l[i] = 0.0;
 
   for(dlong e = 0; e < Nelements; ++e) {
@@ -234,6 +235,7 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
   }
   free(l);
 }
+
 void compute_element_boundary_conditions(int* lbr,
                                          int* rbr,
                                          int* lbs,
@@ -258,6 +260,7 @@ void compute_element_boundary_conditions(int* lbr,
   *lbt = fbc[4];
   *rbt = fbc[5];
 }
+
 void row_zero(
   dfloat* S,
   const int nl,
@@ -267,8 +270,9 @@ void row_zero(
   for(int i = 0; i < nl; ++i)
     S[offset + nl * i] = 0.0;
 }
+
 void compute_1d_stiffness_matrix(
-  dfloat * a,
+  dfloat* a,
   const int lbc,
   const int rbc,
   const double ll,
@@ -284,7 +288,7 @@ void compute_1d_stiffness_matrix(
   const int n =  elliptic->mesh->N;
   const int nl = n + 3;
   dfloat* ah = (dfloat*) calloc((n + 1) * (n + 1), sizeof(dfloat));
-  dfloat* tmp = (dfloat*) calloc((n + 1)* (n + 1), sizeof(dfloat));
+  dfloat* tmp = (dfloat*) calloc((n + 1) * (n + 1), sizeof(dfloat));
   for(int i = 0; i < n + 1; ++i)
     for(int j = 0; j < n + 1; ++j)
       tmp[i * (n + 1) + j] = elliptic->mesh->D[i * (n + 1) + j];
@@ -307,7 +311,7 @@ void compute_1d_stiffness_matrix(
   int i1 = n;
   if(rbc == 1) i1 = n - 1;
 
-  for(unsigned int i = 0 ; i < nl*nl; ++i)
+  for(unsigned int i = 0; i < nl * nl; ++i)
     a[i] = 0.0;
   double fac = 2.0 / lm;
   a(1,1) = 1.0;
@@ -336,8 +340,9 @@ void compute_1d_stiffness_matrix(
 #undef a
 #undef ah
 }
+
 void compute_1d_mass_matrix(
-  dfloat * b,
+  dfloat* b,
   const int lbc,
   const int rbc,
   const double ll,
@@ -356,7 +361,7 @@ void compute_1d_mass_matrix(
   int i1 = n;
   if(rbc == 1) i1 = n - 1;
 
-  for(unsigned int i = 0 ; i < nl*nl; ++i)
+  for(unsigned int i = 0; i < nl * nl; ++i)
     b[i] = 0.0;
 
   double fac = 0.5 * lm;
@@ -380,6 +385,7 @@ void compute_1d_mass_matrix(
   }
 #undef b
 }
+
 extern "C"
 {
 void dsygv_ (
@@ -412,9 +418,9 @@ void ssygv_ (
   );
 }
 void solve_generalized_ev(
-  dfloat * a,
-  dfloat * b,
-  dfloat * lam,
+  dfloat* a,
+  dfloat* b,
+  dfloat* lam,
   int n
   )
 {
@@ -425,16 +431,16 @@ void solve_generalized_ev(
   char JOBZ = 'V';
   char UPLO = 'U';
   // copy of A, B in case anything goes wrong
-  dfloat * a_copy = (dfloat*) calloc(n*n, sizeof(dfloat));
-  dfloat * b_copy = (dfloat*) calloc(n*n, sizeof(dfloat));
-  for(unsigned i = 0 ; i < n*n; ++i){
+  dfloat* a_copy = (dfloat*) calloc(n * n, sizeof(dfloat));
+  dfloat* b_copy = (dfloat*) calloc(n * n, sizeof(dfloat));
+  for(unsigned i = 0; i < n * n; ++i) {
     a_copy[i] = a[i];
     b_copy[i] = b[i];
   }
 #ifdef DFLOAT_DOUBLE
-    dsygv_(&itype,&JOBZ,&UPLO,&n,a,&n,b, &n, lam, work_arr, &worksize, &info);
+  dsygv_(&itype,&JOBZ,&UPLO,&n,a,&n,b, &n, lam, work_arr, &worksize, &info);
 #else
-    ssygv_(&itype,&JOBZ,&UPLO,&n,a,&n,b, &n, lam, work_arr, &worksize, &info);
+  ssygv_(&itype,&JOBZ,&UPLO,&n,a,&n,b, &n, lam, work_arr, &worksize, &info);
 #endif
   if(info != 0) {
     std::ostringstream err_logger;
@@ -444,12 +450,12 @@ void solve_generalized_ev(
     } else {
       if(info <= n) {
         err_logger <<
-        "DSYEV failed to converge, as i off-diagonal elements of an intermediate tridiagonal form did not converge to zero\n";
+          "DSYEV failed to converge, as i off-diagonal elements of an intermediate tridiagonal form did not converge to zero\n";
       } else {
         info -= n;
         err_logger << "The leading minor of order " << info << " of B is not positive definite.\n"
                    <<
-        "The factorization of B could not be completed and no eigenvalues/eigenvectors were computed.\n";
+          "The factorization of B could not be completed and no eigenvalues/eigenvectors were computed.\n";
       }
     }
 
@@ -472,9 +478,10 @@ void solve_generalized_ev(
   free(a_copy);
   free(b_copy);
 }
+
 void compute_1d_matrices(
-  dfloat * S,
-  dfloat * lam,
+  dfloat* S,
+  dfloat* lam,
   const int lbc,
   const int rbc,
   const double ll,
@@ -511,6 +518,7 @@ void compute_1d_matrices(
     row_zero(S,nl,nl - 2);
   free(b);
 }
+
 void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* elliptic)
 {
   const int Nq_e = elliptic->mesh->Nq + 2;
@@ -676,6 +684,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
 
   return mesh;
 }
+
 // convenience function
 void to_reg(pfloat* arr1,
             pfloat* arr2,
@@ -695,6 +704,7 @@ void to_reg(pfloat* arr1,
 #undef arr1
 #undef arr2
 }
+
 void extrude(pfloat* arr1,
              const int l1,
              const pfloat f1,
@@ -735,6 +745,7 @@ void extrude(pfloat* arr1,
 #undef arr1
 #undef arr2
 }
+
 void MGLevel::generate_weights()
 {
   const pfloat one = 1.0;
@@ -770,6 +781,7 @@ void MGLevel::generate_weights()
   free(work2);
   free(wts);
 }
+
 void MGLevel::build(
   elliptic_t* pSolver)
 {
@@ -792,19 +804,19 @@ void MGLevel::build(
   const int Np_e = extendedMesh->Np;
   const dlong Nlocal_e = Nelements * Np_e;
 
-  oogs_mode oogsMode = OOGS_AUTO; 
+  oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
 
-  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0, 
+  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0,
                                     ogsPfloat, extendedMesh->comm, 1, extendedMesh->device,
                                     NULL, oogsMode);
   meshFree(extendedMesh);
 
 /*
-  ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, 1, 0,
+   ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, 1, 0,
                             ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
                             NULL, oogsMode);
-*/
+ */
 
   ogs = (void*) elliptic->oogs;
 
@@ -842,7 +854,6 @@ void MGLevel::build(
   free(lengths->length_right_y);
   free(lengths->length_right_z);
   free(lengths);
-
 
   const dlong weightSize = Np * Nelements;
   o_Sx = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
@@ -893,9 +904,11 @@ void MGLevel::build(
     MPI_Barrier(mesh->comm);
   }
 }
+
 void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 {
-  const char* ogsDataTypeString = (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
+  const char* ogsDataTypeString =
+    (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
     ogsFloatCommHalf : ogsPfloat;
   if(xIsZero) {
     const dlong Nelements = elliptic->mesh->Nelements;

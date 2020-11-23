@@ -284,7 +284,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         PBq[j + i * mesh->Np] = mesh->PBq[i + j * mesh->cubNp];
       }
 
-
     for (int i = 0; i < mesh->Nfp; ++i)
       for (int j = 0; j < 3; ++j)
         L0vals[i + j * mesh->Nfp] = mesh->L0vals[j + i * 3];
@@ -710,7 +709,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   MPI_Barrier(mesh->comm);
   double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0)  printf("loading elliptic MG kernels ... "); fflush(stdout); 
+  if(mesh->rank == 0) printf("loading elliptic MG kernels ... ");
+  fflush(stdout);
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -759,7 +759,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       else if (elliptic->dim == 3)
         boundaryHeaderFileName = strdup(oklpath + "/data/ellipticBoundary3D.h");
       kernelInfo["includes"] += boundaryHeaderFileName;
-*/
+ */
 
       occa::properties AxKernelInfo = kernelInfo;
       filename = oklpath + "ellipticAx" + suffix + ".okl";
@@ -769,7 +769,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         filename = oklpath + "ellipticSerialAx" + suffix + ".c";
       }
       elliptic->AxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
-      if(!strstr(pfloatString,dfloatString)){
+      if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
         elliptic->AxPfloatKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
@@ -790,7 +790,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         elliptic->partialAxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
-          elliptic->partialAxPfloatKernel = mesh->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
+          elliptic->partialAxPfloatKernel =
+            mesh->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }
@@ -810,7 +811,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
         sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
         elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-*/
+ */
       }
     }
 
@@ -818,7 +819,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
+  fflush(stdout);
 
   //new precon struct
   elliptic->precon = new precon_t();
@@ -918,14 +920,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-      elliptic->mesh->o_ggeoPfloat,
-      mesh->o_ggeo);
+                                       elliptic->mesh->o_ggeoPfloat,
+                                       mesh->o_ggeo);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-      elliptic->mesh->o_DmatricesPfloat,
-      mesh->o_Dmatrices);
+                                       elliptic->mesh->o_DmatricesPfloat,
+                                       mesh->o_Dmatrices);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-      elliptic->mesh->o_SmatricesPfloat,
-      mesh->o_Smatrices);
+                                       elliptic->mesh->o_SmatricesPfloat,
+                                       mesh->o_Smatrices);
   }
 
   return elliptic;

@@ -27,7 +27,8 @@
 #include "matrix.hpp"
 
 template < >
-void matrix < float > ::symeig(matrix < float > &W, matrix < float > &V){
+void matrix < float > ::symeig(matrix < float > &W, matrix < float > &V)
+{
   V = *this;
   W.resize(Nrows,1);
 
@@ -46,7 +47,8 @@ void matrix < float > ::symeig(matrix < float > &W, matrix < float > &V){
 }
 
 template < >
-void matrix < double > ::symeig(matrix < double > &W, matrix < double > &V){
+void matrix < double > ::symeig(matrix < double > &W, matrix < double > &V)
+{
   V = *this;
   W.resize(Nrows,1);
 
@@ -66,7 +68,8 @@ void matrix < double > ::symeig(matrix < double > &W, matrix < double > &V){
 
 template < >
 void matrix < float > ::eig(matrix < float > &WR, matrix < float > &WI,
-                            matrix < float > &VL, matrix < float > &VR){
+                            matrix < float > &VL, matrix < float > &VR)
+{
   matrix < float > A = *this;
   VL = *this;
   VR = *this;
@@ -89,7 +92,8 @@ void matrix < float > ::eig(matrix < float > &WR, matrix < float > &WI,
 
 template < >
 void matrix < double > ::eig(matrix < double > &WR, matrix < double > &WI,
-                             matrix < double > &VL, matrix < double > &VR){
+                             matrix < double > &VL, matrix < double > &VR)
+{
   matrix < double > A = *this;
   VL = *this;
   VR = *this;
@@ -112,7 +116,8 @@ void matrix < double > ::eig(matrix < double > &WR, matrix < double > &WI,
 
 // general left matrix inverse not implemented
 template < >
-matrix < double > operator | (const matrix < double > &A, const matrix < double > &B){
+matrix < double > operator | (const matrix < double > &A, const matrix < double > &B)
+{
   matrix < double > C = B;
   matrix < double > Acopy = A;
 
@@ -143,7 +148,8 @@ matrix < double > operator | (const matrix < double > &A, const matrix < double 
 
 // general left matrix inverse not implemented
 template < >
-matrix < float > operator | (const matrix < float > &A, const matrix < float > &B){
+matrix < float > operator | (const matrix < float > &A, const matrix < float > &B)
+{
   matrix < float > C = B;
   matrix < float > Acopy = A;
 

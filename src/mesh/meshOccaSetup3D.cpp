@@ -371,7 +371,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
         ST[n + m * mesh->Np + 5 * mesh->Np * mesh->Np] = mesh->Stt[n * mesh->Np + m];
       }
 
-
     mesh->o_Dr = mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat), mesh->Dr);
     mesh->o_Ds = mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat), mesh->Ds);
     mesh->o_Dt = mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat), mesh->Dt);

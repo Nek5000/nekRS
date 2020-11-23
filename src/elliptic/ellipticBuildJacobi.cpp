@@ -85,11 +85,10 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
   oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
 
   const dfloat one = 1.0;
-  if(elliptic->blockSolver) 
+  if(elliptic->blockSolver)
     elliptic->scalarDivideManyKernel(Nlocal, elliptic->Ntotal, one, precon->o_invDiagA);
   else
     elliptic->scalarDivideKernel(Nlocal, one, precon->o_invDiagA);
-  
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
@@ -352,11 +351,10 @@ void BuildLocalContinuousDiagHex3D(elliptic_t* elliptic,
       }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       if (elliptic->mapB[n + eM * mesh->Np] != 1) //dont fill rows for masked nodes
         A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 }
 
 void BuildLocalContinuousBlockDiagHex3D(elliptic_t* elliptic,
@@ -443,12 +441,11 @@ void BuildLocalContinuousBlockDiagHex3D(elliptic_t* elliptic,
     //add the rank boost for the allNeumann Poisson problem
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
       const dlong offset = fld * elliptic->Ntotal;
-      if (elliptic->allBlockNeumann[fld]) {
+      if (elliptic->allBlockNeumann[fld])
         for(int n = 0; n < mesh->Np; ++n)
           if (elliptic->mapB[n + eM * mesh->Np + offset] != 1) //dont fill rows for masked nodes
             A[n + eM * mesh->Np + offset] += elliptic->allNeumannPenalty *
                                              elliptic->allNeumannScale * elliptic->allNeumannScale;
-      }
     }
   }
 }
@@ -486,11 +483,10 @@ void BuildLocalContinuousDiagQuad2D(elliptic_t* elliptic, mesh_t* mesh, dlong eM
     }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       if (elliptic->mapB[n + eM * mesh->Np] != 1) //dont fill rows for masked nodes
         A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 }
 
 #if 0
@@ -522,10 +518,9 @@ void BuildLocalIpdgDiagTri2D(elliptic_t* elliptic,
   }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 
   for (int fM = 0; fM < mesh->Nfaces; fM++) {
     // load surface geofactors for this face
@@ -644,10 +639,9 @@ void BuildLocalIpdgDiagTri3D(elliptic_t* elliptic,
   }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 
   for (int fM = 0; fM < mesh->Nfaces; fM++) {
     // load surface geofactors for this face
@@ -794,11 +788,10 @@ void BuildLocalContinuousDiagTri2D(elliptic_t* elliptic,
   }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       if (elliptic->mapB[n + eM * mesh->Np] != 1) //dont fill rows for masked nodes
         A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 }
 
 void BuildLocalIpdgDiagQuad2D(elliptic_t* elliptic,
@@ -1049,10 +1042,9 @@ void BuildLocalIpdgDiagTet3D(elliptic_t* elliptic,
   }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 
   for (int fM = 0; fM < mesh->Nfaces; fM++) {
     // load surface geofactors for this face
@@ -1181,11 +1173,10 @@ void BuildLocalContinuousDiagTet3D(elliptic_t* elliptic,
   }
 
   //add the rank boost for the allNeumann Poisson problem
-  if (elliptic->allNeumann) {
+  if (elliptic->allNeumann)
     for(int n = 0; n < mesh->Np; ++n)
       if (elliptic->mapB[n + eM * mesh->Np] != 1) //dont fill rows for masked nodes
         A[n] += elliptic->allNeumannPenalty * elliptic->allNeumannScale * elliptic->allNeumannScale;
-  }
 }
 
 void BuildLocalIpdgDiagHex3D(elliptic_t* elliptic,

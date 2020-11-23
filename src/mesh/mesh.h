@@ -1,28 +1,28 @@
 /*
 
-The MIT License (MIT)
+   The MIT License (MIT)
 
-Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 
-*/
+ */
 
 #ifndef MESH_H
 #define MESH_H 1
@@ -41,280 +41,280 @@ SOFTWARE.
 #define HEXAHEDRA 12
 
 extern "C" { // Start C linkage
-typedef struct {
-
+typedef struct
+{
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
-  
+
   int dim;
   int Nverts, Nfaces, NfaceVertices;
 
   int cht;
 
   hlong Nnodes;
-  dfloat *EX; // coordinates of vertices for each element
-  dfloat *EY;
-  dfloat *EZ;
+  dfloat* EX; // coordinates of vertices for each element
+  dfloat* EY;
+  dfloat* EZ;
 
   dlong Nelements;
-  hlong *EToV; // element-to-vertex connectivity
-  dlong *EToE; // element-to-element connectivity
-  int   *EToF; // element-to-(local)face connectivity
-  int   *EToP; // element-to-partition/process connectivity
-  int   *EToB; // element-to-boundary condition type
+  hlong* EToV; // element-to-vertex connectivity
+  dlong* EToE; // element-to-element connectivity
+  int* EToF;   // element-to-(local)face connectivity
+  int* EToP;   // element-to-partition/process connectivity
+  int* EToB;   // element-to-boundary condition type
 
-  hlong *elementInfo; //type of element
+  hlong* elementInfo; //type of element
 
   // boundary faces
   hlong NboundaryFaces; // number of boundary faces
-  hlong *boundaryInfo; // list of boundary faces (type, vertex-1, vertex-2, vertex-3)
+  hlong* boundaryInfo; // list of boundary faces (type, vertex-1, vertex-2, vertex-3)
 
   // MPI halo exchange info
-  dlong  totalHaloPairs;  // number of elements to be sent in halo exchange
-  dlong *haloElementList; // sorted list of elements to be sent in halo exchange
-  int *NhaloPairs;      // number of elements worth of data to send/recv
-  int  NhaloMessages;     // number of messages to send
+  dlong totalHaloPairs;   // number of elements to be sent in halo exchange
+  dlong* haloElementList; // sorted list of elements to be sent in halo exchange
+  int* NhaloPairs;      // number of elements worth of data to send/recv
+  int NhaloMessages;      // number of messages to send
 
-  dlong *haloGetNodeIds; // volume node ids of outgoing halo nodes
-  dlong *haloPutNodeIds; // volume node ids of incoming halo nodes
+  dlong* haloGetNodeIds; // volume node ids of outgoing halo nodes
+  dlong* haloPutNodeIds; // volume node ids of incoming halo nodes
 
-  void *haloSendRequests;
-  void *haloRecvRequests;
+  void* haloSendRequests;
+  void* haloRecvRequests;
 
   dlong NinternalElements; // number of elements that can update without halo exchange
   dlong NnotInternalElements; // number of elements that cannot update without halo exchange
 
   // CG gather-scatter info
-  hlong *globalIds;
-  hlong *maskedGlobalIds;
-  void *gsh, *hostGsh; // gslib struct pointer
-  ogs_t *ogs; //occa gs pointer
+  hlong* globalIds;
+  hlong* maskedGlobalIds;
+  void* gsh, * hostGsh; // gslib struct pointer
+  ogs_t* ogs; //occa gs pointer
 
   // list of elements that are needed for global gather-scatter
   dlong NglobalGatherElements;
-  dlong *globalGatherElementList;
+  dlong* globalGatherElementList;
   occa::memory o_globalGatherElementList;
 
   // list of elements that are not needed for global gather-scatter
   dlong NlocalGatherElements;
-  dlong *localGatherElementList;
+  dlong* localGatherElementList;
   occa::memory o_localGatherElementList;
 
   //list of fair pairs
   dlong NfacePairs;
-  dlong *EToFPairs;
-  dlong *FPairsToE;
-  int *FPairsToF;
+  dlong* EToFPairs;
+  dlong* FPairsToE;
+  int* FPairsToF;
 
   // NBN: streams / command queues
   occa::stream stream0, stream1;
 
   // volumeGeometricFactors;
   dlong Nvgeo;
-  dfloat *vgeo;
+  dfloat* vgeo;
 
   // second order volume geometric factors
   dlong Nggeo;
-  dfloat *ggeo;
+  dfloat* ggeo;
 
   // volume node info
   int N, Np;
-  dfloat *r, *s, *t;    // coordinates of local nodes
-  dfloat *Dr, *Ds, *Dt; // collocation differentiation matrices
-  dfloat *Dmatrices;
-  dfloat *MM, *invMM;           // reference mass matrix
-  dfloat *LMM, *invLMM;
-  dfloat *Srr,*Srs, *Srt; //element stiffness matrices
-  dfloat *Ssr,*Sss, *Sst;
-  dfloat *Str,*Sts, *Stt;
-  dfloat *Smatrices;
+  dfloat* r, * s, * t;    // coordinates of local nodes
+  dfloat* Dr, * Ds, * Dt; // collocation differentiation matrices
+  dfloat* Dmatrices;
+  dfloat* MM, * invMM;           // reference mass matrix
+  dfloat* LMM, * invLMM;
+  dfloat* Srr,* Srs, * Srt; //element stiffness matrices
+  dfloat* Ssr,* Sss, * Sst;
+  dfloat* Str,* Sts, * Stt;
+  dfloat* Smatrices;
   int maxNnzPerRow;
-  dfloat *x, *y, *z;    // coordinates of physical nodes
-  
-  dfloat sphereRadius;  // for Quad3D 
-  
+  dfloat* x, * y, * z;    // coordinates of physical nodes
+
+  dfloat sphereRadius;  // for Quad3D
+
   dfloat volume;
 
   // indices of vertex nodes
-  int *vertexNodes;
+  int* vertexNodes;
 
   // quad specific quantity
   int Nq, NqP, NpP;
-  
-  dfloat *D; // 1D differentiation matrix (for tensor-product)
-  dfloat *DW; // weak 1D differentiation matrix (for tensor-product)
-  dfloat *gllz; // 1D GLL quadrature nodes
-  dfloat *gllw; // 1D GLL quadrature weights
+
+  dfloat* D; // 1D differentiation matrix (for tensor-product)
+  dfloat* DW; // weak 1D differentiation matrix (for tensor-product)
+  dfloat* gllz; // 1D GLL quadrature nodes
+  dfloat* gllw; // 1D GLL quadrature weights
 
   int gjNq;
-  dfloat *gjr,*gjw; // 1D nodes and weights for Gauss Jacobi quadature
-  dfloat *gjI,*gjD; // 1D GLL to Gauss node interpolation and differentiation matrices
-  dfloat *gjD2;     // 1D GJ to GJ node differentiation
+  dfloat* gjr,* gjw; // 1D nodes and weights for Gauss Jacobi quadature
+  dfloat* gjI,* gjD; // 1D GLL to Gauss node interpolation and differentiation matrices
+  dfloat* gjD2;     // 1D GJ to GJ node differentiation
 
   // transform to/from eigenmodes of 1D laplacian (with built in weighting)
-  dfloat *oasForward;
-  dfloat *oasBack;
-  dfloat *oasDiagOp;
+  dfloat* oasForward;
+  dfloat* oasBack;
+  dfloat* oasDiagOp;
 
   // transform to/from eigenmode of IPDG 1D laplacian
-  dfloat *oasForwardDg;
-  dfloat *oasBackDg;
-  dfloat *oasDiagOpDg;
+  dfloat* oasForwardDg;
+  dfloat* oasBackDg;
+  dfloat* oasDiagOpDg;
 
   //rotated node ids
-  int *rmapP;
+  int* rmapP;
 
   //reference patch inverse (for OAS precon)
-  dfloat *invAP;
+  dfloat* invAP;
 
   // face node info
   int Nfp;        // number of nodes per face
-  int *faceNodes; // list of element reference interpolation nodes on element faces
-  dlong *vmapM;     // list of volume nodes that are face nodes
-  dlong *vmapP;     // list of volume nodes that are paired with face nodes
-  dlong *mapP;     // list of surface nodes that are paired with -ve surface  nodes
-  int *faceVertices; // list of mesh vertices on each face
+  int* faceNodes; // list of element reference interpolation nodes on element faces
+  dlong* vmapM;     // list of volume nodes that are face nodes
+  dlong* vmapP;     // list of volume nodes that are paired with face nodes
+  dlong* mapP;     // list of surface nodes that are paired with -ve surface  nodes
+  int* faceVertices; // list of mesh vertices on each face
 
-  dfloat *LIFT; // lift matrix
-  dfloat *FMM;  // Face Mass Matrix
-  dfloat *sMT; // surface mass (MM*LIFT)^T
+  dfloat* LIFT; // lift matrix
+  dfloat* FMM;  // Face Mass Matrix
+  dfloat* sMT; // surface mass (MM*LIFT)^T
 
-  dlong   Nsgeo;
-  dfloat *sgeo;
+  dlong Nsgeo;
+  dfloat* sgeo;
 
   // field info for PDE solver
   int Nfields;
-  dfloat *q;    // solution data array
-  dfloat *fQM, *fQP; //solution trace arrays
-  dfloat *rhsq, *rhsq2, *rhsq3; // right hand side data array
-  dfloat *resq; // residual data array (for LSERK time-stepping)
+  dfloat* q;    // solution data array
+  dfloat* fQM, * fQP; //solution trace arrays
+  dfloat* rhsq, * rhsq2, * rhsq3; // right hand side data array
+  dfloat* resq; // residual data array (for LSERK time-stepping)
 
   dfloat Lambda2; // square of penalty paramater used in constructing q^*
 
   // cubature
   int cubNp, cubNfp, cubNq;
-  dfloat *cubr, *cubs, *cubt, *cubw; // coordinates and weights of local cubature nodes
-  dfloat *cubx, *cuby, *cubz;    // coordinates of physical nodes
-  dfloat *cubInterp; // interpolate from W&B to cubature nodes
-  dfloat *cubProject; // projection matrix from cubature nodes to W&B nodes
-  dfloat *cubD;       // 1D differentiation matrix
-  dfloat *cubDiffInterp;     // 1D weak differentiation matrix
-  dfloat *cubDW;     // 1D weak differentiation matrix
-  dfloat *cubDrW;    // 'r' weak differentiation matrix
-  dfloat *cubDsW;    // 's' weak differentiation matrix
-  dfloat *cubDtW;    // 't' weak differentiation matrix
-  dfloat *cubDWmatrices;
+  dfloat* cubr, * cubs, * cubt, * cubw; // coordinates and weights of local cubature nodes
+  dfloat* cubx, * cuby, * cubz;    // coordinates of physical nodes
+  dfloat* cubInterp; // interpolate from W&B to cubature nodes
+  dfloat* cubProject; // projection matrix from cubature nodes to W&B nodes
+  dfloat* cubD;       // 1D differentiation matrix
+  dfloat* cubDiffInterp;     // 1D weak differentiation matrix
+  dfloat* cubDW;     // 1D weak differentiation matrix
+  dfloat* cubDrW;    // 'r' weak differentiation matrix
+  dfloat* cubDsW;    // 's' weak differentiation matrix
+  dfloat* cubDtW;    // 't' weak differentiation matrix
+  dfloat* cubDWmatrices;
 
-  dfloat *cubvgeo;  //volume geometric data at cubature points
-  dfloat *cubsgeo;  //surface geometric data at cubature points
-  dfloat *cubggeo;  //second type volume geometric data at cubature points
-  
+  dfloat* cubvgeo;  //volume geometric data at cubature points
+  dfloat* cubsgeo;  //surface geometric data at cubature points
+  dfloat* cubggeo;  //second type volume geometric data at cubature points
+
   // c2 at cubature points (for wadg)
-  dfloat *c2;
+  dfloat* c2;
 
   //source injection
-  dfloat *sourceq;
+  dfloat* sourceq;
   dfloat sourceX0, sourceY0, sourceZ0, sourceT0, sourceC2, sourceFreq;
   int sourceNelements;
-  dlong *MRABsourceNelements;
-  dlong *sourceElements;
+  dlong* MRABsourceNelements;
+  dlong* sourceElements;
 
   // surface integration node info
-  int    intNfp;    // number of integration nodes on each face
-  dfloat *intInterp; // interp from surface node to integration nodes
-  dfloat *intLIFT;   // lift from surface integration nodes to W&B volume nodes
-  dfloat *intx, *inty, *intz; // coordinates of suface integration nodes
+  int intNfp;       // number of integration nodes on each face
+  dfloat* intInterp; // interp from surface node to integration nodes
+  dfloat* intLIFT;   // lift from surface integration nodes to W&B volume nodes
+  dfloat* intx, * inty, * intz; // coordinates of suface integration nodes
 
   // Bernstein-Bezier info
-  dfloat *VB, *invVB; // Bernstein Vandermonde matrices
-  dfloat *BBMM;
-  dfloat *invVB1D, *invVB2D;
-  int *D0ids, *D1ids, *D2ids, *D3ids; // Bernstein deriv matrix indices
-  dfloat *Dvals; // Bernstein deriv matrix values
-  int *D0Tids, *D1Tids, *D2Tids, *D3Tids; // Bernstein transpose deriv matrix indices
-  dfloat *DTvals; // Bernstein transpose deriv matrix values
-  dfloat *VBq, *PBq; // cubature interpolation/projection matrices
-  int *L0ids; // L0 matrix ids
-  dfloat *L0vals; // L0 values (L0 tridiagonal in 2D)
-  int *ELids; // lift reduction matrix indices
-  dfloat *ELvals; // lift reduction matrix values
+  dfloat* VB, * invVB; // Bernstein Vandermonde matrices
+  dfloat* BBMM;
+  dfloat* invVB1D, * invVB2D;
+  int* D0ids, * D1ids, * D2ids, * D3ids; // Bernstein deriv matrix indices
+  dfloat* Dvals; // Bernstein deriv matrix values
+  int* D0Tids, * D1Tids, * D2Tids, * D3Tids; // Bernstein transpose deriv matrix indices
+  dfloat* DTvals; // Bernstein transpose deriv matrix values
+  dfloat* VBq, * PBq; // cubature interpolation/projection matrices
+  int* L0ids; // L0 matrix ids
+  dfloat* L0vals; // L0 values (L0 tridiagonal in 2D)
+  int* ELids; // lift reduction matrix indices
+  dfloat* ELvals; // lift reduction matrix values
   int max_EL_nnz; // max number of non-zeros per row of EL
-  int *BBRaiseids; //Bernstein elevate matrix indices
-  dfloat *BBRaiseVals; //Bernstein elevate matrix values
-  dfloat *BBLower; //Berstein projection matrix.
+  int* BBRaiseids; //Bernstein elevate matrix indices
+  dfloat* BBRaiseVals; //Bernstein elevate matrix values
+  dfloat* BBLower; //Berstein projection matrix.
 
   //degree raising and lowering interpolation matrices
-  dfloat *interpRaise;
-  dfloat *interpLower;
+  dfloat* interpRaise;
+  dfloat* interpLower;
 
   //sparse basis info
-  dfloat *sparseV, *invSparseV;
-  dfloat *sparseMM;
+  dfloat* sparseV, * invSparseV;
+  dfloat* sparseMM;
   int* FaceModes;
   int SparseNnzPerRow;
   int SparseNnzPerRowNonPadded;
-  int *sparseStackedNZ;
-  dfloat *sparseSrrT;
-  dfloat *sparseSrsT;
-  dfloat *sparseSssT;
-  int *Ind;
+  int* sparseStackedNZ;
+  dfloat* sparseSrrT;
+  dfloat* sparseSrsT;
+  dfloat* sparseSssT;
+  int* Ind;
 
-  dlong *mmapM, *mmapP; 
-  int   *mmapS;
-  dfloat *mapSgn;
+  dlong* mmapM, * mmapP;
+  int* mmapS;
+  dfloat* mapSgn;
 
   // time stepping info
   dfloat dt; // time step
-  dfloat startTime ; // Start Time
+  dfloat startTime;  // Start Time
   dfloat finalTime; // final time to run acoustics to
-  int   NtimeSteps;// number of time steps
-  int   errorStep; // number of steps between error calculations
-  int   Nrk;
+  int NtimeSteps;  // number of time steps
+  int errorStep;   // number of steps between error calculations
+  int Nrk;
   dfloat rka[5], rkb[5], rkc[6]; // AK: deprecated
 
   // MRAB,SAAB coefficients
-  dfloat mrab[3], mrabb[3], saab[3], saabexp; // AK: deprecated 
+  dfloat mrab[3], mrabb[3], saab[3], saabexp; // AK: deprecated
   int MRABNlevels;
-  int *MRABlevel;
-  dlong *MRABNelements, *MRABNhaloElements;
-  dlong **MRABelementIds, **MRABhaloIds;
-  int *MRABshiftIndex;
+  int* MRABlevel;
+  dlong* MRABNelements, * MRABNhaloElements;
+  dlong** MRABelementIds, ** MRABhaloIds;
+  int* MRABshiftIndex;
 
-  dlong *MRABpmlNelements, *MRABpmlNhaloElements;
-  dlong **MRABpmlElementIds, **MRABpmlIds;
-  dlong **MRABpmlHaloElementIds, **MRABpmlHaloIds;
+  dlong* MRABpmlNelements, * MRABpmlNhaloElements;
+  dlong** MRABpmlElementIds, ** MRABpmlIds;
+  dlong** MRABpmlHaloElementIds, ** MRABpmlHaloIds;
 
   dlong pmlNelements, nonPmlNelements;
-  dlong *nonPmlElementIds, *pmlElementIds, *pmlIds;  
+  dlong* nonPmlElementIds, * pmlElementIds, * pmlIds;
   int shiftIndex;
 
-  dfloat dtfactor; //Delete later for script run 
+  dfloat dtfactor; //Delete later for script run
   dfloat maxErrorBoltzmann;
 
-  dfloat *errtmp;
-  dfloat rkC[7], rkA[7*7], rkE[7];
+  dfloat* errtmp;
+  dfloat rkC[7], rkA[7 * 7], rkE[7];
 
   occa::memory o_rkq, o_rkrhsq, o_rkerr; // deprecated, AK.
   occa::memory o_errtmp;
   occa::memory o_rkA, o_rkE;
 
   // ploting info for generating field vtu
-  int    plotNverts;    // number of vertices for each plot element
-  int    plotNp;        // number of plot nodes per element
-  int    plotNelements; // number of "plot elements" per element
-  int   *plotEToV;      // triangulation of plot nodes
-  dfloat *plotR, *plotS, *plotT; // coordinates of plot nodes in reference element
-  dfloat *plotInterp;    // warp & blend to plot node interpolation matrix
+  int plotNverts;       // number of vertices for each plot element
+  int plotNp;           // number of plot nodes per element
+  int plotNelements;    // number of "plot elements" per element
+  int* plotEToV;        // triangulation of plot nodes
+  dfloat* plotR, * plotS, * plotT; // coordinates of plot nodes in reference element
+  dfloat* plotInterp;    // warp & blend to plot node interpolation matrix
 
-  int *contourEToV;
-  dfloat *contourVX, *contourVY, *contourVZ;
-  dfloat *contourInterp, *contourInterp1, *contourFilter; 
+  int* contourEToV;
+  dfloat* contourVX, * contourVY, * contourVZ;
+  dfloat* contourInterp, * contourInterp1, * contourFilter;
 
   //SEMFEM data
   int NpFEM, NelFEM;
-  int *FEMEToV;
-  dfloat *rFEM, *sFEM, *tFEM;
-  dfloat *SEMFEMInterp;
+  int* FEMEToV;
+  dfloat* rFEM, * sFEM, * tFEM;
+  dfloat* SEMFEMInterp;
 
   occa::memory o_SEMFEMInterp;
   occa::memory o_SEMFEMAnterp;
@@ -323,21 +323,20 @@ typedef struct {
   dfloat RT, sqrtRT, tauInv, Ma, Re; // Deprecated: AK
 
   // pml stuff
-  int    pmlNfields;
+  int pmlNfields;
   //  dlong    pmlNelements; // deprecated
-  dlong   *pmlElementList; // deprecated
+  dlong* pmlElementList;   // deprecated
 
   int Ntscale; // Will be removed, for time accuracy test
-  
-  dfloat *invTau; // deprecated in Boltzmann
 
+  dfloat* invTau; // deprecated in Boltzmann
 
   // Probe Data
-  int probeN, probeNTotal; 
-  dfloat *probeR, *probeS, *probeT;
-  // dfloat *probeX, *probeY, *probeZ;  
-  dlong *probeElementIds, *probeIds;  
-  dfloat *probeI; 
+  int probeN, probeNTotal;
+  dfloat* probeR, * probeS, * probeT;
+  // dfloat *probeX, *probeY, *probeZ;
+  dlong* probeElementIds, * probeIds;
+  dfloat* probeI;
 
   // occa stuff
   occa::device device;
@@ -390,20 +389,19 @@ typedef struct {
   occa::memory o_c2;
 
   //MRAB element lists
-  occa::memory *o_MRABelementIds;
-  occa::memory *o_MRABhaloIds;
-  occa::memory *o_MRABpmlElementIds;
-  occa::memory *o_MRABpmlIds;
-  occa::memory *o_MRABpmlHaloElementIds;
-  occa::memory *o_MRABpmlHaloIds;
-
+  occa::memory* o_MRABelementIds;
+  occa::memory* o_MRABhaloIds;
+  occa::memory* o_MRABpmlElementIds;
+  occa::memory* o_MRABpmlIds;
+  occa::memory* o_MRABpmlHaloElementIds;
+  occa::memory* o_MRABpmlHaloIds;
 
   // DG halo exchange info
   occa::memory o_haloElementList;
   occa::memory o_haloBuffer;
   occa::memory o_haloGetNodeIds;
   occa::memory o_haloPutNodeIds;
-  
+
   occa::memory o_internalElementIds;
   occa::memory o_notInternalElementIds;
 
@@ -426,13 +424,12 @@ typedef struct {
   // pml vars
   occa::memory o_sigmax, o_sigmay, o_sigmaz; // AK: deprecated
 
-
   occa::memory o_pmlElementIds;
   occa::memory o_nonPmlElementIds;
   occa::memory o_pmlIds;
 
   occa::memory o_pmlElementList;
-  
+
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
   occa::memory o_projectL2; // local weights for projection.
@@ -449,7 +446,6 @@ typedef struct {
   // Just for test will be deleted after temporal testsAK
   occa::kernel RKupdateKernel;
   occa::kernel RKpmlUpdateKernel;
-
 
   occa::kernel gatherKernel;
   occa::kernel scatterKernel;
@@ -478,69 +474,67 @@ typedef struct {
   // Boltzmann Specific Kernels
   occa::kernel relaxationKernel;
   occa::kernel pmlRelaxationKernel;
-  
 }mesh_t;
 
 // serial sort
-void mysort(hlong *data, int N, const char *order);
+void mysort(hlong* data, int N, const char* order);
 
 // sort entries in an array in parallel
 void parallelSort(int size, int rank, MPI_Comm comm,
-		  int N, void *vv, size_t sz,
-		  int (*compare)(const void *, const void *),
-		  void (*match)(void *, void *)
-		  );
+                  int N, void* vv, size_t sz,
+                  int (* compare)(const void*, const void*),
+                  void (* match)(void*, void*)
+                  );
 
-#define mymax(a,b) (((a)>(b))?(a):(b))
-#define mymin(a,b) (((a)<(b))?(a):(b))
+#define mymax(a,b) (((a) > (b))?(a):(b))
+#define mymin(a,b) (((a) < (b))?(a):(b))
 
 /* dimension independent mesh operations */
-void meshConnect(mesh_t *mesh);
+void meshConnect(mesh_t* mesh);
 
 /* build parallel face connectivity */
-void meshParallelConnect(mesh_t *mesh);
+void meshParallelConnect(mesh_t* mesh);
 
 /* build global connectivity in parallel */
-void meshParallelConnectNodes(mesh_t *mesh, int nrsBuildOnly);
+void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly);
 
-void meshHaloSetup(mesh_t *mesh);
+void meshHaloSetup(mesh_t* mesh);
 
 /* extract whole elements for the halo exchange */
-void meshHaloExtract(mesh_t *mesh, size_t Nbytes, void *sourceBuffer, void *haloBuffer);
+void meshHaloExtract(mesh_t* mesh, size_t Nbytes, void* sourceBuffer, void* haloBuffer);
 
-void meshHaloExchange(mesh_t *mesh,
-    size_t Nbytes,         // message size per element
-    void *sourceBuffer,
-    void *sendBuffer,    // temporary buffer
-    void *recvBuffer);
+void meshHaloExchange(mesh_t* mesh,
+                      size_t Nbytes, // message size per element
+                      void* sourceBuffer,
+                      void* sendBuffer, // temporary buffer
+                      void* recvBuffer);
 
-void meshHaloExchangeStart(mesh_t *mesh,
-    size_t Nbytes,       // message size per element
-    void *sendBuffer,    // temporary buffer
-    void *recvBuffer);
+void meshHaloExchangeStart(mesh_t* mesh,
+                           size_t Nbytes, // message size per element
+                           void* sendBuffer, // temporary buffer
+                           void* recvBuffer);
 
+void meshHaloExchangeFinish(mesh_t* mesh);
 
-void meshHaloExchangeFinish(mesh_t *mesh);
-
-void meshHaloExchangeBlocking(mesh_t *mesh,
-			     size_t Nbytes,       // message size per element
-			     void *sendBuffer,    // temporary buffer
-			      void *recvBuffer);
+void meshHaloExchangeBlocking(mesh_t* mesh,
+                              size_t Nbytes, // message size per element
+                              void* sendBuffer, // temporary buffer
+                              void* recvBuffer);
 
 // print out parallel partition i
-void meshPartitionStatistics(mesh_t *mesh);
+void meshPartitionStatistics(mesh_t* mesh);
 
 // build element-boundary connectivity
-void meshConnectBoundary(mesh_t *mesh);
+void meshConnectBoundary(mesh_t* mesh);
 
-void meshParallelGatherScatterSetup(mesh_t *mesh,
-                                      dlong N,
-                                      hlong *globalIds,
-                                      MPI_Comm &comm,
-                                      int verbose);
+void meshParallelGatherScatterSetup(mesh_t* mesh,
+                                    dlong N,
+                                    hlong* globalIds,
+                                    MPI_Comm &comm,
+                                    int verbose);
 
 // generic mesh setup
-mesh_t *meshSetup(char *filename, int N, setupAide &options);
+mesh_t* meshSetup(char* filename, int N, setupAide &options);
 void meshFree(mesh_t*);
 
 void occaTimerTic(occa::device device,std::string name);
@@ -548,96 +542,95 @@ void occaTimerToc(occa::device device,std::string name);
 
 extern "C"
 {
-  void * xxtSetup(uint num_local_rows,
-      void* row_ids,
-      uint nnz,
-      void*   A_i,
-      void*   A_j,
-      void* A_vals,
-      int null_space,
-      const char* inttype,
-      const char* floattype);
+void* xxtSetup(uint num_local_rows,
+               void* row_ids,
+               uint nnz,
+               void*   A_i,
+               void*   A_j,
+               void* A_vals,
+               int null_space,
+               const char* inttype,
+               const char* floattype);
 
-  void xxtSolve(void* x,
-      void* A,
-      void* rhs);
+void xxtSolve(void* x,
+              void* A,
+              void* rhs);
 
-  void xxtFree(void* A) ;
+void xxtFree(void* A);
 }
 
 extern "C"
 {
-  void dgesv_ ( int     *N, int     *NRHS, double  *A,
-                int     *LDA,
-                int     *IPIV, 
-                double  *B,
-                int     *LDB,
-                int     *INFO );
+void dgesv_ ( int* N, int* NRHS, double* A,
+              int* LDA,
+              int* IPIV,
+              double* B,
+              int* LDB,
+              int* INFO );
 
-  // void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, 
-  //             const int *N, const int *K, double *ALPHA, double *A, const int *LDA, double *B, 
-  //             const int *LDB, double *BETA, double *C, const int *LDC);
+// void dgemm_(const char *TRANSA, const char *TRANSB, const int *M,
+//             const int *N, const int *K, double *ALPHA, double *A, const int *LDA, double *B,
+//             const int *LDB, double *BETA, double *C, const int *LDC);
 
-   void dgemm_ (char *, char *, int *, int *, int *,
-         const dfloat *, const dfloat * __restrict, int *,
-         const dfloat * __restrict, int *,
-         const dfloat *, dfloat * __restrict, int *);
+void dgemm_ (char*, char*, int*, int*, int*,
+             const dfloat*, const dfloat* __restrict, int*,
+             const dfloat* __restrict, int*,
+             const dfloat*, dfloat* __restrict, int*);
 
-  void sgesv_(int *N, int *NRHS,float  *A, int *LDA, int *IPIV, float  *B, int *LDB,int *INFO);
+void sgesv_(int* N, int* NRHS,float* A, int* LDA, int* IPIV, float* B, int* LDB,int* INFO);
 
-  void dgetrf_(int* M, int *N, double* A, int* lda, int* IPIV, int* INFO);
-  void dgetri_(int* N, double* A, int* lda, int* IPIV, double* WORK, int* lwork, int* INFO);
-  void dgeev_(char *JOBVL, char *JOBVR, int *N, double *A, int *LDA, double *WR, double *WI,
-              double *VL, int *LDVL, double *VR, int *LDVR, double *WORK, int *LWORK, int *INFO );
-  
-  double dlange_(char *NORM, int *M, int *N, double *A, int *LDA, double *WORK);
-  void dgecon_(char *NORM, int *N, double *A, int *LDA, double *ANORM,
-                double *RCOND, double *WORK, int *IWORK, int *INFO );
+void dgetrf_(int* M, int* N, double* A, int* lda, int* IPIV, int* INFO);
+void dgetri_(int* N, double* A, int* lda, int* IPIV, double* WORK, int* lwork, int* INFO);
+void dgeev_(char* JOBVL, char* JOBVR, int* N, double* A, int* LDA, double* WR, double* WI,
+            double* VL, int* LDVL, double* VR, int* LDVR, double* WORK, int* LWORK, int* INFO );
+
+double dlange_(char* NORM, int* M, int* N, double* A, int* LDA, double* WORK);
+void dgecon_(char* NORM, int* N, double* A, int* LDA, double* ANORM,
+             double* RCOND, double* WORK, int* IWORK, int* INFO );
 }
 
-void meshApplyElementMatrix(mesh_t *mesh, dfloat *A, dfloat *q, dfloat *Aq);
-void meshApplyVectorElementMatrix(mesh_t *mesh, int Nfield, const dlong offset, dfloat *A, dfloat *q, dfloat *Aq);
+void meshApplyElementMatrix(mesh_t* mesh, dfloat* A, dfloat* q, dfloat* Aq);
+void meshApplyVectorElementMatrix(mesh_t* mesh, int Nfield, const dlong offset, dfloat* A, dfloat* q, dfloat* Aq);
 
-void meshRecursiveSpectralBisectionPartition(mesh_t *mesh);
+void meshRecursiveSpectralBisectionPartition(mesh_t* mesh);
 
-void matrixInverse(int N, dfloat *A);
-dfloat matrixConditionNumber(int N, dfloat *A);
+void matrixInverse(int N, dfloat* A);
+dfloat matrixConditionNumber(int N, dfloat* A);
 
 #if 0
-void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem);
+void* occaHostMallocPinned(occa::device &device, size_t size, void* source, occa::memory &mem);
 #else
-void *occaHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem);
+void* occaHostMallocPinned(occa::device &device, size_t size, void* source, occa::memory &mem, occa::memory &h_mem);
 #endif
 
-void matrixRightSolve(int NrowsA, int NcolsA, dfloat *A, int NrowsB, int NcolsB, dfloat *B, dfloat *C);
-void matrixEig(int N, dfloat *A, dfloat *VR, dfloat *WR, dfloat *WI);
+void matrixRightSolve(int NrowsA, int NcolsA, dfloat* A, int NrowsB, int NcolsB, dfloat* B, dfloat* C);
+void matrixEig(int N, dfloat* A, dfloat* VR, dfloat* WR, dfloat* WI);
 void matrixTranspose(const int M, const int N,
-                     const dfloat  *A, const int LDA,
-                           dfloat *AT, const int LDAT);
+                     const dfloat* A, const int LDA,
+                     dfloat* AT, const int LDAT);
 
 // 1D mesh basis functions
-void Nodes1D(int _N, dfloat *_r);
-void EquispacedNodes1D(int _N, dfloat *_r);
-void OrthonormalBasis1D(dfloat a, int i, dfloat *P);
-void GradOrthonormalBasis1D(dfloat a, int i, dfloat *Pr);
-void Vandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *V);
-void GradVandermonde1D(int _N, int Npoints, dfloat *_r, dfloat *Vr);
-void MassMatrix1D(int _Np, dfloat *V, dfloat *_MM);
-void Dmatrix1D(int _N, int NpointsIn, dfloat *_rIn,
-                               int NpointsOut, dfloat *_rOut, dfloat *_Dr);
-void DWmatrix1D(int _N, dfloat *_D, dfloat *_DT);
+void Nodes1D(int _N, dfloat* _r);
+void EquispacedNodes1D(int _N, dfloat* _r);
+void OrthonormalBasis1D(dfloat a, int i, dfloat* P);
+void GradOrthonormalBasis1D(dfloat a, int i, dfloat* Pr);
+void Vandermonde1D(int _N, int Npoints, dfloat* _r, dfloat* V);
+void GradVandermonde1D(int _N, int Npoints, dfloat* _r, dfloat* Vr);
+void MassMatrix1D(int _Np, dfloat* V, dfloat* _MM);
+void Dmatrix1D(int _N, int NpointsIn, dfloat* _rIn,
+               int NpointsOut, dfloat* _rOut, dfloat* _Dr);
+void DWmatrix1D(int _N, dfloat* _D, dfloat* _DT);
 
 void InterpolationMatrix1D(int _N,
-                               int NpointsIn, dfloat *rIn,
-                               int NpointsOut, dfloat *rOut,
-                               dfloat *I);
-void DegreeRaiseMatrix1D(int Nc, int Nf, dfloat *P);
+                           int NpointsIn, dfloat* rIn,
+                           int NpointsOut, dfloat* rOut,
+                           dfloat* I);
+void DegreeRaiseMatrix1D(int Nc, int Nf, dfloat* P);
 void CubatureWeakDmatrix1D(int _Nq, int _cubNq,
-                                     dfloat *_cubProject, dfloat *_cubD, dfloat *_cubPDT);
+                           dfloat* _cubProject, dfloat* _cubD, dfloat* _cubPDT);
 dfloat JacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
 dfloat GradJacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
-void JacobiGLL(int _N, dfloat *_x, dfloat *_w = nullptr);
-void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat *_x, dfloat *_w);
+void JacobiGLL(int _N, dfloat* _x, dfloat* _w = nullptr);
+void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat* _x, dfloat* _w);
 } // end C Linkage
 #endif
-

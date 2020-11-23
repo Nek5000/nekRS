@@ -114,10 +114,10 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmax);
 
     auto callback = [&]()
-      {
-        ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
-                   elliptic->o_p, elliptic->o_Ap, pfloatString);
-      };
+                    {
+                      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
+                                 elliptic->o_p, elliptic->o_Ap, pfloatString);
+                    };
     elliptic->oogs   = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
@@ -139,10 +139,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     elliptic_t* ellipticC = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
 
     auto callback = [&]()
-      {
-        ellipticAx(ellipticC, ellipticC->mesh->NlocalGatherElements, ellipticC->mesh->o_localGatherElementList,
-                   ellipticC->o_p, ellipticC->o_Ap, pfloatString);
-      };
+                    {
+                      ellipticAx(ellipticC,
+                                 ellipticC->mesh->NlocalGatherElements,
+                                 ellipticC->mesh->o_localGatherElementList,
+                                 ellipticC->o_p,
+                                 ellipticC->o_Ap,
+                                 pfloatString);
+                    };
     ellipticC->oogs   = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
@@ -177,10 +181,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     ellipticCoarse = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
 
     auto callback = [&]()
-      {
-        ellipticAx(ellipticCoarse, ellipticCoarse->mesh->NlocalGatherElements, ellipticCoarse->mesh->o_localGatherElementList,
-                   ellipticCoarse->o_p, ellipticCoarse->o_Ap, pfloatString);
-      };
+                    {
+                      ellipticAx(ellipticCoarse,
+                                 ellipticCoarse->mesh->NlocalGatherElements,
+                                 ellipticCoarse->mesh->o_localGatherElementList,
+                                 ellipticCoarse->o_p,
+                                 ellipticCoarse->o_Ap,
+                                 pfloatString);
+                    };
     ellipticCoarse->oogs   = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     //ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
   } else {

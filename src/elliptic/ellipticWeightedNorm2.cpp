@@ -56,7 +56,7 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
       elliptic->weightedNorm2Kernel(Nlocal, elliptic->Ntotal, o_w, o_a, o_tmp);
     else
       elliptic->weightedNorm2Kernel(Nlocal, o_w, o_a, o_tmp);
-  }else  {
+  }else {
     elliptic->innerProductKernel(Nlocal, o_a, o_a, o_tmp);
   }
 
@@ -70,7 +70,7 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
       mesh->sumKernel(Nblock, o_tmp, o_tmp2);
       o_tmp2.copyTo(tmp);
       Nfinal = Nblock2;
-    }else  {
+    }else {
       o_tmp.copyTo(tmp);
       Nfinal = Nblock;
     }
@@ -78,7 +78,6 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
     wa2 = 0;
     for(dlong n = 0; n < Nfinal; ++n)
       wa2 += tmp[n];
-
   }
 
   dfloat globalwa2 = 0;

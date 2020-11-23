@@ -37,35 +37,36 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
   occa::memory o_Axtmp = o_Ax + fieldOffset * Ax_offset * sizeof(dfloat);
   matvecOperator(o_xtmp, o_Axtmp);
 }
+
 void ResidualProjection::updateProjectionSpace()
 {
   dlong m = numVecsProjection;
   if(m <= 0) return;
 
-  multiWeightedInnerProduct(o_xx, m, o_bb, m-1);
+  multiWeightedInnerProduct(o_xx, m, o_bb, m - 1);
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
-  multiScaledAddwOffsetKernel(Nlocal, m, (m-1)*fieldOffset, fieldOffset, o_alpha, one, o_xx);
-  multiScaledAddwOffsetKernel(Nlocal, m, (m-1)*fieldOffset, fieldOffset, o_alpha, one, o_bb);
-  for(int k = 0; k < m - 1; ++k) {
+  multiScaledAddwOffsetKernel(Nlocal, m, (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
+  multiScaledAddwOffsetKernel(Nlocal, m, (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
+  for(int k = 0; k < m - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
-  }
   norm_new = sqrt(norm_new);
   dfloat tol = 1e-7;
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    scalarMultiplyKernel(Nlocal, (m-1) * fieldOffset, scale, o_xx);
-    scalarMultiplyKernel(Nlocal, (m-1) * fieldOffset, scale, o_bb);
+    scalarMultiplyKernel(Nlocal, (m - 1) * fieldOffset, scale, o_xx);
+    scalarMultiplyKernel(Nlocal, (m - 1) * fieldOffset, scale, o_bb);
   } else {
-    if(verbose && rank == 0){
+    if(verbose && rank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
       std::cout << "Removing column : " << numVecsProjection << ".\n";
     }
     numVecsProjection--;
   }
 }
+
 void ResidualProjection::computePreProjection(occa::memory& o_r)
 {
   dfloat one = 1.0;
@@ -79,6 +80,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_bb, o_rtmp);
   scaledAddKernel(Nlocal, mone, o_rtmp, one, o_r);
 }
+
 void ResidualProjection::computePostProjection(occa::memory & o_x)
 {
   const dfloat one = 1.0;
@@ -95,7 +97,7 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   } else {
     numVecsProjection++;
     // xx[m-1] = x
-    o_xx.copyFrom(o_x, Nlocal*sizeof(dfloat), (numVecsProjection - 1)*fieldOffset*sizeof(dfloat), 0);
+    o_xx.copyFrom(o_x, Nlocal * sizeof(dfloat), (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
     scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
   }
@@ -110,6 +112,7 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     updateProjectionSpace();
   }
 }
+
 ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                                        const dlong _maxNumVecsProjection,
                                        const dlong _numTimeSteps)
@@ -138,7 +141,7 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  multiwork = (dfloat*) calloc(Nblock*maxNumVecsProjection, sizeof(dfloat));
+  multiwork = (dfloat*) calloc(Nblock * maxNumVecsProjection, sizeof(dfloat));
   o_alpha = elliptic.mesh->device.malloc(maxNumVecsProjection * sizeof(dfloat));
   o_xbar = elliptic.mesh->device.malloc(Nlocal * sizeof(dfloat));
   o_xx = elliptic.mesh->device.malloc(fieldOffset * maxNumVecsProjection * sizeof(dfloat));
@@ -163,11 +166,11 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                                                                "scalarMultiply",
                                                                properties);
       multiScaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(filename.c_str(),
-                                                                 "multiScaledAddwOffset",
-                                                                 properties);
-      multiWeightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(filename.c_str(),
-                                                                      "multiWeightedInnerProduct2",
+                                                                      "multiScaledAddwOffset",
                                                                       properties);
+      multiWeightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(filename.c_str(),
+                                                                           "multiWeightedInnerProduct2",
+                                                                           properties);
       accumulateKernel = elliptic.mesh->device.buildKernel(filename.c_str(), "accumulate", properties);
     }
     MPI_Barrier(elliptic.mesh->comm);
@@ -175,14 +178,15 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   scaledAddKernel = elliptic.scaledAddKernel;
   sumKernel = elliptic.mesh->sumKernel;
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
-  {
-    ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);
-  };
+                   {
+                     ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);
+                   };
   weightedNorm = [&](occa::memory& o_x)
-  {
-    return ellipticWeightedNorm2(&elliptic, o_invDegree, o_x);
-  };
+                 {
+                   return ellipticWeightedNorm2(&elliptic, o_invDegree, o_x);
+                 };
 }
+
 void ResidualProjection::pre(occa::memory& o_r)
 {
   ++timestep;
@@ -208,33 +212,34 @@ void ResidualProjection::pre(occa::memory& o_r)
               << postResidualNorm << ", "
               << ratio << "\n";
 }
+
 void ResidualProjection::post(occa::memory& o_x)
 {
   if(timestep < numTimeSteps)
     return;
   computePostProjection(o_x);
 }
+
 void ResidualProjection::multiWeightedInnerProduct(
-                                                occa::memory &o_a,
-                                                const dlong m,
-                                                occa::memory &o_b,
-                                                const dlong offset)
+  occa::memory &o_a,
+  const dlong m,
+  occa::memory &o_b,
+  const dlong offset)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, offset*fieldOffset, o_invDegree, o_a, o_b, o_wrk);
+  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
-  o_wrk.copyTo(multiwork, sizeof(dfloat)*m*Nblock);
-  for(dlong k = 0 ; k < m; ++k){
+  o_wrk.copyTo(multiwork, sizeof(dfloat) * m * Nblock);
+  for(dlong k = 0; k < m; ++k) {
     dfloat accum = 0.0;
-    for(dlong n = 0; n < Nblock; ++n){
-      accum += multiwork[n+k*Nblock];
-    }
+    for(dlong n = 0; n < Nblock; ++n)
+      accum += multiwork[n + k * Nblock];
     alpha[k] = accum;
   }
   MPI_Allreduce(MPI_IN_PLACE, alpha, m, MPI_DFLOAT, MPI_SUM, comm);
-  o_alpha.copyFrom(alpha,sizeof(dfloat)*m);
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * m);
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif

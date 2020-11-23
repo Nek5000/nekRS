@@ -59,7 +59,7 @@ void meshFree(mesh_t* mesh)
   if(mesh->maskedGlobalIds) free(mesh->maskedGlobalIds);
   //if(mesh->gsh) ogsHostFree(mesh->gsh);
   //if(  mesh->hostGsh) ogsHostFree(  mesh->hostGsh);// gslib struct pointer
-  if(  mesh->ogs) ogsFree(  mesh->ogs);//occa gs pointer
+  if(  mesh->ogs) ogsFree(  mesh->ogs); //occa gs pointer
 
   // list of elements that are needed for global gather-scatter
   if(mesh->globalGatherElementList) free(mesh->globalGatherElementList);

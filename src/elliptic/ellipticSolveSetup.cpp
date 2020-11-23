@@ -33,7 +33,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   setupAide options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
-  elliptic->resNormFactor = 1 / (elliptic->Nfields*mesh->volume);
+  elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
 
@@ -373,7 +373,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
             elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = mymin(BCFlag,
-                                                  elliptic->mapB[fid + e *mesh->Np + fld*elliptic->Ntotal]);
+                                                                                elliptic->mapB[fid + e * mesh->Np +
+                                                                                               fld * elliptic->Ntotal]);
           }
         }
       }
@@ -413,7 +414,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       elliptic->Nmasked * sizeof(dlong),
       elliptic->maskIds);
 
-
   if(elliptic->blockSolver) { // Create a gs handle independent from BC handler
     elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, mesh->comm, verbose, mesh->device);
     // Create copy of invDegree so that we can accelerate vector form of masking!!!!!!
@@ -444,7 +444,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   kernelInfo["defines/pfloat"] = pfloatString;
 
-
   // set kernel name suffix
   string suffix;
   if(elliptic->elementType == HEXAHEDRA)
@@ -467,8 +466,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   MPI_Barrier(mesh->comm);
-  double tStartLoadKernel = MPI_Wtime(); 
-  if(mesh->rank == 0)  printf("loading elliptic kernels ... "); fflush(stdout);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0) printf("loading elliptic kernels ... ");
+  fflush(stdout);
 
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
@@ -494,12 +494,12 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "mask",
                                  kernelInfo);
 
-      filename = oklpath + "mask.okl"; 
+      filename = oklpath + "mask.okl";
       mesh->maskPfloatKernel =
         mesh->device.buildKernel(filename.c_str(),
                                  "mask",
                                  pfloatKernelInfo);
- 
+
       filename = oklpath + "sum.okl";
       mesh->sumKernel =
         mesh->device.buildKernel(filename.c_str(),
@@ -685,7 +685,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             mesh->device.buildKernel(filename.c_str(),
                                      "weightedNorm2",
                                      kernelInfo);
-       }
+        }
 
         filename = oklpath + "norm2.okl";
         elliptic->norm2Kernel =
@@ -821,8 +821,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
-
-      const string oklpath = install_dir + "/okl/elliptic/"; 
+      const string oklpath = install_dir + "/okl/elliptic/";
       string filename;
 
       if(elliptic->var_coeff) {
@@ -839,19 +838,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       if(elliptic->blockSolver) {
         filename =  oklpath + "ellipticBlockAx" + suffix + ".okl";
         if(serial) filename = oklpath + "ellipticSerialAx" +  suffix + ".c";
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
-          if(elliptic->stressForm){
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA) {
+          if(elliptic->stressForm)
             kernelName = "ellipticStressAxVar" + suffix;
-          } else {
-            kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields); 
-          }
-        }
-        else{
-          if(elliptic->stressForm){
+          else
+            kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
+        }else {
+          if(elliptic->stressForm)
             kernelName = "ellipticStressAx" + suffix;
-          } else {
+          else
             kernelName = "ellipticBlockAx", suffix + "_N" + std::to_string(elliptic->Nfields);
-          }
         }
       }else{
         filename = oklpath + "ellipticAx" + suffix + ".okl";
@@ -893,19 +889,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             kernelName = "ellipticPartialAxTrilinear" + suffix;
           }else {
             if(elliptic->blockSolver) {
-              if(elliptic->var_coeff){
-                if(elliptic->stressForm){
+              if(elliptic->var_coeff) {
+                if(elliptic->stressForm)
                   kernelName = "ellipticStressPartialAxVar" + suffix;
-                } else {
+                else
                   kernelName = "ellipticBlockPartialAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-                }
-              }
-              else{
-                if(elliptic->stressForm){
+              }else {
+                if(elliptic->stressForm)
                   kernelName = "ellipticStessPartialAx" + suffix;
-                } else {
+                else
                   kernelName = "ellipticBlockPartialAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
-                }
               }
             }else {
               if(elliptic->var_coeff)
@@ -951,7 +944,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         elliptic->update1NBFPCGKernel =
           mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
                                    "ellipticBlockUpdate1NBFPCG", dfloatKernelInfo);
-*/
+ */
       }else{
         if(serial) {
           filename = oklpath + "ellipticSerialUpdatePCG.c";
@@ -982,7 +975,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         elliptic->update1NBFPCGKernel =
           mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
                                    "ellipticUpdate1NBFPCG", dfloatKernelInfo);
-*/
+ */
       }
 
       if(!elliptic->blockSolver) {
@@ -1001,7 +994,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
           sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
           elliptic->partialIpdgKernel = mesh->device.buildKernel(filename.c_str(),kernelName,kernelInfo);
-*/
+ */
         }
 
         filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
@@ -1036,7 +1029,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   }
 
   MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
+  fflush(stdout);
 
   if(elliptic->blockSolver) {
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
@@ -1088,10 +1082,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
-    {
-      ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
-                 elliptic->o_p, elliptic->o_Ap, dfloatString);
-    };
+                  {
+                    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
+                               elliptic->o_p, elliptic->o_Ap, dfloatString);
+                  };
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
@@ -1135,7 +1129,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
       exit(-1);
     }
-    elliptic->residualProjection = new ResidualProjection(* elliptic, nVecsProject, nStepsStart);
+    elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
   }
-
 }

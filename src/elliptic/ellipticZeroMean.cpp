@@ -80,7 +80,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 #endif
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp",1);
+    timer::tic("dotp",1);
 #endif
     o_tmp.copyTo(tmp);
 
@@ -92,7 +92,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     // globalize reduction
     MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+    timer::toc("dotp");
 #endif
 
     // normalize

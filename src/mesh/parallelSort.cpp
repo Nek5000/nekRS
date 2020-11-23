@@ -47,14 +47,14 @@ void mergeLists(size_t sz,
       if(c == -1) {
         memcpy(v3 + n3 * sz, v1 + n1 * sz, sz);
         ++n1;
-      }else  {
+      }else {
         memcpy(v3 + n3 * sz, v2 + n2 * sz, sz);
         ++n2;
       }
-    }else if(n1 < N1)    {
+    }else if(n1 < N1) {
       memcpy(v3 + n3 * sz, v1 + n1 * sz, sz);
       ++n1;
-    }else if(n2 < N2)    {
+    }else if(n2 < N2) {
       memcpy(v3 + n3 * sz, v2 + n2 * sz, sz);
       ++n2;
     }

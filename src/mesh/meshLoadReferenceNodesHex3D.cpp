@@ -40,54 +40,52 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
 
   int Nrows, Ncols;
 
-  mesh->r = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
-  mesh->s = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
-  mesh->t = (dfloat *) malloc(mesh->Np*sizeof(dfloat));
+  mesh->r = (dfloat*) malloc(mesh->Np * sizeof(dfloat));
+  mesh->s = (dfloat*) malloc(mesh->Np * sizeof(dfloat));
+  mesh->t = (dfloat*) malloc(mesh->Np * sizeof(dfloat));
   NodesHex3D(mesh->N, mesh->r, mesh->s, mesh->t);
 
-  mesh->faceNodes = (int *) malloc(mesh->Nfaces*mesh->Nfp*sizeof(int));
+  mesh->faceNodes = (int*) malloc(mesh->Nfaces * mesh->Nfp * sizeof(int));
   FaceNodesHex3D(mesh->N, mesh->r, mesh->s, mesh->t, mesh->faceNodes);
 
   //GLL quadrature
-  mesh->gllz = (dfloat *) malloc((mesh->N+1)*sizeof(dfloat));
-  mesh->gllw = (dfloat *) malloc((mesh->N+1)*sizeof(dfloat));
+  mesh->gllz = (dfloat*) malloc((mesh->N + 1) * sizeof(dfloat));
+  mesh->gllw = (dfloat*) malloc((mesh->N + 1) * sizeof(dfloat));
   JacobiGLL(mesh->N, mesh->gllz, mesh->gllw);
 
-  mesh->D = (dfloat *) malloc(mesh->Nq*mesh->Nq*sizeof(dfloat));
+  mesh->D = (dfloat*) malloc(mesh->Nq * mesh->Nq * sizeof(dfloat));
   Dmatrix1D(mesh->N, mesh->Nq, mesh->gllz, mesh->Nq, mesh->gllz, mesh->D);
 
-  mesh->DW = (dfloat *) malloc(mesh->Nq*mesh->Nq*sizeof(dfloat));
+  mesh->DW = (dfloat*) malloc(mesh->Nq * mesh->Nq * sizeof(dfloat));
   DWmatrix1D(mesh->N, mesh->D, mesh->DW);
 
-  mesh->interpRaise = (dfloat * ) calloc(mesh->Nq*(mesh->Nq+1),sizeof(dfloat));
-  mesh->interpLower = (dfloat * ) calloc((mesh->Nq-1)*(mesh->Nq),sizeof(dfloat));
-  DegreeRaiseMatrix1D(mesh->N, mesh->N+1, mesh->interpRaise);
-  DegreeRaiseMatrix1D(mesh->N-1, mesh->N, mesh->interpLower);
+  mesh->interpRaise = (dfloat* ) calloc(mesh->Nq * (mesh->Nq + 1),sizeof(dfloat));
+  mesh->interpLower = (dfloat* ) calloc((mesh->Nq - 1) * (mesh->Nq),sizeof(dfloat));
+  DegreeRaiseMatrix1D(mesh->N, mesh->N + 1, mesh->interpRaise);
+  DegreeRaiseMatrix1D(mesh->N - 1, mesh->N, mesh->interpLower);
 
   mesh->cubNfp = mesh->cubNq * mesh->cubNq;
   mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
   // cubN+1 point Gauss-Legendre quadrature
-  mesh->cubr = (dfloat *) malloc(mesh->cubNq*sizeof(dfloat));
-  mesh->cubw = (dfloat *) malloc(mesh->cubNq*sizeof(dfloat));
-  JacobiGLL(mesh->cubNq-1, mesh->cubr, mesh->cubw);
+  mesh->cubr = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
+  mesh->cubw = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
+  JacobiGLL(mesh->cubNq - 1, mesh->cubr, mesh->cubw);
 
   mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
   InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
 
   //cubature project cubProject = cubInterp^T
-  mesh->cubProject = (dfloat*) calloc(mesh->cubNq*mesh->Nq, sizeof(dfloat));
+  mesh->cubProject = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
   matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
 
   //cubature derivates matrix, cubD: differentiate on cubature nodes
-  mesh->cubD = (dfloat *) malloc(mesh->cubNq*mesh->cubNq*sizeof(dfloat));
-  Dmatrix1D(mesh->cubNq-1, mesh->cubNq, mesh->cubr, mesh->cubNq, mesh->cubr, mesh->cubD);
+  mesh->cubD = (dfloat*) malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat));
+  Dmatrix1D(mesh->cubNq - 1, mesh->cubNq, mesh->cubr, mesh->cubNq, mesh->cubr, mesh->cubD);
   // weak cubature derivative = cubD^T
-  mesh->cubDW  = (dfloat*) calloc(mesh->cubNq*mesh->cubNq, sizeof(dfloat));
-  for(int i = 0 ; i < mesh->cubNq; ++i){
-    for(int j = 0 ; j < mesh->cubNq; ++j){
-      mesh->cubDW[j+i*mesh->cubNq] = mesh->cubD[i+j*mesh->cubNq];
-    }
-  }
+  mesh->cubDW  = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
+  for(int i = 0; i < mesh->cubNq; ++i)
+    for(int j = 0; j < mesh->cubNq; ++j)
+      mesh->cubDW[j + i * mesh->cubNq] = mesh->cubD[i + j * mesh->cubNq];
 
   mesh->intNfp = 0;
   mesh->intLIFT = NULL;

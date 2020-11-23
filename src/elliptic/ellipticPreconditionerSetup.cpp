@@ -33,29 +33,21 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   setupAide options = elliptic->options;
 
   if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-
     ellipticMultiGridSetup(elliptic,precon);
-
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
-
     //ellipticSEMFEMSetup(elliptic,precon);
     printf("ERROR: SEMFEM does not work right now.\n");
 
     exit(-1);
-
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
     const dlong Nlocal =  mesh->Np * mesh->Nelements;
     int Ntotal = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
     precon->o_invDiagA = mesh->device.malloc(Ntotal * sizeof(dfloat), invDiagA);
     free(invDiagA);
-
   } else {
-
     printf("ERROR: Unknown preconditioner!\n");
     exit(-1);
-
   }
 }

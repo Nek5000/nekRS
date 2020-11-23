@@ -55,5 +55,4 @@ void mysort(hlong* data, int N, const char* order)
     qsort(data, N, sizeof(hlong), isHigher);
   else
     qsort(data, N, sizeof(hlong), isLower);
-
 }

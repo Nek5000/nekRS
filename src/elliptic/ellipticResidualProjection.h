@@ -45,10 +45,10 @@ private:
   void updateProjectionSpace();
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
   void multiWeightedInnerProduct(
-                              occa::memory& o_a,
-                              const dlong m,
-                              occa::memory& o_b,
-                              const dlong offset);
+    occa::memory& o_a,
+    const dlong m,
+    occa::memory& o_b,
+    const dlong offset);
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
   dlong timestep;
@@ -73,9 +73,9 @@ private:
   occa::kernel scaledAddKernel;
   occa::kernel sumKernel;
 
-  dfloat * alpha;
-  dfloat * work;
-  dfloat * multiwork;
+  dfloat* alpha;
+  dfloat* work;
+  dfloat* multiwork;
   dfloat* tmp;
 
   dlong numVecsProjection;
@@ -90,7 +90,5 @@ private:
 
   std::function<void(occa::memory&,occa::memory&)> matvecOperator;
   std::function<dfloat(occa::memory&)> weightedNorm;
-
-
 };
 #endif

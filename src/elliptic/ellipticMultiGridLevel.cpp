@@ -65,7 +65,7 @@ void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
-  if(!strstr(pfloatString,dfloatString)){
+  if(!strstr(pfloatString,dfloatString)) {
     elliptic->copyDfloatToPfloatKernel(Nrows, o_xPfloat, o_x);
     elliptic->copyDfloatToPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
     if (stype == RICHARDSON)
@@ -144,7 +144,6 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
     //res = Sr
     this->smoother(o_r, o_res, xIsZero);
     elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, zero, o_x);
-
   } else {
     //res = S(r-Ax)
     this->Ax(o_x,o_res);
@@ -160,9 +159,10 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
   pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
   elliptic->updateChebyshevSolutionVecKernel(Nrows, rhoDivDelta, rho_np1, rho_n, o_Ad, o_res, o_d, o_x);
 }
+
 void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
-  if(ChebyshevIterations == 1){
+  if(ChebyshevIterations == 1) {
     smoothChebyshevOneIteration(o_r,o_x,xIsZero);
     return;
   }
