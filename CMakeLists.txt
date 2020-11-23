@@ -161,7 +161,8 @@ include(config/nek5000.cmake)
 # Definitions for libP, gslib, and blaslapack
 ###############################################################################
 
-include(config/libp.cmake)
+include(config/elliptic.cmake)
+include(config/parAlmond.cmake)
 include(config/gslib.cmake)
 include(config/blaslapack.cmake)
 
@@ -170,7 +171,7 @@ include(config/blaslapack.cmake)
 ###############################################################################
 
 set(SRC 
-    src/nekrs.cpp
+    src/lib/nekrs.cpp
     src/core/cfl.cpp
     src/core/filter.cpp
     src/core/bcMap.cpp
@@ -179,10 +180,6 @@ set(SRC
     src/core/tombo.cpp
     src/core/cds.cpp
     src/udf/udf.cpp
-    src/mesh/meshSetup.cpp
-    src/mesh/meshNekReader.cpp
-    src/mesh/meshPhysicalNodesHex3D.cpp
-    src/mesh/meshParallelConnectNodes.cpp
     src/core/occaDeviceConfig.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/core/parReader.cpp
@@ -194,11 +191,42 @@ set(SRC
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
+    src/mesh/meshSetup.cpp
+    src/mesh/meshNekReader.cpp
+    src/mesh/meshPhysicalNodesHex3D.cpp
+    src/mesh/meshParallelConnectNodes.cpp
+    src/mesh/matrixConditionNumber.cpp
+    src/mesh/matrixInverse.cpp
+    src/mesh/matrixEig.cpp
+    src/mesh/matrixTranspose.cpp
+    src/mesh/matrixRightSolve.cpp
+    src/mesh/meshBasis1D.cpp
+    src/mesh/meshBasisHex3D.cpp
+    src/mesh/meshApplyElementMatrix.cpp
+    src/mesh/meshConnect.cpp
+    src/mesh/meshConnectBoundary.cpp
+    src/mesh/meshConnectFaceNodes3D.cpp
+    src/mesh/meshConnectPeriodicFaceNodes3D.cpp
+    src/mesh/meshFree.cpp
+    src/mesh/meshGeometricFactorsHex3D.cpp
+    src/mesh/meshHaloExchange.cpp
+    src/mesh/meshHaloExtract.cpp
+    src/mesh/meshHaloSetup.cpp
+    src/mesh/meshLoadReferenceNodesHex3D.cpp
+    src/mesh/meshOccaSetup3D.cpp
+    src/mesh/meshParallelConsecutiveGlobalNumbering.cpp
+    src/mesh/meshParallelGatherScatterSetup.cpp
+    src/mesh/meshPartitionStatistics.cpp
+    src/mesh/meshSurfaceGeometricFactorsHex3D.cpp
+    src/mesh/mysort.cpp
+    src/mesh/occaHostMallocPinned.cpp
+    src/mesh/parallelSort.cpp
+    src/mesh/meshParallelConnectOpt.cpp
+    src/core/setupAide.cpp
     ## To get fortran flags
     src/dummy.f
     ${BLASLAPACK_SOURCES}
     ${OGS_SOURCES}
-    ${LIBP_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
 )
@@ -210,9 +238,6 @@ target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
 target_compile_definitions(nekrs-lib PUBLIC
     ${LIBP_DEFINES}
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
-    -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" 
-    -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" 
-    -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" 
     -DHYPRE)
 
 target_include_directories(nekrs-lib 
@@ -225,11 +250,8 @@ target_include_directories(nekrs-lib
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}
-  ${LIBP_SOURCE_DIR}/include
   ${ELLIPTIC_SOURCE_DIR}
-  ${PARALMOND_SOURCE_DIR}/include
   ${PARALMOND_SOURCE_DIR}
-  ${PARALMOND_SOURCE_DIR}/hypre
   PRIVATE
   ${HYPRE_SOURCE_DIR}/src
   ${HYPRE_SOURCE_DIR}/src/utilities
@@ -244,14 +266,9 @@ target_include_directories(nekrs-lib
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
+target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin nekrs-lib)
-
-set(ELLIPTIC_MAIN ${ELLIPTIC_SOURCE_DIR}/src/ellipticMain.c)
-set_source_files_properties(${ELLIPTIC_MAIN} PROPERTIES LANGUAGE CXX)
-add_executable(ellipticMain ${ELLIPTIC_MAIN})
-set_target_properties(ellipticMain PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_ALL 1)
-target_link_libraries(ellipticMain nekrs-lib)
 
 #################################################################################
 ### Install                                                                     #
@@ -267,8 +284,8 @@ install(TARGETS nekrs-lib nekrs-bin
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
 

@@ -32,7 +32,7 @@ void linAlg_t::setup() {
   MPI_Comm_rank(comm, &rank);
 
   //add defines
-  kernelInfo["defines/" "p_blockSize"] = (int)blocksize;
+  kernelInfo["defines/" "p_BLOCKSIZE"] = (int)blocksize;
 
   //pinned scratch buffer
   {

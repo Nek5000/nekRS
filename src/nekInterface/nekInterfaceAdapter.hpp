@@ -7,7 +7,6 @@
 #include <dlfcn.h>
 #include <mpi.h>
 
-#include "setupAide.hpp"
 #include "nrs.hpp"
 
 #define DECLARE_USER_FUNC(a) void nek_ ## a(void);

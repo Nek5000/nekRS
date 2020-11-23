@@ -3,8 +3,6 @@
 #include <map>
 #include <algorithm>
 
-#include "occa.hpp"
-#include "mpi.h"
 #include "timer.hpp"
 
 namespace timer

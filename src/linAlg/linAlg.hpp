@@ -27,9 +27,7 @@ SOFTWARE.
 #ifndef LINALG_HPP
 #define LINALG_HPP
 
-#include "mpi.h"
-#include "occa.hpp"
-#include "types.h"
+#include "nrssys.hpp"
 
 using std::string;
 

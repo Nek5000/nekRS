@@ -131,7 +131,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     if (ins->fieldOffset % pageW) ins->fieldOffset = (ins->fieldOffset / pageW + 1) * pageW;
   }
 
-  ins->Nblock = (Nlocal + blockSize - 1) / blockSize;
+  ins->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   ins->U  = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
   ins->Ue = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
@@ -232,7 +232,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   else
     kernelInfo["defines/" "p_SUBCYCLING"] =  0;
 
-  kernelInfo["defines/" "p_blockSize"] = blockSize;
+  kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
   kernelInfo["defines/" "p_maxNodes"] = maxNodes;
@@ -265,7 +265,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->linAlg = new linAlg_t(mesh->device, ins->kernelInfo, mesh->comm);
 
   occa::properties kernelInfoBC = kernelInfo;
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/insBcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
   string boundaryHeaderFileName;
   options.getArgs("DATA FILE", boundaryHeaderFileName);
@@ -748,12 +748,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
       // ===========================================================================
 
-      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
+      fileName = install_dir + "/okl/core/scaledAdd.okl";
       kernelName = "scaledAddwOffset";
       ins->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = install_dir + "/libparanumal/okl/dotMultiply.okl";
+      fileName = install_dir + "/okl/core/dotMultiply.okl";
       kernelName = "dotMultiply";
       ins->dotMultiplyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -863,7 +863,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 
   cds->vFieldOffset = ins->fieldOffset;
   cds->fieldOffset  = ins->fieldOffset;
-  cds->Nblock       = (Nlocal + blockSize - 1) / blockSize;
+  cds->Nblock       = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   cds->o_wrk0 = ins->o_wrk0;
   cds->o_wrk1 = ins->o_wrk1;
@@ -1072,7 +1072,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   occa::properties kernelInfoBC = kernelInfo;
   //kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
 
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/insBcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
   string boundaryHeaderFileName;
   options.getArgs("DATA FILE", boundaryHeaderFileName);
@@ -1134,7 +1134,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       cds->filterRTKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
+      fileName = install_dir + "/okl/core/scaledAdd.okl";
       kernelName = "scaledAddwOffset";
       cds->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);

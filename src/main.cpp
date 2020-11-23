@@ -68,8 +68,8 @@
 #include <getopt.h>
 #include <cfenv>
 #include <unistd.h>
+
 #include "nekrs.hpp"
-#include <parAlmond.hpp>
 
 #define DEBUG
 

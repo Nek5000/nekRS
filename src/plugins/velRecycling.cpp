@@ -6,8 +6,8 @@
          numbering which is only true for extruded meshes in z from nek!
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "velRecycling.hpp"
 
 // private members
@@ -137,7 +137,7 @@ void velRecycling::setup(ins_t* ins_, occa::memory o_wrk_, const hlong eOffset, 
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;
 
-  Nblock = (NfpTotal + blockSize - 1) / blockSize;
+  Nblock = (NfpTotal + BLOCKSIZE - 1) / BLOCKSIZE;
   tmp1   = (dfloat*) calloc(Nblock, sizeof(dfloat));
   tmp2   = (dfloat*) calloc(Nblock, sizeof(dfloat));
 

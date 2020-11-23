@@ -8,15 +8,9 @@
 #include <fstream>
 #include <unistd.h>
 #include <getopt.h>
-#include <mpi.h>
 
-#define NEKRS_VERSION "20"
-#define NEKRS_SUBVERSION "1"
-
-#define EXIT(a)  { fflush(stdout); MPI_Finalize(); exit(a); }
-#define ABORT(a) { fflush(stdout); MPI_Abort(MPI_COMM_WORLD,a); }
-
-#include "libParanumal.hpp"
+#include "mesh.h"
+#include "mesh3D.h"
 #include "ins.h"
 #include "timer.hpp"
 

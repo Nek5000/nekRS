@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "mpi.h"
-#include "mesh2D.h"
 #include "mesh3D.h"
 #include "elliptic.h"
 

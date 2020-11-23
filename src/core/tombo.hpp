@@ -1,7 +1,7 @@
 #if !defined(nekrs_tombo_hpp_)
 #define nekrs_tombo_hpp_
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 
 namespace tombo
 {

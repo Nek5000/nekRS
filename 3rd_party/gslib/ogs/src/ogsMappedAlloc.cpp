@@ -24,6 +24,7 @@ SOFTWARE.
 
 */
 
+#include "ogstypes.h"
 #include "ogs.hpp"
 
 void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem){

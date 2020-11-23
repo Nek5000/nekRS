@@ -1,7 +1,7 @@
 #if !defined(nekrs_meshsetup_hpp_)
 #define nekrs_meshsetup_hpp_
 
-#include "nekrs.hpp"
+#include "nrs.hpp"
 mesh_t* createMeshDummy(MPI_Comm comm,
                         int N,
                         int cubN,

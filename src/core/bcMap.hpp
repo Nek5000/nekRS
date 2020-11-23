@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include "setupAide.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 namespace bcMap

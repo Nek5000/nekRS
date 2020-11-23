@@ -1,7 +1,6 @@
 #if !defined(nekrs_ins_hpp_)
 #define nekrs_ins_hpp_
 
-#include "mesh2D.h"
 #include "mesh3D.h"
 #include "elliptic.h"
 #include "cds.h"

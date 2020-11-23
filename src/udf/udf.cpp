@@ -88,7 +88,7 @@ occa::kernel udfBuildKernel(ins_t* ins, const char* function)
   string install_dir;
   occa::properties kernelInfo = *ins->kernelInfo;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/insBcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;

@@ -6,8 +6,8 @@
          numbering which is only true for extruded meshes in z from nek!
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 namespace velRecycling
 {
