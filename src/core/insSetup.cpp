@@ -257,11 +257,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   kernelInfo["defines/" "p_cubNblockS"] = cubNblockS;
 
   // jit compile udf kernels
-  if (udf.loadKernels) {
-    if (mesh->rank == 0) cout << "loading udf kernels ... ";
-    udf.loadKernels(ins);
-    if (mesh->rank == 0) cout << "done" << endl;
-  }
+  if (mesh->rank == 0) cout << "loading udf kernels ... ";
+  udf.loadKernels(ins);
+  if (mesh->rank == 0) cout << "done" << endl;
 
   ins->linAlg = new linAlg_t(mesh->device, ins->kernelInfo, mesh->comm);
 

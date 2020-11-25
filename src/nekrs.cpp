@@ -103,7 +103,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   int readRestartFile;
   options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart();
-  if(udf.setup) udf.setup(ins);
+  udf.setup(ins);
 
 /*
   if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
@@ -135,7 +135,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     if(ins->Nscalar) ins->cds->o_prop.copyTo(ins->cds->prop);
   }
 
-  if(udf.executeStep) udf.executeStep(ins, ins->startTime, 0);
+  udf.executeStep(ins, ins->startTime, 0);
   nek_ocopyFrom(ins->startTime, 0);
 
   timer::toc("setup");
@@ -170,7 +170,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
     ins->isOutputStep = 1;
   }
 
-  if (udf.executeStep) udf.executeStep(ins, time, tstep);
+  udf.executeStep(ins, time, tstep);
 
   nek_ifoutfld(0);
   ins->isOutputStep = 0;
