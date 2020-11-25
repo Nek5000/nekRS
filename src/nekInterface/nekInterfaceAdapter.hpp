@@ -102,7 +102,7 @@ void   nek_map_m_to_n(double* a, int na, double* b, int nb);
 void   nek_outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char* name);
 int    nek_lglel(int e);
 void   nek_uf(double* u, double* v, double* w);
-int    nek_setup(MPI_Comm c, setupAide &options, ins_t** insAddr);
+int    nek_setup(MPI_Comm c, setupAide &options, ins_t* ins);
 void   nek_ifoutfld(int i);
 void   nek_setic(void);
 void   nek_userchk(void);

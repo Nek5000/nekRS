@@ -366,8 +366,6 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &
 
 // dfloat maxEigSmoothAx(elliptic_t* elliptic, agmgLevel *level);
 
-#define maxNthreads 256
-
 extern "C"
 {
 void ellipticPlotVTUHex3D(mesh3D* mesh, char* fileNameBase, int fld);

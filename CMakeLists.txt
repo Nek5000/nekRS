@@ -161,6 +161,8 @@ include(config/nek5000.cmake)
 # Definitions for libP, gslib, and blaslapack
 ###############################################################################
 
+
+include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/parAlmond.cmake)
 include(config/gslib.cmake)
@@ -172,16 +174,15 @@ include(config/blaslapack.cmake)
 
 set(SRC 
     src/lib/nekrs.cpp
+    src/core/setupAide.cpp
     src/core/cfl.cpp
     src/core/filter.cpp
     src/core/bcMap.cpp
     src/core/insSetup.cpp
-    src/core/runTime.cpp
-    src/core/tombo.cpp
-    src/core/cds.cpp
-    src/udf/udf.cpp
+    src/timeStepper/runTime.cpp
+    src/timeStepper/tombo.cpp
+    src/timeStepper/cds.cpp
     src/core/occaDeviceConfig.cpp
-    src/nekInterface/nekInterfaceAdapter.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/tinyexpr.c
@@ -191,44 +192,16 @@ set(SRC
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
-    src/mesh/meshSetup.cpp
-    src/mesh/meshNekReader.cpp
-    src/mesh/meshPhysicalNodesHex3D.cpp
-    src/mesh/meshParallelConnectNodes.cpp
-    src/mesh/matrixConditionNumber.cpp
-    src/mesh/matrixInverse.cpp
-    src/mesh/matrixEig.cpp
-    src/mesh/matrixTranspose.cpp
-    src/mesh/matrixRightSolve.cpp
-    src/mesh/meshBasis1D.cpp
-    src/mesh/meshBasisHex3D.cpp
-    src/mesh/meshApplyElementMatrix.cpp
-    src/mesh/meshConnect.cpp
-    src/mesh/meshConnectBoundary.cpp
-    src/mesh/meshConnectFaceNodes3D.cpp
-    src/mesh/meshConnectPeriodicFaceNodes3D.cpp
-    src/mesh/meshFree.cpp
-    src/mesh/meshGeometricFactorsHex3D.cpp
-    src/mesh/meshHaloExchange.cpp
-    src/mesh/meshHaloExtract.cpp
-    src/mesh/meshHaloSetup.cpp
-    src/mesh/meshLoadReferenceNodesHex3D.cpp
-    src/mesh/meshOccaSetup3D.cpp
-    src/mesh/meshParallelConsecutiveGlobalNumbering.cpp
-    src/mesh/meshParallelGatherScatterSetup.cpp
-    src/mesh/meshPartitionStatistics.cpp
-    src/mesh/meshSurfaceGeometricFactorsHex3D.cpp
-    src/mesh/mysort.cpp
-    src/mesh/occaHostMallocPinned.cpp
-    src/mesh/parallelSort.cpp
-    src/mesh/meshParallelConnectOpt.cpp
-    src/core/setupAide.cpp
-    ## To get fortran flags
-    src/dummy.f
-    ${BLASLAPACK_SOURCES}
-    ${OGS_SOURCES}
+    src/udf/udf.cpp
+    src/nekInterface/nekInterfaceAdapter.cpp
+    src/linearSolver/NBFPCG.cpp
+    src/linearSolver/NBPCG.cpp
+    src/linearSolver//PCG.cpp
+    ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
+    ${BLASLAPACK_SOURCES}
+    ${OGS_SOURCES}
 )
 
 add_library(nekrs-lib SHARED ${SRC})
@@ -242,11 +215,11 @@ target_compile_definitions(nekrs-lib PUBLIC
 
 target_include_directories(nekrs-lib 
   PUBLIC 
-  src
-  src/mesh
   src/core
   src/udf
   src/linAlg
+  src/timeStepper
+  ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}

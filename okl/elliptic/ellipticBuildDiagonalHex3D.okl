@@ -47,9 +47,9 @@
     @exclusive dfloat s_lambdat[p_Nq];
 
     // prefetch lamda 0
-    #pragma unroll p_Nq
-    for(int k = 0; k < p_Nq; ++k){
-      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+#pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -60,9 +60,9 @@
           s_lambda0[j][i] = lambda[id + 0 * offset];
           s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
           s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
-          if(k==0){
-            #pragma unroll p_Nq
-            for(int l = 0 ; l < p_Nq; ++l){
+          if(k == 0) {
+#pragma unroll p_Nq
+            for(int l = 0; l < p_Nq; ++l) {
               const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
@@ -74,7 +74,7 @@
       @barrier("local");
 
       // loop over slabs
-      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+      for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0f;
@@ -109,7 +109,6 @@
           }
           Aq[id] = r_q;
         }
-      }
       @barrier("local");
     }
   }
@@ -140,9 +139,9 @@
     @exclusive int r_masked;
 
     // prefetch lamda 0
-    #pragma unroll p_Nq
-    for(int k = 0; k < p_Nq; ++k){
-      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+#pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -154,8 +153,8 @@
           s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
           s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
           if( k == 0 ) {
-            #pragma unroll p_Nq
-            for(int l = 0 ; l < p_Nq; ++l){
+#pragma unroll p_Nq
+            for(int l = 0; l < p_Nq; ++l) {
               const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
@@ -170,7 +169,7 @@
         }
       }
       @barrier("local");
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id   = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           if(r_masked) {
@@ -202,7 +201,6 @@
           }
           Aq[id] = r_q;
         }
-      }
     }
   }
 }
@@ -228,9 +226,9 @@
     @exclusive dfloat s_Gtt[p_Nq];
     @exclusive dfloat s_lambdat[p_eNfields][p_Nq];
     // prefetch lamda 0
-    #pragma unroll p_Nq
-    for(int k = 0; k < p_Nq; ++k){
-      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+#pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id    = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -244,8 +242,8 @@
           for(int l = 0; l < p_eNfields; l++)
             s_lambda0[l][j][i] = lambda[id + 0 * offset + l * loffset];
           if( k == 0 ) {
-            #pragma unroll p_Nq
-            for(int l = 0 ; l < p_Nq; ++l){
+#pragma unroll p_Nq
+            for(int l = 0; l < p_Nq; ++l) {
               const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
@@ -258,7 +256,7 @@
 
       @barrier("local");
 
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0f;
@@ -296,7 +294,6 @@
             Aq[id + l * offset] = r_q;
           }
         }
-      }
     }
   }
 }

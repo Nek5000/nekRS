@@ -48,7 +48,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
 
   options.setArgs("START TIME", "0.0");
 
-  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+  options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   options.setArgs("VELOCITY KRYLOV SOLVER", "PCG");
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
@@ -530,6 +530,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
+      options.setArgs("TEMPERATURE", "TRUE");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");

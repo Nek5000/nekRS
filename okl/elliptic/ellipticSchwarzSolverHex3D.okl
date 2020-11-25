@@ -10,8 +10,8 @@
   for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
     if(n < N)
       result[n] = w[n] * v[n];
-
 }
+
 @kernel void preFDM(dlong Nelements,
                     @restrict const pfloat* u,
                     @restrict pfloat* work1)
@@ -26,17 +26,14 @@
       }
     }
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+    for(int k = 0; k < p_Nq; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
+        for(int i = 0; i < p_Nq_e; ++i; @inner)
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             sWork1[k + 1][j + 1][i + 1] = u[idx];
           }
-        }
-      }
-    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k; @inner)
       for(int j = 0; j < p_Nq_e; ++j; @inner)
@@ -65,36 +62,33 @@
           sWork1[i][j][p_Nq_e - l1 - 1] = sWork1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
+    for(int k = 0; k < p_Nq_e; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = p_Nq_e * p_Nq_e * p_Nq_e * elem;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[idx] = sWork1[k][j][i];
         }
-      }
-    }
   }
 }
+
 @kernel void postFDM(dlong Nelements,
                      @restrict pfloat* my_work1,
                      @restrict pfloat* my_work2,
                      @restrict pfloat* Su,
-                     @restrict const pfloat * wts)
+                     @restrict const pfloat* wts)
 {
   for (dlong elem = 0; elem < Nelements; ++elem; @outer) {
     @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
     @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
-    for(int k = 0; k < p_Nq_e; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
+    for(int k = 0; k < p_Nq_e; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = elem * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = my_work2[idx];
           work2[k][j][i] = my_work1[idx];
         }
-      }
-    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k; @inner)
       for(int j = 0; j < p_Nq_e; ++j; @inner)
@@ -156,34 +150,32 @@
                                          work1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+    for(int k = 0; k < p_Nq; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
+        for(int i = 0; i < p_Nq_e; ++i; @inner)
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
-        }
-      }
-    }
   }
 }
+
 @kernel void fusedFDM(
-                      dlong Nelements,
-                      dlong localNelements,
-                      @restrict const dlong*  elementList,
-                      @restrict pfloat* Su,
-                      @restrict const pfloat* S_x,
-                      @restrict const pfloat* S_y,
-                      @restrict const pfloat* S_z,
-                      @restrict const pfloat* inv_L,
-                      @restrict pfloat* u
-                      #if p_restrict
-                      ,
-                      @restrict const dfloat* wts
-                      #endif
-                      )
+  dlong Nelements,
+  dlong localNelements,
+  @restrict const dlong*  elementList,
+  @restrict pfloat* Su,
+  @restrict const pfloat* S_x,
+  @restrict const pfloat* S_y,
+  @restrict const pfloat* S_z,
+  @restrict const pfloat* inv_L,
+  @restrict pfloat* u
+#if p_restrict
+  ,
+  @restrict const dfloat* wts
+#endif
+  )
 {
 #if p_overlap
   for (dlong my_elem = 0; my_elem < localNelements; ++my_elem; @outer) {
@@ -203,11 +195,11 @@
     for(int k = 0; k < p_Nq_e; ++k) {
       for(int j = 0; j < p_Nq_e; ++j; @inner) {
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
-          #if p_overlap
+#if p_overlap
           element = elementList[my_elem];
-          #else
+#else
           element = my_elem;
-          #endif
+#endif
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = u[idx];
@@ -367,28 +359,25 @@
           work2[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
+    for(int k = 0; k < p_Nq_e; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           u[idx] = work2[k][j][i];
         }
-      }
-    }
+
 #else  /* if (!p_restrict) */
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+    for(int k = 0; k < p_Nq; ++k)
+      for(int j = 0; j < p_Nq_e; ++j; @inner)
+        for(int i = 0; i < p_Nq_e; ++i; @inner)
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
-        }
-      }
-    }
+
 #endif
   }
 }

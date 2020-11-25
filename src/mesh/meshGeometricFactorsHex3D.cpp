@@ -298,7 +298,8 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
     MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, mesh->comm);
 
     if(mesh->rank == 0)
-      printf("J in range [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
+      printf("J in range [%g,%g]\n", globalMinJ, globalMaxJ);
+      //printf("J in range [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
 
     dfloat globalVolume;
     MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);

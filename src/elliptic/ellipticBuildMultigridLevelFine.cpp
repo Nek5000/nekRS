@@ -71,21 +71,21 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
   kernelInfo["defines/" "p_maxNodes"] = maxNodes;
 
-  int NblockV = mymax(1,maxNthreads / mesh->Np); // works for CUDA
+  int NblockV = mymax(1,BLOCKSIZE / mesh->Np);
   kernelInfo["defines/" "p_NblockV"] = NblockV;
 
   int one = 1; //set to one for now. TODO: try optimizing over these
   kernelInfo["defines/" "p_NnodesV"] = one;
 
-  int NblockS = mymax(1,maxNthreads / maxNodes); // works for CUDA
+  int NblockS = mymax(1,BLOCKSIZE / maxNodes);
   kernelInfo["defines/" "p_NblockS"] = NblockS;
 
-  int NblockP = mymax(1,maxNthreads / (4 * mesh->Np)); // get close to maxNthreads threads
+  int NblockP = mymax(1,BLOCKSIZE / (4 * mesh->Np)); // get close to BLOCKSIZE threads
   kernelInfo["defines/" "p_NblockP"] = NblockP;
 
   int NblockG;
   if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-  else NblockG = mymax(1,maxNthreads / mesh->Np);
+  else NblockG = mymax(1,BLOCKSIZE / mesh->Np);
   kernelInfo["defines/" "p_NblockG"] = NblockG;
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;

@@ -337,6 +337,7 @@
     }
   }
 }
+
 @kernel void ellipticBlockUpdate2NBPCG(const dlong N,
                                        const dlong offset,
                                        const dlong Nblocks,

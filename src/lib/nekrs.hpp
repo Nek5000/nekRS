@@ -23,6 +23,7 @@ const int NtimeSteps(void);
 const double startTime(void);
 const double finalTime(void);
 
+void* insPtr(void);
 void* nekPtr(const char* id);
 }
 

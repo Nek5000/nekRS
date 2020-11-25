@@ -80,22 +80,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  int nscal;
-  options.getArgs("NUMBER OF SCALARS", nscal);
-
-  // jit compile nek
-  int N;
-  string casename;
-  options.getArgs("CASENAME", casename);
-  options.getArgs("POLYNOMIAL DEGREE", N);
-  if(rank == 0) buildNekInterface(casename.c_str(), mymax(1,nscal), N, size);
-  MPI_Barrier(comm);
-
-  // init nek
-  nek_setup(comm, options, &ins);
-  nek_setic();
-  nek_userchk();
-
   // init solver
   ins = insSetup(comm, device, options, buildOnly);
 
@@ -103,17 +87,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   int readRestartFile;
   options.getArgs("RESTART FROM FILE", readRestartFile);
   if(readRestartFile) nek_copyRestart();
-  if(udf.setup) udf.setup(ins);
 
-/*
-  if(options.compareArgs("VARIABLEPROPERTIES", "TRUE")) {
-    if(!udf.properties) {
-      if (rank ==
-          0) cout << "ERROR: variableProperties requires assigned udf.properties pointer" << "!\n";
-      EXIT(1);
-    }
-  }
-*/
   ins->o_U.copyFrom(ins->U);
   ins->o_P.copyFrom(ins->P);
   ins->o_prop.copyFrom(ins->prop);
@@ -217,6 +191,13 @@ void* nekPtr(const char* id)
   return nek_ptr(id);
 }
 
+void* insPtr(void)
+{
+  return ins;
+}
+
+
+
 void printRuntimeStatistics()
 {
   timer::printRunStat();
@@ -230,6 +211,8 @@ static void dryRun(setupAide &options, int npTarget)
          << npTarget
          << " MPI ranks ...\n" << endl;
 
+  options.setArgs("NP TARGET", std::to_string(npTarget));
+
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
 
@@ -242,17 +225,6 @@ static void dryRun(setupAide &options, int npTarget)
   }
 
   if(udf.setup0) udf.setup0(comm, options);
-
-  int N;
-  string casename;
-  options.getArgs("CASENAME", casename);
-  options.getArgs("POLYNOMIAL DEGREE", N);
-
-  // jit compile nek
-  int nscal;
-  options.getArgs("NUMBER OF SCALARS", nscal);
-  if (rank == 0) buildNekInterface(casename.c_str(), nscal, N, npTarget);
-  MPI_Barrier(comm);
 
   // init solver
   ins = insSetup(comm, device, options, 1);

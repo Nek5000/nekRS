@@ -21,6 +21,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+
+  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+  options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS");
+  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS");
+
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));

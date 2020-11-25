@@ -147,6 +147,7 @@
     }
   }
 }
+
 @kernel void ellipticAxVarHex3D(const dlong Nelements,
                                 const dlong offset,
                                 @restrict const dfloat*  ggeo,
@@ -1372,7 +1373,6 @@
         }
     }
 
-
   for(int j = 0; j < p_Nq; ++j; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
       @shared dfloat s_D[p_Nq][p_Nq];
@@ -1431,7 +1431,6 @@
         }
     }
 
-
   for(int i = 0; i < p_Nq; ++i; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
       @shared dfloat s_D[p_Nq][p_Nq];
@@ -1489,8 +1488,8 @@
           Aq[id] += r_Auk;
         }
     }
-
 }
+
 #endif
 
 #if 0
@@ -1564,7 +1563,6 @@
         }
     }
 
-
   for(int j = 0; j < p_Nq; ++j; @outer(1))
     for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
       @shared dfloat s_D[p_Nq][p_Nq];
@@ -1622,7 +1620,6 @@
           Aq[id] += r_Auk;
         }
     }
-
 
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
@@ -1717,7 +1714,6 @@
           r_q = q[base + k * p_Nq * p_Nq];
           s_q[k][j][i] = r_q;
         }
-
 
     for(int k = 0; k < p_Nq; ++k; @inner(2))
       for(int j = 0; j < p_Nq; ++j; @inner(1))
@@ -1838,7 +1834,6 @@
           r_q = q[base + k * p_Nq * p_Nq];
           s_q[k][j][i] = r_q;
         }
-
 
     for(int k = 0; k < p_Nq; ++k; @inner(2))
       for(int j = 0; j < p_Nq; ++j; @inner(1))

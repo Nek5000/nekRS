@@ -47,7 +47,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     exit(-1);
   }
 
-  // Sanity check for discretization type
   if (options.compareArgs("COEFFICIENT","VARIABLE") &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
     if(mesh->rank == 0)
@@ -57,7 +56,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     exit(-1);
   }
 
-  // Sanity check for preconditioner type
   if (options.compareArgs("COEFFICIENT","VARIABLE")) {
     if(options.compareArgs("PRECONDITIONER",
                            "MULTIGRID") &&
@@ -68,38 +66,12 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       MPI_Finalize();
       exit(-1);
     }
-
-    if(!options.compareArgs("PRECONDITIONER",
-                            "MULTIGRID") && !options.compareArgs("PRECONDITIONER", "JACOBI")
-       && !options.compareArgs("PRECONDITIONER", "NONE")) {
-      if(mesh->rank == 0)
-        printf(
-          "ERROR: Varibale coefficient solver is implemented for multigrid/Jacobi/None preconditioners only\n");
-
-      MPI_Finalize();
-      exit(-1);
-    }
-  }
-
-  //sanity checking
-  if (options.compareArgs("BASIS","BERN") && elliptic->elementType != TRIANGLES) {
-    printf("ERROR: BERN basis is only available for triangular elements\n");
-    MPI_Finalize();
-    exit(-1);
-  }
-
-  if (options.compareArgs("PRECONDITIONER","MASSMATRIX") && elliptic->elementType != TRIANGLES
-      && elliptic->elementType != TETRAHEDRA ) {
-    printf(
-      "ERROR: MASSMATRIX preconditioner is only available for triangle and tetrhedra elements. Use JACOBI instead.\n");
-    MPI_Finalize();
-    exit(-1);
   }
 
   dlong Nblock  = mymax(1,(Nlocal + BLOCKSIZE - 1) / BLOCKSIZE);
   dlong Nblock2 = mymax(1,(Nblock + BLOCKSIZE - 1) / BLOCKSIZE);
 
-  dlong NthreadsUpdatePCG = 256;
+  dlong NthreadsUpdatePCG = BLOCKSIZE;
   dlong NblocksUpdatePCG = mymin((Nlocal + NthreadsUpdatePCG - 1) / NthreadsUpdatePCG, 160);
 
   elliptic->NthreadsUpdatePCG = NthreadsUpdatePCG;
@@ -784,22 +756,22 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
   kernelInfo["defines/" "p_maxNodes"] = maxNodes;
 
-  int NblockV = mymax(1,maxNthreads / mesh->Np); // works for CUDA
+  int NblockV = mymax(1,BLOCKSIZE / mesh->Np);
   int NnodesV = 1; //hard coded for now
   kernelInfo["defines/" "p_NblockV"] = NblockV;
   kernelInfo["defines/" "p_NnodesV"] = NnodesV;
   kernelInfo["defines/" "p_NblockVFine"] = NblockV;
   kernelInfo["defines/" "p_NblockVCoarse"] = NblockV;
 
-  int NblockS = mymax(1,maxNthreads / maxNodes); // works for CUDA
+  int NblockS = mymax(1,BLOCKSIZE / maxNodes);
   kernelInfo["defines/" "p_NblockS"] = NblockS;
 
-  int NblockP = mymax(1,maxNthreads / (4 * mesh->Np)); // get close to maxNthreads threads
+  int NblockP = mymax(1,BLOCKSIZE / (4 * mesh->Np)); // get close to BLOCKSIZE threads
   kernelInfo["defines/" "p_NblockP"] = NblockP;
 
   int NblockG;
   if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-  else NblockG = maxNthreads / mesh->Np;
+  else NblockG = BLOCKSIZE / mesh->Np;
   kernelInfo["defines/" "p_NblockG"] = NblockG;
 
   kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);

@@ -836,6 +836,7 @@ void surfaceBlockTerms(int sk,
   s_q  [fld][m][j][i]  = uP;
   s_ndq[fld][m][j][i]  = -WsJ * (nx * dudxP + ny * dudyP + nz * dudzP);
 }
+
 // AK: just one time called, very bad but not important for now
 @kernel void ellipticBlockRhsBCHex3D(const dlong Nelements,
                                      const dlong offset,

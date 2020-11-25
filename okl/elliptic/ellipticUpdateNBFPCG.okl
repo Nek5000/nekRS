@@ -510,7 +510,6 @@
           w[id] = wn;
         }
 
-
       s_sum[0][t] = sumudotr;
       s_sum[1][t] = sumudots;
       s_sum[2][t] = sumudotw;

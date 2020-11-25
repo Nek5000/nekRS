@@ -59,42 +59,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     levelDegree = (int*) calloc(numMGLevels,sizeof(int));
     for(int i = 0; i < numMGLevels; ++i)
       levelDegree[i] = elliptic->levels[i];
-  }else if (options.compareArgs("MULTIGRID COARSENING","ALLDEGREES")) {
-    numMGLevels = mesh->N;
-    levelDegree = (int*) calloc(numMGLevels,sizeof(int));
-    for (int n = 0; n < numMGLevels; n++) levelDegree[n] = mesh->N - n; //all degrees
-  }else if (options.compareArgs("MULTIGRID COARSENING","HALFDEGREES")) {
-    numMGLevels = floor(mesh->N / 2.) + 1;
-    levelDegree = (int*) calloc(numMGLevels,sizeof(int));
-    for (int n = 0; n < numMGLevels; n++) levelDegree[n] = mesh->N - 2 * n; //decrease by two
-    levelDegree[numMGLevels - 1] = 1; //ensure the last level is degree 1
-  }else {  //default "HALFDOFS"
-    // pick the degrees so the dofs of each level halfs (roughly)
-    //start by counting the number of levels neccessary
-    numMGLevels = 1;
-    int degree = mesh->N;
-    int dofs = meshLevels[degree]->Np;
-    int basedofs = mesh->Nverts;
-    while (dofs > basedofs) {
-      numMGLevels++;
-      for (; degree > 0; degree--)
-        if (meshLevels[degree]->Np <= dofs / 2)
-          break;
-      dofs = meshLevels[degree]->Np;
-    }
-    levelDegree = (int*) calloc(numMGLevels,sizeof(int));
-    degree = mesh->N;
-    numMGLevels = 1;
-    levelDegree[0] = degree;
-    dofs = meshLevels[degree]->Np;
-    while (dofs > basedofs) {
-      for (; degree > 0; degree--)
-        if (meshLevels[degree]->Np <= dofs / 2)
-          break;
-      dofs = meshLevels[degree]->Np;
-      levelDegree[numMGLevels] = degree;
-      numMGLevels++;
-    }
+  } else {
+    cout << "Unknown coarsening type!";
+    MPI_Abort(mesh->comm, 1);
   }
 
   int Nmax = levelDegree[0];
