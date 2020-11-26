@@ -56,9 +56,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   timer::init(comm, device, 0);
 
   if (buildOnly) {
-    //int rank, size;
-    //MPI_Comm_rank(comm, &rank);
-    //MPI_Comm_size(comm, &size);
     dryRun(options, sizeTarget);
     return;
   }
@@ -210,6 +207,8 @@ static void dryRun(setupAide &options, int npTarget)
     cout << "performing dry-run for "
          << npTarget
          << " MPI ranks ...\n" << endl;
+
+  options.setArgs("NP TARGET", std::to_string(npTarget));
 
   // jit compile udf
   string udfFile;
