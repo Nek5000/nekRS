@@ -37,6 +37,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   if(ins->options.compareArgs("VELOCITY", "FALSE")) ins->flow = 0;
   if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
 
+  if(ins->flow) {
+    if(ins->options.compareArgs("STRESSFORMULATION", "TRUE"))
+       ins->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+  }
+
+
   // jit compile + init nek
   {  
     int rank;
@@ -46,8 +52,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->options.getArgs("CASENAME", casename);
     ins->options.getArgs("NP TARGET", npTarget);
     if (rank == 0) buildNekInterface(casename.c_str(), mymax(1, ins->Nscalar), N, npTarget);
+    MPI_Barrier(comm);
     if (!buildOnly) {
-      MPI_Barrier(comm);
       nek_setup(comm, ins->options, ins);
       nek_setic();
       nek_userchk();
@@ -59,12 +65,12 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   // create mesh
   if (buildOnly) {
-    ins->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
+    ins->meshT = createMeshDummy(comm, N, cubN, ins->options, device, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMesh(comm, N, cubN, ins->cht, options, device, kernelInfo);
+    ins->meshT = createMesh(comm, N, cubN, ins->cht, ins->options, device, kernelInfo);
     ins->mesh = ins->meshT;
-    if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, options, kernelInfo);
+    if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, ins->options, kernelInfo);
   }
   mesh_t* mesh = ins->mesh;
 
@@ -87,7 +93,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->NTfields = ins->NVfields + 1;   // Total Velocity + Pressure
 
   ins->SNrk = 0;
-  options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
+  ins->options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
 
   mesh->Nfields = 1;
 
@@ -97,44 +103,44 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   ins->extC = (dfloat*) calloc(3, sizeof(dfloat));
 
-  if (options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
+  if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     ins->Nstages = 1;
     ins->temporalOrder = 1;
-  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
+  } else if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
     ins->Nstages = 2;
     ins->temporalOrder = 2;
-  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
+  } else if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
     ins->Nstages = 3;
     ins->temporalOrder = 3;
   }
 
   ins->readRestartFile = 0;
-  options.getArgs("RESTART FROM FILE", ins->readRestartFile);
+  ins->options.getArgs("RESTART FROM FILE", ins->readRestartFile);
 
   ins->writeRestartFile = 0;
-  options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
+  ins->options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
 
   dfloat mue = 1;
   dfloat rho = 1;
-  options.getArgs("VISCOSITY", mue);
-  options.getArgs("DENSITY", rho);
+  ins->options.getArgs("VISCOSITY", mue);
+  ins->options.getArgs("DENSITY", rho);
 
-  options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
-  options.getArgs("DT", ins->dt);
-  options.getArgs("START TIME", ins->startTime);
-  options.getArgs("FINAL TIME", ins->finalTime);
+  ins->options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
+  ins->options.getArgs("DT", ins->dt);
+  ins->options.getArgs("START TIME", ins->startTime);
+  ins->options.getArgs("FINAL TIME", ins->finalTime);
   if(ins->startTime > 0.0) ins->finalTime += ins->startTime; 
-  options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
+  ins->options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
 
   ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
   if(ins->startTime + ins->NtimeSteps*ins->dt < ins->finalTime) ins->NtimeSteps++;
 
-  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
+  ins->options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
   // Hold some inverses for kernels
   ins->idt = 1.0 / ins->dt;
-  options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
+  ins->options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -159,7 +165,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   if(ins->Nsubsteps) {
     int Sorder;
-    options.getArgs("SUBCYCLING TIME ORDER", Sorder);
+    ins->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder == 4 && ins->SNrk == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
@@ -241,9 +247,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = ins->NVfields;
-  kernelInfo["defines/" "p_NTfields"] = ins->NTfields;
   kernelInfo["defines/" "p_NVfields"] = ins->NVfields;
-  kernelInfo["defines/" "p_NfacesNfp"] =  mesh->Nfaces * mesh->Nfp;
   kernelInfo["defines/" "p_Nstages"] =  ins->Nstages;
   if(ins->Nsubsteps)
     kernelInfo["defines/" "p_SUBCYCLING"] =  1;
@@ -256,14 +260,6 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
   kernelInfo["defines/" "p_NblockV"] = NblockV;
 
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-
-  int NblockS = mymax(1, BLOCKSIZE/maxNodes);
-  kernelInfo["defines/" "p_NblockS"] = NblockS;
-
-  //int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);
-  //kernelInfo["defines/" "p_maxNodesVolumeCub"] = maxNodesVolumeCub;
-
   // jit compile udf kernels
   if (udf.loadKernels) {
     if (mesh->rank == 0) cout << "loading udf kernels ... ";
@@ -273,12 +269,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   ins->linAlg = new linAlg_t(mesh->device, ins->kernelInfo, mesh->comm);
 
-  const int nbrBIDs = bcMap::size(0);
-  int NBCType = nbrBIDs + 1;
-
   meshParallelGatherScatterSetup(mesh, ins->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(ins->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   ins->gsh = oogs::setup(mesh->ogs, ins->NVfields, ins->fieldOffset, ogsDfloat, NULL, oogsMode);
 
   if(!buildOnly) {
@@ -359,7 +352,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_EToB = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),ins->EToB);
   ins->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), ins->VmapB);
 
-  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(ins);
 
   // build kernels
@@ -378,7 +371,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       const string bcDataFile = install_dir + "/include/core/insBcData.h";
       kernelInfoBC["includes"] += bcDataFile.c_str();
       string boundaryHeaderFileName;
-      options.getArgs("DATA FILE", boundaryHeaderFileName);
+      ins->options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
       fileName = oklpath + "insAdvection" + suffix + ".okl";
@@ -557,12 +550,15 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   if(ins->Nscalar) {
     mesh_t* msh;
     (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
-    ins->cds = cdsSetup(ins, msh, options, kernelInfoS);
+    ins->cds = cdsSetup(ins, msh, ins->options, kernelInfoS);
   }
 
-  udf.setup(ins);
+  if(!buildOnly) udf.setup(ins);
 
   // setup elliptic solvers
+
+  const int nbrBIDs = bcMap::size(0);
+  int NBCType = nbrBIDs + 1;
 
   if(ins->Nscalar) {
     mesh_t* mesh;
@@ -621,10 +617,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->velTOL  = 1E-6;
     ins->uvwSolver = NULL;
 
-    if(options.compareArgs("STRESSFORMULATION", "TRUE"))
-       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-
-    if(options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if(ins->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       ins->uvwSolver = new elliptic_t();
 
     int* uvwBCType = (int*) calloc(3 * NBCType, sizeof(int));

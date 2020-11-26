@@ -24,7 +24,6 @@ SOFTWARE.
 
 */
 
-#include "nrssys.hpp"
 #include "linAlg.hpp"
 
 void linAlg_t::setup() {
@@ -33,7 +32,7 @@ void linAlg_t::setup() {
   MPI_Comm_rank(comm, &rank);
 
   //add defines
-  kernelInfo["defines/" "p_BLOCKSIZE"] = (int)BLOCKSIZE;
+  kernelInfo["defines/" "p_blockSize"] = blocksize;
 
   //pinned scratch buffer
   {

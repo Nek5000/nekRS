@@ -46,6 +46,7 @@ private:
   void setup();
 public:
   linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
+    blocksize = BLOCKSIZE;
     device = _device;
     kernelInfo = *(_kernelInfo);
     comm = _comm;
