@@ -45,12 +45,14 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   // jit compile + init nek
   {  
-    int rank;
+    int rank, size;
     MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
     string casename;
-    int npTarget;
     ins->options.getArgs("CASENAME", casename);
-    ins->options.getArgs("NP TARGET", npTarget);
+
+    int npTarget = size;
+    if (buildOnly) ins->options.getArgs("NP TARGET", npTarget);
     if (rank == 0) buildNekInterface(casename.c_str(), mymax(1, ins->Nscalar), N, npTarget);
     MPI_Barrier(comm);
     if (!buildOnly) {

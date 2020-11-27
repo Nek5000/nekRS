@@ -9,8 +9,8 @@
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_CXXFLAGS:=""}
 
+# compiler settings for CPU backend
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 
@@ -112,6 +112,8 @@ fi
 : ${OCCA_HIP_ENABLED:=0}
 : ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_METAL_ENABLED:=0}
+
+: ${NEKRS_CXXFLAGS:=""}
 
 USE_OCCA_MEM_BYTE_ALIGN="64" 
 

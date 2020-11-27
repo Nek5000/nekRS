@@ -33,8 +33,8 @@ export CUDA_VISIBLE_DEVICES=$GPU
 export UCX_NET_DEVICES=$NIC:1
 export UCX_TLS=rc,sm,cuda
 #export UCX_TLS=rc,sm,rocm
-#export UCX_RNDV_SCHEME=put_zcopy
-#export UCX_RNDV_THRESH=1024
+export UCX_RNDV_SCHEME=put_zcopy
+export UCX_RNDV_THRESH=1024
 #export UCX_MEMTYPE_CACHE=n
 
 export OMPI_MCA_pml=ucx

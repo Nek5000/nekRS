@@ -168,10 +168,12 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   }
 
   int N;
-  if(ini.extract("general", "polynomialorder", N))
+  if(ini.extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
-  else
+    if(N>9) exit("polynomialOrder > 9 is currently not supported!", EXIT_FAILURE);
+  } else {
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
+  }
 
   int cubN = round(3./2 * (N+1) - 1) - 1;
   ini.extract("general", "cubaturepolynomialorder", cubN);
@@ -187,7 +189,6 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    //exit("No support for bdf3!", EXIT_FAILURE);
   }
   if(timeStepper == "bdf2" || timeStepper == "tombo2")
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
