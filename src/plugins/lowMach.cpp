@@ -11,12 +11,8 @@
 void lowMach::setup(ins_t* ins)
 {
   mesh_t* mesh = ins->mesh;
-  int err = 0;
-  if(ins->Nscalar) {
-    if(!ins->cds->compute[0]) err = 1; 
-  } else {
-    err = 1;
-  }
+  int err = 1;
+  if(ins->options.compareArgs("TEMPERATURE", "TRUE")) err = 0;
   if(err) {
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);

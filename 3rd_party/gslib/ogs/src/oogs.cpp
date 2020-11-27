@@ -1,9 +1,11 @@
 #include <limits>
+#include <list>
 #include <occa.hpp>
+
+#include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsKernels.hpp"
 #include "ogsInterface.h"
-#include <list>
 
 //#define DISABLE_OOGS
 //#define OGS_ENABLE_TIMER

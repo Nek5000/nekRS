@@ -161,7 +161,10 @@ include(config/nek5000.cmake)
 # Definitions for libP, gslib, and blaslapack
 ###############################################################################
 
-include(config/libp.cmake)
+
+include(config/mesh.cmake)
+include(config/elliptic.cmake)
+include(config/parAlmond.cmake)
 include(config/gslib.cmake)
 include(config/blaslapack.cmake)
 
@@ -170,21 +173,16 @@ include(config/blaslapack.cmake)
 ###############################################################################
 
 set(SRC 
-    src/nekrs.cpp
+    src/lib/nekrs.cpp
+    src/core/setupAide.cpp
     src/core/cfl.cpp
     src/core/filter.cpp
     src/core/bcMap.cpp
     src/core/insSetup.cpp
-    src/core/runTime.cpp
-    src/core/tombo.cpp
-    src/core/cds.cpp
-    src/udf/udf.cpp
-    src/mesh/meshSetup.cpp
-    src/mesh/meshNekReader.cpp
-    src/mesh/meshPhysicalNodesHex3D.cpp
-    src/mesh/meshParallelConnectNodes.cpp
+    src/timeStepper/runTime.cpp
+    src/timeStepper/tombo.cpp
+    src/timeStepper/cds.cpp
     src/core/occaDeviceConfig.cpp
-    src/nekInterface/nekInterfaceAdapter.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/tinyexpr.c
@@ -194,13 +192,16 @@ set(SRC
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
-    ## To get fortran flags
-    src/dummy.f
-    ${BLASLAPACK_SOURCES}
-    ${OGS_SOURCES}
-    ${LIBP_SOURCES}
+    src/udf/udf.cpp
+    src/nekInterface/nekInterfaceAdapter.cpp
+    src/linearSolver/NBFPCG.cpp
+    src/linearSolver/NBPCG.cpp
+    src/linearSolver//PCG.cpp
+    ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
+    ${BLASLAPACK_SOURCES}
+    ${OGS_SOURCES}
 )
 
 add_library(nekrs-lib SHARED ${SRC})
@@ -210,26 +211,20 @@ target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
 target_compile_definitions(nekrs-lib PUBLIC
     ${LIBP_DEFINES}
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
-    -DDHOLMES="${CMAKE_INSTALL_PREFIX}/libparanumal" 
-    -DDPARALMOND="${CMAKE_INSTALL_PREFIX}/parAlmond" 
-    -DDELLIPTIC="${CMAKE_INSTALL_PREFIX}/elliptic" 
     -DHYPRE)
 
 target_include_directories(nekrs-lib 
   PUBLIC 
-  src
-  src/mesh
   src/core
   src/udf
   src/linAlg
+  src/timeStepper
+  ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}
-  ${LIBP_SOURCE_DIR}/include
   ${ELLIPTIC_SOURCE_DIR}
-  ${PARALMOND_SOURCE_DIR}/include
   ${PARALMOND_SOURCE_DIR}
-  ${PARALMOND_SOURCE_DIR}/hypre
   PRIVATE
   ${HYPRE_SOURCE_DIR}/src
   ${HYPRE_SOURCE_DIR}/src/utilities
@@ -244,14 +239,9 @@ target_include_directories(nekrs-lib
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
+target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin nekrs-lib)
-
-set(ELLIPTIC_MAIN ${ELLIPTIC_SOURCE_DIR}/src/ellipticMain.c)
-set_source_files_properties(${ELLIPTIC_MAIN} PROPERTIES LANGUAGE CXX)
-add_executable(ellipticMain ${ELLIPTIC_MAIN})
-set_target_properties(ellipticMain PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_ALL 1)
-target_link_libraries(ellipticMain nekrs-lib)
 
 #################################################################################
 ### Install                                                                     #
@@ -267,8 +257,8 @@ install(TARGETS nekrs-lib nekrs-bin
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
 

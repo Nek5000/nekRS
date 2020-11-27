@@ -14,6 +14,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildOnly)
 {
   ins_t* ins = new ins_t();
+
   ins->options = options;
   ins->kernelInfo = new occa::properties();
   occa::properties& kernelInfo = *ins->kernelInfo;
@@ -25,30 +26,60 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   int N, cubN;
   string install_dir;
-  options.getArgs("POLYNOMIAL DEGREE", N);
-  options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
-  options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
+  ins->options.getArgs("POLYNOMIAL DEGREE", N);
+  ins->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
+  ins->options.getArgs("NUMBER OF SCALARS", ins->Nscalar);
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  options.getArgs("MESH DIMENSION", ins->dim);
-  options.getArgs("ELEMENT TYPE", ins->elementType);
+  ins->options.getArgs("MESH DIMENSION", ins->dim);
+  ins->options.getArgs("ELEMENT TYPE", ins->elementType);
 
   ins->flow = 1;
-  if(options.compareArgs("VELOCITY", "FALSE")) ins->flow = 0;
-  if(options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
+  if(ins->options.compareArgs("VELOCITY", "FALSE")) ins->flow = 0;
+  if(ins->options.compareArgs("VELOCITY SOLVER", "NONE")) ins->flow = 0;
+
+  if(ins->flow) {
+    if(ins->options.compareArgs("STRESSFORMULATION", "TRUE"))
+       ins->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+  }
+
+
+  // jit compile + init nek
+  {  
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+    string casename;
+    ins->options.getArgs("CASENAME", casename);
+
+    int npTarget = size;
+    if (buildOnly) ins->options.getArgs("NP TARGET", npTarget);
+    if (rank == 0) buildNekInterface(casename.c_str(), mymax(1, ins->Nscalar), N, npTarget);
+    MPI_Barrier(comm);
+    if (!buildOnly) {
+      nek_setup(comm, ins->options, ins);
+      nek_setic();
+      nek_userchk();
+    }
+  }
 
   ins->cht = 0;
   if (nekData.nelv != nekData.nelt && ins->Nscalar) ins->cht = 1;
 
+  // create mesh
   if (buildOnly) {
-    ins->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
+    ins->meshT = createMeshDummy(comm, N, cubN, ins->options, device, kernelInfo);
     ins->mesh = ins->meshT;
   } else {
-    ins->meshT = createMeshT(comm, N, cubN, ins->cht, options, device, kernelInfo);
+    ins->meshT = createMesh(comm, N, cubN, ins->cht, ins->options, device, kernelInfo);
     ins->mesh = ins->meshT;
-    if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, options, kernelInfo);
+    if (ins->cht) ins->mesh = createMeshV(comm, N, cubN, ins->meshT, ins->options, kernelInfo);
   }
   mesh_t* mesh = ins->mesh;
 
+  if (ins->cht && !ins->options.compareArgs("TEMPERATURE", "TRUE")) {
+    if (mesh->rank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
+    EXIT(1);
+  } 
 
   { 
     dlong retVal; 
@@ -60,11 +91,11 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
 
-  ins->NVfields = (ins->dim == 3) ? 3:2; // Total Number of Velocity Fields
+  ins->NVfields = 3;
   ins->NTfields = ins->NVfields + 1;   // Total Velocity + Pressure
 
   ins->SNrk = 0;
-  options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
+  ins->options.getArgs("SUBCYCLING TIME STAGE NUMBER", ins->SNrk);
 
   mesh->Nfields = 1;
 
@@ -74,44 +105,44 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   ins->extC = (dfloat*) calloc(3, sizeof(dfloat));
 
-  if (options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
+  if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     ins->Nstages = 1;
     ins->temporalOrder = 1;
-  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
+  } else if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
     ins->Nstages = 2;
     ins->temporalOrder = 2;
-  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
+  } else if (ins->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
     ins->Nstages = 3;
     ins->temporalOrder = 3;
   }
 
   ins->readRestartFile = 0;
-  options.getArgs("RESTART FROM FILE", ins->readRestartFile);
+  ins->options.getArgs("RESTART FROM FILE", ins->readRestartFile);
 
   ins->writeRestartFile = 0;
-  options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
+  ins->options.getArgs("WRITE RESTART FILE", ins->writeRestartFile);
 
   dfloat mue = 1;
   dfloat rho = 1;
-  options.getArgs("VISCOSITY", mue);
-  options.getArgs("DENSITY", rho);
+  ins->options.getArgs("VISCOSITY", mue);
+  ins->options.getArgs("DENSITY", rho);
 
-  options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
-  options.getArgs("DT", ins->dt);
-  options.getArgs("START TIME", ins->startTime);
-  options.getArgs("FINAL TIME", ins->finalTime);
+  ins->options.getArgs("SUBCYCLING STEPS",ins->Nsubsteps);
+  ins->options.getArgs("DT", ins->dt);
+  ins->options.getArgs("START TIME", ins->startTime);
+  ins->options.getArgs("FINAL TIME", ins->finalTime);
   if(ins->startTime > 0.0) ins->finalTime += ins->startTime; 
-  options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
+  ins->options.setArgs("FINAL TIME", to_string_f(ins->finalTime));
 
   ins->NtimeSteps = (ins->finalTime - ins->startTime) / ins->dt;
   if(ins->startTime + ins->NtimeSteps*ins->dt < ins->finalTime) ins->NtimeSteps++;
 
-  options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
+  ins->options.setArgs("NUMBER TIMESTEPS", std::to_string(ins->NtimeSteps));
   if(ins->Nsubsteps) ins->sdt = ins->dt / ins->Nsubsteps;
 
   // Hold some inverses for kernels
   ins->idt = 1.0 / ins->dt;
-  options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
+  ins->options.getArgs("TSTEPS FOR SOLUTION OUTPUT", ins->outputStep);
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -132,19 +163,11 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     if (ins->fieldOffset % pageW) ins->fieldOffset = (ins->fieldOffset / pageW + 1) * pageW;
   }
 
-  ins->Nblock = (Nlocal + blockSize - 1) / blockSize;
-
-  ins->U  = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
-  ins->Ue = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
-
-  ins->P  = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
-
-  ins->BF = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
-  ins->FU = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
+  ins->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   if(ins->Nsubsteps) {
     int Sorder;
-    options.getArgs("SUBCYCLING TIME ORDER", Sorder);
+    ins->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder == 4 && ins->SNrk == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
@@ -184,15 +207,17 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   ins->o_wrk12 = o_scratch.slice(12 * ins->fieldOffset * sizeof(dfloat));
   ins->o_wrk15 = o_scratch.slice(15 * ins->fieldOffset * sizeof(dfloat));
 
-  ins->o_U  = mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
-                                  ins->U);
+  ins->U  = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
+  ins->Ue = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
+  ins->P  = (dfloat*) calloc(ins->fieldOffset,sizeof(dfloat));
+  ins->BF = (dfloat*) calloc(ins->NVfields * ins->fieldOffset,sizeof(dfloat));
+  ins->FU = (dfloat*) calloc(ins->NVfields * ins->Nstages * ins->fieldOffset,sizeof(dfloat));
+
+  ins->o_U  = mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat), ins->U);
   ins->o_Ue = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->Ue);
   ins->o_P  = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat), ins->P);
-
-  ins->o_FU =
-    mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat),
-                        ins->FU);
   ins->o_BF = mesh->device.malloc(ins->NVfields * ins->fieldOffset * sizeof(dfloat), ins->BF);
+  ins->o_FU = mesh->device.malloc(ins->NVfields * ins->Nstages * ins->fieldOffset * sizeof(dfloat), ins->FU);
 
   ins->var_coeff = 1; // use always var coeff elliptic
   ins->ellipticCoeff = (dfloat*) calloc(2 * ins->fieldOffset,sizeof(dfloat));
@@ -224,37 +249,18 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = ins->NVfields;
-  kernelInfo["defines/" "p_NTfields"] = ins->NTfields;
   kernelInfo["defines/" "p_NVfields"] = ins->NVfields;
-  kernelInfo["defines/" "p_NfacesNfp"] =  mesh->Nfaces * mesh->Nfp;
   kernelInfo["defines/" "p_Nstages"] =  ins->Nstages;
   if(ins->Nsubsteps)
     kernelInfo["defines/" "p_SUBCYCLING"] =  1;
   else
     kernelInfo["defines/" "p_SUBCYCLING"] =  0;
 
-  kernelInfo["defines/" "p_blockSize"] = blockSize;
+  kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-  kernelInfo["defines/" "p_maxNodes"] = maxNodes;
 
-  int NblockV = mymax(1,256 / mesh->Np);
+  int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
   kernelInfo["defines/" "p_NblockV"] = NblockV;
-
-  int NblockS = mymax(1,256 / maxNodes);
-  kernelInfo["defines/" "p_NblockS"] = NblockS;
-
-  int maxNodesVolumeCub = mymax(mesh->cubNp,mesh->Np);
-  kernelInfo["defines/" "p_maxNodesVolumeCub"] = maxNodesVolumeCub;
-  int cubNblockV = mymax(1,256 / maxNodesVolumeCub);
-
-  int maxNodesSurfaceCub = mymax(mesh->Np, mymax(mesh->Nfaces * mesh->Nfp,
-                                                 mesh->Nfaces * mesh->intNfp));
-  kernelInfo["defines/" "p_maxNodesSurfaceCub"] = maxNodesSurfaceCub;
-  int cubNblockS = mymax(256 / maxNodesSurfaceCub,1);
-
-  kernelInfo["defines/" "p_cubNblockV"] = cubNblockV;
-  kernelInfo["defines/" "p_cubNblockS"] = cubNblockS;
 
   // jit compile udf kernels
   if (udf.loadKernels) {
@@ -265,19 +271,9 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   ins->linAlg = new linAlg_t(mesh->device, ins->kernelInfo, mesh->comm);
 
-  occa::properties kernelInfoBC = kernelInfo;
-  const string bcDataFile = install_dir + "/include/insBcData.h";
-  kernelInfoBC["includes"] += bcDataFile.c_str();
-  string boundaryHeaderFileName;
-  options.getArgs("DATA FILE", boundaryHeaderFileName);
-  kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
-  const int nbrBIDs = bcMap::size(0);
-  int NBCType = nbrBIDs + 1;
-
   meshParallelGatherScatterSetup(mesh, ins->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(ins->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   ins->gsh = oogs::setup(mesh->ogs, ins->NVfields, ins->fieldOffset, ogsDfloat, NULL, oogsMode);
 
   if(!buildOnly) {
@@ -315,19 +311,315 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     free(tmp);
   }
 
+  // build mass + inverse mass matrix
+  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  for(hlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_LMM.copyTo(mesh->LMM);
+  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
+  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
+    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
+  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_invLMM.copyTo(mesh->invLMM);
+  free(lumpedMassMatrix);
+
+  // setup boundary mapping
+  dfloat largeNumber = 1 << 20;
+  ins->VmapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
+  for (int e = 0; e < mesh->Nelements; e++)
+    for (int n = 0; n < mesh->Np; n++) ins->VmapB[n + e * mesh->Np] = largeNumber;
+
+  ins->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+
+  int cnt = 0;
+  for (int e = 0; e < mesh->Nelements; e++)
+    for (int f = 0; f < mesh->Nfaces; f++) {
+      int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
+      ins->EToB[cnt] = bc;
+      if (bc > 0) {
+        for (int n = 0; n < mesh->Nfp; n++) {
+          int fid = mesh->faceNodes[n + f * mesh->Nfp];
+          ins->VmapB[fid + e * mesh->Np] = mymin(bc,ins->VmapB[fid + e * mesh->Np]); // Dirichlet wins
+        }
+      }
+      cnt++;
+    }
+
+  ogsGatherScatter(ins->VmapB, ogsInt, ogsMin, mesh->ogs);
+  for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
+    if (ins->VmapB[n] == largeNumber) ins->VmapB[n] = 0;
+
+  ins->o_EToB = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),ins->EToB);
+  ins->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), ins->VmapB);
+
+  if(ins->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+    filterSetup(ins);
+
+  // build kernels
+  string fileName, kernelName;
+  const string suffix = "Hex3D";
+  const string oklpath = install_dir + "/okl/core/";
+
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0)  printf("loading ns kernels ... "); fflush(stdout);
+
+  for (int r = 0; r < 2; r++) {
+    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+
+      occa::properties kernelInfoBC = kernelInfo;
+      const string bcDataFile = install_dir + "/include/core/insBcData.h";
+      kernelInfoBC["includes"] += bcDataFile.c_str();
+      string boundaryHeaderFileName;
+      ins->options.getArgs("DATA FILE", boundaryHeaderFileName);
+      kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
+
+      fileName = oklpath + "insAdvection" + suffix + ".okl";
+      kernelName = "insStrongAdvectionVolume" + suffix;
+      ins->advectionStrongVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "insStrongAdvectionCubatureVolume" + suffix;
+      ins->advectionStrongCubatureVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insCurl" + suffix + ".okl";
+      kernelName = "insCurl" + suffix;
+      ins->curlKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insMassMatrix" + ".okl";
+      kernelName = "insMassMatrix" + suffix;
+      ins->massMatrixKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "insInvMassMatrix" + suffix;
+      ins->invMassMatrixKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insGradient" + suffix + ".okl";
+      kernelName = "insGradientVolume" + suffix;
+      ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      kernelName = "inswGradientVolume" + suffix;
+      ins->wgradientVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insSumMakef" + suffix + ".okl";
+      kernelName = "insSumMakef" + suffix;
+      ins->sumMakefKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insDivergence" + suffix + ".okl";
+      kernelName = "insDivergenceVolume" + suffix;
+      ins->divergenceVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      kernelName = "insDivergenceSurfaceTOMBO" + suffix;
+      ins->divergenceSurfaceKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "insPressureRhs" + suffix + ".okl";
+      kernelName = "insPressureRhsTOMBO" + suffix;
+      ins->pressureRhsKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insPressureStress" + suffix + ".okl";
+      kernelName = "insPressureStress" + suffix;
+      ins->pressureStressKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insPressureBC" + suffix + ".okl";
+      kernelName = "insPressureDirichletBC" + suffix;
+      ins->pressureDirichletBCKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "insPressureUpdate" + ".okl";
+      kernelName = "insPressureUpdate";
+      ins->pressureUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
+      kernelName = "insVelocityRhsTOMBO" + suffix;
+      ins->velocityRhsKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insVelocityBC" + suffix + ".okl";
+      kernelName = "insVelocityDirichletBC" + suffix;
+      ins->velocityDirichletBCKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      kernelName = "insVelocityNeumannBC" + suffix;
+      ins->velocityNeumannBCKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "insSubCycle" + suffix + ".okl";
+      kernelName = "insSubCycleStrongCubatureVolume" + suffix;
+      ins->subCycleStrongCubatureVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "insSubCycleStrongVolume" + suffix;
+      ins->subCycleStrongVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insSubCycleRKUpdate" + ".okl";
+      kernelName = "insSubCycleLSERKUpdate";
+      if(ins->SNrk == 4) kernelName = "insSubCycleERKUpdate";
+      ins->subCycleRKUpdateKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insExtrapolate" + ".okl";
+      kernelName = "insMultiExtrapolate";
+      ins->extrapolateKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      // ===========================================================================
+
+      fileName = install_dir + "/okl/core/scaledAdd.okl";
+      kernelName = "scaledAddwOffset";
+      ins->scaledAddKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = install_dir + "/okl/core/dotMultiply.okl";
+      kernelName = "dotMultiply";
+      ins->dotMultiplyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "math" + ".okl";
+      kernelName = "fill";
+      ins->fillKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "max";
+      ins->maxKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "scalarScaledAdd";
+      ins->scalarScaledAddKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "maskCopy";
+      ins->maskCopyKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      // ===========================================================================
+
+      fileName = oklpath + "insFilterRT" + suffix + ".okl";
+      kernelName = "insFilterRT" + suffix;
+      ins->filterRTKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insCfl" + suffix + ".okl";
+      kernelName = "insCfl" + suffix;
+      ins->cflKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insQtl" + suffix + ".okl";
+      kernelName = "insQtl" + suffix;
+      ins->qtlKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "insPressureAddQtl" + ".okl";
+      kernelName = "insPressureAddQtl";
+      ins->pressureAddQtlKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "setEllipticCoeff.okl";
+      kernelName = "setEllipticCoeff";
+      ins->setEllipticCoeffKernel =
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      kernelName = "setEllipticCoeffPressure";
+      ins->setEllipticCoeffPressureKernel =
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = oklpath + "insPQ.okl";
+      kernelName = "insPQ";
+      ins->PQKernel =
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+
+      fileName = oklpath + "insMueDiv.okl";
+      kernelName = "insMueDiv";
+      ins->mueDivKernel =
+        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+    }
+    MPI_Barrier(mesh->comm);
+  }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+
+  if(ins->Nscalar) {
+    mesh_t* msh;
+    (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
+    ins->cds = cdsSetup(ins, msh, ins->options, kernelInfoS);
+  }
+
+  if(!buildOnly) udf.setup(ins);
+
+  // setup elliptic solvers
+
+  const int nbrBIDs = bcMap::size(0);
+  int NBCType = nbrBIDs + 1;
+
+  if(ins->Nscalar) {
+    mesh_t* mesh;
+    (ins->cht) ? mesh = ins->meshT : mesh = ins->mesh;
+    cds_t* cds = ins->cds;
+
+    for (int is = 0; is < cds->NSfields; is++) {
+      std::stringstream ss;
+      ss << std::setfill('0') << std::setw(2) << is;
+      string sid = ss.str();
+ 
+      if(!cds->compute[is]) continue;
+ 
+      mesh_t* mesh;
+      (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+
+      if (mesh->rank == 0)
+        cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
+
+      int nbrBIDs = bcMap::size(0);
+      if(ins->cht && is == 0) nbrBIDs = bcMap::size(1);
+      int* sBCType = (int*) calloc(nbrBIDs + 1, sizeof(int));
+ 
+      for (int bID = 1; bID <= nbrBIDs; bID++) {
+        string bcTypeText(bcMap::text(bID, "scalar" + sid));
+        if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+        sBCType[bID] = bcMap::type(bID, "scalar" + sid);
+      }
+ 
+      cds->solver[is] = new elliptic_t();
+      cds->solver[is]->blockSolver = 0;
+      cds->solver[is]->Nfields = 1;
+      cds->solver[is]->Ntotal = ins->fieldOffset;
+      cds->solver[is]->wrk = scratch + ins->ellipticWrkOffset;
+      cds->solver[is]->o_wrk = o_scratch.slice(ins->ellipticWrkOffset * sizeof(dfloat));
+      cds->solver[is]->mesh = mesh;
+      cds->solver[is]->options = cds->options;
+      cds->solver[is]->dim = cds->dim;
+      cds->solver[is]->elementType = cds->elementType;
+      cds->solver[is]->BCType = (int*) calloc(nbrBIDs + 1,sizeof(int));
+      memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs + 1) * sizeof(int));
+      free(sBCType);
+      cds->solver[is]->var_coeff = cds->var_coeff;
+      for (int i = 0; i < 2 * ins->fieldOffset; i++) ins->ellipticCoeff[i] = 1;
+      cds->solver[is]->lambda = cds->ellipticCoeff;
+      cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
+      cds->solver[is]->loffset = 0;
+ 
+      ellipticSolveSetup(cds->solver[is], kernelInfoS);
+    }
+  }
+
   if (ins->flow) {
-    if (mesh->rank == 0) printf("==================VELOCITY SETUP=========================\n");
+    if (mesh->rank == 0) printf("================ ELLIPTIC SETUP VELOCITY ================\n");
 
     ins->velTOL  = 1E-6;
     ins->uvwSolver = NULL;
 
-    //if(options.compareArgs("VARIABLEPROPERTIES", "TRUE"))
-    //   options.setArgs("STRESSFORMULATION", "TRUE");
-
-    if(options.compareArgs("STRESSFORMULATION", "TRUE"))
-       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-
-    if(options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if(ins->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       ins->uvwSolver = new elliptic_t();
 
     int* uvwBCType = (int*) calloc(3 * NBCType, sizeof(int));
@@ -456,15 +748,8 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     }
   } // flow
 
-  // setup scalar solver
-  if(ins->Nscalar) {
-    mesh_t* msh;
-    (ins->cht) ? msh = ins->meshT : msh = ins->mesh;
-    ins->cds = cdsSetup(ins, msh, options, kernelInfoS);
-  }
-
   if (ins->flow) {
-    if (mesh->rank == 0) printf("==================PRESSURE SETUP=========================\n");
+    if (mesh->rank == 0) printf("================ ELLIPTIC SETUP PRESSURE ================\n");
 
     ins->presTOL = 1E-4;
 
@@ -594,237 +879,7 @@ ins_t* insSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     ins->pSolver->options = ins->pOptions;
     ellipticSolveSetup(ins->pSolver, kernelInfoP);
 
-    // setup boundary mapping
-    dfloat largeNumber = 1 << 20;
-    ins->VmapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int n = 0; n < mesh->Np; n++) ins->VmapB[n + e * mesh->Np] = largeNumber;
-
-    ins->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-
-    int cnt = 0;
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int f = 0; f < mesh->Nfaces; f++) {
-        int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
-        ins->EToB[cnt] = bc;
-        if (bc > 0) {
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            ins->VmapB[fid + e * mesh->Np] = mymin(bc,ins->VmapB[fid + e * mesh->Np]); // Dirichlet wins
-          }
-        }
-        cnt++;
-      }
-
-    ogsGatherScatter(ins->VmapB, ogsInt, ogsMin, mesh->ogs);
-    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (ins->VmapB[n] == largeNumber) ins->VmapB[n] = 0;
-
-    ins->o_EToB = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),ins->EToB);
-    ins->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), ins->VmapB);
   } // flow
-
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
-
-  // build kernels
-  string fileName, kernelName;
-  const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/core/";
-
-  MPI_Barrier(mesh->comm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0)  printf("loading NS-solver kernels ... "); fflush(stdout);
-
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
-      fileName = oklpath + "insAdvection" + suffix + ".okl";
-
-      kernelName = "insStrongAdvectionVolume" + suffix;
-      ins->advectionStrongVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "insStrongAdvectionCubatureVolume" + suffix;
-      ins->advectionStrongCubatureVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insCurl" + suffix + ".okl";
-      kernelName = "insCurl" + suffix;
-      ins->curlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insMassMatrix" + ".okl";
-      kernelName = "insMassMatrix" + suffix;
-      ins->massMatrixKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "insInvMassMatrix" + suffix;
-      ins->invMassMatrixKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insGradient" + suffix + ".okl";
-      kernelName = "insGradientVolume" + suffix;
-      ins->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "inswGradientVolume" + suffix;
-      ins->wgradientVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insSumMakef" + suffix + ".okl";
-      kernelName = "insSumMakef" + suffix;
-      ins->sumMakefKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insDivergence" + suffix + ".okl";
-      kernelName = "insDivergenceVolume" + suffix;
-      ins->divergenceVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
-      kernelName = "insDivergenceSurfaceTOMBO" + suffix;
-      ins->divergenceSurfaceKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
-      fileName = oklpath + "insPressureRhs" + suffix + ".okl";
-      kernelName = "insPressureRhsTOMBO" + suffix;
-      ins->pressureRhsKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insPressureStress" + suffix + ".okl";
-      kernelName = "insPressureStress" + suffix;
-      ins->pressureStressKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insPressureBC" + suffix + ".okl";
-      kernelName = "insPressureDirichletBC" + suffix;
-      ins->pressureDirichletBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
-      fileName = oklpath + "insPressureUpdate" + ".okl";
-      kernelName = "insPressureUpdate";
-      ins->pressureUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "insVelocityRhs" + suffix + ".okl";
-      kernelName = "insVelocityRhsTOMBO" + suffix;
-      ins->velocityRhsKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insVelocityBC" + suffix + ".okl";
-      kernelName = "insVelocityDirichletBC" + suffix;
-      ins->velocityDirichletBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
-      kernelName = "insVelocityNeumannBC" + suffix;
-      ins->velocityNeumannBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
-
-      fileName = oklpath + "insSubCycle" + suffix + ".okl";
-      kernelName = "insSubCycleStrongCubatureVolume" + suffix;
-      ins->subCycleStrongCubatureVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "insSubCycleStrongVolume" + suffix;
-      ins->subCycleStrongVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insSubCycleRKUpdate" + ".okl";
-      kernelName = "insSubCycleLSERKUpdate";
-      if(ins->SNrk == 4) kernelName = "insSubCycleERKUpdate";
-      ins->subCycleRKUpdateKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insExtrapolate" + ".okl";
-      kernelName = "insMultiExtrapolate";
-      ins->extrapolateKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      // ===========================================================================
-
-      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
-      kernelName = "scaledAddwOffset";
-      ins->scaledAddKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = install_dir + "/libparanumal/okl/dotMultiply.okl";
-      kernelName = "dotMultiply";
-      ins->dotMultiplyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "math" + ".okl";
-      kernelName = "fill";
-      ins->fillKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "max";
-      ins->maxKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "scalarScaledAdd";
-      ins->scalarScaledAddKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "maskCopy";
-      ins->maskCopyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      // ===========================================================================
-
-      fileName = oklpath + "insFilterRT" + suffix + ".okl";
-      kernelName = "insFilterRT" + suffix;
-      ins->filterRTKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insCfl" + suffix + ".okl";
-      kernelName = "insCfl" + suffix;
-      ins->cflKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insQtl" + suffix + ".okl";
-      kernelName = "insQtl" + suffix;
-      ins->qtlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "insPressureAddQtl" + ".okl";
-      kernelName = "insPressureAddQtl";
-      ins->pressureAddQtlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "setEllipticCoeff.okl";
-      kernelName = "setEllipticCoeff";
-      ins->setEllipticCoeffKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "setEllipticCoeffPressure";
-      ins->setEllipticCoeffPressureKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "insPQ.okl";
-      kernelName = "insPQ";
-      ins->PQKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "insMueDiv.okl";
-      kernelName = "insMueDiv";
-      ins->mueDivKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
-  }
-
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
-
-  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
-    filterSetup(ins);
 
   return ins;
 }
@@ -833,9 +888,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 {
   cds_t* cds = new cds_t();
   cds->mesh = mesh;
-
-  if (mesh->rank == 0)
-    cout << "==================SCALAR SETUP===========================\n";
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -855,6 +907,14 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->Nstages       = ins->Nstages;
   cds->temporalOrder = ins->temporalOrder;
 
+  // time stepper
+  dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
+  cds->o_rkC     = ins->o_rkC;
+  cds->o_extbdfA = ins->o_extbdfA;
+  cds->o_extbdfB = ins->o_extbdfB;
+  cds->o_extbdfC = ins->o_extbdfC;
+  cds->o_extC    = ins->o_extC;
+
   cds->o_usrwrk = &(ins->o_usrwrk);
 
   dlong Nlocal = mesh->Np * mesh->Nelements;
@@ -864,7 +924,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 
   cds->vFieldOffset = ins->fieldOffset;
   cds->fieldOffset  = ins->fieldOffset;
-  cds->Nblock       = (Nlocal + blockSize - 1) / blockSize;
+  cds->Nblock       = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   cds->o_wrk0 = ins->o_wrk0;
   cds->o_wrk1 = ins->o_wrk1;
@@ -884,6 +944,21 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   } else {
     cds->gshT = cds->gsh;
   }
+
+  // build mass + inverse mass matrix
+  dfloat* lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  for(hlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      lumpedMassMatrix[e * mesh->Np +
+                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_LMM.copyTo(mesh->LMM);
+  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
+    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
+  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->o_invLMM.copyTo(mesh->invLMM);
+  free(lumpedMassMatrix);
 
   // Solution storage at interpolation nodes
   cds->U     = ins->U; // Point to INS side Velocity
@@ -960,13 +1035,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   cds->TOL = 1e-6;
 
   for (int is = 0; is < cds->NSfields; is++) {
-    mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
-
-    int nbrBIDs = bcMap::size(0);
-    if(ins->cht && is == 0) nbrBIDs = bcMap::size(1);
-    int* sBCType = (int*) calloc(nbrBIDs + 1, sizeof(int));
-
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str();
@@ -977,11 +1045,8 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       continue;
     }
 
-    for (int bID = 1; bID <= nbrBIDs; bID++) {
-      string bcTypeText(bcMap::text(bID, "scalar" + sid));
-      if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
-      sBCType[bID] = bcMap::type(bID, "scalar" + sid);
-    }
+    mesh_t* mesh;
+    (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
 
     cds->options.setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));
     cds->options.setArgs("SOLVER TOLERANCE",
@@ -989,26 +1054,6 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
     cds->options.setArgs("RESIDUAL PROJECTION",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION"));
     cds->options.setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
     cds->options.setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
-
-    cds->solver[is] = new elliptic_t();
-    cds->solver[is]->blockSolver = 0;
-    cds->solver[is]->Nfields = 1;
-    cds->solver[is]->Ntotal = ins->fieldOffset;
-    cds->solver[is]->wrk = scratch + ins->ellipticWrkOffset;
-    cds->solver[is]->o_wrk = o_scratch.slice(ins->ellipticWrkOffset * sizeof(dfloat));
-    cds->solver[is]->mesh = mesh;
-    cds->solver[is]->options = cds->options;
-    cds->solver[is]->dim = cds->dim;
-    cds->solver[is]->elementType = cds->elementType;
-    cds->solver[is]->BCType = (int*) calloc(nbrBIDs + 1,sizeof(int));
-    memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs + 1) * sizeof(int));
-
-    cds->solver[is]->var_coeff = cds->var_coeff;
-    for (int i = 0; i < 2 * ins->fieldOffset; i++) ins->ellipticCoeff[i] = 1;
-    cds->solver[is]->lambda = cds->ellipticCoeff;
-    cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
-    cds->solver[is]->loffset = 0;
-    ellipticSolveSetup(cds->solver[is], kernelInfoH);
 
     // setup boundary mapping
     dfloat largeNumber = 1 << 20;
@@ -1041,39 +1086,14 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
 
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
-
-    free(sBCType);
   }
-
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np +
-                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
-
-  // time stepper
-  dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  cds->o_rkC     = ins->o_rkC;
-  cds->o_extbdfA = ins->o_extbdfA;
-  cds->o_extbdfB = ins->o_extbdfB;
-  cds->o_extbdfC = ins->o_extbdfC;
-  cds->o_extC    = ins->o_extC;
 
   // build kernels
   occa::properties kernelInfo = *ins->kernelInfo;
   occa::properties kernelInfoBC = kernelInfo;
   //kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
 
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/insBcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
   string boundaryHeaderFileName;
   options.getArgs("DATA FILE", boundaryHeaderFileName);
@@ -1082,6 +1102,10 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
   string fileName, kernelName;
   const string suffix = "Hex3D";
   const string oklpath = install_dir + "/okl/core/";
+
+  MPI_Barrier(mesh->comm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(mesh->rank == 0)  printf("loading cds kernels ... "); fflush(stdout);
 
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
@@ -1135,7 +1159,7 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
       cds->filterRTKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = install_dir + "/libparanumal/okl/scaledAdd.okl";
+      fileName = install_dir + "/okl/core/scaledAdd.okl";
       kernelName = "scaledAddwOffset";
       cds->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -1159,6 +1183,9 @@ cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &k
     }
     MPI_Barrier(mesh->comm);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   return cds;
 }

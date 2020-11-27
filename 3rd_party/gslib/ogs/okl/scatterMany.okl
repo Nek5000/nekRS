@@ -109,15 +109,15 @@ SOFTWARE.
                              const  dlong sstride,
                    @restrict const  dlong *  scatterStarts,
                    @restrict const  dlong *  scatterIds,
-                   @restrict const  long long int *  q,
-                   @restrict long long int *  scatterq){
+                   @restrict const  hlong *  q,
+                   @restrict hlong *  scatterq){
 
   for(dlong s=0;s<Nscatter*Nentries;++s;@tile(256,@outer,@inner)){
 
     const dlong sid = s%Nscatter;
     const int k = s/Nscatter;
     
-    const long long int qs = q[sid+k*stride];
+    const hlong qs = q[sid+k*stride];
 
     const dlong start = scatterStarts[sid];
     const dlong end = scatterStarts[sid+1];

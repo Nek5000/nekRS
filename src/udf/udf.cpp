@@ -75,8 +75,8 @@ void udfLoad(void)
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",1);
-  *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
-  *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",1);
+  *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
+  *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
 }
 
 occa::kernel udfBuildKernel(ins_t* ins, const char* function)
@@ -88,7 +88,7 @@ occa::kernel udfBuildKernel(ins_t* ins, const char* function)
   string install_dir;
   occa::properties kernelInfo = *ins->kernelInfo;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/insBcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;

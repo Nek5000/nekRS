@@ -1,5 +1,5 @@
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "RANSktau.hpp"
 
 // private members

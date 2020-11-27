@@ -13,8 +13,8 @@
            is the expected value of the sub-ensemble i (i=1...N).
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "avg.hpp"
 
 // private members

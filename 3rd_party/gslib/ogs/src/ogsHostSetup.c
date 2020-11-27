@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "gslib.h"
 
-#include "types.h"
+#include "ogstypes.h"
 
 void *ogsHostSetup(MPI_Comm meshComm,
                    dlong NuniqueBases,

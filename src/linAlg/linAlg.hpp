@@ -27,9 +27,7 @@ SOFTWARE.
 #ifndef LINALG_HPP
 #define LINALG_HPP
 
-#include "mpi.h"
-#include "occa.hpp"
-#include "types.h"
+#include "nrssys.hpp"
 
 using std::string;
 
@@ -48,7 +46,7 @@ private:
   void setup();
 public:
   linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
-    blocksize = 256; 
+    blocksize = BLOCKSIZE;
     device = _device;
     kernelInfo = *(_kernelInfo);
     comm = _comm;

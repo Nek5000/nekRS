@@ -24,6 +24,7 @@ SOFTWARE.
 
 */
 
+#include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsKernels.hpp"
 #include "ogsInterface.h"
