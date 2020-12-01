@@ -40,9 +40,6 @@
     bc.uM  = U[bc.idM + 0 * offset];                                    \
     bc.vM  = U[bc.idM + 1 * offset];                                    \
     bc.wM  = U[bc.idM + 2 * offset];                                    \
-    bc.uxP = 0.f;  bc.uyP = 0.f;  bc.uzP = 0.f; bc.uP = 0.f;            \
-    bc.vxP = 0.f;  bc.vyP = 0.f;  bc.vzP = 0.f; bc.vP = 0.f;            \
-    bc.wxP = 0.f;  bc.wyP = 0.f;  bc.wzP = 0.f; bc.wP = 0.f;            \
     bc.wrk = W;                                                         \
     dfloat TRx = 0.f;                                                   \
     dfloat TRy = 0.f;                                                   \
