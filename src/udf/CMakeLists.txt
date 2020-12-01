@@ -14,27 +14,24 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} $ENV{NEKRS_LIBP_DEFINES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{NEKRS_LIBP_DEFINES}")
 
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
-set(HDRDIR      ${NEKRS_INSTALL_DIR}/libparanumal/include)
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
-set(ALMONDDIR   ${NEKRS_INSTALL_DIR}/parAlmond)
-set(ELLIPTICDIR ${NEKRS_INSTALL_DIR}/elliptic)
 set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
-set(INSDIR      ${NEKRS_INSTALL_DIR}/ins)
 set(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
-  ${INSDIR} 
   ${CDSDIR}
-  ${HDRDIR}
   ${OGSDIR}
   ${GSDIR}
-  ${ELLIPTICDIR}
-  ${ALMONDDIR}
   ${NEKRS_INSTALL_DIR}
   ${NEKRS_INSTALL_DIR}/include
+  ${NEKRS_INSTALL_DIR}/include/mesh
   ${NEKRS_INSTALL_DIR}/include/core
+  ${NEKRS_INSTALL_DIR}/include/timeStepper
   ${NEKRS_INSTALL_DIR}/include/udf
+  ${NEKRS_INSTALL_DIR}/include/elliptic
+  ${NEKRS_INSTALL_DIR}/include/parAlmond
   ${NEKRS_INSTALL_DIR}/include/nekInterface
+  ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg
   ${NEKRS_INSTALL_DIR}/occa/include
 )

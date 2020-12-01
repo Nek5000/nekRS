@@ -4,31 +4,31 @@
 #include <math.h>
 #include "udf.hpp"
 
-occa::kernel fillFUKernel; 
+static occa::kernel fillFUKernel; 
 
-void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  fillFUKernel(Nlocal, ins->fieldOffset, ins->cds->o_S, ins->o_FU);
+  nrs->linAlg->fill(nrs->Nlocal, DPDZ, o_FUz);
+  fillFUKernel(Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
-  fillFUKernel = udfBuildKernel(ins, "fillFU");
+  fillFUKernel = udfBuildKernel(nrs, "fillFU");
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
 
   // assign function pointer to drive flow by constant mean pressure gradient
   udf.uEqnSource = &userf;
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) {
+  if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
   }

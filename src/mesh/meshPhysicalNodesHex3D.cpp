@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libParanumal.hpp"
+#include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 void meshPhysicalBoxNodesHex3D(mesh3D* mesh)

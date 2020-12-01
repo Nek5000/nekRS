@@ -216,10 +216,10 @@ int size(int isTmesh)
   return isTmesh ? nbid[1] : nbid[0];
 }
 
-void check(mesh_t* mesh, int isTmesh)
+void check(mesh_t* mesh)
 {
   int nid = nbid[0];
-  if(isTmesh) nid = nbid[1];
+  if(mesh->cht) nid = nbid[1];
 
   int retval = 0;
 

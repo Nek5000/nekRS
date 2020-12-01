@@ -10,40 +10,40 @@
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
-  velRecycling::buildKernel(ins);
-  avg::buildKernel(ins);
+  velRecycling::buildKernel(nrs);
+  avg::buildKernel(nrs);
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
 
   // setup scratch space
-  ins->o_usrwrk = ins->mesh->device.malloc(ins->NVfields*ins->fieldOffset*sizeof(dfloat));
+  nrs->o_usrwrk = nrs->mesh->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
 
   // recycling
   const dfloat wbar  = 1.0;
   const int bID      = 1; 
   dfloat zRecycLayer = 0.25*ZLENGTH;
   const hlong offset = NELSLAB * round(NSLABS * zRecycLayer/ZLENGTH); 
-  velRecycling::setup(ins, ins->o_usrwrk, offset, bID, wbar);
+  velRecycling::setup(nrs, nrs->o_usrwrk, offset, bID, wbar);
 
-  avg::setup(ins);
+  avg::setup(nrs);
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t *mesh = ins->mesh;
+  mesh_t *mesh = nrs->mesh;
 
   velRecycling::copy();
   avg::run(time);
 
-  if (ins->isOutputStep) {
-    occa::memory o_UZ = ins->o_U + 2*ins->fieldOffset * sizeof(dfloat);
-    const dfloat ubar = ins->linAlg->innerProd(ins->Nlocal, o_UZ, mesh->o_LMM, mesh->comm)/mesh->volume;
+  if (nrs->isOutputStep) {
+    occa::memory o_UZ = nrs->o_U + 2*nrs->fieldOffset * sizeof(dfloat);
+    const dfloat ubar = nrs->linAlg->innerProd(nrs->Nlocal, o_UZ, mesh->o_LMM, mesh->comm)/mesh->volume;
     if (mesh->rank == 0) printf(" uBulk: %g\n", ubar);
 
     avg::outfld();

@@ -11,7 +11,7 @@
   }
 }
 
-void cdsDirichletConditions3D(bcData *bc)
+void scalarDirichletConditions(bcData *bc)
 {
   bc->sP = 0;
   if(bc->scalarId == 0) bc->sP = 0; 

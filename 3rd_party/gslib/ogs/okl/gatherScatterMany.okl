@@ -120,7 +120,7 @@ SOFTWARE.
                                     const dlong stride,
                                     @restrict const  dlong *  gatherStarts,
                                     @restrict const  dlong *  gatherIds,
-                                    @restrict long long int *  q){
+                                    @restrict hlong *  q){
   
   for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
     
@@ -130,7 +130,7 @@ SOFTWARE.
     const dlong end = gatherStarts[gid+1];
     if((start+1)!=end){
     
-      long long int gq = 0;
+      hlong gq = 0;
       
       for(dlong n=start;n<end;++n){
         const dlong id = gatherIds[n];
@@ -240,7 +240,7 @@ SOFTWARE.
                                     const dlong stride,
                                     @restrict const  dlong *  gatherStarts,
                                     @restrict const  dlong *  gatherIds,
-                                    @restrict long long int *  q){
+                                    @restrict hlong *  q){
   
   for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
     
@@ -250,7 +250,7 @@ SOFTWARE.
     const dlong end = gatherStarts[gid+1];
     if((start+1)!=end){
     
-      long long int gq = 1;
+      hlong gq = 1;
       
       for(dlong n=start;n<end;++n){
         const dlong id = gatherIds[n];
@@ -364,7 +364,7 @@ SOFTWARE.
                                     const dlong stride,
                                     @restrict const  dlong *  gatherStarts,
                                     @restrict const  dlong *  gatherIds,
-                                    @restrict long long int *  q){
+                                    @restrict hlong *  q){
   
   for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
     
@@ -375,7 +375,7 @@ SOFTWARE.
     if((start+1)!=end){
     
       const dlong startId = gatherIds[start];
-      long long int gq = q[startId+k*stride];
+      hlong gq = q[startId+k*stride];
       
       for(dlong n=start+1;n<end;++n){
         const dlong id = gatherIds[n];
@@ -488,7 +488,7 @@ SOFTWARE.
                                     const dlong stride,
                                     @restrict const  dlong *  gatherStarts,
                                     @restrict const  dlong *  gatherIds,
-                                    @restrict long long int *  q){
+                                    @restrict hlong *  q){
   
   for(dlong g=0;g<Ngather*Nentries;++g;@tile(256,@outer,@inner)){
     
@@ -499,7 +499,7 @@ SOFTWARE.
     if((start+1)!=end){
     
       const dlong startId = gatherIds[start];
-      long long int gq = q[startId+k*stride];
+      hlong gq = q[startId+k*stride];
       
       for(dlong n=start+1;n<end;++n){
         const dlong id = gatherIds[n];

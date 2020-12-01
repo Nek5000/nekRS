@@ -75,24 +75,24 @@ void udfLoad(void)
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",1);
-  *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
-  *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",1);
+  *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
+  *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
 }
 
-occa::kernel udfBuildKernel(ins_t* ins, const char* function)
+occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
 {
   int rank;
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
   MPI_Comm_rank(mesh->comm, &rank);
 
   string install_dir;
-  occa::properties kernelInfo = *ins->kernelInfo;
+  occa::properties kernelInfo = *nrs->kernelInfo;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string bcDataFile = install_dir + "/include/insBcData.h";
+  const string bcDataFile = install_dir + "/include/core/bcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;
-  ins->options.getArgs("DATA FILE", oudf);
+  nrs->options.getArgs("DATA FILE", oudf);
 
   occa::kernel k;
   for (int r = 0; r < 2; r++) {

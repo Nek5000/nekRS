@@ -21,6 +21,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+
+  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+  options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS");
+  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS");
+
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
@@ -35,11 +40,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
 
-void ciTestErrors(ins_t *ins, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (tstep != ins->NtimeSteps) return;
+  if (time != nrs->finalTime) return;
  
-  const int rank = ins->mesh->rank;
+  const int rank = nrs->mesh->rank;
  
   nek_ocopyFrom(time, tstep);
   nek_userchk();
@@ -54,15 +59,15 @@ void ciTestErrors(ins_t *ins, dfloat time, int tstep)
   int velIterErr;
 
   switch (ciMode) {
-    case 1 : velIterErr = abs(ins->NiterU - 10);
+    case 1 : velIterErr = abs(nrs->NiterU - 10);
              s1Err = abs((err[2] - 1.00E-11)/err[2]);
              s2Err = abs((err[3] - 1.31E-11)/err[3]);
-             pIterErr = abs(ins->NiterP - 4);
+             pIterErr = abs(nrs->NiterP - 4);
              break;
-    case 2 : velIterErr = abs(ins->NiterU - 10);
+    case 2 : velIterErr = abs(nrs->NiterU - 10);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
              s2Err = abs((err[3] - 2.00E-11)/err[3]);
-             pIterErr = abs(ins->NiterP - 1);
+             pIterErr = abs(nrs->NiterP - 1);
              break;
   }
 

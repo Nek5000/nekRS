@@ -12,7 +12,7 @@ typedef struct
 }parallelNode_t;
 
 // uniquely label each node with a global index, used for gatherScatter
-void meshNekParallelConnectNodes(mesh_t* mesh, int isTmesh)
+void meshNekParallelConnectNodes(mesh_t* mesh)
 {
   int rank, size;
   rank = mesh->rank;
@@ -21,16 +21,16 @@ void meshNekParallelConnectNodes(mesh_t* mesh, int isTmesh)
   dlong localNodeCount = mesh->Np * mesh->Nelements;
 
   mesh->globalIds = (hlong*) calloc(localNodeCount, sizeof(hlong));
-  hlong ngv = nek_set_glo_num(mesh->N + 1, isTmesh);
+  hlong ngv = nek_set_glo_num(mesh->N + 1, mesh->cht);
   for(dlong id = 0; id < localNodeCount; ++id)
     mesh->globalIds[id] = nekData.glo_num[id];
 }
 
-void meshParallelConnectNodes(mesh_t* mesh, int isTmesh, int nrsBuildOnly)
+void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
 {
   if(!nrsBuildOnly) {
     // hotfix as libP version seems to be broken
-    meshNekParallelConnectNodes(mesh, isTmesh);
+    meshNekParallelConnectNodes(mesh);
     return;
   }
 

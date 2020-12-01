@@ -6,13 +6,13 @@
          numbering which is only true for extruded meshes in z from nek!
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 namespace velRecycling
 {
-void buildKernel(ins_t* ins);
+void buildKernel(nrs_t* nrs);
 void copy();
-void setup(ins_t* ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
+void setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
            const dfloat wbar_);
 }

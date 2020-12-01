@@ -24,6 +24,7 @@ SOFTWARE.
 
 */
 
+#include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsKernels.hpp"
 
@@ -173,8 +174,8 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
   if(sizeof(dlong)==4){
    ogs::kernelInfo["defines/" "dlong"]="int";
   }
-  if(sizeof(dlong)==8){
-   ogs::kernelInfo["defines/" "dlong"]="long long int";
+  if(sizeof(hlong)==8){
+   ogs::kernelInfo["defines/" "hlong"]="long long int";
   }
 
   if(sizeof(dfloat) == sizeof(double)){
@@ -188,6 +189,10 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
 
   if(device.mode()=="OpenCL"){
    //ogs::kernelInfo["compiler_flags"] += "-cl-opt-disable";
+   ogs::kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
+   ogs::kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
+   ogs::kernelInfo["compiler_flags"] += " -cl-mad-enable ";
+   ogs::kernelInfo["defines/" "hlong"]="long";
   }
 
   if(device.mode()=="CUDA"){ // add backend compiler optimization for CUDA

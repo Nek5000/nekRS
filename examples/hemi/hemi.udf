@@ -6,19 +6,19 @@
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
   // get IC from nek
-  nek_copyTo(ins->startTime);
+  nek_copyTo(nrs->startTime);
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) {
+  if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
   }

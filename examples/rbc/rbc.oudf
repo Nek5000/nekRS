@@ -1,6 +1,6 @@
 // Boundary conditions
 
-void cdsDirichletConditions3D(bcData *bc) {
+void cdsDirichletConditions(bcData *bc) {
   bc->sP = 1.f - bc->z; 
 }
 

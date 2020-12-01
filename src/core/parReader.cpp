@@ -18,7 +18,7 @@
 #define LOWER(a)  { transform(a.begin(), a.end(), a.begin(), std::ptr_fun<int, int>(std::tolower)); \
 }
 
-void setDefaultSettings(libParanumal::setupAide &options, string casename, int rank)
+void setDefaultSettings(setupAide &options, string casename, int rank)
 {
   options.setArgs("FORMAT", string("1.0"));
 
@@ -41,21 +41,22 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
   options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
+
+  options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
+
   options.setArgs("RESTART FROM FILE", "0");
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
+  options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
   options.setArgs("FILTER STABILIZATION", "NONE");
 
   options.setArgs("START TIME", "0.0");
 
-  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+  options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   options.setArgs("VELOCITY KRYLOV SOLVER", "PCG");
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "8");
-  options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
 
   options.setArgs("STRESSFORMULATION", "FALSE");
 
@@ -83,9 +84,13 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("BOOMERAMG ITERATIONS", "2");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
 #endif
+
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
+
+  options.setArgs("SCALAR INITIAL GUESS DEFAULT","EXTRAPOLATION");
+  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
 
   options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
@@ -96,7 +101,7 @@ void setDefaultSettings(libParanumal::setupAide &options, string casename, int r
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
 }
 
-libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
+setupAide parRead(std::string &setupFile, MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
@@ -107,7 +112,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     ABORT(1);
   }
 
-  libParanumal::setupAide options;
+  setupAide options;
 
   string casename = setupFile.substr(0, setupFile.find(".par"));
   setDefaultSettings(options, casename, rank);
@@ -167,10 +172,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   }
 
   int N;
-  if(ini.extract("general", "polynomialorder", N))
+  if(ini.extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
-  else
+    if(N>9) exit("polynomialOrder > 9 is currently not supported!", EXIT_FAILURE);
+  } else {
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
+  }
 
   int cubN = round(3./2 * (N+1) - 1) - 1;
   ini.extract("general", "cubaturepolynomialorder", cubN);
@@ -186,7 +193,6 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   ini.extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
-    //exit("No support for bdf3!", EXIT_FAILURE);
   }
   if(timeStepper == "bdf2" || timeStepper == "tombo2")
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
@@ -231,15 +237,14 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   double writeInterval = 0;
   ini.extract("general", "writeinterval", writeInterval);
+  options.setArgs("SOLUTION OUTPUT INTERVAL", std::to_string(writeInterval));
 
-  int writeSteps = writeInterval;
   string writeControl;
-  if(ini.extract("general", "writecontrol", writeControl))
-    if(writeControl == "runtime") {
-      writeSteps = writeInterval / dt;
-      if((writeInterval - writeSteps*dt) / writeInterval > 1e-6*dt) writeSteps++;
-    }
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", std::to_string(writeSteps));
+  if(ini.extract("general", "writecontrol", writeControl)) {
+    options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
+    if(writeControl == "runtime") 
+      options.setArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+  }
 
   bool dealiasing;
   if(ini.extract("general", "dealiasing", dealiasing))
@@ -283,6 +288,12 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
   bool stressFormulation;
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
+
+  bool stokesFlow;
+  if(ini.extract("problemtype", "stokes", stokesFlow)) {
+    options.setArgs("ADVECTION", "TRUE");
+    if(stokesFlow) options.setArgs("ADVECTION", "FALSE");
+  }
 
   int bcInPar = 1;
   if(ini.sections.count("velocity")) {
@@ -529,6 +540,7 @@ libParanumal::setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
+      options.setArgs("TEMPERATURE", "TRUE");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
       options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");

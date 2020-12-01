@@ -1,5 +1,5 @@
 // Boundary conditions
-void insVelocityDirichletConditions3D(bcData *bc)
+void velocityDirichletConditions(bcData *bc)
 {                                                                        
   bc->uP = bc->wrk[bc->idM + 0*bc->fieldOffset];
   bc->vP = bc->wrk[bc->idM + 1*bc->fieldOffset];
@@ -7,7 +7,7 @@ void insVelocityDirichletConditions3D(bcData *bc)
 }
 
 // Stabilized outflow (Dong et al)
-void insPressureDirichletConditions3D(bcData *bc)
+void pressureDirichletConditions(bcData *bc)
 {
   const dfloat iU0delta = 20.0;
   const dfloat un = bc->uM*bc->nx + bc->vM*bc->ny + bc->wM*bc->nz;

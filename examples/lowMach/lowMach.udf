@@ -12,30 +12,30 @@ static int ciMode = 0;
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
 
-void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  cds_t *cds   = ins->cds;
+  cds_t *cds   = nrs->cds;
   mesh_t *mesh = cds->mesh;
   userQKernel(mesh->Nelements, mesh->o_x, o_FS);
 }
 
-void uservp(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_S,
+void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-  mesh_t *mesh = ins->mesh;
+  mesh_t *mesh = nrs->mesh;
 
-  userVpKernel(mesh->Nelements, ins->fieldOffset, ins->cds->fieldOffset, 
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset, 
                o_S, o_UProp, o_SProp);
 }
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
-  occa::properties& kernelInfo = *ins->kernelInfo;
+  occa::properties& kernelInfo = *nrs->kernelInfo;
   kernelInfo["defines/p_DELTA"] = P_DELTA;
-  userQKernel = udfBuildKernel(ins, "userQ");
-  userVpKernel = udfBuildKernel(ins, "userVp");
+  userQKernel = udfBuildKernel(nrs, "userQ");
+  userVpKernel = udfBuildKernel(nrs, "userVp");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -44,22 +44,22 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   if (ciMode) ciSetup(comm, options);
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
 
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
 
-  lowMach::setup(ins);
+  lowMach::setup(nrs);
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) {
+  if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
   }
-  if (ciMode) ciTestErrors(ins, time, tstep);
+  if (ciMode) ciTestErrors(nrs, time, tstep);
 }

@@ -1,5 +1,4 @@
 #include "nrs.hpp"
-#include "ins.h"
 
 void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat* A);
 
@@ -10,15 +9,15 @@ dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N);
 
 dfloat filterFactorial(int n);
 
-void filterSetup(ins_t* ins)
+void filterSetup(nrs_t* nrs)
 {
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
 
   // First construct filter function
-  ins->filterS = 10.0; // filter Weight...
-  ins->options.getArgs("HPFRT STRENGTH", ins->filterS);
-  ins->options.getArgs("HPFRT MODES", ins->filterNc);
-  ins->filterS = -1.0 * fabs(ins->filterS);
+  nrs->filterS = 10.0; // filter Weight...
+  nrs->options.getArgs("HPFRT STRENGTH", nrs->filterS);
+  nrs->options.getArgs("HPFRT MODES", nrs->filterNc);
+  nrs->filterS = -1.0 * fabs(nrs->filterS);
 
   // Construct Filter Function
   int Nmodes = mesh->N + 1; // N+1, 1D GLL points
@@ -29,7 +28,7 @@ void filterSetup(ins_t* ins)
   dfloat* A = (dfloat*) calloc(Nmodes * Nmodes, sizeof(dfloat));
 
   // Construct Filter Function
-  filterFunctionRelaxation1D(Nmodes, ins->filterNc, A);
+  filterFunctionRelaxation1D(Nmodes, nrs->filterNc, A);
 
   // Construct Vandermonde Matrix
   filterVandermonde1D(mesh->N, Nmodes, mesh->r, V);
@@ -74,16 +73,16 @@ void filterSetup(ins_t* ins)
   dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, V, &LDA, C, &LDB, &BETA, A, &LDC);
 
   // store filter matrix (row major)
-  ins->filterM = (dfloat*) calloc(Nmodes * Nmodes, sizeof(dfloat));
+  nrs->filterM = (dfloat*) calloc(Nmodes * Nmodes, sizeof(dfloat));
   for(int c = 0; c < Nmodes; c++)
     for(int r = 0; r < Nmodes; r++)
-      ins->filterM[c + r * Nmodes] = A[r + c * Nmodes];
+      nrs->filterM[c + r * Nmodes] = A[r + c * Nmodes];
 
-  ins->o_filterMT =  mesh->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
+  nrs->o_filterMT =  mesh->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
 
   if(mesh->rank == 0)
     printf("High pass filter relaxation: chi = %.4f using %d mode(s)\n",
-           fabs(ins->filterS), ins->filterNc);
+           fabs(nrs->filterS), nrs->filterNc);
 
   free(A);
   free(C);

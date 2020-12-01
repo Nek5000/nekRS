@@ -22,11 +22,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VARIABLEPROPERTIES", "TRUE");
 }
 
-void ciTestErrors(ins_t *ins, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (tstep != ins->NtimeSteps) return;
+  if (time != nrs->finalTime) return;
  
-  const int rank = ins->mesh->rank;
+  const int rank = nrs->mesh->rank;
 
   nek_ocopyFrom(time, tstep);
   nek_userchk();

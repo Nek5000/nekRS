@@ -13,15 +13,15 @@
            is the expected value of the sub-ensemble i (i=1...N).
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "avg.hpp"
 
 // private members
 namespace
 {
 static ogs_t* ogs;
-static ins_t* ins;
+static nrs_t* nrs;
 
 static occa::memory o_Uavg, o_Urms;
 static occa::memory o_Urm2;
@@ -41,15 +41,15 @@ static dfloat atime;
 static dfloat timel;
 }
 
-void avg::buildKernel(ins_t* ins)
+void avg::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
 
   string fileName;
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
-  occa::properties& kernelInfo = *ins->kernelInfo;
+  occa::properties& kernelInfo = *nrs->kernelInfo;
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
       EXKernel  = mesh->device.buildKernel(fileName.c_str(), "EX", kernelInfo);
@@ -69,12 +69,12 @@ void avg::reset()
 
 void avg::EX (dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EX)
 {
-  EXKernel(N, ins->fieldOffset, nflds, a, b, o_x, o_EX);
+  EXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EX);
 }
 
 void avg::EXX(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EXX)
 {
-  EXXKernel(N, ins->fieldOffset, nflds, a, b, o_x, o_EXX);
+  EXXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EXX);
 }
 
 void avg::EXY(dlong N,
@@ -85,7 +85,7 @@ void avg::EXY(dlong N,
               occa::memory o_y,
               occa::memory o_EXY)
 {
-  EXYKernel(N, ins->fieldOffset, nflds, a, b, o_x, o_y, o_EXY);
+  EXYKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_y, o_EXY);
 }
 
 void avg::run(dfloat time)
@@ -109,29 +109,29 @@ void avg::run(dfloat time)
   const dfloat b = dtime / atime;
   const dfloat a = 1 - b;
 
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
   const dlong N = mesh->Nelements * mesh->Np;
 
   // velocity
-  EX (N, a, b, ins->NVfields, ins->o_U, o_Uavg);
-  EXX(N, a, b, ins->NVfields, ins->o_U, o_Urms);
+  EX (N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
+  EXX(N, a, b, nrs->NVfields, nrs->o_U, o_Urms);
 
-  const dlong offsetByte = ins->fieldOffset * sizeof(dfloat);
-  occa::memory o_vx = ins->o_U + 0 * offsetByte;
-  occa::memory o_vy = ins->o_U + 1 * offsetByte;
-  occa::memory o_vz = ins->o_U + 2 * offsetByte;
+  const dlong offsetByte = nrs->fieldOffset * sizeof(dfloat);
+  occa::memory o_vx = nrs->o_U + 0 * offsetByte;
+  occa::memory o_vy = nrs->o_U + 1 * offsetByte;
+  occa::memory o_vz = nrs->o_U + 2 * offsetByte;
 
   EXY(N, a, b, 1, o_vx, o_vy, o_Urm2 + 0 * offsetByte);
   EXY(N, a, b, 1, o_vy, o_vz, o_Urm2 + 1 * offsetByte);
   EXY(N, a, b, 1, o_vz, o_vx, o_Urm2 + 2 * offsetByte);
 
   // pressure
-  EX (N, a, b, 1, ins->o_P, o_Pavg);
-  EXX(N, a, b, 1, ins->o_P, o_Prms);
+  EX (N, a, b, 1, nrs->o_P, o_Pavg);
+  EXX(N, a, b, 1, nrs->o_P, o_Prms);
 
   // scalars
-  if(ins->Nscalar) {
-    cds_t* cds = ins->cds;
+  if(nrs->Nscalar) {
+    cds_t* cds = nrs->cds;
     const dlong N = cds->mesh->Nelements * cds->mesh->Np;
     EX (N, a, b, cds->NSfields, cds->o_S, o_Savg);
     EXX(N, a, b, cds->NSfields, cds->o_S, o_Srms);
@@ -140,37 +140,37 @@ void avg::run(dfloat time)
   timel = time;
 }
 
-void avg::setup(ins_t* ins_)
+void avg::setup(nrs_t* nrs_)
 {
   if(!buildKernelCalled) {
     cout << "avg::setup() was called prior avg::buildKernel()!\n";
     ABORT(1);
   }
 
-  ins = ins_;
-  mesh_t* mesh = ins->mesh;
+  nrs = nrs_;
+  mesh_t* mesh = nrs->mesh;
 
   if(setupCalled) return;
 
-  o_Uavg = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
-  o_Urms = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
-  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Uavg);
-  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urms);
+  o_Uavg = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Urms = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
+  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
-  o_Urm2 = mesh->device.malloc(ins->fieldOffset * ins->NVfields * sizeof(dfloat));
-  ins->fillKernel(ins->fieldOffset * ins->NVfields, 0.0, o_Urm2);
+  o_Urm2 = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
-  o_Pavg = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat));
-  o_Prms = mesh->device.malloc(ins->fieldOffset * sizeof(dfloat));
-  ins->fillKernel(ins->fieldOffset, 0.0, o_Pavg);
-  ins->fillKernel(ins->fieldOffset, 0.0, o_Prms);
+  o_Pavg = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_Prms = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  nrs->fillKernel(nrs->fieldOffset, 0.0, o_Pavg);
+  nrs->fillKernel(nrs->fieldOffset, 0.0, o_Prms);
 
-  if(ins->Nscalar) {
-    cds_t* cds = ins->cds;
+  if(nrs->Nscalar) {
+    cds_t* cds = nrs->cds;
     o_Savg = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
     o_Srms = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    ins->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    ins->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
+    nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;
@@ -178,16 +178,16 @@ void avg::setup(ins_t* ins_)
 
 void avg::outfld()
 {
-  cds_t* cds = ins->cds;
-  mesh_t* mesh = ins->mesh;
+  cds_t* cds = nrs->cds;
+  mesh_t* mesh = nrs->mesh;
   const int FP64 = 1;
   const int coords = 0;
 
   occa::memory o_null;
   occa::memory o_Tavg, o_Trms;
 
-  const int Nscalar = ins->Nscalar;
-  if(ins->Nscalar) {
+  const int Nscalar = nrs->Nscalar;
+  if(nrs->Nscalar) {
     o_Tavg = o_Savg;
     o_Trms = o_Srms;
   }

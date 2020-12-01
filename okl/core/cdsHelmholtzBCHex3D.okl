@@ -41,11 +41,11 @@
     bc.wrk = W;                                             \
                                                             \
     const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];        \
-    const dlong bcType = mapB[bc.idM];                      \
+    const dlong bcType = EToB[face + p_Nfaces * e];         \
     bc.sF = 0.f; bc.sP = 0.f;                               \
     bc.scalarId = scalarId;                                 \
     if(bcType == 3) {                                       \
-      cdsNeumannConditions3D(&bc);                          \
+      scalarNeumannConditions(&bc);                         \
     }                                                       \
     s_ndU[j][i] = -WsJ * (bc.sF);                           \
   }
@@ -63,6 +63,7 @@
                                  @restrict const dfloat*  y,
                                  @restrict const dfloat*  z,
                                  @restrict const dfloat*  S,
+                                 @restrict const int*  EToB,
                                  @restrict const int*  mapB,
                                  @restrict const dfloat*  W,
                                  @restrict dfloat*  rhsU)
@@ -267,7 +268,7 @@
           bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
           bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
           bc.sP = 0.f;
-          cdsDirichletConditions3D(&bc);
+          scalarDirichletConditions(&bc);
           S[idM] = bc.sP;
         }
       }

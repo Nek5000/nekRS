@@ -67,9 +67,10 @@
 #include <cstring>
 #include <getopt.h>
 #include <cfenv>
+#include <limits>
 #include <unistd.h>
+
 #include "nekrs.hpp"
-#include <parAlmond.hpp>
 
 #define DEBUG
 
@@ -133,31 +134,43 @@ int main(int argc, char** argv)
 
 
   const int runTimeStatFreq = 500;
-  const int outputStep = nekrs::outputStep();
-  const int NtimeSteps = nekrs::NtimeSteps();
   const double startTime = nekrs::startTime();
   const double finalTime = nekrs::finalTime();
-
-  if (rank == 0) std::cout << "\nstarting time loop" << "\n";
+  const double writeInterval = nekrs::writeInterval();
+  const int writeControlRunTime = nekrs::writeControlRunTime();
+  double dt = nekrs::dt();
 
   double time = startTime;
+  int lastStep = 0;
+  int nWrite = 0;
   int tStep = 1;
+ 
+  if (rank == 0) std::cout << "\nstarting time loop" << "\n";
   MPI_Pcontrol(1);
-  while ((finalTime - time) / finalTime > 1e-6 * nekrs::dt()) {
-    nekrs::runStep(time, nekrs::dt(), tStep);
-    time += nekrs::dt();
+  while ((finalTime - time) / finalTime > 10*std::numeric_limits<double>::epsilon()) {
 
-    int isOutputStep = 0;
-    if (outputStep > 0)
-      if (tStep % outputStep == 0 || tStep == NtimeSteps) isOutputStep = 1;
+    if (time + dt >= finalTime) {
+      dt = finalTime - time;
+      lastStep = 1;
+    }
+
+    nekrs::runStep(time, dt, tStep);
+    time += dt;
+
+    int isOutputStep = (time >= startTime + (nWrite+1) * writeInterval);
+    if (!writeControlRunTime) isOutputStep = (tStep%(int)writeInterval == 0); 
+    if (writeInterval == 0) isOutputStep = 0;
+    if (lastStep) isOutputStep = 1;
+    if (writeInterval < 0) isOutputStep = 0;
 
     nekrs::udfExecuteStep(time, tStep, isOutputStep);
     if (isOutputStep) {
       nekrs::copyToNek(time, tStep);
       nekrs::nekOutfld();
+      nWrite++;
     }
 
-    if (tStep && tStep % runTimeStatFreq == 0 || tStep == NtimeSteps) nekrs::printRuntimeStatistics();
+    if (tStep && tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
 
     ++tStep;
   }

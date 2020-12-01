@@ -142,7 +142,7 @@ void grad_u(dfloat *grad_u_x, dfloat *grad_u_y, dfloat *grad_u_z,
 
 
 // Boundary conditions
-void insVelocityDirichletConditions3D(bcData *bc)
+void velocityDirichletConditions(bcData *bc)
 {                                                                        
   dfloat u, v, w, p;
   exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
@@ -151,13 +151,14 @@ void insVelocityDirichletConditions3D(bcData *bc)
   bc->wP = w;
 }
 
-void cdsDirichletConditions3D(bcData *bc)
+void scalarDirichletConditions(bcData *bc)
 {                                                                        
   dfloat u, v, w, p;
   exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
   bc->sP = u;
 }
-void cdsNeumannConditions3D(bcData *bc)
+
+void scalarNeumannConditions(bcData *bc)
 {                                                                        
   dfloat grad_u_x, grad_u_y, grad_u_z;
   grad_u(&grad_u_x, &grad_u_y, &grad_u_z, bc->x, bc->y, bc->z, bc->time, p_nu);

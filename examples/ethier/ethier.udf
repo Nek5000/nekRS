@@ -14,20 +14,20 @@ static int ciMode = 0;
 occa::kernel dpdxKernel; 
 occa::kernel exactUVWPKernel; 
 
-void userq(ins_t *ins, dfloat time, occa::memory o_S, occa::memory o_FS)
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  mesh_t *mesh = ins->mesh; 
-  cds_t *cds   = ins->cds; 
-  const dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
+  mesh_t *mesh = nrs->mesh; 
+  cds_t *cds   = nrs->cds; 
+  const dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
 
   dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->fieldOffset, o_FS);
   dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset, o_FS);
 }                                                   
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
-  occa::properties& kernelInfo = *ins->kernelInfo;
-  setupAide &options = ins->options;
+  occa::properties& kernelInfo = *nrs->kernelInfo;
+  setupAide &options = nrs->options;
 
   dfloat mue, rho;
   options.getArgs("VISCOSITY", mue);
@@ -38,8 +38,8 @@ void UDF_LoadKernels(ins_t *ins)
   kernelInfo["defines/p_W0"] = P_W0;
   kernelInfo["defines/p_A"]  = P_A0 * M_PI;
   kernelInfo["defines/p_D"]  = P_D0 * M_PI;
-  dpdxKernel = udfBuildKernel(ins, "dpdx");
-  exactUVWPKernel = udfBuildKernel(ins, "exactUVWP"); 
+  dpdxKernel = udfBuildKernel(nrs, "dpdx");
+  exactUVWPKernel = udfBuildKernel(nrs, "exactUVWP"); 
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -48,28 +48,28 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   if (ciMode) ciSetup(comm, options);
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
   // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
+  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
   udf.sEqnSource = &userq;
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t *mesh = ins->mesh;
-  cds_t *cds = ins->cds;
+  mesh_t *mesh = nrs->mesh;
+  cds_t *cds = nrs->cds;
 
   if (tstep <= 5) {
-    exactUVWPKernel(ins->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, ins->fieldOffset, ins->o_P, ins->o_U);
-    ellipticZeroMean(ins->pSolver, ins->o_P);
-    cds->o_S.copyFrom(ins->o_U, ins->Nlocal*sizeof(dfloat), 0*cds->fieldOffset*sizeof(dfloat));
-    cds->o_S.copyFrom(ins->o_U, ins->Nlocal*sizeof(dfloat), 1*cds->fieldOffset*sizeof(dfloat));
+    exactUVWPKernel(nrs->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
+    ellipticZeroMean(nrs->pSolver, nrs->o_P);
+    cds->o_S.copyFrom(nrs->o_U, nrs->Nlocal*sizeof(dfloat), 0*cds->fieldOffset*sizeof(dfloat));
+    cds->o_S.copyFrom(nrs->o_U, nrs->Nlocal*sizeof(dfloat), 1*cds->fieldOffset*sizeof(dfloat));
   }
 
-  if (ins->isOutputStep) {
+  if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
   }
-  if (ciMode) ciTestErrors(ins, time, tstep);
+  if (ciMode) ciTestErrors(nrs, time, tstep);
 }

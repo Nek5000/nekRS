@@ -3,8 +3,7 @@
 
 #include <string>
 
-#include "occa.hpp"
-#include "mpi.h"
+#include "nrssys.hpp"
 
 namespace timer
 {

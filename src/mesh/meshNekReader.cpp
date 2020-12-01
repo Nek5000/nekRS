@@ -6,7 +6,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
+void meshNekReaderHex3D(int N, mesh_t* mesh)
 {
   mesh->dim = nekData.ndim;
   if(mesh->dim != 3) {
@@ -23,7 +23,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
   mesh->Nfaces = 2 * mesh->dim;
   mesh->NfaceVertices = 4;
   mesh->Nelements = nekData.nelt;
-  if(!isMeshT) mesh->Nelements = nekData.nelv;
+  if(!mesh->cht) mesh->Nelements = nekData.nelv;
 
   const int faceVertices[6][4] = {{0,1,2,3},{0,1,5,4},{1,2,6,5},
     {2,3,7,6},{3,0,4,7},{4,5,6,7}};
@@ -34,7 +34,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
   const int vtxmap[8] = {0, 1, 3, 2, 4, 5, 7, 6};
 
   // build vertex numbering
-  mesh->Nnodes = nek_set_glo_num(2, isMeshT);
+  mesh->Nnodes = nek_set_glo_num(2, mesh->cht);
 
   mesh->EToV
     = (hlong*) calloc(mesh->Nelements * mesh->Nverts, sizeof(hlong));
@@ -45,7 +45,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
   // find number of boundary faces
   int nbc = 0;
   int* bid = nekData.boundaryIDt;
-  if(!isMeshT) bid = nekData.boundaryID;
+  if(!mesh->cht) bid = nekData.boundaryID;
   for(int e = 0; e < mesh->Nelements; e++)
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
       if(*bid) nbc++;
@@ -65,14 +65,14 @@ void meshNekReaderHex3D(int N, mesh_t* mesh, int isMeshT)
                 MPI_SUM, mesh->comm);
   if(mesh->rank == 0) {
     int n = nekData.NboundaryIDt;
-    if(!isMeshT) n = nekData.NboundaryID;
+    if(!mesh->cht) n = nekData.NboundaryID;
     printf("NboundaryIDs: %d\n", n);
     printf("NboundaryFaces: %d\n", mesh->NboundaryFaces);
   }
 
   int cnt = 0;
   bid = nekData.boundaryIDt;
-  if(!isMeshT) bid = nekData.boundaryID;
+  if(!mesh->cht) bid = nekData.boundaryID;
   int* eface1 = nekData.eface1;
   int* icface = nekData.icface;
   const dlong Nfp = nekData.nx1 * nekData.nx1;

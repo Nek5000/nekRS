@@ -21,15 +21,15 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
 }
 
-void ciTestErrors(ins_t *ins, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (tstep != ins->NtimeSteps) return;
+  if (time != nrs->finalTime) return;
  
-  const int rank = ins->mesh->rank;
+  const int rank = nrs->mesh->rank;
 
-  ins->o_div.copyTo(ins->div);
-  dlong Nlocal = ins->mesh->Nelements * ins->mesh->Np;
-  memcpy(nekData.qtl, ins->div, sizeof(dfloat)*Nlocal);
+  nrs->o_div.copyTo(nrs->div);
+  dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
+  memcpy(nekData.qtl, nrs->div, sizeof(dfloat)*Nlocal);
  
   nek_ocopyFrom(time, tstep);
   nek_userchk();
