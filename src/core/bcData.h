@@ -2,22 +2,19 @@
 struct bcData
 {
   int idM;
+
   int fieldOffset;
   int id;
-
-  int scalarId;
 
   dfloat time;
   dfloat x, y, z;
   dfloat nx, ny, nz;
 
-  dfloat uM, vM, wM;
-  dfloat uP, vP, wP;
+  dfloat u, v, w;
+  dfloat p;
 
-  dfloat pM;
-  dfloat pP;
+  int scalarId;
+  dfloat s, flux;
 
   @globalPtr const dfloat* wrk;
-
-  dfloat sM, sP, sF;
 };

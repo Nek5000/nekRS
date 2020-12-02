@@ -33,14 +33,10 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   MPI_Barrier(mesh->comm);
   double tStart = MPI_Wtime();
 
-  nrs->dt[2] = nrs->dt[1];
-  nrs->dt[1] = nrs->dt[0];
   nrs->dt[0] = dt;
-
-  extbdfCoefficents(nrs,mymin(tstep, nrs->temporalOrder));
-
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
+  extbdfCoefficents(nrs,mymin(tstep, nrs->temporalOrder));
 
   // extrapolate
   if(nrs->flow) 
@@ -76,12 +72,19 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(udf.div) udf.div(nrs, time + nrs->dt[0], nrs->o_div);
-  //nrs->fillKernel(nrs->fieldOffset, 0.0, nrs->o_div);
 
   if(nrs->flow) fluidSolve(nrs, time, nrs->o_U); 
 
-  const dfloat cfl = computeCFL(nrs);
+  nrs->dt[2] = nrs->dt[1];
+  nrs->dt[1] = nrs->dt[0];
 
+  if (nrs->finalTime > 0)
+    nrs->lastStep = fabs((time+nrs->dt[0]) - nrs->finalTime) < 100*std::numeric_limits<double>::epsilon();
+  else
+    nrs->lastStep = (tstep+1 > nrs->numSteps);
+
+  // print some diagnostics
+  const dfloat cfl = computeCFL(nrs);
   mesh->device.finish();
   MPI_Barrier(mesh->comm);
   const double tElapsedStep = MPI_Wtime() - tStart;
@@ -139,11 +142,13 @@ void extbdfCoefficents(nrs_t* nrs, int order)
   nrs->o_extbdfB.copyFrom(nrs->extbdfB);
   nrs->o_extbdfA.copyFrom(nrs->extbdfA);
 
-/*
-  cout << "DT:" << nrs->dt[0] << "," << nrs->dt[1] << "," << nrs->dt[2] << "\n";
-  cout << "BDF:" << nrs->g0 << "," << nrs->extbdfB[0] << "," << nrs->extbdfB[1] << "," << nrs->extbdfB[2] << "\n";
-  cout << "EXT:" << nrs->extbdfA[0] << "," << nrs->extbdfA[1] << "," << nrs->extbdfA[2] << "\n";
-*/
+#if 0
+  if (nrs->mesh->rank == 0) {
+    cout << "DT:" << nrs->dt[0] << "," << nrs->dt[1] << "," << nrs->dt[2] << "\n";
+    cout << "BDF:" << nrs->g0 << "," << nrs->extbdfB[0] << "," << nrs->extbdfB[1] << "," << nrs->extbdfB[2] << "\n";
+    cout << "EXT:" << nrs->extbdfA[0] << "," << nrs->extbdfA[1] << "," << nrs->extbdfA[2] << "\n";
+  }
+#endif
 
   if (nrs->Nscalar) {
     nrs->cds->ExplicitOrder = nrs->ExplicitOrder;

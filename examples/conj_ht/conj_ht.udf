@@ -4,8 +4,7 @@
 #include <math.h>
 #include "udf.hpp"
 
-static int ciMode = 0;
-#include "conj_ht_ci.h"
+#include "ci.inc"
 
 static occa::kernel cFillKernel;
 

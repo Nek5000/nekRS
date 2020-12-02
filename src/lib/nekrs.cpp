@@ -180,9 +180,19 @@ const double startTime(void)
   return nrs->startTime;
 }
 
-const double finalTime(void)
+const double endTime(void)
 {
   return nrs->finalTime;
+}
+
+const int numSteps(void)
+{
+  return nrs->numSteps;
+}
+
+const int lastStep(void)
+{
+  return nrs->lastStep;
 }
 
 void* nekPtr(const char* id)

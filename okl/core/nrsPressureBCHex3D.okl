@@ -60,15 +60,14 @@
         bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
         bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
         // Get Current Solution i.e. Un
-        bc.uM = U[idM + 0 * offset];
-        bc.vM = U[idM + 1 * offset];
-        bc.wM = U[idM + 2 * offset];
-        bc.pM = P[idM];
+        bc.u = U[idM + 0 * offset];
+        bc.v = U[idM + 1 * offset];
+        bc.w = U[idM + 2 * offset];
         bc.wrk = W;
 
-        bc.pP = 0.f;
+        bc.p = 0.f;
         pressureDirichletConditions(&bc);
-        PI[idM] = bc.pP;
+        PI[idM] = bc.p;
       }
     }
 }

@@ -6,8 +6,7 @@
 #include "udf.hpp"
 #include "casedata.h"
 
-static int ciMode = 0;
-#include "ethier_ci.h"
+#include "ci.inc"
 
 /* UDF Functions */   
 

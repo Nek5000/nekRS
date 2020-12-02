@@ -19,7 +19,9 @@ void printRuntimeStatistics(void);
 const double writeInterval(void);
 const double dt();
 const double startTime(void);
-const double finalTime(void);
+const double endTime(void);
+const int numSteps(void);
+const int lastStep(void);
 const int writeControlRunTime(void);
 
 void* nrsPtr(void);

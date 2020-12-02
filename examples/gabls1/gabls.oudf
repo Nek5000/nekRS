@@ -25,18 +25,18 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {                                                                        
-  bc->uP = 1.0;
-  bc->vP = 0;
-  bc->wP = 0;
+  bc->u = 1.0;
+  bc->v = 0;
+  bc->w = 0;
 }
 
 void scalarDirichletConditions(bcData *bc)
 {
-  bc->sP = p_T0s;
-  bc->sP += p_sCoolRate * bc->time - 1.0;
+  bc->s = p_T0s;
+  bc->s += p_sCoolRate * bc->time - 1.0;
 }
 
 void scalarNeumannConditions(bcData *bc)
 {
-  bc->sF = p_cond*p_TsGrad;
+  bc->flux = p_cond*p_TsGrad;
 }

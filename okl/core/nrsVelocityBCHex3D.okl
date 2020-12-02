@@ -37,20 +37,20 @@
     bc.z   = z[bc.idM];                                                 \
     bc.fieldOffset = offset;                                            \
     bc.id  = EToBM[face + p_Nfaces * e];                                \
-    bc.uM  = U[bc.idM + 0 * offset];                                    \
-    bc.vM  = U[bc.idM + 1 * offset];                                    \
-    bc.wM  = U[bc.idM + 2 * offset];                                    \
+    bc.u  = U[bc.idM + 0 * offset];                                     \
+    bc.v  = U[bc.idM + 1 * offset];                                     \
+    bc.w  = U[bc.idM + 2 * offset];                                     \
     bc.wrk = W;                                                         \
     dfloat TRx = 0.f;                                                   \
     dfloat TRy = 0.f;                                                   \
     dfloat TRz = 0.f;                                                   \
     const dlong bcType = EToB[face + p_Nfaces * e];                     \
     if(bcType == 3) {                                                   \
-        bc.pP = 0.f;                                                    \
+        bc.p = 0.f;                                                     \
         pressureDirichletConditions(&bc);                               \
-        TRx = -bc.pP*bc.nx;                                             \
-        TRy = -bc.pP*bc.ny;                                             \
-        TRz = -bc.pP*bc.nz;                                             \
+        TRx = -bc.p*bc.nx;                                              \
+        TRy = -bc.p*bc.ny;                                              \
+        TRz = -bc.p*bc.nz;                                              \
     }                                                                   \
     s_ndU[j][i] = WsJ*TRx;                                              \
     s_ndV[j][i] = WsJ*TRy;                                              \
@@ -290,33 +290,29 @@
           bc.ny = sgeo[sid * p_Nsgeo + p_NYID];
           bc.nz = sgeo[sid * p_Nsgeo + p_NZID];
 
-          bc.uM = U[idM + 0 * offset];
-          bc.vM = U[idM + 1 * offset];
-          bc.wM = U[idM + 2 * offset];
-
-          bc.uP = UH[idM + 0 * offset];
-          bc.vP = UH[idM + 1 * offset];
-          bc.wP = UH[idM + 2 * offset];
-          bc.pP = 0.f;
+          bc.u = U[idM + 0 * offset];
+          bc.v = U[idM + 1 * offset];
+          bc.w = U[idM + 2 * offset];
+          //bc.pP =
           bc.wrk = W;
           bc.fieldOffset = offset;
 
           if(bcType == 1) {
-            bc.uP = 0.f;
-            bc.vP = 0.f;
-            bc.wP = 0.f;
+            bc.u = 0.f;
+            bc.v = 0.f;
+            bc.w = 0.f;
           }else if(bcType == 2) {
             velocityDirichletConditions(&bc);
           }else if(bcType == 4) {
-            bc.uP = 0.f; // vP = vM ; wP = wM;
+            bc.u = 0.f; // vP = vM ; wP = wM;
           }else if(bcType == 5) {
-            bc.vP = 0.f; // uP = vM ; wP = wM;
+            bc.v = 0.f; // uP = vM ; wP = wM;
           }else if(bcType == 6) {
-            bc.wP = 0.f; // vP = vM ; uP = uM;
+            bc.w = 0.f; // vP = vM ; uP = uM;
           }
-          UH[idM + 0 * offset] = bc.uP;
-          UH[idM + 1 * offset] = bc.vP;
-          UH[idM + 2 * offset] = bc.wP;
+          UH[idM + 0 * offset] = bc.u;
+          UH[idM + 1 * offset] = bc.v;
+          UH[idM + 2 * offset] = bc.w;
         }
       }
     }

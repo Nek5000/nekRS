@@ -13,6 +13,6 @@
 
 void scalarDirichletConditions(bcData *bc)
 {
-  bc->sP = 0;
-  if(bc->scalarId == 0) bc->sP = 0; 
+  bc->s = 0;
+  if(bc->scalarId == 0) bc->s = 0; 
 }

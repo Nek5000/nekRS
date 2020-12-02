@@ -5,8 +5,7 @@
 #include "udf.hpp"
 #include "plugins/lowMach.hpp"
 #
-static int ciMode = 0;
-#include "lowMach_ci.h"
+#include "ci.inc"
 #include "casedata.h"
 
 static occa::kernel userQKernel;

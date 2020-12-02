@@ -146,21 +146,21 @@ void velocityDirichletConditions(bcData *bc)
 {                                                                        
   dfloat u, v, w, p;
   exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
-  bc->uP = u;
-  bc->vP = v;
-  bc->wP = w;
+  bc->u = u;
+  bc->v = v;
+  bc->w = w;
 }
 
 void scalarDirichletConditions(bcData *bc)
 {                                                                        
   dfloat u, v, w, p;
   exact(&u, &v, &w, &p, bc->x, bc->y, bc->z, bc->time, p_nu);
-  bc->sP = u;
+  bc->s = u;
 }
 
 void scalarNeumannConditions(bcData *bc)
 {                                                                        
   dfloat grad_u_x, grad_u_y, grad_u_z;
   grad_u(&grad_u_x, &grad_u_y, &grad_u_z, bc->x, bc->y, bc->z, bc->time, p_nu);
-  bc->sF = p_nu * (grad_u_x * bc->nx + grad_u_y * bc->ny + grad_u_z * bc->nz);
+  bc->flux = p_nu * (grad_u_x * bc->nx + grad_u_y * bc->ny + grad_u_z * bc->nz);
 }

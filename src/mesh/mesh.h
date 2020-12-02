@@ -263,15 +263,6 @@ typedef struct
   int* mmapS;
   dfloat* mapSgn;
 
-  // time stepping info
-  dfloat dt; // time step
-  dfloat startTime;  // Start Time
-  dfloat finalTime; // final time to run acoustics to
-  int NtimeSteps;  // number of time steps
-  int errorStep;   // number of steps between error calculations
-  int Nrk;
-  dfloat rka[5], rkb[5], rkc[6]; // AK: deprecated
-
   // MRAB,SAAB coefficients
   dfloat mrab[3], mrabb[3], saab[3], saabexp; // AK: deprecated
   int MRABNlevels;

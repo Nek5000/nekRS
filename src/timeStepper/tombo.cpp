@@ -142,18 +142,11 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   nrs->divergenceSurfaceKernel(
     mesh->Nelements,
-    mesh->o_vgeo,
     mesh->o_sgeo,
     mesh->o_vmapM,
-    mesh->o_EToB,
     nrs->o_EToB,
-    time,
     nrs->g0 * nrs->idt,
-    mesh->o_x,
-    mesh->o_y,
-    mesh->o_z,
     nrs->fieldOffset,
-    nrs->o_usrwrk,
     nrs->o_wrk6,
     nrs->o_U,
     nrs->o_wrk3);

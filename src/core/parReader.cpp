@@ -210,7 +210,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     int numSteps;
     if(ini.extract("general", "numsteps", numSteps)) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
-      endTime = numSteps * dt;
+      endTime = -1;
     } else {
       exit("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     }
