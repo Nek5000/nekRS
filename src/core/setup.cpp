@@ -129,16 +129,6 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   nrs->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
   nrs->options.getArgs("DT", nrs->dt[0]);
-  nrs->options.getArgs("START TIME", nrs->startTime);
-
-  nrs->numSteps = -1;
-  nrs->options.getArgs("NUMBER TIMESTEPS", nrs->numSteps);
-  nrs->finalTime = -1;
-  nrs->options.getArgs("FINAL TIME", nrs->finalTime);
-  if (nrs->finalTime > 0) {
-    nrs->numSteps = -1;
-    nrs->options.setArgs("NUMBER TIMESTEPS", "");
-  }
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -551,7 +541,16 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     nrs->cds = cdsSetup(nrs, msh, nrs->options, kernelInfoS);
   }
 
-  if(!buildOnly) udf.setup(nrs);
+  if(!buildOnly) {
+    int readRestartFile;
+    nrs->options.getArgs("RESTART FROM FILE", readRestartFile);
+    if(readRestartFile) {
+      double startTime;
+      nek_copyTo(startTime);
+      nrs->options.setArgs("START TIME", to_string_f(startTime));
+    }
+    udf.setup(nrs);
+   }
 
   // setup elliptic solvers
 
@@ -967,7 +966,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     cds->o_Srkb = nrs->o_Srkb;
   }
 
-  cds->startTime = nrs->startTime;
   cds->dt  = nrs->dt;
   cds->sdt = nrs->sdt;
 

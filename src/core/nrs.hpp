@@ -50,12 +50,9 @@ typedef struct
   int Nblock;
 
   dfloat dt[3], idt;
-  int numSteps;
   int tstep;
   int lastStep;
   dfloat g0, ig0;
-  dfloat startTime;
-  dfloat finalTime;
 
   int cht;
 

@@ -91,8 +91,7 @@ DECLARE_USER_FUNC(userqtl)
 
 void*  nek_ptr(const char* id);
 void*  nek_scPtr(int id);
-void   nek_outfld(void);
-void   nek_outfld(const char* suffix);
+void   nek_outSolutionFld(double time, double outputTime);
 void   nek_outfld(const char* suffix, dfloat t, int coords,
                   occa::memory o_u, occa::memory o_p, occa::memory o_s,
                   int NSfields, int FP64);

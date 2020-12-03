@@ -19,9 +19,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // get IC from nek
-  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
-
   // assign function pointer to drive flow by constant mean pressure gradient
   udf.uEqnSource = &userf;
 }

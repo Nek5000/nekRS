@@ -204,9 +204,9 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(variableDt) exit("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE);
 
   double endTime;
-  string stopAt;
+  string stopAt = "numsteps";
   ini.extract("general", "stopat", stopAt);
-  if(stopAt != "endtime") {
+  if(stopAt == "numsteps") {
     int numSteps;
     if(ini.extract("general", "numsteps", numSteps)) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
@@ -214,9 +214,18 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     } else {
       exit("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     }
-  } else if(!ini.extract("general", "endtime", endTime))
-    exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE);
-  options.setArgs("FINAL TIME", to_string_f(endTime));
+  } else if(stopAt == "endtime") {
+    if(!ini.extract("general", "endtime", endTime))
+      exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE);
+    options.setArgs("END TIME", to_string_f(endTime));
+  } 
+
+  if(stopAt == "elapsedtime") {
+    double elapsedTime;
+    if(!ini.extract("general", "elapsedtime", elapsedTime))
+      exit("Cannot find mandatory parameter GENERAL::elapsedTime!", EXIT_FAILURE);
+    options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
+  } 
 
   string extrapolation;
   ini.extract("general", "extrapolation", extrapolation);

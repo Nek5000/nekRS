@@ -13,7 +13,7 @@ void setup(MPI_Comm comm, int buildOnly, int sizeTarget,
 void runStep(double time, double dt, int tstep);
 void copyToNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);
-void nekOutfld(void);
+void outfld(double time, double outputTime);
 void nekUserchk(void);
 void printRuntimeStatistics(void);
 const double writeInterval(void);
@@ -21,7 +21,7 @@ const double dt(void);
 const double startTime(void);
 const double endTime(void);
 const int numSteps(void);
-const int lastStep(double time, int tstep);
+const int lastStep(double time, int tstep, double elapsedTime);
 const int writeControlRunTime(void);
 
 void* nrsPtr(void);

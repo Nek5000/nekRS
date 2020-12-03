@@ -39,7 +39,6 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
   extbdfCoefficents(nrs, mymin(tstep, nrs->temporalOrder));
 
-  // extrapolate
   if(nrs->flow) 
     nrs->extrapolateKernel(mesh->Nelements,
                            nrs->NVfields,
@@ -423,7 +422,6 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
     for(int ststep = 0; ststep < nrs->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
 
-      //nrs->o_wrk3.copyFrom(nrs->o_wrk0, nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
       nrs->o_wrk0.copyFrom(nrs->o_wrk0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),
                            nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),0);
 
@@ -567,7 +565,6 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     for(int ststep = 0; ststep < cds->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
 
-      //cds->o_wrk1.copyFrom(cds->o_wrk0, cds->fieldOffset*sizeof(dfloat));
       cds->o_wrk0.copyFrom(cds->o_wrk0, cds->fieldOffset * sizeof(dfloat),
                            cds->fieldOffset * sizeof(dfloat), 0);
 

@@ -67,17 +67,19 @@ void* nek_scPtr(int id)
   return ptr;
 }
 
-void nek_outfld()
+void nek_outSolutionFld(double time, double outputTime)
 {
   timer::tic("checkpointing", 1);
-  const char suffix[] = "   ";
-  (*nek_outfld_ptr)((char*)suffix);
-  timer::toc("checkpointing");
-}
 
-void nek_outfld(const char* suffix)
-{
-  timer::tic("checkpointing", 1);
+  if (outputTime > 0 && fabs(time - outputTime) > 1e-12) {
+    //  TODO
+    //    * copy solution + history to nek
+    //    * interpolate to outputTime
+  } else {
+    nek_ocopyFrom(time, 0);
+  }
+
+  const char suffix[] = "   ";
   (*nek_outfld_ptr)((char*)suffix);
   timer::toc("checkpointing");
 }
@@ -164,11 +166,6 @@ void nek_setic(void)
   }
 
   (*nek_setics_ptr)();
-
-  if (readRestartFile) {
-    double startTime = *(nekData.time);
-    options->setArgs("START TIME", to_string_f(startTime));
-  }
 }
 
 void nek_map_m_to_n(double* a, int na, double* b, int nb)
@@ -766,6 +763,7 @@ void nek_copyTo(dfloat &time)
   }
 }
 
+/*
 void nek_copyRestart()
 {
   mesh_t* mesh = nrs->mesh;
@@ -791,6 +789,7 @@ void nek_copyRestart()
     }
   }
 }
+*/
 
 long long nek_set_glo_num(int nx, int isTMesh)
 {

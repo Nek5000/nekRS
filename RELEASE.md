@@ -4,7 +4,7 @@
 
 * (Chebyshev accelerated) ASM and RAS smoother
 * Improved gs performance
-* Residual projection
+* Initial guess projection
 * Runtime averages
 * Stress formulation
 * Various bug fixes 
@@ -12,7 +12,8 @@
 ## What you may have to change to be compatible 
 
 * common block SCRNS was replaced by pointer array NRSSCPTR (see ethier example) 
-* update to new boundary condition device function names in oudf (e.g. rename insVelocityDirichlet3D -> velocityDirichlet)
+* update boundary device function names and bc struct members in oudf (e.g. insVelocityDirichlet3D -> velocityDirichlet, bc->uP -> bc->u)
+* remove copyTo() call to get nek IC from UDF_Setup() 
 
 ## Known Bugs 
 

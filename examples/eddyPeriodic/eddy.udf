@@ -14,8 +14,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // get IC from nek
-  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

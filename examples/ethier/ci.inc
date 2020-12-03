@@ -19,7 +19,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR00 DENSITY", string("1"));
   options.setArgs("SCALAR01 DIFFUSIVITY", string("0.01"));
   options.setArgs("SCALAR01 DENSITY", string("1"));
-  options.setArgs("FINAL TIME", string("0.2"));
+  options.setArgs("END TIME", string("0.2"));
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");

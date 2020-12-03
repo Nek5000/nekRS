@@ -62,9 +62,6 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // get IC from nek
-  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
-
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
 }

@@ -53,9 +53,6 @@ void UDF_Setup(nrs_t *nrs)
   mesh_t *mesh = nrs->mesh;
   cds_t *cds = nrs->cds;
 
-  // get IC from nek
-  if (!nrs->readRestartFile) nek_copyTo(nrs->startTime);
-
   udf.properties = &uservp;
   udf.uEqnSource = &userf;
   udf.sEqnSource = &userq;

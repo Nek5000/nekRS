@@ -20,6 +20,13 @@ static void dryRun(setupAide &options, int npTarget);
 
 namespace nekrs
 {
+const double startTime(void)
+{
+  double val = 0;
+  nrs->options.getArgs("START TIME", val);
+  return val;
+}
+
 void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
            int ciMode, string cacheDir, string _setupFile,
            string _backend, string _deviceID)
@@ -77,13 +84,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  // init solver
   nrs = nrsSetup(comm, device, options, buildOnly);
-
-  // set initial condition
-  int readRestartFile;
-  options.getArgs("RESTART FROM FILE", readRestartFile);
-  if(readRestartFile) nek_copyRestart();
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -100,14 +101,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
       o_S = nrs->cds->o_S;
       o_SProp = nrs->cds->o_prop;
     }
-    udf.properties(nrs, nrs->startTime, nrs->o_U, o_S,
+    udf.properties(nrs, startTime(), nrs->o_U, o_S,
                    nrs->o_prop, o_SProp);
     nrs->o_prop.copyTo(nrs->prop);
     if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
   }
 
-  if(udf.executeStep) udf.executeStep(nrs, nrs->startTime, 0);
-  nek_ocopyFrom(nrs->startTime, 0);
+  if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
+  nek_ocopyFrom(startTime(), 0);
 
   timer::toc("setup");
   const double setupTime = timer::query("setup", "DEVICE:MAX");
@@ -115,7 +116,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dMB = nrs->mesh->device.memoryAllocated() / 1e6;
     cout << "device memory allocation: " << dMB << " MB" << endl;
-    cout << "initialization took " <<  setupTime << " seconds" << endl;
+    cout << "initialization took " <<  setupTime << " s" << endl;
   }
   fflush(stdout);
 
@@ -153,11 +154,6 @@ void nekUserchk(void)
   nek_userchk();
 }
 
-void nekOutfld(void)
-{
-  nek_outfld();
-}
-
 const double dt(void)
 {
   // TODO: adjust dt for target CFL
@@ -176,29 +172,38 @@ const int writeControlRunTime(void)
   return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
-const double startTime(void)
+void outfld(double time, double outputTime)
 {
-  return nrs->startTime;
+  nek_outSolutionFld(time, outputTime);
 }
 
 const double endTime(void)
 {
-  return nrs->finalTime;
+  double endTime = -1;
+  nrs->options.getArgs("END TIME", endTime);
+  return endTime;
 }
 
 const int numSteps(void)
 {
-  return nrs->numSteps;
+  int numSteps = -1;
+  nrs->options.getArgs("NUMBER TIMESTEPS", numSteps);
+  return numSteps;
 }
 
-const int lastStep(double time, int tstep)
+const int lastStep(double time, int tstep, double elapsedTime)
 {
-  const double eps = 1e-12;
-  if (nrs->finalTime > 0)
-    nrs->lastStep = fabs((time+nrs->dt[0]) - nrs->finalTime) < eps || (time+nrs->dt[0]) > nrs->finalTime;
-  else
-    nrs->lastStep = (tstep+1 > nrs->numSteps);
-  
+  if(!nrs->options.getArgs("STOP AT ELAPSED TIME").empty()) {
+    double maxElaspedTime;
+    nrs->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
+    if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
+  } else if (endTime() > 0) { 
+     const double eps = 1e-12;
+     nrs->lastStep = fabs((time+nrs->dt[0]) - endTime()) < eps || (time+nrs->dt[0]) > endTime();
+  } else {
+    nrs->lastStep = (tstep+1 > numSteps());
+  }
+
   return nrs->lastStep;
 }
 
@@ -281,9 +286,6 @@ static void setOUDF(setupAide &options)
     out.open(dataFile, std::ios::trunc);
 
     out << buffer.str();
-
-//    out << "// automatically added \n"
-//        << "void nrsPressureNeumannConditions3D(bcData *bc){}\n";
 
     std::size_t found;
     found = buffer.str().find("void nrsVelocityDirichletConditions");

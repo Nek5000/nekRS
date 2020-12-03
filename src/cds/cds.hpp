@@ -35,8 +35,6 @@ typedef struct
   dfloat *dt;
   int tstep;
   dfloat g0, ig0;
-  dfloat startTime;
-  dfloat finalTime;
 
   int temporalOrder;
   int ExplicitOrder;
