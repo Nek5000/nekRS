@@ -34,9 +34,10 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   double tStart = MPI_Wtime();
 
   nrs->dt[0] = dt;
+
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  extbdfCoefficents(nrs,mymin(tstep, nrs->temporalOrder));
+  extbdfCoefficents(nrs, mymin(tstep, nrs->temporalOrder));
 
   // extrapolate
   if(nrs->flow) 
@@ -78,18 +79,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
 
-  if (nrs->finalTime > 0)
-    nrs->lastStep = fabs((time+nrs->dt[0]) - nrs->finalTime) < 100*std::numeric_limits<double>::epsilon();
-  else
-    nrs->lastStep = (tstep+1 > nrs->numSteps);
-
-  // print some diagnostics
-  const dfloat cfl = computeCFL(nrs);
   mesh->device.finish();
   MPI_Barrier(mesh->comm);
   const double tElapsedStep = MPI_Wtime() - tStart;
   tElapsed += tElapsedStep;
   timer::set("solve", tElapsed);
+
+  // print some diagnostics
+  const dfloat cfl = computeCFL(nrs);
   if(mesh->rank == 0) {
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + nrs->dt[0], nrs->dt[0], cfl);

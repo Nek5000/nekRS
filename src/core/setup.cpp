@@ -131,8 +131,14 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   nrs->options.getArgs("DT", nrs->dt[0]);
   nrs->options.getArgs("START TIME", nrs->startTime);
 
+  nrs->numSteps = -1;
   nrs->options.getArgs("NUMBER TIMESTEPS", nrs->numSteps);
+  nrs->finalTime = -1;
   nrs->options.getArgs("FINAL TIME", nrs->finalTime);
+  if (nrs->finalTime > 0) {
+    nrs->numSteps = -1;
+    nrs->options.setArgs("NUMBER TIMESTEPS", "");
+  }
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);

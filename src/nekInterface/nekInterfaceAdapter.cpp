@@ -8,7 +8,7 @@ nekdata_private nekData;
 static int rank;
 static setupAide* options;
 static nrs_t* nrs;
-static dfloat timeLast = -1;
+static dfloat lastCopyTime = -1;
 
 static void (* usrdat_ptr)(void);
 static void (* usrdat2_ptr)(void);
@@ -47,6 +47,9 @@ static long long (* nek_set_vert_ptr)(int*, int*);
 static void (* nek_setbd_ptr)(double *, double*, int*);
 static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 
+static void (* nek_storesol_ptr)(void);
+static void (* nek_restoresol_ptr)(void);
+
 void noop_func(void) {}
 
 void* nek_ptr(const char* id)
@@ -84,7 +87,6 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
                 int NSfields, int FP64)
 {
 
-  timer::tic("checkpointing", 1);
   mesh_t* mesh = nrs->mesh;
   cds_t* cds = nrs->cds;
   dlong Nlocal = mesh->Nelements * mesh->Np;
@@ -95,6 +97,10 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
   int vo = 0;
   int po = 0;
   int so = 0;
+
+  (*nek_storesol_ptr)();
+
+  timer::tic("checkpointing", 1);
 
   if(coords)
     xo = 1;
@@ -127,7 +133,10 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
   (*nek_setio_ptr)(&t, &xo, &vo, &po, &so, &NSfields, &FP64);
   (*nek_outfld_ptr)((char*)suffix);
   (*nek_resetio_ptr)();
+
   timer::toc("checkpointing");
+
+  (*nek_restoresol_ptr)();
 }
 
 void nek_uic(int ifield)
@@ -298,6 +307,11 @@ void set_function_handles(const char* session_in,int verbose)
   nek_setbd_ptr = (void (*)(double *, double*, int*))dlsym(handle, fname("setbd"));
   check_error(dlerror());
   nek_setabbd_ptr = (void (*)(double *, double*, int*, int*))dlsym(handle, fname("setabbd"));
+  check_error(dlerror());
+
+  nek_storesol_ptr = (void (*)(void))dlsym(handle, fname("nekf_storesol"));
+  check_error(dlerror());
+  nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
   check_error(dlerror());
 
 #define postfix(x) x ## _ptr
@@ -659,7 +673,7 @@ void nek_copyFrom(dfloat time)
     fflush(stdout);
   }
 
-  timeLast = time;
+  lastCopyTime = time;
 
   mesh_t* mesh = nrs->mesh;
   dlong Nlocal = mesh->Nelements * mesh->Np;
@@ -687,9 +701,17 @@ void nek_copyFrom(dfloat time)
   }
 }
 
+void nek_ocopyFrom(void)
+{
+  nrs->o_U.copyTo(nrs->U);
+  nrs->o_P.copyTo(nrs->P);
+  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  nek_copyFrom(0.0);
+}
+
 void nek_ocopyFrom(dfloat time, int tstep)
 {
-  if(time != timeLast) {
+  if(time != lastCopyTime) {
     nrs->o_U.copyTo(nrs->U);
     nrs->o_P.copyTo(nrs->P);
     if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);

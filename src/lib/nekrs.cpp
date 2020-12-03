@@ -158,8 +158,9 @@ void nekOutfld(void)
   nek_outfld();
 }
 
-const double dt()
+const double dt(void)
 {
+  // TODO: adjust dt for target CFL
   return nrs->dt[0];
 }
 
@@ -190,8 +191,14 @@ const int numSteps(void)
   return nrs->numSteps;
 }
 
-const int lastStep(void)
+const int lastStep(double time, int tstep)
 {
+  const double eps = 1e-12;
+  if (nrs->finalTime > 0)
+    nrs->lastStep = fabs((time+nrs->dt[0]) - nrs->finalTime) < eps || (time+nrs->dt[0]) > nrs->finalTime;
+  else
+    nrs->lastStep = (tstep+1 > nrs->numSteps);
+  
   return nrs->lastStep;
 }
 

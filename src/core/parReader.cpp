@@ -92,11 +92,11 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("SCALAR INITIAL GUESS DEFAULT","EXTRAPOLATION");
   options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
 
-  options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
-  options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
-  options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
-  options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
-  options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
+  //options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
+  //options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
+  //options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
+  //options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
+  //options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
 }
@@ -542,16 +542,16 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     } else {
       options.setArgs("TEMPERATURE", "TRUE");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
-      options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
-      options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
-      options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
       bool t_rproj;
       if(ini.extract("temperature", "residualproj", t_rproj) || 
          ini.extract("temperature", "residualprojection", t_rproj)) {
-        if(t_rproj)
+        if(t_rproj) {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
-        else
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
+        } else {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
+        }
 
         int t_nProjVec;
         if(ini.extract("temperature", "residualprojectionvectors", t_nProjVec))
@@ -617,16 +617,16 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       continue;
     }
-    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
-    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
-    options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
     bool t_rproj;
     if(ini.extract("scalar" + sidPar, "residualproj", t_rproj) || 
        ini.extract("scalar" + sidPar, "residualprojection", t_rproj)) {
-      if(t_rproj)
+      if(t_rproj) {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
-      else
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
+      } else {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
+      }
 
       int t_nProjVec;
       if(ini.extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))

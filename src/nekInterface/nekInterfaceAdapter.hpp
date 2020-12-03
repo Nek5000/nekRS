@@ -110,6 +110,7 @@ int    nek_bcmap(int bid, int ifld);
 
 int buildNekInterface(const char* casename, int nFields, int N, int np);
 void nek_copyFrom(dfloat time, int tstep);
+void nek_ocopyFrom(void);
 void nek_ocopyFrom(dfloat time, int tstep);
 void nek_copyFrom(dfloat time);
 void nek_copyTo(dfloat &time);

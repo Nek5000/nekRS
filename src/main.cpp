@@ -162,9 +162,13 @@ int main(int argc, char** argv)
   MPI_Pcontrol(1);
   while (!lastStep) {
     ++tStep;
-    double dt = nekrs::dt();
-    lastStep = nekrs::lastStep();
-    if (lastStep) dt = endTime - time; 
+    lastStep = nekrs::lastStep(time, tStep);
+
+    double dt; 
+    if (lastStep) 
+      dt = endTime - time;
+    else
+      dt = nekrs::dt();
 
     nekrs::runStep(time, dt, tStep);
     time += dt;
