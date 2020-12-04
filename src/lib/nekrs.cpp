@@ -174,7 +174,7 @@ const int writeControlRunTime(void)
 
 void outfld(double time, double outputTime)
 {
-  nek_outSolutionFld(time, outputTime);
+  writeFld(nrs, time, 0);
 }
 
 const double endTime(void)

@@ -28,8 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* use this for int */
-#include "mesh.h"
+#include "nrssys.hpp"
 
 void mergeLists(size_t sz,
                 int N1, char* v1,

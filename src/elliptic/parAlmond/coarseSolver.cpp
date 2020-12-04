@@ -57,6 +57,9 @@ void coarseSolver::setup(parCSR *A) {
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
 
+   if(options.compareArgs("BUILD ONLY", "TRUE"))
+    return; // bail early as this will not get used
+
   if(options.compareArgs("PARALMOND SMOOTH COARSEST", "TRUE"))
     return; // bail early as this will not get used
 

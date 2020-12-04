@@ -164,7 +164,6 @@ include(config/nek5000.cmake)
 
 include(config/mesh.cmake)
 include(config/elliptic.cmake)
-include(config/parAlmond.cmake)
 include(config/gslib.cmake)
 include(config/blaslapack.cmake)
 
@@ -174,20 +173,28 @@ include(config/blaslapack.cmake)
 
 set(SRC 
     src/lib/nekrs.cpp
+    src/io/writeFld.cpp
+    src/core/utils/mysort.cpp
+    src/core/utils/parallelSort.cpp
+    src/core/utils/occaHelpers.cpp
+    src/core/utils/tinyexpr.c
     src/core/setupAide.cpp
     src/core/cfl.cpp
     src/core/filter.cpp
     src/core/bcMap.cpp
     src/core/setup.cpp
     src/timeStepper/runTime.cpp
-    src/timeStepper/tombo.cpp
+    src/lns/tombo.cpp
     src/cds/cds.cpp
-    src/core/occaDeviceConfig.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
-    src/core/tinyexpr.c
     src/core/timer.cpp
     src/linAlg/linAlg.cpp
+    src/linAlg/matrixConditionNumber.cpp
+    src/linAlg/matrixInverse.cpp
+    src/linAlg/matrixEig.cpp
+    src/linAlg/matrixTranspose.cpp
+    src/linAlg/matrixRightSolve.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
@@ -216,9 +223,12 @@ target_compile_definitions(nekrs-lib PUBLIC
 target_include_directories(nekrs-lib 
   PUBLIC 
   src/core
+  src/core/utils
+  src/io
   src/udf
   src/linAlg
   src/timeStepper
+  src/lns
   src/cds
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}

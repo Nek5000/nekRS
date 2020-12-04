@@ -24,8 +24,9 @@
 
  */
 
-#include "mesh.h"
 #include <stdlib.h>
+#include "nrssys.hpp"
+#include "mesh.h"
 
 int isHigher(const void* a, const void* b)
 {

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "nrssys.hpp"
 #include "mesh3D.h"
 #include "elliptic.h"
 #include "cds.hpp"
@@ -103,8 +104,6 @@ typedef struct
   occa::memory o_usrwrk;
 
   occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
-
-  int readRestartFile,writeRestartFile, restartedFromFile;
 
   int filterNc; // filter cut modes i.e. below is not touched
   dfloat* filterM, filterS;
@@ -202,6 +201,9 @@ typedef struct
 
   occa::properties* kernelInfo;
 } nrs_t;
+
+
+#include "io.hpp"
 
 occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm);
 

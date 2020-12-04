@@ -119,11 +119,12 @@ int main(int argc, char** argv)
     }
     MPI_Barrier(comm);
   }
-
   if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
 
-  std::string cacheDir;
+  MPI_Barrier(comm);
   double elapsedTime = MPI_Wtime();
+
+  std::string cacheDir;
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cacheDir, cmdOpt->setupFile,
                cmdOpt->backend, cmdOpt->deviceID);

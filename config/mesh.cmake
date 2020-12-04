@@ -5,11 +5,6 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshNekReader.cpp
     ${MESH_SOURCE_DIR}/meshPhysicalNodesHex3D.cpp
     ${MESH_SOURCE_DIR}/meshParallelConnectNodes.cpp
-    ${MESH_SOURCE_DIR}/matrixConditionNumber.cpp
-    ${MESH_SOURCE_DIR}/matrixInverse.cpp
-    ${MESH_SOURCE_DIR}/matrixEig.cpp
-    ${MESH_SOURCE_DIR}/matrixTranspose.cpp
-    ${MESH_SOURCE_DIR}/matrixRightSolve.cpp
     ${MESH_SOURCE_DIR}/meshBasis1D.cpp
     ${MESH_SOURCE_DIR}/meshBasisHex3D.cpp
     ${MESH_SOURCE_DIR}/meshApplyElementMatrix.cpp
@@ -26,9 +21,5 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshOccaSetup3D.cpp
     ${MESH_SOURCE_DIR}/meshParallelConsecutiveGlobalNumbering.cpp
     ${MESH_SOURCE_DIR}/meshParallelGatherScatterSetup.cpp
-    ${MESH_SOURCE_DIR}/meshPartitionStatistics.cpp
     ${MESH_SOURCE_DIR}/meshSurfaceGeometricFactorsHex3D.cpp
-    ${MESH_SOURCE_DIR}/mysort.cpp
-    ${MESH_SOURCE_DIR}/occaHostMallocPinned.cpp
-    ${MESH_SOURCE_DIR}/parallelSort.cpp
     ${MESH_SOURCE_DIR}/meshParallelConnectOpt.cpp)

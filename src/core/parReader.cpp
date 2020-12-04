@@ -218,9 +218,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(!ini.extract("general", "endtime", endTime))
       exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE);
     options.setArgs("END TIME", to_string_f(endTime));
-  } 
-
-  if(stopAt == "elapsedtime") {
+  } else if(stopAt == "elapsedtime") { 
     double elapsedTime;
     if(!ini.extract("general", "elapsedtime", elapsedTime))
       exit("Cannot find mandatory parameter GENERAL::elapsedTime!", EXIT_FAILURE);

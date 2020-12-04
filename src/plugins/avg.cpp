@@ -192,26 +192,23 @@ void avg::outfld()
     o_Trms = o_Srms;
   }
 
-  nek_outfld("avg", atime, coords,
-             o_Uavg,
-             o_Pavg,
-             o_Tavg,
-             Nscalar,
-             FP64);
+  writeFld("avg", atime, coords, FP64,
+           o_Uavg,
+           o_Pavg,
+           o_Tavg,
+           Nscalar);
 
-  nek_outfld("rms", atime, coords,
-             o_Urms,
-             o_Prms,
-             o_Trms,
-             Nscalar,
-             FP64);
+  writeFld("rms", atime, coords, FP64,
+           o_Urms,
+           o_Prms,
+           o_Trms,
+           Nscalar);
 
-  nek_outfld("rm2", atime, coords,
-             o_Urm2,
-             o_null,
-             o_null,
-             0,
-             FP64);
+  writeFld("rm2", atime, coords, FP64,
+           o_Urm2,
+           o_null,
+           o_null,
+           0);
 
   atime = 0;
 }

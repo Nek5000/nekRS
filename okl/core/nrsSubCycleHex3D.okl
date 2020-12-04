@@ -53,13 +53,13 @@
     @shared dfloat s_Vd[p_cubNq][p_cubNq];
     @shared dfloat s_Wd[p_cubNq][p_cubNq];
 
-    @shared dfloat s_U1[p_cubNq][p_cubNq];
-    @shared dfloat s_V1[p_cubNq][p_cubNq];
-    @shared dfloat s_W1[p_cubNq][p_cubNq];
+    @shared dfloat s_U1[p_Nq][p_cubNq];
+    @shared dfloat s_V1[p_Nq][p_cubNq];
+    @shared dfloat s_W1[p_Nq][p_cubNq];
 
-    @shared dfloat s_Ud1[p_cubNq][p_cubNq];
-    @shared dfloat s_Vd1[p_cubNq][p_cubNq];
-    @shared dfloat s_Wd1[p_cubNq][p_cubNq];
+    @shared dfloat s_Ud1[p_Nq][p_cubNq];
+    @shared dfloat s_Vd1[p_Nq][p_cubNq];
+    @shared dfloat s_Wd1[p_Nq][p_cubNq];
 
     @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
     @exclusive dfloat r_Ud[p_cubNq], r_Vd[p_cubNq], r_Wd[p_cubNq];

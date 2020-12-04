@@ -116,12 +116,6 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
     nrs->temporalOrder = 3;
   }
 
-  nrs->readRestartFile = 0;
-  nrs->options.getArgs("RESTART FROM FILE", nrs->readRestartFile);
-
-  nrs->writeRestartFile = 0;
-  nrs->options.getArgs("WRITE RESTART FILE", nrs->writeRestartFile);
-
   dfloat mue = 1;
   dfloat rho = 1;
   nrs->options.getArgs("VISCOSITY", mue);
@@ -544,12 +538,13 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   if(!buildOnly) {
     int readRestartFile;
     nrs->options.getArgs("RESTART FROM FILE", readRestartFile);
-    if(readRestartFile) {
-      double startTime;
-      nek_copyTo(startTime);
-      nrs->options.setArgs("START TIME", to_string_f(startTime));
-    }
+    double startTime;
+    nek_copyTo(startTime);
+    if(readRestartFile) nrs->options.setArgs("START TIME", to_string_f(startTime));
+
+    if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
     udf.setup(nrs);
+    if(mesh->rank == 0)  printf("done\n"); fflush(stdout);
    }
 
   // setup elliptic solvers
