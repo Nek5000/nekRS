@@ -46,9 +46,6 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-c      ubar  = glsc2(vx,bm1,nx1*ny1*nz1*nelt)/volvm1
-c      if (nid.eq.0) write(6,*) 'ubar=', ubar
-
       return
       end
 c-----------------------------------------------------------------------

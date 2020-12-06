@@ -8,7 +8,6 @@ nekdata_private nekData;
 static int rank;
 static setupAide* options;
 static nrs_t* nrs;
-static dfloat lastCopyTime = -1;
 
 static void (* usrdat_ptr)(void);
 static void (* usrdat2_ptr)(void);
@@ -660,8 +659,6 @@ void nek_copyFrom(dfloat time)
     fflush(stdout);
   }
 
-  lastCopyTime = time;
-
   mesh_t* mesh = nrs->mesh;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
@@ -698,12 +695,10 @@ void nek_ocopyFrom(void)
 
 void nek_ocopyFrom(dfloat time, int tstep)
 {
-  if(time != lastCopyTime) {
-    nrs->o_U.copyTo(nrs->U);
-    nrs->o_P.copyTo(nrs->P);
-    if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
-    nek_copyFrom(time, tstep);
-  }
+  nrs->o_U.copyTo(nrs->U);
+  nrs->o_P.copyTo(nrs->P);
+  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  nek_copyFrom(time, tstep);
 }
 
 void nek_copyFrom(dfloat time, int tstep)

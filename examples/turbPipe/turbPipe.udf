@@ -44,7 +44,5 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     if (mesh->rank == 0) printf(" uBulk: %g\n", ubar);
 
     avg::outfld();
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
   }
 }

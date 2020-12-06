@@ -7,52 +7,6 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      data icalld /0/
-      save icalld
-
-      real x0(3)
-      data x0 /0.0, 0.0, 0.0/
-      save x0
-
-      integer bIDs(1)
-      save iobj_wall
-
-      save atime,timel,drag_avg
-
-      if (icalld.eq.0) then
-        bIDs(1) = 1
-        call create_obj(iobj_wall,bIDs,1)
-        drag_avg = 0
-        atime    = 0
-        timel    = time
-        icalld   = 1
-        call cfill(vdiff,param(2),nx1*ny1*nz1*nelt)
-      endif
-
-      dtime = time - timel
-      atime = atime + dtime
-
-      ! averaging over time
-      if (atime.ne.0. .and. dtime.ne.0.) then
-        beta      = dtime / atime
-        alpha     = 1. - beta
-
-        call torque_calc(1.0,x0,.false.,.false.) ! compute wall shear
-        drag_avg = alpha*drag_avg + beta*dragz(iobj_wall)
-
-        rho    = 1
-        dnu    = param(2)
-        A_w    = 2*pi * 0.5 * ZLENGTH
-        tw     = drag_avg / A_w
- 
-        u_tau  = sqrt(abs(tw) / rho)
-        Re_tau = u_tau * 0.5 / dnu
-        ubar  = glsc2(vz,bm1,nx1*ny1*nz1*nelt)/volvm1
-
-        if (nid.eq.0) write(6,*) 'Re_tau', Re_tau, 'U_b', ubar 
-        timel = time
-      endif
-
       return
       end
 c-----------------------------------------------------------------------

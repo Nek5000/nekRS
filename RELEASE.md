@@ -14,6 +14,7 @@
 * common block SCRNS was replaced by pointer array NRSSCPTR (see ethier example) 
 * update boundary device function names and bc struct members in oudf (e.g. insVelocityDirichlet3D -> velocityDirichlet, bc->uP -> bc->u)
 * remove copyTo() call to get nek IC from UDF_Setup() 
+* call nek_ocopyTo(time) after nek_userchk() if you want to modify the solution before writing to file
 
 ## Known Bugs 
 
