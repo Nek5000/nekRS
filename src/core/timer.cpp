@@ -250,6 +250,8 @@ void printRunStat()
   hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
   hEtime[1] = timer::query("oogsMPI", "HOST:MAX");
 
+  dEtime[9] += dEtime[12];
+
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );
 
@@ -259,7 +261,7 @@ void printRunStat()
     if(dEtime[11] > 0)
     std::cout << "  checkpointing         " << dEtime[11]<< " s\n";
 
-    std::cout << "  total solve           " << dEtime[9] << " s\n"
+    std::cout << "  computation           " << dEtime[9] << " s\n"
   	      << "  makef                 " << dEtime[0] << " s\n"
               << "  velocitySolve         " << dEtime[1] << " s\n"
               << "  pressureSolve         " << dEtime[2] << " s\n";

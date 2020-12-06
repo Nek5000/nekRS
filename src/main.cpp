@@ -167,8 +167,11 @@ int main(int argc, char** argv)
     time += dt;
 
     int outputStep = 0;
-    if (nekrs::writeInterval() > 0) outputStep = (tStep%(int)nekrs::writeInterval() == 0);
-    if (writeControlRunTime) outputStep = (time >= outputTime); 
+    if (writeControlRunTime) { 
+      outputStep = (time >= outputTime);
+    } else {
+      if (nekrs::writeInterval() > 0) outputStep = (tStep%(int)nekrs::writeInterval() == 0);
+    }
     if (nekrs::writeInterval() == 0) outputStep = 0;
     if (lastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
