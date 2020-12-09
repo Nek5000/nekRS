@@ -481,10 +481,12 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     bool v_rproj;
     if(ini.extract("velocity", "residualproj", v_rproj) ||
        ini.extract("velocity", "residualprojection", v_rproj)) {
-      if(v_rproj)
+      if(v_rproj) {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
-      else
+        options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS STEP");
+      } else {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
+      }
 
       int v_nProjVec;
       if(ini.extract("velocity", "residualprojectionvectors", v_nProjVec))
@@ -497,10 +499,13 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     if(vsolver == "none") {
       options.setArgs("VELOCITY SOLVER", "NONE");
       flow = 0;
-    } else if(std::strstr(vsolver.c_str(), "block")) {
-      options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-      if(options.compareArgs("VELOCITY RESIDUAL PROJECTION","TRUE"))
-        exit("Residual projection is not enabled for the velocity block solver!", EXIT_FAILURE);
+    } else if(!vsolver.empty()){
+      options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+      if(std::strstr(vsolver.c_str(), "block")) {
+        options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+        if(options.compareArgs("VELOCITY RESIDUAL PROJECTION","TRUE"))
+          exit("Residual projection is not enabled for the velocity block solver!", EXIT_FAILURE);
+      }
     }
 
     double v_residualTol;
@@ -548,6 +553,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
       options.setArgs("TEMPERATURE", "TRUE");
+      options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;
       if(ini.extract("temperature", "residualproj", t_rproj) || 
@@ -629,6 +635,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
        ini.extract("scalar" + sidPar, "residualprojection", t_rproj)) {
       if(t_rproj) {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
+        options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
       } else {

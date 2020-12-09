@@ -1069,38 +1069,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     dlong nVecsProject = 8;
-    try {
-      nVecsProject = static_cast < dlong > (std::stoi(options.getArgs(
-                                                        "RESIDUAL PROJECTION VECTORS")));
-    } catch(std::invalid_argument& e) {
-      if(elliptic->mesh->rank == 0) {
-        std::cout << "Encountered invalid argument when getting RESIDUAL PROJECTION VECTORS!\n";
-        std::cout << e.what();
-      }
-      exit(-1);
-    } catch (std::out_of_range& e) {
-      if(elliptic->mesh->rank == 0) {
-        std::cout << "Encountered out_of_range error when getting RESIDUAL PROJECTION VECTORS!\n";
-        std::cout << e.what();
-      }
-      exit(-1);
-    }
+    options.getArgs("RESIDUAL PROJECTION VECTORS", nVecsProject);
+
     dlong nStepsStart = 5;
-    try {
-      nStepsStart = static_cast < dlong > (std::stoi(options.getArgs("RESIDUAL PROJECTION START")));
-    } catch(std::invalid_argument& e) {
-      if(elliptic->mesh->rank == 0) {
-        std::cout << "Encountered invalid argument when getting RESIDUAL PROJECTION START!\n";
-        std::cout << e.what();
-      }
-      exit(-1);
-    } catch (std::out_of_range& e) {
-      if(elliptic->mesh->rank == 0) {
-        std::cout << "Encountered out_of_range error when getting RESIDUAL PROJECTION START!\n";
-        std::cout << e.what();
-      }
-      exit(-1);
-    }
+    options.getArgs("RESIDUAL PROJECTION START", nStepsStart);
+
     elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
   }
 }

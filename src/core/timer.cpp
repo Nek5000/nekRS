@@ -250,8 +250,6 @@ void printRunStat()
   hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
   hEtime[1] = timer::query("oogsMPI", "HOST:MAX");
 
-  dEtime[9] += dEtime[12];
-
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );
 
@@ -261,31 +259,33 @@ void printRunStat()
     if(dEtime[11] > 0)
     std::cout << "  checkpointing         " << dEtime[11]<< " s\n";
 
-    std::cout << "  computation           " << dEtime[9] << " s\n"
-  	      << "  makef                 " << dEtime[0] << " s\n"
-              << "  velocitySolve         " << dEtime[1] << " s\n"
-              << "  pressureSolve         " << dEtime[2] << " s\n";
+    if(dEtime[12] > 0)
+    std::cout << "  udfExecuteStep        " << dEtime[12] << " s\n";
 
-    if(dEtime[6] > 0)
-    std::cout << "    residual projection " << dEtime[6] << " s\n";
+    std::cout << "  computation           " << dEtime[9]+dEtime[12] << " s\n"
+  	      << "  makef                 " << dEtime[0] << " s\n";
+    if(dEtime[13] > 0)
+    std::cout << "    udfUEqnSource       " << dEtime[13] << " s\n";
+    std::cout << "  velocitySolve         " << dEtime[1] << " s\n"
+              << "  pressureSolve         " << dEtime[2] << " s\n";
 
     std::cout << "    preconditioner      " << dEtime[5] << " s\n"
               << "      coarse grid       " << hEtime[0] << " s\n";
 
-    if(dEtime[4] > 0)
-    std::cout << "  makeq                 " << dEtime[3] << " s\n"
-              << "  scalarSolve           " << dEtime[4] << " s\n"
+    if(dEtime[4] > 0) {
+    std::cout << "  makeq                 " << dEtime[3] << " s\n";
+    std::cout << "    udfSEqnSource       " << dEtime[14] << " s\n";
+    }
+    if(dEtime[14] > 0)
+    std::cout << "  scalarSolve           " << dEtime[4] << " s\n"
               << std::endl;
 
-    if(dEtime[12] > 0)
-    std::cout << "  udfExecuteStep        " << dEtime[12] << " s\n";
-    if(dEtime[13] > 0)
-    std::cout << "  udfUEqnSource         " << dEtime[13] << " s\n";
-    if(dEtime[14] > 0)
-    std::cout << "  udfSEqnSource         " << dEtime[14] << " s\n";
     if(dEtime[15] > 0)
     std::cout << "  udfProperties         " << dEtime[15] << " s\n"
               << std::endl;
+
+    if(dEtime[6] > 0)
+    std::cout << "  residual projection   " << dEtime[6] << " s\n";
 
     if(hEtime[1] > 0)
     std::cout << "  gsMPI                 " << hEtime[1] << " s (without overlap)\n";
