@@ -162,7 +162,7 @@ const double dt(void)
 
 const double writeInterval(void)
 {
-  double val = 0;
+  double val = -1;
   nrs->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
   return val;
 }

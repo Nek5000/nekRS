@@ -8,17 +8,7 @@
 
 void meshNekReaderHex3D(int N, mesh_t* mesh)
 {
-  mesh->dim = nekData.ndim;
-  if(mesh->dim != 3) {
-    printf("ERROR: No support for %d-D meshes!\n", mesh->dim);
-    ABORT(EXIT_FAILURE);
-  }
-
-  if(nekData.nx1 != N + 1) {
-    printf("ERROR: lx1=%d does not match N=%d\n!\n", nekData.nx1, N);
-    ABORT(EXIT_FAILURE);
-  }
-
+  mesh->dim = 3; 
   mesh->Nverts = 8;
   mesh->Nfaces = 2 * mesh->dim;
   mesh->NfaceVertices = 4;
@@ -75,7 +65,6 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if(!mesh->cht) bid = nekData.boundaryID;
   int* eface1 = nekData.eface1;
   int* icface = nekData.icface;
-  const dlong Nfp = nekData.nx1 * nekData.nx1;
   mesh->boundaryInfo = (hlong*) calloc(mesh->NboundaryFaces * (mesh->NfaceVertices + 1),
                                        sizeof(hlong));
 
