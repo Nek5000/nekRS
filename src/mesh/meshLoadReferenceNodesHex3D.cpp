@@ -59,7 +59,7 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
   mesh->DW = (dfloat*) malloc(mesh->Nq * mesh->Nq * sizeof(dfloat));
   DWmatrix1D(mesh->N, mesh->D, mesh->DW);
 
-  mesh->interpRaise = (dfloat* ) calloc(mesh->Nq * (mesh->Nq + 1),sizeof(dfloat));
+  mesh->interpRaise = (dfloat* ) calloc((mesh->Nq + 1) * mesh->Nq,sizeof(dfloat));
   mesh->interpLower = (dfloat* ) calloc((mesh->Nq - 1) * (mesh->Nq),sizeof(dfloat));
   DegreeRaiseMatrix1D(mesh->N, mesh->N + 1, mesh->interpRaise);
   DegreeRaiseMatrix1D(mesh->N - 1, mesh->N, mesh->interpLower);
