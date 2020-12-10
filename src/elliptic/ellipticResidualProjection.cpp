@@ -33,8 +33,8 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
                                 occa::memory& o_x,
                                 const dlong x_offset)
 {
-  occa::memory o_xtmp = o_x + fieldOffset * x_offset * sizeof(dfloat);
-  occa::memory o_Axtmp = o_Ax + fieldOffset * Ax_offset * sizeof(dfloat);
+  occa::memory o_xtmp = o_x + Nfields * fieldOffset * x_offset * sizeof(dfloat);
+  occa::memory o_Axtmp = o_Ax + Nfields * fieldOffset * Ax_offset * sizeof(dfloat);
   matvecOperator(o_xtmp, o_Axtmp);
 }
 
@@ -47,8 +47,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat norm_orig = alpha[m - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
-  multiScaledAddwOffsetKernel(Nlocal, m, (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
-  multiScaledAddwOffsetKernel(Nlocal, m, (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
+  multiScaledAddwOffsetKernel(Nlocal, m, Nfields * (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
+  multiScaledAddwOffsetKernel(Nlocal, m, Nfields * (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
   for(int k = 0; k < m - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
   norm_new = sqrt(norm_new);
@@ -56,8 +56,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    scalarMultiplyKernel(Nlocal, (m - 1) * fieldOffset, scale, o_xx);
-    scalarMultiplyKernel(Nlocal, (m - 1) * fieldOffset, scale, o_bb);
+    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (m - 1) * fieldOffset, scale, o_xx);
+    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (m - 1) * fieldOffset, scale, o_bb);
   } else {
     if(verbose && rank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -78,7 +78,11 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
 
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_bb, o_rtmp);
-  scaledAddKernel(Nlocal, mone, o_rtmp, one, o_r);
+  if(blockSolver){
+    scaledAddKernel(Nlocal, fieldOffset, mone, o_rtmp, one, o_r);
+  } else {
+    scaledAddKernel(Nlocal, mone, o_rtmp, one, o_r);
+  }
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
@@ -89,17 +93,25 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   if(numVecsProjection == 0) {
     // reset bases
     numVecsProjection = 1;
-    o_xx.copyFrom(o_x, Nlocal * sizeof(dfloat));
+    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
-    scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
-    o_xx.copyFrom(o_x, Nlocal * sizeof(dfloat));
+    if(blockSolver){
+      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
+    } else {
+      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
+    }
+    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
-    o_xx.copyFrom(o_x, Nlocal * sizeof(dfloat), (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
+    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat), Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
-    scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
+    if(blockSolver){
+      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
+    } else {
+      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
+    }
   }
   const dlong m_save = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
@@ -107,7 +119,7 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   updateProjectionSpace();
   if (numVecsProjection < m_save) { // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
-    o_xx.copyFrom(o_x, Nlocal * sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
+    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
     matvec(o_bb,0,o_xx,0);
     updateProjectionSpace();
   }
@@ -121,12 +133,14 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   numTimeSteps(_numTimeSteps),
   Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
   fieldOffset(elliptic.Ntotal),
+  Nfields(elliptic.Nfields),
   Nblock(elliptic.Nblock),
   Nblock2(elliptic.Nblock2),
   resNormFactor(elliptic.resNormFactor),
   rank(elliptic.mesh->rank),
   size(elliptic.mesh->size),
   comm(elliptic.mesh->comm),
+  blockSolver(elliptic.blockSolver),
   o_tmp(elliptic.o_tmp),
   o_tmp2(elliptic.o_tmp2),
   o_wrk(elliptic.o_wrk),
@@ -143,9 +157,9 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   multiwork = (dfloat*) calloc(Nblock * maxNumVecsProjection, sizeof(dfloat));
   o_alpha = elliptic.mesh->device.malloc(maxNumVecsProjection * sizeof(dfloat));
-  o_xbar = elliptic.mesh->device.malloc(Nlocal * sizeof(dfloat));
-  o_xx = elliptic.mesh->device.malloc(fieldOffset * maxNumVecsProjection * sizeof(dfloat));
-  o_bb = elliptic.mesh->device.malloc(fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  o_xbar = elliptic.mesh->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
+  o_xx = elliptic.mesh->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  o_bb = elliptic.mesh->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -160,6 +174,7 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
       properties["defines/p_blockSize"] = BLOCKSIZE;
       properties["defines/dfloat"] = dfloatString;
       properties["defines/dlong"] = dlongString;
+      properties["defines/p_Nfields"] = Nfields;
 
       filename = oklpath + "ellipticResidualProjection.okl";
       scalarMultiplyKernel = elliptic.mesh->device.buildKernel(filename.c_str(),
@@ -229,7 +244,7 @@ void ResidualProjection::multiWeightedInnerProduct(
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
+  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
   o_wrk.copyTo(multiwork, sizeof(dfloat) * m * Nblock);
   for(dlong k = 0; k < m; ++k) {

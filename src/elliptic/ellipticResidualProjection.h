@@ -81,11 +81,13 @@ private:
   dlong numVecsProjection;
   const dlong Nlocal; // vector size
   const dlong fieldOffset; // offset
+  const dlong Nfields;
   const dlong Nblock;
   const dlong Nblock2;
   const dfloat resNormFactor;
   const int rank;
   const int size;
+  const int blockSolver;
   MPI_Comm comm;
 
   std::function<void(occa::memory&,occa::memory&)> matvecOperator;
