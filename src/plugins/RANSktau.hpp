@@ -1,12 +1,12 @@
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 namespace RANSktau
 {
-void buildKernel(ins_t* ins);
+void buildKernel(nrs_t* nrs);
 void updateSourceTerms();
-void setup(ins_t* insIn, dfloat mue, dfloat rho, int startIndex);
-void setup(ins_t* insIn, dfloat mue, dfloat rho, int startIndex, const dfloat* coeffIn);
+void setup(nrs_t* nrsIn, dfloat mue, dfloat rho, int startIndex);
+void setup(nrs_t* nrsIn, dfloat mue, dfloat rho, int startIndex, const dfloat* coeffIn);
 void updateProperties();
 occa::memory o_mue_t();
 }

@@ -359,6 +359,52 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
+      subroutine nekf_storesol()
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      parameter(ltot=lx1*ly1*lz1*lelt)
+      common /outtmp/  w1(ltot),w2(ltot),w3(ltot),wp(ltot)
+     &                ,wt(ltot,ldimt)
+
+      ntot1  = lx1*ly1*lz1*nelt
+
+      call copy(w1,vx,ntot1)
+      call copy(w2,vy,ntot1)
+      call copy(w3,vz,ntot1)
+      call copy(wp,pr,ntot1)
+      do i = 1,ldimt
+         call copy(wt(1,i),t(1,1,1,1,i),ntot1)
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_restoresol()
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      parameter(ltot=lx1*ly1*lz1*lelt)
+      common /outtmp/  w1(ltot),w2(ltot),w3(ltot),wp(ltot)
+     &                ,wt(ltot,ldimt)
+
+      ntot1  = lx1*ly1*lz1*nelt
+
+      call copy(vx,w1,ntot1)
+      call copy(vy,w2,ntot1)
+      call copy(vz,w3,ntot1)
+      call copy(pr,wp,ntot1)
+      do i = 1,ldimt
+         call copy(t(1,1,1,1,i),wt(1,i),ntot1)
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
       subroutine nekf_restart(rfile,l)
 
       character*(l) rfile

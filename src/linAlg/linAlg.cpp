@@ -32,16 +32,16 @@ void linAlg_t::setup() {
   MPI_Comm_rank(comm, &rank);
 
   //add defines
-  kernelInfo["defines/" "p_blockSize"] = (int)blocksize;
+  kernelInfo["defines/" "p_blockSize"] = blocksize;
 
   //pinned scratch buffer
   {
     occa::properties props = kernelInfo;
     props["mapped"] = true;
-    h_scratch = device.malloc(blocksize*sizeof(dfloat), props);
+    h_scratch = device.malloc(BLOCKSIZE*sizeof(dfloat), props);
     scratch = (dfloat*) h_scratch.ptr(props);
   }
-  o_scratch = device.malloc(blocksize*sizeof(dfloat));
+  o_scratch = device.malloc(BLOCKSIZE*sizeof(dfloat));
 
   string oklDir;
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -210,8 +210,8 @@ void linAlg_t::axdyz(const dlong N, const dfloat alpha,
 
 // \sum o_a
 dfloat linAlg_t::sum(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   sumKernel(Nblock, N, o_a, o_scratch);
 
@@ -230,8 +230,8 @@ dfloat linAlg_t::sum(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 
 // \min o_a
 dfloat linAlg_t::min(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   minKernel(Nblock, N, o_a, o_scratch);
 
@@ -249,8 +249,8 @@ dfloat linAlg_t::min(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 
 // \max o_a
 dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   maxKernel(Nblock, N, o_a, o_scratch);
 
@@ -270,8 +270,8 @@ dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 // ||o_a||_2
 /*
 dfloat linAlg_t::norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   norm2Kernel(Nblock, N, o_a, o_scratch);
 
@@ -292,8 +292,8 @@ dfloat linAlg_t::norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 // o_x.o_y
 dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
                            MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   innerProdKernel(Nblock, N, o_x, o_y, o_scratch);
 
@@ -314,8 +314,8 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   weightedInnerProdKernel(Nblock, N, o_w, o_x, o_y, o_scratch);
 
@@ -335,8 +335,8 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
 // ||o_a||_w2
 dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
-  int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  int Nblock = (N+BLOCKSIZE-1)/BLOCKSIZE;
+  Nblock = (Nblock>BLOCKSIZE) ? BLOCKSIZE : Nblock; //limit to BLOCKSIZE entries
 
   weightedNorm2Kernel(Nblock, N, o_w, o_a, o_scratch);
 

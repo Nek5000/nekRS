@@ -7,27 +7,27 @@
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
  // set IC
- mesh_t *mesh = ins->mesh;
+ mesh_t *mesh = nrs->mesh;
  for (int n=0; n<mesh->Np*mesh->Nelements; n++) {
    dfloat x = mesh->x[n];
    dfloat y = mesh->y[n];
    dfloat z = mesh->z[n];
-   ins->U[n+0*ins->fieldOffset] = sin(x)*cos(y)*cos(z);;
-   ins->U[n+1*ins->fieldOffset] = -cos(x)*sin(y)*cos(z); 
-   ins->U[n+2*ins->fieldOffset] = 0; 
+   nrs->U[n+0*nrs->fieldOffset] = sin(x)*cos(y)*cos(z);;
+   nrs->U[n+1*nrs->fieldOffset] = -cos(x)*sin(y)*cos(z); 
+   nrs->U[n+2*nrs->fieldOffset] = 0; 
  }
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) {
+  if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
   }

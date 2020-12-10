@@ -67,6 +67,8 @@ set(OGS_SOURCES
         ${OGS_SOURCE_DIR}/src/ogsSetup.cpp
         ${OGS_SOURCE_DIR}/src/oogs.cpp)
 
+set(file_pattern "\.cu$|\.hip$|\.okl$|\.c$|\.hpp$|\.tpp$|\.h$$")
+
 install(DIRECTORY
         ${OGS_SOURCE_DIR}/include
         ${OGS_SOURCE_DIR}/okl

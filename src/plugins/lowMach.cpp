@@ -8,60 +8,56 @@
 
 #include "lowMach.hpp"
 
-void lowMach::setup(ins_t* ins)
+void lowMach::setup(nrs_t* nrs)
 {
-  mesh_t* mesh = ins->mesh;
-  int err = 0;
-  if(ins->Nscalar) {
-    if(!ins->cds->compute[0]) err = 1; 
-  } else {
-    err = 1;
-  }
+  mesh_t* mesh = nrs->mesh;
+  int err = 1;
+  if(nrs->options.compareArgs("TEMPERATURE", "TRUE")) err = 0;
   if(err) {
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   udf.div = &lowMach::qtl;
-  ins->options.setArgs("LOWMACH", "TRUE"); 
+  nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qtl(ins_t* ins, dfloat time, occa::memory o_div)
+void lowMach::qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  cds_t* cds = ins->cds;
-  mesh_t* mesh = ins->mesh;
+  cds_t* cds = nrs->cds;
+  mesh_t* mesh = nrs->mesh;
 
-  ins->gradientVolumeKernel(
+  nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
-    ins->fieldOffset,
+    nrs->fieldOffset,
     cds->o_S,
     cds->o_wrk0);
 
-  oogs::startFinish(cds->o_wrk0, ins->NVfields, ins->fieldOffset,ogsDfloat, ogsAdd, ins->gsh);
+  oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  ins->invMassMatrixKernel(
+  nrs->invMassMatrixKernel(
     mesh->Nelements,
-    ins->fieldOffset,
-    ins->NVfields,
+    nrs->fieldOffset,
+    nrs->NVfields,
     mesh->o_vgeo,
-    ins->mesh->o_invLMM,
+    nrs->mesh->o_invLMM,
     cds->o_wrk0);
 
   if(udf.sEqnSource) {
     timer::tic("udfSEqnSource", 1);
-    udf.sEqnSource(ins, time, cds->o_S, cds->o_wrk3);
+    udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
     timer::toc("udfSEqnSource");
   } else {
-    ins->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+    nrs->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }
 
-  ins->qtlKernel(
+  nrs->qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
-    ins->fieldOffset,
+    nrs->fieldOffset,
     cds->o_wrk0,
     cds->o_S,
     cds->o_diff,
@@ -69,13 +65,13 @@ void lowMach::qtl(ins_t* ins, dfloat time, occa::memory o_div)
     cds->o_wrk3,
     o_div);
 
-  oogs::startFinish(o_div, 1, ins->fieldOffset, ogsDfloat, ogsAdd, ins->gsh);
+  oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  ins->invMassMatrixKernel(
+  nrs->invMassMatrixKernel(
     mesh->Nelements,
-    ins->fieldOffset,
+    nrs->fieldOffset,
     1,
     mesh->o_vgeo,
-    ins->mesh->o_invLMM,
+    nrs->mesh->o_invLMM,
     o_div);
 }

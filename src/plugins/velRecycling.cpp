@@ -6,15 +6,15 @@
          numbering which is only true for extruded meshes in z from nek!
  */
 
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 #include "velRecycling.hpp"
 
 // private members
 namespace
 {
 static ogs_t* ogs;
-static ins_t* ins;
+static nrs_t* nrs;
 
 static occa::memory o_wrk;
 
@@ -38,15 +38,15 @@ static dfloat wbar;
 static int Nblock;
 }
 
-void velRecycling::buildKernel(ins_t* ins)
+void velRecycling::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
 
   string fileName;
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/velRecycling.okl";
-  occa::properties& kernelInfo = *ins->kernelInfo;
+  occa::properties& kernelInfo = *nrs->kernelInfo;
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
       setBCVectorValueKernel =  mesh->device.buildKernel(fileName.c_str(),
@@ -66,25 +66,25 @@ void velRecycling::buildKernel(ins_t* ins)
 
 void velRecycling::copy()
 {
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
   const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
-  o_wrk.copyFrom(ins->o_U, ins->NVfields * ins->fieldOffset * sizeof(dfloat));
-  setBCVectorValueKernel(mesh->Nelements, zero, bID, ins->fieldOffset,
+  o_wrk.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  setBCVectorValueKernel(mesh->Nelements, zero, bID, nrs->fieldOffset,
                          o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
-  ogsGatherScatterMany(o_wrk, ins->NVfields, ins->fieldOffset,
+  ogsGatherScatterMany(o_wrk, nrs->NVfields, nrs->fieldOffset,
                        ogsDfloat, ogsAdd, ogs);
 
 /*
-   for(int k=0;k<ins->dim;++k)
-    ogsGatherScatter(o_wrk+k*ins->fieldOffset*sizeof(dfloat),
+   for(int k=0;k<nrs->dim;++k)
+    ogsGatherScatter(o_wrk+k*nrs->fieldOffset*sizeof(dfloat),
                      ogsDfloat, ogsAdd, ogs);
  */
 
   // rescale
-  getBCFluxKernel(mesh->Nelements, bID, ins->fieldOffset, o_wrk,
+  getBCFluxKernel(mesh->Nelements, bID, nrs->fieldOffset, o_wrk,
                   mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;
@@ -101,18 +101,18 @@ void velRecycling::copy()
 
   const dfloat scale = -wbar * sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
-  scalarMultiplyKernel(ins->NVfields * ins->fieldOffset, scale, o_wrk);
+  scalarMultiplyKernel(nrs->NVfields * nrs->fieldOffset, scale, o_wrk);
 }
 
-void velRecycling::setup(ins_t* ins_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
+void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
                          const dfloat wbar_)
 {
-  ins = ins_;
+  nrs = nrs_;
   o_wrk = o_wrk_;
   bID = bID_;
   wbar = wbar_;
 
-  mesh_t* mesh = ins->mesh;
+  mesh_t* mesh = nrs->mesh;
 
   const dlong Ntotal = mesh->Np * mesh->Nelements;
   hlong* ids = (hlong*) calloc(Ntotal, sizeof(hlong));
@@ -137,7 +137,7 @@ void velRecycling::setup(ins_t* ins_, occa::memory o_wrk_, const hlong eOffset, 
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;
 
-  Nblock = (NfpTotal + blockSize - 1) / blockSize;
+  Nblock = (NfpTotal + BLOCKSIZE - 1) / BLOCKSIZE;
   tmp1   = (dfloat*) calloc(Nblock, sizeof(dfloat));
   tmp2   = (dfloat*) calloc(Nblock, sizeof(dfloat));
 

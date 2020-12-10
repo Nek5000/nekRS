@@ -67,9 +67,11 @@
 #include <cstring>
 #include <getopt.h>
 #include <cfenv>
+#include <limits>
+#include <math.h>
 #include <unistd.h>
+
 #include "nekrs.hpp"
-#include <parAlmond.hpp>
 
 #define DEBUG
 
@@ -93,8 +95,8 @@ int main(int argc, char** argv)
   {
     int request = MPI_THREAD_SINGLE;
     const char* env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
-    if(env_val)
-      if(std::stoi(env_val)) request = MPI_THREAD_MULTIPLE;
+    if (env_val)
+      if (std::stoi(env_val)) request = MPI_THREAD_MULTIPLE;
 
     int provided;
     int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
@@ -117,8 +119,10 @@ int main(int argc, char** argv)
     }
     MPI_Barrier(comm);
   }
+  if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
 
-  if(cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
+  MPI_Barrier(comm);
+  double elapsedTime = MPI_Wtime();
 
   std::string cacheDir;
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
@@ -131,42 +135,67 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
   }
 
-
   const int runTimeStatFreq = 500;
-  const int outputStep = nekrs::outputStep();
-  const int NtimeSteps = nekrs::NtimeSteps();
-  const double startTime = nekrs::startTime();
-  const double finalTime = nekrs::finalTime();
+  const int writeControlRunTime = nekrs::writeControlRunTime();
 
-  if (rank == 0) std::cout << "\nstarting time loop" << "\n";
+  int tStep = 0;
+  double time = nekrs::startTime();
+  double outputTime = -1;
+  if (writeControlRunTime) outputTime = time + nekrs::writeInterval();
+  int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
-  double time = startTime;
-  int tStep = 1;
+  if (rank == 0 && !lastStep) {
+    if (nekrs::endTime() > nekrs::startTime()) 
+      std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
+    else
+      std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
+  }
   MPI_Pcontrol(1);
-  while ((finalTime - time) / finalTime > 1e-6 * nekrs::dt()) {
-    nekrs::runStep(time, nekrs::dt(), tStep);
-    time += nekrs::dt();
+  while (!lastStep) {
+    MPI_Barrier(comm);
+    elapsedTime += (MPI_Wtime() - elapsedTime);
+    ++tStep;
+    lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
-    int isOutputStep = 0;
-    if (outputStep > 0)
-      if (tStep % outputStep == 0 || tStep == NtimeSteps) isOutputStep = 1;
+    double dt; 
+    if (lastStep && nekrs::endTime() > 0) 
+      dt = nekrs::endTime() - time;
+    else
+      dt = nekrs::dt();
 
-    nekrs::udfExecuteStep(time, tStep, isOutputStep);
-    if (isOutputStep) {
-      nekrs::copyToNek(time, tStep);
-      nekrs::nekOutfld();
+    nekrs::runStep(time, dt, tStep);
+    time += dt;
+
+    int outputStep = 0;
+    if (writeControlRunTime) { 
+      outputStep = (time >= outputTime);
+    } else {
+      if (nekrs::writeInterval() > 0) outputStep = (tStep%(int)nekrs::writeInterval() == 0);
+    }
+    if (nekrs::writeInterval() == 0) outputStep = 0;
+    if (lastStep) outputStep = 1;
+    if (nekrs::writeInterval() < 0) outputStep = 0;
+
+    nekrs::udfExecuteStep(time, tStep, outputStep);
+
+    if (outputStep) {
+      nekrs::outfld(time, outputTime);
+      if (writeControlRunTime) outputTime += nekrs::writeInterval();
     }
 
-    if (tStep && tStep % runTimeStatFreq == 0 || tStep == NtimeSteps) nekrs::printRuntimeStatistics();
-
-    ++tStep;
+    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
   }
   MPI_Pcontrol(0);
 
-  if(rank == 0) std::cout << "\nEnd." << "\n";
+  MPI_Barrier(comm);
+  elapsedTime += (MPI_Wtime() - elapsedTime);
+  if (rank == 0) {
+    std::cout << "elapsedTime: " << elapsedTime << " s\n";
+    std::cout << "End\n";
+  }
+  fflush(stdout);
 
   MPI_Finalize();
-  fflush(stdout);
   return EXIT_SUCCESS;
 }
 

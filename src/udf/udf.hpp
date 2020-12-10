@@ -1,27 +1,29 @@
 #if !defined(nekrs_udf_hpp_)
 #define nekrs_udf_hpp_
 
+#define ins_t nrs_t
+
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);
-void UDF_Setup(ins_t* ins);
-void UDF_LoadKernels(ins_t* ins);
-void UDF_ExecuteStep(ins_t* ins, dfloat time, int tstep);
+void UDF_Setup(nrs_t* nrs);
+void UDF_LoadKernels(nrs_t* nrs);
+void UDF_ExecuteStep(nrs_t* nrs, dfloat time, int tstep);
 };
 
 typedef void (* udfsetup0)(MPI_Comm comm, setupAide &options);
-typedef void (* udfsetup)(ins_t* ins);
-typedef void (* udfloadKernels)(ins_t* ins);
-typedef void (* udfexecuteStep)(ins_t* ins, dfloat time, int tstep);
+typedef void (* udfsetup)(nrs_t* nrs);
+typedef void (* udfloadKernels)(nrs_t* nrs);
+typedef void (* udfexecuteStep)(nrs_t* nrs, dfloat time, int tstep);
 
-typedef void (* udfuEqnSource)(ins_t* ins, dfloat time, occa::memory o_U, occa::memory o_FU);
-typedef void (* udfsEqnSource)(ins_t* ins, dfloat time, occa::memory o_S, occa::memory o_SU);
-typedef void (* udfproperties)(ins_t* ins, dfloat time, occa::memory o_U,
+typedef void (* udfuEqnSource)(nrs_t* nrs, dfloat time, occa::memory o_U, occa::memory o_FU);
+typedef void (* udfsEqnSource)(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU);
+typedef void (* udfproperties)(nrs_t* nrs, dfloat time, occa::memory o_U,
                                occa::memory o_S, occa::memory o_UProp,
                                occa::memory o_SProp);
-typedef void (* udfdiv)(ins_t* ins, dfloat time, occa::memory o_div);
+typedef void (* udfdiv)(nrs_t* nrs, dfloat time, occa::memory o_div);
 
 typedef struct
 {
@@ -40,6 +42,6 @@ extern UDF udf;
 void udfBuild(const char* udfFile);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
-occa::kernel udfBuildKernel(ins_t* ins, const char* function);
+occa::kernel udfBuildKernel(nrs_t* nrs, const char* function);
 
 #endif

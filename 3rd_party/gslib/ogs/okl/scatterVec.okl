@@ -98,12 +98,12 @@ SOFTWARE.
                              const   int Nentries,
                    @restrict const  dlong *  scatterStarts,
                    @restrict const  dlong *  scatterIds,
-                   @restrict const  long long int *  q,
-                   @restrict long long int *  scatterq){
+                   @restrict const  hlong *  q,
+                   @restrict hlong *  scatterq){
 
   for(dlong s=0;s<Nscatter*Nentries;++s;@tile(256,@outer,@inner)){
 
-    const long long int qs = q[s];
+    const hlong qs = q[s];
     
     const dlong sid = s/Nentries;
     const int k = s%Nentries;

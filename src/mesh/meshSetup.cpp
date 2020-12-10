@@ -21,6 +21,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   mesh->rank = rank;
   mesh->size = size;
 
+  mesh->cht = 0;
   mesh->Nfields = 1;
   mesh->dim = 3;
   mesh->Nverts = 8; // number of vertices per element
@@ -132,10 +133,10 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   mesh->boundaryInfo = NULL; // no boundaries
 
   // connect elements using parallel sort
-  libParanumal::meshParallelConnect(mesh);
+  meshParallelConnect(mesh);
 
   // load reference (r,s,t) element nodes
-  libParanumal::meshLoadReferenceNodesHex3D(mesh, N, cubN);
+  meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (mesh->rank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
@@ -143,19 +144,19 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   meshPhysicalNodesHex3D(mesh, 1);
 
   // compute geometric factors
-  libParanumal::meshGeometricFactorsHex3D(mesh);
+  meshGeometricFactorsHex3D(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
-  libParanumal::meshHaloSetup(mesh);
+  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
   meshConnectPeriodicFaceNodes3D(mesh,XMAX - XMIN,YMAX - YMIN,ZMAX - ZMIN);
 
   // compute surface geofacs (including halo)
-  libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 0, 1);
+  meshParallelConnectNodes(mesh, 1);
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
@@ -163,13 +164,13 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   return mesh;
 }
 
-mesh_t* createMeshT(MPI_Comm comm,
-                    int N,
-                    int cubN,
-                    int isMeshT,
-                    setupAide &options,
-                    occa::device device,
-                    occa::properties& kernelInfo)
+mesh_t* createMesh(MPI_Comm comm,
+                   int N,
+                   int cubN,
+                   int isMeshT,
+                   setupAide &options,
+                   occa::device device,
+                   occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
 
@@ -180,20 +181,21 @@ mesh_t* createMeshT(MPI_Comm comm,
   mesh->comm = comm;
   mesh->rank = rank;
   mesh->size = size;
+  mesh->cht  = isMeshT;
 
   // get mesh from nek
-  meshNekReaderHex3D(N, mesh, isMeshT);
+  meshNekReaderHex3D(N, mesh);
 
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
   // connect elements using parallel sort
-  libParanumal::meshParallelConnect(mesh);
+  meshParallelConnect(mesh);
 
   // connect elements to boundary faces
-  libParanumal::meshConnectBoundary(mesh);
+  meshConnectBoundary(mesh);
 
   // load reference (r,s,t) element nodes
-  libParanumal::meshLoadReferenceNodesHex3D(mesh, N, cubN);
+  meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (mesh->rank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
@@ -201,21 +203,21 @@ mesh_t* createMeshT(MPI_Comm comm,
   meshPhysicalNodesHex3D(mesh, 0);
 
   // compute geometric factors
-  libParanumal::meshGeometricFactorsHex3D(mesh);
+  meshGeometricFactorsHex3D(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
-  libParanumal::meshHaloSetup(mesh);
+  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
-  libParanumal::meshConnectFaceNodes3D(mesh);
+  meshConnectFaceNodes3D(mesh);
 
   // compute surface geofacs (including halo)
-  libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 1, 0);
+  meshParallelConnectNodes(mesh, 0);
 
-  bcMap::check(mesh, isMeshT);
+  bcMap::check(mesh);
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
@@ -239,30 +241,27 @@ mesh_t* createMeshV(MPI_Comm comm,
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
+  mesh->cht = 0;
 
   // find EToV and boundaryInfo
-  meshNekReaderHex3D(N, mesh, 0);
+  meshNekReaderHex3D(N, mesh);
   free(mesh->elementInfo);
   mesh->elementInfo = meshT->elementInfo;
 
   mesh->Nfields = 1; // temporary patch (halo exchange depends on nfields)
 
   // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
-  libParanumal::meshParallelConnect(mesh);
+  meshParallelConnect(mesh);
 
   // find mesh->EToB, required mesh->EToV and mesh->boundaryInfo
-  libParanumal::meshConnectBoundary(mesh);
-
-  // load reference (r,s,t) element nodes
-  //libParanumal::meshLoadReferenceNodesHex3D(mesh, N);
+  meshConnectBoundary(mesh);
 
   // compute physical (x,y) locations of the element nodes
-  // mesh->x ...
   meshPhysicalNodesHex3D(mesh, 0);
 
   // compute geometric factors
-  // note: we only need vgeo because elliptic performs helo change
-  libParanumal::meshGeometricFactorsHex3D(mesh);
+  meshGeometricFactorsHex3D(mesh);
+
   free(mesh->cubvgeo);
   mesh->cubvgeo = meshT->cubvgeo;
   free(mesh->ggeo);
@@ -272,21 +271,17 @@ mesh_t* createMeshV(MPI_Comm comm,
 
   // set up halo exchange info for MPI (do before connect face nodes)
   // note: realloc mesh->X and mesh->EX ...
-  libParanumal::meshHaloSetup(mesh);
+  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
   // find vmapM, vmapP, mapP based on EToE and EToF
-  libParanumal::meshConnectFaceNodes3D(mesh);
-
-  // compute surface geofacs
-  // assumption: no halo exchange required!
-  //libParanumal::meshSurfaceGeometricFactorsHex3D(mesh);
+  meshConnectFaceNodes3D(mesh);
 
   // uniquely label each node with a global index, used for gatherScatter
   // mesh->globalIds
-  meshParallelConnectNodes(mesh, 0, 1);
+  meshParallelConnectNodes(mesh, 0);
 
-  bcMap::check(mesh, 0);
+  bcMap::check(mesh);
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
   return mesh;

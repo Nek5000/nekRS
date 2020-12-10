@@ -1,11 +1,11 @@
-#include <nekrs.hpp>
-#include <nekInterfaceAdapter.hpp>
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 namespace avg
 {
-void buildKernel(ins_t* ins);
+void buildKernel(nrs_t* nrs);
 void run(dfloat time);
-void setup(ins_t* ins_);
+void setup(nrs_t* nrs_);
 void outfld();
 void reset();
 void EX (dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EX);

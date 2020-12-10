@@ -1,14 +1,14 @@
 // Boundary conditions
-void insVelocityDirichletConditions3D(bcData *bc)
+void velocityDirichletConditions(bcData *bc)
 {                                                                        
-  bc->uP = 4.0*bc->y*(1. - bc->y); 
-  bc->vP = 0.0; 
-  bc->wP = 0.0;
+  bc->u = 4.0*bc->y*(1. - bc->y); 
+  bc->v = 0.0; 
+  bc->w = 0.0;
 }
 
-void cdsDirichletConditions3D(bcData *bc)
+void scalarDirichletConditions(bcData *bc)
 {
-  bc->sP = 0.0;
+  bc->s = 0.0;
 }
 
 

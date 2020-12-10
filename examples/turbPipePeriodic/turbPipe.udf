@@ -7,38 +7,31 @@
 
 /* User Functions */
 
-void userf(ins_t *ins, dfloat time, occa::memory o_U, occa::memory o_FU)
+void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   dfloat mue, rho;
-  ins->options.getArgs("VISCOSITY", mue);
-  ins->options.getArgs("DENSITY", rho);
+  nrs->options.getArgs("VISCOSITY", mue);
+  nrs->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho/mue; 
   const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
 
-  occa::memory o_FUz = o_FU + 2*ins->fieldOffset*sizeof(dfloat);
-  ins->linAlg->fill(ins->Nlocal, DPDZ, o_FUz);
+  occa::memory o_FUz = o_FU + 2*nrs->fieldOffset*sizeof(dfloat);
+  nrs->linAlg->fill(nrs->Nlocal, DPDZ, o_FUz);
 }
 
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(ins_t *ins)
+void UDF_LoadKernels(nrs_t *nrs)
 {
 }
 
-void UDF_Setup(ins_t *ins)
+void UDF_Setup(nrs_t *nrs)
 {
-  // get IC from nek
-  if (!ins->readRestartFile) nek_copyTo(ins->startTime);
-
   // assign function pointer to drive flow by constant mean pressure gradient
   udf.uEqnSource = &userf;
 }
 
-void UDF_ExecuteStep(ins_t *ins, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ins->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
-  }
 }

@@ -7,8 +7,7 @@
 nekdata_private nekData;
 static int rank;
 static setupAide* options;
-static ins_t** ins;
-static dfloat timeLast = -1;
+static nrs_t* nrs;
 
 static void (* usrdat_ptr)(void);
 static void (* usrdat2_ptr)(void);
@@ -44,6 +43,12 @@ static void (* nek_gen_bcmap_ptr)(void);
 static int (* nek_nbid_ptr)(int*);
 static long long (* nek_set_vert_ptr)(int*, int*);
 
+static void (* nek_setbd_ptr)(double *, double*, int*);
+static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
+
+static void (* nek_storesol_ptr)(void);
+static void (* nek_restoresol_ptr)(void);
+
 void noop_func(void) {}
 
 void* nek_ptr(const char* id)
@@ -61,29 +66,13 @@ void* nek_scPtr(int id)
   return ptr;
 }
 
-void nek_outfld()
-{
-  timer::tic("checkpointing", 1);
-  const char suffix[] = "   ";
-  (*nek_outfld_ptr)((char*)suffix);
-  timer::toc("checkpointing");
-}
-
-void nek_outfld(const char* suffix)
-{
-  timer::tic("checkpointing", 1);
-  (*nek_outfld_ptr)((char*)suffix);
-  timer::toc("checkpointing");
-}
-
-void nek_outfld(const char* suffix, dfloat t, int coords,
-                occa::memory o_u, occa::memory o_p, occa::memory o_s,
-                int NSfields, int FP64)
+void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
+                occa::memory &o_u, occa::memory &o_p, occa::memory &o_s,
+                int NSfields)
 {
 
-  timer::tic("checkpointing", 1);
-  mesh_t* mesh = (*ins)->mesh;
-  cds_t* cds = (*ins)->cds;
+  mesh_t* mesh = nrs->mesh;
+  cds_t* cds = nrs->cds;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   double time = t;
@@ -93,12 +82,19 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
   int po = 0;
   int so = 0;
 
+  (*nek_storesol_ptr)();
+
+  timer::tic("checkpointing", 1);
+
   if(coords)
+    nrs->mesh->o_x.copyTo(nekData.xm1, Nlocal * sizeof(dfloat));
+    nrs->mesh->o_y.copyTo(nekData.ym1, Nlocal * sizeof(dfloat));
+    nrs->mesh->o_z.copyTo(nekData.zm1, Nlocal * sizeof(dfloat));
     xo = 1;
   if(o_u.ptr()) {
-    occa::memory o_vx = o_u + 0 * (*ins)->fieldOffset * sizeof(dfloat);
-    occa::memory o_vy = o_u + 1 * (*ins)->fieldOffset * sizeof(dfloat);
-    occa::memory o_vz = o_u + 2 * (*ins)->fieldOffset * sizeof(dfloat);
+    occa::memory o_vx = o_u + 0 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vy = o_u + 1 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vz = o_u + 2 * nrs->fieldOffset * sizeof(dfloat);
     o_vx.copyTo(nekData.vx, Nlocal * sizeof(dfloat));
     o_vy.copyTo(nekData.vy, Nlocal * sizeof(dfloat));
     o_vz.copyTo(nekData.vz, Nlocal * sizeof(dfloat));
@@ -112,7 +108,7 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < NSfields; is++) {
       mesh_t* mesh;
-      (is) ? mesh = (*ins)->cds->meshV : mesh = (*ins)->cds->mesh;
+      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
       occa::memory o_Si = o_s + is * cds->fieldOffset * sizeof(dfloat);
@@ -124,7 +120,10 @@ void nek_outfld(const char* suffix, dfloat t, int coords,
   (*nek_setio_ptr)(&t, &xo, &vo, &po, &so, &NSfields, &FP64);
   (*nek_outfld_ptr)((char*)suffix);
   (*nek_resetio_ptr)();
+
   timer::toc("checkpointing");
+
+  (*nek_restoresol_ptr)();
 }
 
 void nek_uic(int ifield)
@@ -152,11 +151,6 @@ void nek_setic(void)
   }
 
   (*nek_setics_ptr)();
-
-  if (readRestartFile) {
-    double startTime = *(nekData.time);
-    options->setArgs("START TIME", to_string_f(startTime));
-  }
 }
 
 void nek_map_m_to_n(double* a, int na, double* b, int nb)
@@ -195,7 +189,7 @@ void nek_setics(void)
 
 void nek_userchk(void)
 {
-  if(rank == 0) printf("calling nek_userchk\n");
+  if(rank == 0) printf("calling nek_userchk ...\n");
   (*userchk_ptr)();
 }
 
@@ -292,6 +286,16 @@ void set_function_handles(const char* session_in,int verbose)
   nek_set_vert_ptr = (long long (*)(int*, int*))dlsym(handle,fname("nekf_set_vert"));
   check_error(dlerror());
 
+  nek_setbd_ptr = (void (*)(double *, double*, int*))dlsym(handle, fname("setbd"));
+  check_error(dlerror());
+  nek_setabbd_ptr = (void (*)(double *, double*, int*, int*))dlsym(handle, fname("setabbd"));
+  check_error(dlerror());
+
+  nek_storesol_ptr = (void (*)(void))dlsym(handle, fname("nekf_storesol"));
+  check_error(dlerror());
+  nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
+  check_error(dlerror());
+
 #define postfix(x) x ## _ptr
 #define load_or_noop(s) \
   do { \
@@ -370,6 +374,8 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
       sprintf(line, "      parameter (lgmres=%d)\n", 1);
     else if(strstr(line, "parameter (lorder=") != NULL)
       sprintf(line, "      parameter (lorder=%d)\n", 1);
+    else if(strstr(line, "parameter (lhis=") != NULL)
+      sprintf(line, "      parameter (lhis=%d)\n", 100000);
     else if(strstr(line, "parameter (lelr=") != NULL)
       sprintf(line, "      parameter (lelr=%d)\n", 128 * lelt);
 
@@ -464,7 +470,6 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   retval = system(buf);
   if (retval) goto err;
 
-  // Copy Nek5000/core from install_dir to cache_dir
   sprintf(buf, "cp -pr %s %s", nek5000_dir, cache_dir); 
   retval = system(buf);
   if (retval) goto err;
@@ -503,10 +508,10 @@ void nek_gen_bcmap()
   (*nek_gen_bcmap_ptr)();
 }
 
-int nek_setup(MPI_Comm c, setupAide &options_in, ins_t** ins_in)
+int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
 {
   options = &options_in;
-  ins = ins_in;
+  nrs = nrs_in;
   MPI_Comm_rank(c,&rank);
   MPI_Fint nek_comm = MPI_Comm_c2f(c);
 
@@ -640,6 +645,10 @@ int nek_setup(MPI_Comm c, setupAide &options_in, ins_t** ins_in)
   options->getArgs("SCALAR00 DIFFUSIVITY", diff);
   nekData.param[7] = diff;
 
+  dfloat startTime;
+  options->getArgs("START TIME", startTime);
+   *(nekData.time) = startTime; 
+
   return 0;
 }
 
@@ -650,42 +659,46 @@ void nek_copyFrom(dfloat time)
     fflush(stdout);
   }
 
-  timeLast = time;
-
-  mesh_t* mesh = (*ins)->mesh;
+  mesh_t* mesh = nrs->mesh;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
-  dfloat* vx = (*ins)->U + 0 * (*ins)->fieldOffset;
-  dfloat* vy = (*ins)->U + 1 * (*ins)->fieldOffset;
-  dfloat* vz = (*ins)->U + 2 * (*ins)->fieldOffset;
+  dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
+  dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
+  dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
 
   *(nekData.time) = time;
 
   memcpy(nekData.vx, vx, sizeof(dfloat) * Nlocal);
   memcpy(nekData.vy, vy, sizeof(dfloat) * Nlocal);
   memcpy(nekData.vz, vz, sizeof(dfloat) * Nlocal);
-  memcpy(nekData.pr, (*ins)->P, sizeof(dfloat) * Nlocal);
-  if((*ins)->Nscalar) {
+  memcpy(nekData.pr, nrs->P, sizeof(dfloat) * Nlocal);
+  if(nrs->Nscalar) {
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
-    for(int is = 0; is < (*ins)->Nscalar; is++) {
+    for(int is = 0; is < nrs->Nscalar; is++) {
       mesh_t* mesh;
-      (is) ? mesh = (*ins)->cds->meshV : mesh = (*ins)->cds->mesh;
+      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
-      dfloat* Si = (*ins)->cds->S + is * (*ins)->cds->fieldOffset;
+      dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
       memcpy(Ti, Si, Nlocal * sizeof(dfloat));
     }
   }
 }
 
+void nek_ocopyFrom(void)
+{
+  nrs->o_U.copyTo(nrs->U);
+  nrs->o_P.copyTo(nrs->P);
+  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  nek_copyFrom(0.0);
+}
+
 void nek_ocopyFrom(dfloat time, int tstep)
 {
-  if(time != timeLast) {
-    (*ins)->o_U.copyTo((*ins)->U);
-    (*ins)->o_P.copyTo((*ins)->P);
-    if((*ins)->Nscalar) (*ins)->cds->o_S.copyTo((*ins)->cds->S);
-    nek_copyFrom(time, tstep);
-  }
+  nrs->o_U.copyTo(nrs->U);
+  nrs->o_P.copyTo(nrs->P);
+  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  nek_copyFrom(time, tstep);
 }
 
 void nek_copyFrom(dfloat time, int tstep)
@@ -697,9 +710,9 @@ void nek_copyFrom(dfloat time, int tstep)
 void nek_ocopyTo(dfloat &time)
 {
   nek_copyTo(time);
-  (*ins)->o_P.copyFrom((*ins)->P);
-  (*ins)->o_U.copyFrom((*ins)->U);
-  if((*ins)->Nscalar) (*ins)->cds->o_S.copyFrom((*ins)->cds->S);
+  nrs->o_P.copyFrom(nrs->P);
+  nrs->o_U.copyFrom(nrs->U);
+  if(nrs->Nscalar) nrs->cds->o_S.copyFrom(nrs->cds->S);
 }
 
 void nek_copyTo(dfloat &time)
@@ -709,53 +722,27 @@ void nek_copyTo(dfloat &time)
     fflush(stdout);
   }
 
-  mesh_t* mesh = (*ins)->mesh;
+  mesh_t* mesh = nrs->mesh;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   time = *(nekData.time);
 
-  dfloat* vx = (*ins)->U + 0 * (*ins)->fieldOffset;
-  dfloat* vy = (*ins)->U + 1 * (*ins)->fieldOffset;
-  dfloat* vz = (*ins)->U + 2 * (*ins)->fieldOffset;
+  dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
+  dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
+  dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
 
   memcpy(vx, nekData.vx, sizeof(dfloat) * Nlocal);
   memcpy(vy, nekData.vy, sizeof(dfloat) * Nlocal);
   memcpy(vz, nekData.vz, sizeof(dfloat) * Nlocal);
-  memcpy((*ins)->P, nekData.pr, sizeof(dfloat) * Nlocal);
-  if((*ins)->Nscalar) {
+  memcpy(nrs->P, nekData.pr, sizeof(dfloat) * Nlocal);
+  if(nrs->Nscalar) {
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
-    for(int is = 0; is < (*ins)->Nscalar; is++) {
+    for(int is = 0; is < nrs->Nscalar; is++) {
       mesh_t* mesh;
-      (is) ? mesh = (*ins)->cds->meshV : mesh = (*ins)->cds->mesh;
+      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
-      dfloat* Si = (*ins)->cds->S + is * (*ins)->cds->fieldOffset;
-      memcpy(Si, Ti, Nlocal * sizeof(dfloat));
-    }
-  }
-}
-
-void nek_copyRestart()
-{
-  mesh_t* mesh = (*ins)->mesh;
-  dlong Nlocal = mesh->Nelements * mesh->Np;
-  if (*(nekData.ifgetu)) {
-    dfloat* vx = (*ins)->U + 0 * (*ins)->fieldOffset;
-    dfloat* vy = (*ins)->U + 1 * (*ins)->fieldOffset;
-    dfloat* vz = (*ins)->U + 2 * (*ins)->fieldOffset;
-    memcpy(vx, nekData.vx, sizeof(dfloat) * Nlocal);
-    memcpy(vy, nekData.vy, sizeof(dfloat) * Nlocal);
-    memcpy(vz, nekData.vz, sizeof(dfloat) * Nlocal);
-  }
-  if (*(nekData.ifgetp)) memcpy((*ins)->P, nekData.pr, sizeof(dfloat) * Nlocal);
-  if((*ins)->Nscalar) {
-    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
-    for(int is = 0; is < (*ins)->Nscalar; is++) {
-      mesh_t* mesh;
-      (is) ? mesh = (*ins)->cds->meshV : mesh = (*ins)->cds->mesh;
-      const dlong Nlocal = mesh->Nelements * mesh->Np;
-      dfloat* Ti = nekData.t   + is * nekFieldOffset;
-      dfloat* Si = (*ins)->cds->S + is * (*ins)->cds->fieldOffset;
+      dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
       memcpy(Si, Ti, Nlocal * sizeof(dfloat));
     }
   }
@@ -764,4 +751,17 @@ void nek_copyRestart()
 long long nek_set_glo_num(int nx, int isTMesh)
 {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
+}
+
+void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order) 
+{
+  double nekCoeff[4];
+  (*nek_setbd_ptr)(nekCoeff, dt, &order);
+  *g0 = nekCoeff[0];
+  memcpy(coeff, &nekCoeff[1], 3*sizeof(double));
+}
+
+void nek_extCoeff(double *coeff, double *dt, int order)
+{
+  (*nek_setabbd_ptr)(coeff, dt, &order, &order);
 }

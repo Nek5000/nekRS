@@ -2,18 +2,23 @@
 
 ## What is new? 
 
-* Additive V-cycle with overlapping coarse grid solve
 * (Chebyshev accelerated) ASM and RAS smoother
-* Residual projection
+* Improved gs performance
+* Initial guess projection
 * Runtime averages
-* Improved CPU performance
+* Stress formulation
 * Various bug fixes 
 
 ## What you may have to change to be compatible 
 
 * common block SCRNS was replaced by pointer array NRSSCPTR (see ethier example) 
+* update boundary device function names and bc struct members in oudf (e.g. insVelocityDirichlet3D -> velocityDirichlet, bc->uP -> bc->u)
+* remove copyTo() call to get nek IC from UDF_Setup() 
+* call nek_ocopyTo(time) after nek_userchk() if you want to modify the solution before writing to file
 
 ## Known Bugs 
+
+* [166](https://github.com/Nek5000/nekRS/issues/166)
 
 ## Thanks to our Contributors
 

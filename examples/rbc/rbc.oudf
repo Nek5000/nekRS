@@ -1,7 +1,7 @@
 // Boundary conditions
 
-void cdsDirichletConditions3D(bcData *bc) {
-  bc->sP = 1.f - bc->z; 
+void scalarDirichletConditions(bcData *bc) {
+  bc->s = 1.f - bc->z; 
 }
 
 // Kernels
