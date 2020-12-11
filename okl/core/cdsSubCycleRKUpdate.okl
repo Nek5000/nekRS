@@ -91,7 +91,7 @@
                             @restrict dfloat*  Ue)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    #pragma unroll
+    #pragma unroll p_Nq
     for(int j = 0 ; j < p_Nq; ++j){
       for(int n = 0; n < p_Nq*p_Nq; ++n; @inner(0)) {
         const dlong id = n + j*p_Nq*p_Nq + p_Np * e;

@@ -36,6 +36,7 @@
     @exclusive dfloat s_Ploc[p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
+    #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; ++k){
       for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
