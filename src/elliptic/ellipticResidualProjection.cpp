@@ -42,7 +42,7 @@ void ResidualProjection::updateProjectionSpace()
 {
   if(numVecsProjection <= 0) return;
 
-  multiWeightedInnerProduct(o_xx, numVecsProjection, o_bb, numVecsProjection - 1);
+  multiWeightedInnerProduct(o_xx, o_bb, numVecsProjection - 1);
   const dfloat norm_orig = alpha[numVecsProjection - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
@@ -72,7 +72,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   dfloat zero = 0.0;
   dfloat mone = -1.0;
   if(numVecsProjection <= 0) return;
-  multiWeightedInnerProduct(o_xx,numVecsProjection,o_r,0);
+  multiWeightedInnerProduct(o_xx,o_r,0);
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
@@ -234,24 +234,23 @@ void ResidualProjection::post(occa::memory& o_x)
 
 void ResidualProjection::multiWeightedInnerProduct(
   occa::memory &o_a,
-  const dlong numVecs,
   occa::memory &o_b,
   const dlong offset)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecs, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
+  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
-  o_wrk.copyTo(multiwork, sizeof(dfloat) * m * Nblock);
-  for(dlong k = 0; k < numVecs; ++k) {
+  o_wrk.copyTo(multiwork, sizeof(dfloat) * numVecsProjection * Nblock);
+  for(dlong k = 0; k < numVecsProjection; ++k) {
     dfloat accum = 0.0;
     for(dlong n = 0; n < Nblock; ++n)
       accum += multiwork[n + k * Nblock];
     alpha[k] = accum;
   }
-  MPI_Allreduce(MPI_IN_PLACE, alpha, numVecs, MPI_DFLOAT, MPI_SUM, comm);
-  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecs);
+  MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif
