@@ -32,6 +32,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
     options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
   }
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
@@ -66,7 +67,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s2Err = abs((err[3] - 1.31E-11)/err[3]);
              pIterErr = abs(nrs->NiterP - 4);
              break;
-    case 2 : velIterErr = abs(nrs->NiterU - 10);
+    case 2 : velIterErr = abs(nrs->NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
              s2Err = abs((err[3] - 2.00E-11)/err[3]);
              pIterErr = abs(nrs->NiterP - 1);
