@@ -40,24 +40,23 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
 
 void ResidualProjection::updateProjectionSpace()
 {
-  dlong m = numVecsProjection;
-  if(m <= 0) return;
+  if(numVecsProjection <= 0) return;
 
-  multiWeightedInnerProduct(o_xx, m, o_bb, m - 1);
-  const dfloat norm_orig = alpha[m - 1];
+  multiWeightedInnerProduct(o_xx, numVecsProjection, o_bb, numVecsProjection - 1);
+  const dfloat norm_orig = alpha[numVecsProjection - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
-  multiScaledAddwOffsetKernel(Nlocal, m, Nfields * (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
-  multiScaledAddwOffsetKernel(Nlocal, m, Nfields * (m - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
-  for(int k = 0; k < m - 1; ++k)
+  multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
+  multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
+  for(int k = 0; k < numVecsProjection - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
   norm_new = sqrt(norm_new);
   dfloat tol = 1e-7;
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (m - 1) * fieldOffset, scale, o_xx);
-    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (m - 1) * fieldOffset, scale, o_bb);
+    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (numVecsProjection - 1) * fieldOffset, scale, o_xx);
+    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (numVecsProjection - 1) * fieldOffset, scale, o_bb);
   } else {
     if(verbose && rank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -72,12 +71,11 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   dfloat one = 1.0;
   dfloat zero = 0.0;
   dfloat mone = -1.0;
-  const int m = numVecsProjection;
-  if(m <= 0) return;
-  multiWeightedInnerProduct(o_xx,m,o_r,0);
+  if(numVecsProjection <= 0) return;
+  multiWeightedInnerProduct(o_xx,numVecsProjection,o_r,0);
 
-  accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_xx, o_xbar);
-  accumulateKernel(Nlocal, m, fieldOffset, o_alpha, o_bb, o_rtmp);
+  accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
+  accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
   if(blockSolver){
     scaledAddKernel(Nlocal, fieldOffset, mone, o_rtmp, one, o_r);
   } else {
@@ -113,11 +111,11 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
       scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
     }
   }
-  const dlong m_save = numVecsProjection;
+  const dlong previousNumVecsProjection = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
 
   updateProjectionSpace();
-  if (numVecsProjection < m_save) { // Last vector was linearly dependent, reset space
+  if (numVecsProjection < previousNumVecsProjection) { // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
     matvec(o_bb,0,o_xx,0);
@@ -208,8 +206,7 @@ void ResidualProjection::pre(occa::memory& o_r)
   if(timestep < numTimeSteps)
     return;
 
-  const int m = numVecsProjection;
-  if(m <= 0) return;
+  if(numVecsProjection <= 0) return;
   dfloat priorResidualNorm = 0.0;
   if(verbose) priorResidualNorm =
       sqrt(weightedNorm(o_r) * resNormFactor);
@@ -237,24 +234,24 @@ void ResidualProjection::post(occa::memory& o_x)
 
 void ResidualProjection::multiWeightedInnerProduct(
   occa::memory &o_a,
-  const dlong m,
+  const dlong numVecs,
   occa::memory &o_b,
   const dlong offset)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, m, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
+  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecs, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
   o_wrk.copyTo(multiwork, sizeof(dfloat) * m * Nblock);
-  for(dlong k = 0; k < m; ++k) {
+  for(dlong k = 0; k < numVecs; ++k) {
     dfloat accum = 0.0;
     for(dlong n = 0; n < Nblock; ++n)
       accum += multiwork[n + k * Nblock];
     alpha[k] = accum;
   }
-  MPI_Allreduce(MPI_IN_PLACE, alpha, m, MPI_DFLOAT, MPI_SUM, comm);
-  o_alpha.copyFrom(alpha,sizeof(dfloat) * m);
+  MPI_Allreduce(MPI_IN_PLACE, alpha, numVecs, MPI_DFLOAT, MPI_SUM, comm);
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecs);
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif
