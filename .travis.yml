@@ -11,6 +11,7 @@ env:
   - OCCA_CUDA_ENABLED=0
   - OCCA_HIP_ENABLED=0
   - OCCA_OPENCL_ENABLED=0
+  - OCCA_CXXFLAGS="-O2 -ftree-vectorize -funroll-loops"
 
 cache:
   directories:
@@ -43,6 +44,9 @@ jobs:
    - stage: test
      name: "ethier (block) velocity and pressure projection with subcycling"
      script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 4 
+   - stage: test
+     name: "ethier valgrind"
+     script: cd $NEKRS_EXAMPLES/ethier && valgrind --log-file=valgrind_output.log --suppressions=ethier.supp nekrs --setup ethier && python3 parse_valgrind.py
    - stage: test
      name: "lowMach default"
      script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
