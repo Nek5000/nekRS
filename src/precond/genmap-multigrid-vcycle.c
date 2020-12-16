@@ -22,7 +22,7 @@ void mg_vcycle(GenmapScalar *u1,GenmapScalar *rhs,mgData d)
   for(i=0; i<lvl_off[1]; i++)
     r[i]=rhs[i];
 
-  GenmapHandle h=d->h;
+  genmap_handle h=d->h;
 
   for(lvl=0; lvl<nlevels-1; lvl++){
     off=lvl_off[lvl]; n=lvl_off[lvl+1]-off;

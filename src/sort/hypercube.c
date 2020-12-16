@@ -138,9 +138,7 @@ int parallel_hypercube_sort(struct hypercube *data,struct comm *c)
     update_probe_counts(data,c);
     metric_toc(c,UPDATEPROBE);
   }
-  metric_tic(c,RCBTRANSFER);
   transfer_elem(data,c);
-  metric_toc(c,RCBTRANSFER);
 
   // split the communicator
   struct comm nc;

@@ -138,12 +138,12 @@ void csr_mat_print(csr_mat M,struct comm *c){
 
   for(k=0; k<c->np; k++){
     comm_barrier(c);
-    if(c->id==k)
+    if(c->id==k){
       for(i=0; i<rn; i++){
         for(j=offsets[i]; j<offsets[i+1]; j++)
-          fprintf(stderr,"(%d,%lld,%lld,%.10lf)\n",c->id,M->row_start+i,
-              col[j],v[j]);
+          fprintf(stderr,"(%lld,%lld) -> %.10lf\n",M->row_start+i,col[j],v[j]);
       }
+    }
     fflush(stderr);
   }
 }

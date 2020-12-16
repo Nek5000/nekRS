@@ -3,29 +3,35 @@
 
 #include <genmap-impl.h>
 
-int GenmapInit(GenmapHandle *h, GenmapCommExternal ce) {
-  GenmapMalloc(1, h);
-  GenmapHandle h_ = *h;
+int genmap_init(genmap_handle *h_, comm_ext ce, int *options) {
+  GenmapMalloc(1, h_);
+  genmap_handle h = *h_;
 
-  GenmapCreateComm(&h_->global, ce);
-  GenmapCreateComm(&h_->local, ce);
+  GenmapCreateComm(&h->global, ce);
+  GenmapCreateComm(&h->local, ce);
 
-  h_->elementArray.ptr = NULL;
-  h_->elementArray.n = (*h)->elementArray.max = 0;
+  h->weights = NULL;
 
-  h_->dbgLevel = 0;
-  h_->printStat = 0;
+  h->verbose_level = 0;
+  h->print_stat = 0;
+
+  if(options!=NULL){
+    if(options[0]>0)
+      h->verbose_level=options[1];
+    if(options[0]>1)
+      h->print_stat=options[2];
+  }
 
   return 0;
 }
 
-int GenmapFinalize(GenmapHandle h) {
+int genmap_finalize(genmap_handle h) {
+  if(h->weights!=NULL)
+    GenmapFree(h->weights);
   if(GenmapGetGlobalComm(h))
     GenmapDestroyComm(GenmapGetGlobalComm(h));
   if(GenmapGetLocalComm(h))
     GenmapDestroyComm(h->local);
-
-  array_free(&(h->elementArray));
 
   GenmapFree(h);
 

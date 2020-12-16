@@ -45,12 +45,10 @@ int parallel_bin_sort(struct sort *s,struct comm *c)
   set_bin(&proc,s,0,c);
   metric_toc(c,SETPROC);
 
-  metric_tic(c,RCBTRANSFER);
   // Transfer to destination processor
   struct crystal cr; crystal_init(&cr,c);
   sarray_transfer_ext_(s->a,s->unit_size,proc,sizeof(uint),&cr);
   crystal_free(&cr);
-  metric_toc(c,RCBTRANSFER);
 
   GenmapFree(proc);
 

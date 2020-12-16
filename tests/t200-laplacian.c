@@ -22,7 +22,7 @@ int main(int argc,char *argv[]){
   Mesh mesh;
   read_co2_mesh(&mesh,argv[1],&comm);
 
-  GenmapHandle gh; GenmapInit(&gh,MPI_COMM_WORLD);
+  genmap_handle gh; genmap_init(&gh,MPI_COMM_WORLD);
   GenmapSetNLocalElements(gh,mesh->nelt);
   GenmapSetNVertices(gh,mesh->nVertex);
 
@@ -52,8 +52,8 @@ int main(int argc,char *argv[]){
   GenmapDestroyVector(v);
   GenmapDestroyVector(u);
 
-  MeshFree(mesh);
-  GenmapFinalize(gh);
+  mesh_free(mesh);
+  genmap_finalize(gh);
 
   comm_free(&comm);
   MPI_Finalize();

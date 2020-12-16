@@ -11,6 +11,15 @@
 #define min(a,b) ((a)<(b) ? (a) : (b))
 #define max(a,b) ((a)>(b) ? (a) : (b))
 
+#define READ_T(coords,buf,T,nVertex) do{\
+  memcpy((coords),buf,sizeof(T)*nVertex);\
+} while(0)
+
+#define WRITE_INT(dest,val) do{\
+  memcpy(dest,&(val),sizeof(int));\
+} while(0)
+
+// TODO: Use rsb_element here
 struct Point_private{
   GenmapScalar dx;
   GenmapScalar x[GC_MAX_DIM];
@@ -21,6 +30,9 @@ struct Point_private{
   ulong elementId;
   slong globalId;
 };
+
+extern int faces3D[GC_MAX_FACES][GC_MAX_FACE_VERTICES];
+extern int faces2D[GC_MAX_FACES][GC_MAX_FACE_VERTICES];
 
 struct Face_private{
   struct Point_private vertex[GC_MAX_FACE_VERTICES];

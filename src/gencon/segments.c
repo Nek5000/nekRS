@@ -48,7 +48,7 @@ int mergeSegments(Mesh mesh,struct comm *c,int i,GenmapScalar tolSquared)
   return 0;
 }
 
-int findSegments(Mesh mesh,struct comm *c,GenmapScalar tol){
+int findSegments(Mesh mesh,struct comm *c,GenmapScalar tol,int verbose){
   int nDim=mesh->nDim,nVertex=mesh->nVertex;
   GenmapScalar tolSquared=tol*tol;
 
@@ -89,9 +89,10 @@ int findSegments(Mesh mesh,struct comm *c,GenmapScalar tol){
     comm_scan(out,&nonZeroRanks,gs_long,gs_add,in,1,buff);
     slong start=out[0][0];
 
-#if defined(GENMAP_DEBUG)
-    printf("segments: rank=%d npts=%u start=%lld\n",rank,nPoints,start);
-#endif
+    if(verbose>1){
+      printf("segments: rank=%d npts=%u start=%lld\n",rank,nPoints,start);
+      fflush(stdout);
+    }
 
     sint i; for(i=0;i<nPoints;i++)
       points[i].ifSegment=0,points[i].proc=rank;
@@ -101,17 +102,17 @@ int findSegments(Mesh mesh,struct comm *c,GenmapScalar tol){
       findLocalSegments(mesh,dim,tolSquared);
       mergeSegments(mesh,&nonZeroRanks,dim,tolSquared);
 
-#if defined(GENMAP_DEBUG)
-    sint count=0;
-    for(i=0;i<nPoints;i++)
-      if(points[i].ifSegment>0)
-        count++;
+      if(verbose>0){
+        sint count=0;
+        for(i=0;i<nPoints;i++)
+          if(points[i].ifSegment>0)
+            count++;
 
-    in[0]=count;
-    comm_allreduce(&nonZeroRanks,gs_long,gs_add,in,1,buff);
-    if(rank==0)
-      printf("locglob: %d %lld\n",dim+1,in[0]+1);
-#endif
+        in[0]=count;
+        comm_allreduce(&nonZeroRanks,gs_long,gs_add,in,1,buff);
+        if(rank==0)
+          printf("locglob: %d %lld\n",dim+1,in[0]+1);
+      }
     }
   }
 

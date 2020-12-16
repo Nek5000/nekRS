@@ -4,7 +4,7 @@
 #include <genmap-impl.h>
 #include <genmap-multigrid-precon.h>
 
-int flex_cg(GenmapHandle h,GenmapComm c,mgData d,GenmapVector ri,
+int flex_cg(genmap_handle h,GenmapComm c,mgData d,GenmapVector ri,
   int maxIter,int verbose,GenmapVector x)
 {
   assert(x->size==ri->size);
@@ -34,13 +34,9 @@ int flex_cg(GenmapHandle h,GenmapComm c,mgData d,GenmapVector ri,
   for(i=0; i<lelt; i++)
     x->data[i]=0.0,r->data[i]=ri->data[i];
 
-#if PREC
-  mg_vcycle(z->data,r->data,d);
-#else
   GenmapCopyVector(z,r);
-#endif
 #if ORTH
-  GenmapOrthogonalizebyOneVector(h,c,z,nelg);
+  GenmapOrthogonalizebyOneVector(c,z,nelg);
 #endif
 
   GenmapScalar den,alpha,beta,rz0,rz1=0,rz2,rr;
@@ -54,7 +50,7 @@ int flex_cg(GenmapHandle h,GenmapComm c,mgData d,GenmapVector ri,
 
   i=0;
   while(i<maxIter && sqrt(rz1)>GENMAP_TOL){
-    GenmapLaplacian(h,c,p,w);
+    GenmapLaplacian(h,c,p->data,w->data);
 
     den=GenmapDotVector(p,w);
     GenmapGop(c,&den,1,GENMAP_SCALAR,GENMAP_SUM);
@@ -71,7 +67,7 @@ int flex_cg(GenmapHandle h,GenmapComm c,mgData d,GenmapVector ri,
     GenmapCopyVector(z,r);
 #endif
 #if ORTH
-    GenmapOrthogonalizebyOneVector(h,c,z,nelg);
+    GenmapOrthogonalizebyOneVector(c,z,nelg);
 #endif
 
     rz0=rz1;

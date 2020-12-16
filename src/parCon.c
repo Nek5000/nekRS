@@ -25,15 +25,19 @@ int parRSB_findConnectivity(long long *vertexid,double *coord,
   struct comm c; comm_init(&c,comm);
   uint rank=c.id,size=c.np;
 
-  if(rank==0 && verbose)
+  if(rank==0 && verbose>0)
     printf("generating connectivity ... ");
   fflush(stdout);
+
+  if(verbose>1){
+    printf("\tnelt/ndim/nperiodic: %d/%d/%d\n",nelt,ndim,nPeriodicFaces);
+  }
 
   double t_con=0.0;
   comm_barrier(&c);
   t_con-=comm_time();
 
-  Mesh mesh; MeshInit(&mesh,nelt,ndim);
+  Mesh mesh; mesh_init(&mesh,nelt,ndim);
 
   slong out[2][1],buff[2][1],in=nelt;
   comm_scan(out,&c,gs_long,gs_add,&in,1,buff);
@@ -78,29 +82,25 @@ int parRSB_findConnectivity(long long *vertexid,double *coord,
   transferBoundaryFaces(mesh,&c);
 
   findMinNeighborDistance(mesh);
-  findSegments(mesh,&c,tol);
+  findSegments(mesh,&c,tol,0);
   setGlobalID(mesh,&c);
   sendBack(mesh,&c);
+  faceCheck(mesh,&c);
   matchPeriodicFaces(mesh,&c);
 
   // copy output
   Point ptr=mesh->elements.ptr;
-  k=0;
-  for(i=0; i<nelt; i++){
-    vertexid[k++]=ptr->elementId+1;
-    for(j=0; j<nvertex; j++){
-      vertexid[k++]=ptr->globalId+1;
-      ptr++;
-    }
+  for(i=0; i<nelt*nvertex; i++){
+    vertexid[i]=ptr[i].globalId+1;
   }
 
   comm_barrier(&c);
   t_con+=comm_time();
 
-  if(rank==0 && verbose)
+  if(rank==0 && verbose>0)
     printf(" finished in %g s\n",t_con);
 
-  MeshFree(mesh);
+  mesh_free(mesh);
   comm_free(&c);
 
   return 0;

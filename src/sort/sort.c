@@ -32,8 +32,7 @@ int set_dest(uint *proc,uint np,ulong start,uint size,ulong nelem)
   return 0;
 }
 
-int load_balance(struct array *a,size_t size,struct comm *c,
-    struct crystal *cr)
+int load_balance(struct array *a,size_t size,struct comm *c,struct crystal *cr)
 {
   slong in=a->n,out[2][1],buf[2][1];
   comm_scan(out,c,gs_long,gs_add,&in,1,buf);
@@ -121,18 +120,12 @@ int parallel_sort_private(struct sort *data,struct comm *c){
       break;
   }
 
-  metric_tic(c,LOADBALANCE0);
   if(balance){
-    metric_tic(c,LOADBALANCE1);
     struct crystal cr; crystal_init(&cr,c);
     load_balance(a,usize,c,&cr);
-    metric_toc(c,LOADBALANCE1);
-    metric_tic(c,LOCALSORT);
     sort_local(data);
-    metric_toc(c,LOCALSORT);
     crystal_free(&cr);
   }
-  metric_toc(c,LOADBALANCE0);
 
   comm_free(&dup);
 

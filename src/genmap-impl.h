@@ -18,62 +18,123 @@
 #define GENMAP_PROC 2
 #define GENMAP_ORIGIN 3
 
-struct GenmapComm_private {
+#define GENMAP_RCB_ELEMENT 0
+#define GENMAP_RSB_ELEMENT 1
+
+#define MAXDIM 3 /* Maximum dimension of the mesh */
+#define MAXNV 8 /* Maximum number of vertices per element */
+
+struct GenmapComm_private{
   struct comm gsc;
+  /* Un-weighted Laplacian */
   struct gs_data *gsh;
   csr_mat M;
+  /* Weighted Laplacian */
+  struct gs_data *gsw;
   buffer buf;
   GenmapScalar *b;
 };
 
-struct GenmapElement_private {
-  GenmapScalar fiedler;
-  GenmapLong globalId;
-  GenmapLong globalId0;
-  GenmapLong vertices[8];
+/* parRCB internals */
+struct rcb_element{
+  unsigned char type;
   GenmapInt proc;
   GenmapInt origin;
+  GenmapInt seq;
+  GenmapLong globalId;
+  GenmapScalar coord[MAXDIM];
+};
+
+void rcb_local(struct array *a,uint start,uint end,int ndim,buffer *buf);
+int rcb_level(struct comm *c,struct array *a,int ndim);
+int rcb(struct comm *ci,struct array *a,int ndim);
+
+/* parRSB internals */
+/* rsb_element should be a superset of rsb_element */
+struct rsb_element{
+  unsigned char type;
+  GenmapInt proc;
+  GenmapInt origin;
+  GenmapInt seq;
+  GenmapLong globalId;
+  GenmapScalar coord[MAXDIM];
+  GenmapLong vertices[8];
+  GenmapInt part;
+  GenmapULong globalId0;
+  GenmapScalar fiedler;
 };
 
 int GenmapCreateElements(GenmapElements *e);
 int GenmapDestroyElements(GenmapElements e);
-GenmapElements GenmapGetElements_default(GenmapHandle h);
+GenmapElements GenmapGetElements_default(genmap_handle h);
 
+struct genmap_handle_private {
+  GenmapComm global;
+  GenmapComm local;
+
+  GenmapLong nel;
+  GenmapLong Nnodes;
+  GenmapLong start;
+  int nv;
+
+  GenmapScalar *weights;
+  struct array *elements;
+  struct crystal cr;
+
+  int verbose_level;
+  int print_stat;
+};
+
+int GenmapCreateHandle(genmap_handle h);
+int GenmapDestroyHandle(genmap_handle h);
+
+struct GenmapVector_private {
+  GenmapInt size;
+  GenmapScalar *data;
+};
+
+#define GenmapMalloc(n, p) GenmapMallocArray ((n), sizeof(**(p)), p)
+#define GenmapCalloc(n, p) GenmapCallocArray ((n), sizeof(**(p)), p)
+#define GenmapRealloc(n, p) GenmapReallocArray((n), sizeof(**(p)), p)
+
+/* Genmap Metrics */
 typedef enum{
-  RSB,
-  RCB,
+  ALLREDUCE=0,
+  AXISLEN,
   BINN1,
   BINN2,
-  AXISLEN,
-  PARSORT,
-  SETPROC,
-  LOCALSORT,
+  BISECT,
   COMMSPLIT,
-  LOADBALANCE0,
-  LOADBALANCE1,
-  RCBTRANSFER,
-  UPDATEPROBE,
-  GSSETUP,
-  PAIRWISE,
   CRYSTAL,
-  ALLREDUCE,
-  NNEIGHBORS,
   FIEDLER,
-  NFIEDLER,
-  LANCZOS,
-  RQI,
   FMG,
   GSOP,
-  LAPLACIANSETUP,
-  NCONN,
+  GSSETUP,
+  GRAMMIAN,
+  LANCZOS,
+  LAPLACIANSETUP0,
+  LAPLACIANSETUP1,
   LAPLACIAN,
-  PROJECTPF,
+  LOCALSORT,
+  NCONN,
+  NNEIGHBORS,
+  NFIEDLER,
+  NDISCON,
   NPROJECTPF,
+  NRQI,
+  PAIRWISE,
+  PARSORT,
   PRECONSETUP,
-  PRECONVCYCLE,
   PRECONAX,
-  END
-}metric;
+  PROJECTPF,
+  PROJECT,
+  RCB,
+  RCBTRANSFER,
+  RQI,
+  SETPROC,
+  UPDATEPROBE,
+  VCYCLE
+} metric;
 
 void metric_init();
 void metric_finalize();
@@ -85,56 +146,20 @@ void metric_push_level();
 uint metric_get_levels();
 void metric_print(struct comm *c);
 
-struct GenmapHandle_private {
-  GenmapComm global;
-  GenmapComm local;
-
-  GenmapLong nel;
-  GenmapLong Nnodes;
-  GenmapLong start;
-  int nv;
-
-  struct array elementArray;
-
-  struct crystal cr;
-
-  int dbgLevel;
-  int printStat;
-};
-
-int GenmapCreateHandle(GenmapHandle h);
-int GenmapDestroyHandle(GenmapHandle h);
-
-struct GenmapVector_private {
-  GenmapInt size;
-  GenmapScalar *data;
-};
-
-#define GenmapMalloc(n, p) GenmapMallocArray ((n), sizeof(**(p)), p)
-#define GenmapCalloc(n, p) GenmapCallocArray ((n), sizeof(**(p)), p)
-#define GenmapRealloc(n, p) GenmapReallocArray((n), sizeof(**(p)), p)
-
-void GenmapFiedlerMinMax(GenmapHandle h, GenmapScalar *min,
-    GenmapScalar *max);
-void GenmapGlobalIdMinMax(GenmapHandle h, GenmapLong *min,
-    GenmapLong *max);
-GenmapInt GenmapSetFiedlerBin(GenmapHandle h);
-GenmapInt GenmapSetGlobalIdBin(GenmapHandle h);
-void GenmapAssignBins(GenmapHandle h, int field, buffer *buf0);
-void GenmapTransferToBins(GenmapHandle h, int field, buffer *buf0);
-void GenmapBinSort(GenmapHandle h, int field, buffer *buf0);
-
-#define MAXDIM 3
+/* genCon */
 typedef struct{
-  int proc;
-  int orig;
-  int seq;
-  unsigned long long id;
-  double coord[MAXDIM];
-}elm_rcb;
+  GenmapULong sequenceId;
+  int nNeighbors;
+  GenmapULong elementId;
+  GenmapULong vertexId;
+  uint workProc;
+} vertex;
 
-int parRCB(struct comm *ci,struct array *a,int ndim);
-void rcb_local(struct array *a,uint start,uint end,
-    int ndim,buffer *buf);
+/* Components */
+sint is_disconnected(struct comm *c,struct gs_data *gsh,buffer *buf,
+  uint nelt,uint nv);
+
+/* Matrix inverse */
+void matrix_inverse(int N,double *A);
 
 #endif

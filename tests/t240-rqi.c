@@ -23,8 +23,8 @@ int main(int argc,char *argv[]){
   }
 
   Mesh mesh;
-  read_re2_mesh(&mesh,argv[1],&comm);
-  read_co2_file( mesh,argv[2],&comm);
+  read_geometry(&mesh,argv[1],&comm);
+  read_connectivity( mesh,argv[2],&comm);
 
   GenmapInt i,j;
 
@@ -71,8 +71,8 @@ int main(int argc,char *argv[]){
   }
 
   if(rcb_l){
-    struct array a; array_init(elm_rcb,&a,mesh->nelt); a.n=mesh->nelt;
-    elm_rcb *ptr=a.ptr;
+    struct array a; array_init(struct rcb_element,&a,mesh->nelt); a.n=mesh->nelt;
+    struct rcb_element *ptr=a.ptr;
     for(i=0; i<mesh->nelt; i++){
       ptr[i].orig=i;
       ptr[i].coord[0]=0.0;
@@ -97,7 +97,7 @@ int main(int argc,char *argv[]){
 
     for(i=0; i<mesh->nelt; i++) ptr[i].proc=i;
 
-    sarray_sort(elm_rcb,a.ptr,a.n,orig,0,&buf);
+    sarray_sort(struct rcb_element,a.ptr,a.n,orig,0,&buf);
     ptr=a.ptr;
 
     Point pp=mesh->elements.ptr;
@@ -119,7 +119,7 @@ int main(int argc,char *argv[]){
   free(coords);
   buffer_free(&buf);
 
-  GenmapHandle gh; GenmapInit(&gh,MPI_COMM_WORLD);
+  genmap_handle gh; genmap_init(&gh,MPI_COMM_WORLD);
   GenmapSetNLocalElements(gh,mesh->nelt);
   GenmapSetNVertices(gh,mesh->nVertex);
 
@@ -161,8 +161,8 @@ int main(int argc,char *argv[]){
 
   GenmapDestroyVector(x); GenmapDestroyVector(r);
 
-  GenmapFinalize(gh);
-  MeshFree(mesh);
+  genmap_finalize(gh);
+  mesh_free(mesh);
 
   comm_free(&comm);
   MPI_Finalize();
