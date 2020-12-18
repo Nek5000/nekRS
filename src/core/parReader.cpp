@@ -547,12 +547,13 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     nscal++;
     isStart++;
 
+    options.setArgs("SCALAR00 IS TEMPERATURE", "TRUE");
+
     string solver;
     ini.extract("temperature", "solver", solver);
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
-      options.setArgs("TEMPERATURE", "TRUE");
       options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;

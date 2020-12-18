@@ -12,7 +12,7 @@ void lowMach::setup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
   int err = 1;
-  if(nrs->options.compareArgs("TEMPERATURE", "TRUE")) err = 0;
+  if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
