@@ -217,7 +217,21 @@ void* nrsPtr(void)
   return nrs;
 }
 
+int isOutputStep(int tStep, double time, double outputTime, int lastStep)
+{
+  int outputStep = 0;
 
+  if (writeControlRunTime()) {
+    outputStep = (time >= outputTime);
+  } else {
+    if (writeInterval() > 0) outputStep = (tStep%(int)writeInterval() == 0);
+  }
+  if (writeInterval() == 0) outputStep = 0;
+  if (lastStep) outputStep = 1;
+  if (writeInterval() < 0) outputStep = 0;
+
+  return outputStep;
+}
 
 void printRuntimeStatistics()
 {

@@ -23,6 +23,7 @@ const double endTime(void);
 const int numSteps(void);
 const int lastStep(double time, int tstep, double elapsedTime);
 const int writeControlRunTime(void);
+int isOutputStep(int tStep, double time, double outputTime, int lastStep);
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);
