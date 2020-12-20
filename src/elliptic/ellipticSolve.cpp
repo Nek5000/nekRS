@@ -44,7 +44,7 @@ int ellipticSolve(elliptic_t* elliptic,
     ellipticUpdateJacobi(elliptic);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE"))
-    elliptic->o_x0.copyFrom(o_x, elliptic->Ntotal * sizeof(dfloat));
+    elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
 
   // compute initial residual
   ellipticOperator(elliptic, o_x, elliptic->o_Ap, dfloatString);

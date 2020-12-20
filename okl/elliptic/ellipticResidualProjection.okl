@@ -25,13 +25,18 @@
  */
 
 @kernel void scalarMultiply(const dlong N,
+                            const dlong fieldOffset,
                             const dlong offset,
                             const dfloat alpha,
                             @restrict dfloat*  x)
 {
   for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
-    if(n < N)
-      x[n + offset] = alpha * x[n + offset];
+    if(n < N){
+      #pragma unroll p_Nfields
+      for(dlong field = 0 ; field < p_Nfields; ++field){
+        x[n + offset + field * fieldOffset] = alpha * x[n + offset + field * fieldOffset];
+      }
+    }
 }
 
 @kernel void multiScaledAddwOffset(const dlong N,
@@ -43,9 +48,11 @@
                                    @restrict dfloat*  x)
 {
   for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
-    if(n < N)
+    if(n < N){
       for(dlong k = 0; k < m - 1; ++k)
-        x[n + destOffset] = -alphas[k] * x[n + k * fieldOffset] + beta * x[n + destOffset];
+        for(dlong fld = 0; fld < p_Nfields; ++fld)
+          x[n + destOffset + fld * fieldOffset] = -alphas[k] * x[n + p_Nfields * k * fieldOffset + fld * fieldOffset] + beta * x[n + destOffset + fld * fieldOffset];
+    }
 }
 
 @kernel void accumulate(const dlong N,
@@ -58,10 +65,12 @@
   for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
     if(n < N) {
       // y = alpha[0] * o_xx[:,0]
-      y[n] = alpha[0] * x[n];
+      for(dlong fld = 0 ; fld < p_Nfields; ++fld)
+        y[n + fld * fieldOffset] = alpha[0] * x[n + fld * fieldOffset];
       for(dlong k = 1; k < m; ++k)
-        // y += alpha[k] * o_xx[:,k]
-        y[n] += alpha[k] * x[n + k * fieldOffset];
+        for(dlong fld = 0 ; fld < p_Nfields; ++fld)
+          // y += alpha[k] * o_xx[:,k]
+          y[n + fld * fieldOffset] += alpha[k] * x[n + p_Nfields * k * fieldOffset + fld * fieldOffset];
     }
 }
 
@@ -78,16 +87,24 @@
   for(dlong b = 0; b < (N + p_threadBlockSize - 1) / p_threadBlockSize; ++b; @outer(0)) {
     @shared volatile dfloat s_wxy[p_threadBlockSize];
     @exclusive dfloat w_loc;
-    @exclusive dfloat y_loc;
+    @exclusive dfloat y_loc[p_Nfields];
 
     for(int v = 0; v < m; ++v) {
       for(int t = 0; t < p_threadBlockSize; ++t; @inner(0)) {
         const dlong id = t + p_threadBlockSize * b;
         if(v == 0 && id < N) {
           w_loc = w[id];
-          y_loc = y[id + offset];
+          for(dlong fld = 0; fld < p_Nfields; ++fld){
+            y_loc[fld] = y[id + offset + fld * fieldOffset];
+          }
         }
-        s_wxy[t] = (id < N) ? w_loc * x[id + fieldOffset * v] * y_loc : 0.f;
+        dfloat res = 0.f;
+        if(id < N){
+          for(dlong fld = 0; fld < p_Nfields; ++fld){
+            res += w_loc * x[id + p_Nfields * fieldOffset * v + fld * fieldOffset] * y_loc[fld];
+          }
+        }
+        s_wxy[t] = res;
       }
 
       @barrier("local");

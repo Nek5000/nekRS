@@ -46,7 +46,6 @@ private:
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
   void multiWeightedInnerProduct(
     occa::memory& o_a,
-    const dlong m,
     occa::memory& o_b,
     const dlong offset);
   const dlong maxNumVecsProjection;
@@ -81,11 +80,13 @@ private:
   dlong numVecsProjection;
   const dlong Nlocal; // vector size
   const dlong fieldOffset; // offset
+  const dlong Nfields;
   const dlong Nblock;
   const dlong Nblock2;
   const dfloat resNormFactor;
   const int rank;
   const int size;
+  const int blockSolver;
   MPI_Comm comm;
 
   std::function<void(occa::memory&,occa::memory&)> matvecOperator;
