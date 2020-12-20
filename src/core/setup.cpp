@@ -77,7 +77,7 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   }
   mesh_t* mesh = nrs->mesh;
 
-  if (nrs->cht && !nrs->options.compareArgs("TEMPERATURE", "TRUE")) {
+  if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (mesh->rank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     EXIT(1);
   } 
