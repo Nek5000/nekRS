@@ -503,6 +503,8 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
       if(std::strstr(vsolver.c_str(), "block")) {
         options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+        if(options.compareArgs("VELOCITY RESIDUAL PROJECTION","TRUE"))
+          exit("Residual projection is not enabled for the velocity block solver!", EXIT_FAILURE);
       }
     }
 
