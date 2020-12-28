@@ -33,22 +33,17 @@
                                     @restrict dfloat*  resS,
                                     @restrict dfloat*  S)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)){
-    #pragma unroll p_Nq
-    for(int i = 0 ; i < p_Nq; ++i){
-      for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {
-        const dlong id = i*p_Nq*p_Nq+j + e * p_Np;
+  for(dlong id = 0; id < Nelements*p_Np; ++id;@tile(p_blockSize,@outer,@inner)){
+    if(id < Nelements * p_Np){
+      dfloat ress =   resS[id];
+      dfloat rhss =  -rhsS[id];// -Nu !!!!!!
+      dfloat sn   =      S[id];
 
-        dfloat ress =   resS[id];
-        dfloat rhss =  -rhsS[id];// -Nu !!!!!!
-        dfloat sn   =      S[id];
+      ress = rka * ress + dt * rhss;
+      sn += rkb * ress;
 
-        ress = rka * ress + dt * rhss;
-        sn += rkb * ress;
-
-        resS[id] = ress;
-        S[id]    = sn;
-      }
+      resS[id] = ress;
+      S[id]    = sn;
     }
   }
 }
@@ -63,21 +58,17 @@
                                   @restrict dfloat*  RHSS,
                                   @restrict dfloat*  S)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)){
-    #pragma unroll p_Nq
-    for(int i = 0 ; i < p_Nq; ++i){
-      for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {
-        const dlong id = i*p_Nq*p_Nq+j + e * p_Np;
-        if(stage == 3) { // Final stage
-          dfloat sn = Ss[id];
-          for(int st = 0; st < stage + 1; st++)
-            sn -= dt * rkb[st] * RHSS[id + st * offset];
-          S[id] = sn;
-        }else  {
-          dfloat rhss = RHSS[id + stage * offset];
-          dfloat sn = Ss[id];
-          S[id] = sn - dt * rka[stage + 1] * rhss;
-        }
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)){
+    if(id < Nelements * p_Np){
+      if(stage == 3) { // Final stage
+        dfloat sn = Ss[id];
+        for(int st = 0; st < stage + 1; st++)
+          sn -= dt * rkb[st] * RHSS[id + st * offset];
+        S[id] = sn;
+      }else  {
+        dfloat rhss = RHSS[id + stage * offset];
+        dfloat sn = Ss[id];
+        S[id] = sn - dt * rka[stage + 1] * rhss;
       }
     }
   }
@@ -90,11 +81,8 @@
                             @restrict const dfloat*  U,
                             @restrict dfloat*  Ue)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    #pragma unroll p_Nq
-    for(int j = 0 ; j < p_Nq; ++j){
-      for(int n = 0; n < p_Nq*p_Nq; ++n; @inner(0)) {
-        const dlong id = n + j*p_Nq*p_Nq + p_Np * e;
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
+    if(id < Nelements * p_Np){
 #pragma unroll p_NVfields
         for (int i = 0; i < p_NVfields; i++) {
           dfloat Un = 0.f;
@@ -107,7 +95,6 @@
 
           Ue[id + i * voffset] = Un;
         }
-      }
     }
   }
 }

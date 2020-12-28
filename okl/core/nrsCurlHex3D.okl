@@ -35,9 +35,9 @@
     @shared dfloat s_U[p_Nq][p_Nq];
     @shared dfloat s_V[p_Nq][p_Nq];
     @shared dfloat s_W[p_Nq][p_Nq];
-    @exclusive dfloat s_Uloc[p_Nq];
-    @exclusive dfloat s_Vloc[p_Nq];
-    @exclusive dfloat s_Wloc[p_Nq];
+    @exclusive dfloat Uloc[p_Nq];
+    @exclusive dfloat Vloc[p_Nq];
+    @exclusive dfloat Wloc[p_Nq];
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
@@ -51,20 +51,19 @@
           s_V[j][i]  = U[id + 1 * offset];
           s_W[j][i]  = U[id + 2 * offset];
 
-          if (k == 0)
+          if (k == 0){
             s_D[j][i] = D[j * p_Nq + i];
-          if(k==0){
             #pragma unroll p_Nq
             for(int l = 0 ; l < p_Nq; ++l){
               const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
-              s_Uloc[l] = U[other_id + 0 * offset];
-              s_Vloc[l] = U[other_id + 1 * offset];
-              s_Wloc[l] = U[other_id + 2 * offset];
+              Uloc[l] = U[other_id + 0 * offset];
+              Vloc[l] = U[other_id + 1 * offset];
+              Wloc[l] = U[other_id + 2 * offset];
             }
           }
         }
       }
-    @barrier("local");
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -92,15 +91,15 @@
 
             dudr += Dr * s_U[j][n];
             duds += Ds * s_U[n][i];
-            dudt += Dt * s_Uloc[n];
+            dudt += Dt * Uloc[n];
 
             dvdr += Dr * s_V[j][n];
             dvds += Ds * s_V[n][i];
-            dvdt += Dt * s_Vloc[n];
+            dvdt += Dt * Vloc[n];
 
             dwdr += Dr * s_W[j][n];
             dwds += Ds * s_W[n][i];
-            dwdt += Dt * s_Wloc[n];
+            dwdt += Dt * Wloc[n];
           }
           // compute local derivatives
           const dfloat ux = drdx * dudr + dsdx * duds + dtdx * dudt;
@@ -127,6 +126,7 @@
           W[id + 2 * offset] = vortz;
         }
       }
+      @barrier("local");
     }
   }
 }
