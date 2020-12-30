@@ -151,6 +151,7 @@
           SRCDIAG[id + 1 * offset] = tauDiag;
         }
       }
+    @barrier("local");
     }
   }
 }
@@ -202,10 +203,7 @@
           }
         }
       }
-
-    @barrier("local");
-
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -231,7 +229,7 @@
             const dfloat Dt = s_D[k][n];
             dudr += Dr * s_U[j][n];
             duds += Ds * s_U[n][i];
-            dudt += Dt * s_Uloc[n][;
+            dudt += Dt * s_Uloc[n];
 
             dvdr += Dr * s_V[j][n];
             dvds += Ds * s_V[n][i];
