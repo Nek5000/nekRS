@@ -64,7 +64,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   mesh->EY = (dfloat*) calloc(mesh->Nelements * mesh->Nverts, sizeof(dfloat));
   mesh->EZ = (dfloat*) calloc(mesh->Nelements * mesh->Nverts, sizeof(dfloat));
 
-  mesh->elementInfo = (hlong*) calloc(mesh->Nelements, sizeof(hlong));
+  mesh->elementInfo = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
 
   // [0,NX]
   dfloat dx = (XMAX - XMIN) / NX; // xmin+0*dx, xmin + NX*(XMAX-XMIN)/NX
@@ -132,7 +132,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   mesh->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
   mesh->boundaryInfo = NULL; // no boundaries
 
-  // connect elements using parallel sort
+  // connect elements using parallel sort (EToP, EToE, EToF)
   meshParallelConnect(mesh);
 
   // load reference (r,s,t) element nodes

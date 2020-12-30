@@ -217,9 +217,6 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   nrs->div   = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->o_div = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
 
-  nrs->elementInfo = (dlong*) calloc(nrs->meshT->Nelements,sizeof(dlong));
-  for (int e = 0; e < nrs->meshT->Nelements; e++) nrs->elementInfo[e] = mesh->elementInfo[e];
-  nrs->o_elementInfo = mesh->device.malloc(nrs->meshT->Nelements * sizeof(dlong), nrs->elementInfo);
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   nrs->o_rkC     = mesh->device.malloc(4 * sizeof(dfloat),rkC);
   nrs->o_extbdfA = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfA);

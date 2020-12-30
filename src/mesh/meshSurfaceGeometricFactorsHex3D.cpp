@@ -141,10 +141,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
     /* find vertex indices and physical coordinates */
     dlong id = e * mesh->Nverts;
 
-    dfloat* xe = mesh->EX + id;
-    dfloat* ye = mesh->EY + id;
-    dfloat* ze = mesh->EZ + id;
-
     for(int n = 0; n < mesh->Np; ++n) {
       xre[n] = 0;
       xse[n] = 0;

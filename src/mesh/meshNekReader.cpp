@@ -72,11 +72,12 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
       int ibc = *bid;
       if(ibc > 0) {
-        hlong offset = displacement[mesh->rank] * (mesh->NfaceVertices + 1);
-        mesh->boundaryInfo[offset + cnt * (mesh->NfaceVertices + 1)] = ibc;
+        hlong offset = (hlong)displacement[mesh->rank] * (mesh->NfaceVertices + 1)
+		       + (hlong)cnt * (mesh->NfaceVertices + 1);
+        mesh->boundaryInfo[offset] = ibc;
         for(int j = 0; j < mesh->NfaceVertices; j++) {
           const int vertex = icface[j + mesh->NfaceVertices * (eface1[iface] - 1)] - 1;
-          mesh->boundaryInfo[offset + cnt * (mesh->NfaceVertices + 1) + j + 1] =
+          mesh->boundaryInfo[offset + (j+1)] =
             mesh->EToV[e * mesh->Nverts + vtxmap[vertex]];
         }
         cnt++;
@@ -97,7 +98,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
 
   // assign vertex coords
   mesh->elementInfo
-    = (hlong*) calloc(mesh->Nelements, sizeof(hlong));
+    = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
 
   double* VX = nekData.xc;
   double* VY = nekData.yc;

@@ -224,7 +224,7 @@ void check(mesh_t* mesh)
   int retval = 0;
 
 /*
-  // cross check number of boundary faces 
+  // cross check number of boundary faces (doesn't work for a periodic case) 
   hlong bcnt = 0;
   for(dlong e = 0; e < mesh->Nelements; ++e)
     for(int f = 0; f < mesh->Nfaces; ++f)

@@ -2,7 +2,7 @@
 
 -----------------
 
-[![Build Status](https://travis-ci.org/Nek5000/nekRS.svg?branch=master)](https://travis-ci.org/Nek5000/nekRS)
+[![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.org/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 **nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code is a fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming [OCCA](https://github.com/libocca/occa) is used.  

@@ -16,7 +16,7 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
   mesh_t *mesh = cds->mesh;
   const dfloat qvolFluid = 0.0;
   const dfloat qvolSolid = 1.0;
-  cFillKernel(mesh->Nelements, qvolFluid, qvolSolid, nrs->o_elementInfo, o_FS);
+  cFillKernel(mesh->Nelements, qvolFluid, qvolSolid, mesh->o_elementInfo, o_FS);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
@@ -36,13 +36,13 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     // velocity 
     const occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
     const occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
-    cFillKernel(nrs->mesh->Nelements, mue, 0, nrs->o_elementInfo, o_mue);
-    cFillKernel(nrs->mesh->Nelements, rho, 0, nrs->o_elementInfo, o_rho);
+    cFillKernel(nrs->mesh->Nelements, mue, 0, nrs->mesh->o_elementInfo, o_mue);
+    cFillKernel(nrs->mesh->Nelements, rho, 0, nrs->mesh->o_elementInfo, o_rho);
     // temperature 
     const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset*sizeof(dfloat));
     const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset*sizeof(dfloat));
-    cFillKernel(cds->mesh->Nelements, conFluid, conSolid, nrs->o_elementInfo, o_con);
-    cFillKernel(cds->mesh->Nelements, rhoCpFluid, rhoCpSolid, nrs->o_elementInfo, o_rhoCp);
+    cFillKernel(cds->mesh->Nelements, conFluid, conSolid, nrs->mesh->o_elementInfo, o_con);
+    cFillKernel(cds->mesh->Nelements, rhoCpFluid, rhoCpSolid, nrs->mesh->o_elementInfo, o_rhoCp);
     updateProperties = 0;
   }
 }

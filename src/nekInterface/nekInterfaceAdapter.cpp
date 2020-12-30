@@ -321,7 +321,7 @@ void set_function_handles(const char* session_in,int verbose)
 #undef load_or_noop
 }
 
-void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt)
+void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt)
 {
   //printf("generating SIZE file ... "); fflush(stdout);
 
@@ -361,7 +361,7 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
     else if(strstr(line, "parameter (lelt=") != NULL)
       sprintf(line, "      parameter (lelt=%d)\n", lelt);
     else if(strstr(line, "parameter (lelg=") != NULL)
-      sprintf(line, "      parameter (lelg=%ld)\n", lelg);
+      sprintf(line, "      parameter (lelg=%ld)\n", (int)lelg);
     else if(strstr(line, "parameter (ldim=") != NULL)
       sprintf(line, "      parameter (ldim=%d)\n", ldim);
     else if(strstr(line, "parameter (lpmin=") != NULL)
@@ -394,10 +394,10 @@ void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt
   if(osize.is_open()) {
     writeSize = 0;
     string line;
-    int oldval;
+    hlong oldval;
     while(getline( osize, line )) {
       if(line.find( "lelg=") != string::npos ) {
-        sscanf(line.c_str(), "%*[^=]=%d", &oldval);
+        sscanf(line.c_str(), "%*[^=]=%ld", &oldval);
         if(oldval < lelg) writeSize = 1;
       }
       if(line.find( "lelt=") != string::npos ) {
@@ -455,10 +455,11 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   fclose(fp);
 
   char ver[10];
-  int nelgv, nelgt, ndim;
+  int ndim;
+  hlong nelgv, nelgt;
   sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
-  int lelt = nelgt / np + 3;
-  if(lelt > nelgt) lelt = nelgt;
+  int lelt = (int)(nelgt/np) + 3;
+  if(lelt > nelgt) lelt = (int)nelgt;
   mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt);
 
   // Copy case.usr file to cache_dir

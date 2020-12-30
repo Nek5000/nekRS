@@ -56,6 +56,10 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
       notInternalElementIds[NnotInterior++] = e;
   }
 
+  mesh->o_elementInfo = mesh->device.malloc(mesh->Nelements * sizeof(dlong), 
+		                            mesh->elementInfo);
+ 
+
   //  printf("NinteriorElements = %d, NnotInternalElements = %d\n", Ninterior, NnotInterior);
 
   mesh->NinternalElements = Ninterior;

@@ -100,7 +100,7 @@ void meshParallelConnect(mesh_t* mesh)
         hlong maxv = 0;
         for(int n = 0; n < mesh->NfaceVertices; ++n) {
           int nid = mesh->faceVertices[f * mesh->NfaceVertices + n];
-          dlong id = mesh->EToV[e * mesh->Nverts + nid];
+          hlong id = mesh->EToV[e * mesh->Nverts + nid];
           maxv = mymax(maxv, id);
         }
         int destRank = (int) (maxv % size);
