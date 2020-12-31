@@ -371,10 +371,6 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
       nrs->massMatrixKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      kernelName = "nrsInvMassMatrix" + suffix;
-      nrs->invMassMatrixKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       fileName = oklpath + "nrsGradient" + suffix + ".okl";
       kernelName = "nrsGradientVolume" + suffix;
       nrs->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1122,9 +1118,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       fileName = oklpath + "cdsMassMatrix.okl";
       kernelName = "cdsMassMatrix" + suffix;
       cds->massMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "cdsInvMassMatrix" + suffix;
-      cds->invMassMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "cdsFilterRT" + suffix + ".okl";
       kernelName = "cdsFilterRT" + suffix;

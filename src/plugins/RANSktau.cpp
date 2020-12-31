@@ -138,13 +138,12 @@ void RANSktau::updateSourceTerms()
                        ogsAdd,
                        mesh->ogs);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    NSOfields,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
-    o_SijOij);
+  const dfloat one = 1.0;
+  const dlong Nlocal = mesh->Nelements * mesh->Np;
+  for(int field = 0 ; field < NSOfields; ++field){
+    occa::memory slice = o_SijOij + field * nrs->fieldOffset * sizeof(dfloat);
+    nrs->linAlg->axmy(Nlocal, one, nrs->mesh->o_invLMM, slice);
+  }
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,
                    nrs->fieldOffset,

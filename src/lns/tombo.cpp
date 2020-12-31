@@ -68,13 +68,12 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
-    nrs->o_wrk0);
+  const dfloat one = 1.0;
+  const dlong Nlocal = mesh->Nelements * mesh->Np;
+  for(int field = 0 ; field < nrs->NVfields; ++field){
+    occa::memory slice = nrs->o_wrk0 + field * nrs->fieldOffset * sizeof(dfloat);
+    nrs->linAlg->axmy(Nlocal, one, nrs->mesh->o_invLMM, slice);
+  }
 
   nrs->curlKernel(
     mesh->Nelements,
@@ -117,13 +116,10 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
-    nrs->o_wrk6);
+  for(int field = 0 ; field < nrs->NVfields; ++field){
+    occa::memory slice = nrs->o_wrk6 + field * nrs->fieldOffset * sizeof(dfloat);
+    nrs->linAlg->axmy(Nlocal, one, nrs->mesh->o_invLMM, slice);
+  }
 
   nrs->divergenceVolumeKernel(
     mesh->Nelements,

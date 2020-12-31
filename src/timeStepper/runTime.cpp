@@ -699,13 +699,12 @@ void qthermal(nrs_t* nrs, dfloat time, occa::memory o_div)
 
   oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
-    mesh->o_invLMM,
-    cds->o_wrk0);
+  const dfloat one = 1.0;
+  const dlong Nlocal = mesh->Nelements * mesh->Np;
+  for(int field = 0 ; field < nrs->NVfields; ++field){
+    occa::memory slice = nrs->o_wrk0 + field * nrs->fieldOffset * sizeof(dfloat);
+    nrs->linAlg->axmy(Nlocal, one, nrs->mesh->o_invLMM, slice);
+  }
 
   if(udf.sEqnSource) {
     timer::tic("udfSEqnSource", 1);
@@ -729,11 +728,5 @@ void qthermal(nrs_t* nrs, dfloat time, occa::memory o_div)
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    1,
-    mesh->o_vgeo,
-    mesh->o_invLMM,
-    o_div);
+  nrs->linAlg->axmy(Nlocal, one, nrs->mesh->o_invLMM, o_div);
 }
