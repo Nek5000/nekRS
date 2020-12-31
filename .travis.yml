@@ -59,6 +59,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libmpich-dev mpich
   - sudo apt-get install valgrind
+  - sudo apt-get install valgrind-mpi
 
 install:
 
