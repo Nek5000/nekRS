@@ -12,7 +12,7 @@
 
 # compiler settings for CPU backend
 : ${OCCA_CXX:="g++"}
-: ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
+: ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops"}
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
