@@ -600,7 +600,7 @@ c-----------------------------------------------------------------------
       integer npts, isTmsh
 
       common /ivrtx/ vertex ((2**ldim),lelt)
-      integer vertex
+      integer*8 vertex
 
       integer*8 ngv
 
