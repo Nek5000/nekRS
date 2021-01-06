@@ -137,14 +137,15 @@ void RANSktau::updateSourceTerms()
                        ogsDfloat,
                        ogsAdd,
                        mesh->ogs);
-
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
+  nrs->linAlg->axmyMany(
+    mesh->Nelements * mesh->Np,
     NSOfields,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
-    o_SijOij);
+    nrs->fieldOffset,
+    0,
+    1.0,
+    mesh->o_invLMM,
+    o_SijOij
+  );
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,
                    nrs->fieldOffset,

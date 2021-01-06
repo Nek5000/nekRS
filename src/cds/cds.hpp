@@ -152,9 +152,6 @@ typedef struct
   occa::kernel dirichletBCKernel;
   occa::kernel setEllipticCoeffKernel;
 
-  occa::kernel invMassMatrixKernel;
-  occa::kernel massMatrixKernel;
-
   occa::kernel maskCopyKernel;
 
   occa::properties* kernelInfo;

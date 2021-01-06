@@ -80,6 +80,13 @@ public:
   // o_y[n] = alpha*o_x[n]*o_y[n]
   void axmy(const dlong N, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
+  // mode 0:
+  // o_y[n,fld] = alpha*o_x[n]*o_y[n,fld]
+  // mode 1:
+  // o_y[n,fld] = alpha*o_x[n,fld]*o_y[n,fld]
+  void axmyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+            const dlong mode, const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y);
 
   // o_z[n] = alpha*o_x[n]*o_y[n] (new)
   void axmyz(const dlong N, const dfloat alpha,
@@ -125,6 +132,7 @@ public:
   occa::kernel axpbyKernel;
   occa::kernel axpbyzKernel;
   occa::kernel axmyKernel;
+  occa::kernel axmyManyKernel;
   occa::kernel axmyzKernel;
   occa::kernel axdyKernel;
   occa::kernel axdyzKernel;

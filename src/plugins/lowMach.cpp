@@ -36,13 +36,15 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
+  nrs->linAlg->axmyMany(
+    mesh->Nelements * mesh->Np,
     nrs->NVfields,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
-    cds->o_wrk0);
+    nrs->fieldOffset,
+    0,
+    1.0,
+    mesh->o_invLMM,
+    cds->o_wrk0
+  );
 
   if(udf.sEqnSource) {
     timer::tic("udfSEqnSource", 1);
@@ -66,11 +68,8 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    1,
-    mesh->o_vgeo,
-    nrs->mesh->o_invLMM,
+  nrs->linAlg->axmy(mesh->Nelements * mesh->Np,
+    1.0,
+    mesh->o_invLMM,
     o_div);
 }

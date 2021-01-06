@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "linAlg.hpp"
+#include <cassert>
 
 void linAlg_t::setup() {
 
@@ -78,6 +79,11 @@ void linAlg_t::setup() {
         axmyKernel = device.buildKernel(oklDir + 
                                         "linAlgAXMY.okl",
                                         "axmy",
+                                        kernelInfo);
+      if (axmyManyKernel.isInitialized()==false)
+        axmyManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXMY.okl",
+                                        "axmyMany",
                                         kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
@@ -188,6 +194,13 @@ void linAlg_t::axpbyz(const dlong N, const dfloat alpha, occa::memory& o_x,
 void linAlg_t::axmy(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y) {
   axmyKernel(N, alpha, o_x, o_y);
+}
+void linAlg_t::axmyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+          const dlong mode, const dfloat alpha,
+          occa::memory& o_x, occa::memory& o_y)
+{
+  assert(mode == 0 || mode == 1);
+  axmyManyKernel(N, Nfields, fieldOffset, mode, alpha, o_x, o_y);
 }
 
 // o_z[n] = alpha*o_x[n]*o_y[n]

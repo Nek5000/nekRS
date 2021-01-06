@@ -190,8 +190,6 @@ typedef struct
 
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
-  occa::kernel invMassMatrixKernel;
-  occa::kernel massMatrixKernel;
 
   occa::kernel maskCopyKernel;
 
