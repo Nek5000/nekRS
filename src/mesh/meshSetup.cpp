@@ -222,11 +222,6 @@ mesh_t* createMesh(MPI_Comm comm,
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
-  mesh->o_cubsgeo.free();
-  mesh->o_cubggeo.free();
-  mesh->o_cubsgeo = (void*) NULL;
-  mesh->o_cubggeo = (void*) NULL;
-
   return mesh;
 }
 

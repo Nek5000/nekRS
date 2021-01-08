@@ -127,8 +127,10 @@
     bc.w  = U[idM + 2 * offset];                                                       \
     const dfloat WSJ = sgeo[sk * p_Nsgeo + p_WSJID];                                   \
     const dlong bcType = EToB[face + p_Nfaces * e];                                    \
-    dfloat flux = coef * (bc.nx * bc.u + bc.ny * bc.v + bc.nz * bc.w);                 \
-    if(bcType == 4 || bcType == 5 || bcType == 6 ) {                                   \
+    dfloat flux = 0;                                                                   \
+    if(bcType == 2) {                                                                  \
+      flux = coef * (bc.nx * bc.u + bc.ny * bc.v + bc.nz * bc.w);                      \
+    } else if(bcType == 4 || bcType == 5 || bcType == 6 ) {                            \
       const dfloat fx = F[idM + 0 * offset];                                           \
       const dfloat fy = F[idM + 1 * offset];                                           \
       const dfloat fz = F[idM + 2 * offset];                                           \

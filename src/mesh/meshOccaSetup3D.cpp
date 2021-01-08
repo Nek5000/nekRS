@@ -204,14 +204,15 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
       mesh->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
                           mesh->cubvgeo);
 
+    /*
     mesh->o_cubsgeo =
       mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * mesh->Nsgeo *
                           sizeof(dfloat),
                           mesh->cubsgeo);
-
     mesh->o_cubggeo =
       mesh->device.malloc(mesh->Nelements * mesh->Nggeo * mesh->cubNp * sizeof(dfloat),
                           mesh->cubggeo);
+    */		  
 
     mesh->o_cubInterpT =
       mesh->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),

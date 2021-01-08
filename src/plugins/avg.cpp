@@ -193,21 +193,21 @@ void avg::outfld()
   }
 
   writeFld("avg", atime, coords, FP64,
-           o_Uavg,
-           o_Pavg,
-           o_Tavg,
+           &o_Uavg,
+           &o_Pavg,
+           &o_Tavg,
            Nscalar);
 
   writeFld("rms", atime, coords, FP64,
-           o_Urms,
-           o_Prms,
-           o_Trms,
+           &o_Urms,
+           &o_Prms,
+           &o_Trms,
            Nscalar);
 
   writeFld("rm2", atime, coords, FP64,
-           o_Urm2,
-           o_null,
-           o_null,
+           &o_Urm2,
+           &o_null,
+           &o_null,
            0);
 
   atime = 0;

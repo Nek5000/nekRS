@@ -21,6 +21,8 @@ c-----------------------------------------------------------------------
          ptr = loc(nelv)
       elseif (id .eq. 'lelt') then 
          ptr = loc(llelt)
+      elseif (id .eq. 'ldimt') then 
+         ptr = loc(lldimt)
       elseif (id .eq. 'nekcomm') then 
          ptr = loc(nekcomm)
       elseif (id .eq. 'istep') then 
@@ -112,7 +114,8 @@ c-----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
       subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
-     $                      npscal_in, p32, meshp_in) 
+     $                      npscal_in, p32, meshp_in,
+     $                      rho, mue, rhoCp, lambda) 
 
       include 'SIZE'
       include 'TOTAL'
@@ -120,6 +123,7 @@ c-----------------------------------------------------------------------
       include 'NEKINTF'
 
       integer comm_in, iftmsh_in, ifflow_in, meshp_in, p32
+      real rho, mue, rhoCp, lambda
       character session_in*(*),path_in*(*)
 
       common /rdump/ ntdump
@@ -130,10 +134,6 @@ c-----------------------------------------------------------------------
       character ctest
       logical ltest 
       logical ifbswap
-
-      common /screv/ x(2*ltotd)
-      common /scrvh/ y(2*ltotd)
-      common /scrch/ z(2*ltotd)
 
       ! set word size for REAL
       wdsize = sizeof(rtest)
@@ -147,6 +147,7 @@ c-----------------------------------------------------------------------
       csize = sizeof(ctest)
 
       llelt = lelt
+      lldimt = ldimt
 
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
@@ -161,15 +162,15 @@ c-----------------------------------------------------------------------
       call read_re2_hdr(ifbswap, .true.)
 
       call setDefaultParam
-      param(1)  = 1.0
-      param(2)  = 1.0
-      param(7)  = 1.0
-      param(8)  = 1.0
+      cpfld(1,2) = rho
+      cpfld(1,1) = mue
+      cpfld(2,2) = rhoCp
+      cpfld(2,1) = lambda
+
       param(27) = 1  ! torder 1 to save mem
+      param(32) = p32 ! number of BC fields read from re2
       param(99) = -1 ! no dealiasing to save mem
       meshPartitioner = meshp_in 
-
-      param(32) = p32 ! number of BC fields read from re2
 
       ifflow = .true.
       if(ifflow_in.eq.0) ifflow = .false.

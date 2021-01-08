@@ -5,5 +5,5 @@ cout << R"(                 __    ____  _____)" << endl
      << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
      << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION << endl
      << endl
-     << "COPYRIGHT (c) 2019-2020 UCHICAGO ARGONNE, LLC" << endl
+     << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
      << endl;

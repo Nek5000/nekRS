@@ -288,18 +288,14 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   if(ini.extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
-  //bool variableProperties;
-  //if(ini.extract("general", "variableproperties", variableProperties))
-  //  if(variableProperties) options.setArgs("VARIABLEPROPERTIES", "TRUE");
-
   bool stressFormulation;
   if(ini.extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
-  bool stokesFlow;
-  if(ini.extract("problemtype", "stokes", stokesFlow)) {
+  string eqn;
+  if(ini.extract("problemtype", "equation", eqn)) {
     options.setArgs("ADVECTION", "TRUE");
-    if(stokesFlow) options.setArgs("ADVECTION", "FALSE");
+    if(eqn == "stokes" ) options.setArgs("ADVECTION", "FALSE");
   }
 
   int bcInPar = 1;

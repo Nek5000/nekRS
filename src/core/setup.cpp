@@ -54,7 +54,7 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
     int npTarget = size;
     if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) buildNekInterface(casename.c_str(), mymax(1, nrs->Nscalar), N, npTarget);
+    if (rank == 0) buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
     MPI_Barrier(comm);
     if (!buildOnly) {
       nek_setup(comm, nrs->options, nrs);
@@ -533,11 +533,10 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
   }
 
   if(!buildOnly) {
-    int readRestartFile;
-    nrs->options.getArgs("RESTART FROM FILE", readRestartFile);
+    // get IC + t0 from nek
     double startTime;
     nek_copyTo(startTime);
-    if(readRestartFile) nrs->options.setArgs("START TIME", to_string_f(startTime));
+    nrs->options.setArgs("START TIME", to_string_f(startTime));
 
     if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
     udf.setup(nrs);

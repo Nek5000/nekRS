@@ -57,6 +57,9 @@ typedef struct
   /* local problem size */
   int nelv, nelt;
   int lelt;
+
+  int ldimt;
+
   /* polynomial order + 1*/
   int nx1;
 
@@ -93,7 +96,7 @@ void*  nek_ptr(const char* id);
 void*  nek_scPtr(int id);
 void   nek_outSolutionFld(double time, double outputTime);
 void   nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
-                  occa::memory &o_u, occa::memory &o_p, occa::memory &o_s,
+                  void* o_u, void* o_p, void* o_s,
                   int NSfields);
 void   nek_uic(int ifield);
 void   nek_end(void);

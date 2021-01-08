@@ -10,5 +10,5 @@
       COMMON /SCNRS/ sc_nrs(LX1*LY1*LZ1*LELT)
       real           sc_nrs
 
-      common /INTNRS/ getu, getp, gett, getps, llelt
-      integer         getu, getp, gett, getps, llelt
+      common /INTNRS/ getu, getp, gett, getps, llelt, lldimt
+      integer         getu, getp, gett, getps, llelt, lldimt

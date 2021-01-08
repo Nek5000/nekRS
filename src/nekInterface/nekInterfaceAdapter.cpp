@@ -35,7 +35,7 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
                                 double* vt, char* name, int);
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
-static void (* nek_setup_ptr)(int*, char*, char*, int*, int*, int*, int*, int, int);
+static void (* nek_setup_ptr)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int, int);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
 static int (* nek_bcmap_ptr)(int*, int*);
@@ -50,6 +50,14 @@ static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
 
 void noop_func(void) {}
+
+void check_error(const char* error)
+{
+  if(error != NULL) {
+    if(rank == 0) fprintf(stderr, "Error: %s!\n", error);
+    ABORT(EXIT_FAILURE);
+  }
+}
 
 void* nek_ptr(const char* id)
 {
@@ -67,15 +75,24 @@ void* nek_scPtr(int id)
 }
 
 void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
-                occa::memory &o_u, occa::memory &o_p, occa::memory &o_s,
+                void* o_uu, void* o_pp, void* o_ss,
                 int NSfields)
 {
 
   mesh_t* mesh = nrs->mesh;
-  cds_t* cds = nrs->cds;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   double time = t;
+
+  if(NSfields > nekData.ldimt) {
+    const char *errTxt = "NSfields > ldimt in nek_outfld";
+    check_error(errTxt);
+  }
+
+  occa::memory o_u, o_p, o_s;
+  if(o_uu) o_u = *((occa::memory *) o_uu);
+  if(o_pp) o_p = *((occa::memory *) o_pp);
+  if(o_ss && NSfields) o_s = *((occa::memory *) o_ss);
 
   int xo = 0;
   int vo = 0;
@@ -104,14 +121,14 @@ void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
     o_p.copyTo(nekData.pr, Nlocal * sizeof(dfloat));
     po = 1;
   }
-  if(o_s.ptr() && NSfields) {
+  if(o_s.ptr()) {
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < NSfields; is++) {
       mesh_t* mesh;
-      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
+      (is) ? mesh = nrs->mesh : mesh = nrs->meshT;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
-      occa::memory o_Si = o_s + is * cds->fieldOffset * sizeof(dfloat);
+      occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
       o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
     }
     so = 1;
@@ -204,14 +221,6 @@ DEFINE_USER_FUNC(useric)
 DEFINE_USER_FUNC(usrsetvert)
 DEFINE_USER_FUNC(userqtl)
 
-void check_error(char* error)
-{
-  if(error != NULL) {
-    fprintf(stderr, "Error: %s\n", error);
-    ABORT(EXIT_FAILURE);
-  }
-}
-
 void set_function_handles(const char* session_in,int verbose)
 {
   // load lib{session_in}.so
@@ -249,7 +258,7 @@ void set_function_handles(const char* session_in,int verbose)
   nek_scptr_ptr = (void (*)(int*, void*))dlsym(handle, fname("nekf_scptr"));
   check_error(dlerror());
   nek_setup_ptr =
-    (void (*)(int*, char*, char*, int*, int*, int*, int*, int, int))dlsym(handle, fname("nekf_setup"));
+    (void (*)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int, int))dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int*))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -544,8 +553,21 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
     nBcRead = flow + nscal;
   }
 
+  dfloat rho;
+  options->getArgs("DENSITY", rho);
+
+  dfloat mue;
+  options->getArgs("VISCOSITY", mue);
+
+  dfloat rhoCp;
+  options->getArgs("SCALAR00 DENSITY", rhoCp);
+
+  dfloat lambda;
+  options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
+
   (*nek_setup_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
-                   &flow, &nscal, &nBcRead, &meshPartType, 
+                   &flow, &nscal, &nBcRead, &meshPartType,
+		   &rho, &mue, &rhoCp, &lambda, 
                    cwd.length(), casename.length()); 
 
   nekData.param = (double*) nek_ptr("param");
@@ -557,6 +579,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nekData.nelt = *(int*) nek_ptr("nelt");
   nekData.nelv = *(int*) nek_ptr("nelv");
   nekData.lelt = *(int*) nek_ptr("lelt");
+  nekData.ldimt = *(int*) nek_ptr("ldimt");
   nekData.nx1 =  *(int*) nek_ptr("nx1");
 
   nekData.vx = (double*) nek_ptr("vx");
@@ -630,25 +653,9 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   isTMesh = 1;
   nekData.NboundaryIDt = (*nek_nbid_ptr)(&isTMesh);
 
-  dfloat rho;
-  options->getArgs("DENSITY", rho);
-  nekData.param[0] = rho;
-
-  dfloat mue;
-  options->getArgs("VISCOSITY", mue);
-  nekData.param[1] = mue;
-
-  dfloat rhoCp;
-  options->getArgs("SCALAR00 DENSITY", rhoCp);
-  nekData.param[6] = rhoCp;
-
-  dfloat diff;
-  options->getArgs("SCALAR00 DIFFUSIVITY", diff);
-  nekData.param[7] = diff;
-
   dfloat startTime;
   options->getArgs("START TIME", startTime);
-   *(nekData.time) = startTime; 
+  *(nekData.time) = startTime; 
 
   return 0;
 }
