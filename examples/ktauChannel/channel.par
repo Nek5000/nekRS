@@ -13,6 +13,7 @@ timeStepper = tombo2
 writeControl = runTime
 writeInterval = 50
 
+[PROBLEMTYPE]
 stressFormulation = true # required for variable viscosity
 
 [PRESSURE]
