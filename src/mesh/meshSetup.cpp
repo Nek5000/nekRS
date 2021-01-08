@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
+#include <string>
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
 
@@ -174,6 +175,11 @@ mesh_t* createMesh(MPI_Comm comm,
                    occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
+  int order = -1;
+  if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
+  if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
+  else order = 3;
+  mesh->torder = order;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -225,6 +231,40 @@ mesh_t* createMesh(MPI_Comm comm,
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
+  std::string install_dir;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  std::string oklpath = install_dir + "/okl/core/";
+  std::string filename = oklpath + "dotDivide.okl";
+  kernelInfo["defines/" "p_eNfields"] = 3;
+  mesh->scalarDivideKernel = 
+    mesh->device.buildKernel(filename.c_str(),
+                             "scalarDivide",
+                             kernelInfo);
+
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+
+  // build mass + inverse mass matrix
+  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  for(hlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  free(lumpedMassMatrix);
+  mesh->o_LMM.copyTo(mesh->LMM);
+  mesh->o_scratch = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvMassMatrix();
+  mesh->o_scratch.free(); // later, can point this to scratch memory in nrs_t
+
+  mesh->o_cubsgeo.free();
+  mesh->o_cubggeo.free();
+  mesh->o_cubsgeo = (void*) NULL;
+  mesh->o_cubggeo = (void*) NULL;
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int maxTemporalOrder = 3;
+    mesh->ABCoeff = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_ABCoeff = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->ABCoeff);
+  }
   return mesh;
 }
 
@@ -236,6 +276,11 @@ mesh_t* createMeshV(MPI_Comm comm,
                     occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
+  int order = -1;
+  if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
+  if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
+  else order = 3;
+  mesh->torder = order;
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
@@ -286,6 +331,21 @@ mesh_t* createMeshV(MPI_Comm comm,
   bcMap::check(mesh);
 
   meshVOccaSetup3D(mesh, options, kernelInfo);
+
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+
+  // build mass + inverse mass matrix
+  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  for(hlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  free(lumpedMassMatrix);
+  mesh->o_LMM.copyTo(mesh->LMM);
+  // allocate temporary scratch space for invMassMatrix
+  mesh->o_scratch = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvMassMatrix();
+  mesh->o_scratch.free(); // later, can point this to scratch memory in nrs_t
 
   return mesh;
 }

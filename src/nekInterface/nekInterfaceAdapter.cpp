@@ -49,6 +49,7 @@ static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 
 static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
+static void (* nek_gengeom_ptr)(int*);
 
 void noop_func(void) {}
 
@@ -104,11 +105,12 @@ void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
 
   timer::tic("checkpointing", 1);
 
-  if(coords)
+  if(coords){
     nrs->mesh->o_x.copyTo(nekData.xm1, Nlocal * sizeof(dfloat));
     nrs->mesh->o_y.copyTo(nekData.ym1, Nlocal * sizeof(dfloat));
     nrs->mesh->o_z.copyTo(nekData.zm1, Nlocal * sizeof(dfloat));
     xo = 1;
+  }
   if(o_u.ptr()) {
     occa::memory o_vx = o_u + 0 * nrs->fieldOffset * sizeof(dfloat);
     occa::memory o_vy = o_u + 1 * nrs->fieldOffset * sizeof(dfloat);
@@ -305,6 +307,8 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
   check_error(dlerror());
+  nek_gengeom_ptr = (void (*)(int*))dlsym(handle, fname("gengeom"));
+  check_error(dlerror());
 
 #define postfix(x) x ## _ptr
 #define load_or_noop(s) \
@@ -331,7 +335,7 @@ void set_function_handles(const char* session_in,int verbose)
 #undef load_or_noop
 }
 
-void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt, char* SIZE)
+void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt, setupAide& options, char* SIZE)
 {
   //printf("generating SIZE file ... "); fflush(stdout);
 
@@ -362,6 +366,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     ABORT(EXIT_FAILURE);
   }
 
+  const int lx1m = options.compareArgs("MOVING MESH", "TRUE") ? lx1 : 1;
+
   int count = 0;
   while(fgets(line, BUFSIZ, fp) != NULL) {
     if(strstr(line, "parameter (lx1=") != NULL)
@@ -388,6 +394,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
       sprintf(line, "      parameter (lhis=%d)\n", 100000);
     else if(strstr(line, "parameter (lelr=") != NULL)
       sprintf(line, "      parameter (lelr=%d)\n", 128 * lelt);
+    else if(strstr(line, "parameter (lx1m=") != NULL)
+      sprintf(line, "      parameter (lx1m=%d)\n", lx1m);
 
     strcpy(sizeFile + count, line);
     count += strlen(line);
@@ -440,7 +448,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   fflush(stdout);
 }
 
-int buildNekInterface(const char* casename, int ldimt, int N, int np)
+int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide& options)
 {
   char buf[BUFSIZ], cache_dir[BUFSIZ];
   sprintf(cache_dir,"%s/nek5000",getenv("NEKRS_CACHE_DIR"));
@@ -465,7 +473,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   int lelt = (int)(nelgt/np) + 3;
   if(lelt > nelgt) lelt = (int)nelgt;
   sprintf(buf,"%s/SIZE",cache_dir); 
-  mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, buf);
+  mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
   // generate usr
   char usrFile[BUFSIZ], usrFileCache[BUFSIZ];
@@ -638,6 +646,13 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nekData.eface = (int*) nek_ptr("eface");
   nekData.icface = (int*) nek_ptr("icface");
   nekData.comm = MPI_Comm_f2c(*(int*) nek_ptr("nekcomm"));
+  
+  nekData.p0th = (double*) nek_ptr("p0th");
+  nekData.dp0thdt = (double*) nek_ptr("dp0thdt");
+
+  nekData.wx = (double*) nek_ptr("wx");
+  nekData.wy = (double*) nek_ptr("wy");
+  nekData.wz = (double*) nek_ptr("wz");
 
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
@@ -696,6 +711,22 @@ void nek_copyFrom(dfloat time)
   dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
 
   *(nekData.time) = time;
+  *(nekData.p0th) = nrs->p0th[0];
+  *(nekData.dp0thdt) = nrs->dp0thdt;
+
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
+    mesh_t* mesh = nrs->mesh;
+    dfloat* wx = mesh->U + 0 * nrs->fieldOffset;
+    dfloat* wy = mesh->U + 1 * nrs->fieldOffset;
+    dfloat* wz = mesh->U + 2 * nrs->fieldOffset;
+    memcpy(nekData.wx, wx, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.wy, wy, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.wz, wz, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+    nek_recomputeGeometry();
+  }
 
   memcpy(nekData.vx, vx, sizeof(dfloat) * Nlocal);
   memcpy(nekData.vy, vy, sizeof(dfloat) * Nlocal);
@@ -719,6 +750,13 @@ void nek_ocopyFrom(void)
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
   if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
+    mesh_t* mesh = nrs->mesh;
+    mesh->o_U.copyTo(mesh->U);
+    mesh->o_x.copyTo(mesh->x);
+    mesh->o_y.copyTo(mesh->y);
+    mesh->o_z.copyTo(mesh->z);
+  }
   nek_copyFrom(0.0);
 }
 
@@ -727,13 +765,20 @@ void nek_ocopyFrom(dfloat time, int tstep)
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
   if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
+    mesh_t* mesh = nrs->mesh;
+    mesh->o_U.copyTo(mesh->U);
+    mesh->o_x.copyTo(mesh->x);
+    mesh->o_y.copyTo(mesh->y);
+    mesh->o_z.copyTo(mesh->z);
+  }
   nek_copyFrom(time, tstep);
 }
 
 void nek_copyFrom(dfloat time, int tstep)
 {
-  nek_copyFrom(time);
   *(nekData.istep) = tstep;
+  nek_copyFrom(time);
 }
 
 void nek_ocopyTo(dfloat &time)
@@ -742,6 +787,13 @@ void nek_ocopyTo(dfloat &time)
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_U.copyFrom(nrs->U);
   if(nrs->Nscalar) nrs->cds->o_S.copyFrom(nrs->cds->S);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
+    mesh_t* mesh = nrs->mesh;
+    mesh->o_x.copyFrom(mesh->x);
+    mesh->o_y.copyFrom(mesh->y);
+    mesh->o_z.copyFrom(mesh->z);
+    mesh->o_U.copyFrom(mesh->U);
+  }
 }
 
 void nek_copyTo(dfloat &time)
@@ -755,6 +807,8 @@ void nek_copyTo(dfloat &time)
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   time = *(nekData.time);
+  nrs->p0th[0] = *(nekData.p0th);
+  nrs->dp0thdt = *(nekData.dp0thdt);
 
   dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
   dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
@@ -763,6 +817,18 @@ void nek_copyTo(dfloat &time)
   memcpy(vx, nekData.vx, sizeof(dfloat) * Nlocal);
   memcpy(vy, nekData.vy, sizeof(dfloat) * Nlocal);
   memcpy(vz, nekData.vz, sizeof(dfloat) * Nlocal);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
+    dfloat* wx = mesh->U + 0 * nrs->fieldOffset;
+    dfloat* wy = mesh->U + 1 * nrs->fieldOffset;
+    dfloat* wz = mesh->U + 2 * nrs->fieldOffset;
+    memcpy(wx, nekData.wx, sizeof(dfloat) * Nlocal);
+    memcpy(wy, nekData.wy, sizeof(dfloat) * Nlocal);
+    memcpy(wz, nekData.wz, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+    nek_recomputeGeometry();
+  }
   memcpy(nrs->P, nekData.pr, sizeof(dfloat) * Nlocal);
   if(nrs->Nscalar) {
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
@@ -793,4 +859,16 @@ void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order)
 void nek_extCoeff(double *coeff, double *dt, int order)
 {
   (*nek_setabbd_ptr)(coeff, dt, &order, &order);
+}
+void nek_abCoeff(double *coeff, double *dt, int order)
+{
+  int one = 1;
+  (*nek_setabbd_ptr)(coeff, dt, &order, &one);
+}
+
+void nek_recomputeGeometry()
+{
+  int igeom = 2; // only call in case of moving mesh
+  (*nek_gengeom_ptr)(&igeom);
+  *(nekData.ifield) = 1; // reset ifield after call
 }

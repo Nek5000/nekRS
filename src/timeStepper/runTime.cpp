@@ -8,7 +8,7 @@
 #include "tombo.hpp"
 #include "cfl.hpp"
 
-void extbdfCoefficents(nrs_t* nrs, int order);
+void computeCoefficients(nrs_t* nrs, int order);
 
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF);
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time,
@@ -35,7 +35,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  extbdfCoefficents(nrs, mymin(tstep, nrs->temporalOrder));
+  computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder));
 
   if(nrs->flow) 
     nrs->extrapolateKernel(mesh->Nelements,
@@ -54,6 +54,26 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_S,
                            cds->o_Se);
 
+  // TODO: verify this is correct
+  const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  // meshV \subset meshT
+  if(movingMesh){
+    // lag fields
+    mesh_t * mesh = nrs->mesh;
+    for (int s = mesh->torder; s > 1; s--) {
+      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+      mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+      mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+      mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+    }
+    nrs->mesh->move();
+    // update inverse lumped mass matrix on meshT
+    if(nrs->cht)
+    {
+      cds->mesh->computeInvMassMatrix();
+    }
+  }
   if(nrs->Nscalar)
     scalarSolve(nrs, time, cds->o_S);
 
@@ -72,6 +92,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(udf.div) udf.div(nrs, time + nrs->dt[0], nrs->o_div);
 
   if(nrs->flow) fluidSolve(nrs, time, nrs->o_U); 
+
+
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
@@ -109,7 +131,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(tstep % 10 == 0) fflush(stdout);
 }
 
-void extbdfCoefficents(nrs_t* nrs, int order)
+void computeCoefficients(nrs_t* nrs, int order)
 {
   if(order == 1) {
     nrs->g0 = 1.0;
@@ -132,6 +154,15 @@ void extbdfCoefficents(nrs_t* nrs, int order)
     nek_extCoeff(nrs->extbdfA, nrs->dt, nrs->ExplicitOrder);
   }
 
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
+  {
+    for(int i = 0 ; i < 3; ++i){
+      nrs->mesh->ABCoeff[i] = 0.0;
+    }
+    nek_abCoeff(nrs->mesh->ABCoeff, nrs->dt, order);
+    nrs->mesh->o_ABCoeff.copyFrom(nrs->mesh->ABCoeff, 3 * sizeof(dfloat));
+  }
+
   nrs->ig0 = 1.0 / nrs->g0;
   nrs->o_extbdfB.copyFrom(nrs->extbdfB);
   nrs->o_extbdfA.copyFrom(nrs->extbdfA);
@@ -150,7 +181,6 @@ void extbdfCoefficents(nrs_t* nrs, int order)
     nrs->cds->ig0 = nrs->ig0;
   }
 }
-
 void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
@@ -179,6 +209,18 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
         cds->o_rho,
         cds->o_S,
         o_FS);
+    // only for non-characteristic case
+    if(cds->options[is].compareArgs("MOVING MESH", "TRUE") && !cds->Nsubsteps){
+      cds->advectMeshVelocityKernel(
+        mesh->Nelements,
+        mesh->o_vgeo,
+        mesh->o_Dmatrices,
+        cds->vFieldOffset,
+        mesh->o_U,
+        cds->o_U,
+        o_FS
+      );
+    }
 
     if(cds->options[is].compareArgs("ADVECTION", "TRUE")) {
       if(cds->Nsubsteps) {
@@ -304,6 +346,19 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       nrs->fieldOffset,
       nrs->o_U,
       o_FU);
+  
+  // only for non-characteristic case
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE") && !nrs->Nsubsteps){
+    nrs->advectMeshVelocityKernel(
+      mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_Dmatrices,
+      nrs->fieldOffset,
+      mesh->o_U,
+      nrs->o_U,
+      o_FU
+    );
+  }
 
   occa::memory o_adv = nrs->o_wrk0;
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {

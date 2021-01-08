@@ -1,0 +1,69 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+#include "plugins/lowMach.hpp"
+#include "casedata.h"
+
+static occa::kernel userVpKernel;
+static occa::kernel userMeshVelocityKernel;
+
+void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
+{
+  lowMach::qThermalPerfectGasSingleComponent(nrs, time, P_GAMMA, o_div);
+}
+
+void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  mesh_t *mesh = nrs->mesh;
+
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset, nrs->p0th[0],
+               o_S, o_UProp, o_SProp);
+}
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(nrs_t *nrs)
+{
+  occa::properties& kernelInfo = *nrs->kernelInfo;
+  kernelInfo["defines/p_PI"] = 4.0 * atan(1.0);
+  userVpKernel = udfBuildKernel(nrs, "userVp");
+  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("MOVING MESH", "TRUE");
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  udf.properties = &uservp;
+
+  lowMach::setup(nrs);
+  udf.div = &qtl;
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
+  const dfloat ymin = linAlg->min(nrs->Nlocal, mesh->o_y, mesh->comm);
+  const dfloat ymax = linAlg->max(nrs->Nlocal, mesh->o_y, mesh->comm);
+#if 1
+  userMeshVelocityKernel(mesh->Nelements,
+    nrs->fieldOffset,
+    ymin,
+    ymax,
+    time,
+    mesh->o_y,
+    mesh->o_U);
+#endif
+
+  if (nrs->isOutputStep) {
+    nek_ocopyFrom(time, tstep);
+    nek_userchk();
+  }
+}

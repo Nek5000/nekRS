@@ -20,6 +20,7 @@ void lowMach::setup(nrs_t* nrs)
   nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
+
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
 void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
 {
@@ -73,4 +74,61 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     mesh->o_vgeo,
     nrs->mesh->o_invLMM,
     o_div);
+  
+  if(nrs->pSolver->allNeumann){
+    const dfloat dd = (1.0 - gamma) / gamma;
+    const dlong Nlocal = nrs->Nlocal;
+    occa::memory& o_w1 = nrs->o_wrk0;
+    occa::memory& o_w2 = nrs->o_wrk1;
+    occa::memory& o_scratch = nrs->o_wrk2;
+
+    // rho * cp = cds->o_rho
+    // rho      = nrs->o_rho
+    // cp       = cds->o_rho / nrs->o_rho
+    nrs->p0thHelperKernel(Nlocal,
+      dd,
+      cds->o_rho,
+      nrs->o_rho,
+      nrs->mesh->o_LMM,
+      o_w1,
+      o_w2
+    );
+
+    linAlg_t * linAlg = linAlg_t::getInstance();
+
+    const dfloat p0alpha1 = 1.0 / linAlg->sum(Nlocal, o_w1, mesh->comm);
+    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, o_w1);
+
+    const dfloat termQ = linAlg->sum(Nlocal, o_w1, mesh->comm);
+    dfloat* scratch = nrs->wrk;
+    nrs->surfaceFluxKernel(
+      mesh->Nelements,
+      mesh->o_sgeo,
+      mesh->o_vmapM,
+      nrs->o_EToB,
+      nrs->fieldOffset,
+      nrs->o_U,
+      o_scratch
+    );
+    o_scratch.copyTo(scratch, mesh->Nelements * sizeof(dfloat));
+    dfloat termV = 0.0;
+    for(int i = 0 ; i < mesh->Nelements; ++i) termV += scratch[i];
+    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+
+    const dfloat prhs = p0alpha1 * (termQ - termV);
+    const dfloat pcoef = nrs->g0 - nrs->dt[0] * prhs;
+
+    dfloat Saqpq = 0.0;
+    for(int i = 0 ; i < 3; ++i){
+      Saqpq += nrs->extbdfB[i] * nrs->p0th[i];
+    }
+    const dfloat p0th = Saqpq / pcoef;
+    nrs->p0th[2] = nrs->p0th[1];
+    nrs->p0th[1] = nrs->p0th[0];
+    nrs->p0th[0] = p0th;
+    nrs->dp0thdt = prhs * p0th;
+
+    const dfloat weight = -prhs;
+    linAlg->axpby(Nlocal, weight, o_w2, 1.0, o_div);
+  }
 }

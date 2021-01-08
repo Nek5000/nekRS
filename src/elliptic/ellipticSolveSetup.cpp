@@ -208,6 +208,36 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   elliptic->Nblock = Nblock;
   elliptic->Nblock2 = Nblock2;
 
+  //fill geometric factors in halo
+  if(mesh->totalHaloPairs) {
+    dlong Nlocal = mesh->Nelements;
+    dlong Nhalo = mesh->totalHaloPairs;
+    size_t Nbytes = mesh->Nvgeo * sizeof(dfloat);
+
+    if (elliptic->elementType == QUADRILATERALS || elliptic->elementType == HEXAHEDRA) {
+      Nlocal *= mesh->Np;
+      Nhalo *= mesh->Np;
+      Nbytes *= mesh->Np;
+    }
+
+    dfloat* vgeoSendBuffer = (dfloat*) calloc(Nhalo * mesh->Nvgeo, sizeof(dfloat));
+
+    // import geometric factors from halo elements
+    mesh->vgeo = (dfloat*) realloc(mesh->vgeo, (Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat));
+
+    meshHaloExchange(mesh,
+                     Nbytes,
+                     mesh->vgeo,
+                     vgeoSendBuffer,
+                     mesh->vgeo + Nlocal * mesh->Nvgeo);
+
+    mesh->o_vgeo =
+      mesh->device.malloc((Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat), mesh->vgeo);
+    //mesh->o_faceNodes =
+    //  mesh->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
+    free(vgeoSendBuffer);
+  }
+
   // count total number of elements
   hlong NelementsLocal = mesh->Nelements;
   hlong NelementsGlobal = 0;
@@ -446,6 +476,23 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       mesh->sumKernel =
         mesh->device.buildKernel(filename.c_str(),
                                  "sum",
+                                 kernelInfo);
+
+      kernelInfo["defines/" "p_Nstates"] = mesh->torder;
+      filename = oklpath + "meshGeometricFactorsHex3D.okl";
+      mesh->geometricFactorsKernel =
+        mesh->device.buildKernel(filename.c_str(),
+                                 "meshGeometricFactorsHex3D",
+                                 kernelInfo);
+      filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+      mesh->surfaceGeometricFactorsKernel =
+        mesh->device.buildKernel(filename.c_str(),
+                                 "meshSurfaceGeometricFactorsHex3D",
+                                 kernelInfo);
+      filename = oklpath + "nStagesSum.okl";
+      mesh->nStagesSumVectorKernel =
+        mesh->device.buildKernel(filename.c_str(),
+                                 "nStagesSumVector",
                                  kernelInfo);
 
       filename = oklpath + "fill.okl";

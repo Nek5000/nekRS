@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "linAlg.hpp"
 
+linAlg_t* linAlg_t::singleton = nullptr;
 void linAlg_t::setup() {
 
   int rank;

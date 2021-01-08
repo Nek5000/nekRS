@@ -55,7 +55,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     int err = 0;
     int npTarget = size;
     if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
+    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget, nrs->options);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if (err) ABORT(EXIT_FAILURE);; 
 
@@ -145,6 +145,29 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     const int pageW = PAGESIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
+  nrs->meshT->fieldOffset = nrs->fieldOffset;
+  nrs->mesh->fieldOffset = nrs->fieldOffset;
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int order = mesh->torder;
+    /** realloc o_LMM, o_invLMM to be large enough**/
+    dfloat * hostLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+    dfloat * hostInvLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+    mesh->o_LMM.copyTo(hostLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+    mesh->o_invLMM.copyTo(hostInvLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+    dfloat * tmp = (dfloat*) calloc(nrs->fieldOffset * order, sizeof(dfloat));
+    mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * order * sizeof(dfloat), tmp);
+    mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * order * sizeof(dfloat), tmp);
+    mesh->o_LMM.copyFrom(hostLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+    mesh->o_invLMM.copyFrom(hostInvLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+
+
+    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
+    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * order * sizeof(dfloat), mesh->U);
+    free(hostLMM);
+    free(hostInvLMM);
+    free(tmp);
+  }
 
   nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
@@ -190,6 +213,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
 
+  nrs->mesh->o_scratch = nrs->o_wrk0;
+
+  nrs->wrk = (dfloat*) calloc(nrs->fieldOffset, sizeof(dfloat));
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
@@ -249,9 +275,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  nrs->linAlg = new linAlg_t(mesh->device, nrs->kernelInfo, mesh->comm);
+  linAlg_t::getInstance(mesh->device, nrs->kernelInfo, mesh->comm);
 
-  meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
@@ -261,10 +286,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    nrs->linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
-    //ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    oogs::startFinish(nrs->o_wrk0, 1, 0, ogsDfloat, ogsAdd, nrs->gsh);
-    nrs->linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg_t::getInstance()->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
+    ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg_t::getInstance()->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
@@ -291,20 +315,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if(err) ABORT(1);
     free(tmp);
   }
-
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
 
   // setup boundary mapping
   dfloat largeNumber = 1 << 20;
@@ -393,12 +403,25 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsDivergence" + suffix + ".okl";
+      kernelName = "nrswDivergenceVolume" + suffix;
+      nrs->wDivergenceVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
       kernelName = "nrsDivergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       kernelName = "nrsDivergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "nrsAdvectMeshVelocity.okl";
+      kernelName = "nrsAdvectMeshVelocity";
+      nrs->advectMeshVelocityKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "nrsSurfaceFlux.okl";
+      kernelName = "nrsSurfaceFlux";
+      nrs->surfaceFluxKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "nrsPressureRhs" + suffix + ".okl";
@@ -498,6 +521,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       fileName = oklpath + "nrsQtl" + suffix + ".okl";
       kernelName = "nrsQtl" + suffix;
       nrs->qtlKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      fileName = oklpath + "p0thHelper.okl";
+      kernelName = "p0thHelper";
+      nrs->p0thHelperKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsPressureAddQtl" + ".okl";
@@ -863,7 +891,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     ellipticSolveSetup(nrs->pSolver, kernelInfoP);
 
   } // flow
-
 }
 
 static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH)
@@ -919,28 +946,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->gsh = nrs->gsh;
   
   if(nrs->cht) {
-    meshParallelGatherScatterSetup(mesh, cds->Nlocal, mesh->globalIds, mesh->comm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
     if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
     cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
   } else {
     cds->gshT = cds->gsh;
   }
-
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np +
-                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
 
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
@@ -1061,6 +1072,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
   }
+  cds->mesh->o_scratch = nrs->o_wrk0;
 
   // build kernels
   occa::properties kernelInfo = *nrs->kernelInfo;
@@ -1095,6 +1107,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
                                                                            kernelInfo);
 
       // ===========================================================================
+      fileName = oklpath + "cdsAdvectMeshVelocity.okl";
+      kernelName = "cdsAdvectMeshVelocity";
+      cds->advectMeshVelocityKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "math.okl";
       kernelName = "fill";

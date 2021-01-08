@@ -105,6 +105,16 @@ c-----------------------------------------------------------------------
          ptr = loc(vmult)
       elseif (id .eq. 'cb_scnrs') then
          ptr = loc(sc_nrs(1))
+      elseif (id .eq. 'p0th') then
+         ptr = loc(p0th)
+      elseif (id .eq. 'dp0thdt') then
+         ptr = loc(dp0thdt)
+      elseif (id .eq. 'wx') then
+         ptr = loc(wx(1,1,1,1))
+      elseif (id .eq. 'wy') then
+         ptr = loc(wy(1,1,1,1))
+      elseif (id .eq. 'wz') then
+         ptr = loc(wz(1,1,1,1))
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 

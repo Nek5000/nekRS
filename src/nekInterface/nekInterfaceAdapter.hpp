@@ -12,6 +12,8 @@
 #define DECLARE_USER_FUNC(a) void nek_ ## a(void);
 #define DEFINE_USER_FUNC(a) void nek_ ## a(void) { (*a ## _ptr)(); }
 
+struct setupAide;
+
 typedef struct
 {
   double* param;
@@ -69,6 +71,13 @@ typedef struct
   /* multigrid levels */
   int* mg_nx;
   int mg_lmax;
+
+  /* thermodynamic pressure */
+  double* p0th;
+  double* dp0thdt;
+
+  /* mesh velocities */
+  double *wx, *wy, *wz;
 } nekdata_private;
 
 extern nekdata_private nekData;
@@ -110,7 +119,7 @@ void   nek_setic(void);
 void   nek_userchk(void);
 int    nek_bcmap(int bid, int ifld);
 
-int buildNekInterface(const char* casename, int nFields, int N, int np);
+int buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
 void nek_copyFrom(dfloat time, int tstep);
 void nek_ocopyFrom(void);
 void nek_ocopyFrom(dfloat time, int tstep);
@@ -121,4 +130,6 @@ long long nek_set_glo_num(int npts, int isTMesh);
 
 void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order);
 void nek_extCoeff(double *coeff, double *dt, int order);
+void nek_abCoeff(double *coeff, double *dt, int order);
+void nek_recomputeGeometry();
 #endif

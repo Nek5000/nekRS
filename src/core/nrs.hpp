@@ -17,7 +17,7 @@
 #include "timer.hpp"
 #include "inipp.hpp"
 
-typedef struct
+struct nrs_t
 {
   int dim, elementType;
 
@@ -33,8 +33,6 @@ typedef struct
   cds_t* cds;
 
   oogs_t* gsh;
-
-  linAlg_t* linAlg;
 
   dlong ellipticWrkOffset;
 
@@ -53,6 +51,8 @@ typedef struct
   int Nblock;
 
   dfloat dt[3], idt;
+  dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat dp0thdt;
   int tstep;
   int lastStep;
   dfloat g0, ig0;
@@ -108,8 +108,11 @@ typedef struct
   dfloat* filterM, filterS;
   occa::memory o_filterMT; // transpose of filter matrix
   occa::kernel filterRTKernel; // Relaxation-Term based filtering
+  occa::kernel advectMeshVelocityKernel;
+  occa::kernel surfaceFluxKernel;
 
   occa::kernel qtlKernel;
+  occa::kernel p0thHelperKernel;
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
@@ -135,6 +138,8 @@ typedef struct
 
   occa::memory o_BF;
   occa::memory o_FU;
+
+  dfloat* wrk;
 
   int var_coeff;
   dfloat* prop, * ellipticCoeff;
@@ -166,6 +171,7 @@ typedef struct
 
   occa::kernel gradientVolumeKernel;
 
+  occa::kernel wDivergenceVolumeKernel;
   occa::kernel divergenceVolumeKernel;
   occa::kernel divergenceSurfaceKernel;
 
@@ -199,7 +205,7 @@ typedef struct
   occa::memory o_EToB;
 
   occa::properties* kernelInfo;
-} nrs_t;
+};
 
 
 #include "io.hpp"
