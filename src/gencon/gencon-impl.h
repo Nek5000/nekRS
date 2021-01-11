@@ -4,23 +4,22 @@
 #include <gencon.h>
 
 #define sqrDiff(x,y) (((x)-(y))*((x)-(y)))
-#define distance2D(a,b)\
-  (sqrDiff((a).x[0],(b).x[0])+sqrDiff((a).x[1],(b).x[1]))
+#define distance2D(a,b) (sqrDiff((a).x[0],(b).x[0])+sqrDiff((a).x[1],(b).x[1]))
 #define distance3D(a,b) (distance2D(a,b)+sqrDiff((a).x[2],(b).x[2]))
 
 #define min(a,b) ((a)<(b) ? (a) : (b))
 #define max(a,b) ((a)>(b) ? (a) : (b))
 
-#define READ_T(coords,buf,T,nVertex) do{\
+#define READ_T(coords,buf,T,nVertex) do {\
   memcpy((coords),buf,sizeof(T)*nVertex);\
 } while(0)
 
-#define WRITE_INT(dest,val) do{\
+#define WRITE_INT(dest,val) do {\
   memcpy(dest,&(val),sizeof(int));\
 } while(0)
 
 // TODO: Use rsb_element here
-struct Point_private{
+struct Point_private {
   GenmapScalar dx;
   GenmapScalar x[GC_MAX_DIM];
   uint proc;

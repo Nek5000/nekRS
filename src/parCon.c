@@ -29,7 +29,7 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
     printf("Generating connectivity ...");
   fflush(stdout);
 
-  if (verbose > 0)
+  if (verbose > 0 && rank == 0)
     printf("\n\tnelt/ndim/nperiodic: %d/%d/%d\n", nelt, ndim, nPeriodicFaces);
 
   double t_con = 0.0;
@@ -49,7 +49,7 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
   int nrem = nelgt - nelt_*size;
   if (rank >= (size - nrem))
     nelt_++;
-  assert(nelt==nelt_);
+  assert(nelt == nelt_);
 
   int nvertex = mesh->nVertex;
   uint nunits = nvertex*nelt;
@@ -71,23 +71,31 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
   assert(mesh->elements.n == nunits);
 
   struct Boundary_private b;
-  for (i = 0; i<nPeriodicFaces; i++) {
-    b.elementId = periodicInfo[4*i+0]-1;
-    b.faceId = PRE_TO_SYM_FACE[periodicInfo[4*i+1]-1];
-    b.bc[0] = periodicInfo[4*i+2]-1;
-    b.bc[1] = PRE_TO_SYM_FACE[periodicInfo[4*i+3]-1];
-    array_cat(struct Boundary_private,&mesh->boundary,&b,1);
+  for (i = 0; i < nPeriodicFaces; i++) {
+    b.elementId = periodicInfo[4*i + 0] - 1;
+    b.faceId = PRE_TO_SYM_FACE[periodicInfo[4*i + 1] - 1];
+    b.bc[0] = periodicInfo[4*i + 2] - 1;
+    b.bc[1] = PRE_TO_SYM_FACE[periodicInfo[4*i + 3] - 1];
+    array_cat(struct Boundary_private, &mesh->boundary, &b, 1);
   }
-  assert(mesh->boundary.n==nPeriodicFaces);
+  assert(mesh->boundary.n == nPeriodicFaces);
 
-  transferBoundaryFaces(mesh,&c);
+  transferBoundaryFaces(mesh, &c);
 
   findMinNeighborDistance(mesh);
-  findSegments(mesh,&c,tol,1);
-  setGlobalID(mesh,&c);
-  sendBack(mesh,&c);
-  faceCheck(mesh,&c);
-  matchPeriodicFaces(mesh,&c);
+
+  buffer bfr;
+  buffer_init(&bfr, 1024);
+  findSegments(mesh, &c, tol, verbose, &bfr);
+  buffer_free(&bfr);
+
+  setGlobalID(mesh, &c);
+
+  sendBack(mesh, &c);
+
+  faceCheck(mesh, &c);
+
+  matchPeriodicFaces(mesh, &c);
 
   // copy output
   Point ptr = mesh->elements.ptr;

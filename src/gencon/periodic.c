@@ -6,11 +6,11 @@
 #include <genmap-impl.h>
 #include <sort.h>
 
-int faces3D[GC_MAX_FACES][GC_MAX_FACE_VERTICES]={
+int faces3D[GC_MAX_FACES][GC_MAX_FACE_VERTICES] = {
   {1,5,7,3},{2,4,8,6},{1,2,6,5},{3,7,8,4},{1,3,4,2},{5,6,8,7}
 };
 
-int faces2D[GC_MAX_FACES][GC_MAX_FACE_VERTICES]={
+int faces2D[GC_MAX_FACES][GC_MAX_FACE_VERTICES] = {
   {3,1,0,0},{2,4,0,0},{1,2,0,0},{4,3,0,0},{0,0,0,0},{0,0,0,0}
 };
 
@@ -22,8 +22,7 @@ struct minPair_private{
 typedef struct minPair_private* minPair;
 
 int compressPeriodicVertices(Mesh mesh,struct comm *c){
-  parallel_sort(struct Point_private,&mesh->elements,globalId,
-    gs_long,0,0,c);
+  parallel_sort(struct Point_private,&mesh->elements,globalId,gs_long,0,0,c);
 
   Point points=mesh->elements.ptr;
   uint npoints=mesh->elements.n;
@@ -60,8 +59,7 @@ ulong findMinBelowI(ulong min,uint I,struct array *arr){
   return min;
 }
 
-int renumberPeriodicVertices(Mesh mesh,struct comm *c,\
-    struct array *matched)
+int renumberPeriodicVertices(Mesh mesh, struct comm *c, struct array *matched)
 {
   minPair ptr=matched->ptr;
   uint size=matched->n;
@@ -136,8 +134,7 @@ int renumberPeriodicVertices(Mesh mesh,struct comm *c,\
   buffer_free(&buf);
 }
 
-int findConnectedPeriodicPairs(Mesh mesh,BoundaryFace f_,BoundaryFace g_,
-    struct array *matched)
+int findConnectedPeriodicPairs(Mesh mesh, BoundaryFace f_, BoundaryFace g_, struct array *matched)
 {
   struct Boundary_private f=*f_,g=*g_;
 
@@ -242,7 +239,7 @@ int gatherMatchingPeriodicFaces(Mesh mesh,struct comm *c){
   crystal_free(&cr);
 }
 
-int setPeriodicFaceCoordinates(Mesh mesh,struct comm *c){
+int setPeriodicFaceCoordinates(Mesh mesh, struct comm *c){
   BoundaryFace bPtr=mesh->boundary.ptr;
   sint bSize=mesh->boundary.n;
   if(bSize==0) return 0;
@@ -287,18 +284,19 @@ int setPeriodicFaceCoordinates(Mesh mesh,struct comm *c){
   }
 }
 
-int matchPeriodicFaces(Mesh mesh,struct comm *c){
-  setPeriodicFaceCoordinates(mesh,c);
-  gatherMatchingPeriodicFaces(mesh,c);
+int matchPeriodicFaces(Mesh mesh, struct comm *c){
+  setPeriodicFaceCoordinates(mesh, c);
+  gatherMatchingPeriodicFaces(mesh, c);
 
   struct array matched;
-  array_init(struct minPair_private,&matched,10); matched.n=0;
-  findConnectedPeriodicFaces(mesh,&matched);
-  renumberPeriodicVertices(mesh,c,&matched);
+  array_init(struct minPair_private, &matched, 10);
+  matched.n = 0;
+  findConnectedPeriodicFaces(mesh, &matched);
+  renumberPeriodicVertices(mesh, c, &matched);
   array_free(&matched);
 
-  compressPeriodicVertices(mesh,c);
-  sendBack(mesh,c);
+  compressPeriodicVertices(mesh, c);
+  sendBack(mesh, c);
 
   return 0;
 }
