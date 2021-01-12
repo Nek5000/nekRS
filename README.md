@@ -75,6 +75,10 @@ You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your envir
 ## Contributing
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
+## Documentation
+nekRS documentation is built with Sphinx and hosted using readthedocs [here](https://nekrsdoc.readthedocs.io/en/latest/index.html).
+Please visit the page for a description of code usage.
+
 ## Support
 Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
 
