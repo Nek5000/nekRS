@@ -12,7 +12,7 @@ Capabilities:
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
 * CG-SEM using curvilinear conformal hexaheadral elements 
 * 3rd/2nd order semi-implicit time integration + operator integration factor splitting
-* MPI+X hybrid parallelism supporting CPU, CUDA, HIP and OPENCL
+* MPI+X hybrid parallelism supporting CUDA, HIP, OPENCL and CPU
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 * Conjugate fluid-solid heat transfer
 * LES and RANS turbulence models
@@ -73,8 +73,8 @@ nrsmpi ethier 2 # run on two MPI ranks
 You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
 
 ## Performance Considerations
-For good performance a GPU with a high memory bandwidth and FP64-support (in hardware) is required.
-Most desktop/gaming GPUs do not meet this requirements.
+For good performance a GPU with a high memory bandwidths and FP64-support (in hardware) is required.
+Most desktop/gaming GPUs do not meet these requirements.
 It is recommended to pin MPI-tasks (using e.g. numactl) to ensure the correct CPU/GPU binding.
 Moreover a GPU enabled MPI implementation (if available set OGS_MPI_SUPPORT=1) should be used.
 
@@ -82,7 +82,7 @@ Moreover a GPU enabled MPI implementation (if available set OGS_MPI_SUPPORT=1) s
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
 ## Troubleshooting
-If you run into problems compiling, installing, or running nekRS, please send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS). Please [sign up](https://groups.google.com/forum/#!forum/nekRS/join) to post your questions, concerns or suggestions.
+If you run into problems compiling, installing, or running nekRS, please visit our [community platform](https://github.com/Nek5000/nekRS/dicussions) on [GitHub](https://github.com/Nek5000/nekRS).
 
 ## Reporting Bugs
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
