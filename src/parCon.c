@@ -26,11 +26,8 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
   uint size = c.np;
 
   if (rank == 0 && verbose > 0)
-    printf("Generating connectivity ...");
+    printf("Generating connectivity ...\n");
   fflush(stdout);
-
-  if (verbose > 0 && rank == 0)
-    printf("\n\tnelt/ndim/nperiodic: %d/%d/%d\n", nelt, ndim, nPeriodicFaces);
 
   double t_con = 0.0;
   comm_barrier(&c);
@@ -86,18 +83,25 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
 
   buffer bfr;
   buffer_init(&bfr, 1024);
+
   findSegments(mesh, &c, tol, verbose, &bfr);
-  buffer_free(&bfr);
 
   setGlobalID(mesh, &c);
+  sendBack(mesh, &c, &bfr);
 
-  sendBack(mesh, &c);
+  sint buf;
+  sint err = faceCheck(mesh, &c);
+  comm_allreduce(&c, gs_int, gs_max, &err, 1, &buf);
+  if (err > 0) {
+    buffer_free(&bfr);
+    mesh_free(mesh);
+    comm_free(&c);
+    return err;
+  }
 
-  faceCheck(mesh, &c);
+  matchPeriodicFaces(mesh, &c, &bfr);
 
-  matchPeriodicFaces(mesh, &c);
-
-  // copy output
+  // Copy output
   Point ptr = mesh->elements.ptr;
   for (i = 0; i < nelt*nvertex; i++)
     vertexid[i] = ptr[i].globalId + 1;
@@ -107,9 +111,11 @@ int parRSB_findConnectivity(long long *vertexid, double *coord, int nelt, int nd
 
   if (rank == 0 && verbose > 0)
     printf("\tfinished in %g s\n",t_con);
+  fflush(stdout);
 
+  buffer_free(&bfr);
   mesh_free(mesh);
   comm_free(&c);
 
-  return 0;
+  return err;
 }

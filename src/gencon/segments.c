@@ -31,8 +31,6 @@ static int sortSegments(Mesh mesh, struct comm *c, int dim, buffer *bfr) {
     s = e;
   }
 
-  comm_barrier(c);
-
   // Set globalId
   slong out[2][1], buf[2][1], in[1];
   in[0] = nPoints;
@@ -145,75 +143,58 @@ int findSegments(Mesh mesh, struct comm *c, GenmapScalar tol, int verbose, buffe
   // }
   // comm_barrier(&nonZeroRanks);
 
-  // if (verbose > 1 && rank == 0) {
-  //   printf("\tDone initializing\n");
-  //   fflush(stdout);
-  // }
-  // comm_barrier(&nonZeroRanks);
-
   comm_ext orig;
 #ifdef MPI
   MPI_Comm_dup(c->c, &orig);
 #endif
   struct comm nonZeroRanks;
   
-  int dim, bin, rank;
-  for (dim = 0; dim < nDim; dim++) {
-    nPoints = mesh->elements.n;
+  int dim, bin, rank, t;
+  for (t = 0; t < nDim; t++) {
+    for (dim = 0; dim < nDim; dim++) {
+      nPoints = mesh->elements.n;
 
-    bin = 1;
-    if (nPoints == 0)
-      bin = 0;
-  
+      bin = 1;
+      if (nPoints == 0)
+        bin = 0;
+    
 #ifdef MPI
-    MPI_Comm new;
-    MPI_Comm_split(orig, bin, rank, &new);
-    comm_init(&nonZeroRanks, new);
-    MPI_Comm_free(&new);
+      MPI_Comm new;
+      MPI_Comm_split(orig, bin, rank, &new);
+      comm_init(&nonZeroRanks, new);
+      MPI_Comm_free(&new);
 #else
-    comm_init(&nonZeroRanks, 1);
+      comm_init(&nonZeroRanks, 1);
 #endif
 
-    rank = nonZeroRanks.id;
-    for (i = 0; i < nPoints; i++)
-      points[i].proc = rank;
+      rank = nonZeroRanks.id;
+      for (i = 0; i < nPoints; i++)
+        points[i].proc = rank;
 
-    if (bin == 1) {
-      if (verbose > 0 && rank == 0) {
-        printf("\tsortSegments started.\n");
-      	fflush(stdout);
+      if (bin == 1) {
+        sortSegments(mesh, &nonZeroRanks, dim, bfr);
+
+        findLocalSegments(mesh, dim, tolSquared);
+
+        mergeSegments(mesh, &nonZeroRanks, dim, tolSquared, bfr);
+
+        if (verbose > 0) {
+          nPoints = mesh->elements.n;
+          points = mesh->elements.ptr;
+          sint count = 0;
+          for (i = 0; i < nPoints; i++)
+            if (points[i].ifSegment > 0)
+              count++;
+
+          in[0] = count;
+          comm_allreduce(&nonZeroRanks, gs_long, gs_add, in, 1, buf);
+          if (rank == 0)
+            printf("\tlocglob: %d %d %lld\n", t + 1, dim + 1, in[0] + 1);
+        }
       }
-      sortSegments(mesh, &nonZeroRanks, dim, bfr);
-      comm_barrier(&nonZeroRanks);
-      if (verbose > 0 && rank == 0)
-        printf("\tsortSegments finished.\n");
 
-      findLocalSegments(mesh, dim, tolSquared);
-      comm_barrier(&nonZeroRanks);
-      if (verbose > 0 && rank == 0)
-        printf("\tfindLocalSegments finished.\n");
-
-      mergeSegments(mesh, &nonZeroRanks, dim, tolSquared, bfr);
-      comm_barrier(&nonZeroRanks);
-      if (verbose > 0 && rank == 0)
-        printf("\tmergeSegments finished.\n");
-
-      if (verbose > 0) {
-        nPoints = mesh->elements.n;
-        points = mesh->elements.ptr;
-        sint count = 0;
-        for (i = 0; i < nPoints; i++)
-          if (points[i].ifSegment > 0)
-            count++;
-
-        in[0] = count;
-        comm_allreduce(&nonZeroRanks, gs_long, gs_add, in, 1, buf);
-        if (rank == 0)
-          printf("locglob: %d %lld\n", dim + 1, in[0] + 1);
-      }
+      comm_free(&nonZeroRanks);
     }
-
-    comm_free(&nonZeroRanks);
   }
 
 #ifdef MPI

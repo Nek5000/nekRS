@@ -205,41 +205,47 @@ int faceCheck(Mesh mesh,struct comm *c)
   struct array shared; array_init(ElementID,&shared,200);
   buffer bfr; buffer_init(&bfr,1024);
 
-  int i,j,k,l;
-  for(i=0; i<nelt; i++){
-    for(j=0; j<nf; j++){
-      shared.n=0;
+  int err = 0;
 
-      for(k=0; k<nfv; k++){
-        ulong globalId=ptr[i*nv+faces[j][k]-1].globalId+1;
-        int indx=getPosition(map,globalId);
-        assert(indx<map->size && "Return index out of bounds");
+  int i, j, k, l;
+  for (i = 0; i < nelt && err == 0; i++) {
+    for (j = 0; j < nf && err == 0; j++) {
+      shared.n = 0;
+
+      for (k = 0; k < nfv; k++) {
+        ulong globalId = ptr[i*nv + faces[j][k] - 1].globalId + 1;
+        int indx = getPosition(map, globalId);
+        assert(indx < map->size && "Return index out of bounds");
 
         ElementID elemId;
-        for(l=map->offsets[indx]; l<map->offsets[indx+1]; l++){
-          elemId.elementId=map->elements[l];
-          array_cat(ElementID,&shared,&elemId,1);
+        for (l = map->offsets[indx]; l < map->offsets[indx + 1]; l++) {
+          elemId.elementId = map->elements[l];
+          array_cat(ElementID, &shared, &elemId, 1);
         }
       }
 
-      sarray_sort(ElementID,shared.ptr,shared.n,elementId,1,&bfr);
+      sarray_sort(ElementID, shared.ptr, shared.n, elementId, 1, &bfr);
 
-      ulong prev=0; int ncount=1;
-      ElementID *ptr=shared.ptr;
-      for(l=1; l<shared.n; l++){
-        if(ptr[l].elementId!=ptr[prev].elementId){
-          assert(ncount!=3);
-          prev=l,ncount=1;
-        } else ncount++;
+      ulong prev = 0;
+      int ncount = 1;
+      ElementID *ptr = shared.ptr;
+      for (l = 1; l < shared.n; l++) {
+        if (ptr[l].elementId != ptr[prev].elementId) {
+          if (ncount == 3) err = 1;
+          prev = l;
+          ncount = 1;
+        } else
+          ncount++;
       }
-      assert(ncount!=3);
+     
+      if (ncount == 3)
+        err = 1;
     }
   }
 
   buffer_free(&bfr);
   array_free(&shared);
-
   freeVToEMap(map);
 
-  return 0;
+  return err;
 }

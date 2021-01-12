@@ -29,6 +29,8 @@ int transferBoundaryFaces(Mesh mesh,struct comm *c){
   struct crystal cr; crystal_init(&cr,c);
   sarray_transfer(struct Boundary_private,boundary,proc,1,&cr);
   crystal_free(&cr);
+
+  return 0;
 }
 
 int readRe2Header(Mesh *mesh_,MPI_File file,struct comm *c){

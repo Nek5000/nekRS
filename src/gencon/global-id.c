@@ -48,16 +48,13 @@ int setGlobalID(Mesh mesh, struct comm *c) {
   return 0;
 }
 
-int sendBack(Mesh mesh, struct comm *c) {
+int sendBack(Mesh mesh, struct comm *c, buffer *bfr) {
   struct crystal cr;
   crystal_init(&cr, c);
   sarray_transfer(struct Point_private, &mesh->elements, origin, 0, &cr);
   crystal_free(&cr);
 
-  buffer bfr;
-  buffer_init(&bfr, 1024);
-  sarray_sort(struct Point_private, mesh->elements.ptr, mesh->elements.n, sequenceId, 1, &bfr);
-  buffer_free(&bfr);
+  sarray_sort(struct Point_private, mesh->elements.ptr, mesh->elements.n, sequenceId, 1, bfr);
 
   return 0;
 }
