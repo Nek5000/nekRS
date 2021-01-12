@@ -82,7 +82,7 @@ Moreover a GPU enabled MPI implementation (if available set OGS_MPI_SUPPORT=1) s
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
 ## Troubleshooting
-If you run into problems compiling, installing, or running nekRS, please visit our [community platform](https://github.com/Nek5000/nekRS/dicussions) on [GitHub](https://github.com/Nek5000/nekRS).
+If you run into problems compiling, installing, or running nekRS, please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS) where we help, find solutions, share ideas, and follow discussions.
 
 ## Reporting Bugs
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
