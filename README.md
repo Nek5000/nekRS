@@ -72,12 +72,6 @@ nrsmpi ethier 2 # run on two MPI ranks
 ```
 You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
 
-## Performance Considerations
-For good performance a GPU with a high memory bandwidths and FP64-support (in hardware) is required.
-Most desktop/gaming GPUs do not meet these requirements.
-It is recommended to pin MPI-tasks (using e.g. numactl) to ensure the correct CPU/GPU binding.
-Moreover a GPU enabled MPI implementation (if available set OGS_MPI_SUPPORT=1) should be used.
-
 ## Contributing
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
