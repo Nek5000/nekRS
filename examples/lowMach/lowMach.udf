@@ -11,6 +11,12 @@
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
 
+void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
+{
+  lowMach::qThermalPerfectGasSingleComponent(nrs, time, P_GAMMA, o_div);
+}
+
+
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = nrs->cds;
@@ -49,6 +55,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.properties = &uservp;
 
   lowMach::setup(nrs);
+  udf.div = &qtl;
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

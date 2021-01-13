@@ -20,8 +20,6 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S);
 
-void qthermal(nrs_t* nrs, dfloat time, occa::memory o_div);
-
 double tElapsed = 0;
 
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
@@ -681,59 +679,4 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     }
   }
   return cds->o_wrk0;
-}
-
-// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void qthermal(nrs_t* nrs, dfloat time, occa::memory o_div)
-{
-  cds_t* cds = nrs->cds;
-  mesh_t* mesh = nrs->mesh;
-
-  nrs->gradientVolumeKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_Dmatrices,
-    nrs->fieldOffset,
-    cds->o_S,
-    cds->o_wrk0);
-
-  oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
-
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
-    mesh->o_invLMM,
-    cds->o_wrk0);
-
-  if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
-    udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
-    timer::toc("udfSEqnSource");
-  } else {
-    nrs->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
-  }
-
-  nrs->qtlKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_Dmatrices,
-    nrs->fieldOffset,
-    cds->o_wrk0,
-    cds->o_S,
-    cds->o_diff,
-    cds->o_rho,
-    cds->o_wrk3,
-    o_div);
-
-  oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    1,
-    mesh->o_vgeo,
-    mesh->o_invLMM,
-    o_div);
 }
