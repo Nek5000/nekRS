@@ -27,7 +27,7 @@ struct Point_private {
   int ifSegment;
   ulong sequenceId;
   ulong elementId;
-  slong globalId;
+  ulong globalId;
 };
 
 extern int faces3D[GC_MAX_FACES][GC_MAX_FACE_VERTICES];

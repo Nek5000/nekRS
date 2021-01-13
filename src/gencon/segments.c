@@ -28,17 +28,10 @@ static int sortSegments(Mesh mesh, struct comm *c, int dim, buffer *bfr) {
         break;
     }
 
-    s = e;
+    points[s].ifSegment = 1;
+    for (s = s + 1; s < e; s++)
+      points[s].ifSegment = 0;
   }
-
-  // Set globalId
-  slong out[2][1], buf[2][1], in[1];
-  in[0] = nPoints;
-  comm_scan(out, c, gs_long, gs_add, in, 1, buf);
-  slong start = out[0][0];
-
-  for (e = 0; e < nPoints; e++)
-    points[e].globalId = start + e;
 
   return 0;
 }
@@ -48,21 +41,25 @@ static int findLocalSegments(Mesh mesh, int i, GenmapScalar tolSquared) {
   sint npts = mesh->elements.n;
   int nDim = mesh->nDim;
 
-  sint j;
-  for (j = 0; j < npts - 1; j++) {
-    GenmapScalar d = sqrDiff(pts[j].x[i], pts[j + 1].x[i]);
+  //if (npts > 0)
+  //  printf("%d %d %0.12lf %0.12lf %0.12lf %llu\n", 0, pts[0].ifSegment, pts[0].x[0], pts[0].x[1], pts[0].x[2], pts[0].globalId);
 
-    GenmapScalar dx = min(pts[j].dx, pts[j + 1].dx)*tolSquared;
+  sint j;
+  for (j = 1; j < npts; j++) {
+    GenmapScalar d = sqrDiff(pts[j].x[i], pts[j - 1].x[i]);
+
+    GenmapScalar dx = min(pts[j].dx, pts[j - 1].dx)*tolSquared;
 
     if (d > dx)
-      pts[j + 1].ifSegment = 1;
+      pts[j].ifSegment = 1;
+
+    //printf("%d %d %0.12lf %0.12lf %0.12lf %llu\n", j, pts[j].ifSegment, pts[j].x[0], pts[j].x[1], pts[j].x[2], pts[j].globalId);
   }
 }
 
 static int mergeSegments(Mesh mesh, struct comm *c, int i, GenmapScalar tolSquared, buffer *bfr) {
   uint nPoints = mesh->elements.n;
   Point points = mesh->elements.ptr;
-  int nDim = mesh->nDim;
 
   sint rank = c->id;
   sint size = c->np;
@@ -95,10 +92,8 @@ static int mergeSegments(Mesh mesh, struct comm *c, int i, GenmapScalar tolSquar
 
   // If rank > 0, send i = 0,... n-1 where points[i].ifSegment == 0 to rank - 1
   n = 0;
-  if (rank > 0) {
-    for (; n < nPoints && points[n].ifSegment == 0; n++)
-      points[n].proc = rank - 1;
-  }
+  for (; n < nPoints && points[n].ifSegment == 0; n++)
+    points[n].proc = rank - 1;
   for (; n < nPoints; n++)
     points[n].proc = rank;
 
@@ -127,37 +122,34 @@ int findSegments(Mesh mesh, struct comm *c, GenmapScalar tol, int verbose, buffe
 
   //TODO: load balance
 
-  // Initialize
-  uint i;
-  for (i = 0; i < nPoints; i++)
-    points[i].ifSegment = 0;
-
+  // Initialize globalId and ifSegment
   slong out[2][1], buf[2][1], in[1];
-  // in[0] = nPoints;
-  // comm_scan(out, &nonZeroRanks, gs_long, gs_add, in, 1, buf);
-  // slong start = out[0][0];
+  in[0] = nPoints;
+  comm_scan(out, c, gs_long, gs_add, in, 1, buf);
+  slong start = out[0][0];
+  uint i;
+  for (i = 0; i < nPoints; i++) {
+    points[i].ifSegment = 0;
+    points[i].globalId = start + i;
+  }
 
-  // if (verbose > 1 && rank == 0) {
-  //   printf("\tsegments: rank=%d npts=%u start=%lld\n", rank, nPoints, start);
-  //   fflush(stdout);
-  // }
-  // comm_barrier(&nonZeroRanks);
+  //FIXME: first rank with nPoints>0 should do this
+  if (c->id == 0 && nPoints > 0)
+    points[0].ifSegment = 1;
 
   comm_ext orig;
 #ifdef MPI
   MPI_Comm_dup(c->c, &orig);
 #endif
   struct comm nonZeroRanks;
-  
-  int dim, bin, rank, t;
+  int rank = c->id;
+
+  int dim, bin, t, merged = 0;
   for (t = 0; t < nDim; t++) {
     for (dim = 0; dim < nDim; dim++) {
       nPoints = mesh->elements.n;
 
-      bin = 1;
-      if (nPoints == 0)
-        bin = 0;
-    
+      bin = (nPoints > 0);
 #ifdef MPI
       MPI_Comm new;
       MPI_Comm_split(orig, bin, rank, &new);
@@ -168,28 +160,27 @@ int findSegments(Mesh mesh, struct comm *c, GenmapScalar tol, int verbose, buffe
 #endif
 
       rank = nonZeroRanks.id;
-      for (i = 0; i < nPoints; i++)
-        points[i].proc = rank;
 
-      if (bin == 1) {
+      if (bin > 0 && verbose > 0) {
+        nPoints = mesh->elements.n;
+        points = mesh->elements.ptr;
+        sint count = 0;
+        for (i = 0; i < nPoints; i++)
+          if (points[i].ifSegment > 0)
+            count++;
+
+        in[0] = count;
+        comm_allreduce(&nonZeroRanks, gs_long, gs_add, in, 1, buf);
+        if (rank == 0)
+          printf("\tlocglob: %d %d %lld\n", t + 1, dim + 1, in[0]);
+      }
+
+      if (bin > 0) {
         sortSegments(mesh, &nonZeroRanks, dim, bfr);
-
         findLocalSegments(mesh, dim, tolSquared);
-
-        mergeSegments(mesh, &nonZeroRanks, dim, tolSquared, bfr);
-
-        if (verbose > 0) {
-          nPoints = mesh->elements.n;
-          points = mesh->elements.ptr;
-          sint count = 0;
-          for (i = 0; i < nPoints; i++)
-            if (points[i].ifSegment > 0)
-              count++;
-
-          in[0] = count;
-          comm_allreduce(&nonZeroRanks, gs_long, gs_add, in, 1, buf);
-          if (rank == 0)
-            printf("\tlocglob: %d %d %lld\n", t + 1, dim + 1, in[0] + 1);
+        if (merged == 0) {
+          mergeSegments(mesh, &nonZeroRanks, dim, tolSquared, bfr);
+          merged = 1;
         }
       }
 

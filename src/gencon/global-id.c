@@ -30,16 +30,16 @@ int setGlobalID(Mesh mesh, struct comm *c) {
         count++;
 
     slong out[2][1], buf[2][1], in[1];
-    in[0] = count + !rank;
+    in[0] = count;
     comm_scan(out, &nonZeroRanks, gs_long, gs_add, in, 1, buf);
     slong start = out[0][0];
 
-    start -= (rank > 0 ? 1 : 0);
-    count = 0;
+    assert(points[0].ifSegment == 1);
+    count = -1;
     for (i = 0; i < nPoints; i++) {
       if (points[i].ifSegment)
         count++;
-      points[i].globalId=start+count;
+      points[i].globalId = start + count;
     }
   }
 
