@@ -466,7 +466,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   char ver[10];
   int ndim;
   hlong nelgv, nelgt;
-  sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
+  sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
   int lelt = (int)(nelgt/np) + 3;
   if(lelt > nelgt) lelt = (int)nelgt;
   mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt);
