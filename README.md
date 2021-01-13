@@ -5,14 +5,14 @@
 [![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.com/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code is a fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming [OCCA](https://github.com/libocca/occa) is used.  
+**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code started as a fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming across different backends [OCCA](https://github.com/libocca/occa) is used.  
 
 Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
 * CG-SEM using curvilinear conformal hexaheadral elements 
 * 3rd/2nd order semi-implicit time integration + operator integration factor splitting
-* MPI+X hybrid parallelism supporting CPU, CUDA, HIP and OPENCL
+* MPI+X hybrid parallelism supporting CUDA, HIP, OPENCL and CPU
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 * Conjugate fluid-solid heat transfer
 * LES and RANS turbulence models
@@ -72,17 +72,11 @@ nrsmpi ethier 2 # run on two MPI ranks
 ```
 You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
 
-## Performance Considerations
-For good performance a GPU with a high memory bandwidth and FP64-support (in hardware) is required.
-Most desktop/gaming GPUs do not meet this requirements.
-It is recommended to pin MPI-tasks (using e.g. numactl) to ensure the correct CPU/GPU binding.
-Moreover a GPU enabled MPI implementation (if available set OGS_MPI_SUPPORT=1) should be used.
-
 ## Contributing
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
-## Troubleshooting
-If you run into problems compiling, installing, or running nekRS, please send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS). Please [sign up](https://groups.google.com/forum/#!forum/nekRS/join) to post your questions, concerns or suggestions.
+## Support
+Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
 
 ## Reporting Bugs
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).

@@ -4,5 +4,5 @@
 namespace lowMach
 {
 void setup(nrs_t* nrs);
-void qtl(nrs_t* nrs, dfloat time, occa::memory o_div);
+void qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div);
 }

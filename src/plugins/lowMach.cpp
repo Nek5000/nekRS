@@ -17,12 +17,11 @@ void lowMach::setup(nrs_t* nrs)
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
-  udf.div = &lowMach::qtl;
   nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
+void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
 {
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
