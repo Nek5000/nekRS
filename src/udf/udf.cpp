@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "udf.hpp"
+#include "filesystem.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
@@ -17,11 +18,22 @@ void udfBuild(const char* udfFile)
   double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
+  auto udf_cache_dir = std::string(cache_dir) + "/udf";
 
   printf("loading udf ... "); fflush(stdout);
-  sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && rm -rf CMake* Makefile cmake_install.cmake",
-          cache_dir, cache_dir);
-  system(cmd);
+
+  // mkdir -p udf_cache_dir
+  if (fsys_mkdir(udf_cache_dir) != 0)
+    ABORT(EXIT_FAILURE);
+
+  // Remove unwanted files and directories from udf_cache_dir
+  std::vector<std::string> unwanted{{
+    "CMakeFiles", "CMakeCache.txt", "CMakeLists.txt", "cmake_install.cmake", "Makefile"}};
+  for (const auto &u : unwanted) {
+    if(fsys_rm(udf_cache_dir + "/" + u) != 0) {
+      ABORT(EXIT_FAILURE);
+    }
+  }
 
   ptr = realpath(udfFile, abs_path);
   if(!ptr) {

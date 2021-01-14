@@ -174,6 +174,7 @@ include(config/blaslapack.cmake)
 set(SRC 
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
+    src/core/utils/filesystem.cpp
     src/core/utils/mysort.cpp
     src/core/utils/parallelSort.cpp
     src/core/utils/occaHelpers.cpp
