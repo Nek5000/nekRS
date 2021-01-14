@@ -15,6 +15,7 @@
 #include "cds.hpp"
 #include "linAlg.hpp"
 #include "timer.hpp"
+#include "inipp.hpp"
 
 typedef struct
 {
@@ -43,7 +44,8 @@ typedef struct
   setupAide options;
   setupAide vOptions, pOptions;
 
-  // INS SOLVER OCCA VARIABLES
+  inipp::Ini<char> *par;
+
   int NVfields, NTfields;
   dlong fieldOffset;
   dlong Nlocal, Ntotal;

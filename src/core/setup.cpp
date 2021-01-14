@@ -12,10 +12,8 @@ static occa::memory o_scratch;
 
 static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
 
-nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildOnly)
+void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildOnly, nrs_t *nrs)
 {
-  nrs_t* nrs = new nrs_t();
-
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
   occa::properties& kernelInfo = *nrs->kernelInfo;
@@ -860,7 +858,6 @@ nrs_t* nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buil
 
   } // flow
 
-  return nrs;
 }
 
 static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH)

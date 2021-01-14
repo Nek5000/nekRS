@@ -47,7 +47,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-  options = parRead(setupFile, comm);
+  nrs = new nrs_t();
+
+  nrs->par = new inipp::Ini<char>();	   
+  options = parRead((void*) nrs->par, setupFile, comm);
 
   if(buildOnly) 
     options.setArgs("BUILD ONLY", "TRUE");
@@ -84,7 +87,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrs = nrsSetup(comm, device, options, buildOnly);
+  nrsSetup(comm, device, options, buildOnly, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -247,7 +250,7 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   // init solver
-  nrs = nrsSetup(comm, device, options, 1);
+  nrsSetup(comm, device, options, 1, nrs);
 
   if (rank == 0) cout << "\nBuild successful." << endl;
 }

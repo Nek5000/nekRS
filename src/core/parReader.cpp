@@ -101,7 +101,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
 }
 
-setupAide parRead(std::string &setupFile, MPI_Comm comm)
+setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
@@ -113,7 +113,6 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   }
 
   setupAide options;
-
   string casename = setupFile.substr(0, setupFile.find(".par"));
   setDefaultSettings(options, casename, rank);
 
@@ -134,45 +133,37 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   stringstream is;
   is.write(rbuf, fsize);
 
-  inipp::Ini<char> ini;
-  ini.parse(is);
-  ini.interpolate();
+  inipp::Ini<char>* par = (inipp::Ini<char>*) ppar;
+  par->parse(is);
+  par->interpolate();
 
   string sbuf;
 
   // OCCA
   string threadModel;
-  if(ini.extract("occa", "backend", threadModel)) {
+  if(par->extract("occa", "backend", threadModel)) {
     UPPER(threadModel);
     options.setArgs("THREAD MODEL", threadModel);
   }
 
-/*
-   if (char *env = getenv("NEKRS_BACKEND")) {
-   string threadModel(env);
-   UPPER(threadModel);
-   options.setArgs("THREAD MODEL", threadModel);
-   }
- */
-
   string deviceNumber;
-  if(ini.extract("occa", "devicenumber", deviceNumber))
+  if(par->extract("occa", "devicenumber", deviceNumber))
     UPPER(deviceNumber);
   options.setArgs("DEVICE NUMBER", deviceNumber);
 
   // GENERAL
   bool verbose = false;
-  if(ini.extract("general", "verbose", verbose))
+  if(par->extract("general", "verbose", verbose))
     if(verbose) options.setArgs("VERBOSE", "TRUE");
 
   string startFrom;
-  if (ini.extract("general", "startfrom", startFrom)) {
+  if (par->extract("general", "startfrom", startFrom)) {
     options.setArgs("RESTART FROM FILE", "1");
     options.setArgs("RESTART FILE NAME", startFrom);
   }
 
   int N;
-  if(ini.extract("general", "polynomialorder", N)) {
+  if(par->extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
     if(N>9) exit("polynomialOrder > 9 is currently not supported!", EXIT_FAILURE);
   } else {
@@ -180,17 +171,17 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   }
 
   int cubN = round(3./2 * (N+1) - 1) - 1;
-  ini.extract("general", "cubaturepolynomialorder", cubN);
+  par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
   double dt;
-  if(ini.extract("general", "dt", dt))
+  if(par->extract("general", "dt", dt))
     options.setArgs("DT", to_string_f(dt));
   else
     exit("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE);
 
   string timeStepper;
-  ini.extract("general", "timestepper", timeStepper);
+  par->extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
   }
@@ -200,71 +191,71 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
 
   bool variableDt = false;
-  ini.extract("general", "variabledt", variableDt);
+  par->extract("general", "variabledt", variableDt);
   if(variableDt) exit("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE);
 
   double endTime;
   string stopAt = "numsteps";
-  ini.extract("general", "stopat", stopAt);
+  par->extract("general", "stopat", stopAt);
   if(stopAt == "numsteps") {
     int numSteps;
-    if(ini.extract("general", "numsteps", numSteps)) {
+    if(par->extract("general", "numsteps", numSteps)) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = -1;
     } else {
       exit("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     }
   } else if(stopAt == "endtime") {
-    if(!ini.extract("general", "endtime", endTime))
+    if(!par->extract("general", "endtime", endTime))
       exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE);
     options.setArgs("END TIME", to_string_f(endTime));
   } else if(stopAt == "elapsedtime") { 
     double elapsedTime;
-    if(!ini.extract("general", "elapsedtime", elapsedTime))
+    if(!par->extract("general", "elapsedtime", elapsedTime))
       exit("Cannot find mandatory parameter GENERAL::elapsedTime!", EXIT_FAILURE);
     options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
   } 
 
   string extrapolation;
-  ini.extract("general", "extrapolation", extrapolation);
+  par->extract("general", "extrapolation", extrapolation);
   if(extrapolation == "oifs" || extrapolation == "subcycling") {
     double targetCFL;
     int NSubCycles = 0;
 
-    if(ini.extract("general", "targetcfl", targetCFL))
+    if(par->extract("general", "targetcfl", targetCFL))
       NSubCycles = round(targetCFL / 2);
-    if(ini.extract("general", "subcyclingsteps", NSubCycles));
+    if(par->extract("general", "subcyclingsteps", NSubCycles));
     if(!NSubCycles) NSubCycles = 1;
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
 
     int Sorder;
-    if(ini.extract("general", "subcyclingorder", Sorder))
+    if(par->extract("general", "subcyclingorder", Sorder))
       options.setArgs("SUBCYCLING TIME ORDER", std::to_string(Sorder));
   }
 
   double writeInterval = 0;
-  ini.extract("general", "writeinterval", writeInterval);
+  par->extract("general", "writeinterval", writeInterval);
   options.setArgs("SOLUTION OUTPUT INTERVAL", std::to_string(writeInterval));
 
   string writeControl;
-  if(ini.extract("general", "writecontrol", writeControl)) {
+  if(par->extract("general", "writecontrol", writeControl)) {
     options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
     if(writeControl == "runtime") 
       options.setArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
   }
 
   bool dealiasing;
-  if(ini.extract("general", "dealiasing", dealiasing))
+  if(par->extract("general", "dealiasing", dealiasing))
     if(dealiasing)
       options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
     else
       options.setArgs("ADVECTION TYPE", "CONVECTIVE");
 
   string filtering;
-  ini.extract("general", "filtering", filtering);
+  par->extract("general", "filtering", filtering);
   if(filtering == "hpfrt") {
     options.setArgs("FILTER STABILIZATION", "RELAXATION");
-    if(ini.extract("general", "filterweight", sbuf)) {
+    if(par->extract("general", "filterweight", sbuf)) {
       int err = 0;
       double weight = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for filterWeight!", EXIT_FAILURE);
@@ -274,9 +265,9 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
     double filterCutoffRatio;
     int NFilterModes;
-    if(ini.extract("general", "filtercutoffratio", filterCutoffRatio))
+    if(par->extract("general", "filtercutoffratio", filterCutoffRatio))
       NFilterModes = round((N + 1) * (1 - filterCutoffRatio));
-    if(ini.extract("general", "filtermodes", NFilterModes))
+    if(par->extract("general", "filtermodes", NFilterModes))
       if(NFilterModes < 1) NFilterModes = 1;
     options.setArgs("HPFRT MODES", to_string_f(NFilterModes));
   } else if(filtering == "explicit") {
@@ -285,51 +276,51 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
   // MESH
   string meshPartitioner; 
-  if(ini.extract("mesh", "partitioner", meshPartitioner))
+  if(par->extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
   bool stressFormulation;
-  if(ini.extract("problemtype", "stressformulation", stressFormulation))
+  if(par->extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");
 
   string eqn;
-  if(ini.extract("problemtype", "equation", eqn)) {
+  if(par->extract("problemtype", "equation", eqn)) {
     options.setArgs("ADVECTION", "TRUE");
     if(eqn == "stokes" ) options.setArgs("ADVECTION", "FALSE");
   }
 
   int bcInPar = 1;
-  if(ini.sections.count("velocity")) {
+  if(par->sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;
-    if(ini.extract("pressure", "residualtol", p_residualTol) ||
-       ini.extract("pressure", "residualtoltolerance", p_residualTol))
+    if(par->extract("pressure", "residualtol", p_residualTol) ||
+       par->extract("pressure", "residualtoltolerance", p_residualTol))
       options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
     else
       exit("Cannot find mandatory parameter PRESSURE::residualTol!", EXIT_FAILURE);
 
     bool p_rproj;
-    if(ini.extract("pressure", "residualproj", p_rproj) || 
-       ini.extract("pressure", "residualprojection", p_rproj)) {
+    if(par->extract("pressure", "residualproj", p_rproj) || 
+       par->extract("pressure", "residualprojection", p_rproj)) {
       if(p_rproj)
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
       else
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
 
       int p_nProjVec;
-      if(ini.extract("pressure", "residualprojectionvectors", p_nProjVec))
+      if(par->extract("pressure", "residualprojectionvectors", p_nProjVec))
         options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", std::to_string(p_nProjVec));
       int p_nProjStep;
-      if(ini.extract("pressure", "residualprojectionstart", p_nProjStep))
+      if(par->extract("pressure", "residualprojectionstart", p_nProjStep))
         options.setArgs("PRESSURE RESIDUAL PROJECTION START", std::to_string(p_nProjStep));
     }
 
     bool p_gproj;
-    if(ini.extract("pressure", "galerkincoarseoperator", p_gproj))
+    if(par->extract("pressure", "galerkincoarseoperator", p_gproj))
       if(p_gproj) options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
 
     string p_preconditioner;
-    ini.extract("pressure", "preconditioner", p_preconditioner);
+    par->extract("pressure", "preconditioner", p_preconditioner);
     if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
     } else if(p_preconditioner.find("semg") != std::string::npos  ||
@@ -343,11 +334,11 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     string p_mglevels;
-    if(ini.extract("pressure", "pmultigridcoarsening", p_mglevels))
+    if(par->extract("pressure", "pmultigridcoarsening", p_mglevels))
       options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
 
     string p_smoother;
-    if(ini.extract("pressure", "smoothertype", p_smoother)) {
+    if(par->extract("pressure", "smoothertype", p_smoother)) {
       if(p_smoother == "asm") {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
         if(p_preconditioner.find("multigrid") != std::string::npos) {
@@ -429,7 +420,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
 
     // Allow flexibility in downward/upward smoother
     string p_downwardSmoother;
-    ini.extract("pressure", "downwardsmoother", p_downwardSmoother);
+    par->extract("pressure", "downwardsmoother", p_downwardSmoother);
     if(p_downwardSmoother == "RAS")
       options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
     else if(p_downwardSmoother == "ASM")
@@ -437,7 +428,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     else if(p_downwardSmoother == "jacobi")
       options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
     string p_upwardSmoother;
-    ini.extract("pressure", "upwardsmoother", p_upwardSmoother);
+    par->extract("pressure", "upwardsmoother", p_upwardSmoother);
     if(p_upwardSmoother == "RAS")
       options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
     else if(p_upwardSmoother == "ASM")
@@ -446,37 +437,37 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
 
     string p_amgsolver;
-    ini.extract("pressure", "amgsolver", p_amgsolver);
+    par->extract("pressure", "amgsolver", p_amgsolver);
     if (p_amgsolver == "paralmond")
       exit("Unknown PRESSURE:amgSolver!", EXIT_FAILURE);
       //options.setArgs("AMG SOLVER", "PARALMOND");
 
-    if(ini.sections.count("boomeramg")) {
+    if(par->sections.count("boomeramg")) {
       int coarsenType;
-      if(ini.extract("boomeramg", "coarsentype", coarsenType))
+      if(par->extract("boomeramg", "coarsentype", coarsenType))
         options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
       int interpolationType;
-      if(ini.extract("boomeramg", "interpolationtype", interpolationType))
+      if(par->extract("boomeramg", "interpolationtype", interpolationType))
         options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
       int smootherType;
-      if(ini.extract("boomeramg", "smoothertype", smootherType))
+      if(par->extract("boomeramg", "smoothertype", smootherType))
         options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
       int numCycles;
-      if(ini.extract("boomeramg", "iterations", numCycles))
+      if(par->extract("boomeramg", "iterations", numCycles))
         options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
       double strongThres;
-      if(ini.extract("boomeramg", "strongthreshold", strongThres))
+      if(par->extract("boomeramg", "strongthreshold", strongThres))
         options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
       double nonGalerkinTol;
-      if(ini.extract("boomeramg", "nongalerkintol", nonGalerkinTol))
+      if(par->extract("boomeramg", "nongalerkintol", nonGalerkinTol))
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
     }
 
     string vsolver;
     int flow = 1;
     bool v_rproj;
-    if(ini.extract("velocity", "residualproj", v_rproj) ||
-       ini.extract("velocity", "residualprojection", v_rproj)) {
+    if(par->extract("velocity", "residualproj", v_rproj) ||
+       par->extract("velocity", "residualprojection", v_rproj)) {
       if(v_rproj) {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
         options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS STEP");
@@ -485,13 +476,13 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
 
       int v_nProjVec;
-      if(ini.extract("velocity", "residualprojectionvectors", v_nProjVec))
+      if(par->extract("velocity", "residualprojectionvectors", v_nProjVec))
         options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", std::to_string(v_nProjVec));
       int v_nProjStep;
-      if(ini.extract("velocity", "residualprojectionstart", v_nProjStep))
+      if(par->extract("velocity", "residualprojectionstart", v_nProjStep))
         options.setArgs("VELOCITY RESIDUAL PROJECTION START", std::to_string(v_nProjStep));
     }
-    ini.extract("velocity", "solver", vsolver);
+    par->extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
       options.setArgs("VELOCITY SOLVER", "NONE");
       flow = 0;
@@ -503,14 +494,14 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double v_residualTol;
-    if(ini.extract("velocity", "residualtol", v_residualTol) ||
-       ini.extract("velocity", "residualtoltolerance", v_residualTol))
+    if(par->extract("velocity", "residualtol", v_residualTol) ||
+       par->extract("velocity", "residualtoltolerance", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
     else
     if(flow) exit("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE);
 
     string v_bcMap;
-    if(ini.extract("velocity", "boundarytypemap", v_bcMap)) {
+    if(par->extract("velocity", "boundarytypemap", v_bcMap)) {
       std::vector<std::string> sList;
       sList = serializeString(v_bcMap);
       bcMap::setup(sList, "velocity");
@@ -520,10 +511,10 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     double rho;
-    if(ini.extract("velocity", "density", rho) || ini.extract("velocity", "rho", rho))
+    if(par->extract("velocity", "density", rho) || par->extract("velocity", "rho", rho))
       options.setArgs("DENSITY", to_string_f(rho));
 
-    if(ini.extract("velocity", "viscosity", sbuf)) {
+    if(par->extract("velocity", "viscosity", sbuf)) {
       int err = 0;
       double viscosity = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for viscosity!", EXIT_FAILURE);
@@ -537,22 +528,22 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   // SCALARS
   int nscal = 0;
   int isStart = 0;
-  if(ini.sections.count("temperature")) {
+  if(par->sections.count("temperature")) {
     nscal++;
     isStart++;
 
     options.setArgs("SCALAR00 IS TEMPERATURE", "TRUE");
 
     string solver;
-    ini.extract("temperature", "solver", solver);
+    par->extract("temperature", "solver", solver);
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
       options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;
-      if(ini.extract("temperature", "residualproj", t_rproj) || 
-         ini.extract("temperature", "residualprojection", t_rproj)) {
+      if(par->extract("temperature", "residualproj", t_rproj) || 
+         par->extract("temperature", "residualprojection", t_rproj)) {
         if(t_rproj) {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
           options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
@@ -562,19 +553,19 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
         }
 
         int t_nProjVec;
-        if(ini.extract("temperature", "residualprojectionvectors", t_nProjVec))
+        if(par->extract("temperature", "residualprojectionvectors", t_nProjVec))
           options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
         int t_nProjStep;
-        if(ini.extract("temperature", "residualprojectionstart", t_nProjStep))
+        if(par->extract("temperature", "residualprojectionstart", t_nProjStep))
           options.setArgs("SCALAR00 RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
       }
 
       double s_residualTol;
-      if(ini.extract("temperature", "residualtol", s_residualTol) ||
-         ini.extract("temperature", "residualtolerance", s_residualTol))
+      if(par->extract("temperature", "residualtol", s_residualTol) ||
+         par->extract("temperature", "residualtolerance", s_residualTol))
         options.setArgs("SCALAR00 SOLVER TOLERANCE", to_string_f(s_residualTol));
 
-      if(ini.extract("temperature", "conductivity", sbuf)) {
+      if(par->extract("temperature", "conductivity", sbuf)) {
         int err = 0;
         double diffusivity = te_interp(sbuf.c_str(), &err);
         if(err) exit("Invalid expression for conductivity!", EXIT_FAILURE);
@@ -582,7 +573,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
         options.setArgs("SCALAR00 DIFFUSIVITY", to_string_f(diffusivity));
       }
 
-      if(ini.extract("temperature", "rhocp", sbuf)) {
+      if(par->extract("temperature", "rhocp", sbuf)) {
         int err = 0;
         double rhoCp = te_interp(sbuf.c_str(), &err);
         if(err) exit("Invalid expression for rhoCp!", EXIT_FAILURE);
@@ -590,7 +581,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
 
       string s_bcMap;
-      if(ini.extract("temperature", "boundarytypemap", s_bcMap)) {
+      if(par->extract("temperature", "boundarytypemap", s_bcMap)) {
         if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
         std::vector<std::string> sList;
         sList = serializeString(s_bcMap);
@@ -603,7 +594,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
   }
 
   //
-  for (auto & sec : ini.sections) {
+  for (auto & sec : par->sections) {
     string key = sec.first;
     if(key.compare(0, 6, "scalar") == 0) nscal++;
   }
@@ -620,14 +611,14 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     string solver;
-    ini.extract("scalar" + sidPar, "solver", solver);
+    par->extract("scalar" + sidPar, "solver", solver);
     if(solver == "none") {
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       continue;
     }
     bool t_rproj;
-    if(ini.extract("scalar" + sidPar, "residualproj", t_rproj) || 
-       ini.extract("scalar" + sidPar, "residualprojection", t_rproj)) {
+    if(par->extract("scalar" + sidPar, "residualproj", t_rproj) || 
+       par->extract("scalar" + sidPar, "residualprojection", t_rproj)) {
       if(t_rproj) {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
         options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
@@ -638,20 +629,20 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       }
 
       int t_nProjVec;
-      if(ini.extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
+      if(par->extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
       int t_nProjStep;
-      if(ini.extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
+      if(par->extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
     }
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
-    if(ini.extract("scalar" + sidPar, "residualtol", s_residualTol) ||
-       ini.extract("scalar" + sidPar, "residualtolerance", s_residualTol))
+    if(par->extract("scalar" + sidPar, "residualtol", s_residualTol) ||
+       par->extract("scalar" + sidPar, "residualtolerance", s_residualTol))
       options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE", to_string_f(s_residualTol));
 
-    if(ini.extract("scalar" + sidPar, "diffusivity", sbuf)) {
+    if(par->extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
       double diffusivity = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for diffusivity!", EXIT_FAILURE);
@@ -659,7 +650,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
       options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
     }
 
-    if(ini.extract("scalar" + sidPar, "rho", sbuf)) {
+    if(par->extract("scalar" + sidPar, "rho", sbuf)) {
       int err = 0;
       double rho = te_interp(sbuf.c_str(), &err);
       if(err) exit("Invalid expression for rho!", EXIT_FAILURE);
@@ -667,7 +658,7 @@ setupAide parRead(std::string &setupFile, MPI_Comm comm)
     }
 
     string s_bcMap;
-    if(ini.extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
+    if(par->extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
       if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
       std::vector<std::string> sList;
       sList = serializeString(s_bcMap);
