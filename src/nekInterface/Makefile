@@ -1,7 +1,3 @@
-ifndef NEKRS_NEK5000_DIR
-$(error "Error, environment variable [NEKRS_NEK5000_DIR] is not set")
-endif
-
 ifndef NEKRS_WORKING_DIR
 $(error "Error, environment variable [NEKRS_WORKING_DIR] is not set")
 endif
@@ -17,10 +13,14 @@ left:= (
 right:= )
 USR_LFLAGS_:=$(shell echo $(USR_LFLAGS) | sed -E "s@-L$(left)[^ ]+$(right)@-Wl,-rpath,\1 -L\1@g")
 
-NI_LDFLAGS = $(LDFLAGS) -Wl,-rpath,. -L. -lnek5000 -ldl $(USR_LFLAGS_)
+NI_LDFLAGS = $(LDFLAGS) -Wl,-rpath,. -L$(OBJDIR) -lnek5000 -ldl $(USR_LFLAGS_)
 
-nek: lib usrfile
+$(NEKRS_WORKING_DIR)/nekInterface.o: $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f
+	$(FC) -c $(FL2) $< -o $@ 
 
-nekInterface: nek $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f
-	$(FC) $(FL2) -c $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f
-	$(FC) $(FL2) -shared -o lib$(CASENAME).so $(CASENAME).o nekInterface.o $(NI_LDFLAGS)
+libnekInterface: lib$(CASENAME).so
+
+lib$(CASENAME).so: $(LIB) $(USRF) $(NEKRS_WORKING_DIR)/nekInterface.o
+	$(FC) $(FL2) -shared -o lib$(CASENAME).so $(USRF) $(NEKRS_WORKING_DIR)/nekInterface.o $(NI_LDFLAGS)
+
+.PHONY: libnekInterface 

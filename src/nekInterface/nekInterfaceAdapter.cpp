@@ -403,21 +403,24 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   if(osize.is_open()) {
     writeSize = 0;
     string line;
-    hlong oldval;
     while(getline( osize, line )) {
       if(line.find( "lelg=") != string::npos ) {
-        sscanf(line.c_str(), "%*[^=]=%ld", &oldval);
+	hlong oldval;      
+        sscanf(line.c_str(), "%*[^=]=%lld", &oldval);
         if(oldval < lelg) writeSize = 1;
       }
       if(line.find( "lelt=") != string::npos ) {
+	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < lelt) writeSize = 1;
       }
       if(line.find( "lx1=") != string::npos ) {
+	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval != lx1) writeSize = 1;
       }
       if(line.find( "ldimt=") != string::npos ) {
+	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < ldimt) writeSize = 1;
       }
@@ -430,7 +433,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     fputs(sizeFile, fp);
     fclose(fp);
     free(sizeFile);
-    //printf("done\n");
+    //printf("using new SIZE\n");
   } else {
     //printf("using existing SIZE file %s/SIZE\n", cache_dir);
   }
@@ -494,7 +497,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
           cflags, cache_dir, cache_dir, casename);
   retval = system(buf);
   //if (retval) goto err;
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile nekInterface "
+  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile lib usr libnekInterface "
           ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
   retval = system(buf);
   if (retval) goto err;
