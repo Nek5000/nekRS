@@ -5,7 +5,6 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildIpdg.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildJacobi.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticHaloExchange.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp

@@ -491,6 +491,7 @@ void meshParallelConnect(mesh_t* mesh);
 void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t* mesh);
+void meshHaloPhysicalNodes(mesh_t* mesh);
 
 /* extract whole elements for the halo exchange */
 void meshHaloExtract(mesh_t* mesh, size_t Nbytes, void* sourceBuffer, void* haloBuffer);

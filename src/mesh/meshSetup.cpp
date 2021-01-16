@@ -140,14 +140,16 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   if (mesh->rank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  // set up halo exchange info for MPI (do before connect face nodes)
+  meshHaloSetup(mesh);
+
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh, 1);
 
+  meshHaloPhysicalNodes(mesh);
+
   // compute geometric factors
   meshGeometricFactorsHex3D(mesh);
-
-  // set up halo exchange info for MPI (do before connect face nodes)
-  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
   meshConnectPeriodicFaceNodes3D(mesh,XMAX - XMIN,YMAX - YMIN,ZMAX - ZMIN);
@@ -199,14 +201,16 @@ mesh_t* createMesh(MPI_Comm comm,
   if (mesh->rank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  // set up halo exchange info for MPI (do before connect face nodes)
+  meshHaloSetup(mesh);
+
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh, 0);
 
+  meshHaloPhysicalNodes(mesh);
+
   // compute geometric factors
   meshGeometricFactorsHex3D(mesh);
-
-  // set up halo exchange info for MPI (do before connect face nodes)
-  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
   meshConnectFaceNodes3D(mesh);
@@ -251,22 +255,26 @@ mesh_t* createMeshV(MPI_Comm comm,
   // find mesh->EToB, required mesh->EToV and mesh->boundaryInfo
   meshConnectBoundary(mesh);
 
+  // set up halo exchange info for MPI (do before connect face nodes)
+  meshHaloSetup(mesh);
+
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh, 0);
+
+  meshHaloPhysicalNodes(mesh);
 
   // compute geometric factors
   meshGeometricFactorsHex3D(mesh);
 
+  free(mesh->vgeo);
+  mesh->vgeo = meshT->vgeo;
   free(mesh->cubvgeo);
   mesh->cubvgeo = meshT->cubvgeo;
+
   free(mesh->ggeo);
   mesh->ggeo = meshT->ggeo;
   free(mesh->cubggeo);
   mesh->cubggeo = meshT->cubggeo;
-
-  // set up halo exchange info for MPI (do before connect face nodes)
-  // note: realloc mesh->X and mesh->EX ...
-  meshHaloSetup(mesh);
 
   // connect face nodes (find trace indices)
   // find vmapM, vmapP, mapP based on EToE and EToF
@@ -277,6 +285,7 @@ mesh_t* createMeshV(MPI_Comm comm,
   meshParallelConnectNodes(mesh, 0);
 
   bcMap::check(mesh);
+
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
   return mesh;
@@ -309,6 +318,9 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
     mesh->o_notInternalElementIds = mesh->device.malloc(NnotInterior * sizeof(dlong),
                                                         notInternalElementIds);
 
+  free(internalElementIds);
+  free(notInternalElementIds);
+
   if(mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE
     mesh->o_haloElementList =
@@ -321,15 +333,10 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
     // node ids
     mesh->o_haloGetNodeIds =
       mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
+
     mesh->o_haloPutNodeIds =
       mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
-
-  mesh->o_internalElementIds =
-    mesh->device.malloc(Ninterior * sizeof(dlong), internalElementIds);
-
-  mesh->o_notInternalElementIds =
-    mesh->device.malloc(NnotInterior * sizeof(dlong), notInternalElementIds);
 
   mesh->o_EToB =
     mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),

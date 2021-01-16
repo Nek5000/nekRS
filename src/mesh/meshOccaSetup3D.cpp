@@ -59,9 +59,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   mesh->o_elementInfo = mesh->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
  
-
-  //  printf("NinteriorElements = %d, NnotInternalElements = %d\n", Ninterior, NnotInterior);
-
   mesh->NinternalElements = Ninterior;
   mesh->NnotInternalElements = NnotInterior;
   if(Ninterior)
@@ -100,8 +97,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
 
     mesh->o_LIFTT =
       mesh->device.malloc(1 * sizeof(dfloat)); // dummy
-
-    //    reportMemoryUsage(mesh->device, "meshOccaSetup3D: before intX ");
 
     mesh->intx = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
     mesh->inty = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
@@ -184,8 +179,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
 
     mesh->o_Smatrices = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
 
-    //    reportMemoryUsage(mesh->device, "meshOccaSetup3D: before geofactors ");
-
     mesh->o_vgeo =
       mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
                           mesh->vgeo);
@@ -193,8 +186,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     mesh->o_sgeo =
       mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
                           mesh->sgeo);
-
-    //    reportMemoryUsage(mesh->device, "meshOccaSetup3D: before vgeo,sgeo ");
 
     mesh->o_ggeo =
       mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
@@ -235,8 +226,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     // just neeeded to combine quad and hex cub kernels
     mesh->o_cubDiffInterpT = mesh->o_cubDWmatrices;
 
-    //    reportMemoryUsage(mesh->device, "meshOccaSetup3D: after geofactors ");
-
     mesh->o_intx =
       mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
                           mesh->intx);
@@ -255,7 +244,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     mesh->o_intLIFTT = mesh->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
     mesh->o_intLIFTT.copyFrom(mesh->o_cubProjectT);
 
-    //    reportMemoryUsage(mesh->device, "meshOccaSetup3D: after intX ");
   } else {
     printf("Nverts = %d: unknown element type!\n",mesh->Nverts);
   }

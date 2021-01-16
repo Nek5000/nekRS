@@ -146,6 +146,11 @@ void meshHaloSetup(mesh_t* mesh)
         }
       }
 
+  free(haloElements);
+}
+
+void meshHaloPhysicalNodes(mesh_t* mesh)
+{
   // create halo extension for x,y arrays
   dlong totalHaloNodes = mesh->totalHaloPairs * mesh->Np;
   dlong localNodes     = mesh->Nelements * mesh->Np;
@@ -153,48 +158,11 @@ void meshHaloSetup(mesh_t* mesh)
   // temporary send buffer
   dfloat* sendBuffer = (dfloat*) calloc(totalHaloNodes, sizeof(dfloat));
 
-  // extend x,y arrays to hold coordinates of node coordinates of elements in halo
-  mesh->x = (dfloat*) realloc(mesh->x, (localNodes + totalHaloNodes) * sizeof(dfloat));
-  mesh->y = (dfloat*) realloc(mesh->y, (localNodes + totalHaloNodes) * sizeof(dfloat));
-  if(mesh->dim == 3)
-    mesh->z = (dfloat*) realloc(mesh->z, (localNodes + totalHaloNodes) * sizeof(dfloat));
-
   // send halo data and recv into extended part of arrays
   meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->x, sendBuffer, mesh->x + localNodes);
   meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->y, sendBuffer, mesh->y + localNodes);
   if(mesh->dim == 3)
     meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->z, sendBuffer, mesh->z + localNodes);
 
-  // grab EX,EY,EZ from halo
-  mesh->EX = (dfloat*) realloc(mesh->EX,
-                               (mesh->Nelements + mesh->totalHaloPairs) * mesh->Nverts *
-                               sizeof(dfloat));
-  mesh->EY = (dfloat*) realloc(mesh->EY,
-                               (mesh->Nelements + mesh->totalHaloPairs) * mesh->Nverts *
-                               sizeof(dfloat));
-  if(mesh->dim == 3)
-    mesh->EZ = (dfloat*) realloc(mesh->EZ,
-                                 (mesh->Nelements + mesh->totalHaloPairs) * mesh->Nverts *
-                                 sizeof(dfloat));
-
-  // send halo data and recv into extended part of arrays
-  meshHaloExchange(mesh,
-                   mesh->Nverts * sizeof(dfloat),
-                   mesh->EX,
-                   sendBuffer,
-                   mesh->EX + mesh->Nverts * mesh->Nelements);
-  meshHaloExchange(mesh,
-                   mesh->Nverts * sizeof(dfloat),
-                   mesh->EY,
-                   sendBuffer,
-                   mesh->EY + mesh->Nverts * mesh->Nelements);
-  if(mesh->dim == 3)
-    meshHaloExchange(mesh,
-                     mesh->Nverts * sizeof(dfloat),
-                     mesh->EZ,
-                     sendBuffer,
-                     mesh->EZ + mesh->Nverts * mesh->Nelements);
-
-  free(haloElements);
   free(sendBuffer);
 }
