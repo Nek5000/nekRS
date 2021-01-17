@@ -18,7 +18,7 @@ void udfBuild(const char* udfFile)
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  printf("loading udf ... "); fflush(stdout);
+  printf("building udf ... "); fflush(stdout);
   sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && rm -rf CMake* Makefile cmake_install.cmake",
           cache_dir, cache_dir);
   system(cmd);

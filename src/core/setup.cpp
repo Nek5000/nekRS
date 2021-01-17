@@ -12,7 +12,7 @@ static occa::memory o_scratch;
 
 static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
 
-void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildOnly, nrs_t *nrs)
+void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs)
 {
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
@@ -24,7 +24,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildO
   kernelInfo["include_paths"].asArray();
 
   int N, cubN;
+  int buildOnly = 0;
+  int jit = 1;
   string install_dir;
+  if(nrs->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+  if(nrs->options.compareArgs("JIT", "FALSE")) jit = 0;
   nrs->options.getArgs("POLYNOMIAL DEGREE", N);
   nrs->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
   nrs->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
@@ -52,7 +56,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, int buildO
 
     int npTarget = size;
     if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
+    if (rank == 0 && jit) buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
     MPI_Barrier(comm);
     if (!buildOnly) {
       nek_setup(comm, nrs->options, nrs);

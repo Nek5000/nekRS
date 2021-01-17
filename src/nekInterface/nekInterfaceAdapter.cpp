@@ -443,7 +443,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
 
 int buildNekInterface(const char* casename, int ldimt, int N, int np)
 {
-  printf("loading nek ... "); fflush(stdout);
+  printf("building nek ... "); fflush(stdout);
   double tStart = MPI_Wtime();
 
   char buf[BUFSIZ];
@@ -523,6 +523,11 @@ void nek_gen_bcmap()
 
 int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
 {
+  if(rank == 0) { 
+   printf("loading nek ...\n"); 
+   fflush(stdout);
+  }
+
   options = &options_in;
   nrs = nrs_in;
   MPI_Comm_rank(c,&rank);

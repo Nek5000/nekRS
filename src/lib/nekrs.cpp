@@ -29,9 +29,20 @@ const double startTime(void)
 
 void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
            int ciMode, string cacheDir, string _setupFile,
-           string _backend, string _deviceID)
+           string _backend, string _deviceID, int noJIT)
 {
-  MPI_Comm_dup(comm_in, &comm);
+  if(buildOnly) {
+    int rank, size;
+    MPI_Comm_rank(comm_in, &rank);
+    MPI_Comm_size(comm_in, &size);
+    int color = MPI_UNDEFINED;
+    if (rank == 0) color = 1;     
+    MPI_Comm_split(comm_in, color, 0, &comm);
+    if (rank != 0) return;
+  } else {
+    MPI_Comm_dup(comm_in, &comm);
+  }
+    
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -52,10 +63,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nrs->par = new inipp::Ini<char>();	   
   options = parRead((void*) nrs->par, setupFile, comm);
 
-  if(buildOnly) 
-    options.setArgs("BUILD ONLY", "TRUE");
-  else
-    options.setArgs("BUILD ONLY", "FALSE");
+  options.setArgs("BUILD ONLY", "FALSE");
+  if(buildOnly) options.setArgs("BUILD ONLY", "TRUE"); 
+  options.setArgs("JIT", "TRUE");
+  if(noJIT) options.setArgs("JIT", "FALSE"); 
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
@@ -76,7 +87,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    if(rank == 0) udfBuild(udfFile.c_str());
+    if(rank == 0 && !noJIT) udfBuild(udfFile.c_str());
     MPI_Barrier(comm);
     udfLoad();
   }
@@ -87,7 +98,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrsSetup(comm, device, options, buildOnly, nrs);
+  nrsSetup(comm, device, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -236,6 +247,8 @@ static void dryRun(setupAide &options, int npTarget)
          << " MPI ranks ...\n" << endl;
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
+  options.setArgs("BUILD ONLY", "TRUE");
+  options.setArgs("JIT", "TRUE");
 
   // jit compile udf
   string udfFile;
@@ -250,7 +263,7 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   // init solver
-  nrsSetup(comm, device, options, 1, nrs);
+  nrsSetup(comm, device, options, nrs);
 
   if (rank == 0) cout << "\nBuild successful." << endl;
 }
@@ -276,7 +289,10 @@ static void setOUDF(setupAide &options)
   const string dataFileDir = cache_dir + "/udf/";
   const string dataFile = dataFileDir + "udf.okl";
 
-  if (rank == 0) {
+  int jit = 1;
+  if(options.compareArgs("JIT", "FALSE")) jit = 0;
+
+  if (rank == 0 && jit) {
     mkdir(dataFileDir.c_str(), S_IRWXU);
 
     std::ifstream in;

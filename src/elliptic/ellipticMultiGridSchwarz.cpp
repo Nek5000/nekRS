@@ -608,6 +608,9 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
 {
   mesh_t* meshRoot = elliptic->mesh;
 
+  int buildOnly  = 0;
+  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
   mesh_t* mesh = new mesh_t();
   mesh->rank = meshRoot->rank;
   mesh->size = meshRoot->size;
@@ -618,28 +621,31 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   mesh->Nelements = meshRoot->Nelements;
   mesh->Nverts = meshRoot->Nverts;
   mesh->Nfaces = meshRoot->Nfaces;
+  mesh->NfaceVertices = meshRoot->NfaceVertices;
+  mesh->Nnodes = meshRoot->Nnodes;
+
   mesh->EX = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EY = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EZ = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   memcpy(mesh->EX, meshRoot->EX, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
   memcpy(mesh->EY, meshRoot->EY, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
   memcpy(mesh->EZ, meshRoot->EZ, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
+  
+  mesh->faceVertices = (int*) calloc(mesh->NfaceVertices * mesh->Nfaces, sizeof(int));
+  memcpy(mesh->faceVertices, meshRoot->faceVertices, mesh->NfaceVertices * mesh->Nfaces * sizeof(int));
+
   mesh->EToV = (hlong*) calloc(mesh->Nverts * mesh->Nelements, sizeof(hlong));
   memcpy(mesh->EToV, meshRoot->EToV, mesh->Nverts * mesh->Nelements * sizeof(hlong));
 
   meshParallelConnect(mesh);
   meshConnectBoundary(mesh);
-
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
-
-  int buildOnly  = 0;
-  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-
-  meshPhysicalNodesHex3D(mesh, buildOnly);
-
   meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh, buildOnly);
+  meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
   meshParallelConnectNodes(mesh, buildOnly);
+
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
 
   const int bigNum = 1E9;

@@ -81,8 +81,9 @@ struct cmdOptions
 {
   int buildOnly = 0;
   int ciMode = 0;
-  int sizeTarget = 0;
   int debug = 0;
+  int noJIT = 0;
+  int sizeTarget = 0;
   std::string setupFile;
   std::string deviceID;
   std::string backend;
@@ -127,7 +128,7 @@ int main(int argc, char** argv)
   std::string cacheDir;
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cacheDir, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID);
+               cmdOpt->backend, cmdOpt->deviceID, cmdOpt->noJIT);
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize();
@@ -214,9 +215,10 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       {
         {"setup", required_argument, 0, 's'},
         {"cimode", required_argument, 0, 'c'},
-        {"build-only", required_argument, 0, 'b'},
+	{"build-only", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
         {"backend", required_argument, 0, 't'},
+        {"no-jit", no_argument, 0, 'j'},
         {"device-id", required_argument, 0, 'i'},
         {0, 0, 0, 0}
       };
@@ -232,7 +234,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'b':
         cmdOpt->buildOnly = 1;
-        cmdOpt->sizeTarget = atoi(optarg);
+	cmdOpt->sizeTarget = atoi(optarg);
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
@@ -246,6 +248,9 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'i':
         cmdOpt->deviceID.assign(optarg);
+        break;
+      case 'j':
+        cmdOpt->noJIT = 1;
         break;
       case 't':
         cmdOpt->backend.assign(optarg);
@@ -270,6 +275,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
+  MPI_Bcast(&cmdOpt->noJIT, sizeof(cmdOpt->noJIT), MPI_BYTE, 0, comm);
 
   if(cmdOpt->setupFile.empty()){
     err++;
@@ -286,7 +292,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   if (err) {
     if (rank == 0)
       std::cout << "usage: ./nekrs --setup <case name> "
-                << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
+                << "[ --build-only <#procs> ] [ --no-jit ] [ --cimode <id> ] [ --debug ] "
                 << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
                 << "\n";
     MPI_Finalize();
