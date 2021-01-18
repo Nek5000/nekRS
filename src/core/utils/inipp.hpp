@@ -37,8 +37,6 @@
 #include <cctype>
 #include <sstream>
 
-namespace
-{
 namespace inipp
 {
 namespace detail
@@ -87,6 +85,7 @@ typedef enum
 }
 string_to_boolean_t;
 
+namespace{
 string_to_boolean_t string_to_boolean( const std::string s, bool strict = false )
 {
   const char* falses[] = { "false", "no",  "0" };
@@ -129,6 +128,7 @@ string_to_boolean_t string_to_boolean( const std::string s, bool strict = false 
 
   // The string was not recognized
   return boolean_invalid;
+}
 }
 
 template<class CharT>
@@ -315,6 +315,5 @@ private:
   }
 };
 } // namespace inipp
-} // namespace
 
 #endif
