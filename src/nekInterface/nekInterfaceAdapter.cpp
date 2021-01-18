@@ -3,6 +3,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
+#include "io.hpp"
 
 nekdata_private nekData;
 static int rank;
@@ -227,7 +228,7 @@ void set_function_handles(const char* session_in,int verbose)
   char lib_session[BUFSIZ], * error;
 
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(lib_session, "%s/lib%s.so", cache_dir, session_in);
+  sprintf(lib_session, "%s/nek5000/lib%s.so", cache_dir, session_in);
 
   void* handle = dlopen(lib_session,RTLD_NOW | RTLD_GLOBAL);
   if(!handle) {
@@ -330,7 +331,7 @@ void set_function_handles(const char* session_in,int verbose)
 #undef load_or_noop
 }
 
-void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt)
+void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt, char* SIZE)
 {
   //printf("generating SIZE file ... "); fflush(stdout);
 
@@ -397,9 +398,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
 
   // read size if exists
   std::ifstream osize;
-  sprintf(line,"%s/SIZE", cache_dir);
-
-  osize.open(line, std::ifstream::in);
+  osize.open(SIZE, std::ifstream::in);
   if(osize.is_open()) {
     writeSize = 0;
     string line;
@@ -429,7 +428,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   osize.close();
 
   if(writeSize) {
-    fp = fopen(line, "w");
+    fp = fopen(SIZE, "w");
     fputs(sizeFile, fp);
     fclose(fp);
     free(sizeFile);
@@ -443,22 +442,15 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
 
 int buildNekInterface(const char* casename, int ldimt, int N, int np)
 {
-  printf("building nek ... "); fflush(stdout);
-  double tStart = MPI_Wtime();
-
-  char buf[BUFSIZ];
-  char fflags[BUFSIZ];
-  char cflags[BUFSIZ];
-
-  const char* cache_dir = getenv("NEKRS_CACHE_DIR");
+  char buf[BUFSIZ], cache_dir[BUFSIZ];
+  sprintf(cache_dir,"%s/nek5000",getenv("NEKRS_CACHE_DIR"));
+  mkdir(cache_dir, S_IRWXU); 
   const char* nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
   const char* nek5000_dir = getenv("NEKRS_NEK5000_DIR");
 
-  FILE* fp;
-  int retval;
-
+  // create SIZE
   sprintf(buf, "%s.re2", casename);
-  fp = fopen(buf, "r");
+  FILE *fp = fopen(buf, "r");
   if (!fp) {
     printf("\nERROR: Cannot find %s!\n", buf);
     ABORT(EXIT_FAILURE);
@@ -472,43 +464,61 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
   int lelt = (int)(nelgt/np) + 3;
   if(lelt > nelgt) lelt = (int)nelgt;
-  mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt);
+  sprintf(buf,"%s/SIZE",cache_dir); 
+  mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, buf);
 
-  // Copy case.usr file to cache_dir
-  sprintf(buf,"%s.usr",casename);
-  if(access(buf,F_OK) != -1)
-    sprintf(buf, "cp -pf %s.usr %s",casename,cache_dir);
-  else
-    sprintf(buf, "cp -pf %s/core/zero.usr %s/%s.usr",nek5000_dir,cache_dir,casename);
-  retval = system(buf);
-  if (retval) goto err;
+  // generate usr
+  char usrFile[BUFSIZ], usrFileCache[BUFSIZ];
+  sprintf(usrFile,"%s.usr",casename);
+  sprintf(usrFileCache,"%s/%s",cache_dir,usrFile);
+  if(access(usrFile,F_OK) == -1) {
+    sprintf(buf, "%s/core/zero.usr", nek5000_dir);
+    copyFile(buf, usrFileCache);
+  } else if(isFileNewer(usrFile, usrFileCache)) {
+    sprintf(buf, "cp -pf %s.usr %s",casename,usrFileCache);
+    system(buf);
+  }
 
-  sprintf(buf, "cp -pr %s %s", nek5000_dir, cache_dir); 
-  retval = system(buf);
-  if (retval) goto err;
+  // create makefile
+  sprintf(buf,"%s/makefile",usrFile);
+  if(access(buf,F_OK) == -1) {
+    char fflags[BUFSIZ];
+    char cflags[BUFSIZ];
 
-  //TODO: Fix hardwired compiler flags
-  sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../ \"");
-  sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
+    //TODO: Add support for different compilers
+    sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../../ \"");
+    sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
 
-  sprintf(buf, "cd %s && yes n 2>/dev/null | FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" FFLAGS=%s "
-          "CFLAGS=%s PPLIST=\"${NEKRS_NEK5000_PPLIST}\" NEK_SOURCE_ROOT=%s/nek5000 "
-          "%s/nek5000/bin/nekconfig %s >build.log 2>&1", cache_dir, fflags,
-          cflags, cache_dir, cache_dir, casename);
-  retval = system(buf);
-  //if (retval) goto err;
-  sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile lib usr libnekInterface "
-          ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
-  retval = system(buf);
-  if (retval) goto err;
+    sprintf(buf, "cd %s && yes n 2>/dev/null | "
+	    "FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" "
+	    "FFLAGS=%s CFLAGS=%s " 
+            "PPLIST=\"${NEKRS_NEK5000_PPLIST}\" "
+	    "NEK_SOURCE_ROOT=%s "
+            "%s/bin/nekconfig %s >build.log 2>&1", 
+	    cache_dir, fflags,cflags, nek5000_dir, nek5000_dir, casename);
+    system(buf);
+  }
+ 
+  // build 
+  char libFile[BUFSIZ];
+  sprintf(libFile,"%s/lib%s.so",cache_dir,casename);
+  int recompile = 0;
+  if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
 
-  printf("done (%gs)\n\n", MPI_Wtime() - tStart);
-  fflush(stdout);
+  if(recompile) {
+    printf("building nek ... "); fflush(stdout);
+    double tStart = MPI_Wtime();
+    sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile lib usr libnekInterface "
+            ">>build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
+    if(system(buf)) {
+      printf("\nCannot compile nek5000 lib, see %s/build.log for details!\n", cache_dir);
+      return EXIT_FAILURE;
+    } 
+    printf("done (%gs)\n\n", MPI_Wtime() - tStart);
+    fflush(stdout);
+  }
+
   return 0;
-
-err:
-  printf("\nAn ERROR occured, see %s/build.log for details!\n", cache_dir);
-  ABORT(EXIT_FAILURE);
 }
 
 int nek_bcmap(int bid, int ifld)
@@ -523,15 +533,15 @@ void nek_gen_bcmap()
 
 int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
 {
-  if(rank == 0) { 
-   printf("loading nek ...\n"); 
-   fflush(stdout);
-  }
-
   options = &options_in;
   nrs = nrs_in;
   MPI_Comm_rank(c,&rank);
   MPI_Fint nek_comm = MPI_Comm_c2f(c);
+
+  if(rank == 0) { 
+   printf("loading nek ...\n"); 
+   fflush(stdout);
+  }
 
   string casename;
   options->getArgs("CASENAME", casename);

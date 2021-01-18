@@ -167,7 +167,7 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
       std::cout << "Encountered length of zero in middle for element e = " << e << "!\n";
       std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
                 << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
-      exit(-1);
+      ABORT(EXIT_FAILURE);;
     }
     bool negative = false;
     negative |= lengths->length_middle_x[e] < -tol;
@@ -177,7 +177,7 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
       std::cout << "Encountered negative length in middle for element e = " << e << "!\n";
       std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
                 << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
-      exit(-1);
+      ABORT(EXIT_FAILURE);;
     }
   }
 
@@ -506,7 +506,7 @@ void compute_1d_matrices(
     std::cout << "lbc = " << lbc << ", rbc = " << rbc << "\n";
     for(int iface = 0; iface < 6; ++iface)
       std::cout << "EToB[iface] = " << elliptic->EToB[6 * e + iface] << "\n";
-    exit(-1);
+    ABORT(EXIT_FAILURE);;
   }
   if(lbc > 0)
     row_zero(S,nl,0);
@@ -792,8 +792,8 @@ void MGLevel::build(
   elliptic_t* pSolver)
 {
   if(elliptic->elementType != HEXAHEDRA) {
-    printf("ERROR: Unsupported elements type!");
-    exit(-1);
+    printf("ERROR: Unsupported element type!");
+    ABORT(EXIT_FAILURE);
   }
 
   overlap = false;

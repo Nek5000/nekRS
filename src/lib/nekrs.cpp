@@ -29,7 +29,7 @@ const double startTime(void)
 
 void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
            int ciMode, string cacheDir, string _setupFile,
-           string _backend, string _deviceID, int noJIT)
+           string _backend, string _deviceID)
 {
   if(buildOnly) {
     int rank, size;
@@ -65,8 +65,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   options.setArgs("BUILD ONLY", "FALSE");
   if(buildOnly) options.setArgs("BUILD ONLY", "TRUE"); 
-  options.setArgs("JIT", "TRUE");
-  if(noJIT) options.setArgs("JIT", "FALSE"); 
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
@@ -87,8 +85,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    if(rank == 0 && !noJIT) udfBuild(udfFile.c_str());
-    MPI_Barrier(comm);
+    int err = 0;
+    if(rank == 0) err = udfBuild(udfFile.c_str());
+    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
+    if(err) ABORT(EXIT_FAILURE);;
     udfLoad();
   }
 
@@ -248,7 +248,6 @@ static void dryRun(setupAide &options, int npTarget)
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
-  options.setArgs("JIT", "TRUE");
 
   // jit compile udf
   string udfFile;
@@ -278,7 +277,7 @@ static void setOUDF(setupAide &options)
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
     if (rank == 0) cout << "ERROR: Cannot find " << oklFile << "!\n";
-    EXIT(1);
+    ABORT(EXIT_FAILURE);;
   }
   free(ptr);
 
@@ -289,10 +288,7 @@ static void setOUDF(setupAide &options)
   const string dataFileDir = cache_dir + "/udf/";
   const string dataFile = dataFileDir + "udf.okl";
 
-  int jit = 1;
-  if(options.compareArgs("JIT", "FALSE")) jit = 0;
-
-  if (rank == 0 && jit) {
+  if (rank == 0) {
     mkdir(dataFileDir.c_str(), S_IRWXU);
 
     std::ifstream in;
