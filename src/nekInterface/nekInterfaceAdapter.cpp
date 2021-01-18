@@ -504,6 +504,8 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   sprintf(libFile,"%s/lib%s.so",cache_dir,casename);
   int recompile = 0;
   if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
+  sprintf(buf,"%s/SIZE",cache_dir);
+  if(isFileNewer(buf, libFile)) recompile = 1;  
 
   if(recompile) {
     printf("building nek ... "); fflush(stdout);
