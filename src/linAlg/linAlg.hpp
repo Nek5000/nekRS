@@ -45,10 +45,11 @@ private:
 
   void setup();
 public:
-  linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
+  linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm, const dlong _numVectors) {
     blocksize = BLOCKSIZE;
     device = _device;
     kernelInfo = *(_kernelInfo);
+    kernelInfo["defines/" "p_NVectorSize"] = _numVectors;
     comm = _comm;
     setup();
   }
@@ -85,6 +86,9 @@ public:
   // mode 1:
   // o_y[n,fld] = alpha*o_x[n,fld]*o_y[n,fld]
   void axmyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+            const dlong mode, const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y);
+  void axmyVector(const dlong N, const dlong fieldOffset,
             const dlong mode, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
 
@@ -133,6 +137,7 @@ public:
   occa::kernel axpbyzKernel;
   occa::kernel axmyKernel;
   occa::kernel axmyManyKernel;
+  occa::kernel axmyVectorKernel;
   occa::kernel axmyzKernel;
   occa::kernel axdyKernel;
   occa::kernel axdyzKernel;

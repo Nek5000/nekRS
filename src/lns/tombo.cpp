@@ -68,9 +68,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->linAlg->axmyMany(
+  nrs->linAlg->axmyVector(
     mesh->Nelements * mesh->Np,
-    nrs->NVfields,
     nrs->fieldOffset,
     0,
     1.0,
@@ -119,9 +118,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->linAlg->axmyMany(
+  nrs->linAlg->axmyVector(
     mesh->Nelements * mesh->Np,
-    nrs->NVfields,
     nrs->fieldOffset,
     0,
     1.0,

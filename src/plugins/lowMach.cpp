@@ -36,9 +36,8 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->linAlg->axmyMany(
+  nrs->linAlg->axmyVector(
     mesh->Nelements * mesh->Np,
-    nrs->NVfields,
     nrs->fieldOffset,
     0,
     1.0,

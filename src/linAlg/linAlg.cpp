@@ -85,6 +85,11 @@ void linAlg_t::setup() {
                                         "linAlgAXMY.okl",
                                         "axmyMany",
                                         kernelInfo);
+      if (axmyVectorKernel.isInitialized()==false)
+        axmyVectorKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXMY.okl",
+                                        "axmyVector",
+                                        kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
                                          "linAlgAXMY.okl",
@@ -147,6 +152,8 @@ linAlg_t::~linAlg_t() {
   axpbyKernel.free();
   axpbyzKernel.free();
   axmyKernel.free();
+  axmyManyKernel.free();
+  axmyVectorKernel.free();
   axmyzKernel.free();
   axdyKernel.free();
   axdyzKernel.free();
@@ -201,6 +208,13 @@ void linAlg_t::axmyMany(const dlong N, const dlong Nfields, const dlong fieldOff
 {
   assert(mode == 0 || mode == 1);
   axmyManyKernel(N, Nfields, fieldOffset, mode, alpha, o_x, o_y);
+}
+void linAlg_t::axmyVector(const dlong N, const dlong fieldOffset,
+          const dlong mode, const dfloat alpha,
+          occa::memory& o_x, occa::memory& o_y)
+{
+  assert(mode == 0 || mode == 1);
+  axmyVectorKernel(N, fieldOffset, mode, alpha, o_x, o_y);
 }
 
 // o_z[n] = alpha*o_x[n]*o_y[n]

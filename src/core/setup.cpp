@@ -249,7 +249,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  nrs->linAlg = new linAlg_t(mesh->device, nrs->kernelInfo, mesh->comm);
+  nrs->linAlg = new linAlg_t(mesh->device, nrs->kernelInfo, mesh->comm, nrs->NVfields);
 
   meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
