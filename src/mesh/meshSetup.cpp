@@ -37,7 +37,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 
   memcpy(mesh->faceVertices, faceVertices[0], mesh->NfaceVertices * mesh->Nfaces * sizeof(int));
 
-  // build an NX x NY x NZ periodic box grid
+  // build an NX x NY x NZ box grid
 
   hlong NX = 3, NY = 3, NZ = 3; // defaults
   dfloat XMIN = -1, XMAX = +1;
@@ -54,7 +54,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   if(mesh->rank == (mesh->size - 1))
     end = allNelements;
 
-  mesh->Nnodes = NX * NY * NZ; // assume periodic and global number of nodes
+  mesh->Nnodes = NX * NY * NZ;
   mesh->Nelements = end - start;
   mesh->NboundaryFaces = 0;
 
@@ -71,7 +71,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   dfloat dy = (YMAX - YMIN) / NY;
   dfloat dz = (ZMAX - ZMIN) / NZ;
   for(hlong n = start; n < end; ++n) {
-    int i = n % NX;      // [0, NX)
+    int i = n % NX;        // [0, NX)
     int j = (n / NY) % NZ; // [0, NY)
     int k = n / (NX * NY); // [0, NZ)
 
@@ -81,7 +81,6 @@ mesh_t* createMeshDummy(MPI_Comm comm,
     int jp = (j + 1) % NY;
     int kp = (k + 1) % NZ;
 
-    // do not use for coordinates
     mesh->EToV[e * mesh->Nverts + 0] = i  +  j * NX + k * NX * NY;
     mesh->EToV[e * mesh->Nverts + 1] = ip +  j * NX + k * NX * NY;
     mesh->EToV[e * mesh->Nverts + 2] = ip + jp * NX + k * NX * NY;
@@ -126,7 +125,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
     ey[7] = yo + dy;
     ez[7] = zo + dz;
 
-    mesh->elementInfo[e] = 1; // ?
+    mesh->elementInfo[e] = 0;
   }
 
   mesh->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));

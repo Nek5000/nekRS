@@ -167,7 +167,7 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
       std::cout << "Encountered length of zero in middle for element e = " << e << "!\n";
       std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
                 << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
-      exit(-1);
+      ABORT(EXIT_FAILURE);;
     }
     bool negative = false;
     negative |= lengths->length_middle_x[e] < -tol;
@@ -177,7 +177,7 @@ compute_element_lengths(ElementLengths* lengths, elliptic_t* elliptic)
       std::cout << "Encountered negative length in middle for element e = " << e << "!\n";
       std::cout << "x,y,z = " << lengths->length_middle_x[e] << ", "
                 << lengths->length_middle_y[e] << ", " << lengths->length_middle_z[e] << "\n";
-      exit(-1);
+      ABORT(EXIT_FAILURE);;
     }
   }
 
@@ -506,7 +506,7 @@ void compute_1d_matrices(
     std::cout << "lbc = " << lbc << ", rbc = " << rbc << "\n";
     for(int iface = 0; iface < 6; ++iface)
       std::cout << "EToB[iface] = " << elliptic->EToB[6 * e + iface] << "\n";
-    exit(-1);
+    ABORT(EXIT_FAILURE);;
   }
   if(lbc > 0)
     row_zero(S,nl,0);
@@ -608,6 +608,9 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
 {
   mesh_t* meshRoot = elliptic->mesh;
 
+  int buildOnly  = 0;
+  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
   mesh_t* mesh = new mesh_t();
   mesh->rank = meshRoot->rank;
   mesh->size = meshRoot->size;
@@ -618,28 +621,31 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   mesh->Nelements = meshRoot->Nelements;
   mesh->Nverts = meshRoot->Nverts;
   mesh->Nfaces = meshRoot->Nfaces;
+  mesh->NfaceVertices = meshRoot->NfaceVertices;
+  mesh->Nnodes = meshRoot->Nnodes;
+
   mesh->EX = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EY = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   mesh->EZ = (dfloat*) calloc(mesh->Nverts * mesh->Nelements, sizeof(dfloat));
   memcpy(mesh->EX, meshRoot->EX, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
   memcpy(mesh->EY, meshRoot->EY, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
   memcpy(mesh->EZ, meshRoot->EZ, mesh->Nverts * mesh->Nelements * sizeof(dfloat));
+  
+  mesh->faceVertices = (int*) calloc(mesh->NfaceVertices * mesh->Nfaces, sizeof(int));
+  memcpy(mesh->faceVertices, meshRoot->faceVertices, mesh->NfaceVertices * mesh->Nfaces * sizeof(int));
+
   mesh->EToV = (hlong*) calloc(mesh->Nverts * mesh->Nelements, sizeof(hlong));
   memcpy(mesh->EToV, meshRoot->EToV, mesh->Nverts * mesh->Nelements * sizeof(hlong));
 
   meshParallelConnect(mesh);
   meshConnectBoundary(mesh);
-
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
-
-  int buildOnly  = 0;
-  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-
-  meshPhysicalNodesHex3D(mesh, buildOnly);
-
   meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh, buildOnly);
+  meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
   meshParallelConnectNodes(mesh, buildOnly);
+
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
 
   const int bigNum = 1E9;
@@ -786,8 +792,8 @@ void MGLevel::build(
   elliptic_t* pSolver)
 {
   if(elliptic->elementType != HEXAHEDRA) {
-    printf("ERROR: Unsupported elements type!");
-    exit(-1);
+    printf("ERROR: Unsupported element type!");
+    ABORT(EXIT_FAILURE);
   }
 
   overlap = false;

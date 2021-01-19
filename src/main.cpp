@@ -81,8 +81,8 @@ struct cmdOptions
 {
   int buildOnly = 0;
   int ciMode = 0;
-  int sizeTarget = 0;
   int debug = 0;
+  int sizeTarget = 0;
   std::string setupFile;
   std::string deviceID;
   std::string backend;
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
     if (retval != MPI_SUCCESS) {
       std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
-      exit(1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -214,7 +214,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       {
         {"setup", required_argument, 0, 's'},
         {"cimode", required_argument, 0, 'c'},
-        {"build-only", required_argument, 0, 'b'},
+	{"build-only", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
         {"backend", required_argument, 0, 't'},
         {"device-id", required_argument, 0, 'i'},
@@ -232,7 +232,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'b':
         cmdOpt->buildOnly = 1;
-        cmdOpt->sizeTarget = atoi(optarg);
+	cmdOpt->sizeTarget = atoi(optarg);
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
@@ -290,7 +290,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
                 << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
                 << "\n";
     MPI_Finalize();
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   return cmdOpt;

@@ -102,7 +102,7 @@ void Dmatrix1D(int _N, int NpointsIn, dfloat* _rIn,
   // need NpointsIn = (_N+1)
   if (NpointsIn != _N + 1) {
     std::cout << "Invalid Differentiation operator requested.\n";
-    exit(-1);
+    ABORT(EXIT_FAILURE);;
   }
 
   int _Np = _N + 1;
@@ -164,7 +164,7 @@ void InterpolationMatrix1D(int _N,
   // need NpointsIn = (_N+1)
   if (NpointsIn != _N + 1) {
     std::cout << "Invalid Interplation operator requested.\n";
-    exit(-1);
+    ABORT(EXIT_FAILURE);;
   }
 
   dfloat* VIn = (dfloat*) malloc(NpointsIn * (_N + 1) * sizeof(dfloat));

@@ -15,7 +15,7 @@ USR_LFLAGS_:=$(shell echo $(USR_LFLAGS) | sed -E "s@-L$(left)[^ ]+$(right)@-Wl,-
 
 NI_LDFLAGS = $(LDFLAGS) -Wl,-rpath,. -L$(OBJDIR) -lnek5000 -ldl $(USR_LFLAGS_)
 
-$(NEKRS_WORKING_DIR)/nekInterface.o: $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f
+$(NEKRS_WORKING_DIR)/nekInterface.o: $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f $(LIB) 
 	$(FC) -c $(FL2) $< -o $@ 
 
 libnekInterface: lib$(CASENAME).so

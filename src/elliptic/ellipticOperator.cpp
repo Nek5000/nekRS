@@ -70,7 +70,7 @@ void ellipticAx(elliptic_t* elliptic,
         if(integrationType != 0)
           printf("Precision level (%s) does not support integrationType %d\n", precision, integrationType);
       }
-      exit(1);
+      ABORT(EXIT_FAILURE);
     }
   }
 
@@ -113,7 +113,7 @@ void ellipticAx(elliptic_t* elliptic,
         }
       }
     } else {
-      exit(1);
+      ABORT(EXIT_FAILURE);
     }
     return;
   }

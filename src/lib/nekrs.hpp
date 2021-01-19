@@ -6,7 +6,7 @@
 
 namespace nekrs
 {
-void setup(MPI_Comm comm, int buildOnly, int sizeTarget,
+void setup(MPI_Comm comm, int buildOnly, int targetSize,
            int ciMode, std::string cacheDir, std::string setupFile,
            std::string backend, std::string deviceID);
 

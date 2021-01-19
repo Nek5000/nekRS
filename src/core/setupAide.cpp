@@ -68,7 +68,7 @@ string setupAide::readFile(string filename)
   FILE* fh = fopen(filename.c_str(), "r");
   if (fh == 0) {
     printf("Failed to open: %s\n", filename.c_str());
-    exit(1);
+    ABORT(EXIT_FAILURE);
   }
 
   stat(filename.c_str(), &statbuf);

@@ -4,50 +4,63 @@
 #include <stdlib.h>
 
 #include "udf.hpp"
+#include "io.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
-void udfBuild(const char* udfFile)
+uint32_t fchecksum(std::ifstream& file) 
+{
+    uint32_t checksum = 0;
+    unsigned shift = 0;
+    for (uint32_t ch = file.get(); file; ch = file.get()) {
+        checksum += (ch << shift);
+        shift += 8;
+        if (shift == 32) {
+            shift = 0;
+        }
+    }
+    return checksum;
+}
+
+int udfBuild(const char* udfFile)
 {
   char cmd[BUFSIZ];
   char abs_path[BUFSIZ];
-  char* ptr;
-  int retval;
 
   double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  printf("loading udf ... "); fflush(stdout);
-  sprintf(cmd, "mkdir -p %s/udf && cd %s/udf && rm -rf CMake* Makefile cmake_install.cmake",
-          cache_dir, cache_dir);
-  system(cmd);
-
-  ptr = realpath(udfFile, abs_path);
-  if(!ptr) {
+  if(! realpath(udfFile, abs_path)) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
-    ABORT(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
-  sprintf(cmd,
-          "cd %s/udf && cp %s/CMakeLists.txt . && CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-              cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
-              make >>build.log 2>&1",
-          cache_dir,
-          udf_dir,
-          udf_dir,
-          abs_path);
-  retval = system(cmd);
-  if(retval) goto err;
+  char udfFileCache[BUFSIZ];
+  sprintf(udfFileCache,"%s/udf/udf.cpp",cache_dir);
 
-  printf("done (%gs)\n", MPI_Wtime() - tStart);
-  fflush(stdout);
-  return;
+  if(isFileNewer(udfFile, udfFileCache)) {
+    printf("building udf ... "); fflush(stdout);
+    sprintf(cmd,
+            "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
+             CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
+             cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
+             make >>build.log 2>&1",
+            cache_dir,
+            cache_dir,
+            udf_dir,
+            udf_dir,
+            abs_path);
 
-err:
-  printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
-  fflush(stdout);
-  MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    if(system(cmd)) { 
+      printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
+      return EXIT_FAILURE;
+    }
+    printf("done (%gs)\n", MPI_Wtime() - tStart);
+    fflush(stdout);
+  }
+
+  return 0;
 }
 
 void* udfLoadFunction(const char* fname, int errchk)
