@@ -131,17 +131,13 @@ int main(int argc, char** argv)
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize();
-    fflush(stdout);
     return EXIT_SUCCESS;
   }
 
   const int runTimeStatFreq = 500;
-  const int writeControlRunTime = nekrs::writeControlRunTime();
 
   int tStep = 0;
   double time = nekrs::startTime();
-  double outputTime = -1;
-  if (writeControlRunTime) outputTime = time + nekrs::writeInterval();
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
   if (rank == 0 && !lastStep) {
@@ -166,22 +162,14 @@ int main(int argc, char** argv)
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
-    int outputStep = 0;
-    if (writeControlRunTime) { 
-      outputStep = (time >= outputTime);
-    } else {
-      if (nekrs::writeInterval() > 0) outputStep = (tStep%(int)nekrs::writeInterval() == 0);
-    }
+    int outputStep = nekrs::isOutputStep(time, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
     if (lastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
 
     nekrs::udfExecuteStep(time, tStep, outputStep);
 
-    if (outputStep) {
-      nekrs::outfld(time, outputTime);
-      if (writeControlRunTime) outputTime += nekrs::writeInterval();
-    }
+    if (outputStep) nekrs::outfld(time); 
 
     if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
   }

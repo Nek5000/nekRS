@@ -12,7 +12,7 @@ static MPI_Comm comm;
 static occa::device device;
 static nrs_t* nrs;
 static setupAide options;
-static int ioStep;
+static dfloat lastOutputTime = 0;
 
 static void setOccaVars(string dir);
 static void setOUDF(setupAide &options);
@@ -128,8 +128,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   const double setupTime = timer::query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    size_t dMB = nrs->mesh->device.memoryAllocated() / 1e6;
-    cout << "device memory allocation: " << dMB << " MB" << endl;
+    size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
+    cout << "device memory usage: " << dGB << " GB" << endl;
     cout << "initialization took " <<  setupTime << " s" << endl;
   }
   fflush(stdout);
@@ -186,9 +186,21 @@ const int writeControlRunTime(void)
   return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
-void outfld(double time, double outputTime)
+const int isOutputStep(double time, int tStep)
+{
+  int outputStep = 0;
+  if (writeControlRunTime()) {
+    outputStep = (time >= lastOutputTime + nekrs::writeInterval());
+  } else {
+    if (writeInterval() > 0) outputStep = (tStep%(int)writeInterval() == 0);
+  }
+  return outputStep;
+}
+
+void outfld(double time)
 {
   writeFld(nrs, time, 0);
+  lastOutputTime = time;
 }
 
 const double endTime(void)
