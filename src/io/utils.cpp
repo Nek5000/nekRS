@@ -14,22 +14,11 @@ bool isFileNewer(const char *file1, const char* file2)
     return false;	  
 }
 
-void copyFile(const char *srcName, const char* destName)
+void copyFile(const char *srcFile, const char* dstFile)
 {
-  std::fstream src,dest;
-  src.open (srcName);
-  dest.open (destName);
-
-  std::filebuf* inbuf  = src.rdbuf();
-  std::filebuf* outbuf = dest.rdbuf();
-
-  char c = inbuf->sbumpc();
-  while (c != EOF)
-  {
-    outbuf->sputc (c);
-    c = inbuf->sbumpc();
-  }
-
-  dest.close();
+  std::ifstream src (srcFile, std::fstream::binary);
+  std::ofstream dst (dstFile, std::fstream::trunc|std::fstream::binary);
+  dst<<src.rdbuf();
   src.close();
+  dst.close();
 }
