@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 
 dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_w,
@@ -34,66 +35,14 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-  setupAide &options = elliptic->options;
-
-  const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  int enableReductions = 1;
-  options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
-
-  mesh_t* mesh = elliptic->mesh;
-  dfloat* tmp = elliptic->tmp;
-  dlong Nblock = elliptic->Nblock;
-  dlong Nblock2 = elliptic->Nblock2;
-
-  occa::memory &o_tmp = elliptic->o_tmp;
-  occa::memory &o_tmp2 = elliptic->o_tmp2;
-
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
-
-  if(continuous == 1) {
-    if(elliptic->blockSolver)
-      elliptic->weightedInnerProduct2Kernel(Nlocal, elliptic->Ntotal, o_w, o_a, o_b, o_tmp);
-    else
-      elliptic->weightedInnerProduct2Kernel(Nlocal, o_w, o_a, o_b, o_tmp);
-  }else {
-    elliptic->innerProductKernel(Nlocal, o_a, o_b, o_tmp);
-  }
-
-  if(serial == 1 && continuous == 1) {
-    dfloat wab;
-    o_tmp.copyTo(&wab, sizeof(dfloat));
-    dfloat globalwab = 0;
-    MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-
-    return globalwab;
-  }
-
-  /* add a second sweep if Nblock>Ncutoff */
-  dlong Ncutoff = 4000;
-  dlong Nfinal;
-  if(Nblock >= Ncutoff) {
-    mesh->sumKernel(Nblock, o_tmp, o_tmp2);
-
-    o_tmp2.copyTo(tmp);
-
-    Nfinal = Nblock2;
-  }else {
-    o_tmp.copyTo(tmp);
-
-    Nfinal = Nblock;
-  }
-
-  dfloat wab = 0;
-  for(dlong n = 0; n < Nfinal; ++n)
-    wab += tmp[n];
-
-  dfloat globalwab = 0;
-  MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-
+  mesh_t * mesh = elliptic->mesh;
+  const dlong Nlocal = mesh->Nelements * mesh->Np;
+  const dfloat globalwab =
+    linAlg_t::getSingleton()->weightedInnerProd(
+      Nlocal, o_w, o_a, o_b, mesh->comm
+    );
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif
-
   return globalwab;
 }

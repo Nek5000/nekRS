@@ -246,20 +246,6 @@ void MGLevel::buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc)
       }
   }
 
-  if (elliptic->options.compareArgs("BASIS","BERN")) {
-    dfloat* BBP = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
-    for (int j = 0; j < NpFine; j++)
-      for (int i = 0; i < NpCoarse; i++)
-        for (int k = 0; k < NpCoarse; k++)
-          for (int l = 0; l < NpFine; l++)
-            BBP[i + j * NpCoarse] += meshLevels[Nf]->invVB[l + j * NpFine] * P[k + l * NpCoarse] *
-                                     meshLevels[Nc]->VB[i + k * NpCoarse];
-    for (int j = 0; j < NpFine; j++)
-      for (int i = 0; i < NpCoarse; i++)
-        P[i + j * NpCoarse] = BBP[i + j * NpCoarse];
-    free(BBP);
-  }
-
   //the coarsen matrix is P^T
   R = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
   for (int i = 0; i < NpCoarse; i++)

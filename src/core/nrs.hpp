@@ -115,7 +115,6 @@ typedef struct
 
   occa::kernel PQKernel;
   occa::kernel mueDivKernel;
-  occa::kernel dotMultiplyKernel;
 
   occa::kernel scalarScaledAddKernel;
   occa::kernel scaledAddKernel;
@@ -179,8 +178,6 @@ typedef struct
   occa::kernel velocityRhsKernel;
   occa::kernel velocityNeumannBCKernel;
   occa::kernel velocityDirichletBCKernel;
-
-  occa::kernel fillKernel;
 
   occa::kernel cflKernel;
   occa::kernel maxKernel;

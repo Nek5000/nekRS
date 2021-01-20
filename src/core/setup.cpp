@@ -249,8 +249,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  nrs->linAlg = linAlg_t::initialize(mesh->device, nrs->kernelInfo, mesh->comm, nrs->NVfields);
-
   meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
@@ -261,9 +259,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    nrs->linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
+    linAlg_t::getSingleton()->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
     ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    nrs->linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg_t::getSingleton()->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
@@ -451,15 +449,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->scaledAddKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = install_dir + "/okl/core/dotMultiply.okl";
-      kernelName = "dotMultiply";
-      nrs->dotMultiplyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       fileName = oklpath + "math" + ".okl";
-      kernelName = "fill";
-      nrs->fillKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       kernelName = "max";
       nrs->maxKernel =
@@ -1087,10 +1077,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       // ===========================================================================
 
       fileName = oklpath + "math.okl";
-      kernelName = "fill";
-      cds->fillKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);

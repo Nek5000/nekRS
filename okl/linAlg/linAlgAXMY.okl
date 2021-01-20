@@ -76,3 +76,37 @@ SOFTWARE.
     z[n] = alpha*x[n]*y[n];
   }
 }
+@kernel void axmyzMany(const dlong N,
+                  const dlong Nfields,
+                  const dlong fieldOffset,
+                  const dlong mode,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict const dfloat *y,
+                  @restrict       dfloat *z){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0 ; fld < Nfields; ++fld){
+      const dlong y_offset = n + fld * fieldOffset;
+      const dlong x_offset = n + mode * fld * fieldOffset;
+      z[y_offset] = alpha*x[x_offset]*y[y_offset];
+    }
+  }
+}
+@kernel void axmyzVector(const dlong N,
+                  const dlong fieldOffset,
+                  const dlong mode,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict const dfloat *y,
+                  @restrict       dfloat *z){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    #pragma unroll
+    for(int fld = 0 ; fld < p_NVectorSize; ++fld){
+      const dlong y_offset = n + fld * fieldOffset;
+      const dlong x_offset = n + mode * fld * fieldOffset;
+      z[y_offset] = alpha*x[x_offset]*y[y_offset];
+    }
+  }
+}

@@ -23,17 +23,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-
-
-@kernel void dotMultiplyAdd(const dlong N,
-			    @restrict const  dfloat *  w,
-			    @restrict const  dfloat *  v,
-			    @restrict dfloat *  z){
-
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
-    if(n<N){
-      z[n] += w[n]*v[n];
-    }
+#ifndef _platform_hpp_
+#define _platform_hpp_
+#include "nrssys.hpp"
+class platform_t final {
+private:
+  occa::device device;
+  occa::properties kernelInfo;
+  MPI_Comm comm;
+  static platform_t* singleton;
+  platform_t(occa::device& _device, MPI_Comm& _comm)
+  : device(_device),
+  comm(_comm)
+  {
+    setup();
   }
+  ~platform_t(){
+  }
+  void setup();
+public:
+  occa::device& getDevice(){ return device; }
+  occa::properties& getKernelInfo(){ return kernelInfo; }
+  static platform_t * initialize(occa::device& _device, MPI_Comm& _comm){
+    if(!singleton){
+      singleton = new platform_t(_device, _comm);
+    }
+    return singleton;
+  }
+  static platform_t * getSingleton(){
+    return singleton;
+  }
+};
 
-}
+#endif

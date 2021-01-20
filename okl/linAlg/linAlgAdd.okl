@@ -33,3 +33,26 @@ SOFTWARE.
     a[n] += alpha;
   }
 }
+@kernel void addMany(const dlong N,
+                 const dlong Nfields,
+                 const dlong fieldOffset,
+                 const dfloat alpha,
+                 @restrict dfloat *a){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0 ; fld < Nfields; ++fld){
+      a[n + fld * fieldOffset] += alpha;
+    }
+  }
+}
+@kernel void addVector(const dlong N,
+                 const dlong fieldOffset,
+                 const dfloat alpha,
+                 @restrict dfloat *a){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0 ; fld < p_NVectorSize; ++fld){
+      a[n + fld * fieldOffset] += alpha;
+    }
+  }
+}

@@ -26,6 +26,7 @@
 
 #include "elliptic.h"
 #include "timer.hpp"
+#include "linAlg.hpp"
 
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT)
@@ -54,7 +55,8 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory &o_Ap = elliptic->o_Ap;
   occa::memory &o_weight = elliptic->o_invDegree;
 
-  elliptic->fillKernel(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
+  linAlg_t::getSingleton()->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
+
 
   pAp = 0;
   rdotz1 = 1;

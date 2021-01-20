@@ -42,7 +42,7 @@
 
 class ResidualProjection;
 
-typedef struct
+struct elliptic_t
 {
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
@@ -136,8 +136,6 @@ typedef struct
 
   occa::memory o_ggeoNoJW; //
 
-  occa::kernel fillKernel;
-
   occa::kernel AxKernel;
   occa::kernel AxStressKernel;
   occa::kernel AxPfloatKernel;
@@ -146,34 +144,11 @@ typedef struct
   occa::kernel partialAxPfloatKernel;
   occa::kernel partialCubatureAxKernel;
 
-  occa::kernel rhsBCKernel;
-  occa::kernel addBCKernel;
-  occa::kernel innerProductKernel;
-  occa::kernel weightedInnerProduct1Kernel;
-  occa::kernel weightedInnerProduct2Kernel;
-  occa::kernel scaledAddKernel;
-  occa::kernel scaledAddPfloatKernel;
-  occa::kernel scaledAddNormKernel;
-  occa::kernel collocateKernel;
-  occa::kernel dotMultiplyKernel;
   occa::kernel dotMultiplyPfloatKernel;
-  occa::kernel dotMultiplyAddKernel;
-  occa::kernel dotDivideKernel;
-  occa::kernel scalarDivideKernel;
-  occa::kernel scalarDivideManyKernel;
   occa::kernel copyDfloatToPfloatKernel;
   occa::kernel copyPfloatToDPfloatKernel;
   occa::kernel updateSmoothedSolutionVecKernel;
   occa::kernel updateChebyshevSolutionVecKernel;
-
-  occa::kernel weightedNorm2Kernel;
-  occa::kernel norm2Kernel;
-
-  occa::kernel gradientKernel;
-  occa::kernel ipdgKernel;
-  occa::kernel partialGradientKernel;
-  occa::kernel partialIpdgKernel;
-  occa::kernel rhsBCIpdgKernel;
 
   dfloat resNormFactor;
 
@@ -184,70 +159,9 @@ typedef struct
   occa::memory o_tmpNormr;
   occa::kernel updatePCGKernel;
 
-  // combined NBPCG update steps
-  dfloat* tmppdots;
-  dfloat* tmprdotz;
-  dfloat* tmpzdotz;
-  dfloat* tmprdotr;
-  occa::kernel update1NBPCGKernel;
-  occa::kernel update2NBPCGKernel;
-  occa::memory o_tmppdots;
-  occa::memory o_tmprdotz;
-  occa::memory o_tmpzdotz;
-  occa::memory o_tmprdotr;
-  //  occa::memory  o_s;
-  //  occa::memory  o_S;
-  //  occa::memory  o_Z;
-
-  occa::memory* o_pcgWork;
-
-  // combined NBFPCG update steps
-  dfloat* tmpudotr;
-  dfloat* tmpudots;
-  dfloat* tmpudotw;
-  occa::kernel update0NBFPCGKernel;
-  occa::kernel update1NBFPCGKernel;
-  occa::memory o_tmpudotr;
-  occa::memory o_tmpudots;
-  occa::memory o_tmpudotw;
-
   hlong NelementsGlobal;
   dfloat nullProjectWeightGlobal;
   dfloat* nullProjectBlockWeightGlobal;
-
-  int oasNq;
-  int oasNp;
-
-  ogs_t* oasOgs;
-  dlong* oasMapP;
-  dlong* oasHaloElementList;
-  dlong* oasHaloGetNodeIds;
-  dlong* oasHaloPutNodeIds;
-
-  occa::memory o_oasMapP;
-  occa::memory o_oasHaloElementList;
-  occa::memory o_oasHaloGetNodeIds;
-  occa::memory o_oasHaloPutNodeIds;
-
-  occa::memory o_oasForward;
-  occa::memory o_oasBack;
-  occa::memory o_oasDiagInvOp;
-
-  // TO DO: FROM HERE ==>
-  occa::memory o_oasHaloBuffer;
-  occa::memory o_oasTmp;
-
-  dfloat* oasSendBuffer;
-  dfloat* oasRecvBuffer;
-
-  occa::kernel oasPreconditionerKernel;
-  occa::kernel oasHaloGetKernel;
-  occa::kernel oasHaloPutKernel;
-
-  occa::kernel innerProductFieldKernel;
-  occa::kernel addScalarBlockFieldKernel;
-  occa::kernel sumBlockKernel;
-  occa::kernel sumBlockFieldKernel;
 
   occa::kernel updateDiagonalKernel;
   occa::kernel coefficientKernel;
@@ -259,7 +173,7 @@ typedef struct
   int* levels;
 
   ResidualProjection* residualProjection;
-}elliptic_t;
+};
 
 #include "ellipticMultiGrid.h"
 #include "ellipticResidualProjection.h"
@@ -332,9 +246,6 @@ void ellipticAx(elliptic_t* elliptic,
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
 
-void ellipticBuildIpdg(elliptic_t* elliptic, int basisNp, dfloat* basis, dfloat lambda,
-                       nonZero_t** A, dlong* nnzA, hlong* globalStarts);
-
 void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
                              dlong* nnz, ogs_t** ogs, hlong* globalStarts);
 
@@ -352,11 +263,6 @@ void ellipticUpdateJacobi(elliptic_t* elliptic);
 void ellipticBuildLocalPatches(elliptic_t* elliptic, dfloat lambda, dfloat rateTolerance,
                                dlong* Npataches, dlong** patchesIndex, dfloat** patchesInvA);
 
-// //smoother setups
-// void ellipticSetupSmoother(elliptic_t *elliptic, precon_t *precon, dfloat lambda);
-// void ellipticSetupSmootherDampedJacobi    (elliptic_t *elliptic, precon_t *precon, agmgLevel *level, dfloat lambda);
-// void ellipticSetupSmootherLocalPatch(elliptic_t *elliptic, precon_t *precon, agmgLevel *level, dfloat lambda, dfloat rateTolerance);
-
 void ellipticMultiGridSetup(elliptic_t* elliptic, precon_t* precon);
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf);
 
@@ -364,13 +270,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic, precon_t* precon);
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
                          occa::memory &o_x, occa::memory &o_r);
-
-// dfloat maxEigSmoothAx(elliptic_t* elliptic, agmgLevel *level);
-
-extern "C"
-{
-void ellipticPlotVTUHex3D(mesh3D* mesh, char* fileNameBase, int fld);
-}
 
 void ellipticSerialPartialAxHexKernel3D(const int Nq,
                                         const hlong Nelements,
@@ -446,59 +345,9 @@ void ellipticBlockSerialAxHexKernel3D(const int Nq,
                                       occa::memory &o_Aq,
                                       const occa::memory &o_ggeoNoJW);
 
-void ellipticBuildOneRing(elliptic_t* elliptic, dfloat lambda, occa::properties &kernelInfo);
-void ellipticOneRingDiagnostics(elliptic_t* elliptic, elliptic_t* elliptic1, dfloat lambda);
-
 occa::properties ellipticKernelInfo(mesh_t* mesh);
 
-void ellipticOasSetup(elliptic_t* elliptic, dfloat lambda,
-                      occa::properties &kernelInfo);
-void ellipticOasSolve(elliptic_t* elliptic, dfloat lambda,
-                      occa::memory &o_r, occa::memory &o_x);
-
-void ellipticOneRingExchange(elliptic_t* elliptic,
-                             elliptic_t* elliptic1,
-                             size_t Nbytes, // message size per element
-                             occa::memory &o_q,
-                             occa::memory &o_qOneRing);
-
-void ellipticNonBlockingUpdate1NBPCG(elliptic_t* elliptic,
-                                     occa::memory &o_z, occa::memory &o_Z, const dfloat beta,
-                                     occa::memory &o_p, occa::memory &o_s,
-                                     dfloat* localpdots, dfloat* globalpdots, MPI_Request* request);
-
-void ellipticNonBlockingUpdate2NBPCG(elliptic_t* elliptic,
-                                     occa::memory &o_s, occa::memory &o_S, const dfloat alpha,
-                                     occa::memory &o_r, occa::memory &o_z,
-                                     dfloat* localdots, dfloat* globaldots, MPI_Request* request);
-
-int nbpcg(elliptic_t* elliptic,  occa::memory &o_r, occa::memory &o_x,
-          const dfloat tol, const int MAXIT);
-
-void ellipticNonBlockingUpdate0NBFPCG(elliptic_t* elliptic,
-                                      occa::memory &o_u, occa::memory &o_r, occa::memory &o_w,
-                                      dfloat* localdots, dfloat* globaldots, MPI_Request* request);
-
-void ellipticNonBlockingUpdate1NBFPCG(elliptic_t* elliptic,
-                                      occa::memory &o_p,
-                                      occa::memory &o_s,
-                                      occa::memory &o_q,
-                                      occa::memory &o_z,
-                                      const dfloat alpha,
-                                      occa::memory &o_x,
-                                      occa::memory &o_r,
-                                      occa::memory &o_u,
-                                      occa::memory &o_w,
-                                      dfloat* localpdots,
-                                      dfloat* globalpdots,
-                                      MPI_Request* request);
-
-int nbfpcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
-           const dfloat tol, const int MAXIT);
-
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
-
-void ellipticThinOasSetup(elliptic_t* elliptic);
 mesh_t* create_extended_mesh(elliptic_t*);
 
 #endif

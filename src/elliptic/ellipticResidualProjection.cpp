@@ -27,6 +27,7 @@
 #include "ellipticResidualProjection.h"
 #include <iostream>
 #include "timer.hpp"
+#include "linAlg.hpp"
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,
@@ -76,11 +77,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
-  if(blockSolver){
-    scaledAddKernel(Nlocal, fieldOffset, mone, o_rtmp, one, o_r);
-  } else {
-    scaledAddKernel(Nlocal, mone, o_rtmp, one, o_r);
-  }
+  linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
@@ -94,22 +91,14 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
-    if(blockSolver){
-      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
-    } else {
-      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
-    }
+    linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat), Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
-    if(blockSolver){
-      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
-    } else {
-      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
-    }
+    linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
   const dlong previousNumVecsProjection = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
@@ -188,8 +177,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
     }
     MPI_Barrier(elliptic.mesh->comm);
   }
-  scaledAddKernel = elliptic.scaledAddKernel;
-  sumKernel = elliptic.mesh->sumKernel;
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
                    {
                      ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);

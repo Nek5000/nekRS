@@ -45,7 +45,7 @@ private:
 
   void setup();
 private:
-  linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm, const dlong _numVectors) {
+  linAlg_t(occa::device& _device, occa::properties* _kernelInfo, MPI_Comm& _comm, const dlong _numVectors) {
     blocksize = BLOCKSIZE;
     device = _device;
     kernelInfo = *(_kernelInfo);
@@ -55,7 +55,7 @@ private:
   }
   ~linAlg_t();
 public:
-  static linAlg_t* initialize(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm, const dlong _numVectors) {
+  static linAlg_t* initialize(occa::device& _device, occa::properties* _kernelInfo, MPI_Comm& _comm, const dlong _numVectors) {
     if(!singleton)
       singleton = new linAlg_t(_device, _kernelInfo, _comm, _numVectors);
     return singleton;
@@ -77,10 +77,29 @@ public:
 
   // o_a[n] += alpha
   void add(const dlong N, const dfloat alpha, occa::memory& o_a);
+  void addMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+    const dfloat alpha, occa::memory& o_a);
+  void addVector(const dlong N, const dlong Nfields, const dlong fieldOffset,
+    const dfloat alpha, occa::memory& o_a);
 
   // o_y[n] = beta*o_y[n] + alpha*o_x[n]
   void axpby(const dlong N, const dfloat alpha, occa::memory& o_x,
                             const dfloat beta,  occa::memory& o_y);
+  void axpbyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+                            const dfloat alpha, occa::memory& o_x,
+                            const dfloat beta,  occa::memory& o_y);
+  void axpbyVector(const dlong N, const dlong fieldOffset,
+                            const dfloat alpha, occa::memory& o_x,
+                            const dfloat beta,  occa::memory& o_y);
+  // pfloat variants
+  void axpbyPfloat(const dlong N, const pfloat alpha, occa::memory& o_x,
+                            const pfloat beta,  occa::memory& o_y);
+  void axpbyManyPfloat(const dlong N, const dlong Nfields, const dlong fieldOffset,
+                            const pfloat alpha, occa::memory& o_x,
+                            const pfloat beta,  occa::memory& o_y);
+  void axpbyVectorPfloat(const dlong N, const dlong fieldOffset,
+                            const pfloat alpha, occa::memory& o_x,
+                            const pfloat beta,  occa::memory& o_y);
 
   // o_z[n] = beta*o_y[n] + alpha*o_x[n]
   void axpbyz(const dlong N, const dfloat alpha, occa::memory& o_x,
@@ -105,10 +124,29 @@ public:
   void axmyz(const dlong N, const dfloat alpha,
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
+  // mode 0:
+  // o_z[n,fld] = alpha*o_x[n]*o_y[n,fld]
+  // mode 1:
+  // o_z[n,fld] = alpha*o_x[n,fld]*o_y[n,fld]
+  void axmyzMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+            const dlong mode, const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y, occa::memory& o_z);
+  void axmyzVector(const dlong N, const dlong fieldOffset,
+            const dlong mode, const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y, occa::memory& o_z);
 
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
+  // o_y[n] = alpha/o_y[n]
+  void ady(const dlong N, const dfloat alpha,
+            occa::memory& o_y);
+  void adyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+            const dfloat alpha,
+            occa::memory& o_y);
+  void adyVector(const dlong N, const dlong fieldOffset,
+            const dfloat alpha,
+            occa::memory& o_y);
 
   // o_z[n] = alpha*o_x[n]*o_y[n]
   void axdyz(const dlong N, const dfloat alpha,
@@ -141,14 +179,26 @@ public:
 
   occa::kernel fillKernel;
   occa::kernel addKernel;
+  occa::kernel addManyKernel;
+  occa::kernel addVectorKernel;
   occa::kernel scaleKernel;
   occa::kernel axpbyKernel;
+  occa::kernel axpbyManyKernel;
+  occa::kernel axpbyVectorKernel;
+  occa::kernel axpbyPfloatKernel;
+  occa::kernel axpbyManyPfloatKernel;
+  occa::kernel axpbyVectorPfloatKernel;
   occa::kernel axpbyzKernel;
   occa::kernel axmyKernel;
   occa::kernel axmyManyKernel;
   occa::kernel axmyVectorKernel;
   occa::kernel axmyzKernel;
+  occa::kernel axmyzManyKernel;
+  occa::kernel axmyzVectorKernel;
   occa::kernel axdyKernel;
+  occa::kernel adyKernel;
+  occa::kernel adyManyKernel;
+  occa::kernel adyVectorKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
   occa::kernel minKernel;

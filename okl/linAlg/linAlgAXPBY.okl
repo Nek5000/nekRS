@@ -37,6 +37,45 @@ SOFTWARE.
       y[n] = alpha*x[n];
   }
 }
+@kernel void axpbyMany(const dlong N,
+                   const dlong Nfields,
+                   const dlong fieldOffset,
+                   const dfloat alpha,
+                   @restrict const dfloat *x,
+                   const dfloat beta,
+                   @restrict dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const dlong id = n + fld * fieldOffset;
+      if (beta!=0){
+        y[id] = alpha*x[id] + beta*y[id];
+      }
+      else{
+        y[id] = alpha*x[id];
+      }
+    }
+  }
+}
+@kernel void axpbyVector(const dlong N,
+                   const dlong fieldOffset,
+                   const dfloat alpha,
+                   @restrict const dfloat *x,
+                   const dfloat beta,
+                   @restrict dfloat *y){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    #pragma unroll
+    for(int fld = 0; fld < p_NVectorSize; ++fld){
+      const dlong id = n + fld * fieldOffset;
+      if (beta!=0){
+        y[id] = alpha*x[id] + beta*y[id];
+      }
+      else{
+        y[id] = alpha*x[id];
+      }
+    }
+  }
+}
 
 @kernel void axpbyz(const dlong N,
                     const dfloat alpha,

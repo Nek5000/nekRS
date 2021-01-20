@@ -58,12 +58,8 @@ occa::properties ellipticKernelInfo(mesh_t* mesh)
   kernelInfo["defines/" "p_WSJID"] = WSJID;
   kernelInfo["defines/" "p_IHID"] = IHID;
 
-  kernelInfo["defines/" "p_max_EL_nnz"] = mesh->max_EL_nnz; // for Bernstein Bezier lift
-
   kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
   kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
-  kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
-  kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
 
   if(sizeof(dfloat) == 4) {
     kernelInfo["defines/" "dfloat"] = "float";

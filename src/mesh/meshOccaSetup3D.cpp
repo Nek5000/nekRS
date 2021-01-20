@@ -98,63 +98,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     mesh->o_LIFTT =
       mesh->device.malloc(1 * sizeof(dfloat)); // dummy
 
-    mesh->intx = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
-    mesh->inty = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
-    mesh->intz = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
-
-    dfloat* ix = (dfloat*) calloc(mesh->cubNq * mesh->Nq,sizeof(dfloat));
-    dfloat* iy = (dfloat*) calloc(mesh->cubNq * mesh->Nq,sizeof(dfloat));
-    dfloat* iz = (dfloat*) calloc(mesh->cubNq * mesh->Nq,sizeof(dfloat));
-    for(dlong e = 0; e < mesh->Nelements; ++e)
-      for(int f = 0; f < mesh->Nfaces; ++f) {
-        //interpolate in i
-        for(int ny = 0; ny < mesh->Nq; ++ny)
-          for(int nx = 0; nx < mesh->cubNq; ++nx) {
-            ix[nx + mesh->cubNq * ny] = 0;
-            iy[nx + mesh->cubNq * ny] = 0;
-            iz[nx + mesh->cubNq * ny] = 0;
-
-            for(int m = 0; m < mesh->Nq; ++m) {
-              dlong vid = m + ny * mesh->Nq + f * mesh->Nfp + e * mesh->Nfp * mesh->Nfaces;
-              dlong idM = mesh->vmapM[vid];
-
-              dfloat xm = mesh->x[idM];
-              dfloat ym = mesh->y[idM];
-              dfloat zm = mesh->z[idM];
-
-              dfloat Inm = mesh->cubInterp[m + nx * mesh->Nq];
-              ix[nx + mesh->cubNq * ny] += Inm * xm;
-              iy[nx + mesh->cubNq * ny] += Inm * ym;
-              iz[nx + mesh->cubNq * ny] += Inm * zm;
-            }
-          }
-
-        //interpolate in j and store
-        for(int ny = 0; ny < mesh->cubNq; ++ny)
-          for(int nx = 0; nx < mesh->cubNq; ++nx) {
-            dfloat x = 0.0, y = 0.0, z = 0.0;
-
-            for(int m = 0; m < mesh->Nq; ++m) {
-              dfloat xm = ix[nx + m * mesh->cubNq];
-              dfloat ym = iy[nx + m * mesh->cubNq];
-              dfloat zm = iz[nx + m * mesh->cubNq];
-
-              dfloat Inm = mesh->cubInterp[m + ny * mesh->Nq];
-              x += Inm * xm;
-              y += Inm * ym;
-              z += Inm * zm;
-            }
-
-            dlong id = nx + ny * mesh->cubNq + f * mesh->cubNfp + e * mesh->Nfaces * mesh->cubNfp;
-            mesh->intx[id] = x;
-            mesh->inty[id] = y;
-            mesh->intz[id] = z;
-          }
-      }
-    free(ix);
-    free(iy);
-    free(iz);
-
     mesh->LMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
     mesh->o_LMM =
       mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
@@ -226,24 +169,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     // just neeeded to combine quad and hex cub kernels
     mesh->o_cubDiffInterpT = mesh->o_cubDWmatrices;
 
-    mesh->o_intx =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
-                          mesh->intx);
-
-    mesh->o_inty =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
-                          mesh->inty);
-
-    mesh->o_intz =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
-                          mesh->intz);
-
-    mesh->o_intInterpT = mesh->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
-    mesh->o_intInterpT.copyFrom(mesh->o_cubInterpT);
-
-    mesh->o_intLIFTT = mesh->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
-    mesh->o_intLIFTT.copyFrom(mesh->o_cubProjectT);
-
   } else {
     printf("Nverts = %d: unknown element type!\n",mesh->Nverts);
   }
@@ -298,8 +223,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_Nsgeo"] = mesh->Nsgeo;
   kernelInfo["defines/" "p_Nggeo"] = mesh->Nggeo;
 
-  kernelInfo["defines/" "p_max_EL_nnz"] = mesh->max_EL_nnz; // for Bernstein Bezier lift
-
   kernelInfo["defines/" "p_NXID"] = NXID;
   kernelInfo["defines/" "p_NYID"] = NYID;
   kernelInfo["defines/" "p_NZID"] = NZID;
@@ -323,8 +246,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
   kernelInfo["defines/" "p_cubNfp"] = mesh->cubNfp;
   kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
-  kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
-  kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
 
   if(sizeof(dfloat) == 4) {
     kernelInfo["defines/" "dfloat"] = "float";

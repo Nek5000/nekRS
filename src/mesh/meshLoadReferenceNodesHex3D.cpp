@@ -87,11 +87,6 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
     for(int j = 0; j < mesh->cubNq; ++j)
       mesh->cubDW[j + i * mesh->cubNq] = mesh->cubD[i + j * mesh->cubNq];
 
-  mesh->intNfp = 0;
-  mesh->intLIFT = NULL;
-  mesh->max_EL_nnz = 0;
-  mesh->intNfp = 0;
-
   // find node indices of vertex nodes
   dfloat NODETOL = 1e-6;
   mesh->vertexNodes = (int*) calloc(mesh->Nverts, sizeof(int));
@@ -121,6 +116,4 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
         (mesh->t[n] - 1) * (mesh->t[n] - 1) < NODETOL)
       mesh->vertexNodes[7] = n;
   }
-
-  mesh->max_EL_nnz = 0;
 }

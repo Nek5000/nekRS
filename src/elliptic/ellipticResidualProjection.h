@@ -69,8 +69,6 @@ private:
   occa::kernel multiScaledAddwOffsetKernel;
   occa::kernel multiWeightedInnerProduct2Kernel;
   occa::kernel accumulateKernel;
-  occa::kernel scaledAddKernel;
-  occa::kernel sumKernel;
 
   dfloat* alpha;
   dfloat* work;

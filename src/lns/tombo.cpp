@@ -1,14 +1,16 @@
 #include "nrs.hpp"
 #include "udf.hpp"
+#include "linAlg.hpp"
 
 namespace tombo
 {
 occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t * linAlg = linAlg_t::getSingleton();
 
   //enforce Dirichlet BCs
-  nrs->fillKernel((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
+  linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -68,7 +70,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->linAlg->axmyVector(
+  linAlg_t::getSingleton()->axmyVector(
     mesh->Nelements * mesh->Np,
     nrs->fieldOffset,
     0,
@@ -118,7 +120,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->linAlg->axmyVector(
+  linAlg_t::getSingleton()->axmyVector(
     mesh->Nelements * mesh->Np,
     nrs->fieldOffset,
     0,

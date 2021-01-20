@@ -2,6 +2,7 @@
 #include "meshSetup.hpp"
 #include "setup.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "platform.hpp"
 #include "udf.hpp"
 #include "parReader.hpp"
 #include "configReader.hpp"
@@ -96,7 +97,18 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(rank == 0 && ciMode)
     cout << "enabling continous integration mode " << ciMode << "\n";
 
+
   if(udf.setup0) udf.setup0(comm, options);
+
+  {
+    platform_t::initialize(device, comm);
+  }
+
+  {
+    occa::properties& universalKernelInfo = platform_t::getSingleton()->getKernelInfo();
+    const dlong NVfields = 3;
+    linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
+  }
 
   nrsSetup(comm, device, options, nrs);
 
@@ -272,6 +284,12 @@ static void dryRun(setupAide &options, int npTarget)
   }
 
   if(udf.setup0) udf.setup0(comm, options);
+  {
+    occa::properties linAlgKernelInfo;
+    linAlgKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
+    const dlong NVfields = 3;
+    linAlg_t::initialize(device, &linAlgKernelInfo, comm, NVfields);
+  }
 
   // init solver
   nrsSetup(comm, device, options, nrs);

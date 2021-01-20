@@ -25,64 +25,20 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a)
 {
-  setupAide &options = elliptic->options;
-
-  int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  int enableReductions = 1;
-  options.getArgs("DEBUG ENABLE REDUCTIONS", enableReductions);
-
-  mesh_t* mesh = elliptic->mesh;
-  dfloat* tmp = elliptic->tmp;
-  dlong Nblock = elliptic->Nblock;
-  dlong Nblock2 = elliptic->Nblock2;
-
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
-
-  occa::memory &o_tmp = elliptic->o_tmp;
-  occa::memory &o_tmp2 = elliptic->o_tmp2;
-
-  dfloat wa2;
-
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
-
-  if(continuous == 1) {
-    if(elliptic->blockSolver)
-      elliptic->weightedNorm2Kernel(Nlocal, elliptic->Ntotal, o_w, o_a, o_tmp);
-    else
-      elliptic->weightedNorm2Kernel(Nlocal, o_w, o_a, o_tmp);
-  }else {
-    elliptic->innerProductKernel(Nlocal, o_a, o_a, o_tmp);
-  }
-
-  if(serial && continuous) {
-    o_tmp.copyTo(&wa2, sizeof(dfloat));
-  }else {
-    /* add a second sweep if Nblock>Ncutoff */
-    dlong Ncutoff = 100;
-    dlong Nfinal;
-    if(Nblock > Ncutoff) {
-      mesh->sumKernel(Nblock, o_tmp, o_tmp2);
-      o_tmp2.copyTo(tmp);
-      Nfinal = Nblock2;
-    }else {
-      o_tmp.copyTo(tmp);
-      Nfinal = Nblock;
-    }
-
-    wa2 = 0;
-    for(dlong n = 0; n < Nfinal; ++n)
-      wa2 += tmp[n];
-  }
-
-  dfloat globalwa2 = 0;
-  MPI_Allreduce(&wa2, &globalwa2, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-
+  const dlong Nlocal = elliptic->mesh->Nelements * elliptic->mesh->Np;
+  const dfloat globalwa2 = linAlg_t::getSingleton()->weightedNorm2(
+    Nlocal,
+    o_w,
+    o_a,
+    elliptic->mesh->comm
+  );
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");
 #endif

@@ -7,6 +7,7 @@
 #include "udf.hpp"
 #include "tombo.hpp"
 #include "cfl.hpp"
+#include "linAlg.hpp"
 
 void extbdfCoefficents(nrs_t* nrs, int order);
 
@@ -26,6 +27,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
   cds_t* cds = nrs->cds;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   mesh->device.finish();
   MPI_Barrier(mesh->comm);
@@ -155,6 +157,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   if(udf.sEqnSource) {
     timer::tic("udfSEqnSource", 1);
@@ -220,7 +223,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
           o_FS);
       }
     } else {
-      cds->fillKernel(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
+      linAlg->fill(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
     } 
 
     cds->sumMakefKernel(
@@ -242,9 +245,10 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 {
   cds_t* cds   = nrs->cds;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   timer::tic("makeq", 1);
-  cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+  linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
   makeq(nrs, time, cds->o_FS, cds->o_BF);
   timer::toc("makeq");
 
@@ -289,6 +293,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   if(udf.uEqnSource) {
     timer::tic("udfUEqnSource", 1);
@@ -340,7 +345,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
         o_FU);
     }
   } else {
-    if(nrs->Nsubsteps) nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
   }
 
   nrs->sumMakefKernel(
@@ -359,9 +364,10 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   timer::tic("makef", 1);
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
   makef(nrs, time, nrs->o_FU, nrs->o_BF);
   timer::toc("makef");
 

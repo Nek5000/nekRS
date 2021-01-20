@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 #include <string>
 
 void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
@@ -133,43 +134,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                              elliptic->tmpNormr);
 
   int useFlexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
-
-  if(options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
-    int Nwork = (useFlexible) ? 9: 6;
-
-    elliptic->o_pcgWork = new occa::memory[Nwork];
-    for(int n = 0; n < Nwork; ++n)
-      elliptic->o_pcgWork[n]  =
-        mesh->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat), elliptic->z);
-
-    elliptic->tmppdots = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmppdots = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmppdots);
-
-    elliptic->tmprdotz = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmprdotz = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmprdotz);
-
-    elliptic->tmpzdotz = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmpzdotz = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmpzdotz);
-
-    elliptic->tmprdotr = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmprdotr = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmprdotr);
-
-    elliptic->tmpudotr = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmpudotr = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmpudotr);
-
-    elliptic->tmpudots = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmpudots = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmpudots);
-
-    elliptic->tmpudotw = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-    elliptic->o_tmpudotw = mesh->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
-                                               elliptic->tmpudotw);
-  }
 
   //setup async halo stream
   elliptic->defaultStream = mesh->defaultStream;
@@ -424,12 +388,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "meshHaloExtract2D",
                                  kernelInfo);
 
-      filename = oklpath + "addScalar.okl";
-      mesh->addScalarKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "addScalar",
-                                 kernelInfo);
-
       filename = oklpath + "mask.okl";
       mesh->maskKernel =
         mesh->device.buildKernel(filename.c_str(),
@@ -442,198 +400,15 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "mask",
                                  pfloatKernelInfo);
 
-      filename = oklpath + "sum.okl";
-      mesh->sumKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "sum",
-                                 kernelInfo);
-
-      filename = oklpath + "fill.okl";
-      elliptic->fillKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "fill",
-                                 kernelInfo);
-
-      filename = oklpath + "dotMultiplyAdd.okl";
-      elliptic->dotMultiplyAddKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "dotMultiplyAdd",
-                                 kernelInfo);
-
-      filename = oklpath + "dotDivide.okl";
-      elliptic->dotDivideKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "dotDivide",
-                                 kernelInfo);
-
-      filename = oklpath + "dotDivide.okl";
-      elliptic->scalarDivideKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "scalarDivide",
-                                 kernelInfo);
-
       if(elliptic->blockSolver) {
-        filename = oklpath + "sum.okl", "sumBlock";
-        elliptic->sumBlockKernel =
-          mesh->device.buildKernel(filename.c_str(), "sumBlock", kernelInfo);
 
-        filename = oklpath + "sum.okl", "sumBlockField";
-        elliptic->sumBlockFieldKernel =
-          mesh->device.buildKernel(filename.c_str(), "sumBlockField", kernelInfo);
-
-        filename = oklpath + "addScalar.okl";
-        elliptic->addScalarBlockFieldKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "addBlockScalarField",
-                                   kernelInfo);
-
-        filename = oklpath + "weightedInnerProduct1.okl";
-        elliptic->weightedInnerProduct1Kernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "weightedBlockInnerProduct1",
-                                   kernelInfo);
-        if(serial) {
-          filename = oklpath + "serialWeightedInnerProduct2.c";
-          elliptic->weightedInnerProduct2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedBlockInnerProduct2",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "weightedInnerProduct2.okl";
-          elliptic->weightedInnerProduct2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedBlockInnerProduct2",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "innerProduct.okl";
-        elliptic->innerProductKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "innerBlockProduct",
-                                   kernelInfo);
-
-        filename = oklpath + "innerProduct.okl";
-        elliptic->innerProductFieldKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "innerBlockProductField",
-                                   kernelInfo);
-
-        if(serial) {
-          filename = oklpath + "serialWeightedNorm2.c";
-          elliptic->weightedNorm2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedBlockNorm2",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "weightedNorm2.okl";
-          elliptic->weightedNorm2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedBlockNorm2",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "norm2.okl";
-        elliptic->norm2Kernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "normBlock2",
-                                   kernelInfo);
-
-        filename = oklpath + "scaledAdd.okl";
-        elliptic->scaledAddPfloatKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "scaledBlockAdd",
-                                   pfloatKernelInfo);
-
-        if(serial) {
-          filename = oklpath + "/serialScaledAdd.c";
-          elliptic->scaledAddKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "scaledBlockAdd",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "scaledAdd.okl";
-          elliptic->scaledAddKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "scaledBlockAdd",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "dotMultiply.okl";
-        elliptic->collocateKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "collocate",
-                                   kernelInfo);
         filename = oklpath + "dotMultiply.okl";
         elliptic->dotMultiplyPfloatKernel =
           mesh->device.buildKernel(filename.c_str(),
                                    "dotBlockMultiply",
                                    pfloatKernelInfo);
 
-        if(serial) {
-          filename = oklpath + "serialDotMultiply.c";
-          elliptic->dotMultiplyKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "dotBlockMultiply",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "dotMultiply.okl";
-          elliptic->dotMultiplyKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "dotBlockMultiply",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "dotDivide.okl";
-        elliptic->scalarDivideManyKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "scalarDivideMany",
-                                   kernelInfo);
       }else{
-        filename = oklpath + "weightedInnerProduct1.okl";
-        elliptic->weightedInnerProduct1Kernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "weightedInnerProduct1",
-                                   kernelInfo);
-
-        if(serial) {
-          filename = oklpath + "serialWeightedInnerProduct2.c";
-          elliptic->weightedInnerProduct2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedInnerProduct2",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "weightedInnerProduct2.okl";
-          elliptic->weightedInnerProduct2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedInnerProduct2",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "innerProduct.okl";
-        elliptic->innerProductKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "innerProduct",
-                                   kernelInfo);
-
-        if(serial) {
-          filename = oklpath + "serialWeightedNorm2.c";
-          elliptic->weightedNorm2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedNorm2",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "weightedNorm2.okl";
-          elliptic->weightedNorm2Kernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "weightedNorm2",
-                                     kernelInfo);
-        }
-
-        filename = oklpath + "norm2.okl";
-        elliptic->norm2Kernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "norm2",
-                                   kernelInfo);
 
         filename = oklpath + "copyDfloatToPfloat.okl";
         elliptic->copyDfloatToPfloatKernel =
@@ -648,11 +423,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                    kernelInfo);
 
         filename = oklpath + "scaledAdd.okl";
-        elliptic->scaledAddPfloatKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "scaledAdd",
-                                   pfloatKernelInfo);
-
         elliptic->updateSmoothedSolutionVecKernel =
           mesh->device.buildKernel(filename.c_str(),
                                    "updateSmoothedSolutionVec",
@@ -662,47 +432,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                    "updateChebyshevSolutionVec",
                                    pfloatKernelInfo);
 
-        if(serial) {
-          filename = oklpath + "serialScaledAdd.c";
-          elliptic->scaledAddKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "scaledAdd",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "scaledAdd.okl";
-          elliptic->scaledAddKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "scaledAdd",
-                                     kernelInfo);
-        }
-
         filename = oklpath + "dotMultiply.okl";
-        elliptic->collocateKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "collocate",
-                                   kernelInfo);
-        elliptic->dotMultiplyKernel =
-          mesh->device.buildKernel(filename.c_str(),
-                                   "dotMultiply",
-                                   kernelInfo);
         elliptic->dotMultiplyPfloatKernel =
           mesh->device.buildKernel(filename.c_str(),
                                    "dotMultiply",
                                    pfloatKernelInfo);
-
-        if(serial) {
-          filename = oklpath + "serialDotMultiply.c";
-          elliptic->dotMultiplyKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "dotMultiply",
-                                     kernelInfoNoOKL);
-        } else {
-          filename = oklpath + "dotMultiply.okl";
-          elliptic->dotMultiplyKernel =
-            mesh->device.buildKernel(filename.c_str(),
-                                     "dotMultiply",
-                                     kernelInfo);
-        }
       }
     }
     MPI_Barrier(mesh->comm);
@@ -868,25 +602,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                      "ellipticBlockUpdatePCG", dfloatKernelInfo);
         }
 
-/*
-        filename = oklpath + "ellipticUpdateNBPCG.okl;
-        elliptic->update1NBPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBPCG.okl",
-                                   "ellipticBlockUpdate1NBPCG", dfloatKernelInfo);
-
-        elliptic->update2NBPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBPCG.okl",
-                                   "ellipticBlockUpdate2NBPCG", dfloatKernelInfo);
-
-        filename = oklpath + "ellipticUpdateNBFPCG.okl;
-        elliptic->update0NBFPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
-                                   "ellipticBlockUpdate0NBFPCG", dfloatKernelInfo);
-
-        elliptic->update1NBFPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
-                                   "ellipticBlockUpdate1NBFPCG", dfloatKernelInfo);
- */
       }else{
         if(serial) {
           filename = oklpath + "ellipticSerialUpdatePCG.c";
@@ -899,46 +614,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             mesh->device.buildKernel(filename.c_str(),
                                      "ellipticUpdatePCG", dfloatKernelInfo);
         }
-/*
-        filename = oklpath + "ellipticUpdateNBPCG.okl";
-        elliptic->update1NBPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBPCG.okl",
-                                   "ellipticUpdate1NBPCG", dfloatKernelInfo);
-
-        elliptic->update2NBPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBPCG.okl",
-                                   "ellipticUpdate2NBPCG", dfloatKernelInfo);
-
-        filename = oklpath + "ellipticUpdateNBFPCG.okl";
-        elliptic->update0NBFPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
-                                   "ellipticUpdate0NBFPCG", dfloatKernelInfo);
-
-        elliptic->update1NBFPCGKernel =
-          mesh->device.buildKernel(oklpath + "ellipticUpdateNBFPCG.okl",
-                                   "ellipticUpdate1NBFPCG", dfloatKernelInfo);
- */
       }
 
       if(!elliptic->blockSolver) {
-        if (options.compareArgs("BASIS","NODAL")) {
-          filename = oklpath + "ellipticGradient" + suffix + ".okl";
-          kernelName = "ellipticGradient" + suffix;
-          elliptic->gradientKernel = mesh->device.buildKernel(filename.c_str(),kernelName,kernelInfo);
-
-          kernelName = "ellipticPartialGradient" + suffix;
-          elliptic->partialGradientKernel =
-            mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-/*
-          sprintf(filename.c_str(), oklpath + "ellipticAxIpdg%s.okl", suffix);
-          sprintf(kernelName, "ellipticAxIpdg%s", suffix);
-          elliptic->ipdgKernel = mesh->device.buildKernel(filename.c_str(),kernelName,kernelInfo);
-
-          sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
-          elliptic->partialIpdgKernel = mesh->device.buildKernel(filename.c_str(),kernelName,kernelInfo);
- */
-        }
-
         filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
         kernelName = "ellipticPreconCoarsen" + suffix;
         elliptic->precon->coarsenKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
@@ -978,43 +656,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
 
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
-      elliptic->sumBlockFieldKernel(Nlocal,
-                                    fld,
-                                    elliptic->Ntotal,
-                                    elliptic->o_invDegree,
-                                    elliptic->o_tmp);
-      elliptic->o_tmp.copyTo(elliptic->tmp);
-
-      dfloat nullProjectWeightLocal = 0;
-      dfloat nullProjectWeightGlobal = 0;
-      for(dlong n = 0; n < elliptic->Nblock; ++n)
-        nullProjectWeightLocal += elliptic->tmp[n];
-
-      MPI_Allreduce(&nullProjectWeightLocal,
-                    &nullProjectWeightGlobal,
-                    1,
-                    MPI_DFLOAT,
-                    MPI_SUM,
-                    mesh->comm);
-
+      occa::memory o_slice = elliptic->o_invDegree + fld * elliptic->Ntotal * sizeof(dfloat);
+      const dfloat nullProjectWeightGlobal = linAlg_t::getSingleton()->sum(
+        Nlocal,
+        o_slice,
+        elliptic->mesh->comm
+      );
       elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
     }
   }else{
-    mesh->sumKernel(mesh->Nelements * mesh->Np, elliptic->o_invDegree, elliptic->o_tmp);
-    elliptic->o_tmp.copyTo(elliptic->tmp);
-
-    dfloat nullProjectWeightLocal = 0;
-    dfloat nullProjectWeightGlobal = 0;
-    for(dlong n = 0; n < elliptic->Nblock; ++n)
-      nullProjectWeightLocal += elliptic->tmp[n];
-
-    MPI_Allreduce(&nullProjectWeightLocal,
-                  &nullProjectWeightGlobal,
-                  1,
-                  MPI_DFLOAT,
-                  MPI_SUM,
-                  mesh->comm);
-
+    const dfloat nullProjectWeightGlobal = linAlg_t::getSingleton()->sum(mesh->Nelements * mesh->Np, elliptic->o_invDegree, mesh->comm);
     elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
   }
 

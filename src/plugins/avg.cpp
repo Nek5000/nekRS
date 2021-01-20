@@ -16,6 +16,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "avg.hpp"
+#include "linAlg.hpp"
 
 // private members
 namespace
@@ -149,28 +150,29 @@ void avg::setup(nrs_t* nrs_)
 
   nrs = nrs_;
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   if(setupCalled) return;
 
   o_Uavg = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
   o_Urms = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
+  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
+  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
   o_Urm2 = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
+  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
   o_Pavg = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
   o_Prms = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  nrs->fillKernel(nrs->fieldOffset, 0.0, o_Pavg);
-  nrs->fillKernel(nrs->fieldOffset, 0.0, o_Prms);
+  linAlg->fill(nrs->fieldOffset, 0.0, o_Pavg);
+  linAlg->fill(nrs->fieldOffset, 0.0, o_Prms);
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
     o_Savg = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
     o_Srms = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
+    linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;

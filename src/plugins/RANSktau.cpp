@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "RANSktau.hpp"
+#include "linAlg.hpp"
 
 // private members
 namespace
@@ -137,7 +138,7 @@ void RANSktau::updateSourceTerms()
                        ogsDfloat,
                        ogsAdd,
                        mesh->ogs);
-  nrs->linAlg->axmyMany(
+  linAlg_t::getSingleton()->axmyMany(
     mesh->Nelements * mesh->Np,
     NSOfields,
     nrs->fieldOffset,
@@ -196,7 +197,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    nrs->fillKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    linAlg_t::getSingleton()->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

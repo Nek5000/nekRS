@@ -332,23 +332,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         }
       }
 
-      if (options.compareArgs("BASIS", "NODAL")) {
-        filename = oklpath + "ellipticGradient" + suffix + ".okl";
-        kernelName = "ellipticGradient" + suffix;
-
-        elliptic->gradientKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-
-        kernelName = "ellipticPartialGradient" + suffix;
-        elliptic->partialGradientKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-/*
-        sprintf(fileName, oklpath + "ellipticAxIpdg%s.okl", suffix);
-        sprintf(kernelName, "ellipticAxIpdg%s", suffix);
-        elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
-        sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
-        elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
- */
-      }
     }
 
     MPI_Barrier(mesh->comm);

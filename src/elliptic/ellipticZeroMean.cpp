@@ -24,6 +24,7 @@
 
  */
 
+#include "linAlg.hpp"
 #include "elliptic.h"
 //#include "ogsInterface.h"
 
@@ -46,23 +47,16 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     for(int fld = 0; fld < elliptic->Nfields; fld++)
       // check this field for all Neumann
       if(elliptic->allBlockNeumann[fld]) {
-        elliptic->innerProductFieldKernel(Nlocal,
-                                          fld,
-                                          elliptic->Ntotal,
-                                          elliptic->o_invDegree,
-                                          o_q,
-                                          o_tmp);
+        occa::memory o_q_slice = o_q + fld * elliptic->Ntotal * sizeof(dfloat);
+        occa::memory o_w_slice = elliptic->o_invDegree + fld * elliptic->Ntotal * sizeof(dfloat);
 #ifdef ELLIPTIC_ENABLE_TIMER
         timer::tic("dotp",1);
 #endif
-        // finish reduction
-        o_tmp.copyTo(tmp);
-        qmeanLocal = 0;
-        for(dlong n = 0; n < Nblock; ++n)
-          qmeanLocal += tmp[n];
-
-        // globalize reduction
-        MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+        dfloat qmeanGlobal = linAlg_t::getSingleton()->innerProd(Nlocal,
+          o_w_slice,
+          o_q_slice,
+          mesh->comm
+        );
 #ifdef ELLIPTIC_ENABLE_TIMER
         timer::toc("dotp");
 #endif
@@ -70,27 +64,18 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
         qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
 
         // q[n] = q[n] - qmeanGlobal for field id :fld
-        elliptic->addScalarBlockFieldKernel(Nlocal, fld, elliptic->Ntotal,  -qmeanGlobal, o_q);
+        linAlg_t::getSingleton()->add(Nlocal, -qmeanGlobal, o_q_slice);
       }
   }else{
-#if USE_WEIGHTED == 1
-    elliptic->innerProductKernel(mesh->Nelements * mesh->Np, elliptic->o_invDegree, o_q, o_tmp);
-#else
-    mesh->sumKernel(mesh->Nelements * mesh->Np, o_q, o_tmp);
-#endif
-
+    const dlong Nlocal = mesh->Nelements * mesh->Np;
 #ifdef ELLIPTIC_ENABLE_TIMER
     timer::tic("dotp",1);
 #endif
-    o_tmp.copyTo(tmp);
-
-    // finish reduction
-    qmeanLocal = 0;
-    for(dlong n = 0; n < Nblock; ++n)
-      qmeanLocal += tmp[n];
-
-    // globalize reduction
-    MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+#if USE_WEIGHTED == 1
+    dfloat qmeanGlobal = linAlg_t::getSingleton()->innerProd(Nlocal, elliptic->o_invDegree, o_q, mesh->comm);
+#else
+    dfloat qmeanGlobal = linAlg_t::getSingleton()->sum(Nlocal, o_q, mesh->comm);
+#endif
 #ifdef ELLIPTIC_ENABLE_TIMER
     timer::toc("dotp");
 #endif
@@ -102,6 +87,6 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     qmeanGlobal /= ((dfloat) elliptic->NelementsGlobal * (dfloat)mesh->Np);
 #endif
     // q[n] = q[n] - qmeanGlobal
-    mesh->addScalarKernel(mesh->Nelements * mesh->Np, -qmeanGlobal, o_q);
+    linAlg_t::getSingleton()->add(Nlocal, -qmeanGlobal, o_q);
   }
 }

@@ -51,6 +51,13 @@ void linAlg_t::setup() {
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
   oklDir += "/okl/linAlg/";
 
+  occa::properties pfloatKernelInfo = kernelInfo;
+
+  if(sizeof(pfloat) == 8)
+    pfloatKernelInfo["defines/" "dfloat"] = "double";
+  else if(sizeof(pfloat) == 4)
+    pfloatKernelInfo["defines/" "dfloat"] = "float";
+
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
       if (fillKernel.isInitialized()==false)
@@ -63,6 +70,16 @@ void linAlg_t::setup() {
                                         "linAlgAdd.okl",
                                         "add",
                                         kernelInfo);
+      if (addManyKernel.isInitialized()==false)
+        addManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAdd.okl",
+                                        "addMany",
+                                        kernelInfo);
+      if (addVectorKernel.isInitialized()==false)
+        addVectorKernel = device.buildKernel(oklDir + 
+                                        "linAlgAdd.okl",
+                                        "addVector",
+                                        kernelInfo);
       if (scaleKernel.isInitialized()==false)
         scaleKernel = device.buildKernel(oklDir + 
                                         "linAlgScale.okl",
@@ -73,6 +90,31 @@ void linAlg_t::setup() {
                                          "linAlgAXPBY.okl",
                                          "axpby",
                                          kernelInfo);
+      if (axpbyManyKernel.isInitialized()==false)
+        axpbyManyKernel = device.buildKernel(oklDir + 
+                                         "linAlgAXPBY.okl",
+                                         "axpbyMany",
+                                         kernelInfo);
+      if (axpbyVectorKernel.isInitialized()==false)
+        axpbyVectorKernel = device.buildKernel(oklDir + 
+                                         "linAlgAXPBY.okl",
+                                         "axpbyVector",
+                                         kernelInfo);
+      if (axpbyPfloatKernel.isInitialized()==false)
+        axpbyPfloatKernel = device.buildKernel(oklDir + 
+                                         "linAlgAXPBY.okl",
+                                         "axpby",
+                                         pfloatKernelInfo);
+      if (axpbyManyPfloatKernel.isInitialized()==false)
+        axpbyManyPfloatKernel = device.buildKernel(oklDir + 
+                                         "linAlgAXPBY.okl",
+                                         "axpbyMany",
+                                         pfloatKernelInfo);
+      if (axpbyVectorPfloatKernel.isInitialized()==false)
+        axpbyVectorPfloatKernel = device.buildKernel(oklDir + 
+                                         "linAlgAXPBY.okl",
+                                         "axpbyVector",
+                                         pfloatKernelInfo);
       if (axpbyzKernel.isInitialized()==false)
         axpbyzKernel = device.buildKernel(oklDir + 
                                           "linAlgAXPBY.okl",
@@ -98,10 +140,35 @@ void linAlg_t::setup() {
                                          "linAlgAXMY.okl",
                                          "axmyz",
                                          kernelInfo);
+      if (axmyzManyKernel.isInitialized()==false)
+        axmyzManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXMY.okl",
+                                        "axmyzMany",
+                                        kernelInfo);
+      if (axmyzVectorKernel.isInitialized()==false)
+        axmyzVectorKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXMY.okl",
+                                        "axmyzVector",
+                                        kernelInfo);
       if (axdyKernel.isInitialized()==false)
         axdyKernel = device.buildKernel(oklDir + 
                                         "linAlgAXDY.okl",
                                         "axdy",
+                                        kernelInfo);
+      if (adyKernel.isInitialized()==false)
+        adyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "ady",
+                                        kernelInfo);
+      if (adyManyKernel.isInitialized()==false)
+        adyManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "adyMany",
+                                        kernelInfo);
+      if (adyVectorKernel.isInitialized()==false)
+        adyVectorKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "adyVector",
                                         kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
@@ -153,12 +220,18 @@ linAlg_t::~linAlg_t() {
   addKernel.free();
   scaleKernel.free();
   axpbyKernel.free();
+  axpbyManyKernel.free();
+  axpbyVectorKernel.free();
+  axpbyPfloatKernel.free();
+  axpbyManyPfloatKernel.free();
+  axpbyVectorPfloatKernel.free();
   axpbyzKernel.free();
   axmyKernel.free();
   axmyManyKernel.free();
   axmyVectorKernel.free();
   axmyzKernel.free();
   axdyKernel.free();
+  adyKernel.free();
   axdyzKernel.free();
   sumKernel.free();
   minKernel.free();
@@ -182,6 +255,12 @@ void linAlg_t::fill(const dlong N, const dfloat alpha, occa::memory& o_a) {
 void linAlg_t::add(const dlong N, const dfloat alpha, occa::memory& o_a) {
   addKernel(N, alpha, o_a);
 }
+void linAlg_t::addMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha, occa::memory& o_a) {
+  addManyKernel(N, Nfields, fieldOffset, alpha, o_a);
+}
+void linAlg_t::addVector(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha, occa::memory& o_a) {
+  addVectorKernel(N, fieldOffset, alpha, o_a);
+}
 
 // o_a[n] *= alpha
 void linAlg_t::scale(const dlong N, const dfloat alpha, occa::memory& o_a)  {
@@ -192,6 +271,31 @@ void linAlg_t::scale(const dlong N, const dfloat alpha, occa::memory& o_a)  {
 void linAlg_t::axpby(const dlong N, const dfloat alpha, occa::memory& o_x,
                     const dfloat beta,  occa::memory& o_y) {
   axpbyKernel(N, alpha, o_x, beta, o_y);
+}
+void linAlg_t::axpbyMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+                    const dfloat alpha, occa::memory& o_x,
+                    const dfloat beta,  occa::memory& o_y) {
+  axpbyManyKernel(N, Nfields, fieldOffset, alpha, o_x, beta, o_y);
+}
+void linAlg_t::axpbyVector(const dlong N, const dlong fieldOffset,
+                    const dfloat alpha, occa::memory& o_x,
+                    const dfloat beta,  occa::memory& o_y) {
+  axpbyVectorKernel(N, fieldOffset, alpha, o_x, beta, o_y);
+}
+// o_y[n] = beta*o_y[n] + alpha*o_x[n]
+void linAlg_t::axpbyPfloat(const dlong N, const pfloat alpha, occa::memory& o_x,
+                    const pfloat beta,  occa::memory& o_y) {
+  axpbyPfloatKernel(N, alpha, o_x, beta, o_y);
+}
+void linAlg_t::axpbyManyPfloat(const dlong N, const dlong Nfields, const dlong fieldOffset,
+                    const pfloat alpha, occa::memory& o_x,
+                    const pfloat beta,  occa::memory& o_y) {
+  axpbyManyPfloatKernel(N, Nfields, fieldOffset, alpha, o_x, beta, o_y);
+}
+void linAlg_t::axpbyVectorPfloat(const dlong N, const dlong fieldOffset,
+                    const pfloat alpha, occa::memory& o_x,
+                    const pfloat beta,  occa::memory& o_y) {
+  axpbyVectorPfloatKernel(N, fieldOffset, alpha, o_x, beta, o_y);
 }
 
 // o_z[n] = beta*o_y[n] + alpha*o_x[n]
@@ -225,11 +329,38 @@ void linAlg_t::axmyz(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y, occa::memory& o_z) {
   axmyzKernel(N, alpha, o_x, o_y, o_z);
 }
+void linAlg_t::axmyzMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+          const dlong mode, const dfloat alpha,
+          occa::memory& o_x, occa::memory& o_y, occa::memory & o_z)
+{
+  assert(mode == 0 || mode == 1);
+  axmyzManyKernel(N, Nfields, fieldOffset, mode, alpha, o_x, o_y, o_z);
+}
+void linAlg_t::axmyzVector(const dlong N, const dlong fieldOffset,
+          const dlong mode, const dfloat alpha,
+          occa::memory& o_x, occa::memory& o_y, occa::memory& o_z)
+{
+  assert(mode == 0 || mode == 1);
+  axmyzVectorKernel(N, fieldOffset, mode, alpha, o_x, o_y, o_z);
+}
 
 // o_y[n] = alpha*o_x[n]/o_y[n]
 void linAlg_t::axdy(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y) {
   axdyKernel(N, alpha, o_x, o_y);
+}
+// o_y[n] = alpha/o_y[n]
+void linAlg_t::ady(const dlong N, const dfloat alpha,
+                   occa::memory& o_y) {
+  adyKernel(N, alpha, o_y);
+}
+void linAlg_t::adyMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha,
+                   occa::memory& o_y) {
+  adyManyKernel(N, Nfields, fieldOffset, alpha, o_y);
+}
+void linAlg_t::adyVector(const dlong N, const dlong fieldOffset, const dfloat alpha,
+                   occa::memory& o_y) {
+  adyManyKernel(N, fieldOffset, alpha, o_y);
 }
 
 // o_z[n] = alpha*o_x[n]/o_y[n]

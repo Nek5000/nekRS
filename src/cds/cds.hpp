@@ -97,7 +97,6 @@ typedef struct
 
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
 
-  occa::kernel fillKernel;
   occa::kernel sumMakefKernel;
   occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
