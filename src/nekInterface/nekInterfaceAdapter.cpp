@@ -480,7 +480,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
   }
 
   // create makefile
-  sprintf(buf,"%s/makefile",usrFile);
+  sprintf(buf,"%s/makefile",cache_dir);
   if(access(buf,F_OK) == -1) {
     char fflags[BUFSIZ];
     char cflags[BUFSIZ];
