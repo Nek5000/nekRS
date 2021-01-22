@@ -74,16 +74,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // configure device
   device = occaDeviceConfig(options, comm);
 
-  {
-    platform_t::initialize(device, comm);
-  }
+  platform_t* platform = platform_t::initialize(device, comm);
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
     return;
   }
 
-  platform_t::getSingleton()->getTimer().tic("setup", 1);
+  platform->getTimer().tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -104,7 +102,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.setup0) udf.setup0(comm, options);
 
   {
-    platform_t* platform = platform_t::getSingleton();
     occa::properties universalKernelInfo = platform->getKernelInfo();
     const dlong NVfields = 3;
     linAlg_t* linAlg = linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
@@ -137,8 +134,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
   nek_ocopyFrom(startTime(), 0);
 
-  platform_t::getSingleton()->getTimer().toc("setup");
-  const double setupTime = platform_t::getSingleton()->getTimer().query("setup", "DEVICE:MAX");
+  platform->getTimer().toc("setup");
+  const double setupTime = platform->getTimer().query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
@@ -147,8 +144,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
   fflush(stdout);
 
-  platform_t::getSingleton()->getTimer().reset();
-  platform_t::getSingleton()->getTimer().set("setup", setupTime);
+  platform->getTimer().reset();
+  platform->getTimer().set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -163,7 +160,8 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
-  platform_t::getSingleton()->getTimer().tic("udfExecuteStep", 1);
+  platform_t* platform = platform_t::getSingleton();
+  platform->getTimer().tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     nrs->isOutputStep = 1;
@@ -173,7 +171,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   nrs->isOutputStep = 0;
-  platform_t::getSingleton()->getTimer().toc("udfExecuteStep");
+  platform->getTimer().toc("udfExecuteStep");
 }
 
 void nekUserchk(void)
@@ -286,12 +284,9 @@ static void dryRun(setupAide &options, int npTarget)
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  {
-    platform_t::initialize(device, comm);
-  }
+  platform_t* platform = platform_t::initialize(device, comm);
 
   {
-    platform_t* platform = platform_t::getSingleton();
     occa::properties universalKernelInfo = platform->getKernelInfo();
     const dlong NVfields = 3;
     linAlg_t* linAlg = linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);

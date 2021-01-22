@@ -6,6 +6,7 @@
 #include "ogs.hpp"
 #include "ogsKernels.hpp"
 #include "ogsInterface.h"
+#include "platform.hpp"
 
 //#define DISABLE_OOGS
 //#define OGS_ENABLE_TIMER
@@ -411,6 +412,7 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
+  platform_t* platform = platform_t::getSingleton();
   const char* type = (!strcmp(_type,"floatCommHalf")) ? "float" : _type;
   if (!strcmp(_type, "floatCommHalf"))
     Nbytes = sizeof(float)/2;
@@ -455,11 +457,11 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
 
 #ifdef OGS_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().hostTic("oogsMPI",1);
+    platform->getTimer().hostTic("oogsMPI",1);
 #endif
     pairwiseExchange(Nbytes*k, gs);
 #ifdef OGS_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().hostToc("oogsMPI");
+    platform->getTimer().hostToc("oogsMPI");
 #endif
 
     if(gs->mode == OOGS_HOSTMPI)

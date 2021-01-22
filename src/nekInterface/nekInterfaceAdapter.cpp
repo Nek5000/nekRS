@@ -102,7 +102,8 @@ void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
 
   (*nek_storesol_ptr)();
 
-  platform_t::getSingleton()->getTimer().tic("checkpointing", 1);
+  platform_t* platform = platform_t::getSingleton();
+  platform->getTimer().tic("checkpointing", 1);
 
   if(coords)
     nrs->mesh->o_x.copyTo(nekData.xm1, Nlocal * sizeof(dfloat));
@@ -139,7 +140,7 @@ void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
   (*nek_outfld_ptr)((char*)suffix);
   (*nek_resetio_ptr)();
 
-  platform_t::getSingleton()->getTimer().toc("checkpointing");
+  platform->getTimer().toc("checkpointing");
 
   (*nek_restoresol_ptr)();
 }

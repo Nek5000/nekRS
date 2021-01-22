@@ -35,15 +35,16 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   linAlg_t* linAlg = linAlg_t::getSingleton();
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
+  platform_t* platform = platform_t::getSingleton();
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dfloat one = 1.0;
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     linAlg->axmyzMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, 1, one, o_r, precon->o_invDiagA, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    platform_t::getSingleton()->getTimer().tic("preconditioner", 1);
+    platform->getTimer().tic("preconditioner", 1);
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
-    platform_t::getSingleton()->getTimer().toc("preconditioner");
+    platform->getTimer().toc("preconditioner");
   }else {
     if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(mesh->comm, 1);

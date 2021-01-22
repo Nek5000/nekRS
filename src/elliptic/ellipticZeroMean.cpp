@@ -40,6 +40,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
   dfloat* tmp = elliptic->tmp;
   mesh_t* mesh = elliptic->mesh;
   linAlg_t* linAlg = linAlg_t::getSingleton();
+  platform_t* platform = platform_t::getSingleton();
 
   occa::memory &o_tmp = elliptic->o_tmp;
   const dlong Nlocal =  mesh->Np * mesh->Nelements;
@@ -52,7 +53,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
         occa::memory o_q_slice = o_q + fld * elliptic->Ntotal * sizeof(dfloat);
         occa::memory o_w_slice = elliptic->o_invDegree + fld * elliptic->Ntotal * sizeof(dfloat);
 #ifdef ELLIPTIC_ENABLE_TIMER
-        platform_t::getSingleton()->getTimer().tic("dotp",1);
+        platform->getTimer().tic("dotp",1);
 #endif
         dfloat qmeanGlobal = linAlg->innerProd(Nlocal,
           o_w_slice,
@@ -60,7 +61,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
           mesh->comm
         );
 #ifdef ELLIPTIC_ENABLE_TIMER
-        platform_t::getSingleton()->getTimer().toc("dotp");
+        platform->getTimer().toc("dotp");
 #endif
 
         qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
@@ -71,7 +72,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
   }else{
     const dlong Nlocal = mesh->Nelements * mesh->Np;
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().tic("dotp",1);
+    platform->getTimer().tic("dotp",1);
 #endif
 #if USE_WEIGHTED == 1
     dfloat qmeanGlobal = linAlg->innerProd(Nlocal, elliptic->o_invDegree, o_q, mesh->comm);
@@ -79,7 +80,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     dfloat qmeanGlobal = linAlg->sum(Nlocal, o_q, mesh->comm);
 #endif
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().toc("dotp");
+    platform->getTimer().toc("dotp");
 #endif
 
     // normalize

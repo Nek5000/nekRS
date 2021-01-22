@@ -33,6 +33,7 @@ int ellipticSolve(elliptic_t* elliptic,
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
+  platform_t* platform = platform_t::getSingleton();
 
   int Niter = 0;
   int maxIter = 1000;
@@ -56,9 +57,9 @@ int ellipticSolve(elliptic_t* elliptic,
     ellipticZeroMean(elliptic, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    platform_t::getSingleton()->getTimer().tic("pre",1);
+    platform->getTimer().tic("pre",1);
     elliptic->residualProjection->pre(o_r);
-    platform_t::getSingleton()->getTimer().toc("pre");
+    platform->getTimer().toc("pre");
   }
 
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
@@ -76,9 +77,9 @@ int ellipticSolve(elliptic_t* elliptic,
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
-    platform_t::getSingleton()->getTimer().tic("post",1);
+    platform->getTimer().tic("post",1);
     elliptic->residualProjection->post(o_x);
-    platform_t::getSingleton()->getTimer().toc("post");
+    platform->getTimer().toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   }
 

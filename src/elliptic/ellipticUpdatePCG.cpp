@@ -43,6 +43,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
 
   mesh_t* mesh = elliptic->mesh;
+  platform_t* platform = platform_t::getSingleton();
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
   dfloat rdotr1 = 0;
@@ -59,7 +60,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                               elliptic->o_tmpNormr);
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().tic("dotp",1);
+    platform->getTimer().tic("dotp",1);
 #endif
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
@@ -68,7 +69,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     else
       globalrdotr1 = 1;
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform_t::getSingleton()->getTimer().toc("dotp");
+    platform->getTimer().toc("dotp");
 #endif
 
     return globalrdotr1;

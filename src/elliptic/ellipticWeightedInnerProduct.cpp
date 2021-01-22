@@ -33,8 +33,9 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_a,
                                     occa::memory &o_b)
 {
+  platform_t* platform = platform_t::getSingleton();
 #ifdef ELLIPTIC_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().tic("dotp",1);
+  platform->getTimer().tic("dotp",1);
 #endif
   mesh_t * mesh = elliptic->mesh;
   linAlg_t* linAlg = linAlg_t::getSingleton();
@@ -44,7 +45,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
       Nlocal, o_w, o_a, o_b, mesh->comm
     );
 #ifdef ELLIPTIC_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().toc("dotp");
+  platform->getTimer().toc("dotp");
 #endif
   return globalwab;
 }

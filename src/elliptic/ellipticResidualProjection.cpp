@@ -233,8 +233,9 @@ void ResidualProjection::multiWeightedInnerProduct(
   occa::memory &o_b,
   const dlong offset)
 {
+  platform_t* platform = platform_t::getSingleton();
 #ifdef ELLIPTIC_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().tic("dotp",1);
+  platform->getTimer().tic("dotp",1);
 #endif
   multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
@@ -248,6 +249,6 @@ void ResidualProjection::multiWeightedInnerProduct(
   MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().toc("dotp");
+  platform->getTimer().toc("dotp");
 #endif
 }

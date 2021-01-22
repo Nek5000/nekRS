@@ -102,14 +102,15 @@ void ogsScatterFinish(occa::memory o_sv,
   if (ogs->NhaloGather) {
     ogs->device.setStream(ogs::dataStream);
     ogs->device.finish();
+  platform_t* platform = platform_t::getSingleton();
 
 #ifdef OGS_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().tic("gsMPI",1);
+  platform->getTimer().tic("gsMPI",1);
 #endif
     // MPI based scatter using gslib
     ogsHostScatter(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().toc("gsMPI");
+  platform->getTimer().toc("gsMPI");
 #endif
 
     // copy totally scattered halo data back from HOST to DEVICE

@@ -26,6 +26,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
   linAlg_t* linAlg = linAlg_t::getSingleton();
+  platform_t * platform = platform_t::getSingleton();
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -47,9 +48,9 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
   );
 
   if(udf.sEqnSource) {
-    platform_t::getSingleton()->getTimer().tic("udfSEqnSource", 1);
+    platform->getTimer().tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
-    platform_t::getSingleton()->getTimer().toc("udfSEqnSource");
+    platform->getTimer().toc("udfSEqnSource");
   } else {
     linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }

@@ -308,9 +308,10 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  platform_t::getSingleton()->getTimer().hostTic("BoomerAMGSolve", 1);
+  platform_t* platform = platform_t::getSingleton();
+  platform->getTimer().hostTic("BoomerAMGSolve", 1);
   hypre_solve(xLocal, crsh, rhsLocal);
-  platform_t::getSingleton()->getTimer().hostToc("BoomerAMGSolve");
+  platform->getTimer().hostToc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 

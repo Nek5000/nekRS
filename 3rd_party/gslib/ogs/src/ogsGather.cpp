@@ -88,6 +88,7 @@ void ogsGatherFinish(occa::memory o_gv,
                      const char *type, 
                      const char *op, 
                      ogs_t *ogs){
+  platform_t* platform = platform_t::getSingleton();
   size_t Nbytes;
   if (!strcmp(type, "float")) 
     Nbytes = sizeof(float);
@@ -107,12 +108,12 @@ void ogsGatherFinish(occa::memory o_gv,
     ogs->device.finish();
 
 #ifdef OGS_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().tic("gsMPI",1);
+  platform->getTimer().tic("gsMPI",1);
 #endif
     // MPI based gather using libgs
     ogsHostGather(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  platform_t::getSingleton()->getTimer().toc("gsMPI");
+  platform->getTimer().toc("gsMPI");
 #endif
 
     // copy totally gather halo data back from HOST to DEVICE
