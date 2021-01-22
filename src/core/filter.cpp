@@ -1,4 +1,5 @@
 #include "nrs.hpp"
+#include "platform.hpp"
 
 void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat* A);
 
@@ -12,11 +13,13 @@ dfloat filterFactorial(int n);
 void filterSetup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getSingleton();
+  setupAide options = platform->getOptions();
 
   // First construct filter function
   nrs->filterS = 10.0; // filter Weight...
-  nrs->options.getArgs("HPFRT STRENGTH", nrs->filterS);
-  nrs->options.getArgs("HPFRT MODES", nrs->filterNc);
+  options.getArgs("HPFRT STRENGTH", nrs->filterS);
+  options.getArgs("HPFRT MODES", nrs->filterNc);
   nrs->filterS = -1.0 * fabs(nrs->filterS);
 
   // Construct Filter Function

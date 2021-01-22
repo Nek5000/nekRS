@@ -62,20 +62,20 @@ public:
   string readFile(string);
   void read(string);
 
-  string getArgs(string);
+  string getArgs(string) const;
 
   void setArgs(string key, string value);
 
   template <class T>
-  int getArgs(string, T&);
+  int getArgs(string, T&) const;
 
   template <class T>
-  int getArgs(string, vector<T>&);
+  int getArgs(string, vector<T>&) const;
 
-  int getArgs(string, vector<string>&, string);
+  int getArgs(string, vector<string>&, string) const;
 
 
-  int compareArgs(string key, string token);
+  int compareArgs(string key, string token) const;
 
   vector<string> &getData(){ return data; }
   vector<string> &getKeyword() { return keyword; }

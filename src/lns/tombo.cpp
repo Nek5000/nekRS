@@ -8,6 +8,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
   linAlg_t * linAlg = linAlg_t::getSingleton();
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
 
   //enforce Dirichlet BCs
   linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
@@ -95,8 +97,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_div,
     nrs->o_wrk0);
 
-  //if (nrs->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
-  if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
+  if(options.compareArgs("STRESSFORMULATION", "TRUE"))
     nrs->pressureStressKernel(
          mesh->Nelements,
          mesh->o_vgeo,
@@ -166,9 +167,11 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 occa::memory velocitySolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
 
   dfloat scale = -1./3;
-  if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
+  if(options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
 #if 0
   nrs->PQKernel(
@@ -245,7 +248,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk3, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
+  if(options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
     nrs->o_wrk0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     if (nrs->uvwSolver) {
       if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,

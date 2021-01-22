@@ -47,6 +47,8 @@ static dfloat coeff[] = {
 void RANSktau::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/p_sigma_k"]       = coeff[0];
@@ -84,7 +86,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
     if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
     ABORT(1);
   }
-  nrs->options.setArgs("VARIABLE VISCOSITY", "TRUE");
+  options.setArgs("VARIABLE VISCOSITY", "TRUE");
 }
 
 void RANSktau::updateProperties()

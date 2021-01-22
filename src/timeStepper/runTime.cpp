@@ -299,6 +299,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
   mesh_t* mesh = nrs->mesh;
   linAlg_t* linAlg = linAlg_t::getSingleton();
   platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
 
   if(udf.uEqnSource) {
     platform->getTimer().tic("udfUEqnSource", 1);
@@ -306,7 +307,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
     platform->getTimer().toc("udfUEqnSource");
   }
 
-  if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     nrs->filterRTKernel(
       mesh->Nelements,
       nrs->o_filterMT,
@@ -316,11 +317,11 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       o_FU);
 
   occa::memory o_adv = nrs->o_wrk0;
-  if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
+  if(options.compareArgs("ADVECTION", "TRUE")) {
     if(nrs->Nsubsteps) {
       o_adv = velocityStrongSubCycle(nrs, time, nrs->o_U);
     } else {
-      if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      if(options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
           mesh->Nelements,
           mesh->o_vgeo,
@@ -411,6 +412,8 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
 
   // Solve for Each SubProblem
   for (int torder = nrs->ExplicitOrder - 1; torder >= 0; torder--) {
@@ -461,7 +464,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
         nrs->o_extC.copyFrom(nrs->extC);
 
         if(mesh->NglobalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
@@ -501,7 +504,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
         oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,

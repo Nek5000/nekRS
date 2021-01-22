@@ -48,7 +48,7 @@ private:
   void setup();
 public:
   timer::timer_t& getTimer(){return timer;};
-  setupAide getOptions() const { return options; }
+  const setupAide& getOptions() const { return options; }
   occa::device& getDevice() { return device; }
   occa::properties getKernelInfo() const { return kernelInfo; }
   MPI_Comm getComm() const { return comm; }

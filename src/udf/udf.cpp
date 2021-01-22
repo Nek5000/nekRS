@@ -98,6 +98,9 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   mesh_t* mesh = nrs->mesh;
   MPI_Comm_rank(mesh->comm, &rank);
 
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
+
   string install_dir;
   occa::properties kernelInfo = *nrs->kernelInfo;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -105,7 +108,7 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;
-  nrs->options.getArgs("DATA FILE", oudf);
+  options.getArgs("DATA FILE", oudf);
 
   occa::kernel k;
   for (int r = 0; r < 2; r++) {

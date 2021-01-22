@@ -167,7 +167,7 @@ void setupAide::read(string setupFile)
   }
 }
 
-string setupAide::getArgs(string key)
+string setupAide::getArgs(string key) const
 {
   for(int i = 0; i < keyword.size(); i++) // TW
     if(!( keyword[i].compare(key) ))
@@ -191,7 +191,7 @@ void setupAide::setArgs(string key, string value)
   return;
 }
 
-int setupAide::getArgs(string key, vector < string >& m, string delimeter)
+int setupAide::getArgs(string key, vector < string >& m, string delimeter) const
 {
   string args, current;
   vector < string > argv;
@@ -227,7 +227,7 @@ int setupAide::getArgs(string key, vector < string >& m, string delimeter)
   return 1;
 }
 
-int setupAide::compareArgs(string key, string token)
+int setupAide::compareArgs(string key, string token) const
 {
   string foundToken;
   if(getArgs(key,foundToken)) {

@@ -10,8 +10,8 @@
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   dfloat mue, rho;
-  nrs->options.getArgs("VISCOSITY", mue);
-  nrs->options.getArgs("DENSITY", rho);
+  udf.options.getArgs("VISCOSITY", mue);
+  udf.options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho/mue; 
   const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
 

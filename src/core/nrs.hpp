@@ -41,7 +41,6 @@ typedef struct
   int flow;
 
   int Nscalar;
-  setupAide options;
   setupAide vOptions, pOptions;
 
   inipp::Ini<char> *par;

@@ -17,9 +17,8 @@ void nrsSetup(nrs_t *nrs)
 {
   platform_t* platform = platform_t::getSingleton();
   occa::device& device = platform->getDevice();
-  setupAide options = platform->getOptions();
+  const setupAide & options = platform->getOptions();
   MPI_Comm comm = platform->getComm();
-  nrs->options = options;
   nrs->kernelInfo = new occa::properties();
   *(nrs->kernelInfo) = platform->getKernelInfo();
   occa::properties& kernelInfo = *nrs->kernelInfo;
@@ -32,21 +31,21 @@ void nrsSetup(nrs_t *nrs)
   int N, cubN;
   int buildOnly = 0;
   string install_dir;
-  if(nrs->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-  nrs->options.getArgs("POLYNOMIAL DEGREE", N);
-  nrs->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
-  nrs->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
+  if(options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+  options.getArgs("POLYNOMIAL DEGREE", N);
+  options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
+  options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  nrs->options.getArgs("MESH DIMENSION", nrs->dim);
-  nrs->options.getArgs("ELEMENT TYPE", nrs->elementType);
+  options.getArgs("MESH DIMENSION", nrs->dim);
+  options.getArgs("ELEMENT TYPE", nrs->elementType);
 
   nrs->flow = 1;
-  if(nrs->options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;
-  if(nrs->options.compareArgs("VELOCITY SOLVER", "NONE")) nrs->flow = 0;
+  if(options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;
+  if(options.compareArgs("VELOCITY SOLVER", "NONE")) nrs->flow = 0;
 
   if(nrs->flow) {
-    if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
-       nrs->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    if(options.compareArgs("STRESSFORMULATION", "TRUE"))
+       options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
 
@@ -56,17 +55,17 @@ void nrsSetup(nrs_t *nrs)
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     string casename;
-    nrs->options.getArgs("CASENAME", casename);
+    options.getArgs("CASENAME", casename);
 
     int err = 0;
     int npTarget = size;
-    if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
+    if (buildOnly) options.getArgs("NP TARGET", npTarget);
     if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if (err) ABORT(EXIT_FAILURE);; 
 
     if (!buildOnly) {
-      nek_setup(comm, nrs->options, nrs);
+      nek_setup(comm, options, nrs);
       nek_setic();
       nek_userchk();
     }
@@ -77,16 +76,16 @@ void nrsSetup(nrs_t *nrs)
 
   // create mesh
   if (buildOnly) {
-    nrs->meshT = createMeshDummy(comm, N, cubN, nrs->options, device, kernelInfo);
+    nrs->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
     nrs->mesh = nrs->meshT;
   } else {
-    nrs->meshT = createMesh(comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
+    nrs->meshT = createMesh(comm, N, cubN, nrs->cht, options, device, kernelInfo);
     nrs->mesh = nrs->meshT;
-    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT, options, kernelInfo);
   }
   mesh_t* mesh = nrs->mesh;
 
-  if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
+  if (nrs->cht && !options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (mesh->rank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
@@ -105,7 +104,7 @@ void nrsSetup(nrs_t *nrs)
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
 
   nrs->SNrk = 0;
-  nrs->options.getArgs("SUBCYCLING TIME STAGE NUMBER", nrs->SNrk);
+  options.getArgs("SUBCYCLING TIME STAGE NUMBER", nrs->SNrk);
 
   mesh->Nfields = 1;
 
@@ -114,24 +113,24 @@ void nrsSetup(nrs_t *nrs)
   nrs->extbdfC = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->extC = (dfloat*) calloc(3, sizeof(dfloat));
 
-  if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
+  if (options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     nrs->Nstages = 1;
     nrs->temporalOrder = 1;
-  } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
+  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
     nrs->Nstages = 2;
     nrs->temporalOrder = 2;
-  } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
+  } else if (options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
     nrs->Nstages = 3;
     nrs->temporalOrder = 3;
   }
 
   dfloat mue = 1;
   dfloat rho = 1;
-  nrs->options.getArgs("VISCOSITY", mue);
-  nrs->options.getArgs("DENSITY", rho);
+  options.getArgs("VISCOSITY", mue);
+  options.getArgs("DENSITY", rho);
 
-  nrs->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
-  nrs->options.getArgs("DT", nrs->dt[0]);
+  options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
+  options.getArgs("DT", nrs->dt[0]);
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -156,7 +155,7 @@ void nrsSetup(nrs_t *nrs)
 
   if(nrs->Nsubsteps) {
     int Sorder;
-    nrs->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
+    options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder == 4 && nrs->SNrk == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
@@ -257,7 +256,7 @@ void nrsSetup(nrs_t *nrs)
 
   meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
-  if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
 
   if(!buildOnly) {
@@ -341,7 +340,7 @@ void nrsSetup(nrs_t *nrs)
   nrs->o_EToB = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
   nrs->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
 
-  if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(nrs);
 
   // build kernels
@@ -360,7 +359,7 @@ void nrsSetup(nrs_t *nrs)
       const string bcDataFile = install_dir + "/include/core/bcData.h";
       kernelInfoBC["includes"] += bcDataFile.c_str();
       string boundaryHeaderFileName;
-      nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
+      options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
       fileName = oklpath + "nrsAdvection" + suffix + ".okl";
@@ -522,14 +521,14 @@ void nrsSetup(nrs_t *nrs)
   if(nrs->Nscalar) {
     mesh_t* msh;
     (nrs->cht) ? msh = nrs->meshT : msh = nrs->mesh;
-    nrs->cds = cdsSetup(nrs, msh, nrs->options, kernelInfoS);
+    nrs->cds = cdsSetup(nrs, msh, options, kernelInfoS);
   }
 
   if(!buildOnly) {
     // get IC + t0 from nek
     double startTime;
     nek_copyTo(startTime);
-    nrs->options.setArgs("START TIME", to_string_f(startTime));
+    options.setArgs("START TIME", to_string_f(startTime));
 
     if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
     udf.setup(nrs);
@@ -597,7 +596,7 @@ void nrsSetup(nrs_t *nrs)
 
     nrs->uvwSolver = NULL;
 
-    if(nrs->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if(options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();
 
     int* uvwBCType = (int*) calloc(3 * NBCType, sizeof(int));

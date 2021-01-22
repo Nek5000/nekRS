@@ -23,8 +23,10 @@ namespace nekrs
 {
 const double startTime(void)
 {
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide & opt = platform->getOptions();
   double val = 0;
-  nrs->options.getArgs("START TIME", val);
+  opt.getArgs("START TIME", val);
   return val;
 }
 
@@ -187,14 +189,18 @@ const double dt(void)
 
 const double writeInterval(void)
 {
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& opt = platform->getOptions();
   double val = -1;
-  nrs->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
+  opt.getArgs("SOLUTION OUTPUT INTERVAL", val);
   return val;
 }
 
 const int writeControlRunTime(void) 
 {
-  return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& opt = platform->getOptions();
+  return opt.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
 const int isOutputStep(double time, int tStep)
@@ -216,23 +222,29 @@ void outfld(double time)
 
 const double endTime(void)
 {
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide & opt = platform->getOptions();
   double endTime = -1;
-  nrs->options.getArgs("END TIME", endTime);
+  opt.getArgs("END TIME", endTime);
   return endTime;
 }
 
 const int numSteps(void)
 {
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide & opt = platform->getOptions();
   int numSteps = -1;
-  nrs->options.getArgs("NUMBER TIMESTEPS", numSteps);
+  opt.getArgs("NUMBER TIMESTEPS", numSteps);
   return numSteps;
 }
 
 const int lastStep(double time, int tstep, double elapsedTime)
 {
-  if(!nrs->options.getArgs("STOP AT ELAPSED TIME").empty()) {
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide & opt = platform->getOptions();
+  if(!opt.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
-    nrs->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
+    opt.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
     if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
   } else if (endTime() > 0) { 
      const double eps = 1e-12;
@@ -258,7 +270,8 @@ void* nrsPtr(void)
 
 void printRuntimeStatistics()
 {
-  platform_t::getSingleton()->getTimer().printRunStat();
+  platform_t* platform = platform_t::getSingleton();
+  platform->getTimer().printRunStat();
 }
 } // namespace
 
@@ -285,6 +298,8 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   platform_t* platform = platform_t::initialize(device, comm, options);
+
+  udf.options = platform->getOptions();
 
   {
     occa::properties universalKernelInfo = platform->getKernelInfo();

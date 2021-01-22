@@ -5,19 +5,22 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
+#include "platform.hpp"
 
 #include "lowMach.hpp"
 
 void lowMach::setup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getSingleton();
+  const setupAide& options = platform->getOptions();
   int err = 1;
-  if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
+  if(options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
-  nrs->options.setArgs("LOWMACH", "TRUE"); 
+  options.setArgs("LOWMACH", "TRUE"); 
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)

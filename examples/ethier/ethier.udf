@@ -26,11 +26,10 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 void UDF_LoadKernels(nrs_t *nrs)
 {
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  setupAide &options = nrs->options;
 
   dfloat mue, rho;
-  options.getArgs("VISCOSITY", mue);
-  options.getArgs("DENSITY", rho); 
+  udf.options.getArgs("VISCOSITY", mue);
+  udf.options.getArgs("DENSITY", rho); 
   kernelInfo["defines/p_nu"] = mue/rho;
   kernelInfo["defines/p_U0"] = P_U0;
   kernelInfo["defines/p_V0"] = P_V0;
