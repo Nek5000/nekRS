@@ -247,47 +247,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_cubNfp"] = mesh->cubNfp;
   kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
 
-  if(sizeof(dfloat) == 4) {
-    kernelInfo["defines/" "dfloat"] = "float";
-    kernelInfo["defines/" "dfloat4"] = "float4";
-    kernelInfo["defines/" "dfloat8"] = "float8";
-  }
-  if(sizeof(dfloat) == 8) {
-    kernelInfo["defines/" "dfloat"] = "double";
-    kernelInfo["defines/" "dfloat4"] = "double4";
-    kernelInfo["defines/" "dfloat8"] = "double8";
-  }
-
-  if(sizeof(dlong) == 4)
-    kernelInfo["defines/" "dlong"] = "int";
-  if(sizeof(dlong) == 8)
-    kernelInfo["defines/" "dlong"] = "long long int";
-
-  if(mesh->device.mode() == "CUDA") { // add backend compiler optimization for CUDA
-    kernelInfo["compiler_flags"] += "--ftz=true ";
-    kernelInfo["compiler_flags"] += "--prec-div=false ";
-    kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
-    kernelInfo["compiler_flags"] += "--use_fast_math ";
-    kernelInfo["compiler_flags"] += "--fmad=true "; // compiler option for cuda
-    //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
-  }
-
-  if(mesh->device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
-    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-  }
-
-  if(mesh->device.mode() == "HIP") { // add backend compiler optimization for HIP
-    kernelInfo["compiler_flags"] += " -O3 ";
-    kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
-    // kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
-    // kernelInfo["compiler_flags"] += " -ffast-math ";
-  }
-
   kernelInfo["defines/" "p_G00ID"] = G00ID;
   kernelInfo["defines/" "p_G01ID"] = G01ID;
   kernelInfo["defines/" "p_G02ID"] = G02ID;

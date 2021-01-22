@@ -43,7 +43,7 @@ private:
   void setup();
 public:
   occa::device& getDevice(){ return device; }
-  occa::properties& getKernelInfo(){ return kernelInfo; }
+  occa::properties getKernelInfo(){ return kernelInfo; }
   static platform_t * initialize(occa::device& _device, MPI_Comm& _comm){
     if(!singleton){
       singleton = new platform_t(_device, _comm);

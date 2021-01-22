@@ -6,16 +6,19 @@
 #include "bcMap.hpp"
 #include <vector>
 #include <map>
+#include "platform.hpp"
 
-static dfloat* scratch;
+static dfloat* scratch; 
 static occa::memory o_scratch;
 
 static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
 
 void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs)
 {
+  platform_t* platform = platform_t::getSingleton();
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
+  *(nrs->kernelInfo) = platform->getKernelInfo();
   occa::properties& kernelInfo = *nrs->kernelInfo;
   kernelInfo["defines"].asObject();
   kernelInfo["includes"].asArray();

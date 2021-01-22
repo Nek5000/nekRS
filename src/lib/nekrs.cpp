@@ -105,7 +105,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   {
-    occa::properties& universalKernelInfo = platform_t::getSingleton()->getKernelInfo();
+    occa::properties universalKernelInfo = platform_t::getSingleton()->getKernelInfo();
     const dlong NVfields = 3;
     linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
   }
