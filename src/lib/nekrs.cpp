@@ -74,7 +74,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // configure device
   device = occaDeviceConfig(options, comm);
 
-  platform_t* platform = platform_t::initialize(device, comm);
+  platform_t* platform = platform_t::initialize(device, comm, options);
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
@@ -284,7 +284,7 @@ static void dryRun(setupAide &options, int npTarget)
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  platform_t* platform = platform_t::initialize(device, comm);
+  platform_t* platform = platform_t::initialize(device, comm, options);
 
   {
     occa::properties universalKernelInfo = platform->getKernelInfo();

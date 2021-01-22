@@ -27,16 +27,19 @@ SOFTWARE.
 #define _platform_hpp_
 #include "nrssys.hpp"
 #include "timer.hpp"
+#include "setupAide.hpp"
 class platform_t final {
 private:
   timer::timer_t timer;
   occa::device device;
   occa::properties kernelInfo;
+  setupAide options;
   MPI_Comm comm;
   static platform_t* singleton;
-  platform_t(occa::device& _device, MPI_Comm& _comm)
+  platform_t(occa::device& _device, MPI_Comm& _comm, setupAide& _options)
   : device(_device),
-  comm(_comm)
+  comm(_comm),
+  options(_options)
   {
     setup();
   }
@@ -45,11 +48,12 @@ private:
   void setup();
 public:
   timer::timer_t& getTimer(){return timer;};
-  occa::device& getDevice(){ return device; }
-  occa::properties getKernelInfo(){ return kernelInfo; }
-  static platform_t * initialize(occa::device& _device, MPI_Comm& _comm){
+  setupAide getOptions() const { return options; }
+  occa::device& getDevice() { return device; }
+  occa::properties getKernelInfo() const { return kernelInfo; }
+  static platform_t * initialize(occa::device& _device, MPI_Comm& _comm, setupAide& _options){
     if(!singleton){
-      singleton = new platform_t(_device, _comm);
+      singleton = new platform_t(_device, _comm, _options);
     }
     return singleton;
   }
