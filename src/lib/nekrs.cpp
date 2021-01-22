@@ -105,9 +105,11 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   {
-    occa::properties universalKernelInfo = platform_t::getSingleton()->getKernelInfo();
+    platform_t* platform = platform_t::getSingleton();
+    occa::properties universalKernelInfo = platform->getKernelInfo();
     const dlong NVfields = 3;
-    linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
+    linAlg_t* linAlg = linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
+    udf.linAlg = linAlg;
   }
 
   nrsSetup(comm, device, options, nrs);
@@ -284,11 +286,17 @@ static void dryRun(setupAide &options, int npTarget)
   }
 
   if(udf.setup0) udf.setup0(comm, options);
+
   {
-    occa::properties linAlgKernelInfo;
-    linAlgKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
+    platform_t::initialize(device, comm);
+  }
+
+  {
+    platform_t* platform = platform_t::getSingleton();
+    occa::properties universalKernelInfo = platform->getKernelInfo();
     const dlong NVfields = 3;
-    linAlg_t::initialize(device, &linAlgKernelInfo, comm, NVfields);
+    linAlg_t* linAlg = linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
+    udf.linAlg = linAlg;
   }
 
   // init solver

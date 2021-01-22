@@ -6,6 +6,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "parReader.hpp"
+#include "linAlg.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);
@@ -36,6 +37,7 @@ typedef struct
   udfsEqnSource sEqnSource;
   udfproperties properties;
   udfdiv div;
+  linAlg_t* linAlg;
 } UDF;
 
 extern UDF udf;
