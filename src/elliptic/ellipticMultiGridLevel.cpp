@@ -45,8 +45,9 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
 {
+  linAlg_t* linAlg = linAlg_t::getSingleton();
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
-    linAlg_t::getSingleton()->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
+    linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
 
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 
@@ -116,11 +117,12 @@ void MGLevel::smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZer
 
   //res = r-Ax
   this->Ax(o_x,o_res);
-  linAlg_t::getSingleton()->axpbyPfloat(Nrows, one, o_r, mone, o_res);
+  linAlg_t* linAlg = linAlg_t::getSingleton();
+  linAlg->axpbyPfloat(Nrows, one, o_r, mone, o_res);
 
   //smooth the fine problem x = x + S(r-Ax)
   this->smoother(o_res, o_res, xIsZero);
-  linAlg_t::getSingleton()->axpbyPfloat(Nrows, one, o_res, mone, o_x);
+  linAlg->axpbyPfloat(Nrows, one, o_res, mone, o_x);
 }
 
 void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
@@ -145,7 +147,10 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
   } else {
     //res = S(r-Ax)
     this->Ax(o_x,o_res);
-    linAlg_t::getSingleton()->axpbyPfloat(Nrows, one, o_r, mone, o_res);
+
+    linAlg_t* linAlg = linAlg_t::getSingleton();
+    linAlg->axpbyPfloat(Nrows, one, o_r, mone, o_res);
+
     this->smoother(o_res, o_res, xIsZero);
     elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, one, o_x);
   }

@@ -262,9 +262,12 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg_t::getSingleton()->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
+
+    linAlg_t* linAlg = linAlg_t::getSingleton();
+
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
     ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg_t::getSingleton()->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;

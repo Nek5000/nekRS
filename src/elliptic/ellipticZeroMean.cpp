@@ -38,6 +38,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
   dlong Nblock = elliptic->Nblock;
   dfloat* tmp = elliptic->tmp;
   mesh_t* mesh = elliptic->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   occa::memory &o_tmp = elliptic->o_tmp;
   const dlong Nlocal =  mesh->Np * mesh->Nelements;
@@ -52,7 +53,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 #ifdef ELLIPTIC_ENABLE_TIMER
         timer::tic("dotp",1);
 #endif
-        dfloat qmeanGlobal = linAlg_t::getSingleton()->innerProd(Nlocal,
+        dfloat qmeanGlobal = linAlg->innerProd(Nlocal,
           o_w_slice,
           o_q_slice,
           mesh->comm
@@ -64,7 +65,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
         qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
 
         // q[n] = q[n] - qmeanGlobal for field id :fld
-        linAlg_t::getSingleton()->add(Nlocal, -qmeanGlobal, o_q_slice);
+        linAlg->add(Nlocal, -qmeanGlobal, o_q_slice);
       }
   }else{
     const dlong Nlocal = mesh->Nelements * mesh->Np;
@@ -72,9 +73,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     timer::tic("dotp",1);
 #endif
 #if USE_WEIGHTED == 1
-    dfloat qmeanGlobal = linAlg_t::getSingleton()->innerProd(Nlocal, elliptic->o_invDegree, o_q, mesh->comm);
+    dfloat qmeanGlobal = linAlg->innerProd(Nlocal, elliptic->o_invDegree, o_q, mesh->comm);
 #else
-    dfloat qmeanGlobal = linAlg_t::getSingleton()->sum(Nlocal, o_q, mesh->comm);
+    dfloat qmeanGlobal = linAlg->sum(Nlocal, o_q, mesh->comm);
 #endif
 #ifdef ELLIPTIC_ENABLE_TIMER
     timer::toc("dotp");
@@ -87,6 +88,6 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     qmeanGlobal /= ((dfloat) elliptic->NelementsGlobal * (dfloat)mesh->Np);
 #endif
     // q[n] = q[n] - qmeanGlobal
-    linAlg_t::getSingleton()->add(Nlocal, -qmeanGlobal, o_q);
+    linAlg->add(Nlocal, -qmeanGlobal, o_q);
   }
 }

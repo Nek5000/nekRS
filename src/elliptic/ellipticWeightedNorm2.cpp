@@ -32,8 +32,9 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
+  linAlg_t* linAlg = linAlg_t::getSingleton();
   const dlong Nlocal = elliptic->mesh->Nelements * elliptic->mesh->Np;
-  const dfloat globalwa2 = linAlg_t::getSingleton()->weightedNorm2(
+  const dfloat globalwa2 = linAlg->weightedNorm2(
     Nlocal,
     o_w,
     o_a,

@@ -652,12 +652,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
+  linAlg_t* linAlg = linAlg_t::getSingleton();
+
   if(elliptic->blockSolver) {
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
 
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
       occa::memory o_slice = elliptic->o_invDegree + fld * elliptic->Ntotal * sizeof(dfloat);
-      const dfloat nullProjectWeightGlobal = linAlg_t::getSingleton()->sum(
+      const dfloat nullProjectWeightGlobal = linAlg->sum(
         Nlocal,
         o_slice,
         elliptic->mesh->comm
@@ -665,7 +667,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
     }
   }else{
-    const dfloat nullProjectWeightGlobal = linAlg_t::getSingleton()->sum(mesh->Nelements * mesh->Np, elliptic->o_invDegree, mesh->comm);
+    const dfloat nullProjectWeightGlobal = linAlg->sum(mesh->Nelements * mesh->Np, elliptic->o_invDegree, mesh->comm);
     elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
   }
 

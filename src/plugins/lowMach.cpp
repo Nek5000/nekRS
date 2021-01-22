@@ -68,7 +68,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  linAlg_t::getSingleton()->axmy(mesh->Nelements * mesh->Np,
+  linAlg->axmy(mesh->Nelements * mesh->Np,
     1.0,
     mesh->o_invLMM,
     o_div);

@@ -77,13 +77,16 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
-  linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
+
+  linAlg_t* linAlg = linAlg_t::getSingleton();
+  linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
 {
   const dfloat one = 1.0;
   const dfloat zero = 0.0;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   if(numVecsProjection == 0) {
     // reset bases
@@ -91,14 +94,14 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
-    linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
+    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat), Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
-    linAlg_t::getSingleton()->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
+    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
   const dlong previousNumVecsProjection = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);

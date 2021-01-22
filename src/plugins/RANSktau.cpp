@@ -115,6 +115,7 @@ occa::memory RANSktau::o_mue_t()
 void RANSktau::updateSourceTerms()
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
   cds_t* cds = nrs->cds;
 
   occa::memory o_OiOjSk  = nrs->o_wrk0;
@@ -138,7 +139,7 @@ void RANSktau::updateSourceTerms()
                        ogsDfloat,
                        ogsAdd,
                        mesh->ogs);
-  linAlg_t::getSingleton()->axmyMany(
+  linAlg->axmyMany(
     mesh->Nelements * mesh->Np,
     NSOfields,
     nrs->fieldOffset,
@@ -187,6 +188,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
 
   if(coeffIn) memcpy(coeff, coeffIn, sizeof(coeff));
 
@@ -197,7 +199,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    linAlg_t::getSingleton()->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    linAlg->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

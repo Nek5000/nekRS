@@ -55,7 +55,9 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory &o_Ap = elliptic->o_Ap;
   occa::memory &o_weight = elliptic->o_invDegree;
 
-  linAlg_t::getSingleton()->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
+  linAlg_t* linAlg = linAlg_t::getSingleton();
+
+  linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
 
 
   pAp = 0;

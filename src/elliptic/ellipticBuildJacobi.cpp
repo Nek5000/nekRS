@@ -74,7 +74,8 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
 
   oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
   const dfloat one = 1.0;
-  linAlg_t::getSingleton()->adyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
+  linAlg_t* linAlg = linAlg_t::getSingleton();
+  linAlg->adyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)

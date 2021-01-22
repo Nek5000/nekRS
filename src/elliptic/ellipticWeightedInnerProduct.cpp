@@ -36,9 +36,10 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
   timer::tic("dotp",1);
 #endif
   mesh_t * mesh = elliptic->mesh;
+  linAlg_t* linAlg = linAlg_t::getSingleton();
   const dlong Nlocal = mesh->Nelements * mesh->Np;
   const dfloat globalwab =
-    linAlg_t::getSingleton()->weightedInnerProd(
+    linAlg->weightedInnerProd(
       Nlocal, o_w, o_a, o_b, mesh->comm
     );
 #ifdef ELLIPTIC_ENABLE_TIMER
