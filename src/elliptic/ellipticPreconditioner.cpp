@@ -27,6 +27,7 @@
 #include "elliptic.h"
 #include "timer.hpp"
 #include "linAlg.hpp"
+#include "platform.hpp"
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
@@ -40,9 +41,9 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     linAlg->axmyzMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, 1, one, o_r, precon->o_invDiagA, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    timer::tic("preconditioner", 1);
+    platform_t::getSingleton()->getTimer().tic("preconditioner", 1);
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
-    timer::toc("preconditioner");
+    platform_t::getSingleton()->getTimer().toc("preconditioner");
   }else {
     if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(mesh->comm, 1);

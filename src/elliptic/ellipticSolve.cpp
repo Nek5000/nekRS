@@ -26,6 +26,7 @@
 
 #include "elliptic.h"
 #include "timer.hpp"
+#include "platform.hpp"
 
 int ellipticSolve(elliptic_t* elliptic,
                   occa::memory &o_r, occa::memory &o_x)
@@ -55,9 +56,9 @@ int ellipticSolve(elliptic_t* elliptic,
     ellipticZeroMean(elliptic, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("pre",1);
+    platform_t::getSingleton()->getTimer().tic("pre",1);
     elliptic->residualProjection->pre(o_r);
-    timer::toc("pre");
+    platform_t::getSingleton()->getTimer().toc("pre");
   }
 
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
@@ -75,9 +76,9 @@ int ellipticSolve(elliptic_t* elliptic,
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
-    timer::tic("post",1);
+    platform_t::getSingleton()->getTimer().tic("post",1);
     elliptic->residualProjection->post(o_x);
-    timer::toc("post");
+    platform_t::getSingleton()->getTimer().toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   }
 

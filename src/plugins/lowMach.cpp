@@ -47,9 +47,9 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
   );
 
   if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
+    platform_t::getSingleton()->getTimer().tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
-    timer::toc("udfSEqnSource");
+    platform_t::getSingleton()->getTimer().toc("udfSEqnSource");
   } else {
     linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }

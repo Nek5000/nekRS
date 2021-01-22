@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                          occa::memory &o_p, occa::memory &o_Ap, const dfloat alpha,
@@ -58,7 +59,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                               elliptic->o_tmpNormr);
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::tic("dotp",1);
+    platform_t::getSingleton()->getTimer().tic("dotp",1);
 #endif
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
@@ -67,7 +68,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     else
       globalrdotr1 = 1;
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::toc("dotp");
+    platform_t::getSingleton()->getTimer().toc("dotp");
 #endif
 
     return globalrdotr1;

@@ -29,6 +29,7 @@ SOFTWARE.
 #include "parAlmond.hpp"
 
 #include "timer.hpp"
+#include "platform.hpp"
 
 #include "omp.h"
 #include "limits.h"
@@ -307,9 +308,9 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  timer::hostTic("BoomerAMGSolve", 1);
+  platform_t::getSingleton()->getTimer().hostTic("BoomerAMGSolve", 1);
   hypre_solve(xLocal, crsh, rhsLocal);
-  timer::hostToc("BoomerAMGSolve");
+  platform_t::getSingleton()->getTimer().hostToc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 

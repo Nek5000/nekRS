@@ -38,6 +38,7 @@
 #include "ellipticPrecon.h"
 
 #include "timer.hpp"
+#include "platform.hpp"
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;

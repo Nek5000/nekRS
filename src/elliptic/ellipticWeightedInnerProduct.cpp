@@ -26,6 +26,7 @@
 
 #include "elliptic.h"
 #include "linAlg.hpp"
+#include "platform.hpp"
 
 dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_w,
@@ -33,7 +34,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_b)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp",1);
+  platform_t::getSingleton()->getTimer().tic("dotp",1);
 #endif
   mesh_t * mesh = elliptic->mesh;
   linAlg_t* linAlg = linAlg_t::getSingleton();
@@ -43,7 +44,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
       Nlocal, o_w, o_a, o_b, mesh->comm
     );
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform_t::getSingleton()->getTimer().toc("dotp");
 #endif
   return globalwab;
 }

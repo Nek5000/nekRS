@@ -30,6 +30,7 @@ SOFTWARE.
 #include "ogsInterface.h"
 
 #include "gather.tpp"
+#include "platform.hpp"
 
 void ogsGather_add(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
 void ogsGather_mul(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
@@ -106,12 +107,12 @@ void ogsGatherFinish(occa::memory o_gv,
     ogs->device.finish();
 
 #ifdef OGS_ENABLE_TIMER
-  timer::tic("gsMPI",1);
+  platform_t::getSingleton()->getTimer().tic("gsMPI",1);
 #endif
     // MPI based gather using libgs
     ogsHostGather(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  timer::toc("gsMPI");
+  platform_t::getSingleton()->getTimer().toc("gsMPI");
 #endif
 
     // copy totally gather halo data back from HOST to DEVICE

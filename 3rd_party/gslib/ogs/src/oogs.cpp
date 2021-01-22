@@ -455,11 +455,11 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
 
 #ifdef OGS_ENABLE_TIMER
-    timer::hostTic("oogsMPI",1);
+    platform_t::getSingleton()->getTimer().hostTic("oogsMPI",1);
 #endif
     pairwiseExchange(Nbytes*k, gs);
 #ifdef OGS_ENABLE_TIMER
-    timer::hostToc("oogsMPI");
+    platform_t::getSingleton()->getTimer().hostToc("oogsMPI");
 #endif
 
     if(gs->mode == OOGS_HOSTMPI)

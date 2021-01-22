@@ -1,7 +1,10 @@
 #include <platform.hpp>
 platform_t * platform_t::singleton = nullptr;
 void platform_t::setup(){
-  /** Universal Kernel Info shared throughout program**/
+  // initialize timer
+  timer.init(comm, device, 0);
+
+  // set universal properties
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   if(sizeof(dfloat) == 4) {
     kernelInfo["defines/" "dfloat"] = "float";

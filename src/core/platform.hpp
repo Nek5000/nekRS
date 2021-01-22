@@ -26,8 +26,10 @@ SOFTWARE.
 #ifndef _platform_hpp_
 #define _platform_hpp_
 #include "nrssys.hpp"
+#include "timer.hpp"
 class platform_t final {
 private:
+  timer::timer_t timer;
   occa::device device;
   occa::properties kernelInfo;
   MPI_Comm comm;
@@ -42,6 +44,7 @@ private:
   }
   void setup();
 public:
+  timer::timer_t& getTimer(){return timer;};
   occa::device& getDevice(){ return device; }
   occa::properties getKernelInfo(){ return kernelInfo; }
   static platform_t * initialize(occa::device& _device, MPI_Comm& _comm){

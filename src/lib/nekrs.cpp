@@ -73,14 +73,17 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   // configure device
   device = occaDeviceConfig(options, comm);
-  timer::init(comm, device, 0);
+
+  {
+    platform_t::initialize(device, comm);
+  }
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
     return;
   }
 
-  timer::tic("setup", 1);
+  platform_t::getSingleton()->getTimer().tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -99,10 +102,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
 
   if(udf.setup0) udf.setup0(comm, options);
-
-  {
-    platform_t::initialize(device, comm);
-  }
 
   {
     platform_t* platform = platform_t::getSingleton();
@@ -138,8 +137,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
   nek_ocopyFrom(startTime(), 0);
 
-  timer::toc("setup");
-  const double setupTime = timer::query("setup", "DEVICE:MAX");
+  platform_t::getSingleton()->getTimer().toc("setup");
+  const double setupTime = platform_t::getSingleton()->getTimer().query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
     size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
@@ -148,8 +147,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
   fflush(stdout);
 
-  timer::reset();
-  timer::set("setup", setupTime);
+  platform_t::getSingleton()->getTimer().reset();
+  platform_t::getSingleton()->getTimer().set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -164,7 +163,7 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
-  timer::tic("udfExecuteStep", 1);
+  platform_t::getSingleton()->getTimer().tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     nrs->isOutputStep = 1;
@@ -174,7 +173,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   nrs->isOutputStep = 0;
-  timer::toc("udfExecuteStep");
+  platform_t::getSingleton()->getTimer().toc("udfExecuteStep");
 }
 
 void nekUserchk(void)
@@ -261,7 +260,7 @@ void* nrsPtr(void)
 
 void printRuntimeStatistics()
 {
-  timer::printRunStat();
+  platform_t::getSingleton()->getTimer().printRunStat();
 }
 } // namespace
 

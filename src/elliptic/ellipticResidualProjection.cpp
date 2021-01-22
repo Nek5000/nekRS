@@ -28,6 +28,7 @@
 #include <iostream>
 #include "timer.hpp"
 #include "linAlg.hpp"
+#include "platform.hpp"
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,
@@ -233,7 +234,7 @@ void ResidualProjection::multiWeightedInnerProduct(
   const dlong offset)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp",1);
+  platform_t::getSingleton()->getTimer().tic("dotp",1);
 #endif
   multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
@@ -247,6 +248,6 @@ void ResidualProjection::multiWeightedInnerProduct(
   MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform_t::getSingleton()->getTimer().toc("dotp");
 #endif
 }
