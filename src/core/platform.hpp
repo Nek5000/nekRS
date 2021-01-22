@@ -51,6 +51,7 @@ public:
   setupAide getOptions() const { return options; }
   occa::device& getDevice() { return device; }
   occa::properties getKernelInfo() const { return kernelInfo; }
+  MPI_Comm getComm() const { return comm; }
   static platform_t * initialize(occa::device& _device, MPI_Comm& _comm, setupAide& _options){
     if(!singleton){
       singleton = new platform_t(_device, _comm, _options);

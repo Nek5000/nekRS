@@ -108,7 +108,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     udf.linAlg = linAlg;
   }
 
-  nrsSetup(comm, device, options, nrs);
+  nrsSetup(nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -294,7 +294,7 @@ static void dryRun(setupAide &options, int npTarget)
   }
 
   // init solver
-  nrsSetup(comm, device, options, nrs);
+  nrsSetup(nrs);
 
   if (rank == 0) cout << "\nBuild successful." << endl;
 }

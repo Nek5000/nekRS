@@ -13,9 +13,12 @@ static occa::memory o_scratch;
 
 static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
 
-void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs)
+void nrsSetup(nrs_t *nrs)
 {
   platform_t* platform = platform_t::getSingleton();
+  occa::device& device = platform->getDevice();
+  setupAide options = platform->getOptions();
+  MPI_Comm comm = platform->getComm();
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
   *(nrs->kernelInfo) = platform->getKernelInfo();
