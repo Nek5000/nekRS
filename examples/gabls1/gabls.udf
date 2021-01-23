@@ -29,7 +29,7 @@ void UDF_LoadKernels(nrs_t *nrs)
   occa::properties& kernelInfo = *nrs->kernelInfo;
 
   dfloat cond;
-  udf.options.getArgs("SCALAR00 DIFFUSIVITY", cond);
+  udf.options->getArgs("SCALAR00 DIFFUSIVITY", cond);
   const dfloat g = 9.81;
   const dfloat omega = 7.2921159e-5; 
 

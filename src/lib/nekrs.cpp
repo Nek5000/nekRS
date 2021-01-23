@@ -77,6 +77,11 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   device = occaDeviceConfig(options, comm);
 
   platform_t* platform = platform_t::initialize(device, comm, options);
+  {
+    occa::properties universalKernelInfo = platform->getKernelInfo();
+    const dlong NVfields = 3;
+    linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
+  }
   setupAide& newOptions = platform->getOptions();
 
   if (buildOnly) {
@@ -104,12 +109,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, newOptions);
 
-  {
-    occa::properties universalKernelInfo = platform->getKernelInfo();
-    const dlong NVfields = 3;
-    linAlg_t* linAlg = linAlg_t::initialize(device, &universalKernelInfo, comm, NVfields);
-    udf.linAlg = linAlg;
-  }
 
   nrsSetup(nrs);
 

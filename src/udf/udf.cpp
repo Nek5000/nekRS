@@ -6,7 +6,7 @@
 #include "udf.hpp"
 #include "io.hpp"
 
-UDF udf = {NULL, NULL, NULL, NULL};
+UDF udf = {NULL, NULL, NULL, NULL, NULL, NULL};
 
 uint32_t fchecksum(std::ifstream& file) 
 {
@@ -90,6 +90,10 @@ void udfLoad(void)
   *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",1);
   *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
   *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
+  udf.linAlg = linAlg_t::getSingleton();
+  platform_t* platform = platform_t::getSingleton();
+  udf.options = &platform->getOptions();
+
 }
 
 occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
