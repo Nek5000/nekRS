@@ -2,12 +2,11 @@
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
 
-void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
+void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo);
 
 mesh_t* createMeshDummy(MPI_Comm comm,
                         int N,
                         int cubN,
-                        setupAide &options,
                         occa::device device,
                         occa::properties& kernelInfo)
 {
@@ -160,7 +159,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   meshParallelConnectNodes(mesh, 1);
 
   mesh->device = device;
-  meshOccaSetup3D(mesh, options, kernelInfo);
+  meshOccaSetup3D(mesh, kernelInfo);
 
   return mesh;
 }
@@ -169,7 +168,6 @@ mesh_t* createMesh(MPI_Comm comm,
                    int N,
                    int cubN,
                    int isMeshT,
-                   setupAide &options,
                    occa::device device,
                    occa::properties& kernelInfo)
 {
@@ -223,7 +221,7 @@ mesh_t* createMesh(MPI_Comm comm,
   bcMap::check(mesh);
 
   mesh->device = device;
-  meshOccaSetup3D(mesh, options, kernelInfo);
+  meshOccaSetup3D(mesh, kernelInfo);
 
   return mesh;
 }
@@ -232,7 +230,6 @@ mesh_t* createMeshV(MPI_Comm comm,
                     int N,
                     int cubN,
                     mesh_t* meshT,
-                    setupAide &options,
                     occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
@@ -285,12 +282,12 @@ mesh_t* createMeshV(MPI_Comm comm,
 
   bcMap::check(mesh);
 
-  meshVOccaSetup3D(mesh, options, kernelInfo);
+  meshVOccaSetup3D(mesh, kernelInfo);
 
   return mesh;
 }
 
-void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)
+void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 {
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));

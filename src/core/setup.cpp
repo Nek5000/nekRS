@@ -17,7 +17,7 @@ void nrsSetup(nrs_t *nrs)
 {
   platform_t* platform = platform_t::getSingleton();
   occa::device& device = platform->getDevice();
-  const setupAide & options = platform->getOptions();
+  setupAide & options = platform->getOptions();
   MPI_Comm comm = platform->getComm();
   nrs->kernelInfo = new occa::properties();
   *(nrs->kernelInfo) = platform->getKernelInfo();
@@ -76,12 +76,12 @@ void nrsSetup(nrs_t *nrs)
 
   // create mesh
   if (buildOnly) {
-    nrs->meshT = createMeshDummy(comm, N, cubN, options, device, kernelInfo);
+    nrs->meshT = createMeshDummy(comm, N, cubN,  device, kernelInfo);
     nrs->mesh = nrs->meshT;
   } else {
-    nrs->meshT = createMesh(comm, N, cubN, nrs->cht, options, device, kernelInfo);
+    nrs->meshT = createMesh(comm, N, cubN, nrs->cht,  device, kernelInfo);
     nrs->mesh = nrs->meshT;
-    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT, options, kernelInfo);
+    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT,  kernelInfo);
   }
   mesh_t* mesh = nrs->mesh;
 

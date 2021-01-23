@@ -29,7 +29,7 @@
 #include "mesh3D.h"
 #define NODE_GEN
 
-void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
+void meshLoadReferenceNodesHex3D(mesh_t* mesh, int N, int cubN)
 {
   mesh->N = N;
   mesh->Nq = N + 1;

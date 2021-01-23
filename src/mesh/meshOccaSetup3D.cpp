@@ -38,7 +38,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
   printf("%s: bytes allocated = %lu\n", mess, bytes);
 }
 
-void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaPopulateDevice3D(mesh_t* mesh, occa::properties &kernelInfo)
 {
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
@@ -272,7 +272,7 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_IJWID"] = IJWID;
 }
 
-void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 {
   //make seperate stream for halo exchange
   mesh->defaultStream = mesh->device.getStream();
@@ -280,7 +280,7 @@ void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kern
   mesh->computeStream = mesh->device.createStream();
   mesh->device.setStream(mesh->defaultStream);
 
-  meshOccaPopulateDevice3D(mesh, newOptions, kernelInfo);
+  meshOccaPopulateDevice3D(mesh, kernelInfo);
 }
 
 void meshOccaCloneDevice(mesh_t* donorMesh, mesh_t* mesh)

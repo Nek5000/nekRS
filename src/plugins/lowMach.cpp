@@ -13,7 +13,7 @@ void lowMach::setup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
   platform_t* platform = platform_t::getSingleton();
-  const setupAide& options = platform->getOptions();
+  setupAide& options = platform->getOptions();
   int err = 1;
   if(options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {

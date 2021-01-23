@@ -30,7 +30,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
+void meshPhysicalBoxNodesHex3D(mesh_t* mesh)
 {
   dlong cnt = 0;
   for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
@@ -105,7 +105,7 @@ void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
   }
 }
 
-void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
+void meshPhysicalNodesHex3D(mesh_t* mesh,  int nrsBuildOnly)
 {
   mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));

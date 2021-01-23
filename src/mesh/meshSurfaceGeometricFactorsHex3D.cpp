@@ -101,7 +101,7 @@ void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* I
 }
 
 /* compute outwards facing normals, surface Jacobian, and volume Jacobian for all face nodes */
-void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
+void meshSurfaceGeometricFactorsHex3D(mesh_t* mesh)
 {
   /* unified storage array for geometric factors */
   mesh->Nsgeo = 17;

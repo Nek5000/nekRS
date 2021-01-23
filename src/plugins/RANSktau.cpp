@@ -48,7 +48,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
   platform_t* platform = platform_t::getSingleton();
-  const setupAide& options = platform->getOptions();
+  setupAide& options = platform->getOptions();
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/p_sigma_k"]       = coeff[0];

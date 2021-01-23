@@ -64,7 +64,7 @@ void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
   free(Ix2);
 }
 
-void meshGeometricFactorsHex3D(mesh3D* mesh)
+void meshGeometricFactorsHex3D(mesh_t* mesh)
 {
   /* unified storage array for geometric factors */
   mesh->Nvgeo = 12;
