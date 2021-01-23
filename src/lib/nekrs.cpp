@@ -296,11 +296,12 @@ static void dryRun(setupAide &options, int npTarget)
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   }
 
-  if(udf.setup0) udf.setup0(comm, options);
 
+  if(udf.setup0) udf.setup0(comm, options);
   platform_t* platform = platform_t::initialize(device, comm, options);
 
-  udf.options = &platform->getOptions();
+  udf.options = &(platform->getOptions());
+
 
   {
     occa::properties universalKernelInfo = platform->getKernelInfo();
