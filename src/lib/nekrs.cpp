@@ -77,9 +77,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   device = occaDeviceConfig(options, comm);
 
   platform_t* platform = platform_t::initialize(device, comm, options);
+  setupAide& newOptions = platform->getOptions();
 
   if (buildOnly) {
-    dryRun(options, sizeTarget);
+    dryRun(newOptions, sizeTarget);
     return;
   }
 
@@ -87,7 +88,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   // jit compile udf
   string udfFile;
-  options.getArgs("UDF FILE", udfFile);
+  newOptions.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
     if(rank == 0) err = udfBuild(udfFile.c_str());
@@ -96,12 +97,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     udfLoad();
   }
 
-  options.setArgs("CI-MODE", std::to_string(ciMode));
+  newOptions.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode)
     cout << "enabling continous integration mode " << ciMode << "\n";
 
 
-  if(udf.setup0) udf.setup0(comm, options);
+  if(udf.setup0) udf.setup0(comm, newOptions);
 
   {
     occa::properties universalKernelInfo = platform->getKernelInfo();
@@ -139,7 +140,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   platform->getTimer().toc("setup");
   const double setupTime = platform->getTimer().query("setup", "DEVICE:MAX");
   if(rank == 0) {
-    cout << "\nsettings:\n" << endl << options << endl;
+    cout << "\nsettings:\n" << endl << newOptions << endl;
     size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
     cout << "device memory usage: " << dGB << " GB" << endl;
     cout << "initialization took " <<  setupTime << " s" << endl;
@@ -299,7 +300,7 @@ static void dryRun(setupAide &options, int npTarget)
 
   platform_t* platform = platform_t::initialize(device, comm, options);
 
-  udf.options = platform->getOptions();
+  udf.options = &platform->getOptions();
 
   {
     occa::properties universalKernelInfo = platform->getKernelInfo();

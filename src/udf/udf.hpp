@@ -38,7 +38,7 @@ typedef struct
   udfproperties properties;
   udfdiv div;
   linAlg_t* linAlg;
-  setupAide options;
+  setupAide* options;
 } UDF;
 
 extern UDF udf;
