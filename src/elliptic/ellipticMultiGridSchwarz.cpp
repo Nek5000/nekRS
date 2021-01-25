@@ -796,13 +796,13 @@ void MGLevel::build(
     ABORT(EXIT_FAILURE);
   }
 
-  overlap = false;
-  //if(Nq > 5) overlap = true
-
   const dlong Nelements = elliptic->mesh->Nelements;
   const int N = elliptic->mesh->Nq;
   const int Nq = elliptic->mesh->Nq;
   const int Np = elliptic->mesh->Np;
+
+  overlap = false;
+  if(Nq >= 5) overlap = true;
 
   mesh_t* extendedMesh = create_extended_mesh(elliptic);
 
