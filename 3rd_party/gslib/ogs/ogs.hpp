@@ -248,6 +248,8 @@ typedef struct {
   occa::kernel unpackBufFloatAddKernel;
   occa::kernel unpackBufHalfToFloatAddKernel;
 
+  int earlyPrepostRecv;
+
   oogs_mode mode;
 
 } oogs_t;
