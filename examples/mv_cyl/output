@@ -1,0 +1,303 @@
+                 __    ____  _____
+   ____   ___   / /__ / __ \/ ___/
+  / __ \ / _ \ / //_// /_/ /\__ \ 
+ / / / //  __// ,<  / _, _/___/ / 
+/_/ /_/ \___//_/|_|/_/ |_|/____/  v20.1
+
+COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC
+
+MPI tasks: 1
+
+using OCCA_DIR: /home/malachi2/.local/nekrs/
+using OCCA_CACHE_DIR: /home/malachi2/moving-mesh-dir/cases/mv_cyl/.cache/occa/
+
+Initializing device
+active occa mode: CUDA
+
+building udf ... done (8.64766s)
+building nek ... done (29.444s)
+
+loading nek ...
+running RCB ...  finished in 0.000335597 s
+running RSB ... finished in 0.000738844 s
+gs_setup: 0 unique labels shared
+   handle bytes (avg, min, max): 488492 488492 488492
+   buffer bytes (avg, min, max): 0 0 0
+ Reading /home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl.re2                                                                              
+ WARNING: lgmres might be too low!
+ nelgt/nelgv/lelt:         150         150         150
+ lx1/lx2/lx3/lxd:            8           8           8           1
+
+ partioning elements to MPI ranks
+ reading mesh 
+ reading bc for ifld           1
+ reading bc for ifld           2
+ done :: read .re2 file    0.51E-01 sec
+
+ reading /home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl.co2                                                                              
+  
+ done :: partioning   0.63994E-01 sec
+
+ reading mesh 
+ reading bc for ifld           1
+ reading bc for ifld           2
+ done :: read .re2 file    0.31E-01 sec
+
+ setup mesh topology
+   Right-handed check complete for         150 elements. OK.
+   setvert3d:   8           27808           60208           27808           27808
+   setupds time 1.5332E-02 seconds   0  8       27808         150
+ 
+ 
+ max multiplicity            8
+ done :: setup mesh topology
+  
+ call usrdat
+ done :: usrdat
+
+ generate geometry data
+ NOTE: All elements deformed , param(59) ^=0
+ done :: generate geometry data
+  
+ call usrdat2
+ done :: usrdat2
+
+  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00 xyz repair 1
+  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00 xyz repair 2
+  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00 xyz repair 3
+  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00 xyz repair 4
+ regenerate geometry data           1
+ NOTE: All elements deformed , param(59) ^=0
+ done :: regenerate geometry data           1
+  
+ regenerate geometry data           1
+ NOTE: All elements deformed , param(59) ^=0
+ done :: regenerate geometry data           1
+  
+ verify mesh topology
+   0.0000000000000000        1.0000000000000000       Xrange
+  -1.0000000000000000       0.50000000000000000       Yrange
+   0.0000000000000000       0.10000000000000001       Zrange
+ done :: verify mesh topology
+  
+ mesh metrics:
+ GLL grid spacing min/max    : 6.41E-03 2.09E-02
+ scaled Jacobian  min/max/avg: 1.00E+00 1.00E+00 1.00E+00
+ aspect ratio     min/max/avg: 1.00E+00 1.00E+00 1.00E+00
+
+ call usrdat3
+ done :: usrdat3
+
+gridpoints unique/tot:         52682        76800
+dofs vel/pr:                   50232        52682
+calling nek_userchk ...
+NboundaryIDs: 3
+NboundaryFaces: 50
+Nq: 8 cubNq: 11 
+J in range [0.000125,0.000125]
+loading gs kernels ... done (2.1149s)
+min NinternalElements: 150 (ratio: 1.00)
+loading udf kernels ... done
+loading ns kernels ... done (0.72156s)
+loading cds kernels ... done (0.227552s)
+copying solution from nek
+calling udf_setup ... done
+================= ELLIPTIC SETUP SCALAR00 ===============
+bID 1 -> bcType zeroGradient
+bID 2 -> bcType zeroGradient
+bID 3 -> bcType zeroGradient
+allNeumann = 0 
+loading elliptic kernels ... done (0.72677s)
+Building diagonal...done.
+================ ELLIPTIC SETUP VELOCITY ================
+bID 1 -> bcType zeroValue
+bID 2 -> bcType fixedValue
+bID 3 -> bcType zeroXValue/zeroGradient
+allNeumann = 0 
+loading elliptic kernels ... done (0.632103s)
+Building diagonal...done.
+================ ELLIPTIC SETUP PRESSURE ================
+allNeumann = 1 
+loading elliptic kernels ... done (0.578751s)
+Compiling parALMOND Kernels...done.
+=============BUILDING MULTIGRID LEVEL OF DEGREE 7==================
+=============BUILDING MULTIGRID LEVEL OF DEGREE 3==================
+J in range [0.000125,0.000125]
+loading elliptic MG kernels ... done (0.102032s)
+=============BUILDING MULTIGRID LEVEL OF DEGREE 1==================
+J in range [0.000125,0.000125]
+loading elliptic MG kernels ... done (0.0990987s)
+Building full FEM matrix...done.
+Setting up AMG...
+
+ Num MPI tasks = 1
+
+ Num OpenMP threads = 1
+
+
+BoomerAMG SETUP PARAMETERS:
+
+ Max levels = 25
+ Num levels = 4
+
+ Strength Threshold = 0.250000
+ Interpolation Truncation Factor = 0.000000
+ Maximum Row Sum Threshold for Dependency Weakening = 0.900000
+
+ Coarsening Type = HMIS 
+ measures are determined locally
+
+ Interpolation = extended+i interpolation
+
+Operator Matrix Information:
+
+             nonzero            entries/row          row sums
+lev    rows  entries sparse   min  max     avg      min         max
+======================================================================
+  0     176      826  0.027     3    5     4.7  -1.388e-16   1.665e-16
+  1      88      686  0.089     4    9     7.8  -1.665e-16   2.810e-16
+  2      23      291  0.550     7   19    12.7  -4.066e-17   5.859e-16
+  3       7       47  0.959     6    7     6.7   3.634e-16   1.629e-15
+
+
+Interpolation Matrix Information:
+                    entries/row        min        max            row sums
+lev  rows x cols  min  max  avgW     weight      weight       min         max
+================================================================================
+  0   176 x 88      1    4   3.7   2.500e-01   5.000e-01   1.000e+00   1.000e+00
+  1    88 x 23      1    4   3.6   2.422e-02   1.000e+00   1.000e+00   1.000e+00
+  2    23 x 7       1    4   3.4   1.758e-02   8.817e-01   1.000e+00   1.000e+00
+
+
+     Complexity:    grid = 1.670455
+                operator = 2.239709
+                memory = 3.129540
+
+
+
+
+BoomerAMG SOLVER PARAMETERS:
+
+  Maximum number of cycles:         1 
+  Stopping Tolerance:               0.000000e+00 
+  Cycle type (1 = V, 2 = W, etc.):  1
+
+  Relaxation Parameters:
+   Visiting Grid:                     down   up  coarse
+            Number of sweeps:            1    1     3 
+   Type 0=Jac, 3=hGS, 6=hSGS, 9=GE:     16   16    16 
+   Point types, partial sweeps (1=C, -1=F):
+                  Pre-CG relaxation (down):   0
+                   Post-CG relaxation (up):   0
+                             Coarsest grid:   0   0   0
+
+done (0.00392828s)
+--------------------Multigrid Report---------------------
+---------------------------------------------------------
+level|    Type    |                 |     Smoother      |
+     |            |                 |                   |
+---------------------------------------------------------
+   0 |    pMG     |   Matrix-free   | Chebyshev+Schwarz |
+     |            |     Degree  7   |                   |
+   1 |    pMG     |   Matrix-free   | Chebyshev+Schwarz |
+     |            |     Degree  3   |                   |
+   2 |    AMG     |   Matrix        | BoomerAMG         |
+     |            |     Degree  1   |                   |
+---------------------------------------------------------
+ymin = 0, ymax = 0
+host_ymin = -1, host_ymax = 0.5
+copying solution to nek
+calling nek_userchk ...
+copying solution to nek
+
+settings:
+
+key: FORMAT,                              value: 1.0
+key: ELEMENT TYPE,                        value: 12
+key: ELEMENT MAP,                         value: ISOPARAMETRIC
+key: MESH DIMENSION,                      value: 3
+key: NUMBER OF SCALARS,                   value: 1
+key: TIME INTEGRATOR,                     value: TOMBO3
+key: MESH INTEGRATION ORDER,              value: 3
+key: SUBCYCLING STEPS,                    value: 0
+key: SUBCYCLING TIME ORDER,               value: 4
+key: SUBCYCLING TIME STAGE NUMBER,        value: 4
+key: CASENAME,                            value: mv_cyl
+key: UDF OKL FILE,                        value: mv_cyl.oudf
+key: UDF FILE,                            value: mv_cyl.udf
+key: THREAD MODEL,                        value: CUDA
+key: DEVICE NUMBER,                       value: LOCAL-RANK
+key: PLATFORM NUMBER,                     value: 0
+key: VERBOSE,                             value: FALSE
+key: ADVECTION,                           value: TRUE
+key: ADVECTION TYPE,                      value: CUBATURE+CONVECTIVE
+key: RESTART FROM FILE,                   value: 0
+key: SOLUTION OUTPUT INTERVAL,            value: 50.000000
+key: SOLUTION OUTPUT CONTROL,             value: STEPS
+key: FILTER STABILIZATION,                value: NONE
+key: START TIME,                          value: 0.0
+key: VELOCITY BLOCK SOLVER,               value: TRUE
+key: VELOCITY KRYLOV SOLVER,              value: PCG
+key: VELOCITY BASIS,                      value: NODAL
+key: VELOCITY PRECONDITIONER,             value: JACOBI
+key: VELOCITY DISCRETIZATION,             value: CONTINUOUS
+key: STRESSFORMULATION,                   value: TRUE
+key: ELLIPTIC INTEGRATION,                value: NODAL
+key: MAXIMUM ITERATIONS,                  value: 200
+key: FIXED ITERATION COUNT,               value: FALSE
+key: GALERKIN COARSE MATRIX,              value: FALSE
+key: PRESSURE KRYLOV SOLVER,              value: PCG+FLEXIBLE
+key: PRESSURE PRECONDITIONER,             value: MULTIGRID
+key: PRESSURE DISCRETIZATION,             value: CONTINUOUS
+key: PRESSURE BASIS,                      value: NODAL
+key: AMG SOLVER,                          value: BOOMERAMG
+key: PRESSURE PARALMOND CYCLE,            value: VCYCLE
+key: PRESSURE MULTIGRID SMOOTHER,         value: CHEBYSHEV+ASM
+key: PRESSURE MULTIGRID DOWNWARD SMOOTHER,value: ASM
+key: PRESSURE MULTIGRID UPWARD SMOOTHER,  value: ASM
+key: BOOMERAMG ITERATIONS,                value: 1
+key: BOOMERAMG SMOOTHER TYPE,             value: 16
+key: PRESSURE MULTIGRID CHEBYSHEV DEGREE, value: 1
+key: BOOMERAMG NONGALERKIN TOLERANCE,     value: 5.000000e-02
+key: PRESSURE RESIDUAL PROJECTION,        value: FALSE
+key: PRESSURE RESIDUAL PROJECTION VECTORS,value: 8
+key: PRESSURE RESIDUAL PROJECTION START,  value: 5
+key: SCALAR INITIAL GUESS DEFAULT,        value: PREVIOUS STEP
+key: VELOCITY INITIAL GUESS DEFAULT,      value: EXTRAPOLATION
+key: PARALMOND SMOOTH COARSEST,           value: FALSE
+key: ENABLE FLOATCOMMHALF GS SUPPORT,     value: FALSE
+key: MOVING MESH,                         value: TRUE
+key: POLYNOMIAL DEGREE,                   value: 7
+key: CUBATURE POLYNOMIAL DEGREE,          value: 10
+key: DT,                                  value: 1.000000e-03
+key: NUMBER TIMESTEPS,                    value: 10
+key: PRESSURE SOLVER TOLERANCE,           value: 1.000000e-10
+key: VELOCITY RESIDUAL PROJECTION,        value: FALSE
+key: VELOCITY SOLVER TOLERANCE,           value: 1.000000e-12
+key: SCALAR00 IS TEMPERATURE,             value: TRUE
+key: SCALAR00 PRECONDITIONER,             value: JACOBI
+key: SCALAR00 RESIDUAL PROJECTION,        value: FALSE
+key: SCALAR00 SOLVER TOLERANCE,           value: 1.000000e-12
+key: SCALAR SOLVER,                       value: PCG
+key: SCALAR BASIS,                        value: NODAL
+key: SCALAR DISCRETIZATION,               value: CONTINUOUS
+key: BUILD ONLY,                          value: FALSE
+key: DATA FILE,                           value: /home/malachi2/moving-mesh-dir/cases/mv_cyl/.cache/udf/udf.okl
+key: CI-MODE,                             value: 0
+
+device memory usage: 0 GB
+initialization took 48.5815 s
+
+timestepping for 10 steps ...
+abm: 0.001, 0, 0, 
+step= 1  t= 1.00000000e-03  dt=1.0e-03  C= -nan  UVW: 201  P: 201  S: 201  eTime= 2.53e-01, 2.53362e-01 s
+Unreasonable CFL! Dying ...
+
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD
+with errorcode 1.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------

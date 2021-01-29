@@ -42,16 +42,38 @@ void UDF_Setup(nrs_t *nrs)
 {
   udf.properties = &uservp;
 
-  lowMach::setup(nrs);
-  udf.div = &qtl;
+  //lowMach::setup(nrs);
+  //udf.div = &qtl;
 }
 
+dfloat min_vector(dfloat* y, int size)
+{
+  dfloat min = 9e30;
+  for(int i = 0 ; i < size; ++i){
+    min = (y[i] < min) ? y[i] : min;
+  }
+  return min;
+}
+dfloat max_vector(dfloat* y, int size)
+{
+  dfloat max = -9e30;
+  for(int i = 0 ; i < size; ++i){
+    max = (y[i] > max) ? y[i] : max;
+  }
+  return max;
+}
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
   linAlg_t* linAlg = linAlg_t::getInstance();
+  // do host reduction
+  mesh->o_y.copyTo(mesh->y, nrs->Nlocal * sizeof(dfloat));
   const dfloat ymin = linAlg->min(nrs->Nlocal, mesh->o_y, mesh->comm);
   const dfloat ymax = linAlg->max(nrs->Nlocal, mesh->o_y, mesh->comm);
+  std::cout << "ymin = " << ymin << ", ymax = " << ymax << "\n";
+  const dfloat host_ymin = min_vector(mesh->y, nrs->Nlocal);
+  const dfloat host_ymax = max_vector(mesh->y, nrs->Nlocal);
+  std::cout << "host_ymin = " << host_ymin << ", host_ymax = " << host_ymax << "\n";
 #if 1
   userMeshVelocityKernel(mesh->Nelements,
     nrs->fieldOffset,
@@ -62,8 +84,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     mesh->o_U);
 #endif
 
-  if (nrs->isOutputStep) {
+  //if (nrs->isOutputStep) {
     nek_ocopyFrom(time, tstep);
     nek_userchk();
-  }
+  //}
 }
