@@ -259,7 +259,7 @@ dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 
   dfloat max = -9e30;
   for(dlong n=0;n<Nblock;++n){
-    max = (scratch[n] < max) ? scratch[n]:max;
+    max = (scratch[n] > max) ? scratch[n]:max;
   }
 
   if (_comm != MPI_COMM_NULL) 
