@@ -54,7 +54,6 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_S,
                            cds->o_Se);
 
-  // TODO: verify this is correct
   const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   // meshV \subset meshT
   if(movingMesh){
@@ -67,7 +66,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
       mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     }
-    nrs->mesh->move();
+    nrs->mesh->move(tstep);
     // update inverse lumped mass matrix on meshT
     if(nrs->cht)
     {
@@ -133,6 +132,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
 void computeCoefficients(nrs_t* nrs, int order)
 {
+  mesh_t* mesh = nrs->mesh;
   if(order == 1) {
     nrs->g0 = 1.0;
     nrs->extbdfB[0] = 1.0;
@@ -145,6 +145,7 @@ void computeCoefficients(nrs_t* nrs, int order)
   } else if(order == 2) {
     nek_bdfCoeff(&nrs->g0, nrs->extbdfB, nrs->dt, order);
     nrs->extbdfB[2] = 0.0;
+
     nrs->ExplicitOrder = 2;
     nek_extCoeff(nrs->extbdfA, nrs->dt, nrs->ExplicitOrder);
     nrs->extbdfA[2] = 0.0;
@@ -157,10 +158,13 @@ void computeCoefficients(nrs_t* nrs, int order)
   if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
   {
     for(int i = 0 ; i < 3; ++i){
-      nrs->mesh->ABCoeff[i] = 0.0;
+      mesh->ABCoeff[i] = 0.0;
     }
-    nek_abCoeff(nrs->mesh->ABCoeff, nrs->dt, order);
-    nrs->mesh->o_ABCoeff.copyFrom(nrs->mesh->ABCoeff, 3 * sizeof(dfloat));
+    nek_abCoeff(mesh->ABCoeff, nrs->dt, order);
+    for(int i = 0 ; i < 3; ++i){
+      mesh->ABCoeff[i] *= nrs->dt[0];
+    }
+    mesh->o_ABCoeff.copyFrom(mesh->ABCoeff, 3 * sizeof(dfloat));
   }
 
   nrs->ig0 = 1.0 / nrs->g0;

@@ -42,7 +42,7 @@
 
 struct mesh_t
 {
-  void move();
+  void move(int tstep);
   void update();
   void computeInvMassMatrix();
   MPI_Comm comm;
