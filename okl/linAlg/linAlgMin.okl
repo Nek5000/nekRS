@@ -27,7 +27,7 @@ SOFTWARE.
 @kernel void min(const dlong Nblocks,
                  const dlong N,
                  @restrict const  dfloat *x,
-                 @restrict        dfloat *sum){
+                 @restrict        dfloat *result){
 
 
   for(dlong b=0;b<Nblocks;++b;@outer(0)){
@@ -66,6 +66,6 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s[t] = (s[t] < s[t +  8]) ? s[t]:s[t +  8];
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s[t] = (s[t] < s[t +  4]) ? s[t]:s[t +  4];
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s[t] = (s[t] < s[t +  2]) ? s[t]:s[t +  2];
-    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) s[b] = (s[0] < s[1]     ) ? s[0]:s[1     ];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) result[b] = (s[0] < s[1]     ) ? s[0]:s[1     ];
   }
 }
