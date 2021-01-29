@@ -5,7 +5,7 @@
 # USER SETTINGS
 ###############################################################################
 
-: ${NEKRS_INSTALL_DIR:=${HOME}/.local2/nekrs}
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
