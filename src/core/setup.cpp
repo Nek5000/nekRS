@@ -150,6 +150,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int order = mesh->torder;
+    std::cout << "mesh->torder = " << mesh->torder << "\n";
     /** realloc o_LMM, o_invLMM to be large enough**/
     dfloat * hostLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
     dfloat * hostInvLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
