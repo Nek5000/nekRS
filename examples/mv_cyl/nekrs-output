@@ -6,7 +6,7 @@
 
 COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC
 
-MPI tasks: 2
+MPI tasks: 1
 
 using OCCA_DIR: /home/malachi2/.local/nekrs/
 using OCCA_CACHE_DIR: /home/malachi2/moving-mesh-dir/cases/mv_cyl/.cache/occa/
@@ -14,48 +14,40 @@ using OCCA_CACHE_DIR: /home/malachi2/moving-mesh-dir/cases/mv_cyl/.cache/occa/
 Initializing device
 active occa mode: CUDA
 
-building udf ... done (7.77983s)
-building nek ... done (52.683s)
+building udf ... done (10.1502s)
+building nek ... done (28.0692s)
 
 loading nek ...
+running RCB ...  finished in 0.000337705 s
+running RSB ... finished in 0.00072033 s
+gs_setup: 0 unique labels shared
+   handle bytes (avg, min, max): 488492 488492 488492
+   buffer bytes (avg, min, max): 0 0 0
  Reading /home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl.re2                                                                              
  WARNING: lgmres might be too low!
- nelgt/nelgv/lelt:         150         150          78
+ nelgt/nelgv/lelt:         150         150         150
  lx1/lx2/lx3/lxd:            8           8           8           1
 
  partioning elements to MPI ranks
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.48E-01 sec
+ done :: read .re2 file    0.16     sec
 
  reading /home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl.co2                                                                              
-running RCB ...  finished in 0.000581339 s
-running RSB ... finished in 0.00246497 s
   
- done :: partioning   0.26736     sec
+ done :: partioning   0.17095     sec
 
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.39E-01 sec
+ done :: read .re2 file    0.30E-01 sec
 
  setup mesh topology
    Right-handed check complete for         150 elements. OK.
    setvert3d:   8           27808           60208           27808           27808
-gs_setup: 595 unique labels shared
-   pairwise times (avg, min, max): 7.1045e-06 7.07433e-06 7.13468e-06
-   crystal router                : 4.67896e-06 4.66704e-06 4.69089e-06
-   all reduce                    : 7.11679e-06 7.10115e-06 7.13244e-06
-   used all_to_all method: crystal router
-   handle bytes (avg, min, max): 282464 282084 282844
-   buffer bytes (avg, min, max): 19040 19040 19040
-   setupds time 1.0009E-02 seconds   0  8       27808         150
+   setupds time 1.6969E-02 seconds   0  8       27808         150
  
- nElements   max/min/bal: 75 75 1.00
- nMessages   max/min/avg: 1 1 1.00
- msgSize     max/min/avg: 595 595 595.00
- msgSizeSum  max/min/avg: 595 595 595.00
  
  max multiplicity            8
  done :: setup mesh topology
@@ -98,84 +90,47 @@ gs_setup: 595 unique labels shared
 
 gridpoints unique/tot:         52682        76800
 dofs vel/pr:                   50232        52682
- set initial conditions
- nekuic (1) for ifld            1
- nekuic (1) for ifld            2
- call nekuic for ifld            2
- call nekuic for vel  
- xyz min     0.0000      -1.0000       0.0000    
- uvwpt min   0.0000       0.0000       0.0000       0.0000       1.0000    
- PS min      0.0000       0.0000       0.0000       0.0000    
- xyz max     1.0000      0.50000      0.10000    
- uvwpt max   0.0000       0.0000       0.0000       0.0000       1.0000    
- PS max      0.0000       0.0000       0.0000       0.0000    
- done :: set initial conditions
-  
 calling nek_userchk ...
-err   0.0000000E+00  -0.1471046E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
-err   0.0000000E+00  -0.1471046E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
 NboundaryIDs: 3
 NboundaryFaces: 50
 Nq: 8 cubNq: 11 
 J in range [0.000125,0.000125]
-   setvert3d:   8           27808           60208           27808           27808
-loading gs kernels ... done (3.68313s)
-min NinternalElements: 65 (ratio: 0.87)
+loading gs kernels ... done (1.90403s)
+min NinternalElements: 150 (ratio: 1.00)
 loading udf kernels ... done
-timing oogs modes: 0.000743031s 0.000714794s used mode: 2
-loading ns kernels ... done (1.30719s)
-loading cds kernels ... done (0.617455s)
+loading ns kernels ... done (0.702821s)
+loading cds kernels ... done (0.215166s)
 copying solution from nek
- generate geometry data
- NOTE: All elements deformed , param(59) ^=0
- done :: generate geometry data
-  
 calling udf_setup ... done
 ================= ELLIPTIC SETUP SCALAR00 ===============
 bID 1 -> bcType zeroGradient
 bID 2 -> bcType zeroGradient
 bID 3 -> bcType zeroGradient
 allNeumann = 0 
-loading elliptic kernels ... done (1.23489s)
-timing oogs modes: 0.000919353s 0.000761869s used mode: 2
-timing oogs modes: 0.00143213s 0.000629024s used mode: 2
+loading elliptic kernels ... done (0.806129s)
 Building diagonal...done.
 ================ ELLIPTIC SETUP VELOCITY ================
 bID 1 -> bcType zeroValue
 bID 2 -> bcType fixedValue
 bID 3 -> bcType zeroXValue/zeroGradient
 allNeumann = 0 
-loading elliptic kernels ... done (1.06557s)
-timing oogs modes: 0.00075945s 0.000755173s used mode: 2
-timing oogs modes: 0.000635231s 0.000723662s used mode: 1
+loading elliptic kernels ... done (0.705814s)
 Building diagonal...done.
 ================ ELLIPTIC SETUP PRESSURE ================
 allNeumann = 1 
-loading elliptic kernels ... done (1.07038s)
-timing oogs modes: 0.000751827s 0.00133443s used mode: 1
-timing oogs modes: 0.000622939s 0.00079598s used mode: 1
+loading elliptic kernels ... done (0.838079s)
 Compiling parALMOND Kernels...done.
 =============BUILDING MULTIGRID LEVEL OF DEGREE 7==================
-timing oogs modes: 0.000673174s 0.000717429s used mode: 1
-timing oogs modes: 0.000699402s 0.000706396s used mode: 1
-   setvert3d:  10           46960          123760           46960           46960
-timing oogs modes: 0.000667814s 0.00068594s used mode: 1
 =============BUILDING MULTIGRID LEVEL OF DEGREE 3==================
 J in range [0.000125,0.000125]
-   setvert3d:   4            4504            5704            4504            4504
-loading elliptic MG kernels ... done (0.186328s)
-timing oogs modes: 0.000756141s 0.000761092s used mode: 1
-timing oogs modes: 0.000762483s 0.00076426s used mode: 1
-   setvert3d:   6           13656           23256           13656           13656
-timing oogs modes: 0.000673476s 0.000719379s used mode: 1
+loading elliptic MG kernels ... done (0.0969976s)
 =============BUILDING MULTIGRID LEVEL OF DEGREE 1==================
 J in range [0.000125,0.000125]
-loading elliptic MG kernels ... done (0.239922s)
-timing oogs modes: 0.000706715s 0.000756223s used mode: 1
+loading elliptic MG kernels ... done (0.097092s)
 Building full FEM matrix...done.
 Setting up AMG...
 
- Num MPI tasks = 2
+ Num MPI tasks = 1
 
  Num OpenMP threads = 1
 
@@ -200,23 +155,23 @@ Operator Matrix Information:
 lev    rows  entries sparse   min  max     avg      min         max
 ======================================================================
   0     176      826  0.027     3    5     4.7  -1.388e-16   1.665e-16
-  1      83      705  0.102     4   15     8.5  -2.082e-16   3.057e-16
-  2      22      258  0.533     6   17    11.7  -5.638e-17   7.078e-16
-  3       6       34  0.944     5    6     5.7   2.819e-16   1.829e-15
+  1      88      686  0.089     4    9     7.8  -1.665e-16   2.810e-16
+  2      23      291  0.550     7   19    12.7  -4.066e-17   5.859e-16
+  3       7       47  0.959     6    7     6.7   3.634e-16   1.629e-15
 
 
 Interpolation Matrix Information:
                     entries/row        min        max            row sums
 lev  rows x cols  min  max  avgW     weight      weight       min         max
 ================================================================================
-  0   176 x 83      1    4   3.7   8.108e-02   5.714e-01   1.000e+00   1.000e+00
-  1    83 x 22      1    4   3.6   2.499e-02   1.000e+00   1.000e+00   1.000e+00
-  2    22 x 6       1    4   2.9   4.967e-02   1.000e+00   1.000e+00   1.000e+00
+  0   176 x 88      1    4   3.7   2.500e-01   5.000e-01   1.000e+00   1.000e+00
+  1    88 x 23      1    4   3.6   2.422e-02   1.000e+00   1.000e+00   1.000e+00
+  2    23 x 7       1    4   3.4   1.758e-02   8.817e-01   1.000e+00   1.000e+00
 
 
-     Complexity:    grid = 1.630682
-                operator = 2.207022
-                memory = 3.087167
+     Complexity:    grid = 1.670455
+                operator = 2.239709
+                memory = 3.129540
 
 
 
@@ -236,7 +191,7 @@ BoomerAMG SOLVER PARAMETERS:
                    Post-CG relaxation (up):   0
                              Coarsest grid:   0   0   0
 
-done (0.0112658s)
+done (0.00389169s)
 --------------------Multigrid Report---------------------
 ---------------------------------------------------------
 level|    Type    |                 |     Smoother      |
@@ -250,10 +205,8 @@ level|    Type    |                 |     Smoother      |
      |            |     Degree  1   |                   |
 ---------------------------------------------------------
 copying solution to nek
- generate geometry data
- NOTE: All elements deformed , param(59) ^=0
- done :: generate geometry data
-  
+calling nek_userchk ...
+copying solution to nek
 
 settings:
 
@@ -315,7 +268,7 @@ key: MOVING MESH,                         value: TRUE
 key: POLYNOMIAL DEGREE,                   value: 7
 key: CUBATURE POLYNOMIAL DEGREE,          value: 10
 key: DT,                                  value: 1.000000e-03
-key: NUMBER TIMESTEPS,                    value: 1000
+key: NUMBER TIMESTEPS,                    value: 50
 key: PRESSURE SOLVER TOLERANCE,           value: 1.000000e-10
 key: VELOCITY RESIDUAL PROJECTION,        value: FALSE
 key: VELOCITY SOLVER TOLERANCE,           value: 1.000000e-12
@@ -331,110 +284,372 @@ key: DATA FILE,                           value: /home/malachi2/moving-mesh-dir/
 key: CI-MODE,                             value: 0
 
 device memory usage: 0 GB
-initialization took 77.6249 s
+initialization took 49.4639 s
 
-timestepping for 1000 steps ...
-step= 1  t= 1.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 19  P: 201  S: 1  eTime= 6.60e+00, 6.59505e+00 s
-step= 2  t= 2.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 14  P: 201  S: 7  eTime= 6.61e+00, 1.32071e+01 s
-step= 3  t= 3.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 8  eTime= 6.60e+00, 1.98050e+01 s
-step= 4  t= 4.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 8  eTime= 6.59e+00, 2.63905e+01 s
-step= 5  t= 5.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 12  P: 201  S: 8  eTime= 6.60e+00, 3.29864e+01 s
-step= 6  t= 6.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 11  P: 201  S: 8  eTime= 6.58e+00, 3.95658e+01 s
-step= 7  t= 7.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 11  P: 165  S: 8  eTime= 5.46e+00, 4.50247e+01 s
-step= 8  t= 8.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 6.60e+00, 5.16269e+01 s
-step= 9  t= 9.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 6.60e+00, 5.82247e+01 s
-step= 10  t= 1.00000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 6.61e+00, 6.48335e+01 s
-step= 11  t= 1.10000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 178  S: 9  eTime= 5.89e+00, 7.07257e+01 s
-step= 12  t= 1.20000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 6.61e+00, 7.73391e+01 s
-step= 13  t= 1.30000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 6.58e+00, 8.39208e+01 s
-step= 14  t= 1.40000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 9.05030e+01 s
-step= 15  t= 1.50000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 9.70856e+01 s
-step= 16  t= 1.60000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.57e+00, 1.03657e+02 s
-step= 17  t= 1.70000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.59e+00, 1.10242e+02 s
-step= 18  t= 1.80000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 1.16823e+02 s
-step= 19  t= 1.90000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 171  S: 9  eTime= 5.65e+00, 1.22473e+02 s
-step= 20  t= 2.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 1.29056e+02 s
-step= 21  t= 2.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.57e+00, 1.35630e+02 s
-step= 22  t= 2.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.57e+00, 1.42202e+02 s
-step= 23  t= 2.30000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.60e+00, 1.48798e+02 s
-step= 24  t= 2.40000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.60e+00, 1.55395e+02 s
-step= 25  t= 2.50000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.59e+00, 1.61982e+02 s
-step= 26  t= 2.60000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.60e+00, 1.68582e+02 s
-step= 27  t= 2.70000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 1.75166e+02 s
-step= 28  t= 2.80000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.59e+00, 1.81752e+02 s
-step= 29  t= 2.90000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.57e+00, 1.88323e+02 s
-step= 30  t= 3.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.57e+00, 1.94891e+02 s
-step= 31  t= 3.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 6.58e+00, 2.01471e+02 s
-step= 32  t= 3.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 2.08071e+02 s
-step= 33  t= 3.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.57e+00, 2.14643e+02 s
-step= 34  t= 3.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.21234e+02 s
-step= 35  t= 3.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.57e+00, 2.27805e+02 s
-step= 36  t= 3.60000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.34399e+02 s
-step= 37  t= 3.70000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.57e+00, 2.40974e+02 s
-step= 38  t= 3.80000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.47567e+02 s
-step= 39  t= 3.90000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.54157e+02 s
-step= 40  t= 4.00000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 2.60741e+02 s
-step= 41  t= 4.10000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.67331e+02 s
-step= 42  t= 4.20000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.73923e+02 s
-step= 43  t= 4.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 2.80500e+02 s
-step= 44  t= 4.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.61e+00, 2.87107e+02 s
-step= 45  t= 4.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 2.93699e+02 s
-step= 46  t= 4.60000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.00289e+02 s
-step= 47  t= 4.70000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 3.06884e+02 s
-step= 48  t= 4.80000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 3.13481e+02 s
-step= 49  t= 4.90000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.20071e+02 s
-step= 50  t= 5.00000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 3.26654e+02 s
+timestepping for 50 steps ...
+abm: 0.001, 0, 0, 
+step= 1  t= 1.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 19  P: 201  S: 1  eTime= 1.90e-01, 1.89776e-01 s
 copying solution to nek
+calling nek_userchk ...
+abm: 0.0015, -0.0005, 0, 
+step= 2  t= 2.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 14  P: 201  S: 7  eTime= 1.86e-01, 3.76273e-01 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 3  t= 3.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 7  eTime= 1.86e-01, 5.62612e-01 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 4  t= 4.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 8  eTime= 1.86e-01, 7.49056e-01 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 5  t= 5.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 12  P: 172  S: 8  eTime= 1.61e-01, 9.10254e-01 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 6  t= 6.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 11  P: 201  S: 8  eTime= 1.86e-01, 1.09600e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 7  t= 7.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 11  P: 165  S: 8  eTime= 1.55e-01, 1.25108e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 8  t= 8.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 196  S: 8  eTime= 1.83e-01, 1.43440e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 9  t= 9.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 142  S: 8  eTime= 1.34e-01, 1.56844e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 10  t= 1.00000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.87e-01, 1.75498e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 11  t= 1.10000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 148  S: 9  eTime= 1.40e-01, 1.89475e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 12  t= 1.20000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.86e-01, 2.08118e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 13  t= 1.30000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 147  S: 9  eTime= 1.38e-01, 2.21937e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 14  t= 1.40000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 182  S: 9  eTime= 1.70e-01, 2.38971e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 15  t= 1.50000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 140  S: 9  eTime= 1.32e-01, 2.52134e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 16  t= 1.60000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.86e-01, 2.70765e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 17  t= 1.70000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.86e-01, 2.89386e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 18  t= 1.80000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 162  S: 9  eTime= 1.52e-01, 3.04610e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 19  t= 1.90000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 3.23141e+00 s
+copying solution to nek
+ set initial conditions
+ nekuic (1) for ifld            1
+ nekuic (1) for ifld            2
+ call nekuic for ifld            2
+ call nekuic for vel  
+ xyz min     0.0000      -1.0000       0.0000    
+ uvwpt min   0.0000       0.0000       0.0000       0.0000       1.0000    
+ PS min      0.0000       0.0000       0.0000       0.0000    
+ xyz max     1.0000      0.50000      0.10000    
+ uvwpt max   0.0000       0.0000       0.0000       0.0000       1.0000    
+ PS max      0.0000       0.0000       0.0000       0.0000    
+ done :: set initial conditions
+  
+err   0.0000000E+00  -0.1573741E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+   setvert3d:   8           27808           60208           27808           27808
+ generate geometry data
+ NOTE: All elements deformed , param(59) ^=0
+ done :: generate geometry data
+  
+   setvert3d:  10           46960          123760           46960           46960
+   setvert3d:   4            4504            5704            4504            4504
+   setvert3d:   6           13656           23256           13656           13656
+ generate geometry data
+ NOTE: All elements deformed , param(59) ^=0
+ done :: generate geometry data
+  
+err   0.0000000E+00  -0.1573741E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+ generate geometry data
+ NOTE: All elements deformed , param(59) ^=0
+ done :: generate geometry data
+  
+ generate geometry data
+ NOTE: All elements deformed , param(59) ^=0
+ done :: generate geometry data
+  
+err   0.1000000E-02  -0.2467399E-06   0.1762426E-05   0.2302910E-05   0.4605826E-02   0.2467399E-05
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2000000E-02  -0.4934778E-06   0.3524836E-05   0.9211673E-05   0.9211716E-02   0.4934778E-05
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3000000E-02  -0.9458256E-06   0.5287210E-05   0.2072638E-04   0.1381773E-01   0.9458256E-05
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4000000E-02  -0.1398162E-05   0.7049532E-05   0.3684720E-04   0.1842394E-01   0.1398162E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.5000000E-02  -0.1850484E-05   0.8811784E-05   0.5757435E-04   0.2303040E-01   0.1850484E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.6000000E-02  -0.2302785E-05   0.1057395E-04   0.8290811E-04   0.2763718E-01   0.2302785E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.7000000E-02  -0.2755063E-05   0.1233601E-04   0.1128488E-03   0.3224435E-01   0.2755063E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.8000000E-02  -0.3207311E-05   0.1409795E-04   0.1473970E-03   0.3685195E-01   0.3207311E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.9000000E-02  -0.3659526E-05   0.1585975E-04   0.1865529E-03   0.4146007E-01   0.3659526E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1000000E-01  -0.4111703E-05   0.1762139E-04   0.2303173E-03   0.4606876E-01   0.4111703E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1100000E-01  -0.4563839E-05   0.1938286E-04   0.2786907E-03   0.5067809E-01   0.4563839E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1200000E-01  -0.5015927E-05   0.2114414E-04   0.3316737E-03   0.5528812E-01   0.5015927E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1300000E-01  -0.5467964E-05   0.2290521E-04   0.3892671E-03   0.5989891E-01   0.5467964E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1400000E-01  -0.5919946E-05   0.2466606E-04   0.4514718E-03   0.6451053E-01   0.5919946E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1500000E-01  -0.6371868E-05   0.2642666E-04   0.5182885E-03   0.6912304E-01   0.6371868E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1600000E-01  -0.6823725E-05   0.2818700E-04   0.5897182E-03   0.7373650E-01   0.6823725E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1700000E-01  -0.7275513E-05   0.2994706E-04   0.6657618E-03   0.7835099E-01   0.7275513E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.1800000E-01  -0.7727228E-05   0.3170682E-04   0.7464205E-03   0.8296655E-01   0.7727228E-04
  NOTE: All elements deformed , param(59) ^=0
 calling nek_userchk ...
-err   0.5000000E-01  -0.6155830E-03   0.8775953E-04   0.5773836E-02   0.2316160E+00  -0.1155496E+02
-err   0.5000000E-01  -0.6155830E-03   0.8775953E-04   0.5773836E-02   0.2316160E+00  -0.1155496E+02
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 20  t= 2.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 198  S: 9  eTime= 1.84e-01, 3.41534e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 21  t= 2.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 3.60053e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 22  t= 2.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 3.78537e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 23  t= 2.30000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 3.97039e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 24  t= 2.40000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 190  S: 9  eTime= 1.76e-01, 4.14668e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 25  t= 2.50000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 4.33175e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 26  t= 2.60000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 190  S: 9  eTime= 1.76e-01, 4.50795e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 27  t= 2.70000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 4.69282e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 28  t= 2.80000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 4.87773e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 29  t= 2.90000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 5.06248e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 30  t= 3.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 171  S: 9  eTime= 1.59e-01, 5.22146e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 31  t= 3.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 177  S: 9  eTime= 1.64e-01, 5.38558e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 32  t= 3.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.86e-01, 5.57113e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 33  t= 3.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 9  eTime= 1.86e-01, 5.75726e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 34  t= 3.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 9  eTime= 1.85e-01, 5.94233e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 35  t= 3.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 170  S: 10  eTime= 1.58e-01, 6.10082e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 36  t= 3.60000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 6.28676e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 37  t= 3.70000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 6.47102e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 38  t= 3.80000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 6.65668e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 39  t= 3.90000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.85e-01, 6.84190e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 40  t= 4.00000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 7.02754e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 41  t= 4.10000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 7.21192e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 42  t= 4.20000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 7.39777e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 43  t= 4.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 7.58352e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 44  t= 4.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 129  S: 10  eTime= 1.22e-01, 7.70534e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 45  t= 4.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 7.88950e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 46  t= 4.60000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 8.07589e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 47  t= 4.70000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.87e-01, 8.26258e+00 s
+copying solution to nek
+calling nek_userchk ...
+err   0.1900000E-01  -0.8178865E-05   0.3346628E-04   0.8316953E-03   0.8758327E-01   0.8178865E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2000000E-01  -0.8630420E-05   0.3522540E-04   0.9215875E-03   0.9220119E-01   0.8630420E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2100000E-01  -0.9081887E-05   0.3698417E-04   0.1016098E-02   0.9682039E-01   0.9081887E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2200000E-01  -0.9533264E-05   0.3874258E-04   0.1115229E-02   0.1014409E+00   0.9533264E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2300000E-01  -0.9984545E-05   0.4050061E-04   0.1218980E-02   0.1060629E+00   0.9984545E-04
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2400000E-01  -0.1043573E-04   0.4225824E-04   0.1327355E-02   0.1106863E+00   0.1043573E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2500000E-01  -0.1088680E-04   0.4401545E-04   0.1440354E-02   0.1153112E+00   0.1088680E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2600000E-01  -0.1133777E-04   0.4577223E-04   0.1557978E-02   0.1199377E+00   0.1133777E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2700000E-01  -0.1178862E-04   0.4752855E-04   0.1680230E-02   0.1245659E+00   0.1178862E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2800000E-01  -0.1223936E-04   0.4928441E-04   0.1807110E-02   0.1291958E+00   0.1223936E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.2900000E-01  -0.1268997E-04   0.5103978E-04   0.1938622E-02   0.1338275E+00   0.1268997E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3000000E-01  -0.1314046E-04   0.5279464E-04   0.2074766E-02   0.1384611E+00   0.1314046E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3100000E-01  -0.1359081E-04   0.5454898E-04   0.2215545E-02   0.1430965E+00   0.1359081E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3200000E-01  -0.1404103E-04   0.5630279E-04   0.2360960E-02   0.1477340E+00   0.1404103E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3300000E-01  -0.1449111E-04   0.5805604E-04   0.2511013E-02   0.1523735E+00   0.1449111E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3400000E-01  -0.1494104E-04   0.5980872E-04   0.2665707E-02   0.1570151E+00   0.1494104E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3500000E-01  -0.1539083E-04   0.6156080E-04   0.2825044E-02   0.1616588E+00   0.1539083E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3600000E-01  -0.1584046E-04   0.6331228E-04   0.2989026E-02   0.1663048E+00   0.1584046E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3700000E-01  -0.1628993E-04   0.6506314E-04   0.3157654E-02   0.1709531E+00   0.1628993E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3800000E-01  -0.1673924E-04   0.6681335E-04   0.3330933E-02   0.1756038E+00   0.1673924E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.3900000E-01  -0.1718839E-04   0.6856290E-04   0.3508863E-02   0.1802569E+00   0.1718839E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4000000E-01  -0.1763736E-04   0.7031178E-04   0.3691447E-02   0.1849124E+00   0.1763736E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4100000E-01  -0.1808616E-04   0.7205996E-04   0.3878689E-02   0.1895706E+00   0.1808616E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4200000E-01  -0.1853478E-04   0.7380743E-04   0.4070589E-02   0.1942314E+00   0.1853478E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4300000E-01  -0.1898321E-04   0.7555418E-04   0.4267152E-02   0.1988948E+00   0.1898321E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4400000E-01  -0.1943145E-04   0.7730017E-04   0.4468380E-02   0.2035610E+00   0.1943145E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4500000E-01  -0.1987950E-04   0.7904541E-04   0.4674275E-02   0.2082300E+00   0.1987950E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4600000E-01  -0.2032736E-04   0.8078986E-04   0.4884841E-02   0.2129019E+00   0.2032736E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4700000E-01  -0.2077501E-04   0.8253352E-04   0.5100080E-02   0.2175768E+00   0.2077501E-03
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 48  t= 4.80000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 8.44902e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 49  t= 4.90000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.86e-01, 8.63471e+00 s
+copying solution to nek
+calling nek_userchk ...
+abm: 0.00191667, -0.00133333, 0.000416667, 
+step= 50  t= 5.00000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.87e-01, 8.82145e+00 s
+copying solution to nek
+calling nek_userchk ...
+runtime statistics
+
+  setup                 4.946388e+01 s
+  checkpointing         4.624445e-01 s
+  udfExecuteStep        8.082596e-01 s
+  computation           9.629710e+00 s
+  makef                 1.124797e-02 s
+  velocitySolve         1.061940e-01 s
+  pressureSolve         8.592574e+00 s
+    preconditioner      6.460604e+00 s
+      coarse grid       2.429305e-01 s
+  makeq                 5.081344e-03 s
+    udfSEqnSource       -1.000000e+00 s
+  udfProperties         7.544000e-04 s
+
+  dotp                  8.002437e-01 s
+
+elapsedTime: 3.72834e+07 s
+End
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4800000E-01  -0.2122245E-04   0.8427636E-04   0.5319995E-02   0.2222546E+00   0.2122245E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4900000E-01  -0.2166968E-04   0.8601837E-04   0.5544590E-02   0.2269356E+00   0.2166968E-03
+ NOTE: All elements deformed , param(59) ^=0
+err   0.5000000E-01  -0.2211670E-04   0.8775953E-04   0.5773868E-02   0.2316197E+00   0.2211670E-03
 
        50  5.0000E-02 Write checkpoint
        FILE:/home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl0.f00001                                                                          
- min/max:  -8.0398      -7.0398       10.561       12.061       2.5117       2.6117    
- min/max: -0.18941E-01  0.19212E-01   0.0000      0.24573     -0.50051E-02  0.50051E-02
- min/max:  -1.6039       2.6354    
- min/max:  0.99714       1.0028    
+ min/max:   0.0000       1.0000     -0.99407      0.50000       0.0000      0.10000    
+ min/max: -0.19159E-01  0.19118E-01   0.0000      0.24573     -0.50148E-02  0.50148E-02
+ min/max:  -1.5822       2.6308    
+ min/max:  0.99718       1.0028    
 
        50  5.0000E-02 done :: Write checkpoint
                               file size =      2.4    MB
-                              avg data-throughput =     4.8MB/s
-                              io-nodes =     2
+                              avg data-throughput =     5.1MB/s
+                              io-nodes =     1
 
-step= 51  t= 5.10000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.33239e+02 s
-step= 52  t= 5.20000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.39831e+02 s
-step= 53  t= 5.30000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.46420e+02 s
-step= 54  t= 5.40000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.53010e+02 s
-step= 55  t= 5.50000000e-02  dt=1.0e-03  C= 0.04  UVW: 9  P: 201  S: 10  eTime= 6.57e+00, 3.59581e+02 s
-step= 56  t= 5.60000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 3.66162e+02 s
-step= 57  t= 5.70000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 3.72748e+02 s
-step= 58  t= 5.80000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 3.79346e+02 s
-step= 59  t= 5.90000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.62e+00, 3.85964e+02 s
-step= 60  t= 6.00000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 3.92569e+02 s
-step= 61  t= 6.10000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.60e+00, 3.99164e+02 s
-step= 62  t= 6.20000000e-02  dt=1.0e-03  C= 0.05  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 4.05750e+02 s
-step= 63  t= 6.30000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 4.12336e+02 s
-step= 64  t= 6.40000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 4.18916e+02 s
-step= 65  t= 6.50000000e-02  dt=1.0e-03  C= 0.05  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 4.25506e+02 s
-step= 66  t= 6.60000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 4.32097e+02 s
-step= 67  t= 6.70000000e-02  dt=1.0e-03  C= 0.05  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 4.38688e+02 s
-step= 68  t= 6.80000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 4.45277e+02 s
-step= 69  t= 6.90000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.58e+00, 4.51856e+02 s
-step= 70  t= 7.00000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 4.58444e+02 s
-step= 71  t= 7.10000000e-02  dt=1.0e-03  C= 0.05  UVW: 9  P: 201  S: 10  eTime= 6.60e+00, 4.65041e+02 s
-step= 72  t= 7.20000000e-02  dt=1.0e-03  C= 0.05  UVW: 8  P: 201  S: 10  eTime= 6.61e+00, 4.71648e+02 s
-step= 73  t= 7.30000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.61e+00, 4.78256e+02 s
-step= 74  t= 7.40000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.61e+00, 4.84868e+02 s
-step= 75  t= 7.50000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.58e+00, 4.91451e+02 s
-step= 76  t= 7.60000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.58e+00, 4.98033e+02 s
-step= 77  t= 7.70000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.61e+00, 5.04645e+02 s
-step= 78  t= 7.80000000e-02  dt=1.0e-03  C= 0.06  UVW: 8  P: 201  S: 10  eTime= 6.61e+00, 5.11251e+02 s
-step= 79  t= 7.90000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.60e+00, 5.17848e+02 s
-step= 80  t= 8.00000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 5.24436e+02 s
-step= 81  t= 8.10000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 5.31023e+02 s
-step= 82  t= 8.20000000e-02  dt=1.0e-03  C= 0.06  UVW: 8  P: 201  S: 10  eTime= 6.59e+00, 5.37617e+02 s
-step= 83  t= 8.30000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.58e+00, 5.44195e+02 s
-step= 84  t= 8.40000000e-02  dt=1.0e-03  C= 0.06  UVW: 9  P: 201  S: 10  eTime= 6.59e+00, 5.50790e+02 s
-step= 85  t= 8.50000000e-02  dt=1.0e-03  C= 0.06  UVW: 10  P: 201  S: 10  eTime= 6.59e+00, 5.57377e+02 s
-step= 86  t= 8.60000000e-02  dt=1.0e-03  C= 0.07  UVW: 9  P: 201  S: 10  eTime= 6.58e+00, 5.63958e+02 s
