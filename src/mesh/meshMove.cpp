@@ -11,34 +11,17 @@ void mesh_t::computeInvMassMatrix()
 }
 void mesh_t::move(int tstep){
 
-    std::cout << "abm: ";
-    for(int i = 0 ; i < 3; ++i)
-      std::cout << ABCoeff[i] << ", ";
-    std::cout << "\n";
-
-    linAlg_t * linAlg = linAlg_t::getInstance();
-    if(tstep == 0){
-      occa::memory o_Wx = o_U + 0 * fieldOffset * sizeof(dfloat);
-      occa::memory o_Wy = o_U + 1 * fieldOffset * sizeof(dfloat);
-      occa::memory o_Wz = o_U + 2 * fieldOffset * sizeof(dfloat);
-      // x = 1.0 * Wx + 1.0 * x
-      linAlg->axpby(Nelements * Np, 1.0, o_Wx, 1.0, o_x);
-      linAlg->axpby(Nelements * Np, 1.0, o_Wy, 1.0, o_y);
-      linAlg->axpby(Nelements * Np, 1.0, o_Wz, 1.0, o_z);
-    } else {
-      // update o_x, o_y and o_z based on mesh->o_U using AB formula
-      nStagesSumVectorKernel(
-          Nelements * Np,
-          fieldOffset,
-          o_ABCoeff,
-          o_U,
-          o_x,
-          o_y,
-          o_z
-      );
-    }
-
-    update();
+  // update o_x, o_y and o_z based on mesh->o_U using AB formula
+  nStagesSumVectorKernel(
+      Nelements * Np,
+      fieldOffset,
+      o_ABCoeff,
+      o_U,
+      o_x,
+      o_y,
+      o_z
+  );
+  update();
 }
 void mesh_t::update(){
     geometricFactorsKernel(
