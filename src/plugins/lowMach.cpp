@@ -107,7 +107,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
       mesh->o_vmapM,
       nrs->o_EToB,
       nrs->fieldOffset,
-      nrs->o_U,
+      nrs->o_Ue,
       o_scratch
     );
     o_scratch.copyTo(scratch, mesh->Nelements * sizeof(dfloat));
