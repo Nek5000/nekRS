@@ -44,6 +44,7 @@ private:
   occa::memory o_scratch;
 
   void setup();
+  void reallocBuffers(const dlong Nbytes);
   linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
     blocksize = BLOCKSIZE;
     device = _device;
