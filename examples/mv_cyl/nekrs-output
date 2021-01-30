@@ -14,12 +14,12 @@ using OCCA_CACHE_DIR: /home/malachi2/moving-mesh-dir/cases/mv_cyl/.cache/occa/
 Initializing device
 active occa mode: CUDA
 
-building udf ... done (14.1486s)
-building nek ... done (45.1987s)
+building udf ... done (8.707s)
+building nek ... done (27.9392s)
 
 loading nek ...
-running RCB ...  finished in 0.000163853 s
-running RSB ... finished in 0.000346974 s
+running RCB ...  finished in 0.000371665 s
+running RSB ... finished in 0.00073979 s
 gs_setup: 0 unique labels shared
    handle bytes (avg, min, max): 488492 488492 488492
    buffer bytes (avg, min, max): 0 0 0
@@ -32,21 +32,21 @@ gs_setup: 0 unique labels shared
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.48E-01 sec
+ done :: read .re2 file    0.46E-01 sec
 
  reading /home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl.co2                                                                              
   
- done :: partioning   0.61365E-01 sec
+ done :: partioning   0.59748E-01 sec
 
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.29E-01 sec
+ done :: read .re2 file    0.30E-01 sec
 
  setup mesh topology
    Right-handed check complete for         150 elements. OK.
    setvert3d:   8           27808           60208           27808           27808
-   setupds time 8.9282E-03 seconds   0  8       27808         150
+   setupds time 1.3408E-02 seconds   0  8       27808         150
  
  
  max multiplicity            8
@@ -95,11 +95,11 @@ NboundaryIDs: 3
 NboundaryFaces: 50
 Nq: 8 cubNq: 11 
 J in range [0.000125,0.000125]
-loading gs kernels ... done (10.4335s)
+loading gs kernels ... done (1.97234s)
 min NinternalElements: 150 (ratio: 1.00)
 loading udf kernels ... done
-loading ns kernels ... done (6.68161s)
-loading cds kernels ... done (0.876682s)
+loading ns kernels ... done (0.703918s)
+loading cds kernels ... done (0.217274s)
 copying solution from nek
 calling udf_setup ... done
 ================= ELLIPTIC SETUP SCALAR00 ===============
@@ -107,26 +107,26 @@ bID 1 -> bcType zeroGradient
 bID 2 -> bcType zeroGradient
 bID 3 -> bcType zeroGradient
 allNeumann = 0 
-loading elliptic kernels ... done (3.37364s)
+loading elliptic kernels ... done (0.685593s)
 Building diagonal...done.
 ================ ELLIPTIC SETUP VELOCITY ================
 bID 1 -> bcType zeroValue
 bID 2 -> bcType fixedValue
 bID 3 -> bcType zeroXValue/zeroGradient
 allNeumann = 0 
-loading elliptic kernels ... done (2.44988s)
+loading elliptic kernels ... done (0.616479s)
 Building diagonal...done.
 ================ ELLIPTIC SETUP PRESSURE ================
 allNeumann = 1 
-loading elliptic kernels ... done (0.855078s)
+loading elliptic kernels ... done (0.551512s)
 Compiling parALMOND Kernels...done.
 =============BUILDING MULTIGRID LEVEL OF DEGREE 7==================
 =============BUILDING MULTIGRID LEVEL OF DEGREE 3==================
 J in range [0.000125,0.000125]
-loading elliptic MG kernels ... done (0.428705s)
+loading elliptic MG kernels ... done (0.104247s)
 =============BUILDING MULTIGRID LEVEL OF DEGREE 1==================
 J in range [0.000125,0.000125]
-loading elliptic MG kernels ... done (0.481311s)
+loading elliptic MG kernels ... done (0.102023s)
 Building full FEM matrix...done.
 Setting up AMG...
 
@@ -191,7 +191,7 @@ BoomerAMG SOLVER PARAMETERS:
                    Post-CG relaxation (up):   0
                              Coarsest grid:   0   0   0
 
-done (0.0883056s)
+done (0.00396503s)
 --------------------Multigrid Report---------------------
 ---------------------------------------------------------
 level|    Type    |                 |     Smoother      |
@@ -284,67 +284,67 @@ key: DATA FILE,                           value: /home/malachi2/moving-mesh-dir/
 key: CI-MODE,                             value: 0
 
 device memory usage: 0 GB
-initialization took 98.913 s
+initialization took 46.2832 s
 
 timestepping for 50 steps ...
-step= 1  t= 1.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 19  P: 201  S: 1  eTime= 1.18e+00, 1.18059e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0
+sum(o_z_increment) = 0
+step= 1  t= 1.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 19  P: 201  S: 1  eTime= 1.89e-01, 1.88515e-01 s
 copying solution to nek
 calling nek_userchk ...
-step= 2  t= 2.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 14  P: 201  S: 7  eTime= 1.04e+00, 2.22004e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0.189496
+sum(o_z_increment) = 0
+step= 2  t= 2.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 14  P: 201  S: 7  eTime= 1.85e-01, 3.73579e-01 s
 copying solution to nek
 calling nek_userchk ...
-step= 3  t= 3.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 172  S: 7  eTime= 1.20e+00, 3.42042e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0.300034
+sum(o_z_increment) = 0
+step= 3  t= 3.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 7  eTime= 1.84e-01, 5.57977e-01 s
 copying solution to nek
 calling nek_userchk ...
-step= 4  t= 4.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 8  eTime= 5.16e-01, 3.93662e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0.489526
+sum(o_z_increment) = 0
+step= 4  t= 4.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 13  P: 201  S: 8  eTime= 1.84e-01, 7.42354e-01 s
 copying solution to nek
 calling nek_userchk ...
-step= 5  t= 5.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 12  P: 201  S: 8  eTime= 2.78e-01, 4.21471e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0.679014
+sum(o_z_increment) = 0
+step= 5  t= 5.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 12  P: 199  S: 8  eTime= 1.83e-01, 9.25394e-01 s
 copying solution to nek
 calling nek_userchk ...
-step= 6  t= 6.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 11  P: 201  S: 8  eTime= 3.04e-01, 4.51857e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 0.868494
+sum(o_z_increment) = 0
+step= 6  t= 6.00000000e-03  dt=1.0e-03  C= 0.00  UVW: 11  P: 201  S: 8  eTime= 1.83e-01, 1.10839e+00 s
 copying solution to nek
 calling nek_userchk ...
-step= 7  t= 7.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 11  P: 201  S: 8  eTime= 3.13e-01, 4.83119e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 1.05797
+sum(o_z_increment) = 0
+step= 7  t= 7.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 11  P: 197  S: 8  eTime= 1.81e-01, 1.28962e+00 s
 copying solution to nek
 calling nek_userchk ...
-step= 8  t= 8.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 1.38e+00, 6.21252e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 1.24743
+sum(o_z_increment) = 0
+step= 8  t= 8.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 1.85e-01, 1.47413e+00 s
 copying solution to nek
 calling nek_userchk ...
-step= 9  t= 9.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 8.50e-01, 7.06290e+00 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 1.43688
+sum(o_z_increment) = 0
+step= 9  t= 9.00000000e-03  dt=1.0e-03  C= 0.01  UVW: 10  P: 201  S: 8  eTime= 1.83e-01, 1.65759e+00 s
 copying solution to nek
 calling nek_userchk ...
-step= 10  t= 1.00000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.08e+00, 8.14658e+00 s
-copying solution to nek
-calling nek_userchk ...
-step= 11  t= 1.10000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 181  S: 9  eTime= 7.02e-01, 8.84818e+00 s
-copying solution to nek
-calling nek_userchk ...
-step= 12  t= 1.20000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 162  S: 9  eTime= 4.85e-01, 9.33285e+00 s
-copying solution to nek
-calling nek_userchk ...
-step= 13  t= 1.30000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 4.27e-01, 9.75940e+00 s
-copying solution to nek
-calling nek_userchk ...
-step= 14  t= 1.40000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 169  S: 9  eTime= 3.25e-01, 1.00847e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 15  t= 1.50000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 150  S: 9  eTime= 2.96e-01, 1.03811e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 16  t= 1.60000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.93e-01, 1.10740e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 17  t= 1.70000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 6.88e-01, 1.17617e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 18  t= 1.80000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 130  S: 9  eTime= 4.89e-01, 1.22503e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 19  t= 1.90000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 176  S: 9  eTime= 5.29e-01, 1.27790e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 20  t= 2.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 192  S: 9  eTime= 6.08e-01, 1.33868e+01 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 1.62631
+sum(o_z_increment) = 0
+step= 10  t= 1.00000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 134  S: 9  eTime= 1.25e-01, 1.78246e+00 s
 copying solution to nek
 calling nek_userchk ...
  set initial conditions
@@ -361,6 +361,9 @@ calling nek_userchk ...
  done :: set initial conditions
   
 err   0.0000000E+00  -0.1573741E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
    setvert3d:   8           27808           60208           27808           27808
  NOTE: All elements deformed , param(59) ^=0
    setvert3d:  10           46960          123760           46960           46960
@@ -368,216 +371,519 @@ err   0.0000000E+00  -0.1573741E-13   0.0000000E+00   0.0000000E+00   0.0000000E
    setvert3d:   6           13656           23256           13656           13656
  NOTE: All elements deformed , param(59) ^=0
 err   0.0000000E+00  -0.1570966E-13   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
  NOTE: All elements deformed , param(59) ^=0
 err   0.1000000E-02  -0.2467399E-06   0.1762426E-05   0.2302910E-05   0.4605826E-02   0.2467399E-05
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    189.49609279193092     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2000000E-02  -0.4934778E-06   0.3524836E-05   0.9211673E-05   0.9211716E-02   0.4934778E-05
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    378.99031533393594     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3000000E-02  -0.9458256E-06   0.5287210E-05   0.2072638E-04   0.1381773E-01   0.9458256E-05
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    568.48079739463867     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.4000000E-02  -0.1398162E-05   0.7049532E-05   0.3684720E-04   0.1842394E-01   0.1398162E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    757.96566877902524     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.5000000E-02  -0.1850484E-05   0.8811784E-05   0.5757435E-04   0.2303040E-01   0.1850484E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    947.44305934885199     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.6000000E-02  -0.2302785E-05   0.1057395E-04   0.8290811E-04   0.2763718E-01   0.2302785E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    1136.9110990374400     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.7000000E-02  -0.2755063E-05   0.1233601E-04   0.1128488E-03   0.3224435E-01   0.2755063E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    1326.3679178728585     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.8000000E-02  -0.3207311E-05   0.1409795E-04   0.1473970E-03   0.3685195E-01   0.3207311E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    1515.8116459929263     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.9000000E-02  -0.3659526E-05   0.1585975E-04   0.1865529E-03   0.4146007E-01   0.3659526E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    1705.2404136635159     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1000000E-01  -0.4111703E-05   0.1762139E-04   0.2303173E-03   0.4606876E-01   0.4111703E-04
+ checksum(wx) =    0.0000000000000000     
+sum(o_x_increment) = 0
+sum(o_y_increment) = 1.81573
+sum(o_z_increment) = 0
+step= 11  t= 1.10000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.84e-01, 1.96600e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.00513
+sum(o_z_increment) = 0
+step= 12  t= 1.20000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.85e-01, 2.15067e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.19451
+sum(o_z_increment) = 0
+step= 13  t= 1.30000000e-02  dt=1.0e-03  C= 0.01  UVW: 9  P: 201  S: 9  eTime= 1.84e-01, 2.33456e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.38387
+sum(o_z_increment) = 0
+step= 14  t= 1.40000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 2.51863e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.57321
+sum(o_z_increment) = 0
+step= 15  t= 1.50000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 174  S: 9  eTime= 1.61e-01, 2.67924e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.76252
+sum(o_z_increment) = 0
+step= 16  t= 1.60000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.83e-01, 2.86256e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 2.9518
+sum(o_z_increment) = 0
+step= 17  t= 1.70000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 168  S: 9  eTime= 1.55e-01, 3.01736e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 3.14106
+sum(o_z_increment) = 0
+step= 18  t= 1.80000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 184  S: 9  eTime= 1.69e-01, 3.18631e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 3.33028
+sum(o_z_increment) = 0
+step= 19  t= 1.90000000e-02  dt=1.0e-03  C= 0.01  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 3.37002e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 3.51947
+sum(o_z_increment) = 0
+step= 20  t= 2.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 158  S: 9  eTime= 1.46e-01, 3.51605e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 3.70863
+sum(o_z_increment) = 0
+step= 21  t= 2.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 193  S: 9  eTime= 1.77e-01, 3.69346e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 3.89775
+sum(o_z_increment) = 0
+step= 22  t= 2.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 3.87705e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 4.08683
+sum(o_z_increment) = 0
+step= 23  t= 2.30000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 4.06059e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 4.27587
+sum(o_z_increment) = 0
+step= 24  t= 2.40000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 196  S: 9  eTime= 1.81e-01, 4.24195e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 4.46486
+sum(o_z_increment) = 0
+step= 25  t= 2.50000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 193  S: 9  eTime= 1.77e-01, 4.41934e+00 s
+copying solution to nek
+calling nek_userchk ...
+ checksum(wy) =    1894.6523512996857     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1100000E-01  -0.4563839E-05   0.1938286E-04   0.2786907E-03   0.5067809E-01   0.4563839E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    2084.0455894820861     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1200000E-01  -0.5015927E-05   0.2114414E-04   0.3316737E-03   0.5528812E-01   0.5015927E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    2273.4182589765715     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1300000E-01  -0.5467964E-05   0.2290521E-04   0.3892671E-03   0.5989891E-01   0.5467964E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    2462.7684907488156     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1400000E-01  -0.5919946E-05   0.2466606E-04   0.4514718E-03   0.6451053E-01   0.5919946E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    2652.0944159925548     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1500000E-01  -0.6371868E-05   0.2642666E-04   0.5182885E-03   0.6912304E-01   0.6371868E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    2841.3941661325402     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1600000E-01  -0.6823725E-05   0.2818700E-04   0.5897182E-03   0.7373650E-01   0.6823725E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3030.6658728608268     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1700000E-01  -0.7275513E-05   0.2994706E-04   0.6657618E-03   0.7835099E-01   0.7275513E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3219.9076681404090     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1800000E-01  -0.7727228E-05   0.3170682E-04   0.7464205E-03   0.8296655E-01   0.7727228E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3409.1176842318250     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.1900000E-01  -0.8178865E-05   0.3346628E-04   0.8316953E-03   0.8758327E-01   0.8178865E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3598.2940537084669     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2000000E-01  -0.8630420E-05   0.3522540E-04   0.9215875E-03   0.9220119E-01   0.8630420E-04
-step= 21  t= 2.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 5.85e-01, 1.39720e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 22  t= 2.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 8.48e-01, 1.48201e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 23  t= 2.30000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 8.94e-01, 1.57140e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 24  t= 2.40000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 170  S: 9  eTime= 6.50e-01, 1.63640e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 25  t= 2.50000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 2.32e-01, 1.65958e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 26  t= 2.60000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 133  S: 9  eTime= 1.83e-01, 1.67787e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 27  t= 2.70000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 2.00e-01, 1.69788e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 28  t= 2.80000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 2.13e-01, 1.71917e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 29  t= 2.90000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 197  S: 9  eTime= 2.54e-01, 1.74453e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 30  t= 3.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.98e-01, 1.76432e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 31  t= 3.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 187  S: 9  eTime= 3.27e-01, 1.79701e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 32  t= 3.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 3.67e-01, 1.83371e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 33  t= 3.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 186  S: 9  eTime= 3.14e-01, 1.86514e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 34  t= 3.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 197  S: 9  eTime= 3.03e-01, 1.89542e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 35  t= 3.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 2.91e-01, 1.92454e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 36  t= 3.60000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 2.36e-01, 1.94816e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 37  t= 3.70000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 2.53e-01, 1.97347e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 38  t= 3.80000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 3.34e-01, 2.00684e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 39  t= 3.90000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 3.34e-01, 2.04020e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 40  t= 4.00000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 198  S: 10  eTime= 3.25e-01, 2.07267e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 41  t= 4.10000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 3.00e-01, 2.10270e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 42  t= 4.20000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 2.22e-01, 2.12488e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 43  t= 4.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 143  S: 10  eTime= 1.34e-01, 2.13829e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 44  t= 4.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 199  S: 10  eTime= 1.96e-01, 2.15793e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 45  t= 4.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 2.76e-01, 2.18554e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 46  t= 4.60000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 2.57e-01, 2.21126e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 47  t= 4.70000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 4.02e-01, 2.25150e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 48  t= 4.80000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 2.66e-01, 2.27815e+01 s
-copying solution to nek
-calling nek_userchk ...
-step= 49  t= 4.90000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 197  S: 10  eTime= 2.47e-01, 2.30283e+01 s
-copying solution to nek
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3787.4349094729723     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2100000E-01  -0.9081887E-05   0.3698417E-04   0.1016098E-02   0.9682039E-01   0.9081887E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    3976.5383847857488     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2200000E-01  -0.9533264E-05   0.3874258E-04   0.1115229E-02   0.1014409E+00   0.9533264E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    4165.6026132682200     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2300000E-01  -0.9984545E-05   0.4050061E-04   0.1218980E-02   0.1060629E+00   0.9984545E-04
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    4354.6257289375017     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2400000E-01  -0.1043573E-04   0.4225824E-04   0.1327355E-02   0.1106863E+00   0.1043573E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    4543.6058662064588     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2500000E-01  -0.1088680E-04   0.4401545E-04   0.1440354E-02   0.1153112E+00   0.1088680E-03
+ checksum(wx) =    0.0000000000000000     
+sum(o_x_increment) = 0
+sum(o_y_increment) = 4.65382
+sum(o_z_increment) = 0
+step= 26  t= 2.60000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 186  S: 9  eTime= 1.71e-01, 4.59069e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 4.84273
+sum(o_z_increment) = 0
+step= 27  t= 2.70000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 4.77492e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.03159
+sum(o_z_increment) = 0
+step= 28  t= 2.80000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 183  S: 9  eTime= 1.69e-01, 4.94442e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.2204
+sum(o_z_increment) = 0
+step= 29  t= 2.90000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 5.12818e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.40916
+sum(o_z_increment) = 0
+step= 30  t= 3.00000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 176  S: 9  eTime= 1.62e-01, 5.29033e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.59786
+sum(o_z_increment) = 0
+step= 31  t= 3.10000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.83e-01, 5.47347e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.78651
+sum(o_z_increment) = 0
+step= 32  t= 3.20000000e-02  dt=1.0e-03  C= 0.02  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 5.65740e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 5.97511
+sum(o_z_increment) = 0
+step= 33  t= 3.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 126  S: 9  eTime= 1.18e-01, 5.77506e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 6.16364
+sum(o_z_increment) = 0
+step= 34  t= 3.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 9  eTime= 1.84e-01, 5.95924e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 6.35211
+sum(o_z_increment) = 0
+step= 35  t= 3.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 182  S: 10  eTime= 1.67e-01, 6.12618e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 6.54052
+sum(o_z_increment) = 0
+step= 36  t= 3.60000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 6.30980e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 6.72887
+sum(o_z_increment) = 0
+step= 37  t= 3.70000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 138  S: 10  eTime= 1.29e-01, 6.43861e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 6.91715
+sum(o_z_increment) = 0
+step= 38  t= 3.80000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 181  S: 10  eTime= 1.67e-01, 6.60556e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 7.10536
+sum(o_z_increment) = 0
+step= 39  t= 3.90000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 160  S: 10  eTime= 1.47e-01, 6.75277e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 7.2935
+sum(o_z_increment) = 0
+step= 40  t= 4.00000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.83e-01, 6.93622e+00 s
+copying solution to nek
+calling nek_userchk ...
+ checksum(wy) =    4732.5411599197005     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2600000E-01  -0.1133777E-04   0.4577223E-04   0.1557978E-02   0.1199377E+00   0.1133777E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    4921.4297453672270     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2700000E-01  -0.1178862E-04   0.4752855E-04   0.1680230E-02   0.1245659E+00   0.1178862E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    5110.2697582832998     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2800000E-01  -0.1223936E-04   0.4928441E-04   0.1807110E-02   0.1291958E+00   0.1223936E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    5299.0593349055043     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.2900000E-01  -0.1268997E-04   0.5103978E-04   0.1938622E-02   0.1338275E+00   0.1268997E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    5487.7966119464463     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3000000E-01  -0.1314046E-04   0.5279464E-04   0.2074766E-02   0.1384611E+00   0.1314046E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    5676.4797266550722     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3100000E-01  -0.1359081E-04   0.5454898E-04   0.2215545E-02   0.1430965E+00   0.1359081E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    5865.1068167933481     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3200000E-01  -0.1404103E-04   0.5630279E-04   0.2360960E-02   0.1477340E+00   0.1404103E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6053.6760207020598     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3300000E-01  -0.1449111E-04   0.5805604E-04   0.2511013E-02   0.1523735E+00   0.1449111E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6242.1854772706156     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3400000E-01  -0.1494104E-04   0.5980872E-04   0.2665707E-02   0.1570151E+00   0.1494104E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6430.6333259894800     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3500000E-01  -0.1539083E-04   0.6156080E-04   0.2825044E-02   0.1616588E+00   0.1539083E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6619.0177069511046     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3600000E-01  -0.1584046E-04   0.6331228E-04   0.2989026E-02   0.1663048E+00   0.1584046E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6807.3367608797789     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3700000E-01  -0.1628993E-04   0.6506314E-04   0.3157654E-02   0.1709531E+00   0.1628993E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    6995.5886291483221     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3800000E-01  -0.1673924E-04   0.6681335E-04   0.3330933E-02   0.1756038E+00   0.1673924E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    7183.7714537768843     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.3900000E-01  -0.1718839E-04   0.6856290E-04   0.3508863E-02   0.1802569E+00   0.1718839E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    7371.8833774806426     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.4000000E-01  -0.1763736E-04   0.7031178E-04   0.3691447E-02   0.1849124E+00   0.1763736E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4100000E-01  -0.1808616E-04   0.7205996E-04   0.3878689E-02   0.1895706E+00   0.1808616E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4200000E-01  -0.1853478E-04   0.7380743E-04   0.4070589E-02   0.1942314E+00   0.1853478E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4300000E-01  -0.1898321E-04   0.7555418E-04   0.4267152E-02   0.1988948E+00   0.1898321E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4400000E-01  -0.1943145E-04   0.7730017E-04   0.4468380E-02   0.2035610E+00   0.1943145E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4500000E-01  -0.1987950E-04   0.7904541E-04   0.4674275E-02   0.2082300E+00   0.1987950E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4600000E-01  -0.2032736E-04   0.8078986E-04   0.4884841E-02   0.2129019E+00   0.2032736E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4700000E-01  -0.2077501E-04   0.8253352E-04   0.5100080E-02   0.2175768E+00   0.2077501E-03
- NOTE: All elements deformed , param(59) ^=0
-err   0.4800000E-01  -0.2122245E-04   0.8427636E-04   0.5319995E-02   0.2222546E+00   0.2122245E-03
- NOTE: All elements deformed , param(59) ^=0
+ checksum(wx) =    0.0000000000000000     
+sum(o_x_increment) = 0
+sum(o_y_increment) = 7.48157
+sum(o_z_increment) = 0
+step= 41  t= 4.10000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 7.12033e+00 s
+copying solution to nek
 calling nek_userchk ...
-step= 50  t= 5.00000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 2.18e-01, 2.32463e+01 s
+sum(o_x_increment) = 0
+sum(o_y_increment) = 7.66957
+sum(o_z_increment) = 0
+step= 42  t= 4.20000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 171  S: 10  eTime= 1.58e-01, 7.27823e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 7.85749
+sum(o_z_increment) = 0
+step= 43  t= 4.30000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 174  S: 10  eTime= 1.60e-01, 7.43802e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.04533
+sum(o_z_increment) = 0
+step= 44  t= 4.40000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 188  S: 10  eTime= 1.73e-01, 7.61130e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.23309
+sum(o_z_increment) = 0
+step= 45  t= 4.50000000e-02  dt=1.0e-03  C= 0.03  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 7.79515e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.42078
+sum(o_z_increment) = 0
+step= 46  t= 4.60000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.83e-01, 7.97856e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.60837
+sum(o_z_increment) = 0
+step= 47  t= 4.70000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.83e-01, 8.16134e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.79589
+sum(o_z_increment) = 0
+step= 48  t= 4.80000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 8.34485e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 8.98331
+sum(o_z_increment) = 0
+step= 49  t= 4.90000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 201  S: 10  eTime= 1.84e-01, 8.52903e+00 s
+copying solution to nek
+calling nek_userchk ...
+sum(o_x_increment) = 0
+sum(o_y_increment) = 9.17065
+sum(o_z_increment) = 0
+step= 50  t= 5.00000000e-02  dt=1.0e-03  C= 0.04  UVW: 8  P: 149  S: 10  eTime= 1.39e-01, 8.66806e+00 s
 copying solution to nek
 calling nek_userchk ...
 runtime statistics
 
-  setup                 9.891304e+01 s
-  checkpointing         6.208847e-01 s
-  udfExecuteStep        2.049541e+00 s
-  computation           2.529588e+01 s
-  makef                 1.438656e-02 s
-  velocitySolve         3.496274e-01 s
-  pressureSolve         2.256508e+01 s
-    preconditioner      1.779093e+01 s
-      coarse grid       6.432666e-01 s
-  makeq                 9.979264e-03 s
+  setup                 4.628318e+01 s
+  checkpointing         3.930680e-01 s
+  udfExecuteStep        7.951926e-01 s
+  computation           9.463253e+00 s
+  makef                 1.125270e-02 s
+  velocitySolve         1.054705e-01 s
+  pressureSolve         8.436914e+00 s
+    preconditioner      6.356606e+00 s
+      coarse grid       2.347332e-01 s
+  makeq                 5.066816e-03 s
     udfSEqnSource       -1.000000e+00 s
-  udfProperties         1.196960e-03 s
+  udfProperties         7.607360e-04 s
 
-  dotp                  1.948015e+00 s
+  dotp                  7.785971e-01 s
 
-elapsedTime: 3.72859e+07 s
+elapsedTime: 3.72911e+07 s
 End
+ checksum(wy) =    7559.9225436721208     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4100000E-01  -0.1808616E-04   0.7205996E-04   0.3878689E-02   0.1895706E+00   0.1808616E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    7747.8870964822936     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4200000E-01  -0.1853478E-04   0.7380743E-04   0.4070589E-02   0.1942314E+00   0.1853478E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    7935.7751807724544     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4300000E-01  -0.1898321E-04   0.7555418E-04   0.4267152E-02   0.1988948E+00   0.1898321E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    8123.5849421681996     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4400000E-01  -0.1943145E-04   0.7730017E-04   0.4468380E-02   0.2035610E+00   0.1943145E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    8311.3145270561599     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4500000E-01  -0.1987950E-04   0.7904541E-04   0.4674275E-02   0.2082300E+00   0.1987950E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    8498.9620826285463     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4600000E-01  -0.2032736E-04   0.8078986E-04   0.4884841E-02   0.2129019E+00   0.2032736E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    8686.5257568737707     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4700000E-01  -0.2077501E-04   0.8253352E-04   0.5100080E-02   0.2175768E+00   0.2077501E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    8874.0036986198556     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
+err   0.4800000E-01  -0.2122245E-04   0.8427636E-04   0.5319995E-02   0.2222546E+00   0.2122245E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    9061.3940575310044     
+ checksum(wz) =    0.0000000000000000     
+ NOTE: All elements deformed , param(59) ^=0
 err   0.4900000E-01  -0.2166968E-04   0.8601837E-04   0.5544590E-02   0.2269356E+00   0.2166968E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    9248.6949841387013     
+ checksum(wz) =    0.0000000000000000     
  NOTE: All elements deformed , param(59) ^=0
 err   0.5000000E-01  -0.2211670E-04   0.8775953E-04   0.5773868E-02   0.2316197E+00   0.2211670E-03
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    9435.9046298633930     
+ checksum(wz) =    0.0000000000000000     
 
        50  5.0000E-02 Write checkpoint
        FILE:/home/malachi2/moving-mesh-dir/cases/mv_cyl/mv_cyl0.f00001                                                                          
@@ -588,6 +894,6 @@ err   0.5000000E-01  -0.2211670E-04   0.8775953E-04   0.5773868E-02   0.2316197E
 
        50  5.0000E-02 done :: Write checkpoint
                               file size =      2.4    MB
-                              avg data-throughput =     4.0MB/s
+                              avg data-throughput =     6.0MB/s
                               io-nodes =     1
 

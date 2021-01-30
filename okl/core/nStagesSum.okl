@@ -46,8 +46,11 @@
                       @restrict dfloat * result3)
 {
   for(dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
+    result1[i] = coef[0] * field[i + 0 * fieldOffset + 0 * 3 * fieldOffset];
+    result2[i] = coef[0] * field[i + 1 * fieldOffset + 0 * 3 * fieldOffset];
+    result3[i] = coef[0] * field[i + 2 * fieldOffset + 0 * 3 * fieldOffset];
     #pragma unroll
-    for(int state = 0 ; state < p_Nstates; ++state){
+    for(int state = 1 ; state < p_Nstates; ++state){
       result1[i] += coef[state] * field[i + 0 * fieldOffset + state * 3 * fieldOffset];
       result2[i] += coef[state] * field[i + 1 * fieldOffset + state * 3 * fieldOffset];
       result3[i] += coef[state] * field[i + 2 * fieldOffset + state * 3 * fieldOffset];
