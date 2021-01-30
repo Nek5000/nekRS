@@ -830,5 +830,28 @@ c-----------------------------------------------------------------------
 
       return
       end
-c-----------------------------------------------------------------------
+C----------------------------------------------------------------------
+C
+C     Generate geometric factors without updating coords
+C
+C----------------------------------------------------------------------
+      subroutine nekf_update_geom_factors()
+      include 'SIZE'
+      include 'INPUT'
+      include 'TSTEP'
+      include 'GEOM'
+      include 'WZ'
+      COMMON /SCRUZ/ XM3 (LX3,LY3,LZ3,LELT)
+     $ ,             YM3 (LX3,LY3,LZ3,LELT)
+     $ ,             ZM3 (LX3,LY3,LZ3,LELT)
 
+      CALL LAGMASS
+      CALL GEOM1 (XM3,YM3,ZM3)
+      CALL GEOM2
+      CALL UPDMSYS (1)
+      CALL VOLUME
+      CALL SETINVM
+      CALL SETDEF
+      CALL SFASTAX
+      return
+      end

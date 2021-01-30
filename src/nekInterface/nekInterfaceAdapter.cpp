@@ -49,7 +49,7 @@ static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 
 static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
-static void (* nek_gengeom_ptr)(int*);
+static void (* nek_updateGeomFactors_ptr)(void);
 
 void noop_func(void) {}
 
@@ -307,7 +307,7 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
   check_error(dlerror());
-  nek_gengeom_ptr = (void (*)(int*))dlsym(handle, fname("gengeom"));
+  nek_updateGeomFactors_ptr = (void (*)(void))dlsym(handle, fname("nekf_update_geom_factors"));
   check_error(dlerror());
 
 #define postfix(x) x ## _ptr
@@ -868,7 +868,6 @@ void nek_abCoeff(double *coeff, double *dt, int order)
 
 void nek_recomputeGeometry()
 {
-  int igeom = 2; // only call in case of moving mesh
-  (*nek_gengeom_ptr)(&igeom);
+  (*nek_updateGeomFactors_ptr)();
   *(nekData.ifield) = 1; // reset ifield after call
 }
