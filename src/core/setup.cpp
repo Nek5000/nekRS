@@ -420,6 +420,13 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->advectMeshVelocityKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
+      // nrsSurfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
+      if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
+        if(mesh->rank == 0)
+          printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+            "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
+        ABORT(EXIT_FAILURE);
+      }
       fileName = oklpath + "nrsSurfaceFlux.okl";
       kernelName = "nrsSurfaceFlux";
       nrs->surfaceFluxKernel =

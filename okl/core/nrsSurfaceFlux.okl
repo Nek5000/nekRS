@@ -40,7 +40,7 @@
     if(bcType == 2) {                                                                  \
       flux = (nx * u + ny * v + nz * w);                                               \
     }                                                                                  \
-    s_flux[id] = WSJ*flux;                                                             \
+    s_flux[id] += WSJ*flux;                                                             \
   }
 
 
@@ -58,6 +58,12 @@
   for(dlong e = 0; e < Nelements; e++; @outer(0)) {
     // @shared storage for flux terms
     @shared dfloat s_flux[p_blockSize];
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq) s_flux[k] = 0.0;
+      }
+    }
+    @barrier("local");
 
     // for all face nodes of all elements
     // face 0 & 5
@@ -156,7 +162,6 @@
         }
       }
     }
-    @barrier("local");
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         const int t = j * p_Nq + i;
@@ -165,7 +170,6 @@
         }
       }
     }
-    @barrier("local");
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         const int t = j * p_Nq + i;
@@ -174,7 +178,6 @@
         }
       }
     }
-    @barrier("local");
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         const int t = j * p_Nq + i;
@@ -183,7 +186,6 @@
         }
       }
     }
-    @barrier("local");
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         const int t = j * p_Nq + i;
