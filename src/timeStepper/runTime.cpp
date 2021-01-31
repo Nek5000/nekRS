@@ -274,11 +274,12 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 
     cds->sumMakefKernel(
       mesh->Nelements,
-      mesh->o_vgeo,
+      mesh->o_LMM,
       cds->idt,
       cds->o_extbdfA,
       cds->o_extbdfB,
       cds->fieldOffset * cds->NSfields,
+      cds->fieldOffset,
       isOffset,
       cds->o_S,
       o_adv,
@@ -407,7 +408,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 
   nrs->sumMakefKernel(
     mesh->Nelements,
-    mesh->o_vgeo,
+    mesh->o_LMM,
     nrs->idt,
     nrs->o_extbdfA,
     nrs->o_extbdfB,

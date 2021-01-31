@@ -269,6 +269,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
   kernelInfo["defines/" "p_NblockV"] = NblockV;
 
+  const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
+
   // jit compile udf kernels
   if (udf.loadKernels) {
     if (mesh->rank == 0) cout << "loading udf kernels ... ";
