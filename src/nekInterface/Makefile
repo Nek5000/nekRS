@@ -21,6 +21,8 @@ $(OBJDIR)/nekInterface.o: $(NEKRS_NEKINTERFACE_DIR)/nekInterface.f $(LIB)
 libnekInterface: lib$(CASENAME).so
 
 lib$(CASENAME).so: $(LIB) $(USRF) $(OBJDIR)/nekInterface.o
-	$(FC) $(FL2) -shared -o lib$(CASENAME).so $(USRF)  $(OBJDIR)/nekInterface.o $(NI_LDFLAGS)
+	$(FC) $(FL2) -shared -o lib$(CASENAME).so $(USRF) $(OBJDIR)/nekInterface.o $(NI_LDFLAGS)
+
+.NOTPARALLEL:
 
 .PHONY: libnekInterface 

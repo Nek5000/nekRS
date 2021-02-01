@@ -41,7 +41,6 @@ void ellipticAx(elliptic_t* elliptic,
 
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  const int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
   const int mapType = (elliptic->elementType == HEXAHEDRA &&
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
   const int integrationType = (elliptic->elementType == HEXAHEDRA &&

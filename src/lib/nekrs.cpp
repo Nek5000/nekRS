@@ -252,10 +252,9 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  if (rank == 0)
-    cout << "performing dry-run to jit-compile for >"
-         << npTarget
-         << " MPI tasks ...\n" << endl;
+  cout << "performing dry-run to jit-compile for >"
+       << npTarget
+       << " MPI tasks ...\n" << endl;
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
@@ -264,7 +263,7 @@ static void dryRun(setupAide &options, int npTarget)
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    if(rank == 0) udfBuild(udfFile.c_str());
+    udfBuild(udfFile.c_str());
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
@@ -275,7 +274,7 @@ static void dryRun(setupAide &options, int npTarget)
   // init solver
   nrsSetup(comm, device, options, nrs);
 
-  if (rank == 0) cout << "\nBuild successful." << endl;
+  cout << "\nBuild successful." << endl;
 }
 
 static void setOUDF(setupAide &options)
