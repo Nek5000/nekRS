@@ -586,6 +586,9 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   dfloat lambda;
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
+
+  if(!bcInPar)  
+
   (*nek_setup_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
                    &flow, &nscal, &nBcRead, &meshPartType,
 		   &rho, &mue, &rhoCp, &lambda, 
