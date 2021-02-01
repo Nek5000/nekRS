@@ -128,9 +128,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   const double setupTime = timer::query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
-    cout << "device memory usage: " << dGB << " GB" << endl;
-    cout << "initialization took " <<  setupTime << " s" << endl;
+    cout << "device memory usage: " << nrs->mesh->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);
 
@@ -254,9 +253,9 @@ void printRuntimeStatistics()
 static void dryRun(setupAide &options, int npTarget)
 {
   if (rank == 0)
-    cout << "performing dry-run for "
+    cout << "performing dry-run to jit-compile for >"
          << npTarget
-         << " MPI ranks ...\n" << endl;
+         << " MPI tasks ...\n" << endl;
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
