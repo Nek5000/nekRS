@@ -64,7 +64,7 @@
                   const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  //if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
                   bfx += JW * extbdfA[s] * FUx;
                   bfy += JW * extbdfA[s] * FUy;
                   bfz += JW * extbdfA[s] * FUz;
@@ -80,11 +80,9 @@
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
                   if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-
-                  // TODO: cleanup
-                  bfx += massMatrix[id + s * fieldOffset] * (idt * extbdfB[s] * Um) + massMatrix[id] * (extbdfA[s] * FUx);
-                  bfy += massMatrix[id + s * fieldOffset] * (idt * extbdfB[s] * Vm) + massMatrix[id] * (extbdfA[s] * FUy);
-                  bfz += massMatrix[id + s * fieldOffset] * (idt * extbdfB[s] * Wm) + massMatrix[id] * (extbdfA[s] * FUz);
+                  bfx += JW * (idt * extbdfB[s] * Um + extbdfA[s] * FUx);
+                  bfy += JW * (idt * extbdfB[s] * Vm + extbdfA[s] * FUy);
+                  bfz += JW * (idt * extbdfB[s] * Wm + extbdfA[s] * FUz);
                 }
               }
 
