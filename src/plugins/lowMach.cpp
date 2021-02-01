@@ -138,5 +138,5 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 }
 void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
 {
-  linAlg->add(nrs->Nlocal, (nrs->dp0thdt) * (gamma - 1.0) / gamma, o_FU);
+  linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
 }

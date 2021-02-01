@@ -19,6 +19,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF);
 occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S);
+void meshUpdate(nrs_t* nrs);
 
 double tElapsed = 0;
 
@@ -57,24 +58,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   // meshV \subset meshT
   if(movingMesh){
-    // lag mass matrices
-    mesh_t * mesh = nrs->mesh;
-    for (int s = mesh->torder; s > 1; s--) {
-      const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
-      mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
-      mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
-    }
-    nrs->mesh->move(tstep);
-    // update inverse lumped mass matrix on meshT
-    if(nrs->cht)
-    {
-      cds->mesh->computeInvMassMatrix();
-    }
-    // lag mesh velocities
-    for (int s = mesh->torder; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-      mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    }
+    meshUpdate(nrs);
   }
   if(nrs->Nscalar)
     scalarSolve(nrs, time, cds->o_S);
@@ -747,4 +731,26 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     }
   }
   return cds->o_wrk0;
+}
+void meshUpdate(nrs_t* nrs)
+{
+  // lag mass matrices
+  mesh_t * mesh = nrs->mesh;
+  cds_t * cds = nrs->cds;
+  for (int s = mesh->torder; s > 1; s--) {
+    const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+    mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+    mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+  }
+  nrs->mesh->move();
+  // update inverse lumped mass matrix on meshT
+  if(nrs->cht)
+  {
+    cds->mesh->computeInvMassMatrix();
+  }
+  // lag mesh velocities
+  for (int s = mesh->torder; s > 1; s--) {
+    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+    mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+  }
 }

@@ -9,7 +9,7 @@ void mesh_t::computeInvMassMatrix()
     scalarDivideKernel(Nelements * Np, 1.0, o_scratch);
     o_invLMM.copyFrom(o_scratch, Nelements * Np * sizeof(dfloat));
 }
-void mesh_t::move(int tstep){
+void mesh_t::move(){
 
   linAlg_t* linAlg = linAlg_t::getInstance();
   // update o_x, o_y and o_z based on mesh->o_U using AB formula
