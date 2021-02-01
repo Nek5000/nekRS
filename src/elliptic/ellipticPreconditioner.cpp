@@ -35,22 +35,20 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
+  timer::tic("preconditioner", 1);
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(elliptic->blockSolver)
       elliptic->dotMultiplyKernel(Nlocal, elliptic->Ntotal, o_r, precon->o_invDiagA, o_z);
     else
       elliptic->dotMultiplyKernel(Nlocal, o_r, precon->o_invDiagA, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    timer::tic("preconditioner", 1);
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
-    //ogsGatherScatter(o_z, ogsDfloat, ogsAdd, elliptic->ogs);
-    //elliptic->collocateKernel(mesh->Nelements*mesh->Np, elliptic->o_invDegree, o_z);
-    timer::toc("preconditioner");
   }else {
     if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(mesh->comm, 1);
     //o_z.copyFrom(o_r);
   }
+  timer::toc("preconditioner");
 
   if(elliptic->allNeumann) // zero mean of RHS
     ellipticZeroMean(elliptic, o_z);
