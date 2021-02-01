@@ -108,7 +108,7 @@
           div += (drdy * dvdr + dsdy * dvds + dtdy * dvdt);
           div += (drdz * dwdr + dsdz * dwds + dtdz * dwdt);
 
-          QTL[id] = JW * iRhoCpT * (div + qvol);
+          QTL[id] += JW * iRhoCpT * (div + qvol);
         }
       }
     }

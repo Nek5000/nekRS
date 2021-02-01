@@ -733,6 +733,7 @@ void nek_copyFrom(dfloat time)
   memcpy(nekData.vz, vz, sizeof(dfloat) * Nlocal);
   memcpy(nekData.pr, nrs->P, sizeof(dfloat) * Nlocal);
   if(nrs->Nscalar) {
+    if(nrs->options.compareArgs("LOWMACH", "TRUE")) memcpy(nekData.qtl, nrs->div, sizeof(dfloat) * Nlocal);
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < nrs->Nscalar; is++) {
       mesh_t* mesh;
@@ -749,7 +750,10 @@ void nek_ocopyFrom(void)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
-  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  if(nrs->Nscalar){
+    nrs->o_div.copyTo(nrs->div);
+    nrs->cds->o_S.copyTo(nrs->cds->S);
+  }
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
     mesh_t* mesh = nrs->mesh;
     mesh->o_U.copyTo(mesh->U);
@@ -786,7 +790,9 @@ void nek_ocopyTo(dfloat &time)
   nek_copyTo(time);
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_U.copyFrom(nrs->U);
-  if(nrs->Nscalar) nrs->cds->o_S.copyFrom(nrs->cds->S);
+  if(nrs->Nscalar){
+    nrs->cds->o_S.copyFrom(nrs->cds->S);
+  }
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
     mesh_t* mesh = nrs->mesh;
     mesh->o_x.copyFrom(mesh->x);

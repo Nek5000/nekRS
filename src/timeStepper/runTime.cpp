@@ -91,7 +91,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     timer::toc("udfProperties");
   }
 
-  if(udf.div) udf.div(nrs, time + nrs->dt[0], nrs->o_div);
+  
+  if(udf.div){
+    linAlg->fill(nrs->Nlocal, 0.0, nrs->o_div);
+    udf.div(nrs, time + nrs->dt[0], nrs->o_div);
+  }
 
   if(nrs->flow) fluidSolve(nrs, time, nrs->o_U); 
 

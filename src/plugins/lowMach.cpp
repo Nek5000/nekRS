@@ -8,8 +8,12 @@
 
 #include "lowMach.hpp"
 
-void lowMach::setup(nrs_t* nrs)
+static nrs_t* nrs = nullptr;
+static linAlg_t* linAlg = nullptr;
+void lowMach::setup(nrs_t* _nrs)
 {
+  nrs = _nrs;
+  linAlg = linAlg_t::getInstance();
   mesh_t* mesh = nrs->mesh;
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
@@ -131,4 +135,8 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     const dfloat weight = -prhs;
     linAlg->axpby(Nlocal, weight, o_w2, 1.0, o_div);
   }
+}
+void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
+{
+  linAlg->add(nrs->Nlocal, (nrs->dp0thdt) * (gamma - 1.0) / gamma, o_FU);
 }
