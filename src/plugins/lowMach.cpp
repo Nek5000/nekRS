@@ -10,6 +10,7 @@
 
 static nrs_t* nrs = nullptr;
 static linAlg_t* linAlg = nullptr;
+static int ifQThermal = 0;
 void lowMach::setup(nrs_t* _nrs)
 {
   nrs = _nrs;
@@ -28,6 +29,7 @@ void lowMach::setup(nrs_t* _nrs)
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
 void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
 {
+  ifQThermal = 1;
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
 
@@ -135,8 +137,12 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     const dfloat weight = -prhs;
     linAlg->axpby(Nlocal, weight, o_w2, 1.0, o_div);
   }
+  std::cout << "sum(o_div) = " << linAlg->sum(nrs->Nlocal, o_div, nrs->mesh->comm) << "\n";
+  ifQThermal = 0;
 }
 void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
 {
-  linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
+  std::cout << "dp0thdt: " << nrs->dp0thdt << "\n";
+  if(!ifQThermal)
+    linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
 }
