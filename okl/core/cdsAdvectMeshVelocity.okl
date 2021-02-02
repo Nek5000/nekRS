@@ -27,6 +27,7 @@
                                       @restrict const dfloat*  vgeo,
                                       @restrict const dfloat*  D,
                                       const dlong offset,
+                                      @restrict const dfloat* rho,
                                       @restrict const dfloat* W,
                                       @restrict const dfloat*  S,
                                       @restrict dfloat*  divSW)
@@ -89,6 +90,7 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat drdx = vgeo[gid + p_RXID * p_Np];
           const dfloat drdy = vgeo[gid + p_RYID * p_Np];
@@ -99,6 +101,7 @@
           const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
           const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat rhoM = rho[id];
 
           dfloat d_swx_dr  = 0.f, d_swx_ds  = 0.f, d_swx_dt  = 0.f;
           dfloat d_swy_dr  = 0.f, d_swy_ds  = 0.f, d_swy_dt  = 0.f;
@@ -124,8 +127,7 @@
             d_swz_dt += Dt * r_SWz[n];
           }
 
-          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          divSW[id]  += ((drdx * d_swx_dr + dsdx * d_swx_ds + dtdx * d_swx_dt);
+          divSW[id]  +=  rhoM * ((drdx * d_swx_dr + dsdx * d_swx_ds + dtdx * d_swx_dt);
                      +   (drdy * d_swy_dr + dsdy * d_swy_ds + dtdy * d_swy_dt);
                      +   (drdz * d_swz_dr + dsdz * d_swz_ds + dtdz * d_swz_dt));
         }

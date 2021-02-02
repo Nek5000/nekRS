@@ -212,8 +212,9 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
         mesh->o_vgeo,
         mesh->o_Dmatrices,
         cds->vFieldOffset,
+        cds->o_rho,
         mesh->o_U,
-        cds->o_U,
+        cds->o_S,
         o_FS
       );
     }

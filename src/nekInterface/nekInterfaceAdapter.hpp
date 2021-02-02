@@ -80,6 +80,7 @@ typedef struct
   double *wx, *wy, *wz;
 
   double *bfx, *bfy, *bfz;
+  double *bq;
 } nekdata_private;
 
 extern nekdata_private nekData;

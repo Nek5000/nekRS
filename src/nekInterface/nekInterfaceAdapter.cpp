@@ -662,6 +662,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nekData.bfx = (double*) nek_ptr("bfx");
   nekData.bfy = (double*) nek_ptr("bfy");
   nekData.bfz = (double*) nek_ptr("bfz");
+  nekData.bq = (double*) nek_ptr("bq");
 
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
