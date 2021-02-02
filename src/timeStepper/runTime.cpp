@@ -77,7 +77,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   
   if(udf.div){
-    linAlg_t* linAlg = linAlg_t::getInstance();
+    linAlg_t* linAlg = nrs->linAlg;
     linAlg->fill(nrs->Nlocal, 0.0, nrs->o_div);
     udf.div(nrs, time + nrs->dt[0], nrs->o_div);
   }

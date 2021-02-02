@@ -732,6 +732,7 @@ void nek_copyFrom(dfloat time)
     memcpy(nekData.wx, wx, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wy, wy, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wz, wz, sizeof(dfloat) * Nlocal);
+    cds_t* cds = nrs->cds;
     mesh_t* meshT = cds->mesh;
     memcpy(nekData.xm1, meshT->x, sizeof(dfloat) * Nlocal);
     memcpy(nekData.ym1, meshT->y, sizeof(dfloat) * Nlocal);
@@ -779,7 +780,10 @@ void nek_ocopyFrom(dfloat time, int tstep)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
-  if(nrs->Nscalar) nrs->cds->o_S.copyTo(nrs->cds->S);
+  if(nrs->Nscalar){
+    nrs->o_div.copyTo(nrs->div);
+    nrs->cds->o_S.copyTo(nrs->cds->S);
+  }
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
     mesh_t* mesh = nrs->mesh;
     mesh->o_U.copyTo(mesh->U);

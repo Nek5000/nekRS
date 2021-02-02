@@ -65,7 +65,7 @@ dfloat max_vector(dfloat* y, int size)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  linAlg_t* linAlg = nrs->linAlg;
   // do host reduction
   mesh->o_y.copyTo(mesh->y, nrs->Nlocal * sizeof(dfloat));
   const dfloat ymin = linAlg->min(nrs->Nlocal, mesh->o_y, mesh->comm);

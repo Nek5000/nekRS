@@ -10,8 +10,6 @@ void mesh_t::computeInvMassMatrix()
     o_invLMM.copyFrom(o_scratch, Nelements * Np * sizeof(dfloat));
 }
 void mesh_t::move(){
-
-  linAlg_t* linAlg = linAlg_t::getInstance();
   // update o_x, o_y and o_z based on mesh->o_U using AB formula
   occa::memory o_x_increment = o_scratch + 0 * fieldOffset * sizeof(dfloat);
   occa::memory o_y_increment = o_scratch + 1 * fieldOffset * sizeof(dfloat);
@@ -53,7 +51,7 @@ void mesh_t::update(){
         o_ggeo,
         o_cubvgeo
     );
-    volume = linAlg_t::getInstance()->sum(Nelements * Np, o_LMM, comm);
+    volume = linAlg->sum(Nelements * Np, o_LMM, comm);
     computeInvMassMatrix();
     surfaceGeometricFactorsKernel(
         Nelements,

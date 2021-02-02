@@ -23,6 +23,7 @@ struct nrs_t
 
   mesh_t* mesh;
   mesh_t* meshT;
+  linAlg_t* linAlg;
 
   elliptic_t* uSolver;
   elliptic_t* vSolver;

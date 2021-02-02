@@ -34,6 +34,7 @@
 #include <stdlib.h>
 
 #include "nrssys.hpp"
+#include "linAlg.hpp"
 
 #define TRIANGLES 3
 #define QUADRILATERALS 4
@@ -45,6 +46,7 @@ struct mesh_t
   void move();
   void update();
   void computeInvMassMatrix();
+  linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
 

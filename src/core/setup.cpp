@@ -279,7 +279,10 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  linAlg_t::getInstance(mesh->device, nrs->kernelInfo, mesh->comm);
+  linAlg_t* linAlg = new linAlg_t(mesh->device, nrs->kernelInfo, mesh->comm);
+  nrs->linAlg = linAlg;
+  nrs->meshT->linAlg = linAlg;
+  nrs->mesh->linAlg = linAlg;
 
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
@@ -290,9 +293,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg_t::getInstance()->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
     ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg_t::getInstance()->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;

@@ -45,6 +45,7 @@ private:
 
   void setup();
   void reallocBuffers(const dlong Nbytes);
+public:
   linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
     blocksize = BLOCKSIZE;
     device = _device;
@@ -54,17 +55,6 @@ private:
   }
 
   ~linAlg_t();
-public:
-  static linAlg_t* getInstance(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
-    if(!singleton){
-      singleton = new linAlg_t(_device, _kernelInfo, _comm);
-    }
-    return singleton;
-  }
-
-  static linAlg_t* getInstance(){
-    return singleton;
-  }
 
   /*********************/
   /* vector operations */
@@ -146,8 +136,6 @@ public:
   occa::kernel weightedNorm2Kernel;
   occa::kernel innerProdKernel;
   occa::kernel weightedInnerProdKernel;
-private:
-  static linAlg_t* singleton;
 };
 
 #endif

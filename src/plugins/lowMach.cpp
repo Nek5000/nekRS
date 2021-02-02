@@ -8,13 +8,13 @@
 
 #include "lowMach.hpp"
 
-static nrs_t* nrs = nullptr;
-static linAlg_t* linAlg = nullptr;
+static nrs_t* the_nrs = nullptr;
+static linAlg_t* the_linAlg = nullptr;
 static int ifQThermal = 0;
-void lowMach::setup(nrs_t* _nrs)
+void lowMach::setup(nrs_t* nrs)
 {
-  nrs = _nrs;
-  linAlg = linAlg_t::getInstance();
+  the_nrs = nrs;
+  the_linAlg = nrs->linAlg;
   mesh_t* mesh = nrs->mesh;
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
@@ -100,7 +100,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
       o_w2
     );
 
-    linAlg_t * linAlg = linAlg_t::getInstance();
+    linAlg_t * linAlg = nrs->linAlg;
 
     const dfloat p0alpha1 = 1.0 / linAlg->sum(Nlocal, o_w1, mesh->comm);
     linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, o_w1);
@@ -137,12 +137,11 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     const dfloat weight = -prhs;
     linAlg->axpby(Nlocal, weight, o_w2, 1.0, o_div);
   }
-  std::cout << "sum(o_div) = " << linAlg->sum(nrs->Nlocal, o_div, nrs->mesh->comm) << "\n";
+  std::cout << "sum(o_div) = " << nrs->linAlg->sum(nrs->Nlocal, o_div, nrs->mesh->comm) << "\n";
   ifQThermal = 0;
 }
 void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
 {
-  std::cout << "dp0thdt: " << nrs->dp0thdt << "\n";
   if(!ifQThermal)
-    linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
+    the_linAlg->add(the_nrs->Nlocal, the_nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
 }
