@@ -26,6 +26,7 @@
 @kernel void cdsAdvectMeshVelocity(const dlong Nelements,
                                       @restrict const dfloat*  vgeo,
                                       @restrict const dfloat*  D,
+                                      const dlong isOffset,
                                       const dlong offset,
                                       @restrict const dfloat* rho,
                                       @restrict const dfloat* W,
@@ -54,7 +55,7 @@
 
           {
             const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-            const dfloat Sn = S[id];
+            const dfloat Sn = S[id + isOffset];
             const dfloat Wx = W[id + 0 * offset];
             const dfloat Wy = W[id + 1 * offset];
             const dfloat Wz = W[id + 2 * offset];
@@ -71,7 +72,7 @@
 
               {
                 const dlong id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
-                const dfloat Sn = S[id];
+                const dfloat Sn = S[id + isOffset];
                 const dfloat Wx = W[id + 0 * offset];
                 const dfloat Wy = W[id + 1 * offset];
                 const dfloat Wz = W[id + 2 * offset];
@@ -101,7 +102,7 @@
           const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
           const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-          const dfloat rhoM = rho[id];
+          const dfloat rhoM = rho[id + isOffset];
 
           dfloat d_swx_dr  = 0.f, d_swx_ds  = 0.f, d_swx_dt  = 0.f;
           dfloat d_swy_dr  = 0.f, d_swy_ds  = 0.f, d_swy_dt  = 0.f;
@@ -127,9 +128,10 @@
             d_swz_dt += Dt * r_SWz[n];
           }
 
-          divSW[id]  +=  rhoM * ((drdx * d_swx_dr + dsdx * d_swx_ds + dtdx * d_swx_dt);
-                     +   (drdy * d_swy_dr + dsdy * d_swy_ds + dtdy * d_swy_dt);
-                     +   (drdz * d_swz_dr + dsdz * d_swz_ds + dtdz * d_swz_dt));
+          divSW[id + isOffset]
+            +=  rhoM * ((drdx * d_swx_dr + dsdx * d_swx_ds + dtdx * d_swx_dt);
+            +           (drdy * d_swy_dr + dsdy * d_swy_ds + dtdy * d_swy_dt);
+            +           (drdz * d_swz_dr + dsdz * d_swz_ds + dtdz * d_swz_dt));
         }
       }
     }

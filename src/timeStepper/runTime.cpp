@@ -211,6 +211,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
         mesh->Nelements,
         mesh->o_vgeo,
         mesh->o_Dmatrices,
+        isOffset,
         cds->vFieldOffset,
         cds->o_rho,
         mesh->o_U,

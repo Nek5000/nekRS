@@ -732,9 +732,10 @@ void nek_copyFrom(dfloat time)
     memcpy(nekData.wx, wx, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wy, wy, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wz, wz, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+    mesh_t* meshT = cds->mesh;
+    memcpy(nekData.xm1, meshT->x, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.ym1, meshT->y, sizeof(dfloat) * Nlocal);
+    memcpy(nekData.zm1, meshT->z, sizeof(dfloat) * Nlocal);
     nek_recomputeGeometry();
   }
 
