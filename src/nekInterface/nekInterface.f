@@ -115,6 +115,12 @@ c-----------------------------------------------------------------------
          ptr = loc(wy(1,1,1,1))
       elseif (id .eq. 'wz') then
          ptr = loc(wz(1,1,1,1))
+      elseif (id .eq. 'bfx') then
+         ptr = loc(bfx(1,1,1,1))
+      elseif (id .eq. 'bfy') then
+         ptr = loc(bfy(1,1,1,1))
+      elseif (id .eq. 'bfz') then
+         ptr = loc(bfz(1,1,1,1))
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 

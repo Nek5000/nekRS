@@ -78,6 +78,8 @@ typedef struct
 
   /* mesh velocities */
   double *wx, *wy, *wz;
+
+  double *bfx, *bfy, *bfz;
 } nekdata_private;
 
 extern nekdata_private nekData;
@@ -132,4 +134,6 @@ void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order);
 void nek_extCoeff(double *coeff, double *dt, int order);
 void nek_abCoeff(double *coeff, double *dt, int order);
 void nek_recomputeGeometry();
+void nek_admeshv();
+void nek_admesht();
 #endif

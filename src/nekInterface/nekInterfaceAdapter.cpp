@@ -50,6 +50,8 @@ static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
 static void (* nek_updateGeomFactors_ptr)(void);
+static void (* nek_admeshv_ptr)(void);
+static void (* nek_admesht_ptr)(void);
 
 void noop_func(void) {}
 
@@ -308,6 +310,10 @@ void set_function_handles(const char* session_in,int verbose)
   nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
   check_error(dlerror());
   nek_updateGeomFactors_ptr = (void (*)(void))dlsym(handle, fname("nekf_update_geom_factors"));
+  check_error(dlerror());
+  nek_admeshv_ptr = (void (*)(void))dlsym(handle, fname("admeshv"));
+  check_error(dlerror());
+  nek_admesht_ptr = (void (*)(void))dlsym(handle, fname("admesht"));
   check_error(dlerror());
 
 #define postfix(x) x ## _ptr
@@ -653,6 +659,9 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nekData.wx = (double*) nek_ptr("wx");
   nekData.wy = (double*) nek_ptr("wy");
   nekData.wz = (double*) nek_ptr("wz");
+  nekData.bfx = (double*) nek_ptr("bfx");
+  nekData.bfy = (double*) nek_ptr("bfy");
+  nekData.bfz = (double*) nek_ptr("bfz");
 
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
@@ -876,4 +885,13 @@ void nek_recomputeGeometry()
 {
   (*nek_updateGeomFactors_ptr)();
   *(nekData.ifield) = 1; // reset ifield after call
+}
+
+void nek_admeshv()
+{
+  (*nek_admeshv_ptr)();
+}
+void nek_admesht()
+{
+  (*nek_admesht_ptr)();
 }
