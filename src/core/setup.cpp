@@ -537,16 +537,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->cflKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "nrsQtl" + suffix + ".okl";
-      kernelName = "nrsQtl" + suffix;
-      nrs->qtlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "p0thHelper.okl";
-      kernelName = "p0thHelper";
-      nrs->p0thHelperKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
       fileName = oklpath + "nrsPressureAddQtl" + ".okl";
       kernelName = "nrsPressureAddQtl";
       nrs->pressureAddQtlKernel =

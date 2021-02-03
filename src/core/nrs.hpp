@@ -112,7 +112,6 @@ struct nrs_t
   occa::kernel advectMeshVelocityKernel;
   occa::kernel surfaceFluxKernel;
 
-  occa::kernel qtlKernel;
   occa::kernel p0thHelperKernel;
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;

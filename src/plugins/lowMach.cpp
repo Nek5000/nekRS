@@ -8,9 +8,29 @@
 
 #include "lowMach.hpp"
 
+namespace{
 static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
 static int qThermal = 0;
+static occa::kernel qtlKernel;
+static occa::kernel p0thHelperKernel;
+void buildKernels(nrs_t* nrs)
+{
+  mesh_t* mesh = nrs->mesh;
+  occa::properties kernelInfo = *(nrs->kernelInfo);
+  string fileName;
+  int rank = mesh->rank;
+  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
+  fileName += "/okl/plugins/lowMach.okl";
+  for (int r = 0; r < 2; r++) {
+    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
+      qtlKernel        = mesh->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
+      p0thHelperKernel = mesh->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
+    }
+    MPI_Barrier(mesh->comm);
+  }
+}
+}
 void lowMach::setup(nrs_t* nrs)
 {
   the_nrs = nrs;
@@ -22,6 +42,7 @@ void lowMach::setup(nrs_t* nrs)
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
+  buildKernels(nrs);
   nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
@@ -59,7 +80,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     nrs->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }
 
-  nrs->qtlKernel(
+  qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
@@ -102,7 +123,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
 
-    nrs->p0thHelperKernel(Nlocal,
+    p0thHelperKernel(Nlocal,
       dd,
       cds->o_rho,
       nrs->o_rho,

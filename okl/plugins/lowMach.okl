@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsQtlHex3D(const dlong Nelements,
+@kernel void qtlHex3D(const dlong Nelements,
                          @restrict const dfloat*  vgeo,
                          @restrict const dfloat*  D,
                          const dlong offset,
@@ -111,6 +111,22 @@
           QTL[id] += JW * iRhoCpT * (div + qvol);
         }
       }
+    }
+  }
+}
+@kernel void p0thHelper(const dlong N,
+                      const dfloat dd,
+                      @restrict const dfloat* rhoCp,
+                      @restrict const dfloat* rho,
+                      @restrict const dfloat* massMatrix,
+                      @restrict dfloat *  w1,
+                      @restrict dfloat * w2)
+{
+  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+    if(n<N){
+      const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
+      w2[n] = w2_val;
+      w1[n] = w2_val * massMatrix[n];
     }
   }
 }
