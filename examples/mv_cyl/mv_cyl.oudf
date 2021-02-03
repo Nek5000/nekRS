@@ -1,11 +1,8 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
-  const double pi = 4. * atan(1.0);
-  const double omega = pi;
-  const double amp = 0.5 * pi;
   bc->u = 0.0;
-  bc->v = amp*sin(omega*bc->time);
+  bc->v = p_AMP*sin(p_OMEGA*bc->time);
   bc->w = 0.0;
 }
 
@@ -37,9 +34,7 @@ void velocityDirichletConditions(bcData *bc)
 {
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
-      const dfloat omega = p_PI;
-      const dfloat amp = 0.5 * p_PI;
-      const dfloat v_piston = amp * sin(omega * time);
+      const dfloat v_piston = p_AMP * sin(p_OMEGA * time);
       const dfloat ylen = ymin - ymax;
 
       const int id = e*p_Np + n;

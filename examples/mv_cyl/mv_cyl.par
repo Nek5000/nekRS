@@ -3,11 +3,9 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL]
-#verbose = true
 polynomialOrder = 7
 stopAt = numSteps
-#numSteps = 1000
-numSteps = 10
+numSteps = 100
 dt = 1e-3
 timeStepper = tombo3
 writeInterval = 50

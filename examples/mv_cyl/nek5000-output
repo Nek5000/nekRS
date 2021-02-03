@@ -18,7 +18,7 @@
  Reading /home/malachi2/moving-mesh-dir/cases/n5k-run/mv_cyl/mv_cyl.par                                                                      
 general = [(null)]
 general:stopat = [numSteps]
-general:numsteps = [50]
+general:numsteps = [5]
 general:dt = [1e-3]
 general:timestepper = [bdf3]
 general:writecontrol = [runTime]
@@ -40,34 +40,34 @@ temperature:absolutetol = [1e-12]
  Reading /home/malachi2/moving-mesh-dir/cases/n5k-run/mv_cyl/mv_cyl.re2                                                                      
  Enable stress formulation to support PN/PN and IFUSERVP=T
  nelgt/nelgv/lelt:         150         150         153
- lx1/lx2/lx3/lxd:            8           8           8          12
+ lx1/lx2/lx3/lxd:            8           8           8          11
 
  partioning elements to MPI ranks
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.71E-01 sec
+ done :: read .re2 file    0.77E-01 sec
 
  Reading /home/malachi2/moving-mesh-dir/cases/n5k-run/mv_cyl/mv_cyl.ma2                                                                      
   
- done :: partioning   0.76933E-01 sec
+ done :: partioning   0.81800E-01 sec
 
  reading mesh 
  reading bc for ifld           1
  reading bc for ifld           2
- done :: read .re2 file    0.50E-01 sec
+ done :: read .re2 file    0.61E-01 sec
 
  setup mesh topology
    Right-handed check complete for         150 elements. OK.
    setvert3d:   8           27808           60208           27808           27808
 gs_setup: 3514 unique labels shared
-   pairwise times (avg, min, max): 1.78203e-05 1.7599e-05 1.81079e-05
-   crystal router                : 3.20276e-05 3.0908e-05 3.25702e-05
-   all reduce                    : 0.000111855 0.00011161 0.00011213
+   pairwise times (avg, min, max): 2.24148e-05 2.19703e-05 2.27503e-05
+   crystal router                : 3.70322e-05 3.56659e-05 3.7919e-05
+   all reduce                    : 0.000132928 0.000132401 0.000133231
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 100252 96300 104172
    buffer bytes (avg, min, max): 19338.7 15456 24080
-   setupds time 1.2582E-02 seconds   0  8       27808         150
+   setupds time 1.5828E-02 seconds   0  8       27808         150
  
  nElements   max/min/bal: 25 25 1.00
  nMessages   max/min/avg: 5 3 3.67
@@ -140,7 +140,7 @@ gs_setup: 3514 unique labels shared
  IFADVC for field           2    =  T
  IFNONL for field           2    =  F
    
- Dealiasing enabled, nxd=          12
+ Dealiasing enabled, nxd=          11
   
  Estimated eigenvalues
  EIGAA =    333.73884511831790     
@@ -155,40 +155,40 @@ gs_setup: 3514 unique labels shared
  mg_ny:           1           3           7
  mg_nz:           1           3           7
 gs_setup: 70 unique labels shared
-   pairwise times (avg, min, max): 2.07548e-06 2.03103e-06 2.16886e-06
-   crystal router                : 1.73934e-06 1.65179e-06 1.76728e-06
-   all reduce                    : 4.1388e-06 4.07398e-06 4.19915e-06
+   pairwise times (avg, min, max): 2.01253e-06 1.96174e-06 2.0735e-06
+   crystal router                : 1.86277e-06 1.80826e-06 1.91182e-06
+   all reduce                    : 3.93068e-06 3.73349e-06 4.0099e-06
    used all_to_all method: crystal router
    handle bytes (avg, min, max): 5648 4676 6716
    buffer bytes (avg, min, max): 904 768 1104
-   setupds time 4.2674E-04 seconds   1  2         352         150
+   setupds time 4.6954E-04 seconds   1  2         352         150
    setvert3d:   4            4504            5704            4504            4504
 gs_setup: 642 unique labels shared
-   pairwise times (avg, min, max): 2.73536e-06 2.62931e-06 2.8342e-06
-   crystal router                : 3.86524e-06 3.78042e-06 3.94061e-06
-   all reduce                    : 1.71036e-05 1.68324e-05 1.72734e-05
+   pairwise times (avg, min, max): 3.00022e-06 2.89083e-06 3.07411e-06
+   crystal router                : 4.50537e-06 4.34816e-06 4.61712e-06
+   all reduce                    : 1.75297e-05 1.73084e-05 1.7681e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 19446.7 18572 20460
    buffer bytes (avg, min, max): 3680 2976 4560
-   setupds time 1.1946E-03 seconds   2  4        4504         150
+   setupds time 1.5082E-03 seconds   2  4        4504         150
    setvert3d:   4            4504            5704            4504            4504
 gs_setup: 642 unique labels shared
-   pairwise times (avg, min, max): 2.80092e-06 2.69264e-06 2.90051e-06
-   crystal router                : 4.11794e-06 4.00841e-06 4.18127e-06
-   all reduce                    : 1.78158e-05 1.7561e-05 1.79656e-05
+   pairwise times (avg, min, max): 3.09472e-06 3.02643e-06 3.16799e-06
+   crystal router                : 4.59763e-06 4.48152e-06 4.70355e-06
+   all reduce                    : 1.81027e-05 1.78471e-05 1.82353e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 19446.7 18572 20460
    buffer bytes (avg, min, max): 3680 2976 4560
-   setupds time 1.1539E-03 seconds   3  4        4504         150
+   setupds time 1.4668E-03 seconds   3  4        4504         150
    setvert3d:   6           13656           23256           13656           13656
 gs_setup: 1790 unique labels shared
-   pairwise times (avg, min, max): 4.75322e-06 4.68343e-06 4.83021e-06
-   crystal router                : 8.07146e-06 7.83429e-06 8.24556e-06
-   all reduce                    : 1.5797e-05 1.57699e-05 1.58161e-05
+   pairwise times (avg, min, max): 4.41906e-06 4.27291e-06 4.49196e-06
+   crystal router                : 1.04154e-05 1.00873e-05 1.06737e-05
+   all reduce                    : 1.93526e-05 1.92866e-05 1.94035e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 51897.3 49756 54156
    buffer bytes (avg, min, max): 9973.33 8000 12400
-   setupds time 2.0137E-03 seconds   4  6       13656         150
+   setupds time 2.6881E-03 seconds   4  6       13656         150
  regenerate geometry data           1
  done :: regenerate geometry data           1
   
@@ -196,67 +196,67 @@ gs_setup: 1790 unique labels shared
  h1_mg_ny:           1           3           7
  h1_mg_nz:           1           3           7
 gs_setup: 70 unique labels shared
-   pairwise times (avg, min, max): 1.80925e-06 1.75163e-06 1.89468e-06
-   crystal router                : 1.7494e-06 1.68532e-06 1.79186e-06
-   all reduce                    : 4.0397e-06 3.97339e-06 4.09707e-06
+   pairwise times (avg, min, max): 3.29576e-06 3.17991e-06 3.41162e-06
+   crystal router                : 2.845e-06 2.77907e-06 2.95565e-06
+   all reduce                    : 4.32245e-06 4.25875e-06 4.372e-06
    used all_to_all method: crystal router
    handle bytes (avg, min, max): 5648 4676 6716
    buffer bytes (avg, min, max): 904 768 1104
-   setupds time 4.2905E-04 seconds   5  2         352         150
+   setupds time 7.8222E-04 seconds   5  2         352         150
    setvert3d:   4            4504            5704            4504            4504
 gs_setup: 642 unique labels shared
-   pairwise times (avg, min, max): 2.60249e-06 2.54586e-06 2.65241e-06
-   crystal router                : 3.83308e-06 3.74094e-06 3.90857e-06
-   all reduce                    : 1.6341e-05 1.60657e-05 1.64881e-05
+   pairwise times (avg, min, max): 5.27129e-06 5.19827e-06 5.36516e-06
+   crystal router                : 5.40639e-06 5.25862e-06 5.55068e-06
+   all reduce                    : 2.1657e-05 2.14197e-05 2.1936e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 19446.7 18572 20460
    buffer bytes (avg, min, max): 3680 2976 4560
-   setupds time 1.1950E-03 seconds   6  4        4504         150
+   setupds time 1.8112E-03 seconds   6  4        4504         150
    setvert3d:   4            4504            5704            4504            4504
 gs_setup: 642 unique labels shared
-   pairwise times (avg, min, max): 2.58163e-06 2.49147e-06 2.65166e-06
-   crystal router                : 3.57181e-06 3.46899e-06 3.66569e-06
-   all reduce                    : 1.61325e-05 1.59055e-05 1.62624e-05
+   pairwise times (avg, min, max): 3.75186e-06 3.71113e-06 3.8214e-06
+   crystal router                : 5.62718e-06 5.465e-06 5.77569e-06
+   all reduce                    : 2.11455e-05 2.08572e-05 2.14137e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 19446.7 18572 20460
    buffer bytes (avg, min, max): 3680 2976 4560
-   setupds time 1.1137E-03 seconds   7  4        4504         150
+   setupds time 1.7840E-03 seconds   7  4        4504         150
    setvert3d:   6           13656           23256           13656           13656
 gs_setup: 1790 unique labels shared
-   pairwise times (avg, min, max): 3.84226e-06 3.78489e-06 3.91081e-06
-   crystal router                : 7.90817e-06 7.67261e-06 8.04588e-06
-   all reduce                    : 1.48956e-05 1.48878e-05 1.49056e-05
+   pairwise times (avg, min, max): 5.11458e-06 5.0582e-06 5.21615e-06
+   crystal router                : 1.33432e-05 1.29327e-05 1.37493e-05
+   all reduce                    : 2.19176e-05 2.17848e-05 2.20053e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 51897.3 49756 54156
    buffer bytes (avg, min, max): 9973.33 8000 12400
-   setupds time 1.9454E-03 seconds   8  6       13656         150
+   setupds time 3.0469E-03 seconds   8  6       13656         150
    setvert3d:   8           27808           60208           27808           27808
 gs_setup: 3514 unique labels shared
-   pairwise times (avg, min, max): 6.21863e-06 6.06701e-06 6.3546e-06
-   crystal router                : 1.20559e-05 1.17004e-05 1.22674e-05
-   all reduce                    : 5.34142e-05 5.31577e-05 5.36188e-05
+   pairwise times (avg, min, max): 9.3737e-06 9.10163e-06 9.59411e-06
+   crystal router                : 1.4103e-05 1.36085e-05 1.44288e-05
+   all reduce                    : 5.68276e-05 5.65976e-05 5.70506e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 100252 96300 104172
    buffer bytes (avg, min, max): 19338.7 15456 24080
-   setupds time 3.5714E-03 seconds   9  8       27808         150
+   setupds time 5.2710E-03 seconds   9  8       27808         150
    setvert3d:  10           46960          123760           46960           46960
 gs_setup: 5814 unique labels shared
-   pairwise times (avg, min, max): 7.91016e-06 7.72402e-06 8.07494e-06
-   crystal router                : 1.8709e-05 1.80773e-05 1.89923e-05
-   all reduce                    : 5.68752e-05 5.65156e-05 5.71758e-05
+   pairwise times (avg, min, max): 9.40921e-06 9.0681e-06 9.60827e-06
+   crystal router                : 2.01389e-05 1.95384e-05 2.051e-05
+   all reduce                    : 7.11141e-05 7.08215e-05 7.13818e-05
    used all_to_all method: pairwise
    handle bytes (avg, min, max): 164511 158204 170508
    buffer bytes (avg, min, max): 31776 25344 39600
-   setupds time 5.4468E-03 seconds  10 10       46960         150
+   setupds time 7.1967E-03 seconds  10 10       46960         150
  setup h1 coarse grid, nx_crs=           2
 gs_setup: 70 unique labels shared
-   pairwise times (avg, min, max): 2.27429e-06 2.21357e-06 2.34619e-06
-   crystal router                : 1.64919e-06 1.60486e-06 1.71065e-06
-   all reduce                    : 4.25838e-06 4.1984e-06 4.32655e-06
+   pairwise times (avg, min, max): 1.40058e-06 1.32322e-06 1.47521e-06
+   crystal router                : 1.34806e-06 1.30534e-06 1.39773e-06
+   all reduce                    : 3.47917e-06 3.42131e-06 3.5353e-06
    used all_to_all method: crystal router
    handle bytes (avg, min, max): 5648 4676 6716
    buffer bytes (avg, min, max): 904 768 1104
- done :: setup h1 coarse grid    3.7384778261184692E-003  sec
+ done :: setup h1 coarse grid    4.8838853836059570E-003  sec
   
  call usrdat3
  done :: usrdat3
@@ -285,55 +285,79 @@ gs_setup: 70 unique labels shared
  ymax:   0.50000000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
-err   0.0000000E+00   0.7494005E-15   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+ sum(T):    76800.000000000000     
+ sum(T):    76800.000000000000     
+ sum(T):    76800.000000000000     
+ sum(T):    76800.000000000000     
+ sum(T):    76800.000000000000     
+ sum(T):    76800.000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000000000000000     
+ tavg:    1.0000000000000000     
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    0.0000000000000000     
- checksum(wy) =    0.0000000000000000     
- checksum(wy) =    0.0000000000000000     
- checksum(wy) =    0.0000000000000000     
  checksum(wy) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
+err   0.0000000E+00   0.7494005E-15   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00   0.0000000E+00
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
  done :: userchk
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
 
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    0.0000000000000000     
+ checksum(wz) =    0.0000000000000000     
 gridpoints unique/tot:         52682        76800
 dofs vel/pr:                   50232        52682
   
- Initialization successfully completed   0.28644     sec
+ Initialization successfully completed   0.33327     sec
 
 Starting time loop ...
 
-     DT/DTCFL/DTFS/DTINIT   0.100E-02   0.284-316   0.988-323   0.100E-02
+     DT/DTCFL/DTFS/DTINIT   0.100E-02   0.285-316   0.988-323   0.100E-02
 Step      1, t= 1.0000000E-03, DT= 1.0000000E-03, C=  0.000 0.0000E+00 0.0000E+00
  generate geometry data
+ sum(bq):    150.00000000000645     
+ sum(bq):    150.00000000000645     
+ sum(bq):    150.00000000000645     
+ sum(bq):    150.00000000000645     
+ sum(bq):    150.00000000000645     
+ sum(bq):    150.00000000000645     
  generate geometry data
  glsum(UX):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    0.0000000000000000     
- glsum(UY):    0.0000000000000000     
- glsum(UY):    0.0000000000000000     
- glsum(UY):    0.0000000000000000     
  glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):    0.0000000000000000     
  glsum(UZ):    0.0000000000000000     
  done :: generate geometry data
   
@@ -341,7 +365,13 @@ Step      1, t= 1.0000000E-03, DT= 1.0000000E-03, C=  0.000 0.0000E+00 0.0000E+0
   Temperature/Passive scalar solution
           1  Hmholtz TEMP       1   1.3053E-14   1.0000E-02   1.0000E-07   1.0000E+03   F
           1  Hmholtz TEMP       0   1.3053E-14   1.3053E-14   1.0000E-07
-          1  Scalars done  1.0000E-03  3.1207E-03
+          1  Scalars done  1.0000E-03  3.8970E-03
+ sum(qtl):    6.6338462636846575E-009
+ sum(qtl):    6.6338462636846575E-009
+ sum(qtl):    6.6338462636846575E-009
+ sum(qtl):    6.6338462636846575E-009
+ sum(qtl):    6.6338462636846575E-009
+ sum(qtl):    6.6338462636846575E-009
              Solving for fluid
     1 1.00000E-10 3.06711E-02 6.71222E-02 4.56944E-01       1 Divergence
     2 1.00000E-10 3.01484E-02 6.71222E-02 4.49157E-01       1 Divergence
@@ -359,48 +389,70 @@ Step      1, t= 1.0000000E-03, DT= 1.0000000E-03, C=  0.000 0.0000E+00 0.0000E+0
    14 1.00000E-10 1.20999E-08 6.71222E-02 1.80266E-07       1 Divergence
    15 1.00000E-10 3.50661E-09 6.71222E-02 5.22422E-08       1 Divergence
    16 1.00000E-10 1.02494E-09 6.71222E-02 1.52697E-08       1 Divergence
-   17 1.00000E-10 2.71449E-10 6.71222E-02 4.04409E-09       1 Divergence
-   18 1.00000E-10 7.87525E-11 6.71222E-02 1.17327E-09       1 Divergence
-          1  PRES gmres        18   7.8753E-11   6.7122E-02   1.0000E-10   1.5704E-02   3.0609E-02    F
+   17 1.00000E-10 2.71449E-10 6.71222E-02 4.04410E-09       1 Divergence
+   18 1.00000E-10 7.87526E-11 6.71222E-02 1.17327E-09       1 Divergence
+          1  PRES gmres        18   7.8753E-11   6.7122E-02   1.0000E-10   2.4763E-02   4.3258E-02    F
           1  Helmh3 fluid      26   4.4730E-13   7.5782E-01   1.0000E-12
              L1/L2 DIV(V)          -3.2899E-03   5.3366E-03
-             L1/L2 QTL              0.0000E+00   0.0000E+00
+             L1/L2 QTL             -3.8847E-29   5.4545E-14
              L1/L2 DIV(V)-QTL      -3.2899E-03   5.3366E-03
-          1  Fluid done  1.0000E-03  6.7154E-02
+          1  Fluid done  1.0000E-03  1.0245E-01
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
+ sum(T):    76800.000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
+ sum(T):    76800.000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
+ sum(T):    76800.000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
+ sum(T):    76800.000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
+ sum(T):    76800.000000000000     
  ymin:   -1.0000000000000000     
  ymax:   0.50000000000000000     
-err   0.1000000E-02  -0.2467399E-06   0.2168404E-18   0.2302910E-05   0.4605826E-02   0.2467399E-05
+ sum(T):    76800.000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
+ tex:    1.0000006579738432     
+ tavg:    1.0000000000000000     
+err   0.1000000E-02  -0.2467399E-06   0.2168404E-18   0.2302910E-05   0.4605826E-02   0.2467399E-05  -0.6579738E-06
  checksum(wx) =    0.0000000000000000     
  checksum(wy) =    189.49609279198967     
- checksum(wy) =    189.49609279198967     
- checksum(wy) =    189.49609279198967     
- checksum(wy) =    189.49609279198967     
- checksum(wy) =    189.49609279198967     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    189.49609279198967     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    189.49609279198967     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    189.49609279198967     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    189.49609279198967     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    189.49609279198967     
  checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      2, t= 2.0000000E-03, DT= 1.0000000E-03, C=  0.000 9.3547E-02 9.3547E-02
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.28424413918797120     
+Step      2, t= 2.0000000E-03, DT= 1.0000000E-03, C=  0.000 1.3862E-01 1.3862E-01
+ sum(bq):    225.00000000000415     
+ sum(bq):    225.00000000000415     
+ sum(bq):    225.00000000000415     
+ sum(bq):    225.00000000000415     
+ sum(bq):    225.00000000000415     
+ sum(bq):    225.00000000000415     
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.28424413918797120     
  glsum(UZ):    0.0000000000000000     
@@ -416,49 +468,81 @@ Step      2, t= 2.0000000E-03, DT= 1.0000000E-03, C=  0.000 9.3547E-02 9.3547E-0
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.28424413918797120     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.28424413918797120     
  glsum(UZ):    0.0000000000000000     
              Solving for Hmholtz scalars
-          2  Hmholtz TEMP       6   6.6368E-08   8.2247E-04   1.0000E-07
-          2  Scalars done  2.0000E-03  3.7599E-03
+          2  Hmholtz TEMP       8   1.1067E-08   7.4022E-03   1.0000E-07
+          2  Scalars done  2.0000E-03  6.5644E-03
+ sum(qtl):   -505.32539124222490     
+ sum(qtl):   -505.32539124222490     
+ sum(qtl):   -505.32539124222490     
+ sum(qtl):   -505.32539124222490     
+ sum(qtl):   -505.32539124222490     
+ sum(qtl):   -505.32539124222490     
              Solving for fluid
-          2  PRES gmres        14   9.9628E-11   8.2800E-03   1.0000E-10   1.0288E-02   1.8137E-02    F
-          2  Helmh3 fluid      22   5.2433E-13   7.9637E-01   1.0000E-12
-             L1/L2 DIV(V)          -6.5797E-03   1.1477E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -6.5797E-03   1.1477E-02
-          2  Fluid done  2.0000E-03  4.9971E-02
+          2  PRES gmres        15   7.8080E-11   1.5763E-02   1.0000E-10   1.8394E-02   3.0300E-02    F
+          2  Helmh3 fluid      22   5.2416E-13   7.9679E-01   1.0000E-12
+             L1/L2 DIV(V)          -6.5797E-03   6.5985E-03
+             L1/L2 QTL             -6.5798E-03   6.5798E-03
+             L1/L2 DIV(V)-QTL       3.2470E-08   4.9779E-04
+          2  Fluid done  2.0000E-03  8.1959E-02
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
+ sum(T):    76800.378993949285     
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
+ sum(T):    76800.378993949285     
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
+ sum(T):    76800.378993949285     
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
+ sum(T):    76800.378993949285     
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
+ sum(T):    76800.378993949285     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
  ymin:  -0.99999259780887528     
  ymax:   0.50000000000000000     
-err   0.2000000E-02  -0.2467381E-06   0.1301043E-17   0.9211673E-05   0.9211716E-02   0.2467381E-05
+ sum(T):    76800.378993949285     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
+err   0.2000000E-02  -0.2467381E-06   0.1301043E-17   0.3070528E-05  -0.1985879E-08   0.2467381E-05   0.2302920E-05
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
  checksum(wx) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
+ tex:    1.0000026318979705     
+ tavg:    1.0000049348183764     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
+ checksum(wz) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
  checksum(wy) =    378.99031533403161     
  checksum(wz) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
  checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      3, t= 3.0000000E-03, DT= 1.0000000E-03, C=  0.000 1.6770E-01 7.4150E-02
+Step      3, t= 3.0000000E-03, DT= 1.0000000E-03, C=  0.000 2.5791E-01 1.1929E-01
+ sum(bq):    274.99864293162648     
+ sum(bq):    274.99864293162648     
+ sum(bq):    274.99864293162648     
+ sum(bq):    274.99864293162648     
+ sum(bq):    274.99864293162648     
+ sum(bq):    274.99864293162648     
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.47373664733426440     
  glsum(UZ):    0.0000000000000000     
@@ -478,111 +562,169 @@ Step      3, t= 3.0000000E-03, DT= 1.0000000E-03, C=  0.000 1.6770E-01 7.4150E-0
  glsum(UY):   0.47373664733426440     
  glsum(UZ):    0.0000000000000000     
              Solving for Hmholtz scalars
-          3  Hmholtz TEMP       4   9.0775E-08   9.1372E-05   1.0000E-07
-          3  Scalars done  3.0000E-03  3.1196E-03
+          3  Hmholtz TEMP       8   7.6477E-09   1.5079E-02   1.0000E-07
+          3  Scalars done  3.0000E-03  6.5328E-03
+ sum(qtl):   -757.98683055022195     
+ sum(qtl):   -757.98683055022195     
+ sum(qtl):   -757.98683055022195     
+ sum(qtl):   -757.98683055022195     
+ sum(qtl):   -757.98683055022195     
+ sum(qtl):   -757.98683055022195     
              Solving for fluid
-          3  PRES gmres        15   2.8263E-11   8.6655E-03   1.0000E-10   1.1060E-02   1.9659E-02    F
-          3  Helmh3 fluid      20   9.4996E-13   8.1343E-01   1.0000E-12
-             L1/L2 DIV(V)          -9.8696E-03   1.8063E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -9.8696E-03   1.8063E-02
-          3  Fluid done  3.0000E-03  4.9459E-02
+          3  PRES gmres        16   3.0602E-11   1.7856E-02   1.0000E-10   1.9679E-02   3.2661E-02    F
+          3  Helmh3 fluid      20   9.4903E-13   8.1353E-01   1.0000E-12
+             L1/L2 DIV(V)          -9.8696E-03   9.8713E-03
+             L1/L2 QTL             -9.8696E-03   9.8696E-03
+             L1/L2 DIV(V)-QTL       3.2470E-08   1.8235E-04
+          3  Fluid done  3.0000E-03  8.0870E-02
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
+ sum(T):    76801.010654196711     
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
+ sum(T):    76801.010654196711     
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
+ sum(T):    76801.010654196711     
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
+ sum(T):    76801.010654196711     
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
+ sum(T):    76801.010654196711     
  ymin:  -0.99998026091701764     
  ymax:   0.50000000000000000     
-err   0.3000000E-02  -0.2467363E-06   0.6505213E-18   0.2072638E-04   0.1381773E-01   0.2467363E-05
+ sum(T):    76801.010654196711     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000059217801742     
+ tavg:    1.0000131595618627     
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
+err   0.3000000E-02  -0.2467363E-06   0.6505213E-18   0.3140304E-05   0.2071699E-07   0.2467363E-05   0.7237782E-05
  checksum(wx) =    0.0000000000000000     
  checksum(wy) =    568.48079739465891     
- checksum(wy) =    568.48079739465891     
- checksum(wy) =    568.48079739465891     
- checksum(wy) =    568.48079739465891     
- checksum(wy) =    568.48079739465891     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    568.48079739465891     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    568.48079739465891     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    568.48079739465891     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    568.48079739465891     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    568.48079739465891     
  checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      4, t= 4.0000000E-03, DT= 1.0000000E-03, C=  0.000 2.4087E-01 7.3170E-02
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.66322447989107913     
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.66322447989107913     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.66322447989107913     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.66322447989107913     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.66322447989107913     
- glsum(UZ):    0.0000000000000000     
+Step      4, t= 4.0000000E-03, DT= 1.0000000E-03, C=  0.000 3.7632E-01 1.1841E-01
+ sum(bq):    274.99806996079377     
+ sum(bq):    274.99806996079377     
+ sum(bq):    274.99806996079377     
+ sum(bq):    274.99806996079377     
+ sum(bq):    274.99806996079377     
+ sum(bq):    274.99806996079377     
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.66322447989107913     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.66322447989107913     
+ glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.66322447989107913     
+ glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.66322447989107913     
+ glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.66322447989107913     
+ glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.66322447989107913     
  glsum(UZ):    0.0000000000000000     
              Solving for Hmholtz scalars
-          4  Hmholtz TEMP       5   2.7626E-08   1.2464E-04   1.0000E-07
-          4  Scalars done  4.0000E-03  3.4244E-03
+          4  Hmholtz TEMP       8   1.0707E-08   2.1110E-02   1.0000E-07
+          4  Scalars done  4.0000E-03  6.5227E-03
+ sum(qtl):   -1010.6482806360208     
+ sum(qtl):   -1010.6482806360208     
+ sum(qtl):   -1010.6482806360208     
+ sum(qtl):   -1010.6482806360208     
+ sum(qtl):   -1010.6482806360208     
+ sum(qtl):   -1010.6482806360208     
              Solving for fluid
-          4  PRES gmres        14   6.0472E-11   5.1459E-03   1.0000E-10   1.0311E-02   1.8195E-02    F
-          4  Helmh3 fluid      20   9.5024E-13   8.1339E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.3159E-02   2.4436E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.3159E-02   2.4436E-02
-          4  Fluid done  4.0000E-03  4.8004E-02
+          4  PRES gmres        15   6.3186E-11   9.5878E-03   1.0000E-10   1.8400E-02   3.0335E-02    F
+          4  Helmh3 fluid      20   9.4997E-13   8.1353E-01   1.0000E-12
+             L1/L2 DIV(V)          -1.3159E-02   1.3160E-02
+             L1/L2 QTL             -1.3159E-02   1.3159E-02
+             L1/L2 DIV(V)-QTL       3.2469E-08   8.4020E-05
+          4  Fluid done  4.0000E-03  7.8535E-02
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
+ sum(T):    76801.894986970365     
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
+ sum(T):    76801.894986970365     
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
+ sum(T):    76801.894986970365     
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
+ sum(T):    76801.894986970365     
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
+ sum(T):    76801.894986970365     
  ymin:  -0.99996298944618711     
  ymax:   0.50000000000000000     
-err   0.4000000E-02  -0.2467344E-06   0.4336809E-18   0.3684720E-04   0.1842394E-01   0.2467344E-05
+ sum(T):    76801.894986970365     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
+ tex:    1.0000105276334423     
+ tavg:    1.0000246743114292     
+err   0.4000000E-02  -0.2467344E-06   0.4336809E-18   0.3045153E-05   0.4101571E-07   0.2467344E-05   0.1414668E-04
  checksum(wx) =    0.0000000000000000     
  checksum(wy) =    757.96566877936266     
- checksum(wy) =    757.96566877936266     
- checksum(wy) =    757.96566877936266     
- checksum(wy) =    757.96566877936266     
- checksum(wy) =    757.96566877936266     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    757.96566877936266     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    757.96566877936266     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    757.96566877936266     
  checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
+ checksum(wy) =    757.96566877936266     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    757.96566877936266     
  checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      5, t= 5.0000000E-03, DT= 1.0000000E-03, C=  0.000 3.1293E-01 7.2068E-02
+Step      5, t= 5.0000000E-03, DT= 1.0000000E-03, C=  0.000 4.9223E-01 1.1592E-01
+ sum(bq):    274.99805078453448     
+ sum(bq):    274.99805078453448     
+ sum(bq):    274.99805078453448     
+ sum(bq):    274.99805078453448     
+ sum(bq):    274.99805078453448     
+ sum(bq):    274.99805078453448     
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.85270576669002063     
- glsum(UX):    0.0000000000000000     
- glsum(UY):   0.85270576669002063     
  glsum(UZ):    0.0000000000000000     
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.85270576669002063     
@@ -596,2793 +738,85 @@ Step      5, t= 5.0000000E-03, DT= 1.0000000E-03, C=  0.000 3.1293E-01 7.2068E-0
  glsum(UX):    0.0000000000000000     
  glsum(UY):   0.85270576669002063     
  glsum(UZ):    0.0000000000000000     
+ glsum(UX):    0.0000000000000000     
+ glsum(UY):   0.85270576669002063     
  glsum(UZ):    0.0000000000000000     
              Solving for Hmholtz scalars
-          5  Hmholtz TEMP       4   9.3702E-08   9.5945E-05   1.0000E-07
-          5  Scalars done  5.0000E-03  3.1002E-03
+          5  Hmholtz TEMP       8   1.3768E-08   2.7142E-02   1.0000E-07
+          5  Scalars done  5.0000E-03  6.6030E-03
+ sum(qtl):   -1263.3097350539617     
+ sum(qtl):   -1263.3097350539617     
+ sum(qtl):   -1263.3097350539617     
+ sum(qtl):   -1263.3097350539617     
+ sum(qtl):   -1263.3097350539617     
+ sum(qtl):   -1263.3097350539617     
              Solving for fluid
-          5  PRES gmres        14   6.3495E-11   5.6780E-03   1.0000E-10   1.1094E-02   1.9345E-02    F
-          5  Helmh3 fluid      20   9.5068E-13   8.1336E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.6449E-02   3.0710E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.6449E-02   3.0710E-02
-          5  Fluid done  5.0000E-03  4.9181E-02
+          5  PRES gmres        14   5.4880E-11   1.9531E-03   1.0000E-10   1.7176E-02   2.8122E-02    F
+          5  Helmh3 fluid      20   9.4920E-13   8.1351E-01   1.0000E-12
+             L1/L2 DIV(V)          -1.6449E-02   1.6449E-02
+             L1/L2 QTL             -1.6449E-02   1.6449E-02
+             L1/L2 DIV(V)-QTL       3.2469E-08   6.1218E-05
+          5  Fluid done  5.0000E-03  7.6213E-02
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
+ sum(T):    76803.032000944673     
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
+ sum(T):    76803.032000944673     
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
+ sum(T):    76803.032000944673     
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
+ sum(T):    76803.032000944673     
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
+ sum(T):    76803.032000944673     
+ tex:    1.0000164494759578     
  ymin:  -0.99994078356684624     
  ymax:   0.50000000000000000     
-err   0.5000000E-02  -0.2467326E-06   0.2168404E-17   0.5757435E-04   0.2303040E-01   0.2467326E-05
+ sum(T):    76803.032000944673     
+ tex:    1.0000164494759578     
+ tavg:    1.0000394791806304     
+ tavg:    1.0000394791806304     
+ tex:    1.0000164494759578     
+ tavg:    1.0000394791806304     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000164494759578     
+ tavg:    1.0000394791806304     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000164494759578     
+ tavg:    1.0000394791806304     
  checksum(wx) =    0.0000000000000000     
+ tex:    1.0000164494759578     
+ tavg:    1.0000394791806304     
  checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
+err   0.5000000E-02  -0.2467326E-06   0.2168404E-17   0.2971941E-05   0.6094603E-07   0.2467326E-05   0.2302970E-04
  checksum(wx) =    0.0000000000000000     
  checksum(wy) =    947.44305934888439     
- checksum(wy) =    947.44305934888439     
- checksum(wy) =    947.44305934888439     
- checksum(wy) =    947.44305934888439     
- checksum(wy) =    947.44305934888439     
+ checksum(wz) =    0.0000000000000000     
+ checksum(wx) =    0.0000000000000000     
  checksum(wy) =    947.44305934888439     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    947.44305934888439     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    947.44305934888439     
  checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    947.44305934888439     
  checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      6, t= 6.0000000E-03, DT= 1.0000000E-03, C=  0.000 3.8582E-01 7.2885E-02
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.0421786376273157     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-          6  Hmholtz TEMP       4   3.8073E-08   3.8407E-05   1.0000E-07
-          6  Scalars done  6.0000E-03  3.1027E-03
-             Solving for fluid
-          6  PRES gmres        14   6.9999E-11   5.8815E-03   1.0000E-10   1.0283E-02   1.8144E-02    F
-          6  Helmh3 fluid      20   9.5069E-13   8.1333E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.9739E-02   3.6946E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.9739E-02   3.6946E-02
-          6  Fluid done  6.0000E-03  4.7902E-02
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
- ymin:  -0.99991364349815803     
- ymax:   0.50000000000000000     
-err   0.6000000E-02  -0.2467308E-06   0.3035766E-17   0.8290811E-04   0.2763718E-01   0.2467308E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    1136.9110990378874     
- checksum(wy) =    1136.9110990378874     
- checksum(wy) =    1136.9110990378874     
- checksum(wy) =    1136.9110990378874     
- checksum(wy) =    1136.9110990378874     
- checksum(wy) =    1136.9110990378874     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      7, t= 7.0000000E-03, DT= 1.0000000E-03, C=  0.000 4.5777E-01 7.1954E-02
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.2316412226821698     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-          7  Hmholtz TEMP       3   3.7606E-08   7.0084E-06   1.0000E-07
-          7  Scalars done  7.0000E-03  4.2402E-03
-             Solving for fluid
-          7  PRES gmres        14   7.2064E-11   5.9310E-03   1.0000E-10   1.6558E-02   2.7755E-02    F
-          7  Helmh3 fluid      20   9.5102E-13   8.1329E-01   1.0000E-12
-             L1/L2 DIV(V)          -2.3029E-02   4.3184E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -2.3029E-02   4.3184E-02
-          7  Fluid done  7.0000E-03  7.6256E-02
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
- ymin:  -0.99988156950798401     
- ymax:   0.50000000000000000     
-err   0.7000000E-02  -0.2467289E-06   0.1734723E-17   0.1128488E-03   0.3224435E-01   0.2467289E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    1326.3679178733400     
- checksum(wy) =    1326.3679178733400     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    1326.3679178733400     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    1326.3679178733400     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    1326.3679178733400     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    1326.3679178733400     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      8, t= 8.0000000E-03, DT= 1.0000000E-03, C=  0.000 5.6707E-01 1.0929E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.4210916519353654     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-          8  Hmholtz TEMP       2   6.5441E-08   2.5118E-06   1.0000E-07
-          8  Scalars done  8.0000E-03  3.7668E-03
-             Solving for fluid
-          8  PRES gmres        14   7.0773E-11   5.8935E-03   1.0000E-10   1.6536E-02   2.7769E-02    F
-          8  Helmh3 fluid      20   9.5149E-13   8.1325E-01   1.0000E-12
-             L1/L2 DIV(V)          -2.6319E-02   4.9428E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -2.6319E-02   4.9428E-02
-          8  Fluid done  8.0000E-03  7.6406E-02
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
- ymin:  -0.99984456191288151     
- ymax:   0.50000000000000000     
-err   0.8000000E-02  -0.2467271E-06   0.0000000E+00   0.1473970E-03   0.3685195E-01   0.2467271E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    1515.8116459929602     
- checksum(wy) =    1515.8116459929602     
- checksum(wy) =    1515.8116459929602     
- checksum(wy) =    1515.8116459929602     
- checksum(wy) =    1515.8116459929602     
- checksum(wy) =    1515.8116459929602     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step      9, t= 9.0000000E-03, DT= 1.0000000E-03, C=  0.000 6.7846E-01 1.1139E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.6105280555876580     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-          9  Hmholtz TEMP       2   7.5740E-08   2.8599E-06   1.0000E-07
-          9  Scalars done  9.0000E-03  3.7429E-03
-             Solving for fluid
-          9  PRES gmres        14   7.0047E-11   5.8670E-03   1.0000E-10   1.6483E-02   2.7704E-02    F
-          9  Helmh3 fluid      20   9.5180E-13   8.1320E-01   1.0000E-12
-             L1/L2 DIV(V)          -2.9609E-02   5.5675E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -2.9609E-02   5.5675E-02
-          9  Fluid done  9.0000E-03  7.6209E-02
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
- ymin:  -0.99980262107810058     
- ymax:   0.50000000000000000     
-err   0.9000000E-02  -0.2467253E-06   0.2602085E-17   0.1865529E-03   0.4146007E-01   0.2467253E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    1705.2404136635510     
- checksum(wy) =    1705.2404136635510     
- checksum(wy) =    1705.2404136635510     
- checksum(wy) =    1705.2404136635510     
- checksum(wy) =    1705.2404136635510     
- checksum(wy) =    1705.2404136635510     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     10, t= 1.0000000E-02, DT= 1.0000000E-03, C=  0.000 7.9322E-01 1.1476E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.7999485639784938     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         10  Hmholtz TEMP       2   3.7643E-08   1.3513E-06   1.0000E-07
-         10  Scalars done  1.0000E-02  3.6838E-03
-             Solving for fluid
-         10  PRES gmres        14   7.0229E-11   5.8630E-03   1.0000E-10   1.6289E-02   2.7295E-02    F
-         10  Helmh3 fluid      20   9.5206E-13   8.1314E-01   1.0000E-12
-             L1/L2 DIV(V)          -3.2899E-02   6.1922E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -3.2899E-02   6.1922E-02
-         10  Fluid done  1.0000E-02  7.4959E-02
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
- ymin:  -0.99975574741758033     
- ymax:   0.50000000000000000     
-err   0.1000000E-01  -0.2467235E-06   0.9540979E-17   0.2303173E-03   0.4606876E-01   0.2467235E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    1894.6523512997246     
- checksum(wy) =    1894.6523512997246     
- checksum(wy) =    1894.6523512997246     
- checksum(wy) =    1894.6523512997246     
- checksum(wy) =    1894.6523512997246     
- checksum(wy) =    1894.6523512997246     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     11, t= 1.1000000E-02, DT= 1.0000000E-03, C=  0.000 9.0404E-01 1.1082E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    1.9893513076034375     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         11  Hmholtz TEMP       1   5.6225E-08   3.3152E-07   1.0000E-07
-         11  Scalars done  1.1000E-02  2.6146E-03
-             Solving for fluid
-         11  PRES gmres        14   7.0427E-11   5.8671E-03   1.0000E-10   1.6250E-02   2.7286E-02    F
-         11  Helmh3 fluid      20   9.5244E-13   8.1308E-01   1.0000E-12
-             L1/L2 DIV(V)          -3.6188E-02   6.8169E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -3.6188E-02   6.8169E-02
-         11  Fluid done  1.1000E-02  7.4389E-02
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
- ymin:  -0.99970394139394481     
- ymax:   0.50000000000000000     
-err   0.1100000E-01  -0.2467216E-06   0.2602085E-17   0.2786907E-03   0.5067809E-01   0.2467216E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    2084.0455894820816     
- checksum(wy) =    2084.0455894820816     
- checksum(wy) =    2084.0455894820816     
- checksum(wy) =    2084.0455894820816     
- checksum(wy) =    2084.0455894820816     
- checksum(wy) =    2084.0455894820816     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     12, t= 1.2000000E-02, DT= 1.0000000E-03, C=  0.000 1.0117E+00 1.0769E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.1787344171342360     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         12  Hmholtz TEMP       1   1.1694E-08   6.7757E-08   1.0000E-07
-         12  Scalars done  1.2000E-02  2.6358E-03
-             Solving for fluid
-         12  PRES gmres        14   7.0453E-11   5.8700E-03   1.0000E-10   1.6360E-02   2.7553E-02    F
-         12  Helmh3 fluid      20   9.5288E-13   8.1302E-01   1.0000E-12
-             L1/L2 DIV(V)          -3.9478E-02   7.4416E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -3.9478E-02   7.4416E-02
-         12  Fluid done  1.2000E-02  7.4997E-02
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
- ymin:  -0.99964720351849856     
- ymax:   0.50000000000000000     
-err   0.1200000E-01  -0.2467198E-06   0.4336809E-17   0.3316737E-03   0.5528812E-01   0.2467198E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    2273.4182589758902     
- checksum(wy) =    2273.4182589758902     
- checksum(wy) =    2273.4182589758902     
- checksum(wy) =    2273.4182589758902     
- checksum(wy) =    2273.4182589758902     
- checksum(wy) =    2273.4182589758902     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     13, t= 1.3000000E-02, DT= 1.0000000E-03, C=  0.000 1.1204E+00 1.0863E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.3680960234357391     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         13  Hmholtz TEMP       1   1.5686E-08   1.0613E-07   1.0000E-07
-         13  Scalars done  1.3000E-02  2.5834E-03
-             Solving for fluid
-         13  PRES gmres        14   7.0476E-11   5.8704E-03   1.0000E-10   1.6253E-02   2.7346E-02    F
-         13  Helmh3 fluid      20   9.5333E-13   8.1295E-01   1.0000E-12
-             L1/L2 DIV(V)          -4.2768E-02   8.0663E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -4.2768E-02   8.0663E-02
-         13  Fluid done  1.3000E-02  7.4526E-02
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
- ymin:  -0.99958553435122155     
- ymax:   0.50000000000000000     
-err   0.1300000E-01  -0.2467180E-06   0.8673617E-17   0.3892671E-03   0.5989891E-01   0.2467180E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    2462.7684907491184     
- checksum(wy) =    2462.7684907491184     
- checksum(wy) =    2462.7684907491184     
- checksum(wy) =    2462.7684907491184     
- checksum(wy) =    2462.7684907491184     
- checksum(wy) =    2462.7684907491184     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     14, t= 1.4000000E-02, DT= 1.0000000E-03, C=  0.000 1.2282E+00 1.0784E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.5574342575856717     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         14  Hmholtz TEMP       1   1.0169E-08   7.2259E-08   1.0000E-07
-         14  Scalars done  1.4000E-02  2.6146E-03
-             Solving for fluid
-         14  PRES gmres        14   7.0529E-11   5.8696E-03   1.0000E-10   1.6265E-02   2.7373E-02    F
-         14  Helmh3 fluid      20   9.5380E-13   8.1287E-01   1.0000E-12
-             L1/L2 DIV(V)          -4.6058E-02   8.6909E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -4.6058E-02   8.6909E-02
-         14  Fluid done  1.4000E-02  7.4624E-02
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
- ymin:  -0.99951893450076357     
- ymax:   0.50000000000000000     
-err   0.1400000E-01  -0.2467162E-06   0.1734723E-17   0.4514718E-03   0.6451053E-01   0.2467162E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    2652.0944159917244     
- checksum(wy) =    2652.0944159917244     
- checksum(wy) =    2652.0944159917244     
- checksum(wy) =    2652.0944159917244     
- checksum(wy) =    2652.0944159917244     
- checksum(wy) =    2652.0944159917244     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     15, t= 1.5000000E-02, DT= 1.0000000E-03, C=  0.001 1.3364E+00 1.0817E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.7467472508917403     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         15  Hmholtz TEMP       1   4.4169E-09   3.8447E-08   1.0000E-07
-         15  Scalars done  1.5000E-02  2.5954E-03
-             Solving for fluid
-         15  PRES gmres        14   7.0574E-11   5.8687E-03   1.0000E-10   1.6253E-02   2.7336E-02    F
-         15  Helmh3 fluid      20   9.5432E-13   8.1279E-01   1.0000E-12
-             L1/L2 DIV(V)          -4.9348E-02   9.3156E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -4.9348E-02   9.3156E-02
-         15  Fluid done  1.5000E-02  7.4416E-02
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
- ymin:  -0.99944740462443826     
- ymax:   0.50000000000000000     
-err   0.1500000E-01  -0.2467143E-06   0.6938894E-17   0.5182885E-03   0.6912304E-01   0.2467143E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    2841.3941661331405     
- checksum(wy) =    2841.3941661331405     
- checksum(wy) =    2841.3941661331405     
- checksum(wy) =    2841.3941661331405     
- checksum(wy) =    2841.3941661331405     
- checksum(wy) =    2841.3941661331405     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     16, t= 1.6000000E-02, DT= 1.0000000E-03, C=  0.001 1.4441E+00 1.0773E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    2.9360331349116575     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         16  Hmholtz TEMP       1   3.2654E-09   2.6391E-08   1.0000E-07
-         16  Scalars done  1.6000E-02  2.5323E-03
-             Solving for fluid
-         16  PRES gmres        14   7.0614E-11   5.8681E-03   1.0000E-10   1.6275E-02   2.7366E-02    F
-         16  Helmh3 fluid      20   9.5489E-13   8.1271E-01   1.0000E-12
-             L1/L2 DIV(V)          -5.2638E-02   9.9402E-02
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -5.2638E-02   9.9402E-02
-         16  Fluid done  1.6000E-02  7.4716E-02
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
- ymin:  -0.99937094542821658     
- ymax:   0.50000000000000000     
-err   0.1600000E-01  -0.2467125E-06   0.3469447E-17   0.5897182E-03   0.7373650E-01   0.2467125E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3030.6658728611947     
- checksum(wy) =    3030.6658728611947     
- checksum(wy) =    3030.6658728611947     
- checksum(wy) =    3030.6658728611947     
- checksum(wy) =    3030.6658728611947     
- checksum(wy) =    3030.6658728611947     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     17, t= 1.7000000E-02, DT= 1.0000000E-03, C=  0.001 1.5521E+00 1.0801E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.1252900414697717     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         17  Hmholtz TEMP       1   2.4708E-09   2.2658E-08   1.0000E-07
-         17  Scalars done  1.7000E-02  2.5832E-03
-             Solving for fluid
-         17  PRES gmres        14   7.0666E-11   5.8676E-03   1.0000E-10   1.6278E-02   2.7403E-02    F
-         17  Helmh3 fluid      20   9.5549E-13   8.1261E-01   1.0000E-12
-             L1/L2 DIV(V)          -5.5928E-02   1.0565E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -5.5928E-02   1.0565E-01
-             WARNING: DIV(V)-QTL too large!
-         17  Fluid done  1.7000E-02  7.4531E-02
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
- ymin:  -0.99928955766672001     
- ymax:   0.50000000000000000     
-err   0.1700000E-01  -0.2467107E-06   0.3469447E-17   0.6657618E-03   0.7835099E-01   0.2467107E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3219.9076681407701     
- checksum(wy) =    3219.9076681407701     
- checksum(wy) =    3219.9076681407701     
- checksum(wy) =    3219.9076681407701     
- checksum(wy) =    3219.9076681407701     
- checksum(wy) =    3219.9076681407701     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     18, t= 1.8000000E-02, DT= 1.0000000E-03, C=  0.001 1.6601E+00 1.0796E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.3145161026768917     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         18  Hmholtz TEMP       1   2.1450E-09   2.1826E-08   1.0000E-07
-         18  Scalars done  1.8000E-02  2.5583E-03
-             Solving for fluid
-         18  PRES gmres        14   7.0726E-11   5.8671E-03   1.0000E-10   1.6284E-02   2.7344E-02    F
-         18  Helmh3 fluid      20   9.5613E-13   8.1252E-01   1.0000E-12
-             L1/L2 DIV(V)          -5.9218E-02   1.1189E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -5.9218E-02   1.1189E-01
-             WARNING: DIV(V)-QTL too large!
-         18  Fluid done  1.8000E-02  7.4599E-02
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
- ymin:  -0.99920324214321277     
- ymax:   0.50000000000000000     
-err   0.1800000E-01  -0.2467089E-06   0.3469447E-17   0.7464205E-03   0.8296655E-01   0.2467089E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3409.1176842314808     
- checksum(wy) =    3409.1176842314808     
- checksum(wy) =    3409.1176842314808     
- checksum(wy) =    3409.1176842314808     
- checksum(wy) =    3409.1176842314808     
- checksum(wy) =    3409.1176842314808     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     19, t= 1.9000000E-02, DT= 1.0000000E-03, C=  0.001 1.7679E+00 1.0785E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.5037094509479285     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         19  Hmholtz TEMP       1   2.4815E-09   2.2527E-08   1.0000E-07
-         19  Scalars done  1.9000E-02  2.5247E-03
-             Solving for fluid
-         19  PRES gmres        14   7.0789E-11   5.8666E-03   1.0000E-10   1.6314E-02   2.7397E-02    F
-         19  Helmh3 fluid      20   9.5681E-13   8.1241E-01   1.0000E-12
-             L1/L2 DIV(V)          -6.2507E-02   1.1814E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -6.2507E-02   1.1814E-01
-             WARNING: DIV(V)-QTL too large!
-         19  Fluid done  1.9000E-02  7.4598E-02
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
- ymin:  -0.99911199970959430     
- ymax:   0.50000000000000000     
-err   0.1900000E-01  -0.2467070E-06   0.3469447E-17   0.8316953E-03   0.8758327E-01   0.2467070E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3598.2940537069171     
- checksum(wy) =    3598.2940537069171     
- checksum(wy) =    3598.2940537069171     
- checksum(wy) =    3598.2940537069171     
- checksum(wy) =    3598.2940537069171     
- checksum(wy) =    3598.2940537069171     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     20, t= 2.0000000E-02, DT= 1.0000000E-03, C=  0.001 1.8758E+00 1.0792E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.6928682190216282     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         20  Hmholtz TEMP       1   2.5962E-09   2.2804E-08   1.0000E-07
-         20  Scalars done  2.0000E-02  2.6193E-03
-             Solving for fluid
-         20  PRES gmres        14   7.0856E-11   5.8660E-03   1.0000E-10   1.6264E-02   2.7281E-02    F
-         20  Helmh3 fluid      20   9.5753E-13   8.1230E-01   1.0000E-12
-             L1/L2 DIV(V)          -6.5797E-02   1.2439E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -6.5797E-02   1.2439E-01
-             WARNING: DIV(V)-QTL too large!
-         20  Fluid done  2.0000E-02  7.4456E-02
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
- ymin:  -0.99901583126639060     
- ymax:   0.50000000000000000     
-err   0.2000000E-01  -0.2467052E-06  -0.1734723E-17   0.9215875E-03   0.9220119E-01   0.2467052E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3787.4349094728477     
- checksum(wy) =    3787.4349094728477     
- checksum(wy) =    3787.4349094728477     
- checksum(wy) =    3787.4349094728477     
- checksum(wy) =    3787.4349094728477     
- checksum(wy) =    3787.4349094728477     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     21, t= 2.1000000E-02, DT= 1.0000000E-03, C=  0.001 1.9836E+00 1.0775E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    3.8819905399768690     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         21  Hmholtz TEMP       1   2.4261E-09   2.2761E-08   1.0000E-07
-         21  Scalars done  2.1000E-02  2.6235E-03
-             Solving for fluid
-         21  PRES gmres        14   7.0930E-11   5.8653E-03   1.0000E-10   1.6279E-02   2.7329E-02    F
-         21  Helmh3 fluid      20   9.5829E-13   8.1219E-01   1.0000E-12
-             L1/L2 DIV(V)          -6.9087E-02   1.3063E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -6.9087E-02   1.3063E-01
-             WARNING: DIV(V)-QTL too large!
-         21  Fluid done  2.1000E-02  7.4570E-02
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
- ymin:  -0.99891473776274542     
- ymax:   0.50000000000000000     
-err   0.2100000E-01  -0.2467034E-06   0.1040834E-16   0.1016098E-02   0.9682039E-01   0.2467034E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    3976.5383847851394     
- checksum(wy) =    3976.5383847851394     
- checksum(wy) =    3976.5383847851394     
- checksum(wy) =    3976.5383847851394     
- checksum(wy) =    3976.5383847851394     
- checksum(wy) =    3976.5383847851394     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     22, t= 2.2000000E-02, DT= 1.0000000E-03, C=  0.001 2.0915E+00 1.0788E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.0710745472524072     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         22  Hmholtz TEMP       1   2.3695E-09   2.2711E-08   1.0000E-07
-         22  Scalars done  2.2000E-02  2.6425E-03
-             Solving for fluid
-         22  PRES gmres        14   7.1010E-11   5.8646E-03   1.0000E-10   1.6307E-02   2.7335E-02    F
-         22  Helmh3 fluid      20   9.5909E-13   8.1207E-01   1.0000E-12
-             L1/L2 DIV(V)          -7.2377E-02   1.3688E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -7.2377E-02   1.3688E-01
-             WARNING: DIV(V)-QTL too large!
-         22  Fluid done  2.2000E-02  7.4416E-02
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
- ymin:  -0.99880872019641076     
- ymax:   0.50000000000000000     
-err   0.2200000E-01  -0.2467016E-06   0.1734723E-17   0.1115229E-02   0.1014409E+00   0.2467016E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    4165.6026132693023     
- checksum(wy) =    4165.6026132693023     
- checksum(wy) =    4165.6026132693023     
- checksum(wy) =    4165.6026132693023     
- checksum(wy) =    4165.6026132693023     
- checksum(wy) =    4165.6026132693023     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     23, t= 2.3000000E-02, DT= 1.0000000E-03, C=  0.001 2.1994E+00 1.0793E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.2601183746657831     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         23  Hmholtz TEMP       1   2.4120E-09   2.2589E-08   1.0000E-07
-         23  Scalars done  2.3000E-02  2.5315E-03
-             Solving for fluid
-         23  PRES gmres        14   7.1098E-11   5.8639E-03   1.0000E-10   1.6303E-02   2.7348E-02    F
-         23  Helmh3 fluid      20   9.5992E-13   8.1194E-01   1.0000E-12
-             L1/L2 DIV(V)          -7.5667E-02   1.4312E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -7.5667E-02   1.4312E-01
-             WARNING: DIV(V)-QTL too large!
-         23  Fluid done  2.3000E-02  7.4585E-02
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
- ymin:  -0.99869777961373718     
- ymax:   0.50000000000000000     
-err   0.2300000E-01  -0.2466998E-06   0.6938894E-17   0.1218980E-02   0.1060629E+00   0.2466998E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    4354.6257289370133     
- checksum(wy) =    4354.6257289370133     
- checksum(wy) =    4354.6257289370133     
- checksum(wy) =    4354.6257289370133     
- checksum(wy) =    4354.6257289370133     
- checksum(wy) =    4354.6257289370133     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     24, t= 2.4000000E-02, DT= 1.0000000E-03, C=  0.001 2.3073E+00 1.0792E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.4491201564309524     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         24  Hmholtz TEMP       1   2.4878E-09   2.2458E-08   1.0000E-07
-         24  Scalars done  2.4000E-02  2.6079E-03
-             Solving for fluid
-         24  PRES gmres        14   7.1192E-11   5.8632E-03   1.0000E-10   1.6261E-02   2.7345E-02    F
-         24  Helmh3 fluid      20   9.6080E-13   8.1181E-01   1.0000E-12
-             L1/L2 DIV(V)          -7.8957E-02   1.4937E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -7.8957E-02   1.4937E-01
-             WARNING: DIV(V)-QTL too large!
-         24  Fluid done  2.4000E-02  7.4483E-02
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
- ymin:  -0.99858191710966349     
- ymax:   0.50000000000000000     
-err   0.2400000E-01  -0.2466979E-06  -0.3469447E-17   0.1327355E-02   0.1106863E+00   0.2466979E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    4543.6058662069099     
- checksum(wy) =    4543.6058662069099     
- checksum(wy) =    4543.6058662069099     
- checksum(wy) =    4543.6058662069099     
- checksum(wy) =    4543.6058662069099     
- checksum(wy) =    4543.6058662069099     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     25, t= 2.5000000E-02, DT= 1.0000000E-03, C=  0.001 2.4153E+00 1.0799E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.6380780271761992     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         25  Hmholtz TEMP       1   2.5536E-09   2.2370E-08   1.0000E-07
-         25  Scalars done  2.5000E-02  2.5542E-03
-             Solving for fluid
-         25  PRES gmres        14   7.1295E-11   5.8624E-03   1.0000E-10   1.6561E-02   2.8023E-02    F
-         25  Helmh3 fluid      20   9.6172E-13   8.1168E-01   1.0000E-12
-             L1/L2 DIV(V)          -8.2247E-02   1.5561E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -8.2247E-02   1.5561E-01
-             WARNING: DIV(V)-QTL too large!
-         25  Fluid done  2.5000E-02  7.6835E-02
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
- ymin:  -0.99846113382770574     
- ymax:   0.50000000000000000     
-err   0.2500000E-01  -0.2466961E-06   0.1387779E-16   0.1440354E-02   0.1153112E+00   0.2466961E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    4732.5411599211020     
- checksum(wy) =    4732.5411599211020     
- checksum(wy) =    4732.5411599211020     
- checksum(wy) =    4732.5411599211020     
- checksum(wy) =    4732.5411599211020     
- checksum(wy) =    4732.5411599211020     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     26, t= 2.6000000E-02, DT= 1.0000000E-03, C=  0.001 2.5265E+00 1.1122E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    4.8269901219636573     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         26  Hmholtz TEMP       1   2.5835E-09   2.2316E-08   1.0000E-07
-         26  Scalars done  2.6000E-02  2.6707E-03
-             Solving for fluid
-         26  PRES gmres        14   7.1405E-11   5.8616E-03   1.0000E-10   1.6732E-02   2.8111E-02    F
-         26  Helmh3 fluid      20   9.6267E-13   8.1153E-01   1.0000E-12
-             L1/L2 DIV(V)          -8.5536E-02   1.6186E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -8.5536E-02   1.6186E-01
-             WARNING: DIV(V)-QTL too large!
-         26  Fluid done  2.6000E-02  7.6271E-02
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
- ymin:  -0.99833543095994626     
- ymax:   0.50000000000000000     
-err   0.2600000E-01  -0.2466943E-06   0.1040834E-16   0.1557978E-02   0.1199377E+00   0.2466943E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    4921.4297453646705     
- checksum(wy) =    4921.4297453646705     
- checksum(wy) =    4921.4297453646705     
- checksum(wy) =    4921.4297453646705     
- checksum(wy) =    4921.4297453646705     
- checksum(wy) =    4921.4297453646705     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     27, t= 2.7000000E-02, DT= 1.0000000E-03, C=  0.001 2.6367E+00 1.1015E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.0158545763074418     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         27  Hmholtz TEMP       1   2.6005E-09   2.2287E-08   1.0000E-07
-         27  Scalars done  2.7000E-02  2.6395E-03
-             Solving for fluid
-         27  PRES gmres        14   7.1524E-11   5.8608E-03   1.0000E-10   1.6582E-02   2.7759E-02    F
-         27  Helmh3 fluid      20   9.6366E-13   8.1139E-01   1.0000E-12
-             L1/L2 DIV(V)          -8.8826E-02   1.6810E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -8.8826E-02   1.6810E-01
-             WARNING: DIV(V)-QTL too large!
-         27  Fluid done  2.7000E-02  7.5393E-02
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
- ymin:  -0.99820480974702164     
- ymax:   0.50000000000000000     
-err   0.2700000E-01  -0.2466925E-06   0.1561251E-16   0.1680230E-02   0.1245659E+00   0.2466925E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5110.2697582838591     
- checksum(wy) =    5110.2697582838591     
- checksum(wy) =    5110.2697582838591     
- checksum(wy) =    5110.2697582838591     
- checksum(wy) =    5110.2697582838591     
- checksum(wy) =    5110.2697582838591     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     28, t= 2.8000000E-02, DT= 1.0000000E-03, C=  0.001 2.7461E+00 1.0940E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.2046695261910774     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         28  Hmholtz TEMP       1   2.6220E-09   2.2265E-08   1.0000E-07
-         28  Scalars done  2.8000E-02  2.5914E-03
-             Solving for fluid
-         28  PRES gmres        14   7.1653E-11   5.8599E-03   1.0000E-10   1.6553E-02   2.7925E-02    F
-         28  Helmh3 fluid      20   9.6469E-13   8.1123E-01   1.0000E-12
-             L1/L2 DIV(V)          -9.2116E-02   1.7435E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -9.2116E-02   1.7435E-01
-             WARNING: DIV(V)-QTL too large!
-         28  Fluid done  2.8000E-02  7.6344E-02
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
- ymin:  -0.99806927147811042     
- ymax:   0.50000000000000000     
-err   0.2800000E-01  -0.2466906E-06   0.3469447E-17   0.1807110E-02   0.1291958E+00   0.2466907E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5299.0593349035380     
- checksum(wy) =    5299.0593349035380     
- checksum(wy) =    5299.0593349035380     
- checksum(wy) =    5299.0593349035380     
- checksum(wy) =    5299.0593349035380     
- checksum(wy) =    5299.0593349035380     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     29, t= 2.9000000E-02, DT= 1.0000000E-03, C=  0.001 2.8563E+00 1.1016E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.3934331080886047     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         29  Hmholtz TEMP       1   2.6507E-09   2.2242E-08   1.0000E-07
-         29  Scalars done  2.9000E-02  2.6100E-03
-             Solving for fluid
-         29  PRES gmres        14   7.1790E-11   5.8591E-03   1.0000E-10   1.6901E-02   2.8241E-02    F
-         29  Helmh3 fluid      20   9.6577E-13   8.1107E-01   1.0000E-12
-             L1/L2 DIV(V)          -9.5406E-02   1.8059E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -9.5406E-02   1.8059E-01
-             WARNING: DIV(V)-QTL too large!
-         29  Fluid done  2.9000E-02  7.6555E-02
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
- ymin:  -0.99792881749092066     
- ymax:   0.50000000000000000     
-err   0.2900000E-01  -0.2466888E-06   0.1734723E-16   0.1938622E-02   0.1338275E+00   0.2466888E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5487.7966119467110     
- checksum(wy) =    5487.7966119467110     
- checksum(wy) =    5487.7966119467110     
- checksum(wy) =    5487.7966119467110     
- checksum(wy) =    5487.7966119467110     
- checksum(wy) =    5487.7966119467110     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     30, t= 3.0000000E-02, DT= 1.0000000E-03, C=  0.001 2.9670E+00 1.1070E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.5821434589784573     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         30  Hmholtz TEMP       1   2.6801E-09   2.2219E-08   1.0000E-07
-         30  Scalars done  3.0000E-02  2.6272E-03
-             Solving for fluid
-         30  PRES gmres        14   7.1937E-11   5.8581E-03   1.0000E-10   1.6969E-02   2.8328E-02    F
-         30  Helmh3 fluid      20   9.6687E-13   8.1091E-01   1.0000E-12
-             L1/L2 DIV(V)          -9.8696E-02   1.8684E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -9.8696E-02   1.8684E-01
-             WARNING: DIV(V)-QTL too large!
-         30  Fluid done  3.0000E-02  7.7049E-02
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
- ymin:  -0.99778344917167638     
- ymax:   0.50000000000000000     
-err   0.3000000E-01  -0.2466870E-06   0.1561251E-16   0.2074766E-02   0.1384611E+00   0.2466870E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5676.4797266528403     
- checksum(wy) =    5676.4797266528403     
- checksum(wy) =    5676.4797266528403     
- checksum(wy) =    5676.4797266528403     
- checksum(wy) =    5676.4797266528403     
- checksum(wy) =    5676.4797266528403     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     31, t= 3.1000000E-02, DT= 1.0000000E-03, C=  0.001 3.0782E+00 1.1122E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.7707987163655172     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         31  Hmholtz TEMP       1   2.7052E-09   2.2200E-08   1.0000E-07
-         31  Scalars done  3.1000E-02  2.6715E-03
-             Solving for fluid
-         31  PRES gmres        14   7.2094E-11   5.8572E-03   1.0000E-10   1.6973E-02   2.8272E-02    F
-         31  Helmh3 fluid      20   9.6802E-13   8.1074E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.0199E-01   1.9308E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.0199E-01   1.9308E-01
-             WARNING: DIV(V)-QTL too large!
-         31  Fluid done  3.1000E-02  7.6056E-02
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
- ymin:  -0.99763316795510437     
- ymax:   0.50000000000000000     
-err   0.3100000E-01  -0.2466852E-06   0.6938894E-17   0.2215545E-02   0.1430965E+00   0.2466852E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    5865.1068167961248     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     32, t= 3.2000000E-02, DT= 1.0000000E-03, C=  0.001 3.1885E+00 1.1036E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    5.9593970182992786     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         32  Hmholtz TEMP       1   2.7252E-09   2.2185E-08   1.0000E-07
-         32  Scalars done  3.2000E-02  2.5351E-03
-             Solving for fluid
-         32  PRES gmres        14   7.2262E-11   5.8562E-03   1.0000E-10   1.6632E-02   2.7556E-02    F
-         32  Helmh3 fluid      20   9.6921E-13   8.1056E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.0528E-01   1.9932E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.0528E-01   1.9932E-01
-             WARNING: DIV(V)-QTL too large!
-         32  Fluid done  3.2000E-02  7.4636E-02
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- ymin:  -0.99747797532441951     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
-err   0.3200000E-01  -0.2466834E-06   0.2081668E-16   0.2360960E-02   0.1477340E+00   0.2466834E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6053.6760207026091     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     33, t= 3.3000000E-02, DT= 1.0000000E-03, C=  0.001 3.2966E+00 1.0806E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.1479365033903912     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         33  Hmholtz TEMP       1   2.7432E-09   2.2174E-08   1.0000E-07
-         33  Scalars done  3.3000E-02  2.4852E-03
-             Solving for fluid
-         33  PRES gmres        14   7.2441E-11   5.8552E-03   1.0000E-10   1.6618E-02   2.7493E-02    F
-         33  Helmh3 fluid      20   9.7044E-13   8.1038E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.0857E-01   2.0557E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.0857E-01   2.0557E-01
-             WARNING: DIV(V)-QTL too large!
-         33  Fluid done  3.3000E-02  7.4590E-02
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99731787281131035     
- ymax:   0.50000000000000000     
-err   0.3300000E-01  -0.2466816E-06   0.1040834E-16   0.2511013E-02   0.1523735E+00   0.2466816E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6242.1854772705065     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     34, t= 3.4000000E-02, DT= 1.0000000E-03, C=  0.001 3.4046E+00 1.0797E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.3364153108303984     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         34  Hmholtz TEMP       1   2.7608E-09   2.2165E-08   1.0000E-07
-         34  Scalars done  3.4000E-02  2.4945E-03
-             Solving for fluid
-         34  PRES gmres        14   7.2631E-11   5.8541E-03   1.0000E-10   1.6647E-02   2.7558E-02    F
-         34  Helmh3 fluid      20   9.7170E-13   8.1019E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.1186E-01   2.1181E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.1186E-01   2.1181E-01
-             WARNING: DIV(V)-QTL too large!
-         34  Fluid done  3.4000E-02  7.4478E-02
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- ymin:  -0.99715286199592412     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
-err   0.3400000E-01  -0.2466797E-06  -0.1387779E-16   0.2665707E-02   0.1570151E+00   0.2466797E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6430.6333259881467     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6430.6333259881467     
- checksum(wy) =    6430.6333259881467     
- checksum(wy) =    6430.6333259881467     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6430.6333259881467     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6430.6333259881467     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     35, t= 3.5000000E-02, DT= 1.0000000E-03, C=  0.001 3.5125E+00 1.0789E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.5248315804091215     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         35  Hmholtz TEMP       1   2.7777E-09   2.2155E-08   1.0000E-07
-         35  Scalars done  3.5000E-02  2.4944E-03
-             Solving for fluid
-         35  PRES gmres        14   7.2832E-11   5.8531E-03   1.0000E-10   1.6647E-02   2.7594E-02    F
-         35  Helmh3 fluid      20   9.7301E-13   8.0999E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.1515E-01   2.1805E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.1515E-01   2.1805E-01
-             WARNING: DIV(V)-QTL too large!
-         35  Fluid done  3.5000E-02  7.4564E-02
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
- ymin:  -0.99698294450685099     
- ymax:   0.50000000000000000     
-err   0.3500000E-01  -0.2466779E-06   0.2081668E-16   0.2825044E-02   0.1616588E+00   0.2466779E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6619.0177069509245     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     36, t= 3.6000000E-02, DT= 1.0000000E-03, C=  0.001 3.6205E+00 1.0800E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.7131834525347971     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         36  Hmholtz TEMP       1   2.7937E-09   2.2148E-08   1.0000E-07
-         36  Scalars done  3.6000E-02  2.5008E-03
-             Solving for fluid
-         36  PRES gmres        14   7.3045E-11   5.8520E-03   1.0000E-10   1.6667E-02   2.7634E-02    F
-         36  Helmh3 fluid      20   9.7435E-13   8.0980E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.1843E-01   2.2430E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.1843E-01   2.2430E-01
-             WARNING: DIV(V)-QTL too large!
-         36  Fluid done  3.6000E-02  7.4594E-02
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99680812202110791     
- ymax:   0.50000000000000000     
-err   0.3600000E-01  -0.2466761E-06   0.3469447E-17   0.2989026E-02   0.1663048E+00   0.2466761E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    6807.3367608809158     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     37, t= 3.7000000E-02, DT= 1.0000000E-03, C=  0.001 3.7289E+00 1.0844E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    6.9014690682496251     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         37  Hmholtz TEMP       1   2.8086E-09   2.2142E-08   1.0000E-07
-         37  Scalars done  3.7000E-02  2.5171E-03
-             Solving for fluid
-         37  PRES gmres        14   7.3271E-11   5.8508E-03   1.0000E-10   1.6615E-02   2.7577E-02    F
-         37  Helmh3 fluid      20   9.7574E-13   8.0959E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.2172E-01   2.3054E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.2172E-01   2.3054E-01
-             WARNING: DIV(V)-QTL too large!
-         37  Fluid done  3.7000E-02  7.4541E-02
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
- ymin:  -0.99662839626412225     
- ymax:   0.50000000000000000     
-err   0.3700000E-01  -0.2466743E-06  -0.3469447E-17   0.3157654E-02   0.1709531E+00   0.2466743E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    6995.5886291449860     
- checksum(wz) =    0.0000000000000000     
-Step     38, t= 3.8000000E-02, DT= 1.0000000E-03, C=  0.001 3.8369E+00 1.0803E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.0896865692508948     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         38  Hmholtz TEMP       1   2.8219E-09   2.2135E-08   1.0000E-07
-         38  Scalars done  3.8000E-02  2.4941E-03
-             Solving for fluid
-         38  PRES gmres        14   7.3508E-11   5.8497E-03   1.0000E-10   1.6644E-02   2.7588E-02    F
-         38  Helmh3 fluid      20   9.7716E-13   8.0938E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.2501E-01   2.3678E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.2501E-01   2.3678E-01
-             WARNING: DIV(V)-QTL too large!
-         38  Fluid done  3.8000E-02  7.4760E-02
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
- ymin:  -0.99644376900971465     
- ymax:   0.50000000000000000     
-err   0.3800000E-01  -0.2466725E-06  -0.1040834E-16   0.3330933E-02   0.1756038E+00   0.2466725E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7183.7714537748216     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7183.7714537748216     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7183.7714537748216     
- checksum(wy) =    7183.7714537748216     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7183.7714537748216     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7183.7714537748216     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     39, t= 3.9000000E-02, DT= 1.0000000E-03, C=  0.001 3.9451E+00 1.0819E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.2778340979081744     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         39  Hmholtz TEMP       1   2.8347E-09   2.2132E-08   1.0000E-07
-         39  Scalars done  3.9000E-02  2.5434E-03
-             Solving for fluid
-         39  PRES gmres        14   7.3758E-11   5.8485E-03   1.0000E-10   1.6621E-02   2.7534E-02    F
-         39  Helmh3 fluid      20   9.7863E-13   8.0916E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.2830E-01   2.4302E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.2830E-01   2.4302E-01
-             WARNING: DIV(V)-QTL too large!
-         39  Fluid done  3.9000E-02  7.4604E-02
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99625424208008162     
- ymax:   0.50000000000000000     
-err   0.3900000E-01  -0.2466707E-06   0.0000000E+00   0.3508863E-02   0.1802569E+00   0.2466707E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7371.8833774802024     
- checksum(wy) =    7371.8833774802024     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7371.8833774802024     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7371.8833774802024     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7371.8833774802024     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7371.8833774802024     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     40, t= 4.0000000E-02, DT= 1.0000000E-03, C=  0.001 4.0532E+00 1.0803E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.4659097972809967     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         40  Hmholtz TEMP       1   2.8466E-09   2.2126E-08   1.0000E-07
-         40  Scalars done  4.0000E-02  2.5398E-03
-             Solving for fluid
-         40  PRES gmres        14   7.4021E-11   5.8472E-03   1.0000E-10   1.6619E-02   2.7538E-02    F
-         40  Helmh3 fluid      20   9.8013E-13   8.0894E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.3159E-01   2.4926E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.3159E-01   2.4926E-01
-             WARNING: DIV(V)-QTL too large!
-         40  Fluid done  4.0000E-02  7.4648E-02
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99605981734577742     
- ymax:   0.50000000000000000     
-err   0.4000000E-01  -0.2466689E-06  -0.3469447E-17   0.3691447E-02   0.1849124E+00   0.2466689E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7559.9225436726301     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     41, t= 4.1000000E-02, DT= 1.0000000E-03, C=  0.001 4.1613E+00 1.0815E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.6539118111382463     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         41  Hmholtz TEMP       1   2.8581E-09   2.2123E-08   1.0000E-07
-         41  Scalars done  4.1000E-02  2.5091E-03
-             Solving for fluid
-         41  PRES gmres        14   7.4297E-11   5.8460E-03   1.0000E-10   1.6673E-02   2.7665E-02    F
-         41  Helmh3 fluid      20   9.8167E-13   8.0871E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.3488E-01   2.5550E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.3488E-01   2.5550E-01
-             WARNING: DIV(V)-QTL too large!
-         41  Fluid done  4.1000E-02  7.4600E-02
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- ymin:  -0.99586049672569565     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7747.8870964815460     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7747.8870964815460     
-err   0.4100000E-01  -0.2466671E-06   0.2428613E-16   0.3878689E-02   0.1895706E+00   0.2466670E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7747.8870964815460     
- checksum(wy) =    7747.8870964815460     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7747.8870964815460     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    7747.8870964815460     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     42, t= 4.2000000E-02, DT= 1.0000000E-03, C=  0.002 4.2693E+00 1.0800E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    7.8418382839759939     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         42  Hmholtz TEMP       1   2.8686E-09   2.2119E-08   1.0000E-07
-         42  Scalars done  4.2000E-02  2.5811E-03
-             Solving for fluid
-         42  PRES gmres        14   7.4586E-11   5.8447E-03   1.0000E-10   1.6645E-02   2.7537E-02    F
-         42  Helmh3 fluid      20   9.8325E-13   8.0848E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.3817E-01   2.6174E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.3817E-01   2.6174E-01
-             WARNING: DIV(V)-QTL too large!
-         42  Fluid done  4.2000E-02  7.4581E-02
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
- ymin:  -0.99565628218705049     
- ymax:   0.50000000000000000     
-err   0.4200000E-01  -0.2466652E-06   0.1040834E-16   0.4070589E-02   0.1942314E+00   0.2466652E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    7935.7751807726172     
- checksum(wz) =    0.0000000000000000     
-Step     43, t= 4.3000000E-02, DT= 1.0000000E-03, C=  0.002 4.3775E+00 1.0818E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.0296873610355135     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         43  Hmholtz TEMP       1   2.8789E-09   2.2117E-08   1.0000E-07
-         43  Scalars done  4.3000E-02  2.5043E-03
-             Solving for fluid
-         43  PRES gmres        14   7.4888E-11   5.8433E-03   1.0000E-10   1.6622E-02   2.7543E-02    F
-         43  Helmh3 fluid      20   9.8487E-13   8.0824E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.4146E-01   2.6798E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.4146E-01   2.6798E-01
-             WARNING: DIV(V)-QTL too large!
-         43  Fluid done  4.3000E-02  7.4819E-02
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
- ymin:  -0.99544717574535690     
- ymax:   0.50000000000000000     
-err   0.4300000E-01  -0.2466634E-06   0.3122502E-16   0.4267152E-02   0.1988948E+00   0.2466634E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8123.5849421661642     
- checksum(wz) =    0.0000000000000000     
-Step     44, t= 4.4000000E-02, DT= 1.0000000E-03, C=  0.002 4.4858E+00 1.0831E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.2174571883224257     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         44  Hmholtz TEMP       1   2.8884E-09   2.2114E-08   1.0000E-07
-         44  Scalars done  4.4000E-02  2.6516E-03
-             Solving for fluid
-         44  PRES gmres        14   7.5203E-11   5.8420E-03   1.0000E-10   1.6890E-02   2.8121E-02    F
-         44  Helmh3 fluid      20   9.8654E-13   8.0800E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.4475E-01   2.7422E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.4475E-01   2.7422E-01
-             WARNING: DIV(V)-QTL too large!
-         44  Fluid done  4.4000E-02  7.6349E-02
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99523317946441103     
- ymax:   0.50000000000000000     
-err   0.4400000E-01  -0.2466616E-06   0.6938894E-17   0.4468380E-02   0.2035610E+00   0.2466616E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8311.3145270565292     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     45, t= 4.5000000E-02, DT= 1.0000000E-03, C=  0.002 4.5962E+00 1.1041E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.4051459126250858     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         45  Hmholtz TEMP       1   2.8978E-09   2.2113E-08   1.0000E-07
-         45  Scalars done  4.5000E-02  2.6154E-03
-             Solving for fluid
-         45  PRES gmres        14   7.5532E-11   5.8406E-03   1.0000E-10   1.6870E-02   2.8130E-02    F
-         45  Helmh3 fluid      20   9.8824E-13   8.0775E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.4804E-01   2.8046E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.4804E-01   2.8046E-01
-             WARNING: DIV(V)-QTL too large!
-         45  Fluid done  4.5000E-02  7.5940E-02
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99501429545626974     
- ymax:   0.50000000000000000     
-err   0.4500000E-01  -0.2466598E-06   0.6938894E-17   0.4674275E-02   0.2082300E+00   0.2466598E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wz) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8498.9620826274440     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     46, t= 4.6000000E-02, DT= 1.0000000E-03, C=  0.002 4.7061E+00 1.0994E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.5927516815306735     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         46  Hmholtz TEMP       1   2.9063E-09   2.2109E-08   1.0000E-07
-         46  Scalars done  4.6000E-02  2.5809E-03
-             Solving for fluid
-         46  PRES gmres        14   7.5874E-11   5.8392E-03   1.0000E-10   1.6894E-02   2.8147E-02    F
-         46  Helmh3 fluid      20   9.8998E-13   8.0749E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.5133E-01   2.8670E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.5133E-01   2.8670E-01
-             WARNING: DIV(V)-QTL too large!
-         46  Fluid done  4.6000E-02  7.6030E-02
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99479052588122985     
- ymax:   0.50000000000000000     
-err   0.4600000E-01  -0.2466580E-06   0.2081668E-16   0.4884841E-02   0.2129019E+00   0.2466580E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8686.5257568744091     
- checksum(wy) =    8686.5257568744091     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8686.5257568744091     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8686.5257568744091     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8686.5257568744091     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8686.5257568744091     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     47, t= 4.7000000E-02, DT= 1.0000000E-03, C=  0.002 4.8160E+00 1.0987E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.7802726434463150     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         47  Hmholtz TEMP       1   2.9146E-09   2.2109E-08   1.0000E-07
-         47  Scalars done  4.7000E-02  2.5440E-03
-             Solving for fluid
-         47  PRES gmres        14   7.6229E-11   5.8377E-03   1.0000E-10   1.6861E-02   2.8078E-02    F
-         47  Helmh3 fluid      20   9.9176E-13   8.0723E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.5462E-01   2.9294E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.5462E-01   2.9294E-01
-             WARNING: DIV(V)-QTL too large!
-         47  Fluid done  4.7000E-02  7.6003E-02
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99456187294780674     
- ymax:   0.50000000000000000     
-err   0.4700000E-01  -0.2466562E-06  -0.1387779E-16   0.5100080E-02   0.2175768E+00   0.2466562E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8874.0036986185096     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8874.0036986185096     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    8874.0036986185096     
- checksum(wy) =    8874.0036986185096     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8874.0036986185096     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    8874.0036986185096     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     48, t= 4.8000000E-02, DT= 1.0000000E-03, C=  0.002 4.9259E+00 1.0993E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    8.9677069476146194     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         48  Hmholtz TEMP       1   2.9226E-09   2.2108E-08   1.0000E-07
-         48  Scalars done  4.8000E-02  2.6169E-03
-             Solving for fluid
-         48  PRES gmres        14   7.6597E-11   5.8363E-03   1.0000E-10   1.6906E-02   2.8203E-02    F
-         48  Helmh3 fluid      20   9.9359E-13   8.0696E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.5791E-01   2.9918E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.5791E-01   2.9918E-01
-             WARNING: DIV(V)-QTL too large!
-         48  Fluid done  4.8000E-02  7.6268E-02
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- ymin:  -0.99432833891271255     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
-err   0.4800000E-01  -0.2466544E-06   0.1734723E-16   0.5319995E-02   0.2222546E+00   0.2466544E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9061.3940575290617     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     49, t= 4.9000000E-02, DT= 1.0000000E-03, C=  0.002 5.0363E+00 1.1037E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.1550527441367322     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         49  Hmholtz TEMP       1   2.9298E-09   2.2105E-08   1.0000E-07
-         49  Scalars done  4.9000E-02  2.4826E-03
-             Solving for fluid
-         49  PRES gmres        14   7.6978E-11   5.8348E-03   1.0000E-10   1.6696E-02   2.7929E-02    F
-         49  Helmh3 fluid      20   9.9545E-13   8.0669E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.6120E-01   3.0541E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.6120E-01   3.0541E-01
-             WARNING: DIV(V)-QTL too large!
-         49  Fluid done  4.9000E-02  7.5384E-02
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
- ymin:  -0.99408992608083402     
- ymax:   0.50000000000000000     
-err   0.4900000E-01  -0.2466526E-06   0.3122502E-16   0.5544590E-02   0.2269356E+00   0.2466526E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9248.6949841385249     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
-Step     50, t= 5.0000000E-02, DT= 1.0000000E-03, C=  0.002 5.1454E+00 1.0906E-01
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
- glsum(UX):    0.0000000000000000     
- glsum(UY):    9.3423081839841924     
- glsum(UZ):    0.0000000000000000     
-             Solving for Hmholtz scalars
-         50  Hmholtz TEMP       1   2.9375E-09   2.2106E-08   1.0000E-07
-         50  Scalars done  5.0000E-02  2.5061E-03
-             Solving for fluid
-         50  PRES gmres        14   7.7372E-11   5.8332E-03   1.0000E-10   1.6574E-02   2.7674E-02    F
-         50  Helmh3 fluid      20   9.9735E-13   8.0641E-01   1.0000E-12
-             L1/L2 DIV(V)          -1.6449E-01   3.1165E-01
-             L1/L2 QTL              0.0000E+00   0.0000E+00
-             L1/L2 DIV(V)-QTL      -1.6449E-01   3.1165E-01
-             WARNING: DIV(V)-QTL too large!
-         50  Fluid done  5.0000E-02  7.5067E-02
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
- checksum(wx) =    0.0000000000000000     
- ymin:  -0.99384663680520946     
- ymax:   0.50000000000000000     
-err   0.5000000E-01  -0.2466508E-06   0.0000000E+00   0.5773868E-02   0.2316197E+00   0.2466508E-05
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9435.9046298617977     
- checksum(wx) =    0.0000000000000000     
- checksum(wy) =    9435.9046298617977     
- checksum(wy) =    9435.9046298617977     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9435.9046298617977     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9435.9046298617977     
- checksum(wz) =    0.0000000000000000     
- checksum(wy) =    9435.9046298617977     
- checksum(wz) =    0.0000000000000000     
- checksum(wz) =    0.0000000000000000     
+ checksum(wy) =    947.44305934888439     
  checksum(wz) =    0.0000000000000000     
 
-       50  5.0000E-02 Write checkpoint
+        5  5.0000E-03 Write checkpoint
        FILE:/home/malachi2/moving-mesh-dir/cases/n5k-run/mv_cyl/mv_cyl0.f00001                                                                  
- min/max:   0.0000       1.0000     -0.99385      0.50000       0.0000      0.10000    
- min/max: -0.11065E-01  0.11065E-01   0.0000      0.24573     -0.11065E-01  0.11065E-01
- min/max:  -1.6361       2.4468    
+ min/max:   0.0000       1.0000     -0.99994      0.50000       0.0000      0.10000    
+ min/max: -0.34404E-05  0.34404E-05   0.0000      0.24673E-01 -0.34403E-05  0.34403E-05
+ min/max:  -1.2345       2.4662    
  min/max:   1.0000       1.0000    
 
-       50  5.0000E-02 done :: Write checkpoint
+        5  5.0000E-03 done :: Write checkpoint
                               file size =      2.4    MB
-                              avg data-throughput =     3.8MB/s
+                              avg data-throughput =     4.3MB/s
                               io-nodes =     6
 
 
@@ -3390,29 +824,29 @@ end of time-step loop
 
  
 runtime statistics:
- init time  0.28644442558288574        4.8751907954559963E-002
- prep time           1  0.62733678519725800       0.10677067688160163     
- pres time          50   1.6073322072625160       0.27356270474248567     
- crsl time         705   9.4514563679695129E-003   1.6086070795413637E-003
- crsl min    9.0713128447532654E-003
- crsl max    1.0516352951526642E-002
- crsl avg    9.8332750300566350E-003
- hmhz time         100   1.8623951151967049       0.31697358063901043     
+ init time  0.33327107131481171       0.29036850940340386     
+ prep time           1  0.54609604179859161       0.47579615303114553     
+ pres time           5  0.19489199668169022       0.16980321258564768     
+ crsl time          78   1.4901235699653625E-003   1.2982973833603514E-003
+ crsl min    8.9382380247116089E-004
+ crsl max    1.4923512935638428E-003
+ crsl avg    1.2789070606231689E-003
+ hmhz time          10  0.22872084379196167       0.19927721364878345     
  eslv time           0   0.0000000000000000        0.0000000000000000     
- makf time  0.25674198567867279        4.3696649457944430E-002
- makq time  0.10106143355369568        1.7200326717267494E-002
+ makf time   1.8351763486862183E-002   1.5989309205809717E-002
+ makq time   5.6252777576446533E-003   4.9011260143982556E-003
  proj time   0.0000000000000000        0.0000000000000000     
- usvp time          52   5.6565277278423309E-002   9.6272258944829613E-003
- usfq time           0   5.6746035814285278E-002   9.6579904083477774E-003
- usbc time         246   6.6931419074535370E-002   1.1391509453709489E-002
- usbc min    6.3839487731456757E-002
- usbc max    7.3812246322631836E-002
- usb  avg    6.8491977949937180E-002
- uchk time   1.2061335146427155E-002   2.0527999442515521E-003
- mltd time         150   3.5445190966129303E-002   6.0326560165944471E-003
- cdtp time         300   3.8342423737049103E-002   6.5257555945785403E-003
- axhm time        2255   1.2377083823084831       0.21065393402613197     
- advc time         200  0.18193636834621429        3.0964977116075876E-002
+ usvp time           7   4.4479742646217346E-003   3.8753788379757084E-003
+ usfq time           0   6.8348199129104614E-003   5.9549617142671870E-003
+ usbc time          21   7.5939744710922241E-003   6.6163889920575628E-003
+ usbc min    4.5304447412490845E-003
+ usbc max    7.7770724892616272E-003
+ usb  avg    6.5614233414332075E-003
+ uchk time   1.4581382274627686E-003   1.2704295693655914E-003
+ mltd time          30   5.4830238223075867E-003   4.7771846744024595E-003
+ cdtp time          30   2.9477700591087341E-003   2.5682985167316138E-003
+ axhm time         273  0.10389548540115356        9.0520839719625851E-002
+ advc time          20   1.1580891907215118E-002   1.0090063645168670E-002
  mxmf time   0.0000000000000000        0.0000000000000000     
  adc3 time   0.0000000000000000        0.0000000000000000     
  col2 time   0.0000000000000000        0.0000000000000000     
@@ -3420,33 +854,33 @@ runtime statistics:
  a2s2 time   0.0000000000000000        0.0000000000000000     
  add2 time   0.0000000000000000        0.0000000000000000     
  invc time   0.0000000000000000        0.0000000000000000     
- tgop time        8714  0.39715864509344101        6.7595107391435386E-002
- dadd time           0  0.23945798724889755        4.0754969239100942E-002
- vdss time        1332  0.42934346944093704        7.3072859632310402E-002
- vdss min   0.30919788032770157     
- vdss max   0.55133505910634995     
- vdss avg   0.46159259354074794     
- dsum time        2890  0.18465732038021088        3.1428074286985179E-002
- dsum min   0.14963141828775406     
- dsum max   0.21990209817886353     
- dsum avg   0.19392891352375349     
+ tgop time        1078   7.6684527099132538E-002   6.6812795182713575E-002
+ dadd time           0   4.5931577682495117E-002   4.0018726178649912E-002
+ vdss time         167   9.5393992960453033E-002   8.3113759117125291E-002
+ vdss min    1.3931952416896820E-002
+ vdss max    9.7645066678524017E-002
+ vdss avg    6.8856760859489441E-002
+ dsum time         386   3.8968436419963837E-002   3.3951962144226251E-002
+ dsum min    1.1877395212650299E-002
+ dsum max    4.0360227227210999E-002
+ dsum avg    3.0442692339420319E-002
  ddsl time           0   0.0000000000000000        0.0000000000000000     
  
 
 #  nid       tusbc       tdadd       tcrsl       tvdss       tdsum        tgop    qqq    F
-           0  6.6931E-02  2.3946E-01  9.4515E-03  4.2934E-01  1.8466E-01  3.9716E-01 qqq
-           1  7.3812E-02  2.8929E-01  1.0516E-02  5.5134E-01  2.1990E-01  5.2247E-01 qqq
-           2  6.3839E-02  1.9200E-01  9.0713E-03  3.0920E-01  1.4963E-01  2.7991E-01 qqq
-           3  6.8458E-02  2.8401E-01  1.0297E-02  5.3167E-01  2.1048E-01  4.8251E-01 qqq
-           4  7.2635E-02  2.9149E-01  1.0265E-02  5.3924E-01  2.1718E-01  5.1200E-01 qqq
-           5  6.5276E-02  2.3568E-01  9.3987E-03  4.0877E-01  1.8173E-01  3.4145E-01 qqq
+           0  7.5940E-03  4.5932E-02  1.4901E-03  9.5394E-02  3.8968E-02  7.6685E-02 qqq
+           1  4.6547E-03  1.5465E-02  8.9382E-04  1.4862E-02  1.1941E-02  6.5510E-03 qqq
+           2  7.7771E-03  4.6932E-02  1.4924E-03  9.5167E-02  4.0360E-02  7.7096E-02 qqq
+           3  7.1887E-03  4.7107E-02  1.4598E-03  9.7645E-02  4.0206E-02  7.6427E-02 qqq
+           4  4.5304E-03  1.5450E-02  9.3330E-04  1.3932E-02  1.1877E-02  5.6408E-03 qqq
+           5  7.6237E-03  4.6019E-02  1.4041E-03  9.6140E-02  3.9304E-02  7.6446E-02 qqq
   
 run successful: dying ...
   
   
-total elapsed time             :   6.16939E+00 sec
-total solver time w/o IO       :   5.24822E+00 sec
-time/timestep                  :   1.04964E-01 sec
-avg throughput per timestep    :   8.36506E+04 gridpts/CPUs
-total max memory usage         :   1.35559E+00 GB
+total elapsed time             :   1.48836E+00 sec
+total solver time w/o IO       :   6.01656E-01 sec
+time/timestep                  :   1.20331E-01 sec
+avg throughput per timestep    :   7.29681E+04 gridpts/CPUs
+total max memory usage         :   1.31985E+00 GB
 

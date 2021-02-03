@@ -66,6 +66,7 @@ C=======================================================================
       !ifusermv = .true.                  ! define our own mesh velocity
       !call user_mvel(time)               ! Fill mesh velocity
 
+      call printdiverr
       call user_print_err
 
       RETURN
@@ -79,9 +80,8 @@ C=======================================================================
       INCLUDE 'TSTEP'
       INCLUDE 'NEKUSE'
 
-      pi    = 4.*atan(1.0)
-      omega = pi
-      amp   = 0.5*pi
+      omega = P_OMEGA
+      amp   = P_AMP
 
       IF (IFIELD .eq. 1) THEN 
         UX = 0.0
@@ -102,7 +102,6 @@ C   Set initial conditions
       INCLUDE 'TOTAL'
       INCLUDE 'NEKUSE'
 
-      gamma0 = 1.4
       p0th   = 1.0
 
       IF (IFIELD.EQ.1) THEN          ! ---------- Velocity
@@ -180,9 +179,8 @@ C=======================================================================
       ymax = glmax(ym1,n)  ! this is the separation between moving and nonmvg
       ylen = ymin-ymax
 
-      pi    = 4.*atan(1.0)
-      omega = pi
-      amp   = 0.5*pi
+      omega = P_OMEGA
+      amp   = P_AMP
       v_piston = amp*sin(omega*time_)
 
       do i=1,n
@@ -198,10 +196,9 @@ C=======================================================================
 C-----------------------------------------------------------------------
       subroutine exact_sol (time_, volex, vpex,pex,dpdtex,qtlex,ypex)
 
-      gam0   = 1.4
-      pi     = 4.*atan(1.0)
-      omega  = pi
-      amp    = 0.5*pi
+      gam0   = P_GAMMA
+      omega  = P_OMEGA
+      amp    = P_AMP
       areap  = XLEN*ZLEN 
       volex0 = areap * YLEN 
       pex0   = 1.0
@@ -222,6 +219,7 @@ c
       include 'TOTAL'
 
       real glcflux
+      real tavg, tex, var
 
       nxyz  = nx1*ny1*nz1
       ntotv = nxyz*nelv
@@ -230,10 +228,15 @@ c
       ypist = glmin(ym1,ntotv)
 
       call exact_sol (time,volex,vpex,pex,dpdtex,qtlex,ypex)
+      tavg = glsc2(t, bm1, ntotv) / volvm1
+      tex = pex ** ((P_GAMMA-1.)/P_GAMMA)
+      write(6,*) "tavg: ", tavg
+      write(6,*) "tex: ", tex
 
-      write(*,'(A,6(1X,E15.7))') 'err',time,
+      write(*,'(A,7(1X,E15.7))') 'err',time,
      $   volex-volvm1,(vpex*XLEN*ZLEN)-termV,
-     &   pex-p0th,dpdtex-dp0thdt,ypex-ypist
+     &   pex-p0th,dpdtex-dp0thdt,ypex-ypist,
+     &   tavg - tex
 
       return
       end
