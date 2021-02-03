@@ -209,9 +209,10 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->ellipticWrkOffset = wrkNflds * nrs->fieldOffset;
 
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
-  scratch   = (dfloat*) calloc(scratchNflds * nrs->fieldOffset,sizeof(dfloat));
-  o_scratch = mesh->device.malloc(scratchNflds * nrs->fieldOffset * sizeof(dfloat), scratch);
+  scratch  = (dfloat*) calloc(scratchNflds * nrs->fieldOffset,sizeof(dfloat));
+  nrs->wrk = scratch;
 
+  o_scratch = mesh->device.malloc(scratchNflds * nrs->fieldOffset * sizeof(dfloat), scratch);
   nrs->o_wrk0  = o_scratch.slice( 0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk1  = o_scratch.slice( 1 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk2  = o_scratch.slice( 2 * nrs->fieldOffset * sizeof(dfloat));
@@ -224,7 +225,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
 
-  nrs->wrk = (dfloat*) calloc(nrs->fieldOffset, sizeof(dfloat));
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));

@@ -10,7 +10,7 @@
 
 static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
-static int ifQThermal = 0;
+static int qThermal = 0;
 void lowMach::setup(nrs_t* nrs)
 {
   the_nrs = nrs;
@@ -25,13 +25,13 @@ void lowMach::setup(nrs_t* nrs)
   nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
-
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
 void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
 {
-  ifQThermal = 1;
+  qThermal = 1;
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
+  linAlg_t * linAlg = nrs->linAlg;
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -84,29 +84,10 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
   if(nrs->pSolver->allNeumann){
     const dfloat dd = (1.0 - gamma) / gamma;
     const dlong Nlocal = nrs->Nlocal;
-    occa::memory& o_w1 = nrs->o_wrk0;
-    occa::memory& o_w2 = nrs->o_wrk1;
-    occa::memory& o_scratch = nrs->o_wrk2;
 
-    // rho * cp = cds->o_rho
-    // rho      = nrs->o_rho
-    // cp       = cds->o_rho / nrs->o_rho
-    nrs->p0thHelperKernel(Nlocal,
-      dd,
-      cds->o_rho,
-      nrs->o_rho,
-      nrs->mesh->o_LMM,
-      o_w1,
-      o_w2
-    );
+    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
+    const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);
 
-    linAlg_t * linAlg = nrs->linAlg;
-
-    const dfloat p0alpha1 = 1.0 / linAlg->sum(Nlocal, o_w1, mesh->comm);
-    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, o_w1);
-
-    const dfloat termQ = linAlg->sum(Nlocal, o_w1, mesh->comm);
-    dfloat* scratch = nrs->wrk;
     nrs->surfaceFluxKernel(
       mesh->Nelements,
       mesh->o_sgeo,
@@ -114,34 +95,38 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
       nrs->o_EToB,
       nrs->fieldOffset,
       nrs->o_Ue,
-      o_scratch
+      nrs->o_wrk0
     );
-    o_scratch.copyTo(scratch, mesh->Nelements * sizeof(dfloat));
+    nrs->o_wrk0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
     dfloat termV = 0.0;
-    for(int i = 0 ; i < mesh->Nelements; ++i) termV += scratch[i];
+    for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
 
-    const dfloat prhs = p0alpha1 * (termQ - termV);
-    const dfloat pcoef = nrs->g0 - nrs->dt[0] * prhs;
+    nrs->p0thHelperKernel(Nlocal,
+      dd,
+      cds->o_rho,
+      nrs->o_rho,
+      nrs->mesh->o_LMM,
+      nrs->o_wrk0,
+      nrs->o_wrk1 
+    );
+    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);;
+    linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
 
     dfloat Saqpq = 0.0;
     for(int i = 0 ; i < 3; ++i){
       Saqpq += nrs->extbdfB[i] * nrs->p0th[i];
     }
-    const dfloat p0th = Saqpq / pcoef;
     nrs->p0th[2] = nrs->p0th[1];
     nrs->p0th[1] = nrs->p0th[0];
-    nrs->p0th[0] = p0th;
-    nrs->dp0thdt = prhs * p0th;
-
-    const dfloat weight = -prhs;
-    linAlg->axpby(Nlocal, weight, o_w2, 1.0, o_div);
+    nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
+    nrs->dp0thdt = prhs * nrs->p0th[0];
   }
-  std::cout << "sum(o_div) = " << nrs->linAlg->sum(nrs->Nlocal, o_div, nrs->mesh->comm) << "\n";
-  ifQThermal = 0;
+  qThermal = 0;
 }
+
 void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
 {
-  if(!ifQThermal)
+  if(!qThermal)
     the_linAlg->add(the_nrs->Nlocal, the_nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
 }

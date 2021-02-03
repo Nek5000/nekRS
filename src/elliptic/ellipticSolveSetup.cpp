@@ -479,7 +479,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  kernelInfo);
 
       kernelInfo["defines/" "p_Nstates"] = mesh->torder;
-      std::cout << "Using p_Nstates = " << mesh->torder << "\n";
       filename = oklpath + "meshGeometricFactorsHex3D.okl";
       mesh->geometricFactorsKernel =
         mesh->device.buildKernel(filename.c_str(),

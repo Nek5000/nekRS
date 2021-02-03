@@ -38,53 +38,65 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
   computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder));
 
-  if(nrs->flow) 
-    nrs->extrapolateKernel(mesh->Nelements,
-                           nrs->NVfields,
-                           nrs->ExplicitOrder,
-                           nrs->fieldOffset,
-                           nrs->o_extbdfA,
-                           nrs->o_U,
-                           nrs->o_Ue);
-  if(nrs->Nscalar) 
-    nrs->extrapolateKernel(cds->mesh->Nelements,
-                           cds->NSfields,
-                           cds->ExplicitOrder,
-                           cds->fieldOffset,
-                           cds->o_extbdfA,
-                           cds->o_S,
-                           cds->o_Se);
+  for(int geom = 0; geom < 2; geom++) {
+    if(nrs->flow && geom == 0) 
+      nrs->extrapolateKernel(mesh->Nelements,
+                             nrs->NVfields,
+                             nrs->ExplicitOrder,
+                             nrs->fieldOffset,
+                             nrs->o_extbdfA,
+                             nrs->o_U,
+                             nrs->o_Ue);
+    if(nrs->Nscalar && geom == 0) 
+      nrs->extrapolateKernel(cds->mesh->Nelements,
+                             cds->NSfields,
+                             cds->ExplicitOrder,
+                             cds->fieldOffset,
+                             cds->o_extbdfA,
+                             cds->o_S,
+                             cds->o_Se);
 
-  const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
-  // meshV \subset meshT
-  if(movingMesh){
-    meshUpdate(nrs);
-  }
-  if(nrs->Nscalar)
-    scalarSolve(nrs, time, cds->o_S);
+    const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+    if(movingMesh && geom == 1) meshUpdate(nrs); 
 
-  if(udf.properties) {
-    timer::tic("udfProperties", 1);
-    occa::memory o_S = nrs->o_wrk0;
-    occa::memory o_SProp = nrs->o_wrk0;
     if(nrs->Nscalar) {
-      o_S = cds->o_S;
-      o_SProp = cds->o_prop;
+      if(geom == 0) {
+        timer::tic("makeq", 1);
+        cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+        makeq(nrs, time, cds->o_FS, cds->o_BF);
+        timer::toc("makeq");
+      }
+      if(geom == 1) scalarSolve(nrs, time, cds->o_S); 
     }
-    udf.properties(nrs, time + nrs->dt[0], nrs->o_U, o_S, nrs->o_prop, o_SProp);
-    timer::toc("udfProperties");
+
+    if(udf.properties && geom == 1) {
+      timer::tic("udfProperties", 1);
+      occa::memory o_S = nrs->o_wrk0;
+      occa::memory o_SProp = nrs->o_wrk0;
+      if(nrs->Nscalar) {
+        o_S = cds->o_S;
+        o_SProp = cds->o_prop;
+      }
+      udf.properties(nrs, time + nrs->dt[0], nrs->o_U, o_S, nrs->o_prop, o_SProp);
+      timer::toc("udfProperties");
+    }
+
+    if(udf.div && geom == 1){
+      linAlg_t* linAlg = nrs->linAlg;
+      linAlg->fill(nrs->Nlocal, 0.0, nrs->o_div);
+      udf.div(nrs, time + nrs->dt[0], nrs->o_div);
+    }
+
+    if(nrs->flow) {
+      if(geom == 0) {
+        timer::tic("makef", 1);
+        nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+        makef(nrs, time, nrs->o_FU, nrs->o_BF);
+        timer::toc("makef");
+      }
+      if(geom ==1) fluidSolve(nrs, time, nrs->o_U); 
+    }
   }
-
-  
-  if(udf.div){
-    linAlg_t* linAlg = nrs->linAlg;
-    linAlg->fill(nrs->Nlocal, 0.0, nrs->o_div);
-    udf.div(nrs, time + nrs->dt[0], nrs->o_div);
-  }
-
-  if(nrs->flow) fluidSolve(nrs, time, nrs->o_U); 
-
-
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
@@ -205,7 +217,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
         cds->o_rho,
         cds->o_S,
         o_FS);
-    // only for non-characteristic case
+
     if(cds->options[is].compareArgs("MOVING MESH", "TRUE") && !cds->Nsubsteps){
       cds->advectMeshVelocityKernel(
         mesh->Nelements,
@@ -284,11 +296,6 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 {
   cds_t* cds   = nrs->cds;
 
-  timer::tic("makeq", 1);
-  cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
-  makeq(nrs, time, cds->o_FS, cds->o_BF);
-  timer::toc("makeq");
-
   for (int s = cds->Nstages; s > 1; s--) {
     const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
     cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
@@ -346,7 +353,6 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       nrs->o_U,
       o_FU);
   
-  // only for non-characteristic case
   if(nrs->options.compareArgs("MOVING MESH", "TRUE") && !nrs->Nsubsteps){
     nrs->advectMeshVelocityKernel(
       mesh->Nelements,
@@ -413,11 +419,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
-
-  timer::tic("makef", 1);
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
-  makef(nrs, time, nrs->o_FU, nrs->o_BF);
-  timer::toc("makef");
+  linAlg_t* linAlg = nrs->linAlg;
 
   for (int s = nrs->Nstages; s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
@@ -736,20 +738,19 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
 }
 void meshUpdate(nrs_t* nrs)
 {
-  // lag mass matrices
-  mesh_t * mesh = nrs->mesh;
+  mesh_t * mesh = nrs->meshT;
   cds_t * cds = nrs->cds;
+
   for (int s = mesh->torder; s > 1; s--) {
     const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
     mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
   }
-  nrs->mesh->move();
-  // update inverse lumped mass matrix on meshT
-  if(nrs->cht)
-  {
-    cds->mesh->computeInvMassMatrix();
-  }
+
+  mesh->move();
+
+  if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvMassMatrix();
+
   // lag mesh velocities
   for (int s = mesh->torder; s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
