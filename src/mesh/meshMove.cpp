@@ -3,11 +3,9 @@
 #include <nekInterfaceAdapter.hpp>
 void mesh_t::computeInvMassMatrix()
 {
-    o_scratch.copyFrom(o_LMM, Nelements * Np * sizeof(dfloat));
-    ogsGatherScatter(o_scratch, ogsDfloat, ogsAdd, ogs);
-    // invLMM[n] = 1.0 / LMM[n]
-    scalarDivideKernel(Nelements * Np, 1.0, o_scratch);
-    o_invLMM.copyFrom(o_scratch, Nelements * Np * sizeof(dfloat));
+  o_invLMM.copyFrom(o_LMM, Nelements * Np * sizeof(dfloat));
+  ogsGatherScatter(o_invLMM, ogsDfloat, ogsAdd, ogs);
+  linAlg->ady(Nelements * Np, 1.0, o_invLMM);
 }
 void mesh_t::move(){
   // update o_x, o_y and o_z based on mesh->o_U using AB formula

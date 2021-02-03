@@ -5,15 +5,13 @@
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
 
-mesh_t* createMeshDummy(MPI_Comm comm,
+void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
                         int N,
                         int cubN,
                         setupAide &options,
                         occa::device device,
                         occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
-
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -162,11 +160,9 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
-
-  return mesh;
 }
 
-mesh_t* createMesh(MPI_Comm comm,
+void createMesh(mesh_t* mesh, MPI_Comm comm,
                    int N,
                    int cubN,
                    int isMeshT,
@@ -174,7 +170,6 @@ mesh_t* createMesh(MPI_Comm comm,
                    occa::device device,
                    occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
   int order = -1;
   if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
   if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
@@ -251,9 +246,7 @@ mesh_t* createMesh(MPI_Comm comm,
   mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
   free(lumpedMassMatrix);
   mesh->o_LMM.copyTo(mesh->LMM);
-  mesh->o_scratch = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvMassMatrix();
-  mesh->o_scratch.free(); // later, can point this to scratch memory in nrs_t
 
   mesh->o_cubsgeo.free();
   mesh->o_cubggeo.free();
@@ -265,17 +258,16 @@ mesh_t* createMesh(MPI_Comm comm,
     mesh->ABCoeff = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_ABCoeff = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->ABCoeff);
   }
-  return mesh;
 }
 
-mesh_t* createMeshV(MPI_Comm comm,
+void createMeshV(mesh_t* mesh,
+                    MPI_Comm comm,
                     int N,
                     int cubN,
                     mesh_t* meshT,
                     setupAide &options,
                     occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
   int order = -1;
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
@@ -343,11 +335,7 @@ mesh_t* createMeshV(MPI_Comm comm,
   free(lumpedMassMatrix);
   mesh->o_LMM.copyTo(mesh->LMM);
   // allocate temporary scratch space for invMassMatrix
-  mesh->o_scratch = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvMassMatrix();
-  mesh->o_scratch.free(); // later, can point this to scratch memory in nrs_t
-
-  return mesh;
 }
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)

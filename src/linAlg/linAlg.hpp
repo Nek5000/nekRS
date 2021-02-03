@@ -46,10 +46,10 @@ private:
   void setup();
   void reallocBuffers(const dlong Nbytes);
 public:
-  linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
+  linAlg_t(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
     blocksize = BLOCKSIZE;
     device = _device;
-    kernelInfo = *(_kernelInfo);
+    kernelInfo = _kernelInfo;
     comm = _comm;
     setup();
   }
@@ -87,6 +87,9 @@ public:
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
 
+  // o_y[n] = alpha/o_y[n]
+  void ady(const dlong N, const dfloat alpha,
+            occa::memory& o_y);
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
@@ -128,6 +131,7 @@ public:
   occa::kernel axmyKernel;
   occa::kernel axmyzKernel;
   occa::kernel axdyKernel;
+  occa::kernel adyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
   occa::kernel minKernel;

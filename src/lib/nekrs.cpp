@@ -72,6 +72,48 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   // configure device
   device = occaDeviceConfig(options, comm);
+  {
+    occa::properties linAlgKernelInfo;
+    if(sizeof(dfloat) == 4) {
+      linAlgKernelInfo["defines/" "dfloat"] = "float";
+      linAlgKernelInfo["defines/" "dfloat4"] = "float4";
+      linAlgKernelInfo["defines/" "dfloat8"] = "float8";
+    }
+    if(sizeof(dfloat) == 8) {
+      linAlgKernelInfo["defines/" "dfloat"] = "double";
+      linAlgKernelInfo["defines/" "dfloat4"] = "double4";
+      linAlgKernelInfo["defines/" "dfloat8"] = "double8";
+    }
+
+    if(sizeof(dlong) == 4)
+      linAlgKernelInfo["defines/" "dlong"] = "int";
+    if(sizeof(dlong) == 8)
+      linAlgKernelInfo["defines/" "dlong"] = "long long int";
+
+    if(device.mode() == "CUDA") { // add backend compiler optimization for CUDA
+      linAlgKernelInfo["compiler_flags"] += "--ftz=true ";
+      linAlgKernelInfo["compiler_flags"] += "--prec-div=false ";
+      linAlgKernelInfo["compiler_flags"] += "--prec-sqrt=false ";
+      linAlgKernelInfo["compiler_flags"] += "--use_fast_math ";
+      linAlgKernelInfo["compiler_flags"] += "--fmad=true "; // compiler option for cuda
+    }
+
+    if(device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
+      linAlgKernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
+      linAlgKernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
+      linAlgKernelInfo["compiler_flags"] += " -cl-mad-enable ";
+      linAlgKernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
+      linAlgKernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
+      linAlgKernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
+    }
+
+    if(device.mode() == "HIP") { // add backend compiler optimization for HIP
+      linAlgKernelInfo["compiler_flags"] += " -O3 ";
+      linAlgKernelInfo["compiler_flags"] += " -ffp-contract=fast ";
+    }
+    linAlg_t* linAlg = new linAlg_t(device, linAlgKernelInfo, comm);
+    nrs->linAlg = linAlg;
+  }
   timer::init(comm, device, 0);
 
   if (buildOnly) {

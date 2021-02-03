@@ -91,6 +91,11 @@ void linAlg_t::setup() {
                                          "linAlgAXMY.okl",
                                          "axmyz",
                                          kernelInfo);
+      if (adyKernel.isInitialized()==false)
+        adyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "ady",
+                                        kernelInfo);
       if (axdyKernel.isInitialized()==false)
         axdyKernel = device.buildKernel(oklDir + 
                                         "linAlgAXDY.okl",
@@ -150,6 +155,7 @@ linAlg_t::~linAlg_t() {
   axmyKernel.free();
   axmyzKernel.free();
   axdyKernel.free();
+  adyKernel.free();
   axdyzKernel.free();
   sumKernel.free();
   minKernel.free();
@@ -207,6 +213,11 @@ void linAlg_t::axmyz(const dlong N, const dfloat alpha,
 void linAlg_t::axdy(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y) {
   axdyKernel(N, alpha, o_x, o_y);
+}
+// o_y[n] = alpha/o_y[n]
+void linAlg_t::ady(const dlong N, const dfloat alpha,
+                   occa::memory& o_y) {
+  adyKernel(N, alpha, o_y);
 }
 
 // o_z[n] = alpha*o_x[n]/o_y[n]

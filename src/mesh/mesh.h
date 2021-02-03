@@ -444,7 +444,6 @@ struct mesh_t
 
   occa::memory o_gllw;
   occa::memory o_cubw;
-  occa::memory o_scratch;
 
   occa::kernel gatherKernel;
   occa::kernel scatterKernel;

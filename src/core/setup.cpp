@@ -71,12 +71,23 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   // create mesh
   if (buildOnly) {
-    nrs->meshT = createMeshDummy(comm, N, cubN, nrs->options, device, kernelInfo);
-    nrs->mesh = nrs->meshT;
+    mesh_t* mesh = new mesh_t();
+    mesh->linAlg = nrs->linAlg;
+    createMeshDummy(mesh, comm, N, cubN, nrs->options, device, kernelInfo);
+    nrs->meshT = mesh;
+    nrs->mesh = mesh;
   } else {
-    nrs->meshT = createMesh(comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
-    nrs->mesh = nrs->meshT;
-    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+    mesh_t* mesh = new mesh_t();
+    mesh->linAlg = nrs->linAlg;
+    createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
+    nrs->meshT = mesh;
+    nrs->mesh = mesh;
+    if (nrs->cht) {
+      mesh_t* meshV = new mesh_t();
+      meshV->linAlg = nrs->linAlg;
+      createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+      nrs->mesh = meshV;
+    }
   }
   mesh_t* mesh = nrs->mesh;
 
@@ -150,7 +161,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int order = mesh->torder;
-    std::cout << "mesh->torder = " << mesh->torder << "\n";
     /** realloc o_LMM, o_invLMM to be large enough**/
     dfloat * hostLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
     dfloat * hostInvLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
@@ -213,8 +223,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk9  = o_scratch.slice( 9 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
-
-  nrs->mesh->o_scratch = nrs->o_wrk0;
 
   nrs->wrk = (dfloat*) calloc(nrs->fieldOffset, sizeof(dfloat));
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
@@ -279,14 +287,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  linAlg_t* linAlg = new linAlg_t(mesh->device, nrs->kernelInfo, mesh->comm);
-  nrs->linAlg = linAlg;
-  nrs->meshT->linAlg = linAlg;
-  nrs->mesh->linAlg = linAlg;
-
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
+
+  linAlg_t * linAlg = nrs->linAlg;
 
   if(!buildOnly) {
     int err = 0;
@@ -1086,7 +1091,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
     cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
   }
-  cds->mesh->o_scratch = nrs->o_wrk0;
 
   // build kernels
   occa::properties kernelInfo = *nrs->kernelInfo;
