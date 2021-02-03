@@ -143,8 +143,9 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   int rank;
   MPI_Comm_rank(gs->comm, &rank);
   gs->rank = rank; 
+  gs->mode = gsMode;
 
-  if(gsMode == OOGS_DEFAULT) return gs;
+  if(gsMode == OOGS_DEFAULT) return gs; 
 
   for (int r=0;r<2;r++) {
     if ((r==0 && gs->rank==0) || (r==1 && gs->rank>0)) {
