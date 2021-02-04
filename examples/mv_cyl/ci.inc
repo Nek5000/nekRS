@@ -1,0 +1,76 @@
+#include <math.h>
+#include <iostream>
+
+static int ciMode = 0;
+
+#define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
+#define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
+
+#define EPS 1e-1
+
+void ciSetup(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("POLYNOMIAL DEGREE", string("7"));
+  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("NUMBER OF SCALARS", string("1"));
+  options.setArgs("END TIME", string("0.1"));
+  options.setArgs("DT", string("1e-3"));
+  options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+
+  options.setArgs("TIME INTEGRATOR", "TOMBO3");
+  options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
+  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
+}
+
+void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+{
+  if (!nrs->lastStep) return;
+ 
+  const int rank = nrs->mesh->rank;
+ 
+  nek_ocopyFrom(time, tstep);
+  nek_userchk();
+
+  double *err = (double *) nek_scPtr(1);
+  const int Nfields = 6;
+  const dfloat expectedErr[] = {
+    0.2465620E-06,
+    0.6938894E-16,
+    0.3044039E-05,
+    0.2144404E-05,
+    0.2465620E-05,
+    0.1080412E-05
+  };
+
+  const dfloat floor = 1e-12; // values below this threshold are ignored
+  const int expectedPIter = 10;
+  const int expectedVIter = 8;
+
+  double vxErr, prErr;
+  double s1Err;
+  
+  int pIterErr;
+  int velIterErr;
+
+  bool passed = true;
+
+  if(rank == 0) printf("relative error to target: ");
+  for(int i = 0 ; i < Nfields; ++i){
+    if(abs(err[i]) > floor){
+      const dfloat relErr = abs(err[i]-expectedErr[i])/expectedErr[i];
+      if(rank == 0) printf("err[%d]=%g ", i, relErr);
+      if(relErr > EPS) passed = false;
+    }
+  }
+  velIterErr = abs(expectedVIter - nrs->NiterU);
+  pIterErr = abs(expectedPIter - nrs->NiterP);
+  if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
+  if(velIterErr >= 1) passed = false;
+  if(pIterErr >= 1) passed = false;
+
+  passed ? (PASS) : (FAIL);
+}

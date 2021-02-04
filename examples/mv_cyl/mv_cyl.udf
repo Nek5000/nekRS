@@ -6,6 +6,8 @@
 #include "plugins/lowMach.hpp"
 #include "casedata.h"
 
+#include "ci.inc"
+
 static occa::kernel userVpKernel;
 static occa::kernel userMeshVelocityKernel;
  
@@ -32,10 +34,10 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
-  occa::properties& kernelInfo = *nrs->kernelInfo;
-  kernelInfo["defines/p_PI"] = P_PI;
-  kernelInfo["defines/p_OMEGA"] = P_OMEGA;
-  kernelInfo["defines/p_AMP"] = P_AMP;
+  occa::properties& kernelInfo = *(nrs->kernelInfo);
+  kernelInfo["defines/" "p_PI"] = P_PI;
+  kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
+  kernelInfo["defines/" "p_AMP"] = P_AMP;
   userVpKernel = udfBuildKernel(nrs, "userVp");
   userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
 }
@@ -43,6 +45,8 @@ void UDF_LoadKernels(nrs_t *nrs)
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("MOVING MESH", "TRUE");
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -71,7 +75,6 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   if(nrs->isOutputStep){
     nek_ocopyFrom(time, tstep);
     nek_userchk();
-    // check magnitude of the temperature field
-    std::cout << "sum(T): " << linAlg->sum(nrs->Nlocal, cds->o_S, mesh->comm) << "\n";
   }
+  if (ciMode) ciTestErrors(nrs, time, tstep);
 }

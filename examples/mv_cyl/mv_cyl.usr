@@ -220,6 +220,12 @@ c
 
       real glcflux
       real tavg, tex, var
+      real err(6)
+      save err
+      COMMON /NRSSCPTR/ nrs_scptr(1)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(err)
 
       nxyz  = nx1*ny1*nz1
       ntotv = nxyz*nelv
@@ -230,13 +236,17 @@ c
       call exact_sol (time,volex,vpex,pex,dpdtex,qtlex,ypex)
       tavg = glsc2(t, bm1, ntotv) / volvm1
       tex = pex ** ((P_GAMMA-1.)/P_GAMMA)
-      write(6,*) "tavg: ", tavg
-      write(6,*) "tex: ", tex
 
       write(*,'(A,7(1X,E15.7))') 'err',time,
      $   volex-volvm1,(vpex*XLEN*ZLEN)-termV,
      &   pex-p0th,dpdtex-dp0thdt,ypex-ypist,
      &   tavg - tex
+      err(1) = abs(volex - volvm1)
+      err(2) = abs(vpex*XLEN*ZLEN-termV)
+      err(3) = abs(pex-p0th)
+      err(4) = abs(dpdtex-dp0thdt)
+      err(5) = abs(ypex-ypist)
+      err(6) = abs(tavg-tex)
 
       return
       end
