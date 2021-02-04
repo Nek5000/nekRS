@@ -36,7 +36,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder), mymin(tstep, mesh->torder));
+  computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder), mymin(tstep, mesh->Nstages));
 
   for(int geom = 0; geom < 2; geom++) {
     if(nrs->flow && geom == 0) 
@@ -753,7 +753,7 @@ void meshUpdate(nrs_t* nrs)
   if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvLMM();
 
   // lag mesh velocities
-  for (int s = mesh->torder; s > 1; s--) {
+  for (int s = mesh->Nstages; s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
     mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }

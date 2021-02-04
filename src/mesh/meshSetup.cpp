@@ -174,7 +174,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
   if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
   else order = 3;
-  mesh->torder = order;
+  mesh->Nstages = order;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -226,15 +226,34 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  std::string oklpath = install_dir + "/okl/core/";
-  std::string filename = oklpath + "dotDivide.okl";
-  kernelInfo["defines/" "p_eNfields"] = 3;
-  mesh->scalarDivideKernel = 
-    mesh->device.buildKernel(filename.c_str(),
-                             "scalarDivide",
-                             kernelInfo);
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    std::string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    std::string oklpath = install_dir + "/okl/core/";
+    std::string filename = oklpath + "nStagesSum.okl";
+    occa::properties meshKernelInfo = kernelInfo;
+    meshKernelInfo["defines/" "p_Nstages"] = mesh->Nstages;
+    meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
+    mesh->nStagesSumVectorKernel = 
+      mesh->device.buildKernel(filename.c_str(),
+                               "nStagesSumVector",
+                               meshKernelInfo);
+    filename = oklpath + "meshGeometricFactorsHex3D.okl";
+    mesh->geometricFactorsKernel =
+      mesh->device.buildKernel(filename.c_str(),
+                               "meshGeometricFactorsHex3D",
+                               meshKernelInfo);
+    filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+    mesh->surfaceGeometricFactorsKernel =
+      mesh->device.buildKernel(filename.c_str(),
+                               "meshSurfaceGeometricFactorsHex3D",
+                               meshKernelInfo);
+    filename = oklpath + "nStagesSum.okl";
+    mesh->nStagesSumVectorKernel =
+      mesh->device.buildKernel(filename.c_str(),
+                               "nStagesSumVector",
+                               meshKernelInfo);
+  }
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -273,7 +292,7 @@ void createMeshV(mesh_t* mesh,
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
   else order = 3;
-  mesh->torder = order;
+  mesh->Nstages = order;
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));

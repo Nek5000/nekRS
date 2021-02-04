@@ -216,7 +216,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
     }
 
-    const int order = mesh->torder;
+    const int order = mesh->Nstages;
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
     mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * order * sizeof(dfloat), mesh->U);
   }

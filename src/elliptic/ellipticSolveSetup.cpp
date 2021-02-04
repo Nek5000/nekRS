@@ -478,23 +478,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "sum",
                                  kernelInfo);
 
-      kernelInfo["defines/" "p_Nstates"] = mesh->torder;
-      filename = oklpath + "meshGeometricFactorsHex3D.okl";
-      mesh->geometricFactorsKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "meshGeometricFactorsHex3D",
-                                 kernelInfo);
-      filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
-      mesh->surfaceGeometricFactorsKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "meshSurfaceGeometricFactorsHex3D",
-                                 kernelInfo);
-      filename = oklpath + "nStagesSum.okl";
-      mesh->nStagesSumVectorKernel =
-        mesh->device.buildKernel(filename.c_str(),
-                                 "nStagesSumVector",
-                                 kernelInfo);
-
       filename = oklpath + "fill.okl";
       elliptic->fillKernel =
         mesh->device.buildKernel(filename.c_str(),

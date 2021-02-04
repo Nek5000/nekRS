@@ -51,7 +51,7 @@ struct mesh_t
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
 
-  int torder; // time integration order
+  int Nstages; // time integration order
   dfloat* ABCoeff; // coefficients for AB integration
   occa::memory o_ABCoeff;
 
