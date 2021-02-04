@@ -749,7 +749,7 @@ void meshUpdate(nrs_t* nrs)
 
   mesh->move();
 
-  if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvMassMatrix();
+  if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvLMM();
 
   // lag mesh velocities
   for (int s = mesh->torder; s > 1; s--) {

@@ -247,7 +247,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     for(int n = 0; n < mesh->Np; ++n)
       mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->computeInvMassMatrix();
+  mesh->computeInvLMM();
 
   mesh->o_cubsgeo.free();
   mesh->o_cubggeo.free();
@@ -335,7 +335,7 @@ void createMeshV(mesh_t* mesh,
     for(int n = 0; n < mesh->Np; ++n)
       mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->computeInvMassMatrix();
+  mesh->computeInvLMM();
 }
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)

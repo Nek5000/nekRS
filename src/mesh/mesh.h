@@ -46,7 +46,7 @@ struct mesh_t
 {
   void move();
   void update();
-  void computeInvMassMatrix();
+  void computeInvLMM();
   linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)

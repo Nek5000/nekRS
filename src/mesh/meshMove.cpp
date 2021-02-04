@@ -1,7 +1,7 @@
 #include <mesh.h>
 #include <linAlg.hpp>
 #include <nekInterfaceAdapter.hpp>
-void mesh_t::computeInvMassMatrix()
+void mesh_t::computeInvLMM()
 {
   o_invLMM.copyFrom(o_LMM, Nelements * Np * sizeof(dfloat));
   oogs::startFinish(o_invLMM, 1, 0, ogsDfloat, ogsAdd, oogs);
@@ -36,7 +36,7 @@ void mesh_t::update(){
         o_cubvgeo
     );
     volume = linAlg->sum(Nelements * Np, o_LMM, comm);
-    computeInvMassMatrix();
+    computeInvLMM();
     surfaceGeometricFactorsKernel(
         Nelements,
         o_D,
