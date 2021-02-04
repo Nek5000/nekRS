@@ -35,6 +35,7 @@
 
 #include "nrssys.hpp"
 #include "linAlg.hpp"
+#include "ogs.hpp"
 
 #define TRIANGLES 3
 #define QUADRILATERALS 4
@@ -99,6 +100,7 @@ struct mesh_t
   hlong* maskedGlobalIds;
   void* gsh, * hostGsh; // gslib struct pointer
   ogs_t* ogs; //occa gs pointer
+  oogs_t* oogs; //occa gs pointer
 
   // list of elements that are needed for global gather-scatter
   dlong NglobalGatherElements;

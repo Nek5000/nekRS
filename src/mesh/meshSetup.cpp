@@ -237,6 +237,10 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                              kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
 
   // build mass + inverse mass matrix
   for(hlong e = 0; e < mesh->Nelements; ++e)
@@ -322,6 +326,9 @@ void createMeshV(mesh_t* mesh,
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
   // build mass + inverse mass matrix
   for(hlong e = 0; e < mesh->Nelements; ++e)

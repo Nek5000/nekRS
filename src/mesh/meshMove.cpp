@@ -4,7 +4,7 @@
 void mesh_t::computeInvMassMatrix()
 {
   o_invLMM.copyFrom(o_LMM, Nelements * Np * sizeof(dfloat));
-  ogsGatherScatter(o_invLMM, ogsDfloat, ogsAdd, ogs);
+  oogs::startFinish(o_invLMM, 1, 0, ogsDfloat, ogsAdd, oogs);
   linAlg->ady(Nelements * Np, 1.0, o_invLMM);
 }
 void mesh_t::move(){
