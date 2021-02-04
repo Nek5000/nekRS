@@ -159,27 +159,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->meshT->fieldOffset = nrs->fieldOffset;
   nrs->mesh->fieldOffset = nrs->fieldOffset;
 
-  if(options.compareArgs("MOVING MESH", "TRUE")){
-    const int order = mesh->torder;
-    /** realloc o_LMM, o_invLMM to be large enough**/
-    dfloat * hostLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-    dfloat * hostInvLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-    mesh->o_LMM.copyTo(hostLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-    mesh->o_invLMM.copyTo(hostInvLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-    dfloat * tmp = (dfloat*) calloc(nrs->fieldOffset * order, sizeof(dfloat));
-    mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * order * sizeof(dfloat), tmp);
-    mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * order * sizeof(dfloat), tmp);
-    mesh->o_LMM.copyFrom(hostLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-    mesh->o_invLMM.copyFrom(hostInvLMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-
-
-    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
-    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * order * sizeof(dfloat), mesh->U);
-    free(hostLMM);
-    free(hostInvLMM);
-    free(tmp);
-  }
-
   nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   if(nrs->Nsubsteps) {
@@ -224,6 +203,24 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk9  = o_scratch.slice( 9 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    // realloc o_LMM, o_invLMMM to be large enough
+    const int NStages = nrs->Nstages;
+    {
+      o_scratch.copyFrom(mesh->o_LMM, nrs->Nlocal * sizeof(dfloat));
+      mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat));
+      mesh->o_LMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
+      o_scratch.copyFrom(mesh->o_invLMM, nrs->Nlocal * sizeof(dfloat));
+      mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat));
+      mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
+    }
+
+    const int order = mesh->torder;
+    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
+    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * order * sizeof(dfloat), mesh->U);
+  }
+
 
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));

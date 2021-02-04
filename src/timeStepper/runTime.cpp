@@ -8,7 +8,7 @@
 #include "tombo.hpp"
 #include "cfl.hpp"
 
-void computeCoefficients(nrs_t* nrs, int order);
+void computeCoefficients(nrs_t* nrs, int order, int meshOrder);
 
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF);
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time,
@@ -36,7 +36,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder));
+  computeCoefficients(nrs, mymin(tstep, nrs->temporalOrder), mymin(tstep, mesh->torder));
 
   for(int geom = 0; geom < 2; geom++) {
     if(nrs->flow && geom == 0) 
@@ -134,7 +134,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(tstep % 10 == 0) fflush(stdout);
 }
 
-void computeCoefficients(nrs_t* nrs, int order)
+void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
 {
   mesh_t* mesh = nrs->mesh;
   if(order == 1) {
@@ -161,14 +161,15 @@ void computeCoefficients(nrs_t* nrs, int order)
 
   if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
   {
-    for(int i = 0 ; i < 3; ++i){
+    const int maxIntegrationOrder = 3;
+    for(int i = 0 ; i < maxIntegrationOrder; ++i){
       mesh->ABCoeff[i] = 0.0;
     }
-    nek_abCoeff(mesh->ABCoeff, nrs->dt, order);
-    for(int i = 0 ; i < 3; ++i){
+    nek_abCoeff(mesh->ABCoeff, nrs->dt, meshOrder);
+    for(int i = 0 ; i < maxIntegrationOrder; ++i){
       mesh->ABCoeff[i] *= nrs->dt[0];
     }
-    mesh->o_ABCoeff.copyFrom(mesh->ABCoeff, 3 * sizeof(dfloat));
+    mesh->o_ABCoeff.copyFrom(mesh->ABCoeff, maxIntegrationOrder * sizeof(dfloat));
   }
 
   nrs->ig0 = 1.0 / nrs->g0;
@@ -741,7 +742,7 @@ void meshUpdate(nrs_t* nrs)
   mesh_t * mesh = nrs->meshT;
   cds_t * cds = nrs->cds;
 
-  for (int s = mesh->torder; s > 1; s--) {
+  for (int s = nrs->Nstages; s > 1; s--) {
     const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
     mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
