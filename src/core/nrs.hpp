@@ -110,9 +110,7 @@ struct nrs_t
   occa::memory o_filterMT; // transpose of filter matrix
   occa::kernel filterRTKernel; // Relaxation-Term based filtering
   occa::kernel advectMeshVelocityKernel;
-  occa::kernel surfaceFluxKernel;
 
-  occa::kernel p0thHelperKernel;
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 

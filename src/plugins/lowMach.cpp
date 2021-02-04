@@ -14,6 +14,7 @@ static linAlg_t* the_linAlg = nullptr;
 static int qThermal = 0;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
+static occa::kernel surfaceFluxKernel;
 void buildKernels(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
@@ -22,10 +23,18 @@ void buildKernels(nrs_t* nrs)
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/lowMach.okl";
+  // surfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
+  if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
+    if(mesh->rank == 0)
+      printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+        "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
+    ABORT(EXIT_FAILURE);
+  }
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
       qtlKernel        = mesh->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
       p0thHelperKernel = mesh->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
+      surfaceFluxKernel = mesh->device.buildKernel(fileName.c_str(), "surfaceFlux", kernelInfo);
     }
     MPI_Barrier(mesh->comm);
   }
@@ -109,7 +118,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
     const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);
 
-    nrs->surfaceFluxKernel(
+    surfaceFluxKernel(
       mesh->Nelements,
       mesh->o_sgeo,
       mesh->o_vmapM,

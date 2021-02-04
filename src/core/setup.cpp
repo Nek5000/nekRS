@@ -435,10 +435,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
             "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
         ABORT(EXIT_FAILURE);
       }
-      fileName = oklpath + "nrsSurfaceFlux.okl";
-      kernelName = "nrsSurfaceFlux";
-      nrs->surfaceFluxKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "nrsPressureRhs" + suffix + ".okl";
       kernelName = "nrsPressureRhsTOMBO" + suffix;
