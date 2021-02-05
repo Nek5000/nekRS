@@ -45,7 +45,6 @@
             for(int k = 0; k < p_Nq; ++k) {
               const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
               dfloat JW = massMatrix[id];
-              const dfloat currJW = massMatrix[id];
 
               dfloat bfx = 0;
               dfloat bfy = 0;
@@ -55,9 +54,9 @@
                 const dfloat NUx = NU[id + 0 * fieldOffset];
                 const dfloat NUy = NU[id + 1 * fieldOffset];
                 const dfloat NUz = NU[id + 2 * fieldOffset];
-                bfx += idt * NUx; // TODO: in subcycling case, already added in mass matrix factor in NU
-                bfy += idt * NUy;
-                bfz += idt * NUz;
+                bfx += JW * idt * NUx;
+                bfy += JW * idt * NUy;
+                bfz += JW * idt * NUz;
 
                 for (int s = 0; s < p_Nstages; s++) {
                   // FU

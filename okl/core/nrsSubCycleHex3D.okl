@@ -314,7 +314,7 @@
             }
 
             const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
-            dfloat invLMM = invLumpedMassMatrix[id];
+            const dfloat invLMM = invLumpedMassMatrix[id];
 
             NU[id + 0 * offset + NUOffset] = rhsU * invLMM;
             NU[id + 1 * offset + NUOffset] = rhsV * invLMM;

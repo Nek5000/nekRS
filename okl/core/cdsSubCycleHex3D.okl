@@ -274,7 +274,7 @@
               rhsS += Iia * s_Sd[b][i];
             }
             const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
-            dfloat invLMM = invLumpedMassMatrix[id];
+            const dfloat invLMM = invLumpedMassMatrix[id];
             NS[id + NSOffset] = rhsS*invLMM;
           }
     }
