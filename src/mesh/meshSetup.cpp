@@ -252,9 +252,11 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/" "p_Nstages"] = mesh->Nstages;
     meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-
+    occa::properties meshKernelInfoBC = meshKernelInfo;
+    const string bcDataFile = install_dir + "/include/core/bcData.h";
+    meshKernelInfoBC["includes"] += bcDataFile.c_str();
     for (int r = 0; r < 2; r++) {
-      if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+      if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
         mesh->nStagesSumVectorKernel = 
           mesh->device.buildKernel(filename.c_str(),
                                    "nStagesSumVector",
@@ -274,6 +276,11 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
           mesh->device.buildKernel(filename.c_str(),
                                    "nStagesSumVector",
                                    meshKernelInfo);
+        filename = oklpath + "nrsDivergenceHex3D.okl";
+        mesh->strongDivergenceKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nrsDivergenceVolumeHex3D",
+                                   meshKernelInfoBC);
       }
       MPI_Barrier(mesh->comm);
     }

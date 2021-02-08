@@ -81,10 +81,20 @@ void linAlg_t::setup() {
                                           "linAlgAXPBY.okl",
                                           "axpbyz",
                                           kernelInfo);
+      if (axpbyzManyKernel.isInitialized()==false)
+        axpbyzManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXPBY.okl",
+                                          "axpbyzMany",
+                                          kernelInfo);
       if (axmyKernel.isInitialized()==false)
         axmyKernel = device.buildKernel(oklDir + 
                                         "linAlgAXMY.okl",
                                         "axmy",
+                                        kernelInfo);
+      if (axmyManyKernel.isInitialized()==false)
+        axmyManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXMY.okl",
+                                        "axmyMany",
                                         kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
@@ -100,6 +110,16 @@ void linAlg_t::setup() {
         axdyKernel = device.buildKernel(oklDir + 
                                         "linAlgAXDY.okl",
                                         "axdy",
+                                        kernelInfo);
+      if (aydxKernel.isInitialized()==false)
+        aydxKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "aydx",
+                                        kernelInfo);
+      if (aydxManyKernel.isInitialized()==false)
+        aydxManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgAXDY.okl",
+                                        "aydxMany",
                                         kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
@@ -152,9 +172,13 @@ linAlg_t::~linAlg_t() {
   scaleKernel.free();
   axpbyKernel.free();
   axpbyzKernel.free();
+  axpbyzManyKernel.free();
   axmyKernel.free();
+  axmyManyKernel.free();
   axmyzKernel.free();
   axdyKernel.free();
+  aydxKernel.free();
+  aydxManyKernel.free();
   adyKernel.free();
   axdyzKernel.free();
   sumKernel.free();
@@ -196,11 +220,20 @@ void linAlg_t::axpbyz(const dlong N, const dfloat alpha, occa::memory& o_x,
                       const dfloat beta, occa::memory& o_y, occa::memory& o_z) {
   axpbyzKernel(N, alpha, o_x, beta, o_y, o_z);
 }
+void linAlg_t::axpbyzMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha, occa::memory& o_x,
+                      const dfloat beta, occa::memory& o_y, occa::memory& o_z) {
+  axpbyzManyKernel(N, Nfields, fieldOffset, alpha, o_x, beta, o_y, o_z);
+}
 
 // o_y[n] = alpha*o_x[n]*o_y[n]
 void linAlg_t::axmy(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y) {
   axmyKernel(N, alpha, o_x, o_y);
+}
+void linAlg_t::axmyMany(const dlong N, const dlong Nfields, const dlong offset,
+                   const dlong mode, const dfloat alpha,
+                   occa::memory& o_x, occa::memory& o_y) {
+  axmyManyKernel(N, Nfields, offset, mode, alpha, o_x, o_y);
 }
 
 // o_z[n] = alpha*o_x[n]*o_y[n]
@@ -213,6 +246,15 @@ void linAlg_t::axmyz(const dlong N, const dfloat alpha,
 void linAlg_t::axdy(const dlong N, const dfloat alpha,
                    occa::memory& o_x, occa::memory& o_y) {
   axdyKernel(N, alpha, o_x, o_y);
+}
+void linAlg_t::aydx(const dlong N, const dfloat alpha,
+                   occa::memory& o_x, occa::memory& o_y) {
+  aydxKernel(N, alpha, o_x, o_y);
+}
+void linAlg_t::aydxMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+                   const dlong mode, const dfloat alpha,
+                   occa::memory& o_x, occa::memory& o_y) {
+  aydxManyKernel(N, Nfields, fieldOffset, mode, alpha, o_x, o_y);
 }
 // o_y[n] = alpha/o_y[n]
 void linAlg_t::ady(const dlong N, const dfloat alpha,

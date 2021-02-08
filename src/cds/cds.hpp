@@ -105,6 +105,9 @@ typedef struct
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
+  occa::kernel subCycleRKKernel;
+  occa::kernel subCycleExtrapolateFieldKernel;
+  occa::kernel subCycleExtrapolateScalarKernel;
 
   occa::kernel filterRTKernel; // Relaxation-Term based filtering
   // occa::kernel constrainKernel;

@@ -203,6 +203,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk9  = o_scratch.slice( 9 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_wrk18 = o_scratch.slice(18 * nrs->fieldOffset * sizeof(dfloat));
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
@@ -215,6 +216,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat));
       mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
     }
+
+    mesh->o_BdivW = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat), scratch);
 
     const int order = mesh->Nstages;
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
@@ -482,6 +485,16 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       kernelName = "nrsSubCycleLSERKUpdate";
       if(nrs->SNrk == 4) kernelName = "nrsSubCycleERKUpdate";
       nrs->subCycleRKUpdateKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "nrsSubCycleRK";
+      nrs->subCycleRKKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "nrsSubCycleExtrapolateField";
+      nrs->subCycleExtrapolateFieldKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "nrsSubCycleExtrapolateScalar";
+      nrs->subCycleExtrapolateScalarKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsExtrapolate" + ".okl";
@@ -1170,6 +1183,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
         kernelName = "cdsSubCycleLSERKUpdate";
         if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "cdsSubCycleRK";
+        cds->subCycleRKKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "subCycleExtrapolateField";
+        cds->subCycleExtrapolateFieldKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "cdsSubCycleExtrapolateScalar";
+        cds->subCycleExtrapolateScalarKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       }
     }
     MPI_Barrier(mesh->comm);

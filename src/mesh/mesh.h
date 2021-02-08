@@ -47,6 +47,7 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
+  void computeBdivW();
   linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
@@ -354,7 +355,7 @@ struct mesh_t
 
   occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
-  occa::memory o_LMM, o_invLMM;
+  occa::memory o_LMM, o_invLMM, o_BdivW;
 
   // mesh velocity
   occa::memory o_U;
@@ -474,6 +475,7 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
+  occa::kernel strongDivergenceKernel;
 };
 
 // serial sort

@@ -54,9 +54,9 @@
                 const dfloat NUx = NU[id + 0 * fieldOffset];
                 const dfloat NUy = NU[id + 1 * fieldOffset];
                 const dfloat NUz = NU[id + 2 * fieldOffset];
-                bfx += JW * idt * NUx;
-                bfy += JW * idt * NUy;
-                bfz += JW * idt * NUz;
+                bfx += idt * NUx;
+                bfy += idt * NUy;
+                bfz += idt * NUz;
 
                 for (int s = 0; s < p_Nstages; s++) {
                   // FU

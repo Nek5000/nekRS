@@ -7,6 +7,17 @@ void mesh_t::computeInvLMM()
   oogs::startFinish(o_invLMM, 1, 0, ogsDfloat, ogsAdd, oogs);
   linAlg->ady(Nelements * Np, 1.0, o_invLMM);
 }
+void mesh_t::computeBdivW()
+{
+  strongDivergenceKernel(
+    Nelements,
+    o_vgeo,
+    o_Dmatrices,
+    fieldOffset,
+    o_U,
+    o_BdivW
+  );
+}
 void mesh_t::move(){
   // update o_x, o_y and o_z based on mesh->o_U using AB formula
   nStagesSumVectorKernel(

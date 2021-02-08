@@ -88,7 +88,7 @@ struct nrs_t
   occa::memory o_VmapB;
 
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6, o_wrk7,
-               o_wrk9, o_wrk12, o_wrk15;
+               o_wrk9, o_wrk12, o_wrk15, o_wrk18;
 
   int Nsubsteps;
   dfloat* Ue, sdt;
@@ -124,6 +124,9 @@ struct nrs_t
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel extrapolateKernel;
+  occa::kernel subCycleRKKernel;
+  occa::kernel subCycleExtrapolateFieldKernel;
+  occa::kernel subCycleExtrapolateScalarKernel;
 
   occa::kernel wgradientVolumeKernel;
 
