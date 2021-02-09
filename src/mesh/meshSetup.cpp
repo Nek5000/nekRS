@@ -252,25 +252,31 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/" "p_Nstages"] = mesh->Nstages;
     meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-    mesh->nStagesSumVectorKernel = 
-      mesh->device.buildKernel(filename.c_str(),
-                               "nStagesSumVector",
-                               meshKernelInfo);
-    filename = oklpath + "meshGeometricFactorsHex3D.okl";
-    mesh->geometricFactorsKernel =
-      mesh->device.buildKernel(filename.c_str(),
-                               "meshGeometricFactorsHex3D",
-                               meshKernelInfo);
-    filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
-    mesh->surfaceGeometricFactorsKernel =
-      mesh->device.buildKernel(filename.c_str(),
-                               "meshSurfaceGeometricFactorsHex3D",
-                               meshKernelInfo);
-    filename = oklpath + "nStagesSum.okl";
-    mesh->nStagesSumVectorKernel =
-      mesh->device.buildKernel(filename.c_str(),
-                               "nStagesSumVector",
-                               meshKernelInfo);
+
+    for (int r = 0; r < 2; r++) {
+      if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+        mesh->nStagesSumVectorKernel = 
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+        filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        mesh->geometricFactorsKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "meshGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+        mesh->surfaceGeometricFactorsKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "meshSurfaceGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+      }
+      MPI_Barrier(mesh->comm);
+    }
   }
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
