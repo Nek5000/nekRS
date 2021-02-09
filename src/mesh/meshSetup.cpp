@@ -160,6 +160,24 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
+
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvLMM();
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int maxTemporalOrder = 3;
+    mesh->ABCoeff = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_ABCoeff = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->ABCoeff);
+  }
 }
 
 void createMesh(mesh_t* mesh, MPI_Comm comm,
@@ -260,18 +278,12 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
-
   // build mass + inverse mass matrix
-  for(hlong e = 0; e < mesh->Nelements; ++e)
+  for(dlong e = 0; e < mesh->Nelements; ++e)
     for(int n = 0; n < mesh->Np; ++n)
       mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
-
-  mesh->o_cubsgeo.free();
-  mesh->o_cubggeo.free();
-  mesh->o_cubsgeo = (void*) NULL;
-  mesh->o_cubggeo = (void*) NULL;
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
@@ -336,8 +348,7 @@ void createMeshV(mesh_t* mesh,
   // find vmapM, vmapP, mapP based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
-  // uniquely label each node with a global index, used for gatherScatter
-  // mesh->globalIds
+  // uniquely label each node with a global index, used for gatherScatter (mesh->globalIds)
   meshParallelConnectNodes(mesh, 0);
 
   bcMap::check(mesh);
@@ -349,11 +360,6 @@ void createMeshV(mesh_t* mesh,
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
-  // build mass + inverse mass matrix
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 }
 
@@ -413,4 +419,6 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
   mesh->o_vmapP =
     mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapP);
+  mesh->o_invLMM =
+    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
 }
