@@ -18,7 +18,7 @@ void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  lowMach::qThermalPerfectGasSingleComponent(nrs, time, P_GAMMA, o_div);
+  lowMach::qThermalIdealGasSingleComponent(time, P_GAMMA, o_div);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,

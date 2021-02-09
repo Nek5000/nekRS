@@ -15,6 +15,7 @@ static int qThermal = 0;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
 static occa::kernel surfaceFluxKernel;
+
 void buildKernels(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
@@ -23,7 +24,6 @@ void buildKernels(nrs_t* nrs)
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/lowMach.okl";
-  // surfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
   if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
     if(mesh->rank == 0)
       printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
@@ -39,7 +39,9 @@ void buildKernels(nrs_t* nrs)
     MPI_Barrier(mesh->comm);
   }
 }
+
 }
+
 void lowMach::setup(nrs_t* nrs)
 {
   the_nrs = nrs;
@@ -56,9 +58,10 @@ void lowMach::setup(nrs_t* nrs)
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
+void lowMach::qThermalIdealGasSingleComponent(dfloat time, dfloat gamma, occa::memory o_div)
 {
   qThermal = 1;
+  nrs_t* nrs = the_nrs;
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
   linAlg_t * linAlg = nrs->linAlg;
@@ -144,7 +147,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
 
     dfloat Saqpq = 0.0;
-    for(int i = 0 ; i < 3; ++i){
+    for(int i = 0 ; i < nrs->Nstages; ++i){
       Saqpq += nrs->extbdfB[i] * nrs->p0th[i];
     }
     nrs->p0th[2] = nrs->p0th[1];
@@ -157,6 +160,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
 void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
 {
+  nrs_t* nrs = the_nrs;
   if(!qThermal)
-    the_linAlg->add(the_nrs->Nlocal, the_nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
+    nrs->linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
 }
