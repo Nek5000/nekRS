@@ -1,0 +1,45 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+testname=`basename $0 .sh`
+
+# Echo usage information
+case $1 in
+   -h|-help)
+      cat <<EOF
+
+   $0 [-h|-help] {src_dir}
+
+   where: {src_dir}  is the hypre source directory
+          -h|-help   prints this usage information and exits
+
+   This script checks for 'int' in the 'HYPRE_Int' sections of hypre.
+
+   Example usage: $0 ../src
+
+EOF
+      exit
+      ;;
+esac
+
+# Setup
+src_dir=`cd $1; pwd`
+shift
+
+cd $src_dir
+
+find . -type f -print | egrep '[.]*[.](c|cc|cpp|cxx|C|h|hpp|hxx|H)$' |
+  egrep -v '/cmbuild' |
+  egrep -v '/docs' |
+  egrep -v '/examples' |
+  egrep -v '/FEI_mv' |
+  egrep -v '/hypre/include' > check-int.files
+
+egrep '(^|[^[:alnum:]_]+)int([^[:alnum:]_]+|$)' `cat check-int.files` >&2
+
+egrep '(^|[^[:alnum:]_]+)long([^[:alnum:]_]+|$)' `cat check-int.files` >&2
+
+rm -f check-int.files

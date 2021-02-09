@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+#=============================================================================
+# Run bigint examples
+#=============================================================================
+
+mpirun -np 4 ./ex5big > bigint.out.1
+
+mpirun -np 8 ./ex15big -n 10 > bigint.out.2
+

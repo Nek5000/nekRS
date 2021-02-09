@@ -1,0 +1,26 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+#=============================================================================
+# struct: Run base 3d case
+#=============================================================================
+
+mpirun -np 1 ./struct -n 12 12 12 -c 2.0 3.0 40 -solver 0 > smgbase3d.out.0 
+
+#=============================================================================
+# struct: Test parallel and blocking 
+#=============================================================================
+
+mpirun -np 8 ./struct -n 6 6 6 -P 2 2 2  -c 2.0 3.0 40 -solver 0 \
+ > smgbase3d.out.1
+mpirun -np 4 ./struct -n 3 12 12 -P 4 1 1 -c 2.0 3.0 40 -solver 0 \
+ > smgbase3d.out.2
+mpirun -np 4 ./struct -n 12 3 12 -P 1 4 1 -c 2.0 3.0 40 -solver 0 \
+ > smgbase3d.out.3
+mpirun -np 4 ./struct -n 12 12 3 -P 1 1 4 -c 2.0 3.0 40 -solver 0 \
+ > smgbase3d.out.4
+mpirun -np 1 ./struct -n 6 6 6 -b 2 2 2  -c 2.0 3.0 40 -solver 0 \
+ > smgbase3d.out.5
