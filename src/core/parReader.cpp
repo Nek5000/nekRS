@@ -89,9 +89,6 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
-  options.setArgs("SCALAR INITIAL GUESS DEFAULT","EXTRAPOLATION");
-  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
-
   //options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
   //options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
   //options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
@@ -463,6 +460,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
     }
 
+    options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
     string vsolver;
     int flow = 1;
     bool v_rproj;
@@ -539,13 +537,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
-      options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
+      options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;
       if(par->extract("temperature", "residualproj", t_rproj) || 
          par->extract("temperature", "residualprojection", t_rproj)) {
         if(t_rproj) {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
+          options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "PREVIOUS STEP");
           options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
           options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
         } else {
@@ -616,12 +615,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       continue;
     }
+
+    options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
     bool t_rproj;
     if(par->extract("scalar" + sidPar, "residualproj", t_rproj) || 
        par->extract("scalar" + sidPar, "residualprojection", t_rproj)) {
       if(t_rproj) {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
-        options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS STEP");
+        options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT","PREVIOUS STEP");
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
       } else {
