@@ -1,5 +1,4 @@
-set(NEK5000_GS_VERSION "1.0.5")
-set(NEK5000_GS_HASH "1b5b28de5b997c3b0893a3b4dcf5cee8614b9f27")
+set(NEK5000_GS_VERSION "1.0.7")
 set(PARRSB_VERSION "0.6")
 
 if (${NEK5000_PPLIST} MATCHES "PARRSB")
@@ -13,20 +12,10 @@ endif()
 # Nek5000
 # =======
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000)
-  message(STATUS "Using Nek5000 source in ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000")
   # Since Nek5000 is compiled in-source, we copy it to the build 
-  # directory, even if it's available locally
-  FetchContent_Declare(
-    nek5000_content
-    URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000)
-else()
-  FetchContent_Declare(
-    nek5000_content
-    GIT_REPOSITORY https://github.com/nek5000/nek5000.git
-    GIT_TAG ${NEK5000_TAG})
-endif()
-
+FetchContent_Declare(
+  nek5000_content
+  URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000)
 FetchContent_GetProperties(nek5000_content)
 if (NOT nek5000_content_POPULATED)
   FetchContent_Populate(nek5000_content)
@@ -48,22 +37,18 @@ set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 # gslib
 # =====
 
+set(NEK5000_GS_TAR ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_gslib/v${NEK5000_GS_VERSION}.tar.gz)
 set(NEK5000_GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib)
-set(NEK5000_GS_TAR ${NEK5000_GS_DIR}/v${NEK5000_GS_VERSION}.tar.gz)
 
-if (EXISTS ${NEK5000_GS_TAR})
-  message(STATUS "Using gslib source from ${NEK5000_GS_TAR}")
-else()
-  FetchContent_Declare(
-    nek5000_gs_content
-    URL http://github.com/gslib/gslib/archive/v${NEK5000_GS_VERSION}.tar.gz
-    URL_HASH SHA1=${NEK5000_GS_HASH}
-    DOWNLOAD_DIR ${NEK5000_GS_DIR}
-    DOWNLOAD_NO_EXTRACT on
-  )
-  if (NOT nek5000_gs_content_POPULATED)
-    FetchContent_Populate(nek5000_gs_content)
-  endif()
+FetchContent_Declare(
+  nek5000_gs_content
+  URL ${NEK5000_GS_TAR}
+  URL_HASH MD5=530ac268c5d28e92204e1d859aad4fa7
+  DOWNLOAD_DIR ${NEK5000_GS_DIR}
+  DOWNLOAD_NO_EXTRACT on
+)
+if (NOT nek5000_gs_content_POPULATED)
+  FetchContent_Populate(nek5000_gs_content)
 endif()
 
 set(NEK5000_GS_SOURCE_DIR ${NEK5000_GS_DIR}/gslib/src)
@@ -78,28 +63,23 @@ file(MAKE_DIRECTORY ${NEK5000_GS_INCLUDE_DIR})
 # parRSB
 # ======
 
+set(PARRSB_TAR ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_parRSB/v${PARRSB_VERSION}.tar.gz)
 set(PARRSB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/parRSB)
-set(PARRSB_TAR ${PARRSB_DIR}/v${PARRSB_VERSION}.tar.gz)
 
-if (USE_PARRSB)
-  if (EXISTS ${PARRSB_TAR})
-    message(STATUS "Using parRSB source from ${PARRSB_TAR}")
-  else()
-    FetchContent_Declare(
-      parrsb_content
-      URL https://github.com/Nek5000/parRSB/archive/v${PARRSB_VERSION}.tar.gz
-      DOWNLOAD_DIR ${PARRSB_DIR}
-      DOWNLOAD_NO_EXTRACT on
-    )
-    FetchContent_GetProperties(parrsb_content)
-    if (NOT parrsb_content_POPULATED)
-      # Moves `install` script so it doesn't get clobbered when 
-      # populating content.  
-      #file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
-      FetchContent_Populate(parrsb_content)
-      #file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
-    endif()
-  endif()
+FetchContent_Declare(
+  parrsb_content
+  URL ${PARRSB_TAR}
+  URL_HASH MD5=0c522d1a8dfd0053b83ed70408da4a87
+  DOWNLOAD_DIR ${PARRSB_DIR}
+  DOWNLOAD_NO_EXTRACT on
+)
+FetchContent_GetProperties(parrsb_content)
+if (NOT parrsb_content_POPULATED)
+  # Moves `install` script so it doesn't get clobbered when 
+  # populating content.  
+  #file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
+  FetchContent_Populate(parrsb_content)
+  #file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
 endif()
 
 # ---------------------------------------------------------
