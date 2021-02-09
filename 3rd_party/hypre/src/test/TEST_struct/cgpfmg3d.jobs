@@ -1,0 +1,18 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+#=============================================================================
+# struct: Run CG+PFMG with skip base 3d case
+#=============================================================================
+
+mpirun -np 1 ./struct -n 12 12 12 -solver 11 -skip 1 \
+ > cgpfmg3d.out.0
+#=============================================================================
+# struct: Run CG+PFMG with skip parallel and blocking 
+#=============================================================================
+
+mpirun -np 8 ./struct -n 3 3 3 -b 2 2 2 -P 2 2 2  -solver 11 -skip 1 \
+ > cgpfmg3d.out.1
