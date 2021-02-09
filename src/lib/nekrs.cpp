@@ -305,7 +305,10 @@ static void dryRun(setupAide &options, int npTarget)
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    udfBuild(udfFile.c_str());
+    int err = 0;
+    if(rank == 0) err = udfBuild(udfFile.c_str());
+    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
+    if(err) ABORT(EXIT_FAILURE);;
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
