@@ -13,12 +13,12 @@ static occa::kernel userMeshVelocityKernel;
  
 void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
-  lowMach::dpdt(P_GAMMA, o_SU);
+  lowMach::dpdt(o_SU);
 }
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  lowMach::qThermalIdealGasSingleComponent(time, P_GAMMA, o_div);
+  lowMach::qThermalIdealGasSingleComponent(time, o_div);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
@@ -54,7 +54,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.properties = &uservp;
   udf.sEqnSource = &userq;
 
-  lowMach::setup(nrs);
+  lowMach::setup(nrs, P_GAMMA);
   udf.div = &qtl;
 }
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

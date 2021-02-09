@@ -9,9 +9,11 @@
 #include "lowMach.hpp"
 
 namespace{
+
 static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
 static int qThermal = 0;
+static dfloat gamma0 = 1;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
 static occa::kernel surfaceFluxKernel;
@@ -42,9 +44,10 @@ void buildKernels(nrs_t* nrs)
 
 }
 
-void lowMach::setup(nrs_t* nrs)
+void lowMach::setup(nrs_t* nrs, dfloat gamma)
 {
   the_nrs = nrs;
+  gamma0 = gamma;
   the_linAlg = nrs->linAlg;
   mesh_t* mesh = nrs->mesh;
   int err = 1;
@@ -58,7 +61,7 @@ void lowMach::setup(nrs_t* nrs)
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalIdealGasSingleComponent(dfloat time, dfloat gamma, occa::memory o_div)
+void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 {
   qThermal = 1;
   nrs_t* nrs = the_nrs;
@@ -115,7 +118,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, dfloat gamma, occa::m
     o_div);
   
   if(nrs->pSolver->allNeumann){
-    const dfloat dd = (1.0 - gamma) / gamma;
+    const dfloat dd = (1.0 - gamma0) / gamma0;
     const dlong Nlocal = nrs->Nlocal;
 
     linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
@@ -158,9 +161,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, dfloat gamma, occa::m
   qThermal = 0;
 }
 
-void lowMach::dpdt(dfloat gamma, occa::memory o_FU)
+void lowMach::dpdt(occa::memory o_FU)
 {
   nrs_t* nrs = the_nrs;
   if(!qThermal)
-    nrs->linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma - 1.0) / gamma, o_FU);
+    nrs->linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
 }
