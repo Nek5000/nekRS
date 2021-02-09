@@ -24,6 +24,10 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
   options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
+  
+  if(ciMode == 2){
+    options.setArgs("SUBCYCLING STEPS", string("1"));
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
@@ -37,14 +41,25 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   double *err = (double *) nek_scPtr(1);
   const int Nfields = 6;
-  const dfloat expectedErr[] = {
-    0.2465620E-06,
-    0.6938894E-16,
-    0.3044039E-05,
-    0.2144404E-05,
-    0.2465620E-05,
-    0.1080412E-05
-  };
+  dfloat expectedErr[Nfields];
+  if(ciMode == 1)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.2144404E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.1080412E-05;
+  }
+  if(ciMode == 2)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.2144404E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.2443839E-05;
+  }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
   const int expectedPIter = 10;
