@@ -490,8 +490,6 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
       linAlg->axmyMany(nrs->Nlocal, nrs->NVfields, nrs->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
     }
     else{
-      //nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-      //                     o_U, 1.0, 0, o_p0);
       nrs->subCycleExtrapolateFieldKernel(
         nrs->Nlocal,
         nrs->NVfields,
@@ -544,7 +542,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           break;
         }
         nrs->o_extC.copyFrom(nrs->extC);
-        nrs->subCycleExtrapolateScalarKernel(nrs->Nlocal, nrs->SNrk, nrs->fieldOffset, nrs->o_extC, mesh->o_LMM, o_bmst);
+        nrs->subCycleExtrapolateScalarKernel(nrs->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_extC, mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
           nrs->Nlocal,
           nrs->NVfields,
@@ -616,7 +614,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               mesh->o_vgeo,
               mesh->o_Dmatrices,
               nrs->fieldOffset,
-              rk * nrs->NVfields * nrs->fieldOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_BdivW,
               nrs->o_extC,
@@ -654,7 +652,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
       }
     }
   }
-  return nrs->o_wrk0;
+  return o_p0;
 }
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
@@ -877,7 +875,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
           break;
         }
         cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
+        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->nEXT, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
         linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
 
         if(mesh->NglobalGatherElements) {
