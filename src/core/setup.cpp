@@ -229,13 +229,13 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
+  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
 
   nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
   nrs->o_Ue = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
   nrs->o_P  = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
   nrs->o_BF = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
   nrs->var_coeff = 1; // use always var coeff elliptic
   nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
@@ -265,7 +265,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
   kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
-  kernelInfo["defines/" "p_Nstages"] =  nrs->nBDF;
+  kernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
+  kernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
   if(nrs->Nsubsteps)
     kernelInfo["defines/" "p_SUBCYCLING"] =  1;
   else
@@ -1026,7 +1027,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {

@@ -250,7 +250,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     std::string oklpath = install_dir + "/okl/core/";
     std::string filename = oklpath + "nStagesSum.okl";
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/" "p_Nstages"] = mesh->nAB;
+    meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
     meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
     occa::properties meshKernelInfoBC = meshKernelInfo;
     const string bcDataFile = install_dir + "/include/core/bcData.h";
