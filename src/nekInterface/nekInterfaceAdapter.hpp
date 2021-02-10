@@ -133,7 +133,7 @@ long long nek_set_glo_num(int npts, int isTMesh);
 
 void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order);
 void nek_extCoeff(double *coeff, double *dt, int order);
-void nek_abCoeff(double *coeff, double *dt, int order);
+void nek_coeffAB(double *coeff, double *dt, int order);
 void nek_recomputeGeometry();
 void nek_admeshv();
 void nek_admesht();

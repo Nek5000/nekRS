@@ -882,7 +882,7 @@ void nek_extCoeff(double *coeff, double *dt, int order)
 {
   (*nek_setabbd_ptr)(coeff, dt, &order, &order);
 }
-void nek_abCoeff(double *coeff, double *dt, int order)
+void nek_coeffAB(double *coeff, double *dt, int order)
 {
   int one = 1;
   (*nek_setabbd_ptr)(coeff, dt, &order, &one);

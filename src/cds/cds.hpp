@@ -36,9 +36,8 @@ typedef struct
   int tstep;
   dfloat g0, ig0;
 
-  int temporalOrder;
-  int ExplicitOrder;
-  int Nstages;
+  int nEXT;
+  int nBDF;
   int dtAdaptStep;
 
   int compute[NSCALAR_MAX];
@@ -55,7 +54,7 @@ typedef struct
   occa::memory o_Srka, o_Srkb;
 
   //EXTBDF data
-  dfloat* extbdfA, * extbdfB, * extbdfC;
+  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
   dfloat* extC;
 
   int* mapB[NSCALAR_MAX], * EToB[NSCALAR_MAX];
@@ -126,7 +125,7 @@ typedef struct
   occa::memory o_rkC;
 
   //EXTBDF data
-  occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
+  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
   occa::memory o_extC;
 
 // Will be depreceated.....AK

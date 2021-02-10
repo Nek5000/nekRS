@@ -27,8 +27,8 @@
 @kernel void nrsSumMakefHex3D(const dlong Nelements,
                               @restrict const dfloat*  massMatrix,
                               const dfloat idt,
-                              @restrict const dfloat*  extbdfA,
-                              @restrict const dfloat*  extbdfB,
+                              @restrict const dfloat*  coeffEXT,
+                              @restrict const dfloat*  coeffBDF,
                               const dlong fieldOffset,
                               @restrict const dfloat*  U,
                               @restrict const dfloat*  NU,
@@ -64,9 +64,9 @@
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
                   if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  bfx += JW * extbdfA[s] * FUx;
-                  bfy += JW * extbdfA[s] * FUy;
-                  bfz += JW * extbdfA[s] * FUz;
+                  bfx += JW * coeffEXT[s] * FUx;
+                  bfy += JW * coeffEXT[s] * FUy;
+                  bfz += JW * coeffEXT[s] * FUz;
                 }
               } else {
                 for (int s = 0; s < p_Nstages; s++) {
@@ -79,9 +79,9 @@
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
                   if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  bfx += JW * (idt * extbdfB[s] * Um + extbdfA[s] * FUx);
-                  bfy += JW * (idt * extbdfB[s] * Vm + extbdfA[s] * FUy);
-                  bfz += JW * (idt * extbdfB[s] * Wm + extbdfA[s] * FUz);
+                  bfx += JW * (idt * coeffBDF[s] * Um + coeffEXT[s] * FUx);
+                  bfy += JW * (idt * coeffBDF[s] * Vm + coeffEXT[s] * FUy);
+                  bfz += JW * (idt * coeffBDF[s] * Wm + coeffEXT[s] * FUz);
                 }
               }
 

@@ -150,8 +150,8 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
 
     dfloat Saqpq = 0.0;
-    for(int i = 0 ; i < nrs->Nstages; ++i){
-      Saqpq += nrs->extbdfB[i] * nrs->p0th[i];
+    for(int i = 0 ; i < nrs->nBDF; ++i){
+      Saqpq += nrs->coeffBDF[i] * nrs->p0th[i];
     }
     nrs->p0th[2] = nrs->p0th[1];
     nrs->p0th[1] = nrs->p0th[0];

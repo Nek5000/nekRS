@@ -175,8 +175,8 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
-    mesh->ABCoeff = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_ABCoeff = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->ABCoeff);
+    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
 }
 
@@ -192,7 +192,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
   if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
   else order = 3;
-  mesh->Nstages = order;
+  mesh->nAB = order;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -250,7 +250,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     std::string oklpath = install_dir + "/okl/core/";
     std::string filename = oklpath + "nStagesSum.okl";
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/" "p_Nstages"] = mesh->Nstages;
+    meshKernelInfo["defines/" "p_Nstages"] = mesh->nAB;
     meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
     occa::properties meshKernelInfoBC = meshKernelInfo;
     const string bcDataFile = install_dir + "/include/core/bcData.h";
@@ -300,8 +300,8 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
-    mesh->ABCoeff = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_ABCoeff = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->ABCoeff);
+    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
 }
 
@@ -317,7 +317,7 @@ void createMeshV(mesh_t* mesh,
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
   if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
   else order = 3;
-  mesh->Nstages = order;
+  mesh->nAB = order;
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
