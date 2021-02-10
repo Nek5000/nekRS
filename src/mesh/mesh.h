@@ -48,6 +48,7 @@ struct mesh_t
   void update();
   void computeInvLMM();
   void computeBdivW();
+  void solve();
   linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)

@@ -100,7 +100,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         makef(nrs, time, nrs->o_FU, nrs->o_BF);
         timer::toc("makef");
       }
-      if(geom ==1) fluidSolve(nrs, time, nrs->o_U); 
+      if(geom == 1) fluidSolve(nrs, time, nrs->o_U); 
+      if(geom == 0) nrs->meshT->solve(); 
     }
   }
 

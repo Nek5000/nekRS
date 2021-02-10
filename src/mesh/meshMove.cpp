@@ -59,3 +59,6 @@ void mesh_t::update(){
         o_sgeo
     );
 }
+void mesh_t::solve()
+{
+}
