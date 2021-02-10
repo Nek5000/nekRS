@@ -802,108 +802,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
   linAlg->axmyMany(nrs->Nlocal, 3, nrs->fieldOffset, 0, 1.0, mesh->o_LMM, nrs->o_wrk0);
   return nrs->o_wrk0;
 }
-void computeExtCoeff(dfloat* extC,
-const dfloat t,
-const dfloat tn0,
-const dfloat tn1,
-const dfloat tn2,
-const int order)
-{
-  switch(order) {
-  case 1:
-    extC[0] = 1;
-    extC[1] = 0;
-    extC[2] = 0;
-    break;
-  case 2:
-    extC[0] = (t - tn1) / (tn0 - tn1);
-    extC[1] = (t - tn0) / (tn1 - tn0);
-    extC[2] = 0;
-    break;
-  case 3:
-    extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
-    extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
-    extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
-    break;
-  }
-}
 
-void subcycleConvect(cds_t* cds, const int is, occa::memory& o_U, occa::memory& o_p0, occa::memory& o_rhs)
-{
-  mesh_t* mesh = cds->meshV;
-  if(mesh->NglobalGatherElements) {
-    if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
-      cds->subCycleStrongCubatureVolumeKernel(
-        mesh->NglobalGatherElements,
-        mesh->o_globalGatherElementList,
-        cds->vFieldOffset,
-        0,
-        mesh->o_vgeo,
-        mesh->o_cubvgeo,
-        mesh->o_cubDiffInterpT,
-        mesh->o_cubInterpT,
-        mesh->o_cubProjectT,
-        mesh->o_invLMM,
-        mesh->o_BdivW,
-        cds->o_extC,
-        o_U,
-        o_p0,
-        o_rhs);
-    else
-      cds->subCycleStrongVolumeKernel(
-        mesh->NglobalGatherElements,
-        mesh->o_globalGatherElementList,
-        cds->vFieldOffset,
-        0,
-        mesh->o_vgeo,
-        mesh->o_Dmatrices,
-        mesh->o_invLMM,
-        mesh->o_BdivW,
-        cds->o_extC,
-        o_U,
-        o_p0,
-        o_rhs);
-  }
-
-  oogs::start(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
-
-  if(mesh->NlocalGatherElements) {
-    if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
-      cds->subCycleStrongCubatureVolumeKernel(
-        mesh->NlocalGatherElements,
-        mesh->o_localGatherElementList,
-        cds->vFieldOffset,
-        0,
-        mesh->o_vgeo,
-        mesh->o_cubvgeo,
-        mesh->o_cubDiffInterpT,
-        mesh->o_cubInterpT,
-        mesh->o_cubProjectT,
-        mesh->o_invLMM,
-        mesh->o_BdivW,
-        cds->o_extC, 
-        o_U,
-        o_p0,
-        o_rhs);
-    else
-      cds->subCycleStrongVolumeKernel(
-        mesh->NlocalGatherElements,
-        mesh->o_localGatherElementList,
-        cds->vFieldOffset,
-        0,
-        mesh->o_vgeo,
-        mesh->o_Dmatrices,
-        mesh->o_invLMM,
-        mesh->o_BdivW,
-        cds->o_extC,
-        o_U,
-        o_p0,
-        o_rhs);
-  }
-
-  oogs::finish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
-
-}
 occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
@@ -945,76 +844,129 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
 
     for(int ststep = 0; ststep < cds->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
+      o_u1.copyFrom(o_p0, cds->Nlocal * sizeof(dfloat));
+      for(int rk = 0; rk < cds->SNrk; ++rk)
       {
-        // Extrapolate velocity to subProblem stage time
-        const int rk = 0;
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
-        const dfloat tn0 = time;
-        const dfloat tn1 = time - cds->dt[1];
-        const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        computeExtCoeff(cds->extC, t, tn0, tn1, tn2, cds->ExplicitOrder);
-        cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
-        o_u1.copyFrom(o_p0, cds->Nlocal * sizeof(dfloat));
-        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
-        subcycleConvect(cds, is, o_U, o_u1, o_r1);
-        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_r1);
-        linAlg->axpbyz(cds->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_r1, o_u1);
-      }
-      {
-        // Extrapolate velocity to subProblem stage time
-        const int rk = 1;
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
-        const dfloat tn0 = time;
-        const dfloat tn1 = time - cds->dt[1];
-        const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        computeExtCoeff(cds->extC, t, tn0, tn1, tn2, cds->ExplicitOrder);
-        cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
-        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
-        subcycleConvect(cds, is, o_U, o_u1, o_r2);
-        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_r2);
-        linAlg->axpbyz(cds->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_r2, o_u1);
-      }
-      {
-        // Extrapolate velocity to subProblem stage time
-        const int rk = 2;
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
-        const dfloat tn0 = time;
-        const dfloat tn1 = time - cds->dt[1];
-        const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        computeExtCoeff(cds->extC, t, tn0, tn1, tn2, cds->ExplicitOrder);
-        cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
-        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
-        subcycleConvect(cds, is, o_U, o_u1, o_r3);
-        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_r3);
-        linAlg->axpbyz(cds->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_r3, o_u1);
-      }
-      {
-        // Extrapolate velocity to subProblem stage time
-        const int rk = 3;
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
-        const dfloat tn0 = time;
-        const dfloat tn1 = time - cds->dt[1];
-        const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        computeExtCoeff(cds->extC, t, tn0, tn1, tn2, cds->ExplicitOrder);
-        cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
-        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
-        subcycleConvect(cds, is, o_U, o_u1, o_r4);
-        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_r4);
+        occa::memory o_rhs;
+        if(rk == 0) o_rhs = o_r1;
+        if(rk == 1) o_rhs = o_r2;
+        if(rk == 2) o_rhs = o_r3;
+        if(rk == 3) o_rhs = o_r4;
 
-        cds->subCycleRKKernel(
-          cds->Nlocal,
-          sdt,
-          cds->o_Srkb,
-          o_r1,
-          o_r2,
-          o_r3,
-          o_r4,
-          o_p0
-        );
+        // Extrapolate velocity to subProblem stage time
+        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
+        const dfloat tn0 = time;
+        const dfloat tn1 = time - cds->dt[1];
+        const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
+        switch(cds->ExplicitOrder) {
+        case 1:
+          cds->extC[0] = 1;
+          cds->extC[1] = 0;
+          cds->extC[2] = 0;
+          break;
+        case 2:
+          cds->extC[0] = (t - tn1) / (tn0 - tn1);
+          cds->extC[1] = (t - tn0) / (tn1 - tn0);
+          cds->extC[2] = 0;
+          break;
+        case 3:
+          cds->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
+          cds->extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
+          cds->extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
+          break;
+        }
+        cds->o_extC.copyFrom(cds->extC);
+        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->SNrk, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
+        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
+
+        if(mesh->NglobalGatherElements) {
+          if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
+            cds->subCycleStrongCubatureVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              cds->vFieldOffset,
+              0,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              mesh->o_invLMM,
+              mesh->o_BdivW,
+              cds->o_extC,
+              o_U,
+              o_u1,
+              o_rhs);
+          else
+            cds->subCycleStrongVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              cds->vFieldOffset,
+              0,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              mesh->o_invLMM,
+              mesh->o_BdivW,
+              cds->o_extC,
+              o_U,
+              o_u1,
+              o_rhs);
+        }
+
+        oogs::start(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
+
+        if(mesh->NlocalGatherElements) {
+          if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
+            cds->subCycleStrongCubatureVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              cds->vFieldOffset,
+              0,
+              mesh->o_vgeo,
+              mesh->o_cubvgeo,
+              mesh->o_cubDiffInterpT,
+              mesh->o_cubInterpT,
+              mesh->o_cubProjectT,
+              mesh->o_invLMM,
+              mesh->o_BdivW,
+              cds->o_extC, 
+              o_U,
+              o_u1,
+              o_rhs);
+          else
+            cds->subCycleStrongVolumeKernel(
+              mesh->NlocalGatherElements,
+              mesh->o_localGatherElementList,
+              cds->vFieldOffset,
+              0,
+              mesh->o_vgeo,
+              mesh->o_Dmatrices,
+              mesh->o_invLMM,
+              mesh->o_BdivW,
+              cds->o_extC,
+              o_U,
+              o_u1,
+              o_rhs);
+        }
+
+        oogs::finish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
+
+        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_rhs);
+        if(rk != 3) {
+          linAlg->axpbyz(cds->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_rhs, o_u1);
+        }
+        else{
+          cds->subCycleRKKernel(
+            cds->Nlocal,
+            sdt,
+            cds->o_Srkb,
+            o_r1,
+            o_r2,
+            o_r3,
+            o_r4,
+            o_p0
+          );
+        }
       }
     }
   }
