@@ -38,36 +38,33 @@ set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 # =====
 
 set(NEK5000_GS_SUBTREE ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_gslib)
-set(NEK5000_GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib)
+set(NEK5000_GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib/gslib)
 
 FetchContent_Declare(
   nek5000_gs_content
   URL ${NEK5000_GS_SUBTREE}
-  DOWNLOAD_DIR ${NEK5000_GS_DIR}
+  SOURCE_DIR ${NEK5000_GS_DIR}
 )
 if (NOT nek5000_gs_content_POPULATED)
   FetchContent_Populate(nek5000_gs_content)
 endif()
 
-set(NEK5000_GS_SOURCE_DIR ${NEK5000_GS_DIR}/gslib/src)
-set(NEK5000_GS_INCLUDE_DIR ${NEK5000_GS_DIR}/include)
-set(NEK5000_GS_LIB_DIR ${NEK5000_GS_DIR}/lib)
+# ./build/_deps/nek5000_content-src/3rd_party/gslib/lib/libgs.a
+#set(NEK5000_GS_SOURCE_DIR ${NEK5000_GS_DIR}/gslib/src)
+set(NEK5000_GS_INCLUDE_DIR ${NEK5000_GS_DIR}/../include)
+set(NEK5000_GS_LIB_DIR ${NEK5000_GS_DIR}/../lib)
 
-# These directories need to exist for target_include_directories
-# but do not need to be populated with headers at configure time
-file(MAKE_DIRECTORY ${NEK5000_GS_SOURCE_DIR})
-file(MAKE_DIRECTORY ${NEK5000_GS_INCLUDE_DIR})
 
 # parRSB
 # ======
 
-set(PARRSB_SUBTREE ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_parRSB/v${PARRSB_VERSION}.tar.gz)
-set(PARRSB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/parRSB)
+set(PARRSB_SUBTREE ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_parRSB)
+set(PARRSB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/parRSB/parRSB)
 
 FetchContent_Declare(
   parrsb_content
   URL ${PARRSB_SUBTREE}
-  DOWNLOAD_DIR ${PARRSB_DIR}
+  SOURCE_DIR ${PARRSB_DIR}
 )
 FetchContent_GetProperties(parrsb_content)
 if (NOT parrsb_content_POPULATED)
@@ -77,6 +74,9 @@ if (NOT parrsb_content_POPULATED)
   FetchContent_Populate(parrsb_content)
   #file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
 endif()
+
+set(PARRSB_INCLUDE_DIR ${PARRSB_DIR}/../include)
+set(PARRSB_LIB_DIR ${PARRSB_DIR}/../lib)
 
 # ---------------------------------------------------------
 # Build Nek5000 dependencies
@@ -134,7 +134,7 @@ install(DIRECTORY ${NEK5000_GS_INCLUDE_DIR} DESTINATION nek5000/3rd_party/gslib)
 install(FILES ${BLASLAPACK_DIR}/libblasLapack.a DESTINATION nek5000/3rd_party/blasLapack)
 
 if (${USE_PARRSB})
-  install(FILES ${PARRSB_DIR}/lib/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
-  install(DIRECTORY ${PARRSB_DIR}/include DESTINATION nek5000/3rd_party/parRSB)
+  install(FILES ${PARRSB_LIB_DIR}/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
+  install(DIRECTORY ${PARRSB_INCLUDE_DIR} DESTINATION nek5000/3rd_party/parRSB)
 endif()
 
