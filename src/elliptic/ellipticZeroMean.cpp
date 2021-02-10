@@ -25,9 +25,8 @@
  */
 
 #include "elliptic.h"
-//#include "ogsInterface.h"
 
-#define USE_WEIGHTED 1
+#define USE_WEIGHTED 0
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {

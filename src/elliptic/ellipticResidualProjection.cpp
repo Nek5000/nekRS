@@ -219,10 +219,15 @@ void ResidualProjection::pre(occa::memory& o_r)
   }
   if(rank == 0 && verbose)
     std::cout << "Residual projection : "
-              << std::cout.precision(15)
+              << "Prior Residual Norm = "
               << priorResidualNorm << ", "
+              << "Post Residual Norm = "
               << postResidualNorm << ", "
-              << ratio << "\n";
+              << "Reduction Ratio = "
+              << ratio << ", "
+              << "Number Vectors = "
+              << numVecsProjection
+              << "\n";
 }
 
 void ResidualProjection::post(occa::memory& o_x)

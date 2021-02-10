@@ -81,8 +81,8 @@ struct cmdOptions
 {
   int buildOnly = 0;
   int ciMode = 0;
-  int sizeTarget = 0;
   int debug = 0;
+  int sizeTarget = 0;
   std::string setupFile;
   std::string deviceID;
   std::string backend;
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
     if (retval != MPI_SUCCESS) {
       std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
-      exit(1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -131,17 +131,13 @@ int main(int argc, char** argv)
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize();
-    fflush(stdout);
     return EXIT_SUCCESS;
   }
 
   const int runTimeStatFreq = 500;
-  const int writeControlRunTime = nekrs::writeControlRunTime();
 
   int tStep = 0;
   double time = nekrs::startTime();
-  double outputTime = -1;
-  if (writeControlRunTime) outputTime = time + nekrs::writeInterval();
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
   if (rank == 0 && !lastStep) {
@@ -166,22 +162,14 @@ int main(int argc, char** argv)
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
-    int outputStep = 0;
-    if (writeControlRunTime) { 
-      outputStep = (time >= outputTime);
-    } else {
-      if (nekrs::writeInterval() > 0) outputStep = (tStep%(int)nekrs::writeInterval() == 0);
-    }
+    int outputStep = nekrs::isOutputStep(time, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
     if (lastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
 
     nekrs::udfExecuteStep(time, tStep, outputStep);
 
-    if (outputStep) {
-      nekrs::outfld(time, outputTime);
-      if (writeControlRunTime) outputTime += nekrs::writeInterval();
-    }
+    if (outputStep) nekrs::outfld(time); 
 
     if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
   }
@@ -214,7 +202,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       {
         {"setup", required_argument, 0, 's'},
         {"cimode", required_argument, 0, 'c'},
-        {"build-only", required_argument, 0, 'b'},
+	{"build-only", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
         {"backend", required_argument, 0, 't'},
         {"device-id", required_argument, 0, 'i'},
@@ -232,7 +220,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'b':
         cmdOpt->buildOnly = 1;
-        cmdOpt->sizeTarget = atoi(optarg);
+	cmdOpt->sizeTarget = atoi(optarg);
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
@@ -290,7 +278,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
                 << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
                 << "\n";
     MPI_Finalize();
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   return cmdOpt;

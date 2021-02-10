@@ -5,6 +5,7 @@
 
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "parReader.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);
@@ -39,7 +40,7 @@ typedef struct
 
 extern UDF udf;
 
-void udfBuild(const char* udfFile);
+int udfBuild(const char* udfFile);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
 occa::kernel udfBuildKernel(nrs_t* nrs, const char* function);

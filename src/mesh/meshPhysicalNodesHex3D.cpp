@@ -32,10 +32,6 @@
 
 void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
 {
-  mesh->x = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-  mesh->y = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-  mesh->z = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-
   dlong cnt = 0;
   for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
     dlong id = e * mesh->Nverts;
@@ -111,37 +107,36 @@ void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
 
 void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
 {
+  mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
+  mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
+  mesh->z = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
+
   if (nrsBuildOnly) {
     meshPhysicalBoxNodesHex3D(mesh);
-    return;
-  }
-
-  mesh->x = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-  mesh->y = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-  mesh->z = (dfloat*) calloc(mesh->Nelements * mesh->Np,sizeof(dfloat));
-
-  dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
-  dfloat* ym1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
-  dfloat* zm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
-
-  int nx1 = nekData.nx1;
-  dlong cnt = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
-    hlong offset = e * nx1 * nx1 * nx1;
-    nek_map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
-    nek_map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
-    nek_map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
-
-    for(int n = 0; n < mesh->Np; ++n) { /* for each node */
-      /* physical coordinate of interpolation node */
-      mesh->x[cnt] = xm1[n];
-      mesh->y[cnt] = ym1[n];
-      mesh->z[cnt] = zm1[n];
-      cnt++;
+  } else {
+    dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+    dfloat* ym1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+    dfloat* zm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+ 
+    int nx1 = nekData.nx1;
+    dlong cnt = 0;
+    for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
+      hlong offset = e * nx1 * nx1 * nx1;
+      nek_map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
+      nek_map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
+      nek_map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
+ 
+      for(int n = 0; n < mesh->Np; ++n) { /* for each node */
+        /* physical coordinate of interpolation node */
+        mesh->x[cnt] = xm1[n];
+        mesh->y[cnt] = ym1[n];
+        mesh->z[cnt] = zm1[n];
+        cnt++;
+      }
     }
+ 
+    free(xm1);
+    free(ym1);
+    free(zm1);
   }
-
-  free(xm1);
-  free(ym1);
-  free(zm1);
 }

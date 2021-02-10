@@ -47,6 +47,9 @@ jobs:
      name: "lowMach default"
      script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
    - stage: test
+     name: "mv_cyl"
+     script: cd $NEKRS_EXAMPLES/mv_cyl && nrsmpi mv_cyl 2 1 
+   - stage: test
      name: "conj_ht"
      script: cd $NEKRS_EXAMPLES/conj_ht && nrsmpi conj_ht 2 1
    - stage: test

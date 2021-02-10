@@ -24,6 +24,60 @@
 
  */
 
+@kernel void nrsSubCycleExtrapolateScalar(const dlong N,
+                            const int Nstages,
+                            const int offset,
+                            @restrict const dfloat*  c,
+                            @restrict const dfloat*  S,
+                            @restrict dfloat*  Se)
+{
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    dfloat Sn = 0.0;
+    for(int s = 0 ; s < Nstages; ++s){
+      Sn += S[n + s * offset] * c[s];
+    }
+    Se[n] = Sn;
+  }
+}
+@kernel void nrsSubCycleExtrapolateField(const dlong N,
+                  const dlong Nfields,
+                  const dlong fieldOffset,
+                  const dlong toffset,
+                  const dlong offset,
+                  const dfloat coef,
+                  @restrict const dfloat* massMatrix,
+                  @restrict const dfloat *S,
+                  @restrict       dfloat *BS){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      BS[n + fld * fieldOffset] += coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+    }
+  }
+}
+@kernel void nrsSubCycleRK(const dlong N,
+                  const dlong Nfields,
+                  const dlong offset,
+                  const dfloat sdt,
+                  @restrict const dfloat* rkb,
+                  @restrict const dfloat* r1,
+                  @restrict const dfloat* r2,
+                  @restrict const dfloat* r3,
+                  @restrict const dfloat* r4,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const dlong fieldOffset = fld * offset;
+      dfloat sn = 0.0;
+      sn -= sdt * rkb[0] * r1[n + fieldOffset];
+      sn -= sdt * rkb[1] * r2[n + fieldOffset];
+      sn -= sdt * rkb[2] * r3[n + fieldOffset];
+      sn -= sdt * rkb[3] * r4[n + fieldOffset];
+      y[n + fieldOffset] += sn;
+    }
+  }
+}
 @kernel void nrsSubCycleLSERKUpdate(const dlong Nelements,
                                     const dfloat dt,
                                     const dfloat rka,

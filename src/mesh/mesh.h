@@ -34,17 +34,27 @@
 #include <stdlib.h>
 
 #include "nrssys.hpp"
+#include "linAlg.hpp"
+#include "ogs.hpp"
 
 #define TRIANGLES 3
 #define QUADRILATERALS 4
 #define TETRAHEDRA 6
 #define HEXAHEDRA 12
 
-extern "C" { // Start C linkage
-typedef struct
+struct mesh_t
 {
+  void move();
+  void update();
+  void computeInvLMM();
+  void computeBdivW();
+  linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
+
+  int Nstages; // time integration order
+  dfloat* ABCoeff; // coefficients for AB integration
+  occa::memory o_ABCoeff;
 
   int dim;
   int Nverts, Nfaces, NfaceVertices;
@@ -57,6 +67,7 @@ typedef struct
   dfloat* EZ;
 
   dlong Nelements;
+  dlong fieldOffset;
   hlong* EToV; // element-to-vertex connectivity
   dlong* EToE; // element-to-element connectivity
   int* EToF;   // element-to-(local)face connectivity
@@ -90,6 +101,7 @@ typedef struct
   hlong* maskedGlobalIds;
   void* gsh, * hostGsh; // gslib struct pointer
   ogs_t* ogs; //occa gs pointer
+  oogs_t* oogs; //occa gs pointer
 
   // list of elements that are needed for global gather-scatter
   dlong NglobalGatherElements;
@@ -290,6 +302,8 @@ typedef struct
   occa::memory o_errtmp;
   occa::memory o_rkA, o_rkE;
 
+  occa::memory o_faceNodes;
+
   // ploting info for generating field vtu
   int plotNverts;       // number of vertices for each plot element
   int plotNp;           // number of plot nodes per element
@@ -341,7 +355,12 @@ typedef struct
 
   occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
-  occa::memory o_LMM, o_invLMM;
+  occa::memory o_LMM, o_invLMM, o_BdivW;
+
+  // mesh velocity
+  occa::memory o_U;
+  dfloat* U; // host shadow of mesh velocity
+
   occa::memory o_Dmatrices;
   occa::memory o_DmatricesPfloat;
   occa::memory o_FMMT;
@@ -426,22 +445,13 @@ typedef struct
   occa::memory o_ggeoPfloat; // second order geometric factors
   occa::memory o_projectL2; // local weights for projection.
 
-  occa::kernel volumeKernel;
-  occa::kernel surfaceKernel;
-  occa::kernel updateKernel;
-  occa::kernel traceUpdateKernel;
-  occa::kernel haloExtractKernel;
-  occa::kernel partialSurfaceKernel;
-  occa::kernel haloGetKernel;
-  occa::kernel haloPutKernel;
-
-  // Just for test will be deleted after temporal testsAK
-  occa::kernel RKupdateKernel;
-  occa::kernel RKpmlUpdateKernel;
+  occa::memory o_gllw;
+  occa::memory o_cubw;
 
   occa::kernel gatherKernel;
   occa::kernel scatterKernel;
   occa::kernel gatherScatterKernel;
+  occa::kernel haloExtractKernel;
 
   occa::kernel getKernel;
   occa::kernel putKernel;
@@ -449,24 +459,24 @@ typedef struct
   occa::kernel sumKernel;
   occa::kernel addScalarKernel;
 
-  occa::kernel AxKernel;
   occa::kernel innerProductKernel;
   occa::kernel weightedInnerProduct1Kernel;
   occa::kernel weightedInnerProduct2Kernel;
   occa::kernel scaledAddKernel;
+  occa::kernel scalarDivideKernel;
   occa::kernel dotMultiplyKernel;
   occa::kernel dotDivideKernel;
 
-  occa::kernel gradientKernel;
-  occa::kernel ipdgKernel;
-
+  occa::kernel lagFieldKernel;
+  occa::kernel lagVectorFieldKernel;
   occa::kernel maskKernel;
   occa::kernel maskPfloatKernel;
 
-  // Boltzmann Specific Kernels
-  occa::kernel relaxationKernel;
-  occa::kernel pmlRelaxationKernel;
-}mesh_t;
+  occa::kernel geometricFactorsKernel;
+  occa::kernel surfaceGeometricFactorsKernel;
+  occa::kernel nStagesSumVectorKernel;
+  occa::kernel strongDivergenceKernel;
+};
 
 // serial sort
 void mysort(hlong* data, int N, const char* order);
@@ -491,6 +501,7 @@ void meshParallelConnect(mesh_t* mesh);
 void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t* mesh);
+void meshHaloPhysicalNodes(mesh_t* mesh);
 
 /* extract whole elements for the halo exchange */
 void meshHaloExtract(mesh_t* mesh, size_t Nbytes, void* sourceBuffer, void* haloBuffer);
@@ -624,5 +635,4 @@ dfloat JacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
 dfloat GradJacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
 void JacobiGLL(int _N, dfloat* _x, dfloat* _w = nullptr);
 void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat* _x, dfloat* _w);
-} // end C Linkage
 #endif

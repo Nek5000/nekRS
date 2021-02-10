@@ -25,7 +25,7 @@
  */
 
 @kernel void nrsSumMakefHex3D(const dlong Nelements,
-                              @restrict const dfloat*  vgeo,
+                              @restrict const dfloat*  massMatrix,
                               const dfloat idt,
                               @restrict const dfloat*  extbdfA,
                               @restrict const dfloat*  extbdfB,
@@ -44,8 +44,7 @@
 #pragma unroll p_Nq
             for(int k = 0; k < p_Nq; ++k) {
               const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
-              const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + e * p_Np * p_Nvgeo;
-              const dfloat JW = vgeo[gid + p_JWID * p_Np];
+              dfloat JW = massMatrix[id];
 
               dfloat bfx = 0;
               dfloat bfy = 0;
@@ -64,9 +63,10 @@
                   const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  bfx += extbdfA[s] * FUx;
-                  bfy += extbdfA[s] * FUy;
-                  bfz += extbdfA[s] * FUz;
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  bfx += JW * extbdfA[s] * FUx;
+                  bfy += JW * extbdfA[s] * FUy;
+                  bfz += JW * extbdfA[s] * FUz;
                 }
               } else {
                 for (int s = 0; s < p_Nstages; s++) {
@@ -78,16 +78,16 @@
                   const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-
-                  bfx += idt * extbdfB[s] * Um + extbdfA[s] * FUx;
-                  bfy += idt * extbdfB[s] * Vm + extbdfA[s] * FUy;
-                  bfz += idt * extbdfB[s] * Wm + extbdfA[s] * FUz;
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  bfx += JW * (idt * extbdfB[s] * Um + extbdfA[s] * FUx);
+                  bfy += JW * (idt * extbdfB[s] * Vm + extbdfA[s] * FUy);
+                  bfz += JW * (idt * extbdfB[s] * Wm + extbdfA[s] * FUz);
                 }
               }
 
-              BF[id + 0 * fieldOffset] = JW * bfx;
-              BF[id + 1 * fieldOffset] = JW * bfy;
-              BF[id + 2 * fieldOffset] = JW * bfz;
+              BF[id + 0 * fieldOffset] = bfx;
+              BF[id + 1 * fieldOffset] = bfy;
+              BF[id + 2 * fieldOffset] = bfz;
             }
           }
         }

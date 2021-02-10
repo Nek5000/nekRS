@@ -2,6 +2,8 @@
 #define nekrs_parreader_hpp_
 
 #include "nrs.hpp"
-setupAide parRead(std::string &setupFile, MPI_Comm comm);
+#include "inipp.hpp"
+
+setupAide parRead(void* par, std::string setupFile, MPI_Comm comm);
 
 #endif

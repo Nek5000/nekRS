@@ -37,6 +37,8 @@ SOFTWARE.
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "nrssys.hpp"
+
 using std::stringstream;
 using std::fstream;
 using std::string;

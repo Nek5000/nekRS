@@ -29,48 +29,6 @@
 #include <stdlib.h>
 #include "mesh3D.h"
 
-void computeFrame(dfloat nx, dfloat ny, dfloat nz,
-                  dfloat &tanx, dfloat &tany, dfloat &tanz,
-                  dfloat &binx, dfloat &biny, dfloat &binz)
-{
-  dfloat rdotn, ranx, rany, ranz;
-  do{
-    ranx = drand48();
-    rany = drand48();
-    ranz = drand48();
-
-    dfloat magran = sqrt(ranx * ranx + rany * rany + ranz * ranz);
-
-    ranx /= magran;
-    rany /= magran;
-    ranz /= magran;
-
-    rdotn = nx * ranx + ny * rany + nz * ranz;
-  }while(fabs(rdotn) < 1e-4);
-
-  tanx = ny * ranz - nz * rany;
-  tany = nz * ranx - nx * ranz;
-  tanz = nx * rany - ny * ranx;
-
-  dfloat magtan = sqrt(tanx * tanx + tany * tany + tanz * tanz);
-
-  tanx /= magtan;
-  tany /= magtan;
-  tanz /= magtan;
-
-  binx = ny * tanz - nz * tany;
-  biny = nz * tanx - nx * tanz;
-  binz = nx * tany - ny * tanx;
-
-  dfloat magbin = sqrt(binx * binx + biny * biny + binz * binz);
-
-  binx /= magbin;
-  biny /= magbin;
-  binz /= magbin;
-
-  //  printf("nor = %g,%g,%g; tan = %g,%g,%g; bin = %g,%g,%g\n", nx, ny, nz, tanx, tany, tanz, binx, biny, binz);
-}
-
 void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 {
   dfloat* Ix0 = (dfloat*) calloc(N * N, sizeof(dfloat));
@@ -132,10 +90,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
   dfloat* cubzre = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
   dfloat* cubzse = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
   dfloat* cubzte = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
-
-  dfloat* cubxe = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
-  dfloat* cubye = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
-  dfloat* cubze = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
 
   for(dlong e = 0; e < mesh->Nelements + mesh->totalHaloPairs; ++e) { /* for each element */
     /* find vertex indices and physical coordinates */
@@ -250,10 +204,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
 
         mesh->sgeo[base + WIJID] = 1. / (J * mesh->gllw[0]);
         mesh->sgeo[base + WSJID] = sJ * mesh->gllw[i % mesh->Nq] * mesh->gllw[i / mesh->Nq];
-
-        computeFrame(nx, ny, nz,
-                     mesh->sgeo[base + STXID], mesh->sgeo[base + STYID], mesh->sgeo[base + STZID],
-                     mesh->sgeo[base + SBXID], mesh->sgeo[base + SBYID], mesh->sgeo[base + SBZID]);
       }
 
       // now interpolate geofacs to cubature
@@ -311,26 +261,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
                            mesh->Nq,
                            cubzte,
                            mesh->cubNq);
-
-      interpolateFaceHex3D(mesh->faceNodes + f * mesh->Nfp,
-                           mesh->cubInterp,
-                           mesh->x + e * mesh->Np,
-                           mesh->Nq,
-                           cubxe,
-                           mesh->cubNq);
-      interpolateFaceHex3D(mesh->faceNodes + f * mesh->Nfp,
-                           mesh->cubInterp,
-                           mesh->y + e * mesh->Np,
-                           mesh->Nq,
-                           cubye,
-                           mesh->cubNq);
-      interpolateFaceHex3D(mesh->faceNodes + f * mesh->Nfp,
-                           mesh->cubInterp,
-                           mesh->z + e * mesh->Np,
-                           mesh->Nq,
-                           cubze,
-                           mesh->cubNq);
-
       //geometric data for quadrature
       for(int i = 0; i < mesh->cubNfp; ++i) { // for each quadrature node on face
         dfloat xr = cubxre[i], xs = cubxse[i], xt = cubxte[i];
@@ -395,16 +325,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
         mesh->cubsgeo[base + WIJID] = 1. / (J * mesh->cubw[0]);
         mesh->cubsgeo[base + WSJID] = sJ * mesh->cubw[i % mesh->cubNq] *
                                       mesh->cubw[i / mesh->cubNq];
-
-        mesh->cubsgeo[base + SURXID] = cubxe[i];
-        mesh->cubsgeo[base + SURYID] = cubye[i];
-        mesh->cubsgeo[base + SURZID] = cubze[i];
-
-        computeFrame(nx, ny, nz,
-                     mesh->cubsgeo[base + STXID], mesh->cubsgeo[base + STYID],
-                     mesh->cubsgeo[base + STZID],
-                     mesh->cubsgeo[base + SBXID], mesh->cubsgeo[base + SBYID],
-                     mesh->cubsgeo[base + SBZID]);
       }
     }
   }

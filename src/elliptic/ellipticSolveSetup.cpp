@@ -43,8 +43,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     if(mesh->rank == 0)
       printf("ERROR: Block solver is implemented for C0-HEXAHEDRA with Jacobi preconditioner only\n");
 
-    MPI_Finalize();
-    exit(-1);
+    ABORT(EXIT_FAILURE);
   }
 
   if (options.compareArgs("COEFFICIENT","VARIABLE") &&  elliptic->elementType != HEXAHEDRA &&
@@ -52,8 +51,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     if(mesh->rank == 0)
       printf("ERROR: Varibale coefficient solver is implemented for C0-HEXAHEDRA only\n");
 
-    MPI_Finalize();
-    exit(-1);
+    ABORT(EXIT_FAILURE);
   }
 
   if (options.compareArgs("COEFFICIENT","VARIABLE")) {
@@ -63,8 +61,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       if(mesh->rank == 0)
         printf(
           "ERROR: Varibale coefficient solver is implemented for constant multigrid preconditioner only\n");
-      MPI_Finalize();
-      exit(-1);
+
+      ABORT(EXIT_FAILURE);
     }
   }
 
@@ -235,6 +233,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
     mesh->o_vgeo =
       mesh->device.malloc((Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat), mesh->vgeo);
+    //mesh->o_faceNodes =
+    //  mesh->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
     free(vgeoSendBuffer);
   }
 
@@ -856,7 +856,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             if(elliptic->var_coeff || elliptic->blockSolver) {
               printf(
                 "ERROR: TRILINEAR form is not implemented for varibale coefficient and block solver yet \n");
-              exit(-1);
+              ABORT(EXIT_FAILURE);
             }
             kernelName = "ellipticPartialAxTrilinear" + suffix;
           }else {

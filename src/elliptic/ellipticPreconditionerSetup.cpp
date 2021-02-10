@@ -37,8 +37,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     //ellipticSEMFEMSetup(elliptic,precon);
     printf("ERROR: SEMFEM does not work right now.\n");
-
-    exit(-1);
+    ABORT(EXIT_FAILURE);;
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
@@ -48,6 +47,6 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     free(invDiagA);
   } else {
     printf("ERROR: Unknown preconditioner!\n");
-    exit(-1);
+    ABORT(EXIT_FAILURE);
   }
 }

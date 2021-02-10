@@ -49,3 +49,20 @@ SOFTWARE.
     z[n] = alpha*x[n] + beta*y[n];
   }
 }
+
+@kernel void axpbyzMany(const dlong N,
+                    const dlong Nfields,
+                    const dlong offset,
+                    const dfloat alpha,
+                    @restrict const dfloat *x,
+                    const dfloat beta,
+                    @restrict const dfloat *y,
+                    @restrict dfloat *z){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const dlong fldOffset = fld * offset;
+      z[n + fldOffset] = alpha*x[n + fldOffset] + beta*y[n + fldOffset];
+    }
+  }
+}

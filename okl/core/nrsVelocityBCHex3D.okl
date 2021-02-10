@@ -263,6 +263,7 @@
                                          @restrict const dlong*  vmapM,
                                          @restrict const int*  EToBM,
                                          @restrict const int*  EToB,
+                                         @restrict const int*  EToBV,
                                          @restrict const dfloat*  W,
                                          @restrict const dfloat*  U,
                                          @restrict dfloat*  UH)
@@ -277,6 +278,7 @@
         const dlong sid  = e * p_Nfaces * p_Nfp + n;
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
+        const dlong bcTypeV = EToBV[idM];
 
         if(bcType > 0) {
           bc.id = EToBM[f + p_Nfaces * e];
@@ -293,26 +295,30 @@
           bc.u = U[idM + 0 * offset];
           bc.v = U[idM + 1 * offset];
           bc.w = U[idM + 2 * offset];
-          //bc.pP =
+
           bc.wrk = W;
           bc.fieldOffset = offset;
 
           if(bcType == 1) {
-            bc.u = 0.f;
-            bc.v = 0.f;
-            bc.w = 0.f;
-          }else if(bcType == 2) {
+            UH[idM + 0 * offset] = 0.0;
+            UH[idM + 1 * offset] = 0.0;
+            UH[idM + 2 * offset] = 0.0;
+          }else if(bcType == 2 && bcTypeV == bcType) {
             velocityDirichletConditions(&bc);
-          }else if(bcType == 4) {
-            bc.u = 0.f; // vP = vM ; wP = wM;
-          }else if(bcType == 5) {
-            bc.v = 0.f; // uP = vM ; wP = wM;
-          }else if(bcType == 6) {
-            bc.w = 0.f; // vP = vM ; uP = uM;
+            UH[idM + 0 * offset] = bc.u;
+            UH[idM + 1 * offset] = bc.v;
+            UH[idM + 2 * offset] = bc.w;
+          }else if(bcType == 3 && bcTypeV == bcType) {
+            UH[idM + 0 * offset] = bc.u;
+            UH[idM + 1 * offset] = bc.v;
+            UH[idM + 2 * offset] = bc.w;
+          }else if(bcType == 4 && bcTypeV == bcType) {
+            UH[idM + 0 * offset] = 0.0;
+          }else if(bcType == 5 && bcTypeV == bcType) {
+            UH[idM + 1 * offset] = 0.0;
+          }else if(bcType == 6 && bcTypeV == bcType) {
+            UH[idM + 2 * offset] = 0.0;
           }
-          UH[idM + 0 * offset] = bc.u;
-          UH[idM + 1 * offset] = bc.v;
-          UH[idM + 2 * offset] = bc.w;
         }
       }
     }

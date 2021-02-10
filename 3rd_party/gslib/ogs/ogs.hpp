@@ -234,6 +234,9 @@ typedef struct {
 
   ogs_t *ogs;
 
+  MPI_Comm comm;
+  int rank;
+
   occa::memory h_buffSend, h_buffRecv;
   unsigned char *bufSend, *bufRecv;
 
@@ -242,11 +245,13 @@ typedef struct {
   occa::memory o_scatterOffsets, o_gatherOffsets;
   occa::memory o_scatterIds, o_gatherIds;
 
-  occa::kernel packBufDoubleKernel, packBufFloatKernel;
-  occa::kernel packBufFloatToHalfKernel;
-  occa::kernel unpackBufDoubleAddKernel, unpackBufDoubleMinKernel, unpackBufDoubleMaxKernel;
-  occa::kernel unpackBufFloatAddKernel;
-  occa::kernel unpackBufHalfToFloatAddKernel;
+  occa::kernel packBufFloatToHalfAddKernel, unpackBufHalfToFloatAddKernel;
+  occa::kernel packBufFloatAddKernel, unpackBufFloatAddKernel;  
+  occa::kernel packBufDoubleAddKernel, unpackBufDoubleAddKernel;
+  occa::kernel packBufDoubleMinKernel, unpackBufDoubleMinKernel;
+  occa::kernel packBufDoubleMaxKernel, unpackBufDoubleMaxKernel;
+
+  int earlyPrepostRecv;
 
   oogs_mode mode;
 

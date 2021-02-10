@@ -8,8 +8,47 @@
 
 #include "lowMach.hpp"
 
-void lowMach::setup(nrs_t* nrs)
+namespace{
+
+static nrs_t* the_nrs = nullptr;
+static linAlg_t* the_linAlg = nullptr;
+static int qThermal = 0;
+static dfloat gamma0 = 1;
+static occa::kernel qtlKernel;
+static occa::kernel p0thHelperKernel;
+static occa::kernel surfaceFluxKernel;
+
+void buildKernels(nrs_t* nrs)
 {
+  mesh_t* mesh = nrs->mesh;
+  occa::properties kernelInfo = *(nrs->kernelInfo);
+  string fileName;
+  int rank = mesh->rank;
+  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
+  fileName += "/okl/plugins/lowMach.okl";
+  if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
+    if(mesh->rank == 0)
+      printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+        "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
+    ABORT(EXIT_FAILURE);
+  }
+  for (int r = 0; r < 2; r++) {
+    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
+      qtlKernel        = mesh->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
+      p0thHelperKernel = mesh->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
+      surfaceFluxKernel = mesh->device.buildKernel(fileName.c_str(), "surfaceFlux", kernelInfo);
+    }
+    MPI_Barrier(mesh->comm);
+  }
+}
+
+}
+
+void lowMach::setup(nrs_t* nrs, dfloat gamma)
+{
+  the_nrs = nrs;
+  gamma0 = gamma;
+  the_linAlg = nrs->linAlg;
   mesh_t* mesh = nrs->mesh;
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
@@ -17,14 +56,18 @@ void lowMach::setup(nrs_t* nrs)
     if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
+  buildKernels(nrs);
   nrs->options.setArgs("LOWMACH", "TRUE"); 
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat gamma, occa::memory o_div)
+void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 {
+  qThermal = 1;
+  nrs_t* nrs = the_nrs;
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
+  linAlg_t * linAlg = nrs->linAlg;
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -52,7 +95,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     nrs->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }
 
-  nrs->qtlKernel(
+  qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
@@ -73,4 +116,54 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     mesh->o_vgeo,
     nrs->mesh->o_invLMM,
     o_div);
+  
+  if(nrs->pSolver->allNeumann){
+    const dfloat dd = (1.0 - gamma0) / gamma0;
+    const dlong Nlocal = nrs->Nlocal;
+
+    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
+    const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);
+
+    surfaceFluxKernel(
+      mesh->Nelements,
+      mesh->o_sgeo,
+      mesh->o_vmapM,
+      nrs->o_EToB,
+      nrs->fieldOffset,
+      nrs->o_Ue,
+      nrs->o_wrk0
+    );
+    nrs->o_wrk0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
+    dfloat termV = 0.0;
+    for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
+    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+
+    p0thHelperKernel(Nlocal,
+      dd,
+      cds->o_rho,
+      nrs->o_rho,
+      nrs->mesh->o_LMM,
+      nrs->o_wrk0,
+      nrs->o_wrk1 
+    );
+    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);;
+    linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
+
+    dfloat Saqpq = 0.0;
+    for(int i = 0 ; i < nrs->Nstages; ++i){
+      Saqpq += nrs->extbdfB[i] * nrs->p0th[i];
+    }
+    nrs->p0th[2] = nrs->p0th[1];
+    nrs->p0th[1] = nrs->p0th[0];
+    nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
+    nrs->dp0thdt = prhs * nrs->p0th[0];
+  }
+  qThermal = 0;
+}
+
+void lowMach::dpdt(occa::memory o_FU)
+{
+  nrs_t* nrs = the_nrs;
+  if(!qThermal)
+    nrs->linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
 }

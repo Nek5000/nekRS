@@ -23,7 +23,51 @@
    SOFTWARE.
 
  */
+@kernel void cdsSubCycleExtrapolateScalar(const dlong N,
+                            const int Nstages,
+                            const int offset,
+                            @restrict const dfloat*  c,
+                            @restrict const dfloat*  S,
+                            @restrict dfloat*  Se)
+{
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    dfloat Sn = 0.0;
+    for(int s = 0 ; s < Nstages; ++s){
+      Sn += S[n + s * offset] * c[s];
+    }
+    Se[n] = Sn;
+  }
+}
+@kernel void subCycleExtrapolateField(const dlong N,
+                  const dlong toffset,
+                  const dlong offset,
+                  const dfloat coef,
+                  @restrict const dfloat* massMatrix,
+                  @restrict const dfloat *S,
+                  @restrict       dfloat *BS){
 
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    BS[n] += coef * massMatrix[n + offset] * S[n + toffset];
+  }
+}
+@kernel void cdsSubCycleRK(const dlong N,
+                  const dfloat sdt,
+                  @restrict const dfloat* rkb,
+                  @restrict const dfloat* r1,
+                  @restrict const dfloat* r2,
+                  @restrict const dfloat* r3,
+                  @restrict const dfloat* r4,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    dfloat sn = 0.0;
+    sn -= sdt * rkb[0] * r1[n];
+    sn -= sdt * rkb[1] * r2[n];
+    sn -= sdt * rkb[2] * r3[n];
+    sn -= sdt * rkb[3] * r4[n];
+    y[n] += sn;
+  }
+}
 @kernel void cdsSubCycleLSERKUpdate(const dlong Nelements,
                                     const dfloat dt,
                                     const dfloat rka,

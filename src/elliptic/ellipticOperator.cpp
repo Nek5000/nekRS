@@ -41,7 +41,6 @@ void ellipticAx(elliptic_t* elliptic,
 
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
   const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  const int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
   const int mapType = (elliptic->elementType == HEXAHEDRA &&
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
   const int integrationType = (elliptic->elementType == HEXAHEDRA &&
@@ -70,7 +69,7 @@ void ellipticAx(elliptic_t* elliptic,
         if(integrationType != 0)
           printf("Precision level (%s) does not support integrationType %d\n", precision, integrationType);
       }
-      exit(1);
+      ABORT(EXIT_FAILURE);
     }
   }
 
@@ -113,7 +112,7 @@ void ellipticAx(elliptic_t* elliptic,
         }
       }
     } else {
-      exit(1);
+      ABORT(EXIT_FAILURE);
     }
     return;
   }

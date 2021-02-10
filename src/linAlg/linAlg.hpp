@@ -44,11 +44,12 @@ private:
   occa::memory o_scratch;
 
   void setup();
+  void reallocBuffers(const dlong Nbytes);
 public:
-  linAlg_t(occa::device& _device, occa::properties*& _kernelInfo, MPI_Comm& _comm) {
+  linAlg_t(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
     blocksize = BLOCKSIZE;
     device = _device;
-    kernelInfo = *(_kernelInfo);
+    kernelInfo = _kernelInfo;
     comm = _comm;
     setup();
   }
@@ -76,9 +77,21 @@ public:
   void axpbyz(const dlong N, const dfloat alpha, occa::memory& o_x,
                              const dfloat beta,  occa::memory& o_y,
                              occa::memory& o_z);
+  void axpbyzMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha, occa::memory& o_x,
+                             const dfloat beta,  occa::memory& o_y,
+                             occa::memory& o_z);
 
   // o_y[n] = alpha*o_x[n]*o_y[n]
   void axmy(const dlong N, const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y);
+  // mode 1:
+  // o_y[n,fld] = alpha*o_x[n,fld]*o_y[n,fld]
+  // mode 0:
+  // o_y[n,fld] = alpha*o_x[n]*o_y[n,fld]
+  void axmyMany(const dlong N, 
+            const dlong Nfields,
+            const dlong offset, const dlong mode,
+            const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
 
   // o_z[n] = alpha*o_x[n]*o_y[n] (new)
@@ -86,6 +99,9 @@ public:
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
 
+  // o_y[n] = alpha/o_y[n]
+  void ady(const dlong N, const dfloat alpha,
+            occa::memory& o_y);
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
@@ -94,6 +110,12 @@ public:
   void axdyz(const dlong N, const dfloat alpha,
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
+  // o_y[n] = alpha*o_y[n]/o_x[n]
+  void aydx(const dlong N, const dfloat alpha,
+    occa::memory& o_x, occa::memory& o_y);
+  void aydxMany(const dlong N, const dlong Nfields, const dlong fieldOffset,
+    const dlong mode, const dfloat alpha,
+    occa::memory& o_x, occa::memory& o_y);
 
   // \sum o_a
   dfloat sum(const dlong N, occa::memory& o_a, MPI_Comm _comm);
@@ -124,9 +146,14 @@ public:
   occa::kernel scaleKernel;
   occa::kernel axpbyKernel;
   occa::kernel axpbyzKernel;
+  occa::kernel axpbyzManyKernel;
   occa::kernel axmyKernel;
+  occa::kernel axmyManyKernel;
   occa::kernel axmyzKernel;
   occa::kernel axdyKernel;
+  occa::kernel aydxKernel;
+  occa::kernel aydxManyKernel;
+  occa::kernel adyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
   occa::kernel minKernel;
