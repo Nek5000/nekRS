@@ -35,6 +35,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
                                    mesh->o_vmapM,
                                    mesh->o_EToB,
                                    nrs->o_EToB,
+                                   nrs->o_VmapB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    nrs->o_wrk7);
@@ -151,8 +152,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_U,
     nrs->o_wrk3);
 
-  oogs::startFinish(nrs->o_wrk3, 1, 0, ogsDfloat, ogsAdd, nrs->gsh);
-
   nrs->o_wrk1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
   nrs->NiterP = ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
 
@@ -238,8 +237,6 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     nrs->o_wrk0,
     nrs->o_rho,
     nrs->o_wrk3);
-
-  oogs::startFinish(nrs->o_wrk3, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
     nrs->o_wrk0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));

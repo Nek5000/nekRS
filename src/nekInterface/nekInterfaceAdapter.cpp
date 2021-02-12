@@ -487,7 +487,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np)
 
     //TODO: Add support for different compilers
     sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../../ \"");
-    sprintf(cflags, "\"${NEKRS_CXXFLAGS} -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
+    sprintf(cflags, "\"${NEKRS_CXXFLAGS} -mcmodel=medium -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
 
     sprintf(buf, "cd %s && yes n 2>/dev/null | "
 	    "FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" "

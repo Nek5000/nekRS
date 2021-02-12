@@ -33,33 +33,32 @@ int ellipticSolve(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  int Niter = 0;
   int maxIter = 1000;
-  dfloat tol = 1e-6;
-
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
+  dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
+
+  elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE"))
-    elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-
-  // compute initial residual
-  ellipticOperator(elliptic, o_x, elliptic->o_Ap, dfloatString);
+  // compute initial residual r = rhs - x0
+  ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
+  ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
-  if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
-
-  if(elliptic->allNeumann)
-    ellipticZeroMean(elliptic, o_r);
+  if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
+  oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+  if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     timer::tic("pre",1);
+    elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
     elliptic->residualProjection->pre(o_r);
     timer::toc("pre");
   }
 
+  dlong Niter;
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
     Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
   }else{

@@ -70,7 +70,7 @@ occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm)
   }else if(options.compareArgs("THREAD MODEL", "OPENMP"))  {
     sprintf(deviceConfig, "mode: 'OpenMP' ");
   }else  {
-//    sprintf(deviceConfig, "mode: 'Serial', memory: { use_host_pointer: true }");
+    sprintf(deviceConfig, "mode: 'Serial', memory: { use_host_pointer: true }");
     sprintf(deviceConfig, "mode: 'Serial'");
     options.setArgs("THREAD MODEL", "SERIAL");
   }

@@ -56,12 +56,13 @@ public:
 
   setupAide options;
 
-  coarseSolver(setupAide options);
+  coarseSolver(setupAide options, MPI_Comm comm);
   ~coarseSolver();
 
   int getTargetSize();
 
   void setup(parCSR *A);
+  void setup(dlong Nrows, hlong* globalRowStarts, dlong nnz, hlong* Ai, hlong* Aj, dfloat* Avals, bool nullSpace);
 
   void syncToDevice();
 

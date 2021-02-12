@@ -6,6 +6,6 @@ for x in "$@"; do
   fi
 done
 
-export CFLAGS="${CFLAGS} -fPIC"
+export CFLAGS="${CFLAGS} -fPIC -mcmodel=medium"
 export FFLAGS="${FFLAGS} -fPIC -mcmodel=medium"
 ${NEK5000_SOURCE_DIR}/bin/nekconfig -build-dep

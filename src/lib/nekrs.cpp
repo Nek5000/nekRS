@@ -128,9 +128,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   const double setupTime = timer::query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    size_t dGB = nrs->mesh->device.memoryAllocated()/1e9;
-    cout << "device memory usage: " << dGB << " GB" << endl;
-    cout << "initialization took " <<  setupTime << " s" << endl;
+    cout << "device memory usage: " << nrs->mesh->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);
 
@@ -253,10 +252,9 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  if (rank == 0)
-    cout << "performing dry-run for "
-         << npTarget
-         << " MPI ranks ...\n" << endl;
+  cout << "performing dry-run to jit-compile for >"
+       << npTarget
+       << " MPI tasks ...\n" << endl;
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
@@ -265,7 +263,10 @@ static void dryRun(setupAide &options, int npTarget)
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    if(rank == 0) udfBuild(udfFile.c_str());
+    int err = 0;
+    if(rank == 0) err = udfBuild(udfFile.c_str());
+    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
+    if(err) ABORT(EXIT_FAILURE);;
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
@@ -276,7 +277,7 @@ static void dryRun(setupAide &options, int npTarget)
   // init solver
   nrsSetup(comm, device, options, nrs);
 
-  if (rank == 0) cout << "\nBuild successful." << endl;
+  cout << "\nBuild successful." << endl;
 }
 
 static void setOUDF(setupAide &options)
