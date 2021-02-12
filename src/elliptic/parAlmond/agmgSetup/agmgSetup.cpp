@@ -29,19 +29,8 @@ SOFTWARE.
 namespace parAlmond {
 
 void solver_t::AMGSetup(parCSR *A){
-  
-  coarseLevel = new coarseSolver(options);
-  AMGstartLev = numLevels;
-  agmgLevel *L = new agmgLevel(A, ktype);
-  levels[numLevels] = L;
-  //setupAgmgSmoother((agmgLevel*)(levels[numLevels]), stype, ChebyshevIterations);
-  coarseLevel->setup(A);
-  baseLevel = numLevels;
-  numLevels++;
-
-/*
   // approximate Nrows at coarsest level  
-  coarseLevel = new coarseSolver(options);
+  coarseLevel = new coarseSolver(options, A->comm);
   const int gCoarseSize = coarseLevel->getTargetSize();
 
   AMGstartLev = numLevels;
@@ -94,7 +83,6 @@ void solver_t::AMGSetup(parCSR *A){
     syncAgmgToDevice((agmgLevel*)(levels[n]), n, AMGstartLev, ctype);
   }
   coarseLevel->syncToDevice();
-*/
 }
 
 //create coarsened problem

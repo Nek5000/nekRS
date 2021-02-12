@@ -37,9 +37,10 @@ struct hypre_crs_data *crsh;
 
 namespace parAlmond {
 
-coarseSolver::coarseSolver(setupAide options_) {
+coarseSolver::coarseSolver(setupAide options_, MPI_Comm comm_) {
   gatherLevel = false;
   options = options_;
+  comm = comm_;
 }
 
 int coarseSolver::getTargetSize() {
@@ -49,10 +50,15 @@ int coarseSolver::getTargetSize() {
     return 1000;
 }
 
-void coarseSolver::setup(parCSR *A) {
-
-  comm = A->comm;
-
+void coarseSolver::setup(
+               dlong Nrows, 
+      	       hlong* globalRowStarts,       //global partition
+               dlong nnz,                    //--
+               hlong* Ai,                    //-- Local A matrix data (globally indexed, COO storage, row sorted)
+               hlong* Aj,                    //--
+               dfloat* Avals,                //--
+               bool nullSpace)
+{
   int rank, size;
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
@@ -69,35 +75,6 @@ void coarseSolver::setup(parCSR *A) {
   if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
     int Nthreads = 1;
  
-    hlong rowOffset = A->globalRowStarts[rank];
-    int totalNNZ = A->diag->nnz + A->offd->nnz;
-    hlong *rows;
-    hlong *cols;
-    dfloat *vals;
- 
-    if (totalNNZ) {
-      rows = (hlong *) calloc(totalNNZ,sizeof(hlong));
-      cols = (hlong *) calloc(totalNNZ,sizeof(hlong));
-      vals = (dfloat *) calloc(totalNNZ,sizeof(dfloat));
-    }
- 
-    // populate local COO (AIJ) matrix using global (row,col) indices
-    int cnt = 0;
-    for (int n = 0; n < A->Nrows; n++) {
-      for (int m = A->diag->rowStarts[n]; m < A->diag->rowStarts[n+1]; m++) {
-        rows[cnt] = n + rowOffset;
-        cols[cnt] = A->diag->cols[m] + rowOffset;
-        vals[cnt] = A->diag->vals[m];
-        cnt++;
-      }
-      for (int m = A->offd->rowStarts[n]; m < A->offd->rowStarts[n+1]; m++) {
-        rows[cnt] = n + rowOffset;
-        cols[cnt] = A->colMap[A->offd->cols[m]];
-        vals[cnt] = A->offd->vals[m];
-        cnt++;
-      }
-    }
-
     double settings[HYPRE_NPARAM+1];
     settings[0]  = 1;    /* custom settings             */
     settings[1]  = 10;   /* coarsening                  */
@@ -118,20 +95,66 @@ void coarseSolver::setup(parCSR *A) {
     options.getArgs("BOOMERAMG STRONG THRESHOLD", settings[8]);
     options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
 
-    crsh = hypre_setup(A->Nrows,
-                       rowOffset,
-                       totalNNZ,
-                       rows,
-                       cols,
-                       vals,
-                       (int) A->nullSpace,
+    crsh = hypre_setup(Nrows,
+                       globalRowStarts[rank],
+                       nnz,
+                       Ai,
+                       Aj,
+                       Avals,
+                       (int) nullSpace,
                        comm,
                        Nthreads,
                        settings);
  
-    N = (int) A->Nrows;
+    N = (int) Nrows;
     xLocal   = (dfloat*) calloc(N,sizeof(dfloat));
     rhsLocal = (dfloat*) calloc(N,sizeof(dfloat));
+  }
+}
+
+void coarseSolver::setup(parCSR *A) {
+
+  comm = A->comm;
+
+  int rank, size;
+  MPI_Comm_rank(comm,&rank);
+  MPI_Comm_size(comm,&size);
+
+  if ((rank==0)&&(options.compareArgs("VERBOSE","TRUE")))
+    printf("Setting up coarse solver...");fflush(stdout);
+
+  if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
+    int Nthreads = 1;
+ 
+    int totalNNZ = A->diag->nnz + A->offd->nnz;
+    hlong *rows;
+    hlong *cols;
+    dfloat *vals;
+ 
+    if (totalNNZ) {
+      rows = (hlong *) calloc(totalNNZ,sizeof(hlong));
+      cols = (hlong *) calloc(totalNNZ,sizeof(hlong));
+      vals = (dfloat *) calloc(totalNNZ,sizeof(dfloat));
+    }
+ 
+    // populate local COO (AIJ) matrix using global (row,col) indices
+    int cnt = 0;
+    for (int n = 0; n < A->Nrows; n++) {
+      for (int m = A->diag->rowStarts[n]; m < A->diag->rowStarts[n+1]; m++) {
+        rows[cnt] = n + A->globalRowStarts[rank];
+        cols[cnt] = A->diag->cols[m] + A->globalRowStarts[rank];
+        vals[cnt] = A->diag->vals[m];
+        cnt++;
+      }
+      for (int m = A->offd->rowStarts[n]; m < A->offd->rowStarts[n+1]; m++) {
+        rows[cnt] = n + A->globalRowStarts[rank];
+        cols[cnt] = A->colMap[A->offd->cols[m]];
+        vals[cnt] = A->offd->vals[m];
+        cnt++;
+      }
+    }
+
+    setup(A->Nrows, A->globalRowStarts, totalNNZ, rows, cols, vals,(int) A->nullSpace); 
  
     if (totalNNZ) {
       free(rows);
