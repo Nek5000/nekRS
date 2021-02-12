@@ -923,25 +923,33 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
     if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-      if(mesh->NglobalGatherElements || !overlap)
+      if(!overlap){
         fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                        o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+      } else if(overlap && mesh->NglobalGatherElements){
+        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+      }
 
       oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
 
-      if(overlap)
+      if(overlap && mesh->NlocalGatherElements)
         fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                        o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
 
       oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
     } else {
-      if(mesh->NglobalGatherElements || !overlap)
+      if(!overlap){
         fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                        o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      } else if(overlap && mesh->NglobalGatherElements){
+        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      }
 
       oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
-      if(overlap)
+      if(overlap && mesh->NlocalGatherElements)
         fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                        o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
