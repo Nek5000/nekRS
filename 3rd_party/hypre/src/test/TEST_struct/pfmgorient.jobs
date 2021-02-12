@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+#=============================================================================
+# struct: Run PFMG 1d solve of the same problem in different orientations
+#=============================================================================
+
+mpirun -np 1 ./struct -n 10 10 10 -c 1 1 256 -solver 1 \
+ > pfmgorient.out.0
+mpirun -np 1 ./struct -n 10 10 10 -c 1 256 1 -solver 1 \
+ > pfmgorient.out.1
+mpirun -np 1 ./struct -n 10 10 10 -c 256 1 1 -solver 1 \
+ > pfmgorient.out.2
+

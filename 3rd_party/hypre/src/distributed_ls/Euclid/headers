@@ -1,0 +1,74 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+INTERNAL_HEADER=_hypre_Euclid.h
+
+#===========================================================================
+# Include guards and other includes
+#===========================================================================
+
+cat > $INTERNAL_HEADER <<@
+
+#ifndef hypre_EUCLID_HEADER
+#define hypre_EUCLID_HEADER
+
+#define USING_MPI
+#define HYPRE_GET_ROW
+#define HYPRE_MODE
+#define OPTIMIZED_DH
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+@
+
+#===========================================================================
+# Structures and prototypes
+#===========================================================================
+
+cat euclid_config.h        >> $INTERNAL_HEADER
+cat macros_dh.h            >> $INTERNAL_HEADER
+cat euclid_common.h        >> $INTERNAL_HEADER
+# cat sig_dh.h               >> $INTERNAL_HEADER
+cat ExternalRows_dh.h      >> $INTERNAL_HEADER
+cat Factor_dh.h            >> $INTERNAL_HEADER
+cat Vec_dh.h               >> $INTERNAL_HEADER
+cat MatGenFD.h             >> $INTERNAL_HEADER
+cat Mat_dh.h               >> $INTERNAL_HEADER
+cat SubdomainGraph_dh.h    >> $INTERNAL_HEADER
+cat TimeLog_dh.h           >> $INTERNAL_HEADER
+cat SortedSet_dh.h         >> $INTERNAL_HEADER
+cat Mem_dh.h               >> $INTERNAL_HEADER
+cat shellSort_dh.h         >> $INTERNAL_HEADER
+cat Numbering_dh.h         >> $INTERNAL_HEADER
+cat Hash_i_dh.h            >> $INTERNAL_HEADER
+cat Timer_dh.h             >> $INTERNAL_HEADER
+cat Parser_dh.h            >> $INTERNAL_HEADER
+cat SortedList_dh.h        >> $INTERNAL_HEADER
+cat Hash_dh.h              >> $INTERNAL_HEADER
+cat mat_dh_private.h       >> $INTERNAL_HEADER
+cat getRow_dh.h            >> $INTERNAL_HEADER
+cat ilu_dh.h               >> $INTERNAL_HEADER
+cat Euclid_dh.h            >> $INTERNAL_HEADER
+cat krylov_dh.h            >> $INTERNAL_HEADER
+cat io_dh.h                >> $INTERNAL_HEADER
+cat blas_dh.h              >> $INTERNAL_HEADER
+
+#===========================================================================
+# Include guards
+#===========================================================================
+
+cat >> $INTERNAL_HEADER <<@
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+@
+
