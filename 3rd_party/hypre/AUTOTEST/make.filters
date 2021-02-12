@@ -1,0 +1,18 @@
+slu_util.c:
+autoconf has been disabled
+automake has been disabled
+autoheader has been disabled
+warning: \[options\] bootstrap class path not set in conjunction with
+1 warning
+warning: warning: feupdateenv is not implemented and will always fail
+ranlib: file: lib.*\(.*\) has no symbols
+/tmp/.*: Assembler messages:
+/tmp/.*: Warning: Additional NOP may be necessary to workaround Itanium processor A/B step errata
+ltdl.c:.*: warning: function declaration isn't a prototype
+ltdl.c:*
+Additional optimization may be attained by recompiling and specifying MAXMEM option with a value greater than 8192.
+WARNING in dReadValues: Infinite loop.  Program may not stop.
+WARNING in dReadVector: Infinite loop.  Program may not stop.
+icc: command line warning .*: overriding
+WARNING: no debugging flags detected
+The device linker only supports static linking.  Any device code placed into a shared library by the qmkshrobj option will be inaccessible.

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+# 1D
+mpirun -np 4 ./struct_migrate -d 1 -P 4 1 1          > migrate.out.10
+mpirun -np 4 ./struct_migrate -d 1 -P 4 1 1 -b 2 1 1 > migrate.out.11
+mpirun -np 5 ./struct_migrate -d 1 -P 4 1 1 -b 2 1 1 > migrate.out.12
+
+# 2D
+mpirun -np 4 ./struct_migrate -d 2 -P 2 2 1          > migrate.out.20
+mpirun -np 4 ./struct_migrate -d 2 -P 2 2 1 -b 2 2 1 > migrate.out.21
+mpirun -np 5 ./struct_migrate -d 2 -P 2 2 1 -b 2 2 1 > migrate.out.22
+
+# 3D
+mpirun -np 8 ./struct_migrate -P 2 2 2          > migrate.out.30
+mpirun -np 8 ./struct_migrate -P 2 2 2 -b 2 2 2 > migrate.out.31
+mpirun -np 9 ./struct_migrate -P 2 2 2 -b 2 2 2 > migrate.out.32

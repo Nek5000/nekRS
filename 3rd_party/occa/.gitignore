@@ -1,0 +1,38 @@
+# Git
+.gitattributes
+
+# Build artifacts
+*.obj
+*.pyc
+lib/
+obj/
+main
+opt/
+
+# CMake
+build/
+
+# Bin
+bin/
+!bin/occa.cpp
+
+# Auto-generated code
+.compiledDefines
+include/occa/defines/compiledDefines.hpp
+include/occa/scripts
+
+# Debug
+.DS_Store
+*.dSYM
+
+# Coverage
+*.gcno
+*.gcda
+*.gcov
+coverage*
+
+# Visual Studio
+editorTools/visualStudio/*
+!editorTools/visualStudio/occa.sln
+!editorTools/visualStudio/occa.vcxproj
+!editorTools/visualStudio/occa.vcxproj.filters

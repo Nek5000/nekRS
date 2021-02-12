@@ -1,0 +1,40 @@
+
+Intellectual Property Notice
+----------------------------
+
+HYPRE is licensed under the Apache License, Version 2.0 (see LICENSE-APACHE or
+http://www.apache.org/licenses/LICENSE-2.0) or the MIT license (see LICENSE-MIT
+or http://opensource.org/licenses/MIT), at your option.
+
+Copyrights and patents in the HYPRE project are retained by contributors.
+No copyright assignment is required to contribute to HYPRE.
+
+HYPRE's original open source license was LGPL-2.1.  Consent from contributors
+was received and documented before relicensing to Apache-2.0/MIT.
+
+
+SPDX usage
+----------
+
+Individual files contain SPDX tags instead of the full license text.
+This enables machine processing of license information based on the SPDX
+License Identifiers that are available here: https://spdx.org/licenses/
+
+Files that are dual-licensed as Apache-2.0 OR MIT contain the following
+text in the license header:
+
+    SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+
+External Software
+-----------------
+
+External software in hypre is covered by various permissive licenses.  A summary
+listing follows.  See the license included with the software for full details.
+
+Directory: src/blas
+License: University of Tennessee
+
+Directory: src/lapack
+License: University of Tennessee
+

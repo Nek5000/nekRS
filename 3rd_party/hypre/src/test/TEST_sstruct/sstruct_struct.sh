@@ -1,0 +1,87 @@
+#!/bin/sh
+# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+TNAME=`basename $0 .sh`
+RTOL=$1
+ATOL=$2
+
+#=============================================================================
+# Compare the struct solvers called from sstruct & struct interfaces
+#=============================================================================
+
+tail -3 ${TNAME}.out.0 > ${TNAME}.testdata
+tail -3 ${TNAME}.out.200 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+
+#=============================================================================
+
+tail -3 ${TNAME}.out.1 > ${TNAME}.testdata
+tail -3 ${TNAME}.out.201 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+
+#=============================================================================
+# Compare 19pt, 7pt, positive, and negative definite
+#=============================================================================
+
+tail -3 ${TNAME}.out.10 > ${TNAME}.testdata
+tail -3 ${TNAME}.out.11 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+tail -3 ${TNAME}.out.12 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+tail -3 ${TNAME}.out.13 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+
+tail -3 ${TNAME}.out.15 > ${TNAME}.testdata
+tail -3 ${TNAME}.out.16 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+tail -3 ${TNAME}.out.17 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+tail -3 ${TNAME}.out.18 > ${TNAME}.testdata.temp
+diff ${TNAME}.testdata ${TNAME}.testdata.temp >&2
+
+#=============================================================================
+# compare with baseline case
+#=============================================================================
+
+FILES="\
+ ${TNAME}.out.0\
+ ${TNAME}.out.1\
+ ${TNAME}.out.200\
+ ${TNAME}.out.201\
+ ${TNAME}.out.10\
+ ${TNAME}.out.11\
+ ${TNAME}.out.12\
+ ${TNAME}.out.13\
+ ${TNAME}.out.15\
+ ${TNAME}.out.16\
+ ${TNAME}.out.17\
+ ${TNAME}.out.18\
+"
+
+for i in $FILES
+do
+  echo "# Output file: $i"
+  tail -3 $i
+done > ${TNAME}.out
+
+# Make sure that the output files are reasonable
+CHECK_LINE="Iterations"
+OUT_COUNT=`grep "$CHECK_LINE" ${TNAME}.out | wc -l`
+SAVED_COUNT=`grep "$CHECK_LINE" ${TNAME}.saved | wc -l`
+if [ "$OUT_COUNT" != "$SAVED_COUNT" ]; then
+   echo "Incorrect number of \"$CHECK_LINE\" lines in ${TNAME}.out" >&2
+fi
+
+if [ -z $HYPRE_NO_SAVED ]; then
+   #diff -U3 -bI"time" ${TNAME}.saved ${TNAME}.out >&2
+   (../runcheck.sh ${TNAME}.out ${TNAME}.saved $RTOL $ATOL) >&2
+fi
+
+#=============================================================================
+# remove temporary files
+#=============================================================================
+
+rm -f ${TNAME}.testdata*
