@@ -114,20 +114,20 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   mesh->Nfields = 1;
 
-  nrs->extbdfA = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extbdfB = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extbdfC = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffEXT = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffBDF = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->extC = (dfloat*) calloc(3, sizeof(dfloat));
 
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
-    nrs->Nstages = 1;
-    nrs->temporalOrder = 1;
+    nrs->nEXT = 1;
+    nrs->nBDF = 1;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
-    nrs->Nstages = 2;
-    nrs->temporalOrder = 2;
+    nrs->nEXT = 2;
+    nrs->nBDF = 2;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
-    nrs->Nstages = 3;
-    nrs->temporalOrder = 3;
+    nrs->nEXT = 3;
+    nrs->nBDF = 3;
   }
 
   dfloat mue = 1;
@@ -207,35 +207,35 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
-    const int NStages = nrs->Nstages;
+    const int nBDF = nrs->nBDF;
     {
       o_scratch.copyFrom(mesh->o_LMM, nrs->Nlocal * sizeof(dfloat));
-      mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat));
+      mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
       mesh->o_LMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
       o_scratch.copyFrom(mesh->o_invLMM, nrs->Nlocal * sizeof(dfloat));
-      mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat));
+      mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
       mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
     }
 
-    mesh->o_BdivW = mesh->device.malloc(nrs->fieldOffset * NStages * sizeof(dfloat), scratch);
+    mesh->o_BdivW = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat), scratch);
 
-    const int order = mesh->Nstages;
-    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * order, sizeof(dfloat));
-    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * order * sizeof(dfloat), mesh->U);
+    const int nAB = mesh->nAB;
+    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
+    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
   }
 
 
-  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
+  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
+  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
 
-  nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset * sizeof(dfloat), nrs->U);
+  nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
   nrs->o_Ue = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
   nrs->o_P  = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
   nrs->o_BF = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
   nrs->var_coeff = 1; // use always var coeff elliptic
   nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
@@ -257,15 +257,16 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   nrs->o_rkC     = mesh->device.malloc(4 * sizeof(dfloat),rkC);
-  nrs->o_extbdfA = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfA);
-  nrs->o_extbdfB = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfB);
-  nrs->o_extbdfC = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfA);
+  nrs->o_coeffEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
+  nrs->o_coeffBDF = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
+  nrs->o_coeffSubEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_extC    = mesh->device.malloc(3 * sizeof(dfloat), nrs->extC);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
   kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
-  kernelInfo["defines/" "p_Nstages"] =  nrs->Nstages;
+  kernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
+  kernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
   if(nrs->Nsubsteps)
     kernelInfo["defines/" "p_SUBCYCLING"] =  1;
   else
@@ -923,20 +924,20 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->NVfields    = nrs->NVfields;
   cds->NSfields    = nrs->Nscalar;
 
-  cds->extbdfA = nrs->extbdfA;
-  cds->extbdfB = nrs->extbdfB;
-  cds->extbdfC = nrs->extbdfC;
+  cds->coeffEXT = nrs->coeffEXT;
+  cds->coeffBDF = nrs->coeffBDF;
+  cds->coeffSubEXT = nrs->coeffSubEXT;
   cds->extC    = nrs->extC;
 
-  cds->Nstages       = nrs->Nstages;
-  cds->temporalOrder = nrs->temporalOrder;
+  cds->nBDF       = nrs->nBDF;
+  cds->nEXT       = nrs->nEXT;
 
   // time stepper
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   cds->o_rkC     = nrs->o_rkC;
-  cds->o_extbdfA = nrs->o_extbdfA;
-  cds->o_extbdfB = nrs->o_extbdfB;
-  cds->o_extbdfC = nrs->o_extbdfC;
+  cds->o_coeffEXT = nrs->o_coeffEXT;
+  cds->o_coeffBDF = nrs->o_coeffBDF;
+  cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
   cds->o_extC    = nrs->o_extC;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
@@ -971,10 +972,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
@@ -1021,12 +1022,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
+    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat));
+    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {

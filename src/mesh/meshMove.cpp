@@ -23,7 +23,7 @@ void mesh_t::move(){
   nStagesSumVectorKernel(
       Nelements * Np,
       fieldOffset,
-      o_ABCoeff,
+      o_coeffAB,
       o_U,
       o_x,
       o_y,
@@ -58,4 +58,7 @@ void mesh_t::update(){
         o_z,
         o_sgeo
     );
+}
+void mesh_t::solve()
+{
 }

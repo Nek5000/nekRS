@@ -61,7 +61,7 @@
     @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq], r_S[p_cubNq];
     @exclusive dfloat r_Sd[p_cubNq];
 
-    @exclusive dfloat r_c[p_Nstages];
+    @exclusive dfloat r_c[p_nEXT];
 
     @exclusive dlong element;
 
@@ -70,8 +70,8 @@
         const int id = i + j * p_cubNq;
         element = elementList[e];
 
-#pragma unroll p_Nstages
-        for (int s = 0; s < p_Nstages; s++) {
+#pragma unroll p_nEXT
+        for (int s = 0; s < p_nEXT; s++) {
           r_c[s] = c[s];
         }
 
@@ -103,8 +103,8 @@
             const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
 
             dfloat Ue = 0, Ve = 0, We = 0;
-#pragma unroll p_Nstages
-            for (int s = 0; s < p_Nstages; s++) {
+#pragma unroll p_nEXT
+            for (int s = 0; s < p_nEXT; s++) {
               const dfloat Um = U[id + 0 * voffset + s * p_NVfields * voffset];
               const dfloat Vm = U[id + 1 * voffset + s * p_NVfields * voffset];
               const dfloat Wm = U[id + 2 * voffset + s * p_NVfields * voffset];
@@ -279,7 +279,7 @@
             dfloat bdivw = 0.0;
             if(p_MovingMesh){
               #pragma unroll
-              for(int s = 0 ; s < p_Nstages; ++s){
+              for(int s = 0 ; s < p_nEXT; ++s){
                 bdivw += r_c[s] * BdivW[id + s * voffset];
                 invLMM += r_c[s] * invLumpedMassMatrix[id + s * voffset];
               }
@@ -307,7 +307,7 @@
     @shared dfloat s_S[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    @exclusive dfloat r_c[p_Nstages];
+    @exclusive dfloat r_c[p_nEXT];
 
     @exclusive dlong element;
 
@@ -317,8 +317,8 @@
           dlong id = i + j * p_Nq;
           element = elementList[e];
 
-#pragma unroll p_Nstages
-          for (int s = 0; s < p_Nstages; s++) {
+#pragma unroll p_nEXT
+          for (int s = 0; s < p_nEXT; s++) {
             r_c[s] = c[s];
           }
 
@@ -369,8 +369,8 @@
           dfloat invLMM = p_MovingMesh ? 0.0 : invLumpedMassMatrix[id];
           dfloat bdivw = 0.0;
           dfloat Ue = 0, Ve = 0, We = 0;
-#pragma unroll p_Nstages
-          for (int s = 0; s < p_Nstages; s++) {
+#pragma unroll p_nEXT
+          for (int s = 0; s < p_nEXT; s++) {
             const dfloat Um = U[id + 0 * voffset + s * p_NVfields * voffset];
             const dfloat Vm = U[id + 1 * voffset + s * p_NVfields * voffset];
             const dfloat Wm = U[id + 2 * voffset + s * p_NVfields * voffset];

@@ -60,9 +60,8 @@ struct nrs_t
 
   int cht;
 
-  int temporalOrder;
-  int ExplicitOrder;
-  int Nstages;
+  int nEXT;
+  int nBDF;
   int isOutputStep;
   int outputForceStep;
 
@@ -81,7 +80,7 @@ struct nrs_t
   dfloat* rkC;
 
   //EXTBDF data
-  dfloat* extbdfA, * extbdfB, * extbdfC;
+  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
   dfloat* extC;
 
   int* VmapB;
@@ -158,7 +157,7 @@ struct nrs_t
   occa::memory o_rkC;
 
   //EXTBDF data
-  occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
+  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
   occa::memory o_extC;
 
   occa::kernel advectionVolumeKernel;

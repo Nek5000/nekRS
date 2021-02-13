@@ -48,13 +48,14 @@ struct mesh_t
   void update();
   void computeInvLMM();
   void computeBdivW();
+  void solve();
   linAlg_t* linAlg;
   MPI_Comm comm;
   int rank, size; // MPI rank and size (process count)
 
-  int Nstages; // time integration order
-  dfloat* ABCoeff; // coefficients for AB integration
-  occa::memory o_ABCoeff;
+  int nAB;
+  dfloat* coeffAB; // coefficients for AB integration
+  occa::memory o_coeffAB;
 
   int dim;
   int Nverts, Nfaces, NfaceVertices;

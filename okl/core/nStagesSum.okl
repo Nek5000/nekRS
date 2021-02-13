@@ -32,7 +32,7 @@
 {
   for(dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
     #pragma unroll
-    for(int state = 0 ; state < p_Nstages; ++state){
+    for(int state = 0 ; state < p_nAB; ++state){
       result[i] += coef[state] * field[i + state * fieldOffset];
     }
   }
@@ -47,7 +47,7 @@
 {
   for(dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
     #pragma unroll
-    for(int state = 0 ; state < p_Nstages; ++state){
+    for(int state = 0 ; state < p_nAB; ++state){
       result1[i] += coef[state] * field[i + 0 * fieldOffset + state * 3 * fieldOffset];
       result2[i] += coef[state] * field[i + 1 * fieldOffset + state * 3 * fieldOffset];
       result3[i] += coef[state] * field[i + 2 * fieldOffset + state * 3 * fieldOffset];
