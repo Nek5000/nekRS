@@ -152,7 +152,7 @@ c-----------------------------------------------------------------------
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
-      etimes = dnekclock()
+      etimes = dnekclock_sync()
       istep  = 0
 
       call initdim ! Initialize / set default values.
@@ -255,6 +255,10 @@ c      call findSYMOrient
       p0thn = p0th
       ntdump=0
 
+      etimeSetup = dnekclock_sync() - etimes
+      if(nio.eq.0) write(6,999) etimeSetup 
+ 999  format(' nek setup done in ', 1p1e13.4, ' s')
+      if(nio.eq.0) write(6,*) 
       call flush(6)
 
       return

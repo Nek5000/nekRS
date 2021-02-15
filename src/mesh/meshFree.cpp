@@ -134,7 +134,6 @@ void meshFree(mesh_t* mesh)
 
   if(mesh->LIFT) free(mesh->LIFT);   // lift matrix
   if(mesh->FMM) free(mesh->FMM);    // Face Mass Matrix
-  if(mesh->sMT) free(mesh->sMT);   // surface mass (MM*LIFT)^T
 
   if(mesh->sgeo) free(mesh->sgeo);
 

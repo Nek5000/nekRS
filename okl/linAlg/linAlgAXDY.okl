@@ -24,6 +24,14 @@ SOFTWARE.
 
 */
 
+@kernel void ady(const dlong N,
+                  const dfloat alpha,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    y[n] = alpha/y[n];
+  }
+}
 @kernel void axdy(const dlong N,
                   const dfloat alpha,
                   @restrict const dfloat *x,
@@ -31,6 +39,31 @@ SOFTWARE.
 
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     y[n] = alpha*x[n]/y[n];
+  }
+}
+@kernel void aydx(const dlong N,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    y[n] = alpha*y[n]/x[n];
+  }
+}
+@kernel void aydxMany(const dlong N,
+                  const dlong Nfields,
+                  const dlong fieldOffset,
+                  const dlong mode,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0 ; fld < Nfields; ++fld){
+      const dlong xOffset = mode * fld * fieldOffset;
+      const dlong yOffset = fld * fieldOffset;
+      y[n+yOffset] = alpha*y[n+yOffset]/x[n+xOffset];
+    }
   }
 }
 

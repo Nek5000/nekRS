@@ -53,11 +53,20 @@ void ellipticBuildContinuous(elliptic_t* elliptic,
                              ogs_t** ogs,
                              hlong* globalStarts)
 {
+  mesh_t *mesh = elliptic->mesh;
+  MPI_Barrier(mesh->comm);
+  const double tStart = MPI_Wtime();
+  if(mesh->rank == 0) printf("Building full FEM matrix ... ");
+  fflush(stdout);
+
   switch(elliptic->elementType) {
   case HEXAHEDRA:
     ellipticBuildContinuousHex3D(elliptic, A, nnz, ogs, globalStarts);
     break;
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 }
 
 void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
@@ -114,9 +123,6 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
 
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
   for (dlong n = 0; n < elliptic->Nmasked; n++) mask[elliptic->maskIds[n]] = 1;
-
-  if(mesh->rank == 0) printf("Building full FEM matrix...");
-  fflush(stdout);
 
   dlong cnt = 0;
   for (dlong e = 0; e < mesh->Nelements; e++)
@@ -267,8 +273,6 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   }
   if (*nnz) cnt++;
   *nnz = cnt;
-
-  if(mesh->rank == 0) printf("done.\n");
 
   MPI_Barrier(mesh->comm);
   MPI_Type_free(&MPI_NONZERO_T);

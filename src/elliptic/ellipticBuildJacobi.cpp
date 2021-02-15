@@ -78,6 +78,11 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
+  MPI_Barrier(mesh->comm);
+  const double tStart = MPI_Wtime();
+  if(mesh->rank == 0) printf("Building Jacobi ... ");
+  fflush(stdout);
+
   // surface mass matrices MS = MM*LIFT
   dfloat* MS = (dfloat*) calloc(mesh->Nfaces * mesh->Nfp * mesh->Nfp,sizeof(dfloat));
   for (int f = 0; f < mesh->Nfaces; f++)
@@ -156,9 +161,6 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
 
   dfloat* diagA = (dfloat*) calloc(diagNnum, sizeof(dfloat));
 
-  if(mesh->rank == 0) printf("Building diagonal...");
-  fflush(stdout);
-
   switch(elliptic->elementType) {
   case HEXAHEDRA:
     if(elliptic->blockSolver) {
@@ -195,7 +197,8 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
     }
   }
 
-  if(mesh->rank == 0) printf("done.\n");
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 
   free(diagA);
   free(MS);
