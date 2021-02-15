@@ -56,7 +56,7 @@ void ellipticBuildContinuous(elliptic_t* elliptic,
   mesh_t *mesh = elliptic->mesh;
   MPI_Barrier(mesh->comm);
   const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("Building full FEM matrix ... ");
+  if(mesh->rank == 0) printf("building full FEM matrix ... ");
   fflush(stdout);
 
   switch(elliptic->elementType) {

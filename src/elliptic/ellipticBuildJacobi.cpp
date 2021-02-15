@@ -80,7 +80,7 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
 
   MPI_Barrier(mesh->comm);
   const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("Building Jacobi ... ");
+  if(mesh->rank == 0) printf("building Jacobi ... ");
   fflush(stdout);
 
   // surface mass matrices MS = MM*LIFT

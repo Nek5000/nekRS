@@ -131,6 +131,11 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
+  MPI_Barrier(mesh->comm);
+  const double tStart = MPI_Wtime();
+  if(mesh->rank == 0) printf("building full FEM matrix using Galerkin projection ... ");
+  fflush(stdout);
+
   int rank = mesh->rank;
 
   //use the masked gs handle to define a global ordering
@@ -174,9 +179,6 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
 
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
   for (dlong n = 0; n < elliptic->Nmasked; n++) mask[elliptic->maskIds[n]] = 1;
-
-  if(mesh->rank == 0) printf("Building full FEM matrix via Galerkin projection...");
-  fflush(stdout);
 
   mesh_t* meshf = ellipticFine->mesh;
 
@@ -308,7 +310,8 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   if (*nnz) cnt++;
   *nnz = cnt;
 
-  if(mesh->rank == 0) printf("done.\n");
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 
   MPI_Barrier(mesh->comm);
   MPI_Type_free(&MPI_NONZERO_T);
