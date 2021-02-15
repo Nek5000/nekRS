@@ -10,7 +10,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
 {
   MPI_Barrier(mesh->comm);
   const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("loading mesh from nek ...\n"); fflush(stdout); 
+  if(mesh->rank == 0) printf("loading mesh from nek ... "); fflush(stdout); 
 
   mesh->dim = 3; 
   mesh->Nverts = 8;
@@ -60,8 +60,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if(mesh->rank == 0) {
     int n = nekData.NboundaryIDt;
     if(!mesh->cht) n = nekData.NboundaryID;
-    printf("NboundaryIDs: %d\n", n);
-    printf("NboundaryFaces: %d\n", mesh->NboundaryFaces);
+    printf("NboundaryIDs: %d, NboundaryFaces: %d ", n, mesh->NboundaryFaces);
   }
 
   int cnt = 0;
@@ -121,5 +120,5 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   }
 
   MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
