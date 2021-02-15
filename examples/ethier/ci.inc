@@ -1,4 +1,5 @@
 #include <math.h>
+#include <limits>
 
 static int ciMode = 0;
 
@@ -53,25 +54,28 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
 
-dfloat sum(dfloat const * const array, const int size)
+dfloat sum(dfloat const * const array, const int size, MPI_Comm comm)
 {
   dfloat sumr = 0.0;
   for(int i = 0 ; i < size; ++i)
     sumr += array[i];
+  MPI_Allreduce(MPI_IN_PLACE, &sumr, 1, MPI_DFLOAT, MPI_SUM, comm);
   return sumr;
 }
-dfloat max(dfloat const * const array, const int size)
+dfloat max(dfloat const * const array, const int size, MPI_Comm comm)
 {
   dfloat maxr = -9e30;
   for(int i = 0 ; i < size; ++i)
     maxr = (array[i] > maxr) ? array[i] : maxr;
+  MPI_Allreduce(MPI_IN_PLACE, &maxr, 1, MPI_DFLOAT, MPI_MAX, comm);
   return maxr;
 }
-dfloat min(dfloat const * const array, const int size)
+dfloat min(dfloat const * const array, const int size, MPI_Comm comm)
 {
   dfloat minr = 9e30;
   for(int i = 0 ; i < size; ++i)
     minr = (array[i] < minr) ? array[i] : minr;
+  MPI_Allreduce(MPI_IN_PLACE, &minr, 1, MPI_DFLOAT, MPI_MIN, comm);
   return minr;
 }
 void ciTestLinAlg(nrs_t *nrs, const int N)
@@ -83,19 +87,22 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
   for(int i = 0 ; i < N; ++i)
     x[i] = drand48();
   occa::memory o_x = nrs->mesh->device.malloc(N*sizeof(dfloat), x);
+  const dfloat referenceSum = sum(x,N,comm);
+  const dfloat referenceMax = max(x,N,comm);
+  const dfloat referenceMin = min(x,N,comm);
   const dfloat err_sum = abs(
-    sum(x,N) - linAlg->sum(N, o_x, comm)
+    (referenceSum - linAlg->sum(N, o_x, comm))/referenceSum
   );
   const dfloat err_max = abs(
-    max(x,N) - linAlg->max(N, o_x, comm)
+    (referenceMax - linAlg->max(N, o_x, comm))/referenceMax
   );
   const dfloat err_min = abs(
-    min(x,N) - linAlg->min(N, o_x, comm)
+    (referenceMin - linAlg->min(N, o_x, comm))/referenceMin
   );
-  printf("linAlg errs (N=%d): max=%g, min=%g, sum=%g\n", N, err_max, err_min, err_sum);
+  if(rank == 0) printf("linAlg errs (N=%d): max=%g, min=%g, sum=%g\n", N, err_max, err_min, err_sum);
   free(x);
   o_x.free();
-  const dfloat testTol = 1e-10;
+  const dfloat testTol = 50. * std::numeric_limits<dfloat>::epsilon();
   if(err_max > testTol || err_min > testTol || err_sum > testTol)
     FAIL;
 }
