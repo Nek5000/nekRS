@@ -271,29 +271,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(mesh->rank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  //set surface mass matrix for continuous boundary conditions
-  mesh->sMT = (dfloat*) calloc(mesh->Np * mesh->Nfaces * mesh->Nfp,sizeof(dfloat));
-  for (int n = 0; n < mesh->Np; n++)
-    for (int m = 0; m < mesh->Nfp * mesh->Nfaces; m++) {
-      dfloat MSnm = 0;
-      for (int i = 0; i < mesh->Np; i++)
-        MSnm += mesh->MM[n + i * mesh->Np] * mesh->LIFT[m + i * mesh->Nfp * mesh->Nfaces];
-      mesh->sMT[n + m * mesh->Np]  = MSnm;
-    }
-  mesh->o_sMT =
-    mesh->device.malloc(mesh->Np * mesh->Nfaces * mesh->Nfp * sizeof(dfloat), mesh->sMT);
-
   //copy boundary flags
   elliptic->o_EToB = mesh->device.malloc(
     mesh->Nelements * mesh->Nfaces * elliptic->Nfields * sizeof(int),
     elliptic->EToB);
-
-#if 0
-  if (mesh->rank == 0 && options.compareArgs("VERBOSE","TRUE"))
-    occa::setVerboseCompilation(true);
-  else
-    occa::setVerboseCompilation(false);
-#endif
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
@@ -383,15 +364,15 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   /*preconditioner setup */
   elliptic->precon = new precon_t();
 
-  //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-  kernelInfo["defines/pfloat"] = pfloatString;
-
   // set kernel name suffix
   string suffix;
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
   string filename, kernelName;
+
+  //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
+  kernelInfo["defines/pfloat"] = pfloatString;
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
   kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;

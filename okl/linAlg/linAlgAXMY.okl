@@ -33,6 +33,22 @@ SOFTWARE.
     y[n] = alpha*x[n]*y[n];
   }
 }
+@kernel void axmyMany(const dlong N,
+                  const dlong Nfields,
+                  const dlong offset,
+                  const dlong mode,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const dlong xOffset = mode * fld * offset;
+      const dlong yOffset = fld * offset;
+      y[n + yOffset] = alpha*x[n + xOffset]*y[n + yOffset];
+    }
+  }
+}
 
 @kernel void axmyz(const dlong N,
                    const dfloat alpha,

@@ -96,6 +96,16 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      call rescale_x(xm1,-1.0,1.0)
+      call rescale_x(ym1,-1.0,1.0)
+      call rescale_x(zm1,-1.0,1.0)
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 1
+      enddo
+      enddo
+
       return
       end
 c-----------------------------------------------------------------------
