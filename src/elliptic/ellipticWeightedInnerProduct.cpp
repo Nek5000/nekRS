@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_w,
@@ -34,6 +35,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::tic("dotp",1);
 #endif
+  platform_t* platform = platform_t::getInstance();
   setupAide &options = elliptic->options;
 
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
@@ -64,7 +66,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
     dfloat wab;
     o_tmp.copyTo(&wab, sizeof(dfloat));
     dfloat globalwab = 0;
-    MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
 
     return globalwab;
   }
@@ -89,7 +91,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
     wab += tmp[n];
 
   dfloat globalwab = 0;
-  MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+  MPI_Allreduce(&wab, &globalwab, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
 
 #ifdef ELLIPTIC_ENABLE_TIMER
   timer::toc("dotp");

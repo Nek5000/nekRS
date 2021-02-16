@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 // compare on global indices
 int parallelCompareRowColumn(const void* a, const void* b)
@@ -75,6 +76,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
                                   ogs_t** ogs,
                                   hlong* globalStarts)
 {
+  platform_t* platform = platform_t::getInstance();
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
   // currently constant coefficient case only
@@ -93,7 +95,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   int* owner     = (int*) calloc(Ngather,sizeof(int));
 
   // every gathered degree of freedom has its own global id
-  MPI_Allgather(&Ngather, 1, MPI_HLONG, globalStarts + 1, 1, MPI_HLONG, mesh->comm);
+  MPI_Allgather(&Ngather, 1, MPI_HLONG, globalStarts + 1, 1, MPI_HLONG, platform->comm);
   for(int r = 0; r < mesh->size; ++r)
     globalStarts[r + 1] = globalStarts[r] + globalStarts[r + 1];
 
@@ -240,7 +242,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   qsort(sendNonZeros, cnt, sizeof(nonZero_t), parallelCompareRowColumn);
 
   // find how many nodes to expect (should use sparse version)
-  MPI_Alltoall(AsendCounts, 1, MPI_INT, ArecvCounts, 1, MPI_INT, mesh->comm);
+  MPI_Alltoall(AsendCounts, 1, MPI_INT, ArecvCounts, 1, MPI_INT, platform->comm);
 
   // find send and recv offsets for gather
   *nnz = 0;
@@ -255,7 +257,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   // determine number to receive
   MPI_Alltoallv(sendNonZeros, AsendCounts, AsendOffsets, MPI_NONZERO_T,
                 (*A), ArecvCounts, ArecvOffsets, MPI_NONZERO_T,
-                mesh->comm);
+                platform->comm);
 
   // sort received non-zero entries by row block (may need to switch compareRowColumn tests)
   qsort((*A), *nnz, sizeof(nonZero_t), parallelCompareRowColumn);
@@ -274,7 +276,9 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   if (*nnz) cnt++;
   *nnz = cnt;
 
-  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0) printf("done.\n");
+
+  MPI_Barrier(platform->comm);
   MPI_Type_free(&MPI_NONZERO_T);
 
   free(sendNonZeros);

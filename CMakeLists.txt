@@ -188,6 +188,7 @@ set(SRC
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
+    src/core/platform.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp
     src/linAlg/matrixInverse.cpp
@@ -200,6 +201,10 @@ set(SRC
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
+<<<<<<< HEAD
+=======
+    src/linearSolver/PCG.cpp
+>>>>>>> Omnibus commit for refactoring
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}

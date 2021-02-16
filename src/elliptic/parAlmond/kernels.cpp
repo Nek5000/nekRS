@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "parAlmond.hpp"
+#include "platform.hpp"
 
 namespace parAlmond {
 
@@ -63,47 +64,12 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
   double seed = (double) rank;
   srand48(seed);
 
-  occa::properties kernelInfo;
+  platform_t* platform = platform_t::getInstance();
+  occa::properties kernelInfo = platform->kernelInfo;
   kernelInfo["defines"].asObject();
   kernelInfo["includes"].asArray();
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
-
-  if(sizeof(dlong)==4){
-    kernelInfo["defines/" "dlong"]="int";
-  }
-  if(sizeof(dlong)==8){
-    kernelInfo["defines/" "dlong"]="long long int";
-  }
-
-  if(sizeof(dfloat) == sizeof(double)){
-    kernelInfo["defines/" "dfloat"]= "double";
-    kernelInfo["defines/" "dfloat4"]= "double4";
-  }
-  else if(sizeof(dfloat) == sizeof(float)){
-    kernelInfo["defines/" "dfloat"]= "float";
-    kernelInfo["defines/" "dfloat4"]= "float4";
-  }
-
-  kernelInfo["defines/" "p_BLOCKSIZE"]= BLOCKSIZE;
-
-  if(device.mode()=="OpenCL"){
-    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-    //kernelInfo["compiler_flags"] += "-cl-opt-disable";
-  }
-
-  if(device.mode()=="CUDA"){ // add backend compiler optimization for CUDA
-    kernelInfo["compiler_flags"] += " --ftz=true ";
-    kernelInfo["compiler_flags"] += " --prec-div=false ";
-    kernelInfo["compiler_flags"] += " --prec-sqrt=false ";
-    kernelInfo["compiler_flags"] += " --use_fast_math ";
-    kernelInfo["compiler_flags"] += " --fmad=true "; // compiler option for cuda
-  }
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));

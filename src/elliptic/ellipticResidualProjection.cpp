@@ -27,6 +27,7 @@
 #include "ellipticResidualProjection.h"
 #include <iostream>
 #include "timer.hpp"
+#include "platform.hpp"
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,
@@ -146,6 +147,7 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   o_rtmp(elliptic.o_rtmp),
   o_Ap(elliptic.o_Ap)
 {
+  platform_t* platform = platform_t::getInstance();
   tmp = elliptic.tmp;
   timestep = 0;
   const dlong Nblock = elliptic.Nblock;
@@ -154,20 +156,19 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   multiwork = (dfloat*) calloc(Nblock * maxNumVecsProjection, sizeof(dfloat));
-  o_alpha = elliptic.mesh->device.malloc(maxNumVecsProjection * sizeof(dfloat));
-  o_xbar = elliptic.mesh->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
-  o_xx = elliptic.mesh->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
-  o_bb = elliptic.mesh->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
+  o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
+  o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  o_bb = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const string oklpath = install_dir + "/okl/elliptic/";
   string filename, kernelName;
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && elliptic.mesh->rank == 0) || (r == 1 && elliptic.mesh->rank > 0)) {
+  {
       occa::properties properties;
-      properties += elliptic.mesh->device.properties();
+      properties += platform->device.properties();
       properties["defines/p_threadBlockSize"] = BLOCKSIZE;
       properties["defines/p_blockSize"] = BLOCKSIZE;
       properties["defines/dfloat"] = dfloatString;
@@ -175,18 +176,16 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
       properties["defines/p_Nfields"] = Nfields;
 
       filename = oklpath + "ellipticResidualProjection.okl";
-      scalarMultiplyKernel = elliptic.mesh->device.buildKernel(filename.c_str(),
+      scalarMultiplyKernel = platform->device.buildKernel(filename.c_str(),
                                                                "scalarMultiply",
                                                                properties);
-      multiScaledAddwOffsetKernel = elliptic.mesh->device.buildKernel(filename.c_str(),
+      multiScaledAddwOffsetKernel = platform->device.buildKernel(filename.c_str(),
                                                                       "multiScaledAddwOffset",
                                                                       properties);
-      multiWeightedInnerProduct2Kernel = elliptic.mesh->device.buildKernel(filename.c_str(),
+      multiWeightedInnerProduct2Kernel = platform->device.buildKernel(filename.c_str(),
                                                                            "multiWeightedInnerProduct2",
                                                                            properties);
-      accumulateKernel = elliptic.mesh->device.buildKernel(filename.c_str(), "accumulate", properties);
-    }
-    MPI_Barrier(elliptic.mesh->comm);
+      accumulateKernel = platform->device.buildKernel(filename.c_str(), "accumulate", properties);
   }
   scaledAddKernel = elliptic.scaledAddKernel;
   sumKernel = elliptic.mesh->sumKernel;

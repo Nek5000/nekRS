@@ -8,7 +8,8 @@
 
 void meshNekReaderHex3D(int N, mesh_t* mesh)
 {
-  MPI_Barrier(mesh->comm);
+  platform_t* platform = platform_t::getInstance();
+  MPI_Barrier(platform->comm);
   const double tStart = MPI_Wtime();
   if(mesh->rank == 0) printf("loading mesh from nek ... "); fflush(stdout); 
 
@@ -47,7 +48,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
     }
 
   int* recvCounts = (int*) calloc(mesh->size, sizeof(int));
-  MPI_Allgather(&nbc, 1, MPI_INT, recvCounts, 1, MPI_INT, mesh->comm);
+  MPI_Allgather(&nbc, 1, MPI_INT, recvCounts, 1, MPI_INT, platform->comm);
   int* displacement = (int*) calloc(mesh->size, sizeof(int));
   displacement[0] = 0;
   for(int i = 1; i < mesh->size; i++)
@@ -56,7 +57,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   // build boundary info (for now every rank has all)
   mesh->NboundaryFaces = nbc;
   MPI_Allreduce(MPI_IN_PLACE, &mesh->NboundaryFaces, 1, MPI_HLONG,
-                MPI_SUM, mesh->comm);
+                MPI_SUM, platform->comm);
   if(mesh->rank == 0) {
     int n = nekData.NboundaryIDt;
     if(!mesh->cht) n = nekData.NboundaryID;
@@ -94,7 +95,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   MPI_Type_commit(&bInfoType);
 
   MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, mesh->boundaryInfo,
-                 (const int*)recvCounts, (const int*)displacement, bInfoType, mesh->comm);
+                 (const int*)recvCounts, (const int*)displacement, bInfoType, platform->comm);
 
   free(recvCounts);
   free(displacement);

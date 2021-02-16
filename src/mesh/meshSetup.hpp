@@ -6,7 +6,6 @@ mesh_t* createMeshDummy(MPI_Comm comm,
                         int N,
                         int cubN,
                         setupAide &options,
-                        occa::device device,
                         occa::properties &kernelInfo);
 
 mesh_t* createMesh(MPI_Comm comm,
@@ -14,7 +13,6 @@ mesh_t* createMesh(MPI_Comm comm,
                    int cubN,
                    int isMeshT,
                    setupAide &options,
-                   occa::device device,
                    occa::properties &kernelInfo);
 
 mesh_t* createMeshV(MPI_Comm comm,

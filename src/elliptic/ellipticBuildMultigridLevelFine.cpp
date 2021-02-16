@@ -25,9 +25,11 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
+  platform_t* platform = platform_t::getInstance();
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 
@@ -39,9 +41,9 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   mesh_t* mesh = elliptic->mesh;
 
   if(!strstr(pfloatString,dfloatString)) {
-    mesh->o_ggeoPfloat = mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
-    mesh->o_DmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
-    mesh->o_SmatricesPfloat = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
+    mesh->o_DmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_SmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
 
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
@@ -97,8 +99,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const string oklpath = install_dir + "/okl/elliptic/";
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+  {
       occa::properties AxKernelInfo = kernelInfo;
 
       filename = oklpath + "ellipticAx" + suffix + ".okl";
@@ -107,12 +108,12 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         AxKernelInfo["okl/enabled"] = false;
         filename = oklpath + "ellipticSerialAx" + suffix + ".c";
       }
-      elliptic->AxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+      elliptic->AxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
 
       if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
-        elliptic->AxPfloatKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->AxPfloatKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
         AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
@@ -122,17 +123,14 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         kernelName = "ellipticPartialAx" + suffix;
 
       if(!serial) {
-        elliptic->partialAxKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->partialAxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
           elliptic->partialAxPfloatKernel =
-            mesh->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
+            platform->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }
-    }
-
-    MPI_Barrier(mesh->comm);
   }
 
   return elliptic;

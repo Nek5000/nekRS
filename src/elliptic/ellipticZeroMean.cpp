@@ -25,9 +25,11 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {
+  platform_t* platform = platform_t::getInstance();
   dfloat qmeanLocal;
   dfloat qmeanGlobal;
 
@@ -59,7 +61,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
           qmeanLocal += tmp[n];
 
         // globalize reduction
-        MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+        MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
 #ifdef ELLIPTIC_ENABLE_TIMER
         timer::toc("dotp");
 #endif
@@ -83,7 +85,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
       qmeanLocal += tmp[n];
 
     // globalize reduction
-    MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&qmeanLocal, &qmeanGlobal, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
 #ifdef ELLIPTIC_ENABLE_TIMER
     timer::toc("dotp");
 #endif

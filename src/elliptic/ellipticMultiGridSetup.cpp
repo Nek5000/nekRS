@@ -25,9 +25,12 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
+  platform_t* platform = platform_t::getInstance();
+
   // setup new object with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
   mesh_t* mesh = elliptic->mesh;
@@ -61,14 +64,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
       levelDegree[i] = elliptic->levels[i];
   } else {
     cout << "Unknown coarsening type!";
-    MPI_Abort(mesh->comm, 1);
+    MPI_Abort(platform->comm, 1);
   }
 
   int Nmax = levelDegree[0];
   int Nmin = levelDegree[numMGLevels - 1];
 
   //initialize parAlmond
-  precon->parAlmond = parAlmond::Init(mesh->device, mesh->comm, options);
+  precon->parAlmond = parAlmond::Init(platform->device, platform->comm, options);
   parAlmond::multigridLevel** levels = precon->parAlmond->levels;
 
   oogs_mode oogsMode = OOGS_AUTO;
@@ -89,7 +92,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     levels[0] = new MGLevel(elliptic, lambda, Nmax, options,
-                            precon->parAlmond->ktype, mesh->comm);
+                            precon->parAlmond->ktype, platform->comm);
     MGLevelAllocateStorage((MGLevel*) levels[0], 0,
                            precon->parAlmond->ctype);
     precon->parAlmond->numLevels++;
@@ -125,7 +128,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                             lambda,
                             Nf, Nc,
                             options,
-                            precon->parAlmond->ktype, mesh->comm);
+                            precon->parAlmond->ktype, platform->comm);
     MGLevelAllocateStorage((MGLevel*) levels[n], n,
                            precon->parAlmond->ctype);
     precon->parAlmond->numLevels++;
@@ -211,11 +214,11 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                           lambda,
                                           Nf, Nc,
                                           options,
-                                          precon->parAlmond->ktype, mesh->comm
+                                          precon->parAlmond->ktype, platform->comm
                                           );
   } else {
     levels[numMGLevels - 1] = new MGLevel(ellipticCoarse, lambda, Nmin, options,
-                                          precon->parAlmond->ktype, mesh->comm);
+                                          precon->parAlmond->ktype, platform->comm);
   }
   MGLevelAllocateStorage((MGLevel*) levels[numMGLevels - 1], numMGLevels - 1,
                          precon->parAlmond->ctype);
@@ -232,9 +235,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
       nextLevel->Sx = (dfloat*) calloc(ellipticCoarse->mesh->Np * ellipticCoarse->mesh->Nelements,
                                        sizeof(dfloat));
       nextLevel->o_Gx =
-        ellipticCoarse->mesh->device.malloc(levels[numMGLevels - 1]->Ncols * sizeof(dfloat),
+        platform->device.malloc(levels[numMGLevels - 1]->Ncols * sizeof(dfloat),
                                             nextLevel->Gx);
-      nextLevel->o_Sx = ellipticCoarse->mesh->device.malloc(
+      nextLevel->o_Sx = platform->device.malloc(
         ellipticCoarse->mesh->Np * ellipticCoarse->mesh->Nelements * sizeof(dfloat),
         nextLevel->Sx);
     } else {
@@ -247,9 +250,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
       coarseLevel->Sx = (dfloat*) calloc(ellipticCoarse->mesh->Np * ellipticCoarse->mesh->Nelements,
                                          sizeof(dfloat));
       coarseLevel->o_Gx =
-        ellipticCoarse->mesh->device.malloc(coarseLevel->ogs->Ngather * sizeof(dfloat),
+        platform->device.malloc(coarseLevel->ogs->Ngather * sizeof(dfloat),
                                             coarseLevel->Gx);
-      coarseLevel->o_Sx = ellipticCoarse->mesh->device.malloc(
+      coarseLevel->o_Sx = platform->device.malloc(
         ellipticCoarse->mesh->Np * ellipticCoarse->mesh->Nelements * sizeof(dfloat),
         coarseLevel->Sx);
     }
@@ -283,6 +286,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
 {
+  platform_t* platform = platform_t::getInstance();
   // extra storage for smoothing op
   size_t Nbytes = level->Ncols * sizeof(pfloat);
   if (MGLevel::smootherResidualBytes < Nbytes) {
@@ -294,19 +298,19 @@ void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
     }
 
     MGLevel::smootherResidual = (pfloat*) calloc(level->Ncols,sizeof(pfloat));
-    MGLevel::o_smootherResidual = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
-    MGLevel::o_smootherResidual2 = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
-    MGLevel::o_smootherUpdate = level->mesh->device.malloc(Nbytes,MGLevel::smootherResidual);
+    MGLevel::o_smootherResidual = platform->device.malloc(Nbytes,MGLevel::smootherResidual);
+    MGLevel::o_smootherResidual2 = platform->device.malloc(Nbytes,MGLevel::smootherResidual);
+    MGLevel::o_smootherUpdate = platform->device.malloc(Nbytes,MGLevel::smootherResidual);
     MGLevel::smootherResidualBytes = Nbytes;
   }
 
   if (k) level->x    = (dfloat*) calloc(level->Ncols,sizeof(dfloat));
   if (k) level->rhs  = (dfloat*) calloc(level->Nrows,sizeof(dfloat));
-  if (k) level->o_x   = level->mesh->device.malloc(level->Ncols * sizeof(dfloat),level->x);
-  if (k) level->o_rhs = level->mesh->device.malloc(level->Nrows * sizeof(dfloat),level->rhs);
+  if (k) level->o_x   = platform->device.malloc(level->Ncols * sizeof(dfloat),level->x);
+  if (k) level->o_rhs = platform->device.malloc(level->Nrows * sizeof(dfloat),level->rhs);
 
   level->res  = (dfloat*) calloc(level->Ncols,sizeof(dfloat));
-  level->o_res = level->mesh->device.malloc(level->Ncols * sizeof(dfloat),level->res);
+  level->o_res = platform->device.malloc(level->Ncols * sizeof(dfloat),level->res);
 
   //kcycle vectors
   if (ctype == parAlmond::KCYCLE) {
@@ -314,9 +318,9 @@ void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
       level->ck = (dfloat*) calloc(level->Ncols,sizeof(dfloat));
       level->vk = (dfloat*) calloc(level->Nrows,sizeof(dfloat));
       level->wk = (dfloat*) calloc(level->Nrows,sizeof(dfloat));
-      level->o_ck = level->mesh->device.malloc(level->Ncols * sizeof(dfloat),level->ck);
-      level->o_vk = level->mesh->device.malloc(level->Nrows * sizeof(dfloat),level->vk);
-      level->o_wk = level->mesh->device.malloc(level->Nrows * sizeof(dfloat),level->wk);
+      level->o_ck = platform->device.malloc(level->Ncols * sizeof(dfloat),level->ck);
+      level->o_vk = platform->device.malloc(level->Nrows * sizeof(dfloat),level->vk);
+      level->o_wk = platform->device.malloc(level->Nrows * sizeof(dfloat),level->wk);
     }
   }
 }

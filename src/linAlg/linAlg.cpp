@@ -25,10 +25,20 @@ SOFTWARE.
 */
 
 #include "linAlg.hpp"
+#include "platform.hpp"
 
 linAlg_t* linAlg_t::singleton = nullptr;
+
+linAlg_t::linAlg_t() {
+  platform_t* platform = platform_t::getInstance();
+  blocksize = BLOCKSIZE;
+  comm = platform->comm;
+  setup();
+}
 void linAlg_t::reallocBuffers(const dlong Nbytes)
 {
+  platform_t* platform = platform_t::getInstance();
+  occa::ParallelSafeDevice& device = platform->device;
   if(h_scratch.size()) h_scratch.free();
   if(o_scratch.size()) o_scratch.free();
   //pinned scratch buffer
@@ -42,8 +52,12 @@ void linAlg_t::reallocBuffers(const dlong Nbytes)
 }
 void linAlg_t::setup() {
 
+  platform_t* platform = platform_t::getInstance();
+  occa::ParallelSafeDevice& device = platform->device;
   int rank;
   MPI_Comm_rank(comm, &rank);
+
+  occa::properties kernelInfo = platform->kernelInfo;
 
   //add defines
   kernelInfo["defines/" "p_blockSize"] = blocksize;
@@ -54,8 +68,7 @@ void linAlg_t::setup() {
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
   oklDir += "/okl/linAlg/";
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
+  {
       if (fillKernel.isInitialized()==false)
         fillKernel = device.buildKernel(oklDir + 
                                         "linAlgFill.okl",
@@ -166,8 +179,6 @@ void linAlg_t::setup() {
                                         "linAlgWeightedInnerProd.okl",
                                         "weightedInnerProd",
                                         kernelInfo);
-    }
-    MPI_Barrier(comm);
   }
 }
 

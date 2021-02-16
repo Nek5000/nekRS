@@ -1,4 +1,5 @@
 #include "nrs.hpp"
+#include "platform.hpp"
 
 static int firstTime = 1;
 static dfloat* tmp;
@@ -7,6 +8,7 @@ static occa::memory o_tmp;
 void setup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getInstance();
 
   dfloat* dH;
   if(nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
@@ -23,12 +25,12 @@ void setup(nrs_t* nrs)
     for(int n = 0; n < (mesh->N + 1); n++)
       dH[n] = 1.0 / dH[n];
 
-    nrs->o_idH = mesh->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
+    nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
     free(dH);
   }
 
   tmp = (dfloat*) calloc(nrs->Nblock, sizeof(dfloat));
-  o_tmp = mesh->device.malloc(nrs->Nblock * sizeof(dfloat), tmp);
+  o_tmp = platform->device.malloc(nrs->Nblock * sizeof(dfloat), tmp);
 
   firstTime = 0;
 }
@@ -48,7 +50,7 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_wrk0);
 
   // find the local maximum of CFL number
-  nrs->maxKernel(nrs->Nlocal, nrs->o_wrk0, o_tmp);
+  nrs->maxKernel(mesh->Nlocal, nrs->o_wrk0, o_tmp);
   o_tmp.copyTo(tmp);
 
   // finish reduction

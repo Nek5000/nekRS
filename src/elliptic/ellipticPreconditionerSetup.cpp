@@ -25,9 +25,11 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo)
 {
+  platform_t* platform = platform_t::getInstance();
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
@@ -43,8 +45,8 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     printf("ERROR: SEMFEM not supported!\n");
     ABORT(EXIT_FAILURE);;
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-    if(mesh->rank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
-    precon->o_invDiagA = mesh->device.malloc(elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
+    if(platform->rank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
+    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
     ellipticUpdateJacobi(elliptic);
   } else {
     printf("ERROR: Unknown preconditioner!\n");

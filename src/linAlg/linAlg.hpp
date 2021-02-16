@@ -33,7 +33,6 @@ using std::string;
 
 class linAlg_t {
 private:
-  occa::device device;
   occa::properties kernelInfo;
   MPI_Comm comm;
   int blocksize;
@@ -45,23 +44,14 @@ private:
 
   void setup();
   void reallocBuffers(const dlong Nbytes);
-  linAlg_t(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
-    blocksize = BLOCKSIZE;
-    device = _device;
-    kernelInfo = _kernelInfo;
-    comm = _comm;
-    setup();
-  }
+  linAlg_t();
 
   ~linAlg_t();
   static linAlg_t* singleton;
 public:
-  static linAlg_t* getInstance(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
-    if(!singleton)
-      singleton = new linAlg_t(_device, _kernelInfo, _comm);
-    return singleton;
-  }
   static linAlg_t* getInstance(){
+    if(!singleton)
+      singleton = new linAlg_t();
     return singleton;
   }
 

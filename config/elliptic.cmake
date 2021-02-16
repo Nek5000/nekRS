@@ -6,7 +6,11 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
 	${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
+<<<<<<< HEAD
         ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
+=======
+        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildJacobi.cpp
+>>>>>>> Omnibus commit for refactoring
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
@@ -21,10 +25,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticScaledAdd.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateNBFPCG.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateNBPCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticVectors.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedInnerProduct.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedNorm2.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp)

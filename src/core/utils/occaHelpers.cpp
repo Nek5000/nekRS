@@ -31,8 +31,9 @@
 
 #include "omp.h"
 #include "mesh.h"
+#include "platform.hpp"
 
-occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm)
+occa::ParallelSafeDevice occaDeviceConfig(setupAide &options, MPI_Comm comm)
 {
   // OCCA build stuff
   char deviceConfig[BUFSIZ];
@@ -76,8 +77,9 @@ occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm)
   }
 
   if(rank == 0) printf("Initializing device\n");
-  occa::device device;
+  occa::ParallelSafeDevice device;
   device.setup((std::string)deviceConfig);
+  device.comm = comm;
 
   if (device.mode() == "Serial")
     options.setArgs("THREAD MODEL", "SERIAL");

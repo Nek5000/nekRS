@@ -5,6 +5,7 @@
 
 #include "udf.hpp"
 #include "io.hpp"
+#include "platform.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
@@ -96,7 +97,8 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
 {
   int rank;
   mesh_t* mesh = nrs->mesh;
-  MPI_Comm_rank(mesh->comm, &rank);
+  platform_t* platform = platform_t::getInstance();
+  MPI_Comm_rank(platform->comm, &rank);
 
   string install_dir;
   occa::properties kernelInfo = *nrs->kernelInfo;
@@ -108,10 +110,8 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   nrs->options.getArgs("DATA FILE", oudf);
 
   occa::kernel k;
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0))
-      k = mesh->device.buildKernel(oudf.c_str(), function, kernelInfo);
-    MPI_Barrier(mesh->comm);
+  {
+    k = platform->device.buildKernel(oudf.c_str(), function, kernelInfo);
   }
   return k;
 }

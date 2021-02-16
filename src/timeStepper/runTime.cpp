@@ -25,10 +25,11 @@ double tElapsed = 0;
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getInstance();
   cds_t* cds = nrs->cds;
 
-  mesh->device.finish();
-  MPI_Barrier(mesh->comm);
+  platform->device.finish();
+  MPI_Barrier(platform->comm);
   double tStart = MPI_Wtime();
 
   nrs->dt[0] = dt;
@@ -76,11 +77,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
 
-  mesh->device.finish();
-  MPI_Barrier(mesh->comm);
+  platform->device.finish();
+  MPI_Barrier(platform->comm);
   const double tElapsedStep = MPI_Wtime() - tStart;
   tElapsed += tElapsedStep;
-  timer::set("solve", tElapsed);
+  platform->timer.set("solve", tElapsed);
 
   // print some diagnostics
   const dfloat cfl = computeCFL(nrs);
@@ -294,7 +295,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
 
     cds->setEllipticCoeffKernel(
-      cds->Nlocal,
+      mesh->Nlocal,
       cds->g0 * cds->idt,
       is * cds->fieldOffset,
       cds->fieldOffset,
@@ -304,7 +305,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 
     if(cds->o_BFDiag.ptr())
       cds->scaledAddKernel(
-        cds->Nlocal,
+        mesh->Nlocal,
         1.0,
         is * cds->fieldOffset,
         cds->o_BFDiag,
@@ -405,7 +406,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 
   timer::tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
-    nrs->Nlocal,
+    mesh->Nlocal,
     nrs->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
@@ -415,7 +416,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 
   timer::tic("velocitySolve", 1);
   nrs->setEllipticCoeffKernel(
-    nrs->Nlocal,
+    mesh->Nlocal,
     nrs->g0 * nrs->idt,
     0 * nrs->fieldOffset,
     nrs->fieldOffset,

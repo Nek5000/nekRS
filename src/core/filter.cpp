@@ -12,6 +12,7 @@ dfloat filterFactorial(int n);
 void filterSetup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getInstance();
 
   // First construct filter function
   nrs->filterS = 10.0; // filter Weight...
@@ -78,7 +79,7 @@ void filterSetup(nrs_t* nrs)
     for(int r = 0; r < Nmodes; r++)
       nrs->filterM[c + r * Nmodes] = A[r + c * Nmodes];
 
-  nrs->o_filterMT =  mesh->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
+  nrs->o_filterMT =  platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
 
   if(mesh->rank == 0)
     printf("High pass filter relaxation: chi = %.4f using %d mode(s)\n",

@@ -4,9 +4,36 @@
 #include <algorithm>
 
 #include "timer.hpp"
+#include "platform.hpp"
 
 namespace timer
 {
+
+void tic(const std::string tag){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.tic(tag);
+}
+void tic(const std::string tag,int ifSync){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.tic(tag, ifSync);
+}
+void toc(const std::string tag){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.toc(tag);
+}
+void hostTic(const std::string tag){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.hostTic(tag);
+}
+void hostTic(const std::string tag,int ifSync){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.hostTic(tag, ifSync);
+}
+void hostToc(const std::string tag){
+  platform_t* platform = platform_t::getInstance();
+  platform->timer.hostToc(tag);
+}
+
 namespace
 {
 typedef struct tagData_
@@ -29,14 +56,18 @@ occa::device device_;
 MPI_Comm comm_;
 }
 
-void init(MPI_Comm comm,occa::device device,int ifSync)
+timer_t::timer_t(MPI_Comm comm,occa::device device,int ifSync)
+{
+  init(comm, device, ifSync);
+}
+void timer_t::init(MPI_Comm comm,occa::device device,int ifSync)
 {
   device_ = device;
   ifSync_ = ifSync;
   comm_ = comm;
 }
 
-void set(const std::string tag, double time)
+void timer_t::set(const std::string tag, double time)
 {
   m_[tag].startTime = time;	
   auto it = m_.find(tag);
@@ -50,35 +81,35 @@ void set(const std::string tag, double time)
   it->second.count++;
 }
 
-void reset()
+void timer_t::reset()
 {
   m_.clear();
 }
 
-void reset(const std::string tag)
+void timer_t::reset(const std::string tag)
 {
   std::map<std::string,tagData>::iterator it = m_.find(tag);
   if(it != m_.end()) m_.erase(it);
 }
 
-void finalize()
+void timer_t::finalize()
 {
   reset();
 }
 
-void deviceTic(const std::string tag,int ifSync)
+void timer_t::deviceTic(const std::string tag,int ifSync)
 {
   if(ifSync) MPI_Barrier(comm_);
   m_[tag].startTag = device_.tagStream();
 }
 
-void deviceTic(const std::string tag)
+void timer_t::deviceTic(const std::string tag)
 {
   if(ifSync()) MPI_Barrier(comm_);
   m_[tag].startTag = device_.tagStream();
 }
 
-void deviceToc(const std::string tag)
+void timer_t::deviceToc(const std::string tag)
 {
   occa::streamTag stopTag = device_.tagStream();
 
@@ -92,19 +123,19 @@ void deviceToc(const std::string tag)
   it->second.count++;
 }
 
-void hostTic(const std::string tag,int ifSync)
+void timer_t::hostTic(const std::string tag,int ifSync)
 {
   if(ifSync) MPI_Barrier(comm_);
   m_[tag].startTime = MPI_Wtime();
 }
 
-void hostTic(const std::string tag)
+void timer_t::hostTic(const std::string tag)
 {
   if(ifSync()) MPI_Barrier(comm_);
   m_[tag].startTime = MPI_Wtime();
 }
 
-void hostToc(const std::string tag)
+void timer_t::hostToc(const std::string tag)
 {
   double stopTime = MPI_Wtime();
 
@@ -118,21 +149,21 @@ void hostToc(const std::string tag)
   it->second.count++;
 }
 
-void tic(const std::string tag,int ifSync)
+void timer_t::tic(const std::string tag,int ifSync)
 {
   if(ifSync) MPI_Barrier(comm_);
   m_[tag].startTime = MPI_Wtime();
   m_[tag].startTag = device_.tagStream();
 }
 
-void tic(const std::string tag)
+void timer_t::tic(const std::string tag)
 {
   if(ifSync()) MPI_Barrier(comm_);
   m_[tag].startTime = MPI_Wtime();
   m_[tag].startTag = device_.tagStream();
 }
 
-void toc(const std::string tag)
+void timer_t::toc(const std::string tag)
 {
   auto stopTime = MPI_Wtime();
   auto stopTag = device_.tagStream();
@@ -148,28 +179,28 @@ void toc(const std::string tag)
   it->second.count++;
 }
 
-double hostElapsed(const std::string tag)
+double timer_t::hostElapsed(const std::string tag)
 {
   auto it = m_.find(tag);
   if(it == m_.end()) return NEKRS_TIMER_INVALID_KEY;
   return it->second.hostElapsed;
 }
 
-double deviceElapsed(const std::string tag)
+double timer_t::deviceElapsed(const std::string tag)
 {
   auto it = m_.find(tag);
   if(it == m_.end()) return NEKRS_TIMER_INVALID_KEY;
   return it->second.deviceElapsed;
 }
 
-int count(const std::string tag)
+int timer_t::count(const std::string tag)
 {
   auto it = m_.find(tag);
   if(it == m_.end()) return NEKRS_TIMER_INVALID_KEY;
   return it->second.count;
 }
 
-double query(const std::string tag,const std::string metric)
+double timer_t::query(const std::string tag,const std::string metric)
 {
   int size;
   MPI_Comm_size(comm_,&size);
@@ -220,35 +251,35 @@ double query(const std::string tag,const std::string metric)
   return NEKRS_TIMER_INVALID_METRIC;
 }
 
-void printRunStat()
+void timer_t::printRunStat()
 {
   int rank;
   MPI_Comm_rank(comm_, &rank);
 
   double dEtime[20];
-  dEtime[0] = timer::query("makef", "DEVICE:MAX");
-  dEtime[1] = timer::query("velocitySolve", "DEVICE:MAX");
-  dEtime[2] = timer::query("pressureSolve", "DEVICE:MAX");
-  dEtime[3] = timer::query("makeq", "DEVICE:MAX");
-  dEtime[4] = timer::query("scalarSolve", "DEVICE:MAX");
-  dEtime[5] = timer::query("preconditioner", "DEVICE:MAX");
-  dEtime[6] = timer::query("pre", "DEVICE:MAX");
-  dEtime[6]+= timer::query("post", "DEVICE:MAX");
+  dEtime[0] = query("makef", "DEVICE:MAX");
+  dEtime[1] = query("velocitySolve", "DEVICE:MAX");
+  dEtime[2] = query("pressureSolve", "DEVICE:MAX");
+  dEtime[3] = query("makeq", "DEVICE:MAX");
+  dEtime[4] = query("scalarSolve", "DEVICE:MAX");
+  dEtime[5] = query("preconditioner", "DEVICE:MAX");
+  dEtime[6] = query("pre", "DEVICE:MAX");
+  dEtime[6]+= query("post", "DEVICE:MAX");
 
-  dEtime[8] = timer::query("dotp", "DEVICE:MAX");
+  dEtime[8] = query("dotp", "DEVICE:MAX");
 
-  dEtime[9] = timer::query("solve", "DEVICE:MAX");
-  dEtime[10] = timer::query("setup", "DEVICE:MAX");
-  dEtime[11] = timer::query("checkpointing", "DEVICE:MAX");
+  dEtime[9] = query("solve", "DEVICE:MAX");
+  dEtime[10] = query("setup", "DEVICE:MAX");
+  dEtime[11] = query("checkpointing", "DEVICE:MAX");
 
-  dEtime[12] = timer::query("udfExecuteStep", "DEVICE:MAX");
-  dEtime[13] = timer::query("udfUEqnSource", "DEVICE:MAX");
-  dEtime[14] = timer::query("udfSEqnSource", "DEVICE:MAX");
-  dEtime[15] = timer::query("udfProperties", "DEVICE:MAX");
+  dEtime[12] = query("udfExecuteStep", "DEVICE:MAX");
+  dEtime[13] = query("udfUEqnSource", "DEVICE:MAX");
+  dEtime[14] = query("udfSEqnSource", "DEVICE:MAX");
+  dEtime[15] = query("udfProperties", "DEVICE:MAX");
 
   double hEtime[10];
-  hEtime[0] = timer::query("BoomerAMGSolve", "HOST:MAX");
-  hEtime[1] = timer::query("oogsMPI", "HOST:MAX");
+  hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
+  hEtime[1] = query("oogsMPI", "HOST:MAX");
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );

@@ -25,11 +25,13 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                          occa::memory &o_p, occa::memory &o_Ap, const dfloat alpha,
                          occa::memory &o_x, occa::memory &o_r)
 {
+  platform_t* platform = platform_t::getInstance();
   setupAide &options = elliptic->options;
 
   int fixedIterationCountFlag = 0;
@@ -63,7 +65,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
     if(enableReductions)
-      MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+      MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
     else
       globalrdotr1 = 1;
 #ifdef ELLIPTIC_ENABLE_TIMER
@@ -120,7 +122,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
       rdotr1 += elliptic->tmpNormr[n];
 
     dfloat globalrdotr1 = 0;
-    MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
 
     rdotr1 = globalrdotr1;
   }

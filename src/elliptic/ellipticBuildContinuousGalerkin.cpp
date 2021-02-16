@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 // compare on global indices
 static int parallelCompareRowColumn(const void* a, const void* b)
@@ -129,6 +130,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           hlong* globalStarts)
 {
   mesh_t* mesh = elliptic->mesh;
+  platform_t* platform = platform_t::getInstance();
   setupAide options = elliptic->options;
 
   MPI_Barrier(mesh->comm);
@@ -149,7 +151,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   int* owner     = (int*) calloc(Ngather,sizeof(int));
 
   // every gathered degree of freedom has its own global id
-  MPI_Allgather(&Ngather, 1, MPI_HLONG, globalStarts + 1, 1, MPI_HLONG, mesh->comm);
+  MPI_Allgather(&Ngather, 1, MPI_HLONG, globalStarts + 1, 1, MPI_HLONG, platform->comm);
   for(int r = 0; r < mesh->size; ++r)
     globalStarts[r + 1] = globalStarts[r] + globalStarts[r + 1];
 
@@ -187,9 +189,9 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   q = (dfloat*)calloc(meshf->Np * mesh->Nelements,sizeof(dfloat));
   Aq = (dfloat*)calloc(meshf->Np * mesh->Nelements,sizeof(dfloat));
 
-  occa::memory o_q = mesh->device.malloc(meshf->Np *
+  occa::memory o_q = platform->device.malloc(meshf->Np *
                                          mesh->Nelements * sizeof(dfloat), q);
-  occa::memory o_Aq = mesh->device.malloc(meshf->Np *
+  occa::memory o_Aq = platform->device.malloc(meshf->Np *
                                           mesh->Nelements * sizeof(dfloat),Aq);
 
   for(int jj = 0; jj < mesh->Np; jj++)
@@ -276,7 +278,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   qsort(sendNonZeros, cnt, sizeof(nonZero_t), parallelCompareRowColumn);
 
   // find how many nodes to expect (should use sparse version)
-  MPI_Alltoall(AsendCounts, 1, MPI_INT, ArecvCounts, 1, MPI_INT, mesh->comm);
+  MPI_Alltoall(AsendCounts, 1, MPI_INT, ArecvCounts, 1, MPI_INT, platform->comm);
 
   // find send and recv offsets for gather
   *nnz = 0;
@@ -291,7 +293,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   // determine number to receive
   MPI_Alltoallv(sendNonZeros, AsendCounts, AsendOffsets, MPI_NONZERO_T,
                 (*A), ArecvCounts, ArecvOffsets, MPI_NONZERO_T,
-                mesh->comm);
+                platform->comm);
 
   // sort received non-zero entries by row block (may need to switch compareRowColumn tests)
   qsort((*A), *nnz, sizeof(nonZero_t), parallelCompareRowColumn);
@@ -313,7 +315,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   MPI_Barrier(mesh->comm);
   if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm);
   MPI_Type_free(&MPI_NONZERO_T);
 
   free(sendNonZeros);

@@ -16,6 +16,7 @@
 #include "linAlg.hpp"
 #include "timer.hpp"
 #include "inipp.hpp"
+#include "platform.hpp"
 
 typedef struct
 {
@@ -48,7 +49,7 @@ typedef struct
 
   int NVfields, NTfields;
   dlong fieldOffset;
-  dlong Nlocal, Ntotal;
+  dlong Ntotal;
 
   int Nblock;
 
@@ -202,7 +203,7 @@ typedef struct
 
 #include "io.hpp"
 
-occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm);
+occa::ParallelSafeDevice occaDeviceConfig(setupAide &options, MPI_Comm comm);
 
 // std::to_string might be not accurate enough
 static string to_string_f(double a)

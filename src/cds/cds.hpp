@@ -29,7 +29,7 @@ typedef struct
 
   dlong vFieldOffset;
   dlong fieldOffset;
-  dlong Nlocal, Ntotal;
+  dlong Ntotal;
   int Nblock;
   dfloat idt;
   dfloat *dt;

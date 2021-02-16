@@ -26,9 +26,11 @@
 
 #include "elliptic.h"
 #include "timer.hpp"
+#include "platform.hpp"
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
+  platform_t* platform = platform_t::getInstance();
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
@@ -45,7 +47,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
   }else {
     if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
-    MPI_Abort(mesh->comm, 1);
+    MPI_Abort(platform->comm, 1);
     //o_z.copyFrom(o_r);
   }
   timer::toc("preconditioner");

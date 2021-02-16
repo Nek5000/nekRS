@@ -6,10 +6,10 @@
 #include "parReader.hpp"
 #include "configReader.hpp"
 #include "runTime.hpp"
+#include "platform.hpp"
 
 static int rank, size;
 static MPI_Comm comm;
-static occa::device device;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
@@ -71,8 +71,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   setOUDF(options);
 
   // configure device
-  device = occaDeviceConfig(options, comm);
-  timer::init(comm, device, 0);
+  platform_t* platform = platform_t::getInstance(options, comm);
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
@@ -98,7 +97,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrsSetup(comm, device, options, nrs);
+  nrsSetup(comm, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -125,16 +124,16 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   nek_ocopyFrom(startTime(), 0);
 
   timer::toc("setup");
-  const double setupTime = timer::query("setup", "DEVICE:MAX");
+  const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    cout << "device memory usage: " << nrs->mesh->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "device memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
     cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);
 
-  timer::reset();
-  timer::set("setup", setupTime);
+  platform->timer.reset();
+  platform->timer.set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -246,7 +245,8 @@ void* nrsPtr(void)
 
 void printRuntimeStatistics()
 {
-  timer::printRunStat();
+  platform_t* platform = platform_t::getInstance(options, comm);
+  platform->timer.printRunStat();
 }
 } // namespace
 
@@ -275,7 +275,8 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   // init solver
-  nrsSetup(comm, device, options, nrs);
+  platform_t* platform = platform_t::getInstance();
+  nrsSetup(comm, options, nrs);
 
   cout << "\nBuild successful." << endl;
 }

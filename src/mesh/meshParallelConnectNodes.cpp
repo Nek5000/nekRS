@@ -28,6 +28,7 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
 
 void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
 {
+  platform_t* platform = platform_t::getInstance();
   if(!nrsBuildOnly) {
     // hotfix as libP version seems to be broken
     meshNekParallelConnectNodes(mesh);
@@ -43,7 +44,7 @@ void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
 
   MPI_Allgather(&localNodeCount,    1, MPI_DLONG,
                 allLocalNodeCounts, 1, MPI_DLONG,
-                mesh->comm);
+                platform->comm);
 
   hlong gatherNodeStart = 0;
   for(int r = 0; r < rank; ++r)
@@ -113,7 +114,7 @@ void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
       }
 
     // sum up changes
-    MPI_Allreduce(&localChange, &gatherChange, 1, MPI_DLONG, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&localChange, &gatherChange, 1, MPI_DLONG, MPI_SUM, platform->comm);
   }
 
   //make a locally-ordered version

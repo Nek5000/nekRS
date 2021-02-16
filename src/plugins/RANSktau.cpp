@@ -1,4 +1,5 @@
 #include "nrs.hpp"
+#include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "RANSktau.hpp"
 
@@ -46,6 +47,7 @@ static dfloat coeff[] = {
 void RANSktau::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getInstance();
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/p_sigma_k"]       = coeff[0];
@@ -68,15 +70,12 @@ void RANSktau::buildKernel(nrs_t* nrs)
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/RANSktau.okl";
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      computeKernel    = mesh->device.buildKernel(fileName.c_str(), "computeHex3D", kernelInfo);
-      SijOijKernel     = mesh->device.buildKernel(fileName.c_str(), "SijOijHex3D", kernelInfo);
-      SijOijMag2Kernel = mesh->device.buildKernel(fileName.c_str(), "SijOijMag2", kernelInfo);
-      limitKernel      = mesh->device.buildKernel(fileName.c_str(), "limit", kernelInfo);
-      mueKernel        = mesh->device.buildKernel(fileName.c_str(), "mue", kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
+  {
+      computeKernel    = platform->device.buildKernel(fileName.c_str(), "computeHex3D", kernelInfo);
+      SijOijKernel     = platform->device.buildKernel(fileName.c_str(), "SijOijHex3D", kernelInfo);
+      SijOijMag2Kernel = platform->device.buildKernel(fileName.c_str(), "SijOijMag2", kernelInfo);
+      limitKernel      = platform->device.buildKernel(fileName.c_str(), "limit", kernelInfo);
+      mueKernel        = platform->device.buildKernel(fileName.c_str(), "mue", kernelInfo);
   }
 
   if(nrs->Nscalar < 2) {
@@ -177,6 +176,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
                      int ifld, const dfloat* coeffIn)
 {
   if(setupCalled) return;
+  platform_t* platform = platform_t::getInstance();
 
   nrs    = nrsIn;
   mueLam = mueIn;
@@ -191,10 +191,10 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
   o_k   = cds->o_S + kFieldIndex * cds->fieldOffset * sizeof(dfloat);
   o_tau = cds->o_S + (kFieldIndex + 1) * cds->fieldOffset * sizeof(dfloat);
 
-  o_mut = mesh->device.malloc(cds->fieldOffset * sizeof(dfloat));
+  o_mut = platform->device.malloc(cds->fieldOffset * sizeof(dfloat));
 
   if(!cds->o_BFDiag.ptr()) {
-    cds->o_BFDiag = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
+    cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
     nrs->fillKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 

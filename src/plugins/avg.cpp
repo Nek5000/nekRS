@@ -16,6 +16,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "avg.hpp"
+#include "platform.hpp"
 
 // private members
 namespace
@@ -44,19 +45,17 @@ static dfloat timel;
 void avg::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  platform_t* platform = platform_t::getInstance();
 
   string fileName;
   int rank = mesh->rank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      EXKernel  = mesh->device.buildKernel(fileName.c_str(), "EX", kernelInfo);
-      EXXKernel = mesh->device.buildKernel(fileName.c_str(), "EXX", kernelInfo);
-      EXYKernel = mesh->device.buildKernel(fileName.c_str(), "EXY", kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
+  {
+      EXKernel  = platform->device.buildKernel(fileName.c_str(), "EX", kernelInfo);
+      EXXKernel = platform->device.buildKernel(fileName.c_str(), "EXX", kernelInfo);
+      EXYKernel = platform->device.buildKernel(fileName.c_str(), "EXY", kernelInfo);
   }
   buildKernelCalled = 1;
 }
@@ -149,26 +148,27 @@ void avg::setup(nrs_t* nrs_)
 
   nrs = nrs_;
   mesh_t* mesh = nrs->mesh;
+  platform_t * platform = platform_t::getInstance();
 
   if(setupCalled) return;
 
-  o_Uavg = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  o_Urms = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Uavg = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Urms = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
   nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
   nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
-  o_Urm2 = mesh->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Urm2 = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
   nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
-  o_Pavg = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  o_Prms = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_Pavg = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_Prms = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
   nrs->fillKernel(nrs->fieldOffset, 0.0, o_Pavg);
   nrs->fillKernel(nrs->fieldOffset, 0.0, o_Prms);
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    o_Savg = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    o_Srms = mesh->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
+    o_Savg = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
+    o_Srms = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
     nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
     nrs->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
