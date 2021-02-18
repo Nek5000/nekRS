@@ -2,6 +2,16 @@
 
 : ${PROJ_ID:=""}
 
+if [ -z "$PROJ_ID" ]; then
+  echo "ERROR: PROJ_ID is empty"
+  exit 1
+fi
+
+if [ $# -ne 3 ]; then
+  echo "usage: [PROJ_ID] [CPUONLY=1] $0 <casename> <number of compute nodes> <hh:mm>"
+  exit 0
+fi
+
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
 : ${OCCA_CACHE_DIR="$PWD/.cache/occa"}
 XL_HOME="/usr/tce/packages/xl/xl-2020.03.18/xlC/16.1.1"
@@ -17,17 +27,19 @@ export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 
 #export OCCA_VERBOSE=1
 
-if [ -z "$PROJ_ID" ]; then
-  echo "ERROR: PROJ_ID is empty"
-  exit 1
+export OMPI_MCA_io=romio321
+export ROMIO_HINTS="$(pwd)/.romio_hint"
+if [ ! -f "$ROMIO_HINTS" ]; then
+  echo "romio_no_indep_rw true"   >$ROMIO_HINTS
+  echo "romio_cb_write enable"   >>$ROMIO_HINTS
+  echo "romio_ds_write enable"   >>$ROMIO_HINTS
+  echo "romio_cb_read enable"    >>$ROMIO_HINTS
+  echo "romio_ds_read enable"    >>$ROMIO_HINTS
+  echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
+  echo "cb_config_list *:1"      >>$ROMIO_HINTS
 fi
 
-if [ $# -ne 3 ]; then
-  echo "usage: [PROJ_ID] [CPUONLY=1] $0 <casename> <number of compute nodes> <hh:mm>"
-  exit 0
-fi
-
-module load gcc/7.3.1
+module load gcc
 
 bin=$NEKRS_HOME/bin/nekrs
 case=$1
