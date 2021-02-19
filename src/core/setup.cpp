@@ -12,7 +12,7 @@ static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::proper
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
   *(nrs->kernelInfo) = platform->kernelInfo;
@@ -837,7 +837,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 {
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
   cds->mesh = mesh;
 
   string install_dir;

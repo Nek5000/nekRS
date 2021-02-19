@@ -33,7 +33,7 @@
 #include "mesh.h"
 #include "platform.hpp"
 
-occa::ParallelSafeDevice occaDeviceConfig(setupAide &options, MPI_Comm comm)
+device_t occaDeviceConfig(setupAide &options, MPI_Comm comm)
 {
   // OCCA build stuff
   char deviceConfig[BUFSIZ];
@@ -77,7 +77,7 @@ occa::ParallelSafeDevice occaDeviceConfig(setupAide &options, MPI_Comm comm)
   }
 
   if(rank == 0) printf("Initializing device\n");
-  occa::ParallelSafeDevice device;
+  device_t device;
   device.setup((std::string)deviceConfig);
   device.comm = comm;
 

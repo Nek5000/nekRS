@@ -38,7 +38,7 @@ linAlg_t::linAlg_t() {
 void linAlg_t::reallocBuffers(const dlong Nbytes)
 {
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
   if(h_scratch.size()) h_scratch.free();
   if(o_scratch.size()) o_scratch.free();
   //pinned scratch buffer
@@ -53,7 +53,7 @@ void linAlg_t::reallocBuffers(const dlong Nbytes)
 void linAlg_t::setup() {
 
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
   int rank;
   MPI_Comm_rank(comm, &rank);
 

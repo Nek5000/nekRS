@@ -12,7 +12,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 {
   mesh_t* mesh = new mesh_t[1];
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -174,7 +174,7 @@ mesh_t* createMesh(MPI_Comm comm,
 {
   mesh_t* mesh = new mesh_t[1];
   platform_t* platform = platform_t::getInstance();
-  occa::ParallelSafeDevice& device = platform->device;
+  device_t& device = platform->device;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);

@@ -5,8 +5,7 @@
 #include "nrssys.hpp"
 #include "timer.hpp"
 class setupAide;
-namespace occa{
-class ParallelSafeDevice : public device{
+class device_t : public occa::device{
   public:
     MPI_Comm comm;
     occa::kernel buildKernel(const std::string &filename,
@@ -17,9 +16,8 @@ class ParallelSafeDevice : public device{
                              const occa::properties &props,
                              MPI_Comm comm) const;
 };
-}
 struct platform_t{
-  occa::ParallelSafeDevice device;
+  device_t device;
   occa::properties kernelInfo;
   timer::timer_t timer;
   MPI_Comm comm;

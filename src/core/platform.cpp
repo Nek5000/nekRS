@@ -71,16 +71,15 @@ platform_t::create_mempool(const dlong offset, const dlong fields)
   o_slice15 = o_mempool.slice(15 * offset * sizeof(dfloat));
 }
 
-namespace occa{
 occa::kernel
-ParallelSafeDevice::buildKernel(const std::string &filename,
+device_t::buildKernel(const std::string &filename,
                          const std::string &kernelName,
                          const occa::properties &props) const
 {
   return this->buildKernel(filename, kernelName, props, comm);
 }
 occa::kernel
-ParallelSafeDevice::buildKernel(const std::string &filename,
+device_t::buildKernel(const std::string &filename,
                          const std::string &kernelName,
                          const occa::properties &props,
                          MPI_Comm comm) const
@@ -90,10 +89,9 @@ ParallelSafeDevice::buildKernel(const std::string &filename,
   occa::kernel _kernel;
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      _kernel = device::buildKernel(filename, kernelName, props);
+      _kernel = occa::device::buildKernel(filename, kernelName, props);
     }
     MPI_Barrier(comm);
   }
   return _kernel;
-}
 }
