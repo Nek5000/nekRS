@@ -285,7 +285,7 @@ static void setOUDF(setupAide &options)
   std::string oklFile;
   options.getArgs("UDF OKL FILE",oklFile);
 
-  char buf[FILENAME_MAX];
+  // char buf[FILENAME_MAX];
 
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
