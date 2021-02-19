@@ -221,6 +221,7 @@ target_include_directories(nekrs-lib
   PUBLIC 
   src/core
   src/core/utils
+  src/lib
   src/io
   src/udf
   src/linAlg
