@@ -902,7 +902,6 @@ void MGLevel::build(
       preFDMKernel = platform->device.buildKernel(filename.c_str(), "preFDM", properties);
       fusedFDMKernel = platform->device.buildKernel(filename.c_str(), "fusedFDM", properties);
       postFDMKernel = platform->device.buildKernel(filename.c_str(), "postFDM", properties);
-      collocateKernel = platform->device.buildKernel(filename.c_str(), "collocate", properties);
   }
 }
 

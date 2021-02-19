@@ -252,20 +252,6 @@ struct mesh_t
   occa::kernel getKernel;
   occa::kernel putKernel;
 
-  occa::kernel sumKernel;
-  occa::kernel addScalarKernel;
-
-  occa::kernel AxKernel;
-  occa::kernel innerProductKernel;
-  occa::kernel weightedInnerProduct1Kernel;
-  occa::kernel weightedInnerProduct2Kernel;
-  occa::kernel scaledAddKernel;
-  occa::kernel dotMultiplyKernel;
-  occa::kernel dotDivideKernel;
-
-  occa::kernel gradientKernel;
-  occa::kernel ipdgKernel;
-
   occa::kernel maskKernel;
   occa::kernel maskPfloatKernel;
 };

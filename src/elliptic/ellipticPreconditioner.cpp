@@ -27,9 +27,11 @@
 #include "elliptic.h"
 #include "timer.hpp"
 #include "platform.hpp"
+#include "linAlg.hpp"
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
+  linAlg_t* linAlg = linAlg_t::getInstance();
   platform_t* platform = platform_t::getInstance();
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
@@ -39,10 +41,15 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
 
   timer::tic("preconditioner", 1);
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-    if(elliptic->blockSolver)
-      elliptic->dotMultiplyKernel(Nlocal, elliptic->Ntotal, o_r, precon->o_invDiagA, o_z);
-    else
-      elliptic->dotMultiplyKernel(Nlocal, o_r, precon->o_invDiagA, o_z);
+    linAlg->axmyzMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1,
+      o_r,
+      precon->o_invDiagA,
+      o_z
+    );
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
   }else {

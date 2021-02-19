@@ -368,14 +368,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->curlKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "nrsMassMatrix" + ".okl";
-      kernelName = "nrsMassMatrix" + suffix;
-      nrs->massMatrixKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "nrsInvMassMatrix" + suffix;
-      nrs->invMassMatrixKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsGradient" + suffix + ".okl";
       kernelName = "nrsGradientVolume" + suffix;
@@ -454,28 +446,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       // ===========================================================================
 
-      fileName = install_dir + "/okl/core/scaledAdd.okl";
-      kernelName = "scaledAddwOffset";
-      nrs->scaledAddKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = install_dir + "/okl/core/dotMultiply.okl";
-      kernelName = "dotMultiply";
-      nrs->dotMultiplyKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "math" + ".okl";
-      kernelName = "fill";
-      nrs->fillKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "max";
-      nrs->maxKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "scalarScaledAdd";
-      nrs->scalarScaledAddKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      fileName = oklpath + "mask" + ".okl";
 
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
@@ -1093,11 +1064,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
       // ===========================================================================
 
-      fileName = oklpath + "math.okl";
-      kernelName = "fill";
-      cds->fillKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
+      fileName = oklpath + "mask.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
@@ -1118,21 +1085,9 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       cds->setEllipticCoeffKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "cdsMassMatrix.okl";
-      kernelName = "cdsMassMatrix" + suffix;
-      cds->massMatrixKernel = device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "cdsInvMassMatrix" + suffix;
-      cds->invMassMatrixKernel = device.buildKernel(fileName, kernelName, kernelInfo);
-
       fileName = oklpath + "cdsFilterRT" + suffix + ".okl";
       kernelName = "cdsFilterRT" + suffix;
       cds->filterRTKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = install_dir + "/okl/core/scaledAdd.okl";
-      kernelName = "scaledAddwOffset";
-      cds->scaledAddKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps) {

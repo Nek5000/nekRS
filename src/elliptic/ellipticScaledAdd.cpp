@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 
 void ellipticScaledAdd(elliptic_t* elliptic,
                        dfloat alpha,
@@ -33,16 +34,17 @@ void ellipticScaledAdd(elliptic_t* elliptic,
                        occa::memory &o_b)
 {
   mesh_t* mesh = elliptic->mesh;
-
-  setupAide &options = elliptic->options;
-
-  int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
+  linAlg->axpbyMany(
+    Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    alpha,
+    o_a,
+    beta,
+    o_b
+  );
 
-  if(elliptic->blockSolver)
-    elliptic->scaledAddKernel(Nlocal, elliptic->Ntotal, alpha, o_a, beta, o_b);
-  else
-    elliptic->scaledAddKernel(Nlocal, alpha, o_a, beta, o_b);
 }

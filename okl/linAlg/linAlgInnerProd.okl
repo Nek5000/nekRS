@@ -27,6 +27,7 @@ SOFTWARE.
 
 @kernel void innerProd(const dlong Nblocks,
                        const dlong N,
+                       const dlong offset,
                        @restrict const  dfloat *x,
                        @restrict const  dfloat *y,
                        @restrict        dfloat *dot){
@@ -40,7 +41,7 @@ SOFTWARE.
       dlong id = t + b*p_blockSize;
       s_dot[t] = 0.0;
       while (id<N) {
-        s_dot[t] += x[id]*y[id];
+        s_dot[t] += x[id+offset]*y[id+offset];
         id += p_blockSize*Nblocks;
       }
     }

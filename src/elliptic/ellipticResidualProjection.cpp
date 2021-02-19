@@ -28,6 +28,7 @@
 #include <iostream>
 #include "timer.hpp"
 #include "platform.hpp"
+#include "linAlg.hpp"
 
 void ResidualProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,
@@ -41,6 +42,7 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
 
 void ResidualProjection::updateProjectionSpace()
 {
+  linAlg_t* linAlg = linAlg_t::getInstance();
   if(numVecsProjection <= 0) return;
 
   multiWeightedInnerProduct(o_xx, o_bb, numVecsProjection - 1);
@@ -56,8 +58,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (numVecsProjection - 1) * fieldOffset, scale, o_xx);
-    scalarMultiplyKernel(Nlocal, fieldOffset, Nfields * (numVecsProjection - 1) * fieldOffset, scale, o_bb);
+    linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
+    linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
   } else {
     if(verbose && rank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -69,6 +71,7 @@ void ResidualProjection::updateProjectionSpace()
 
 void ResidualProjection::computePreProjection(occa::memory& o_r)
 {
+  linAlg_t* linAlg = linAlg_t::getInstance();
   dfloat one = 1.0;
   dfloat zero = 0.0;
   dfloat mone = -1.0;
@@ -77,15 +80,12 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
-  if(blockSolver){
-    scaledAddKernel(Nlocal, fieldOffset, mone, o_rtmp, one, o_r);
-  } else {
-    scaledAddKernel(Nlocal, mone, o_rtmp, one, o_r);
-  }
+  linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
 {
+  linAlg_t* linAlg = linAlg_t::getInstance();
   const dfloat one = 1.0;
   const dfloat zero = 0.0;
 
@@ -95,22 +95,14 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
-    if(blockSolver){
-      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
-    } else {
-      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
-    }
+    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat), Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
-    if(blockSolver){
-      scaledAddKernel(Nlocal, fieldOffset, one, o_xbar, one, o_x);
-    } else {
-      scaledAddKernel(Nlocal, one, o_xbar, one, o_x);
-    }
+    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
   const dlong previousNumVecsProjection = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
@@ -176,9 +168,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
       properties["defines/p_Nfields"] = Nfields;
 
       filename = oklpath + "ellipticResidualProjection.okl";
-      scalarMultiplyKernel = platform->device.buildKernel(filename.c_str(),
-                                                               "scalarMultiply",
-                                                               properties);
       multiScaledAddwOffsetKernel = platform->device.buildKernel(filename.c_str(),
                                                                       "multiScaledAddwOffset",
                                                                       properties);
@@ -187,8 +176,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                                                                            properties);
       accumulateKernel = platform->device.buildKernel(filename.c_str(), "accumulate", properties);
   }
-  scaledAddKernel = elliptic.scaledAddKernel;
-  sumKernel = elliptic.mesh->sumKernel;
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
                    {
                      ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);

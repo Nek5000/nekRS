@@ -7,6 +7,7 @@ platform_t::platform_t(setupAide& options, MPI_Comm _comm)
   timer(_comm, device, 0),
   comm(_comm)
 {
+  kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   kernelInfo["defines/" "p_BLOCKSIZE"] = BLOCKSIZE;
   if(sizeof(dfloat) == 4) {

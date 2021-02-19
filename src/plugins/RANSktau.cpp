@@ -2,6 +2,7 @@
 #include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "RANSktau.hpp"
+#include "linAlg.hpp"
 
 // private members
 namespace
@@ -114,6 +115,7 @@ void RANSktau::updateSourceTerms()
 {
   mesh_t* mesh = nrs->mesh;
   cds_t* cds = nrs->cds;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   occa::memory o_OiOjSk  = nrs->o_wrk0;
   occa::memory o_SijMag2 = nrs->o_wrk1;
@@ -137,11 +139,12 @@ void RANSktau::updateSourceTerms()
                        ogsAdd,
                        mesh->ogs);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
+  linAlg->axmyMany(
+    mesh->Nlocal,
     NSOfields,
-    mesh->o_vgeo,
+    nrs->fieldOffset,
+    0,
+    1.0,
     nrs->mesh->o_invLMM,
     o_SijOij);
 
@@ -177,6 +180,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 {
   if(setupCalled) return;
   platform_t* platform = platform_t::getInstance();
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   nrs    = nrsIn;
   mueLam = mueIn;
@@ -195,7 +199,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    nrs->fillKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    linAlg->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

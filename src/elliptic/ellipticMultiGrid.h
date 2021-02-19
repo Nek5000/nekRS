@@ -66,7 +66,6 @@ public:
   bool overlap;
   occa::kernel fusedFDMKernel;
   occa::kernel postFDMKernel;
-  occa::kernel collocateKernel;
   // Eigenvectors
   occa::memory o_Sx;
   occa::memory o_Sy;

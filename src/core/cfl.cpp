@@ -1,5 +1,6 @@
 #include "nrs.hpp"
 #include "platform.hpp"
+#include "linAlg.hpp"
 
 static int firstTime = 1;
 static dfloat* tmp;
@@ -38,6 +39,7 @@ void setup(nrs_t* nrs)
 dfloat computeCFL(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
   if(firstTime) setup(nrs);
 
   // Compute cfl factors i.e. dt* U / h
@@ -49,17 +51,5 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_U,
                  nrs->o_wrk0);
 
-  // find the local maximum of CFL number
-  nrs->maxKernel(mesh->Nlocal, nrs->o_wrk0, o_tmp);
-  o_tmp.copyTo(tmp);
-
-  // finish reduction
-  dfloat cfl = 0.f;
-  for(dlong n = 0; n < nrs->Nblock; ++n)
-    cfl  = mymax(cfl, tmp[n]);
-
-  dfloat gcfl = 0.f;
-  MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, mesh->comm);
-
-  return gcfl;
+  return linAlg->max(mesh->Nlocal, nrs->o_wrk0, mesh->comm);
 }

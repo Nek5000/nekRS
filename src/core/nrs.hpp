@@ -114,10 +114,7 @@ typedef struct
 
   occa::kernel PQKernel;
   occa::kernel mueDivKernel;
-  occa::kernel dotMultiplyKernel;
 
-  occa::kernel scalarScaledAddKernel;
-  occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
@@ -179,19 +176,13 @@ typedef struct
   occa::kernel velocityNeumannBCKernel;
   occa::kernel velocityDirichletBCKernel;
 
-  occa::kernel fillKernel;
-
   occa::kernel cflKernel;
-  occa::kernel maxKernel;
 
   occa::kernel setEllipticCoeffKernel;
   occa::kernel setEllipticCoeffPressureKernel;
 
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
-  occa::kernel invMassMatrixKernel;
-  occa::kernel massMatrixKernel;
-
   occa::kernel maskCopyKernel;
 
   int* EToB;

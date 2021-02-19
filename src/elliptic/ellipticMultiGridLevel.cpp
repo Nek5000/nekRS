@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 #include <iostream>
 void MGLevel::Ax(occa::memory o_x, occa::memory o_Ax)
 {
@@ -38,17 +39,15 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
     // subtract r = b - A*x
     ellipticScaledAdd(elliptic, 1.f, o_rhs, -1.f, o_res);
   } else {
-    //o_res.copyFrom(o_rhs, Nrows*sizeof(dfloat));
-    dfloat zero = 0.0;
-    dfloat one = 1.0;
-    elliptic->scaledAddKernel(Nrows, one, o_rhs, zero, o_res);
+    o_res.copyFrom(o_rhs, Nrows*sizeof(dfloat));
   }
 }
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
 {
+  linAlg_t* linAlg = linAlg_t::getInstance();
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
-    elliptic->dotMultiplyKernel(mesh->Nelements * NpF, o_invDegree, o_x, o_x);
+    linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
 
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 

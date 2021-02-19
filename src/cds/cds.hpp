@@ -96,9 +96,7 @@ typedef struct
 
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
 
-  occa::kernel fillKernel;
   occa::kernel sumMakefKernel;
-  occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
@@ -137,7 +135,6 @@ typedef struct
   occa::kernel scalarHaloPutKernel;
 
   occa::kernel setFlowFieldKernel;
-  occa::kernel setScalarFieldKernel;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;
@@ -150,9 +147,6 @@ typedef struct
   occa::kernel helmholtzRhsBCKernel;
   occa::kernel dirichletBCKernel;
   occa::kernel setEllipticCoeffKernel;
-
-  occa::kernel invMassMatrixKernel;
-  occa::kernel massMatrixKernel;
 
   occa::kernel maskCopyKernel;
 

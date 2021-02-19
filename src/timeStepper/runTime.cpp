@@ -7,6 +7,7 @@
 #include "udf.hpp"
 #include "tombo.hpp"
 #include "cfl.hpp"
+#include "linAlg.hpp"
 
 void extbdfCoefficents(nrs_t* nrs, int order);
 
@@ -188,6 +189,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   if(udf.sEqnSource) {
     timer::tic("udfSEqnSource", 1);
@@ -242,18 +244,17 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
             cds->o_S,
             cds->o_rho,
             cds->o_wrk0);
- 
-        nrs->scaledAddKernel(
+        linAlg->axpby(
           cds->meshV->Nelements * cds->meshV->Np,
           -1.0,
-          0 * cds->fieldOffset,
           cds->o_wrk0,
           1.0,
-          isOffset,
-          o_FS);
+          o_FS,
+          0, isOffset
+        );
       }
     } else {
-      cds->fillKernel(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
+      linAlg->fill(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
     } 
 
     cds->sumMakefKernel(
@@ -275,9 +276,10 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 {
   cds_t* cds   = nrs->cds;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   timer::tic("makeq", 1);
-  cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+  linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
   makeq(nrs, time, cds->o_FS, cds->o_BF);
   timer::toc("makeq");
 
@@ -304,14 +306,15 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
       cds->o_ellipticCoeff);
 
     if(cds->o_BFDiag.ptr())
-      cds->scaledAddKernel(
+      linAlg->axpby(
         mesh->Nlocal,
         1.0,
-        is * cds->fieldOffset,
         cds->o_BFDiag,
         1.0,
-        cds->fieldOffset,
-        cds->o_ellipticCoeff);
+        cds->o_ellipticCoeff,
+        is * cds->fieldOffset,
+        cds->fieldOffset
+      );
 
     occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0]);
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
@@ -322,6 +325,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   if(udf.uEqnSource) {
     timer::tic("udfUEqnSource", 1);
@@ -362,18 +366,16 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
           nrs->fieldOffset,
           nrs->o_U,
           nrs->o_wrk0);
- 
-      nrs->scaledAddKernel(
+      linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         -1.0,
-        0,
         nrs->o_wrk0,
         1.0,
-        0,
-        o_FU);
+        o_FU
+      );
     }
   } else {
-    if(nrs->Nsubsteps) nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
   }
 
   nrs->sumMakefKernel(
@@ -392,9 +394,10 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   timer::tic("makef", 1);
-  nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
   makef(nrs, time, nrs->o_FU, nrs->o_BF);
   timer::toc("makef");
 
@@ -432,18 +435,35 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   // Solve for Each SubProblem
   for (int torder = nrs->ExplicitOrder - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
     const dfloat b = nrs->extbdfB[torder];
-    if (torder == nrs->ExplicitOrder - 1)
-      nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-                           o_U, 0.0, 0, nrs->o_wrk0);
-    else
-      nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-                           o_U, 1.0, 0, nrs->o_wrk0);
+    if (torder == nrs->ExplicitOrder - 1){
+      linAlg->axpby(
+        nrs->NVfields * nrs->fieldOffset,
+        b,
+        o_U,
+        0.0,
+        nrs->o_wrk0,
+        toffset,
+        0
+      );
+    }
+    else{
+      linAlg->axpby(
+        nrs->NVfields * nrs->fieldOffset,
+        b,
+        o_U,
+        1.0,
+        nrs->o_wrk0,
+        toffset,
+        0
+      );
+    }
 
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
     dfloat tsub = time;
@@ -575,18 +595,33 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
   mesh_t* mesh = cds->meshV;
+  linAlg_t* linAlg = linAlg_t::getInstance();
 
   // Solve for Each SubProblem
   for (int torder = (cds->ExplicitOrder - 1); torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     const dlong toffset = is * cds->fieldOffset +
                           torder * cds->NSfields * cds->fieldOffset;
-    if (torder == cds->ExplicitOrder - 1)
-      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder],
-                           toffset, o_S, 0.0, 0, cds->o_wrk0);
-    else
-      cds->scaledAddKernel(cds->fieldOffset, cds->extbdfB[torder],
-                           toffset, o_S, 1.0, 0, cds->o_wrk0);
+    if (torder == cds->ExplicitOrder - 1){
+      linAlg->axpby(
+        cds->fieldOffset,
+        cds->extbdfB[torder],
+        o_S,
+        0.0,
+        cds->o_wrk0,
+        toffset, 0
+      );
+    }
+    else{
+      linAlg->axpby(
+        cds->fieldOffset,
+        cds->extbdfB[torder],
+        o_S,
+        1.0,
+        cds->o_wrk0,
+        toffset, 0
+      );
+    }
 
     // Advance SubProblem to t^(n-torder+1)
     dfloat tsub = time;

@@ -1,17 +1,3 @@
-@kernel void collocate(const dlong N,
-#if p_restrict
-                       @restrict const dfloat*  w,
-#else
-                       @restrict const pfloat*  w,
-#endif
-                       @restrict const pfloat*  v,
-                       @restrict pfloat* result)
-{
-  for(dlong n = 0; n < N; ++n; @tile(p_threadBlockSize,@outer,@inner))
-    if(n < N)
-      result[n] = w[n] * v[n];
-}
-
 @kernel void preFDM(dlong Nelements,
                     @restrict const pfloat* u,
                     @restrict pfloat* work1)
