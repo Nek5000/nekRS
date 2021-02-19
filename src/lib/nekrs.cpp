@@ -358,7 +358,8 @@ static void setOUDF(setupAide &options)
 static void setOccaVars(string dir)
 {
   char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
+  char * ret = getcwd(buf, sizeof(buf));
+  if(!ret) ABORT(EXIT_FAILURE);;
   string cwd;
   cwd.assign(buf);
 
