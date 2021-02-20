@@ -108,13 +108,20 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
-  if (rank==0) printf("Compiling parALMOND Kernels...");fflush(stdout);
+  MPI_Barrier(comm);
+  const double tStart = MPI_Wtime();
+  if (rank==0) printf("loading parALMOND kernels ... ");fflush(stdout);
 
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
       const string oklpath = install_dir + "/okl/parAlmond/";
       string filename;
 
+      filename = oklpath + "vectorDotStar.okl";
+      vectorDotStarKernel1 = device.buildKernel(filename.c_str(), "vectorDotStar1", kernelInfo);
+      vectorDotStarKernel2 = device.buildKernel(filename.c_str(), "vectorDotStar2", kernelInfo);
+
+      /*
       filename = oklpath + "SpMVcsr.okl";
       SpMVcsrKernel1  = device.buildKernel(filename.c_str(),  "SpMVcsr1",  kernelInfo);
       SpMVcsrKernel2  = device.buildKernel(filename.c_str(),  "SpMVcsr2",  kernelInfo);
@@ -140,10 +147,6 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
       vectorAddKernel1 = device.buildKernel(filename.c_str(), "vectorAdd1", kernelInfo);
       vectorAddKernel2 = device.buildKernel(filename.c_str(), "vectorAdd2", kernelInfo);
 
-      filename = oklpath + "vectorDotStar.okl";
-      vectorDotStarKernel1 = device.buildKernel(filename.c_str(), "vectorDotStar1", kernelInfo);
-      vectorDotStarKernel2 = device.buildKernel(filename.c_str(), "vectorDotStar2", kernelInfo);
-
       filename = oklpath + "vectorInnerProd.okl";
       vectorInnerProdKernel = device.buildKernel(filename.c_str(), "vectorInnerProd", kernelInfo);
 
@@ -159,10 +162,12 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
 
       filename = oklpath + "haloExtract.okl";
       haloExtractKernel = device.buildKernel(filename.c_str(), "haloExtract", kernelInfo);
+      */
     }
     MPI_Barrier(comm);
   }
-  if(rank==0) printf("done.\n");
+  MPI_Barrier(comm);
+  if(rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
 
 void freeParAlmondKernels() {

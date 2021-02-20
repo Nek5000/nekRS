@@ -172,16 +172,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->o_tmp = mesh->device.malloc(Nblock * sizeof(dfloat), elliptic->tmp);
   elliptic->o_tmp2 = mesh->device.malloc(Nblock2 * sizeof(dfloat), elliptic->tmp);
 
-  //tau
-  if (elliptic->elementType == TRIANGLES ||
-      elliptic->elementType == QUADRILATERALS) {
-    elliptic->tau = 2.0 * (mesh->N + 1) * (mesh->N + 2) / 2.0;
-    if(elliptic->dim == 3)
-      elliptic->tau *= 1.5;
-  }else {
-    elliptic->tau = 2.0 * (mesh->N + 1) * (mesh->N + 3);
-  }
-
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, mesh->comm, verbose);

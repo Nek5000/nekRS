@@ -246,20 +246,6 @@ void MGLevel::buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc)
       }
   }
 
-  if (elliptic->options.compareArgs("BASIS","BERN")) {
-    dfloat* BBP = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
-    for (int j = 0; j < NpFine; j++)
-      for (int i = 0; i < NpCoarse; i++)
-        for (int k = 0; k < NpCoarse; k++)
-          for (int l = 0; l < NpFine; l++)
-            BBP[i + j * NpCoarse] += meshLevels[Nf]->invVB[l + j * NpFine] * P[k + l * NpCoarse] *
-                                     meshLevels[Nc]->VB[i + k * NpCoarse];
-    for (int j = 0; j < NpFine; j++)
-      for (int i = 0; i < NpCoarse; i++)
-        P[i + j * NpCoarse] = BBP[i + j * NpCoarse];
-    free(BBP);
-  }
-
   //the coarsen matrix is P^T
   R = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
   for (int i = 0; i < NpCoarse; i++)
@@ -335,6 +321,10 @@ static void eig(const int Nrows, double* A, double* WR, double* WI)
 
 dfloat MGLevel::maxEigSmoothAx()
 {
+  MPI_Barrier(mesh->comm);
+  const double tStart = MPI_Wtime();
+  if(mesh->rank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
+     
   const dlong N = Nrows;
   const dlong M = Ncols;
 
@@ -342,7 +332,7 @@ dfloat MGLevel::maxEigSmoothAx()
   hlong Ntotal = 0;
   MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, mesh->comm);
 
-  const int k = std::min((hlong) 20, Ntotal); 
+  const int k = std::min(20, (int) Ntotal); 
 
   // do an arnoldi
 
@@ -433,11 +423,14 @@ dfloat MGLevel::maxEigSmoothAx()
   free(Vx);
   o_Vx.free();
   o_AVx.free();
+  o_AVxPfloat.free();
+  o_VxPfloat.free();
   for(int i = 0; i <= k; i++) o_V[i].free();
   //free((void*)o_V);
   delete[] o_V;
 
-  // if((mesh->rank==0)&&(options.compareArgs("VERBOSE","TRUE"))) printf("weight = %g \n", rho);
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);
 
   return rho;
 }

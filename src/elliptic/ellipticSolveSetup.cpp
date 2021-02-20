@@ -32,6 +32,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   mesh_t* mesh      = elliptic->mesh;
   setupAide options = elliptic->options;
 
+  MPI_Barrier(mesh->comm);
+  const double tStart = MPI_Wtime();
+
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
@@ -69,21 +72,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   dlong Nblock  = mymax(1,(Nlocal + BLOCKSIZE - 1) / BLOCKSIZE);
   dlong Nblock2 = mymax(1,(Nblock + BLOCKSIZE - 1) / BLOCKSIZE);
 
-  dlong NthreadsUpdatePCG = BLOCKSIZE;
-  dlong NblocksUpdatePCG = mymin((Nlocal + NthreadsUpdatePCG - 1) / NthreadsUpdatePCG, 160);
-
-  elliptic->NthreadsUpdatePCG = NthreadsUpdatePCG;
+  dlong NblocksUpdatePCG = mymin((Nlocal + BLOCKSIZE - 1) / BLOCKSIZE, 160);
   elliptic->NblocksUpdatePCG = NblocksUpdatePCG;
-
-  //tau
-  if (elliptic->elementType == TRIANGLES ||
-      elliptic->elementType == QUADRILATERALS) {
-    elliptic->tau = 2.0 * (mesh->N + 1) * (mesh->N + 2) / 2.0;
-    if(elliptic->dim == 3)
-      elliptic->tau *= 1.5;
-  }else {
-    elliptic->tau = 2.0 * (mesh->N + 1) * (mesh->N + 3);
-  }
 
   // Assumes wrkoffset is set properly, i.e. workoffset = wrkoffset*Nfields
   if (elliptic->wrk) { // user-provided scratch space
@@ -213,7 +203,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   hlong NelementsGlobal = 0;
 
   MPI_Allreduce(&NelementsLocal, &NelementsGlobal, 1, MPI_HLONG, MPI_SUM, mesh->comm);
-
   elliptic->NelementsGlobal = NelementsGlobal;
 
   elliptic->allNeumannPenalty = 1.;
@@ -271,7 +260,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(mesh->rank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  //copy boundary flags
   elliptic->o_EToB = mesh->device.malloc(
     mesh->Nelements * mesh->Nfaces * elliptic->Nfields * sizeof(int),
     elliptic->EToB);
@@ -302,20 +290,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         }
       }
     }
+  ogsGatherScatterMany(elliptic->mapB,
+                       elliptic->Nfields,
+                       elliptic->Ntotal,
+                       ogsInt,
+                       ogsMin,
+                       mesh->ogs);
 
-  if(elliptic->blockSolver)
-    ogsGatherScatterMany(elliptic->mapB,
-                         elliptic->Nfields,
-                         elliptic->Ntotal,
-                         ogsInt,
-                         ogsMin,
-                         mesh->ogs);
-  else
-    ogsGatherScatter(elliptic->mapB, ogsInt, ogsMin, mesh->ogs);
-
-  // Create field based
-  elliptic->Nmasked      = 0;
-  elliptic->fNmasked     = (dlong*)calloc(elliptic->Nfields, sizeof(dlong));
+  // Create mask Ids
+  elliptic->Nmasked  = 0;
+  elliptic->fNmasked = (dlong*)calloc(elliptic->Nfields, sizeof(dlong));
   for(int fld = 0; fld < elliptic->Nfields; fld++)
     for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
       if (elliptic->mapB[n + fld * elliptic->Ntotal] == largeNumber) {
@@ -326,20 +310,18 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
     }
   elliptic->o_mapB = mesh->device.malloc(mapSize * sizeof(int), elliptic->mapB);
-
   elliptic->maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-  elliptic->Nmasked = 0; //reset
+  elliptic->Nmasked = 0;
   for(int fld = 0; fld < elliptic->Nfields; fld++)
     for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
       if (elliptic->mapB[n + fld * elliptic->Ntotal] == 1)
         elliptic->maskIds[elliptic->Nmasked++] = n + fld * elliptic->Ntotal;
-  if (elliptic->Nmasked) elliptic->o_maskIds = mesh->device.malloc(
-      elliptic->Nmasked * sizeof(dlong),
-      elliptic->maskIds);
+  if (elliptic->Nmasked) 
+    elliptic->o_maskIds = mesh->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
-  if(elliptic->blockSolver) { // Create a gs handle independent from BC handler
+   // Create a gs handle independent from BC handler
+  if(elliptic->blockSolver) {
     elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, mesh->comm, verbose, mesh->device);
-    // Create copy of invDegree so that we can accelerate vector form of masking!!!!!!
     elliptic->invDegree = (dfloat*)calloc(elliptic->Ntotal * elliptic->Nfields, sizeof(dfloat));
 
     for(int n = 0; n < elliptic->Ntotal * elliptic->Nfields; n++) elliptic->invDegree[n] = 1.0;
@@ -348,30 +330,25 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         elliptic->invDegree[n + fld * elliptic->Ntotal] = elliptic->ogs->invDegree[n];
 
     elliptic->o_invDegree = mesh->device.malloc(
-      elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-      elliptic->invDegree);
-  }else{ //make a masked version of the global id numbering if scalar
+      elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat), elliptic->invDegree);
+  }else{
     mesh->maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
     memcpy(mesh->maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
     for (dlong n = 0; n < elliptic->Nmasked; n++)
       mesh->maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
-    //use the masked ids to make another gs handle
     elliptic->ogs = ogsSetup(Nlocal, mesh->maskedGlobalIds, mesh->comm, verbose, mesh->device);
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
 
-  /*preconditioner setup */
   elliptic->precon = new precon_t();
 
-  // set kernel name suffix
   string suffix;
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
   string filename, kernelName;
 
-  //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
   kernelInfo["defines/pfloat"] = pfloatString;
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
@@ -398,7 +375,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       const string oklpath = install_dir + "/okl/core/";
       string filename;
 
-      //mesh kernels
       filename = oklpath + "meshHaloExtract2D.okl";
       mesh->haloExtractKernel =
         mesh->device.buildKernel(filename.c_str(),
@@ -728,8 +704,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
   kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
-  kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) NthreadsUpdatePCG; // WARNING SHOULD BE MULTIPLE OF 32
-  kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (NthreadsUpdatePCG / 32); // WARNING: CUDA SPECIFIC
+  kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) BLOCKSIZE;
+  kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (BLOCKSIZE/32); // WARNING: CUDA SPECIFIC
 
   occa::properties dfloatKernelInfo = kernelInfo;
   occa::properties floatKernelInfo = kernelInfo;
@@ -955,52 +931,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
-  if(elliptic->blockSolver) {
-    elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
-
-    for(int fld = 0; fld < elliptic->Nfields; fld++) {
-      elliptic->sumBlockFieldKernel(Nlocal,
-                                    fld,
-                                    elliptic->Ntotal,
-                                    elliptic->o_invDegree,
-                                    elliptic->o_tmp);
-      elliptic->o_tmp.copyTo(elliptic->tmp);
-
-      dfloat nullProjectWeightLocal = 0;
-      dfloat nullProjectWeightGlobal = 0;
-      for(dlong n = 0; n < elliptic->Nblock; ++n)
-        nullProjectWeightLocal += elliptic->tmp[n];
-
-      MPI_Allreduce(&nullProjectWeightLocal,
-                    &nullProjectWeightGlobal,
-                    1,
-                    MPI_DFLOAT,
-                    MPI_SUM,
-                    mesh->comm);
-
-      elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
-    }
-  }else{
-    mesh->sumKernel(mesh->Nelements * mesh->Np, elliptic->o_invDegree, elliptic->o_tmp);
-    elliptic->o_tmp.copyTo(elliptic->tmp);
-
-    dfloat nullProjectWeightLocal = 0;
-    dfloat nullProjectWeightGlobal = 0;
-    for(dlong n = 0; n < elliptic->Nblock; ++n)
-      nullProjectWeightLocal += elliptic->tmp[n];
-
-    MPI_Allreduce(&nullProjectWeightLocal,
-                  &nullProjectWeightGlobal,
-                  1,
-                  MPI_DFLOAT,
-                  MPI_SUM,
-                  mesh->comm);
-
-    elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
-  }
-
-  long long int pre = mesh->device.memoryAllocated();
-
   oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
@@ -1012,10 +942,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
+  long long int pre = mesh->device.memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs, kernelInfo);
-
   long long int usedBytes = mesh->device.memoryAllocated() - pre;
-
   elliptic->precon->preconBytes = usedBytes;
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
@@ -1027,4 +956,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
     elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
   }
+
+  MPI_Barrier(mesh->comm);
+  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  fflush(stdout);
 }

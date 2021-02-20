@@ -26,8 +26,6 @@
 
 #include "elliptic.h"
 
-#define USE_WEIGHTED 0
-
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {
   dfloat qmeanLocal;
@@ -72,11 +70,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
         elliptic->addScalarBlockFieldKernel(Nlocal, fld, elliptic->Ntotal,  -qmeanGlobal, o_q);
       }
   }else{
-#if USE_WEIGHTED == 1
-    elliptic->innerProductKernel(mesh->Nelements * mesh->Np, elliptic->o_invDegree, o_q, o_tmp);
-#else
     mesh->sumKernel(mesh->Nelements * mesh->Np, o_q, o_tmp);
-#endif
 
 #ifdef ELLIPTIC_ENABLE_TIMER
     timer::tic("dotp",1);
@@ -95,11 +89,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 #endif
 
     // normalize
-#if USE_WEIGHTED == 1
-    qmeanGlobal *= elliptic->nullProjectWeightGlobal;
-#else
     qmeanGlobal /= ((dfloat) elliptic->NelementsGlobal * (dfloat)mesh->Np);
-#endif
     // q[n] = q[n] - qmeanGlobal
     mesh->addScalarKernel(mesh->Nelements * mesh->Np, -qmeanGlobal, o_q);
   }

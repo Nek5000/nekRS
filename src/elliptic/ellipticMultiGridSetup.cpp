@@ -164,26 +164,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   int basisNp = ellipticCoarse->mesh->Np;
   dfloat* basis = NULL;
 
-  if (options.compareArgs("BASIS","BERN")) basis = ellipticCoarse->mesh->VB;
-
   hlong* coarseGlobalStarts = (hlong*) calloc(mesh->size + 1, sizeof(hlong));
 
-  if (options.compareArgs("DISCRETIZATION","IPDG")) {
-    ellipticBuildIpdg(ellipticCoarse,
-                      basisNp,
-                      basis,
-                      lambda,
-                      &coarseA,
-                      &nnzCoarseA,
-                      coarseGlobalStarts);
-  } else if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-    if(options.compareArgs("GALERKIN COARSE OPERATOR","TRUE"))
-      ellipticBuildContinuousGalerkinHex3D(ellipticCoarse,elliptic,lambda,&coarseA,&nnzCoarseA,
-                                           &coarseogs,coarseGlobalStarts);
-    else
-      ellipticBuildContinuous(ellipticCoarse, &coarseA, &nnzCoarseA,&coarseogs,
-                              coarseGlobalStarts);
-  }
+  if(options.compareArgs("GALERKIN COARSE OPERATOR","TRUE"))
+    ellipticBuildContinuousGalerkinHex3D(ellipticCoarse,elliptic,lambda,&coarseA,&nnzCoarseA,
+                                         &coarseogs,coarseGlobalStarts);
+  else
+    ellipticBuildContinuous(ellipticCoarse, &coarseA, &nnzCoarseA,&coarseogs,
+                            coarseGlobalStarts);
 
   hlong* Rows = (hlong*) calloc(nnzCoarseA, sizeof(hlong));
   hlong* Cols = (hlong*) calloc(nnzCoarseA, sizeof(hlong));

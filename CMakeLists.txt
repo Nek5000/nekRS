@@ -198,9 +198,6 @@ set(SRC
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
-    src/linearSolver/NBFPCG.cpp
-    src/linearSolver/NBPCG.cpp
-    src/linearSolver/PCG.cpp
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
