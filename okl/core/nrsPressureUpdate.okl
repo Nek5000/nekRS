@@ -30,13 +30,17 @@
                                @restrict const dfloat*  P,
                                @restrict dfloat*   Pnew)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0))
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id  = n + e * p_Np;
-      const int bcType = mapB[id];
-      const dfloat princ = PI[id];
-      dfloat pr = P[id];
-      if(bcType != 1) pr += princ; // Dirichlet already updated
-      Pnew[id] = pr;
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)){
+    #pragma unroll p_Nq
+    for(int i = 0 ; i < p_Nq; ++i){
+      for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {
+        const dlong id  = i*p_Nq*p_Nq+j + e * p_Np;
+        const int bcType = mapB[id];
+        const dfloat princ = PI[id];
+        dfloat pr = P[id];
+        if(bcType != 1) pr += princ; // Dirichlet already updated
+        Pnew[id] = pr;
+      }
     }
+  }
 }

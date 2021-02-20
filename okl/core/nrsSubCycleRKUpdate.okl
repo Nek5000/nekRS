@@ -33,22 +33,20 @@
                                     @restrict dfloat*  resU,
                                     @restrict dfloat*  U)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + e * p_Np;
-
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
+    if(id < Nelements * p_Np){
 #pragma unroll p_NVfields
-      for (int i = 0; i < p_NVfields; i++) {
-        dfloat resu =  resU[id + i * offset];
-        dfloat rhsu =  rhsU[id + i * offset];
-        dfloat u    =     U[id + i * offset];
+        for (int i = 0; i < p_NVfields; i++) {
+          dfloat resu =  resU[id + i * offset];
+          dfloat rhsu =  rhsU[id + i * offset];
+          dfloat u    =     U[id + i * offset];
 
-        resu = rka * resu - dt * rhsu;
-        u += rkb * resu;
+          resu = rka * resu - dt * rhsu;
+          u += rkb * resu;
 
-        resU[id + i * offset] = resu;
-        U[id + i * offset] = u;
-      }
+          resU[id + i * offset] = resu;
+          U[id + i * offset] = u;
+        }
     }
   }
 }
@@ -63,28 +61,26 @@
                                   @restrict dfloat*  RHSU,
                                   @restrict dfloat*  U)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + e * p_Np;
-
-      if(stage == 3) { // Final stage
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
+    if(id < Nelements * p_Np){
+        if(stage == 3) { // Final stage
 #pragma unroll p_NVfields
-        for (int fld = 0; fld < p_NVfields; fld++) {
-          dfloat un = Us[id + fld * offset];
-          for(int st = 0; st < stage + 1; st++) {
-            un -= dt * rkb[st] * RHSU[id + fld * offset + st * p_NVfields * offset]; // k0,k1,k2,k3
+          for (int fld = 0; fld < p_NVfields; fld++) {
+            dfloat un = Us[id + fld * offset];
+            for(int st = 0; st < stage + 1; st++) {
+              un -= dt * rkb[st] * RHSU[id + fld * offset + st * p_NVfields * offset]; // k0,k1,k2,k3
+            }
+            U[id + fld * offset] = un;
           }
-          U[id + fld * offset] = un;
-        }
-      } else{
+        } else{
 #pragma unroll p_NVfields
-        for (int fld = 0; fld < p_NVfields; fld++) {
-          dfloat rhsu = RHSU[id + fld * offset + stage * p_NVfields * offset];
-          dfloat un   = Us[id + fld * offset];
-          // Intermediate stage Update
-          U[id + fld * offset] = un - dt * rka[stage + 1] * rhsu;
+          for (int fld = 0; fld < p_NVfields; fld++) {
+            dfloat rhsu = RHSU[id + fld * offset + stage * p_NVfields * offset];
+            dfloat un   = Us[id + fld * offset];
+            // Intermediate stage Update
+            U[id + fld * offset] = un - dt * rka[stage + 1] * rhsu;
+          }
         }
-      }
     }
   }
 }
@@ -97,22 +93,20 @@
                             @restrict dfloat*  Ue)
 {
   // Low storage Runge Kutta time step update
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + p_Np * e;
-
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
+    if(id < Nelements * p_Np){
 #pragma unroll p_NVfields
-      for (int i = 0; i < p_NVfields; i++) {
-        dfloat Un = 0.;
+        for (int i = 0; i < p_NVfields; i++) {
+          dfloat Un = 0.;
 
-        for (int s = 0; s < Nstages; s++) {
-          const dlong idm = id + i * fieldOffset + s * p_NVfields * fieldOffset;
-          const dfloat Um = U[idm];
-          Un += c[s] * Um;
+          for (int s = 0; s < Nstages; s++) {
+            const dlong idm = id + i * fieldOffset + s * p_NVfields * fieldOffset;
+            const dfloat Um = U[idm];
+            Un += c[s] * Um;
+          }
+
+          Ue[id + i * fieldOffset] = Un;
         }
-
-        Ue[id + i * fieldOffset] = Un;
-      }
     }
   }
 }

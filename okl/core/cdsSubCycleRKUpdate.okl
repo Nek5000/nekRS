@@ -33,10 +33,8 @@
                                     @restrict dfloat*  resS,
                                     @restrict dfloat*  S)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0))
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + e * p_Np;
-
+  for(dlong id = 0; id < Nelements*p_Np; ++id;@tile(p_blockSize,@outer,@inner)){
+    if(id < Nelements * p_Np){
       dfloat ress =   resS[id];
       dfloat rhss =  -rhsS[id];// -Nu !!!!!!
       dfloat sn   =      S[id];
@@ -47,6 +45,7 @@
       resS[id] = ress;
       S[id]    = sn;
     }
+  }
 }
 
 @kernel void cdsSubCycleERKUpdate(const dlong Nelements,
@@ -59,9 +58,8 @@
                                   @restrict dfloat*  RHSS,
                                   @restrict dfloat*  S)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0))
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + e * p_Np;
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)){
+    if(id < Nelements * p_Np){
       if(stage == 3) { // Final stage
         dfloat sn = Ss[id];
         for(int st = 0; st < stage + 1; st++)
@@ -73,6 +71,7 @@
         S[id] = sn - dt * rka[stage + 1] * rhss;
       }
     }
+  }
 }
 
 @kernel void cdsSubCycleExt(const dlong Nelements,
@@ -82,22 +81,20 @@
                             @restrict const dfloat*  U,
                             @restrict dfloat*  Ue)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    for(int n = 0; n < p_Np; ++n; @inner(0)) {
-      const dlong id = n + p_Np * e;
-
+  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
+    if(id < Nelements * p_Np){
 #pragma unroll p_NVfields
-      for (int i = 0; i < p_NVfields; i++) {
-        dfloat Un = 0.f;
+        for (int i = 0; i < p_NVfields; i++) {
+          dfloat Un = 0.f;
 
-        for (int s = 0; s < Nstages; s++) {
-          const dlong idm = id + i * voffset + s * p_NVfields * voffset;
-          const dfloat Um = U[idm];
-          Un += c[s] * Um;
+          for (int s = 0; s < Nstages; s++) {
+            const dlong idm = id + i * voffset + s * p_NVfields * voffset;
+            const dfloat Um = U[idm];
+            Un += c[s] * Um;
+          }
+
+          Ue[id + i * voffset] = Un;
         }
-
-        Ue[id + i * voffset] = Un;
-      }
     }
   }
 }
