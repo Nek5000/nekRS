@@ -153,7 +153,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_wrk3);
 
   nrs->o_wrk1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
-  nrs->NiterP = ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
+  ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
 
   return nrs->o_wrk1;
 }
@@ -256,11 +256,11 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
   }
 
   if(nrs->uvwSolver) {
-    nrs->NiterU = ellipticSolve(nrs->uvwSolver, nrs->o_wrk3, nrs->o_wrk0);
+    ellipticSolve(nrs->uvwSolver, nrs->o_wrk3, nrs->o_wrk0);
   } else {
-    nrs->NiterU = ellipticSolve(nrs->uSolver, nrs->o_wrk3, nrs->o_wrk0);
-    nrs->NiterV = ellipticSolve(nrs->vSolver, nrs->o_wrk4, nrs->o_wrk1);
-    nrs->NiterW = ellipticSolve(nrs->wSolver, nrs->o_wrk5, nrs->o_wrk2);
+    ellipticSolve(nrs->uSolver, nrs->o_wrk3, nrs->o_wrk0);
+    ellipticSolve(nrs->vSolver, nrs->o_wrk4, nrs->o_wrk1);
+    ellipticSolve(nrs->wSolver, nrs->o_wrk5, nrs->o_wrk2);
   }
 
   return nrs->o_wrk0;

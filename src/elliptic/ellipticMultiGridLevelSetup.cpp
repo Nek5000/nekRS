@@ -292,7 +292,7 @@ dfloat MGLevel::maxEigSmoothAx()
   hlong Ntotal = 0;
   MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, mesh->comm);
 
-  const int k = std::min(20, (int) Ntotal); 
+  const int k = std::min((hlong)20, Ntotal); 
 
   // do an arnoldi
 

@@ -88,17 +88,49 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + nrs->dt[0], nrs->dt[0], cfl);
 
-    if(nrs->flow) {
-      if(nrs->uvwSolver)
-        printf("  UVW: %d  P: %d", nrs->NiterU, nrs->NiterP);
-      else
-        printf("  U: %d  V: %d  W: %d  P: %d", nrs->NiterU, nrs->NiterV, nrs->NiterW, nrs->NiterP);
+    if(nrs->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || tstep < 101) {
+      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
+      if(nrs->flow) {
+        elliptic_t *solver = nrs->pSolver;
+        printf("  P  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", 
+	       solver->Niter, solver->res00, solver->res0, solver->res);
+ 
+        if(nrs->uvwSolver) {
+          solver = nrs->uvwSolver;
+          printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+
+	       solver->Niter, solver->res00, solver->res0, solver->res);
+        } else {
+          solver = nrs->uSolver;
+          printf("  U  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+	         solver->Niter, solver->res00, solver->res0, solver->res);
+          solver = nrs->vSolver;
+          printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+	         solver->Niter, solver->res00, solver->res0, solver->res);
+          solver = nrs->wSolver;
+          printf("  W  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+	         solver->Niter, solver->res00, solver->res0, solver->res);
+        }
+      }
+
+      for(int is = 0; is < nrs->Nscalar; is++) {
+	elliptic_t * solver = cds->solver[is];
+        printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
+	       solver->Niter, solver->res00, solver->res0, solver->res);
+      }	
+    }  else {
+      if(nrs->flow) {
+        if(nrs->uvwSolver)
+          printf("  UVW: %d  P: %d", nrs->uvwSolver->Niter, nrs->pSolver->Niter);
+        else
+          printf("  U: %d  V: %d  W: %d  P: %d", 
+         	       nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter, nrs->pSolver->Niter);
+      }
+      for(int is = 0; is < nrs->Nscalar; is++)
+        if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
+
+      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
     }
-
-    for(int is = 0; is < nrs->Nscalar; is++)
-      if(cds->compute[is]) printf("  S: %d", cds->Niter[is]);
-
-    printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
   }
 
   if(cfl > 30 || std::isnan(cfl)) {

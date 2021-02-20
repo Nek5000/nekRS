@@ -27,8 +27,7 @@
 #include "elliptic.h"
 #include "timer.hpp"
 
-int ellipticSolve(elliptic_t* elliptic,
-                  occa::memory &o_r, occa::memory &o_x)
+void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
@@ -54,13 +53,14 @@ int ellipticSolve(elliptic_t* elliptic,
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     timer::tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
+    elliptic->res00 = sqrt(ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * elliptic->resNormFactor); 
     elliptic->residualProjection->pre(o_r);
     timer::toc("pre");
   }
 
   dlong Niter;
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
-    Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
+    elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->res0, elliptic->res);
   }else{
     printf("NONBLOCKING Krylov solvers currently not supported!");
     ABORT(EXIT_FAILURE);
@@ -72,16 +72,16 @@ int ellipticSolve(elliptic_t* elliptic,
  */
   }
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
     ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
     timer::tic("post",1);
     elliptic->residualProjection->post(o_x);
     timer::toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
+  } else {
+    elliptic->res00 = elliptic->res0;
   }
 
   if(elliptic->allNeumann)
     ellipticZeroMean(elliptic, o_x);
-
-  return Niter;
 }

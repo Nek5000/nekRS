@@ -49,6 +49,9 @@ typedef struct
   int var_coeff;   // flag for variable coefficient
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
 
+  int Niter;
+  dfloat res00, res0, res;
+
   dlong Ntotal; // offset
 
   mesh_t* mesh;
@@ -269,7 +272,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
 
-int  ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
+void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
 
 void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo);
 void ellipticBlockSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo);
@@ -290,17 +293,8 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
                              dfloat* recvBuffer);
 
 //Linear solvers
-int pcg      (elliptic_t* elliptic,
-              occa::memory &o_r,
-              occa::memory &o_x,
-              const dfloat tol,
-              const int MAXIT);
-int pbicgstab(elliptic_t* elliptic,
-              dfloat lambda,
-              occa::memory &o_r,
-              occa::memory &o_x,
-              const dfloat tol,
-              const int MAXIT);
+int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
+        const dfloat tol, const int MAXIT, dfloat &res0, dfloat &res);
 
 void ellipticScaledAdd(elliptic_t* elliptic,
                        dfloat alpha,

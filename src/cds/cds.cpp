@@ -65,8 +65,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
     cds->o_wrk0.copyFrom(cds->o_Se, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
     if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
   }
-
-  cds->Niter[is] = ellipticSolve(solver, cds->o_wrk1, cds->o_wrk0);
+  ellipticSolve(solver, cds->o_wrk1, cds->o_wrk0);
 
   return cds->o_wrk0;
 }
