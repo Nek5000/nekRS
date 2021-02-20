@@ -51,5 +51,5 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   }
 
   MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
