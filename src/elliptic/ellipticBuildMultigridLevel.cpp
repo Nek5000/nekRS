@@ -221,12 +221,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->ogs = ogsSetup(Ntotal, mesh->maskedGlobalIds, mesh->comm, verbose, mesh->device);
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
 
-  // HERE
   occa::properties kernelInfo = ellipticKernelInfo(mesh);
 
-  //  kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-
-  // set kernel name suffix
   string suffix;
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
@@ -277,16 +273,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
       kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
-/*
-      //add standard boundary functions
-      char* boundaryHeaderFileName;
-      if (elliptic->dim == 2)
-        boundaryHeaderFileName = strdup(oklpath + "/data/ellipticBoundary2D.h");
-      else if (elliptic->dim == 3)
-        boundaryHeaderFileName = strdup(oklpath + "/data/ellipticBoundary3D.h");
-      kernelInfo["includes"] += boundaryHeaderFileName;
- */
-
       occa::properties AxKernelInfo = kernelInfo;
       filename = oklpath + "ellipticAx" + suffix + ".okl";
       kernelName = "ellipticAx" + suffix;
@@ -330,14 +316,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
         kernelName = "ellipticPartialGradient" + suffix;
         elliptic->partialGradientKernel = mesh->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-/*
-        sprintf(fileName, oklpath + "ellipticAxIpdg%s.okl", suffix);
-        sprintf(kernelName, "ellipticAxIpdg%s", suffix);
-        elliptic->ipdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
-
-        sprintf(kernelName, "ellipticPartialAxIpdg%s", suffix);
-        elliptic->partialIpdgKernel = mesh->device.buildKernel(fileName,kernelName,kernelInfo);
- */
       }
     }
 

@@ -96,10 +96,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   this->setupSmoother(ellipticBase);
 
   /* build coarsening and prologation operators to connect levels */
-  if (elliptic->elementType == TRIANGLES || elliptic->elementType == TETRAHEDRA)
-    this->buildCoarsenerTriTet(meshLevels, Nf, Nc);
-  else
-    this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
+  this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
   o_xPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
   o_rhsPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
@@ -218,43 +215,6 @@ void MGLevel::Report()
       printf("     |            |     Degree %2d   |                   |\n", degree);
     }
   }
-}
-
-void MGLevel::buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc)
-{
-  int NpFine   = meshLevels[Nf]->Np;
-  int NpCoarse = meshLevels[Nc]->Np;
-  dfloat* P    = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
-  dfloat* Ptmp = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
-
-  //initialize P as identity (which it is for SPARSE)
-  for (int i = 0; i < NpCoarse; i++) P[i * NpCoarse + i] = 1.0;
-
-  for (int n = Nc; n < Nf; n++) {
-    int Npp1 = meshLevels[n + 1]->Np;
-    int Np   = meshLevels[n  ]->Np;
-
-    //copy P
-    for (int i = 0; i < Np * NpCoarse; i++) Ptmp[i] = P[i];
-
-    //Multiply by the raise op
-    for (int i = 0; i < Npp1; i++)
-      for (int j = 0; j < NpCoarse; j++) {
-        P[i * NpCoarse + j] = 0.;
-        for (int k = 0; k < Np; k++)
-          P[i * NpCoarse + j] += meshLevels[n]->interpRaise[i * Np + k] * Ptmp[k * NpCoarse + j];
-      }
-  }
-
-  //the coarsen matrix is P^T
-  R = (dfloat*) calloc(NpFine * NpCoarse,sizeof(dfloat));
-  for (int i = 0; i < NpCoarse; i++)
-    for (int j = 0; j < NpFine; j++)
-      R[i * NpFine + j] = P[j * NpCoarse + i];
-  o_R = elliptic->mesh->device.malloc(NpFine * NpCoarse * sizeof(dfloat), R);
-
-  free(P);
-  free(Ptmp);
 }
 
 void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
