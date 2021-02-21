@@ -81,9 +81,9 @@ void meshParallelConnect(mesh_t* mesh)
   rank = mesh->rank;
   size = mesh->size;
 
-  MPI_Barrier(mesh->comm);
-  const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("Building parallel face connectivity ... ");
+  //MPI_Barrier(mesh->comm);
+  //const double tStart = MPI_Wtime();
+  //if(mesh->rank == 0) printf("Building parallel face connectivity ... ");
 
   // serial connectivity on each process
   meshConnect(mesh);
@@ -255,6 +255,6 @@ void meshParallelConnect(mesh_t* mesh)
   free(sendFaces);
   free(recvFaces);
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  //MPI_Barrier(mesh->comm);
+  //if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 }

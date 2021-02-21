@@ -32,7 +32,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  int maxIter = 1000;
+  int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
   dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
