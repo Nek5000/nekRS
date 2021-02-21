@@ -8,6 +8,9 @@ class setupAide;
 class device_t : public occa::device{
   public:
     MPI_Comm comm;
+    occa::kernel buildNativeKernel(const std::string &filename,
+                             const std::string &kernelName,
+                             const occa::properties &props) const;
     occa::kernel buildKernel(const std::string &filename,
                              const std::string &kernelName,
                              const occa::properties &props) const;

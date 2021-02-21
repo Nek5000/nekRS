@@ -72,6 +72,15 @@ platform_t::create_mempool(const dlong offset, const dlong fields)
 }
 
 occa::kernel
+device_t::buildNativeKernel(const std::string &filename,
+                         const std::string &kernelName,
+                         const occa::properties &props) const
+{
+  occa::properties nativeProperties = props;
+  nativeProperties["okl/enabled"] = false;
+  return this->buildKernel(filename, kernelName, nativeProperties, comm);
+}
+occa::kernel
 device_t::buildKernel(const std::string &filename,
                          const std::string &kernelName,
                          const occa::properties &props) const

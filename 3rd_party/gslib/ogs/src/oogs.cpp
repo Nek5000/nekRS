@@ -162,13 +162,11 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
       gs->unpackBufDoubleMaxKernel = platform->device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMax", ogs::kernelInfo);
 
       if(platform->device.mode() == "HIP" || platform->device.mode() == "CUDA") {
-        occa::properties halfKernelInfo = ogs::kernelInfo;
         std::string fileName = DOGS;
         if(platform->device.mode() == "CUDA") fileName += "/okl/oogs-half.cu";
         if(platform->device.mode() == "HIP") fileName += "/okl/oogs-half.hip";
-        halfKernelInfo["okl/enabled"] = false;
-        gs->packBufFloatToHalfAddKernel = platform->device.buildKernel(fileName.c_str(), "packBuf_halfAdd", halfKernelInfo);
-        gs->unpackBufHalfToFloatAddKernel = platform->device.buildKernel(fileName.c_str(), "unpackBuf_halfAdd", halfKernelInfo);
+        gs->packBufFloatToHalfAddKernel = platform->device.buildNativeKernel(fileName.c_str(), "packBuf_halfAdd", ogs::kernelInfo);
+        gs->unpackBufHalfToFloatAddKernel = platform->device.buildNativeKernel(fileName.c_str(), "unpackBuf_halfAdd", ogs::kernelInfo);
       }
   }
 
