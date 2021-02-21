@@ -29,7 +29,7 @@
 
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;

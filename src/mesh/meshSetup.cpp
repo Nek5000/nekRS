@@ -11,7 +11,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
                         occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
-  platform_t* platform = platform_t::getInstance();
+  
   device_t& device = platform->device;
 
   int rank, size;
@@ -173,7 +173,7 @@ mesh_t* createMesh(MPI_Comm comm,
                    occa::properties& kernelInfo)
 {
   mesh_t* mesh = new mesh_t[1];
-  platform_t* platform = platform_t::getInstance();
+  
   device_t& device = platform->device;
 
   int rank, size;
@@ -292,7 +292,7 @@ mesh_t* createMeshV(MPI_Comm comm,
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
   dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));

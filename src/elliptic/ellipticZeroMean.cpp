@@ -30,14 +30,14 @@
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   dfloat qmeanLocal;
   dfloat qmeanGlobal;
 
   dlong Nblock = elliptic->Nblock;
   dfloat* tmp = elliptic->tmp;
   mesh_t* mesh = elliptic->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   occa::memory &o_tmp = elliptic->o_tmp;
   const dlong Nlocal =  mesh->Np * mesh->Nelements;
@@ -48,42 +48,42 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
       // check this field for all Neumann
       if(elliptic->allBlockNeumann[fld]) {
 #ifdef ELLIPTIC_ENABLE_TIMER
-        timer::tic("dotp",1);
+        platform->timer.tic("dotp",1);
 #endif
         dfloat qmeanGlobal =
-          linAlg->innerProd(Nlocal,
+          platform->linAlg->innerProd(Nlocal,
             elliptic->o_invDegree,
             o_q,
             platform->comm,
             fld * elliptic->Ntotal);
 #ifdef ELLIPTIC_ENABLE_TIMER
-        timer::toc("dotp");
+        platform->timer.toc("dotp");
 #endif
 
         qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
 
         // q[n] = q[n] - qmeanGlobal for field id :fld
         //elliptic->addScalarBlockFieldKernel(Nlocal, fld, elliptic->Ntotal,  -qmeanGlobal, o_q);
-        linAlg->add(Nlocal, -qmeanGlobal, o_q, fld * elliptic->Ntotal);
+        platform->linAlg->add(Nlocal, -qmeanGlobal, o_q, fld * elliptic->Ntotal);
       }
   }else{
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::tic("dotp",1);
+    platform->timer.tic("dotp",1);
 #endif
   dfloat qmeanGlobal = 0.0;
 #if USE_WEIGHTED == 1
-    qmeanGlobal = linAlg->innerProd(mesh->Nlocal, elliptic->o_invDegree, o_q, platform->comm);
+    qmeanGlobal = platform->linAlg->innerProd(mesh->Nlocal, elliptic->o_invDegree, o_q, platform->comm);
 #else
-    qmeanGlobal = linAlg->sum(mesh->Nlocal, o_q, platform->comm);
+    qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm);
 #endif
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::toc("dotp");
+    platform->timer.toc("dotp");
 #endif
 
     // normalize
     qmeanGlobal /= ((dfloat) elliptic->NelementsGlobal * (dfloat)mesh->Np);
     // q[n] = q[n] - qmeanGlobal
-    linAlg->add(Nlocal, -qmeanGlobal, o_q);
+    platform->linAlg->add(Nlocal, -qmeanGlobal, o_q);
   }
 }

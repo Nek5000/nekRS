@@ -8,6 +8,7 @@
 #include "runTime.hpp"
 #include "platform.hpp"
 #include "nrssys.hpp"
+#include "linAlg.hpp"
 
 // extern variable from nrssys.hpp
 platform_t* platform;
@@ -77,13 +78,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // configure device
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
+  platform->linAlg = linAlg_t::getInstance();
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
     return;
   }
 
-  timer::tic("setup", 1);
+  platform->timer.tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -128,7 +130,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
   nek_ocopyFrom(startTime(), 0);
 
-  timer::toc("setup");
+  platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
@@ -153,7 +155,7 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
-  timer::tic("udfExecuteStep", 1);
+  platform->timer.tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     nrs->isOutputStep = 1;
@@ -163,7 +165,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   nrs->isOutputStep = 0;
-  timer::toc("udfExecuteStep");
+  platform->timer.toc("udfExecuteStep");
 }
 
 void nekUserchk(void)

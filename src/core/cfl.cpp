@@ -9,7 +9,7 @@ static occa::memory o_tmp;
 void setup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   dfloat* dH;
   if(nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
@@ -39,7 +39,7 @@ void setup(nrs_t* nrs)
 dfloat computeCFL(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   if(firstTime) setup(nrs);
 
   // Compute cfl factors i.e. dt* U / h
@@ -51,5 +51,5 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_U,
                  nrs->o_wrk0);
 
-  return linAlg->max(mesh->Nlocal, nrs->o_wrk0, mesh->comm);
+  return platform->linAlg->max(mesh->Nlocal, nrs->o_wrk0, mesh->comm);
 }

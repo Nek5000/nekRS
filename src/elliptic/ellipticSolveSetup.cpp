@@ -31,9 +31,9 @@
 
 void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   mesh_t* mesh      = elliptic->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
   setupAide options = elliptic->options;
 
   MPI_Barrier(mesh->comm);
@@ -615,6 +615,23 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   MPI_Barrier(platform->comm);
   if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
+
+  if(elliptic->blockSolver) {
+    elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
+
+    for(int fld = 0; fld < elliptic->Nfields; fld++) {
+      const dlong nullProjectWeightGlobal =
+        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm, fld * elliptic->Ntotal);
+
+      elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
+    }
+  }else{
+      const dlong nullProjectWeightGlobal =
+        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm);
+    elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
+  }
+
+  long long int pre = platform->device.memoryAllocated();
 
   oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;

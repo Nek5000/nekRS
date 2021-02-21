@@ -8,7 +8,7 @@
 
 void meshNekReaderHex3D(int N, mesh_t* mesh)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   MPI_Barrier(platform->comm);
   const double tStart = MPI_Wtime();
   if(mesh->rank == 0) printf("loading mesh from nek ... "); fflush(stdout); 

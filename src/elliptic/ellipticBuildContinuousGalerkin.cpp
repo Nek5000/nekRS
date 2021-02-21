@@ -130,7 +130,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           hlong* globalStarts)
 {
   mesh_t* mesh = elliptic->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
   setupAide options = elliptic->options;
 
   MPI_Barrier(mesh->comm);

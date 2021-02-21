@@ -219,7 +219,7 @@ int size(int isTmesh)
 
 void check(mesh_t* mesh)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   int nid = nbid[0];
   if(mesh->cht) nid = nbid[1];
 

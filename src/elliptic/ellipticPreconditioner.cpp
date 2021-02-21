@@ -31,17 +31,17 @@
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
-  platform_t* platform = platform_t::getInstance();
+  
+  
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-  timer::tic("preconditioner", 1);
+  platform->timer.tic("preconditioner", 1);
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-    linAlg->axmyzMany(
+    platform->linAlg->axmyzMany(
       Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
@@ -57,7 +57,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
     MPI_Abort(platform->comm, 1);
     //o_z.copyFrom(o_r);
   }
-  timer::toc("preconditioner");
+  platform->timer.toc("preconditioner");
 
   if(elliptic->allNeumann) // zero mean of RHS
     ellipticZeroMean(elliptic, o_z);

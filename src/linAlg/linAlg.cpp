@@ -30,25 +30,19 @@ SOFTWARE.
 linAlg_t* linAlg_t::singleton = nullptr;
 
 linAlg_t*
-linAlg_t::getInstance(platform_t* platform)
-{
-  if(!singleton)
-    singleton = new linAlg_t(platform);
-  return singleton;
-}
-linAlg_t*
 linAlg_t::getInstance()
 {
+  if(!singleton)
+    singleton = new linAlg_t();
   return singleton;
 }
-linAlg_t::linAlg_t(platform_t* platform) {
+linAlg_t::linAlg_t() {
   blocksize = BLOCKSIZE;
   comm = platform->comm;
   setup();
 }
 void linAlg_t::reallocBuffers(const dlong Nbytes)
 {
-  platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
   if(h_scratch.size()) h_scratch.free();
   if(o_scratch.size()) o_scratch.free();
@@ -63,7 +57,6 @@ void linAlg_t::reallocBuffers(const dlong Nbytes)
 }
 void linAlg_t::setup() {
 
-  platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
   int rank;
   MPI_Comm_rank(comm, &rank);

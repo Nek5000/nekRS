@@ -42,7 +42,7 @@ static int Nblock;
 void velRecycling::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   string fileName;
   int rank = mesh->rank;
@@ -66,7 +66,7 @@ void velRecycling::buildKernel(nrs_t* nrs)
 void velRecycling::copy()
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
   const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
@@ -113,7 +113,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
   wbar = wbar_;
 
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   const dlong Ntotal = mesh->Np * mesh->Nelements;
   hlong* ids = (hlong*) calloc(Ntotal, sizeof(hlong));

@@ -12,7 +12,7 @@ dfloat filterFactorial(int n);
 void filterSetup(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   // First construct filter function
   nrs->filterS = 10.0; // filter Weight...

@@ -33,6 +33,7 @@ SOFTWARE.
 #include "omp.h"
 #include "limits.h"
 #include "crs_hypre.h"
+#include "platform.hpp"
 struct hypre_crs_data *crsh;
 
 namespace parAlmond {
@@ -330,9 +331,9 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  timer::hostTic("BoomerAMGSolve", 1);
+  platform->timer.hostTic("BoomerAMGSolve", 1);
   hypre_solve(xLocal, crsh, rhsLocal);
-  timer::hostToc("BoomerAMGSolve");
+  platform->timer.hostToc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 

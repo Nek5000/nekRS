@@ -46,7 +46,7 @@ static dfloat timel;
 void avg::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   string fileName;
   int rank = mesh->rank;
@@ -149,30 +149,29 @@ void avg::setup(nrs_t* nrs_)
 
   nrs = nrs_;
   mesh_t* mesh = nrs->mesh;
-  platform_t * platform = platform_t::getInstance();
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   if(setupCalled) return;
 
   o_Uavg = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
   o_Urms = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
-  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
   o_Urm2 = platform->device.malloc(nrs->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
   o_Pavg = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
   o_Prms = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  linAlg->fill(nrs->fieldOffset, 0.0, o_Pavg);
-  linAlg->fill(nrs->fieldOffset, 0.0, o_Prms);
+  platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Pavg);
+  platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Prms);
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
     o_Savg = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
     o_Srms = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    platform->linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
+    platform->linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;

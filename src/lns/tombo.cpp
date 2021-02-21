@@ -7,10 +7,10 @@ namespace tombo
 occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   //enforce Dirichlet BCs
-  linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
+  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -71,7 +71,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
   
-  linAlg->axmyVector(
+  platform->linAlg->axmyVector(
     mesh->Nlocal,
     nrs->fieldOffset,
     0,
@@ -120,7 +120,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  linAlg->axmyVector(
+  platform->linAlg->axmyVector(
     mesh->Nlocal,
     nrs->fieldOffset,
     0,
@@ -164,7 +164,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 occa::memory velocitySolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   dfloat scale = -1./3;
   if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
@@ -209,7 +209,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     nrs->o_P,
     nrs->o_wrk3); 
 
-  linAlg->axpby(
+  platform->linAlg->axpby(
     nrs->NVfields*nrs->fieldOffset,
     1.0,
     nrs->o_wrk3,

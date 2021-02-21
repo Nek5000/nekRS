@@ -34,10 +34,10 @@ void ellipticScaledAdd(elliptic_t* elliptic,
                        occa::memory &o_b)
 {
   mesh_t* mesh = elliptic->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
-  linAlg->axpbyMany(
+  platform->linAlg->axpbyMany(
     Nlocal,
     elliptic->Nfields,
     elliptic->Ntotal,

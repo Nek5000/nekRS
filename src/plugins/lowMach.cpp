@@ -26,7 +26,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 {
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -38,7 +38,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  linAlg->axmyVector(
+  platform->linAlg->axmyVector(
     mesh->Nlocal,
     nrs->fieldOffset,
     0,
@@ -47,11 +47,11 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
     cds->o_wrk0);
 
   if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
+    platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
-    timer::toc("udfSEqnSource");
+    platform->timer.toc("udfSEqnSource");
   } else {
-    linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }
 
   nrs->qtlKernel(
@@ -68,7 +68,7 @@ void lowMach::qThermalPerfectGasSingleComponent(nrs_t* nrs, dfloat time, dfloat 
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  linAlg->axmy(
+  platform->linAlg->axmy(
     mesh->Nlocal,
     1.0,
     nrs->mesh->o_invLMM,

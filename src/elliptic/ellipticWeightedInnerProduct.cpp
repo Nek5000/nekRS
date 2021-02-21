@@ -34,16 +34,16 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
                                     occa::memory &o_b)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp",1);
+  platform->timer.tic("dotp",1);
 #endif
-  platform_t* platform = platform_t::getInstance();
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
+  
 
   mesh_t* mesh = elliptic->mesh;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-  const dfloat globalwab = linAlg->weightedInnerProdMany(
+  const dfloat globalwab = platform->linAlg->weightedInnerProdMany(
     Nlocal,
     elliptic->Nfields,
     elliptic->Ntotal,
@@ -55,7 +55,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
 
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform->timer.toc("dotp");
 #endif
 
   return globalwab;

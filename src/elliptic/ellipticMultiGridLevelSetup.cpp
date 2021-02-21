@@ -41,7 +41,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
                  ktype_,
                  comm_)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   elliptic = ellipticBase;
   mesh = elliptic->mesh;
   options = options_;
@@ -78,7 +78,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
                  ktype_,
                  comm_)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   elliptic = ellipticCoarse;
   mesh = elliptic->mesh;
   options = options_;
@@ -107,7 +107,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   if (degree == 1) return; // solved by coarse grid solver
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
@@ -224,7 +224,7 @@ void MGLevel::Report()
 
 void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   int NqFine   = Nf + 1;
   int NqCoarse = Nc + 1;
   dfloat* P    = (dfloat*) calloc(NqFine * NqCoarse,sizeof(dfloat));

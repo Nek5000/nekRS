@@ -29,7 +29,7 @@
 
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 

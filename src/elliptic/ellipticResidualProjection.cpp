@@ -42,7 +42,7 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
 
 void ResidualProjection::updateProjectionSpace()
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   if(numVecsProjection <= 0) return;
 
   multiWeightedInnerProduct(o_xx, o_bb, numVecsProjection - 1);
@@ -58,8 +58,8 @@ void ResidualProjection::updateProjectionSpace()
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
-    linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
+    platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
+    platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
   } else {
     if(verbose && rank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -71,7 +71,7 @@ void ResidualProjection::updateProjectionSpace()
 
 void ResidualProjection::computePreProjection(occa::memory& o_r)
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   dfloat one = 1.0;
   dfloat zero = 0.0;
   dfloat mone = -1.0;
@@ -80,12 +80,12 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
-  linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
+  platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   const dfloat one = 1.0;
   const dfloat zero = 0.0;
 
@@ -95,14 +95,14 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else if(numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
-    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
+    platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
   } else {
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat), Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat), 0);
     // x = x + xbar
-    linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
+    platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
   const dlong previousNumVecsProjection = numVecsProjection;
   matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
@@ -229,7 +229,7 @@ void ResidualProjection::multiWeightedInnerProduct(
   const dlong offset)
 {
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp",1);
+  platform->timer.tic("dotp",1);
 #endif
   multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
 
@@ -243,6 +243,6 @@ void ResidualProjection::multiWeightedInnerProduct(
   MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform->timer.toc("dotp");
 #endif
 }

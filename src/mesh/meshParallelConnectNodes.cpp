@@ -28,7 +28,7 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
 
 void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   if(!nrsBuildOnly) {
     // hotfix as libP version seems to be broken
     meshNekParallelConnectNodes(mesh);

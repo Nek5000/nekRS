@@ -76,7 +76,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
                                   ogs_t** ogs,
                                   hlong* globalStarts)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
   // currently constant coefficient case only

@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 #include "timer.hpp"
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
@@ -51,11 +52,11 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("pre",1);
+    platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
     elliptic->res00 = sqrt(ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * elliptic->resNormFactor); 
     elliptic->residualProjection->pre(o_r);
-    timer::toc("pre");
+    platform->timer.toc("pre");
   }
 
   dlong Niter;
@@ -74,9 +75,9 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
     ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
-    timer::tic("post",1);
+    platform->timer.tic("post",1);
     elliptic->residualProjection->post(o_x);
-    timer::toc("post");
+    platform->timer.toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   } else {
     elliptic->res00 = elliptic->res0;

@@ -45,9 +45,9 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
 {
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
-    linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
+    platform->linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
 
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 

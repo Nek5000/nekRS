@@ -37,7 +37,7 @@ void meshHaloExchange(mesh_t* mesh,
                       void* sendBuffer, // temporary buffer
                       void* recvBuffer)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   // MPI info
   int rank, size;
   rank = mesh->rank;
@@ -90,7 +90,7 @@ void meshHaloExchangeStart(mesh_t* mesh,
                            void* sendBuffer, // temporary buffer
                            void* recvBuffer)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   if(mesh->totalHaloPairs > 0) {
     // MPI info
     //    int rank, size;
@@ -142,7 +142,7 @@ void meshHaloExchange(mesh_t* mesh,
                       void* sendBuffer, // temporary buffer
                       void* recvBuffer)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   if(mesh->totalHaloPairs > 0) {
     int rank = mesh->rank;
     int size = mesh->size;

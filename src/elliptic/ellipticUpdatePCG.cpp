@@ -31,7 +31,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                          occa::memory &o_p, occa::memory &o_Ap, const dfloat alpha,
                          occa::memory &o_x, occa::memory &o_r)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   setupAide &options = elliptic->options;
 
   int fixedIterationCountFlag = 0;
@@ -60,7 +60,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                               elliptic->o_tmpNormr);
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::tic("dotp",1);
+    platform->timer.tic("dotp",1);
 #endif
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
@@ -69,7 +69,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     else
       globalrdotr1 = 1;
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::toc("dotp");
+    platform->timer.toc("dotp");
 #endif
 
     return globalrdotr1;

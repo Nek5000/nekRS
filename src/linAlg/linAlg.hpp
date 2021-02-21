@@ -30,7 +30,6 @@ SOFTWARE.
 #include "nrssys.hpp"
 
 using std::string;
-struct platform_t;
 
 class linAlg_t {
 private:
@@ -45,13 +44,12 @@ private:
 
   void setup();
   void reallocBuffers(const dlong Nbytes);
-  linAlg_t(platform_t*);
 
   ~linAlg_t();
+  linAlg_t();
   static linAlg_t* singleton;
 public:
   static linAlg_t* getInstance();
-  static linAlg_t* getInstance(platform_t* platform);
 
   /*********************/
   /* vector operations */

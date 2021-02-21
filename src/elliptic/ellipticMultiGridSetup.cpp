@@ -29,7 +29,7 @@
 
 void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
-  platform_t* platform = platform_t::getInstance();
+  
 
   // setup new object with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
@@ -286,7 +286,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   // extra storage for smoothing op
   size_t Nbytes = level->Ncols * sizeof(pfloat);
   if (MGLevel::smootherResidualBytes < Nbytes) {

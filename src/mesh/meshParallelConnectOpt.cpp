@@ -78,7 +78,7 @@ int parallelCompareFaces(const void* a,
 // mesh is the local partition
 void meshParallelConnect(mesh_t* mesh)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   int rank, size;
   rank = mesh->rank;
   size = mesh->size;

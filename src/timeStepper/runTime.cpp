@@ -26,7 +26,7 @@ double tElapsed = 0;
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
   cds_t* cds = nrs->cds;
 
   platform->device.finish();
@@ -60,7 +60,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     scalarSolve(nrs, time, cds->o_S);
 
   if(udf.properties) {
-    timer::tic("udfProperties", 1);
+    platform->timer.tic("udfProperties", 1);
     occa::memory o_S = nrs->o_wrk0;
     occa::memory o_SProp = nrs->o_wrk0;
     if(nrs->Nscalar) {
@@ -68,7 +68,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       o_SProp = cds->o_prop;
     }
     udf.properties(nrs, time + nrs->dt[0], nrs->o_U, o_S, nrs->o_prop, o_SProp);
-    timer::toc("udfProperties");
+    platform->timer.toc("udfProperties");
   }
 
   if(udf.div) udf.div(nrs, time + nrs->dt[0], nrs->o_div);
@@ -189,12 +189,12 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
+    platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, o_FS);
-    timer::toc("udfSEqnSource");
+    platform->timer.toc("udfSEqnSource");
   }
 
   for(int is = 0; is < cds->NSfields; is++) {
@@ -244,7 +244,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
             cds->o_S,
             cds->o_rho,
             cds->o_wrk0);
-        linAlg->axpby(
+        platform->linAlg->axpby(
           cds->meshV->Nelements * cds->meshV->Np,
           -1.0,
           cds->o_wrk0,
@@ -254,7 +254,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
         );
       }
     } else {
-      linAlg->fill(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
+      platform->linAlg->fill(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
     } 
 
     cds->sumMakefKernel(
@@ -276,12 +276,12 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 {
   cds_t* cds   = nrs->cds;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
-  timer::tic("makeq", 1);
-  linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+  platform->timer.tic("makeq", 1);
+  platform->linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
   makeq(nrs, time, cds->o_FS, cds->o_BF);
-  timer::toc("makeq");
+  platform->timer.toc("makeq");
 
   for (int s = cds->Nstages; s > 1; s--) {
     const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
@@ -289,7 +289,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 
-  timer::tic("scalarSolve", 1);
+  platform->timer.tic("scalarSolve", 1);
   for (int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
 
@@ -306,7 +306,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
       cds->o_ellipticCoeff);
 
     if(cds->o_BFDiag.ptr())
-      linAlg->axpby(
+      platform->linAlg->axpby(
         mesh->Nlocal,
         1.0,
         cds->o_BFDiag,
@@ -319,18 +319,18 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0]);
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
-  timer::toc("scalarSolve");
+  platform->timer.toc("scalarSolve");
 }
 
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   if(udf.uEqnSource) {
-    timer::tic("udfUEqnSource", 1);
+    platform->timer.tic("udfUEqnSource", 1);
     udf.uEqnSource(nrs, time, nrs->o_U, o_FU);
-    timer::toc("udfUEqnSource");
+    platform->timer.toc("udfUEqnSource");
   }
 
   if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
@@ -366,7 +366,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
           nrs->fieldOffset,
           nrs->o_U,
           nrs->o_wrk0);
-      linAlg->axpby(
+      platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         -1.0,
         nrs->o_wrk0,
@@ -375,7 +375,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       );
     }
   } else {
-    if(nrs->Nsubsteps) linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
   }
 
   nrs->sumMakefKernel(
@@ -394,12 +394,12 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
-  timer::tic("makef", 1);
-  linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+  platform->timer.tic("makef", 1);
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
   makef(nrs, time, nrs->o_FU, nrs->o_BF);
-  timer::toc("makef");
+  platform->timer.toc("makef");
 
   for (int s = nrs->Nstages; s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
@@ -407,7 +407,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 
-  timer::tic("pressureSolve", 1);
+  platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
     mesh->Nlocal,
     nrs->fieldOffset,
@@ -415,9 +415,9 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0]);
   nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
-  timer::toc("pressureSolve");
+  platform->timer.toc("pressureSolve");
 
-  timer::tic("velocitySolve", 1);
+  platform->timer.tic("velocitySolve", 1);
   nrs->setEllipticCoeffKernel(
     mesh->Nlocal,
     nrs->g0 * nrs->idt,
@@ -429,13 +429,13 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 
   occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0]);
   o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  timer::toc("velocitySolve");
+  platform->timer.toc("velocitySolve");
 }
 
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->mesh;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   // Solve for Each SubProblem
   for (int torder = nrs->ExplicitOrder - 1; torder >= 0; torder--) {
@@ -443,7 +443,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
     dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
     const dfloat b = nrs->extbdfB[torder];
     if (torder == nrs->ExplicitOrder - 1){
-      linAlg->axpby(
+      platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         b,
         o_U,
@@ -454,7 +454,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
       );
     }
     else{
-      linAlg->axpby(
+      platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         b,
         o_U,
@@ -595,7 +595,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
   mesh_t* mesh = cds->meshV;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   // Solve for Each SubProblem
   for (int torder = (cds->ExplicitOrder - 1); torder >= 0; torder--) {
@@ -603,7 +603,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     const dlong toffset = is * cds->fieldOffset +
                           torder * cds->NSfields * cds->fieldOffset;
     if (torder == cds->ExplicitOrder - 1){
-      linAlg->axpby(
+      platform->linAlg->axpby(
         cds->fieldOffset,
         cds->extbdfB[torder],
         o_S,
@@ -613,7 +613,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
       );
     }
     else{
-      linAlg->axpby(
+      platform->linAlg->axpby(
         cds->fieldOffset,
         cds->extbdfB[torder],
         o_S,

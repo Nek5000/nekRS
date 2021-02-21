@@ -30,7 +30,7 @@
 // create elliptic and mesh structs for multigrid levels
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   const int serial = baseElliptic->options.compareArgs("THREAD MODEL", "SERIAL");
 
   elliptic_t* elliptic = new elliptic_t();

@@ -36,6 +36,7 @@
 #include "mesh3D.h"
 #include "parAlmond.hpp"
 #include "ellipticPrecon.h"
+#include "platform.hpp"
 
 #include "timer.hpp"
 #define ELLIPTIC_ENABLE_TIMER

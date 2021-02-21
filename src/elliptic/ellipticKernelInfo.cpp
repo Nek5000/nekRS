@@ -30,7 +30,7 @@
 occa::properties ellipticKernelInfo(mesh_t* mesh)
 {
 
-  platform_t* platform = platform_t::getInstance();
+  
   // info for kernel construction
   occa::properties kernelInfo = platform->kernelInfo;
 

@@ -48,7 +48,7 @@ static dfloat coeff[] = {
 void RANSktau::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
-  platform_t* platform = platform_t::getInstance();
+  
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/p_sigma_k"]       = coeff[0];
@@ -115,7 +115,7 @@ void RANSktau::updateSourceTerms()
 {
   mesh_t* mesh = nrs->mesh;
   cds_t* cds = nrs->cds;
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
 
   occa::memory o_OiOjSk  = nrs->o_wrk0;
   occa::memory o_SijMag2 = nrs->o_wrk1;
@@ -139,7 +139,7 @@ void RANSktau::updateSourceTerms()
                        ogsAdd,
                        mesh->ogs);
 
-  linAlg->axmyMany(
+  platform->linAlg->axmyMany(
     mesh->Nlocal,
     NSOfields,
     nrs->fieldOffset,
@@ -179,8 +179,8 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
                      int ifld, const dfloat* coeffIn)
 {
   if(setupCalled) return;
-  platform_t* platform = platform_t::getInstance();
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
+  
 
   nrs    = nrsIn;
   mueLam = mueIn;
@@ -199,7 +199,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   if(!cds->o_BFDiag.ptr()) {
     cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    linAlg->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    platform->linAlg->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

@@ -31,16 +31,16 @@
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a)
 {
 
-  linAlg_t* linAlg = linAlg_t::getInstance();
+  
   mesh_t* mesh = elliptic->mesh;
 
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp");
+  platform->timer.tic("dotp",1);
 #endif
 
-  const dfloat globalwa2 = linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, mesh->comm);
+  const dfloat globalwa2 = platform->linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, mesh->comm);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform->timer.toc("dotp");
 #endif
 
   return result;

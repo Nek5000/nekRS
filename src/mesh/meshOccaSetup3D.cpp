@@ -41,7 +41,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
 
 void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
   dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));

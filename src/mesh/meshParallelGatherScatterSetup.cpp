@@ -37,7 +37,7 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     MPI_Comm &comm,
                                     int verbose)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);

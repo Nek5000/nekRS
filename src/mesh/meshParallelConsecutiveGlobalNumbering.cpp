@@ -87,7 +87,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
                                             int* globalOwners,
                                             hlong* globalStarts)
 {
-  platform_t* platform = platform_t::getInstance();
+  
   int rank = mesh->rank;
   int size = mesh->size;
 
