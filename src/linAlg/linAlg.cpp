@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "linAlg.hpp"
 
+linAlg_t* linAlg_t::singleton = nullptr;
 void linAlg_t::reallocBuffers(const dlong Nbytes)
 {
   if(h_scratch.size()) h_scratch.free();
@@ -150,6 +151,11 @@ void linAlg_t::setup() {
                                         "linAlgWeightedNorm2.okl",
                                         "weightedNorm2",
                                         kernelInfo);
+      if (weightedNorm2ManyKernel.isInitialized()==false)
+        weightedNorm2ManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgWeightedNorm2.okl",
+                                        "weightedNorm2Many",
+                                        kernelInfo);
       if (innerProdKernel.isInitialized()==false)
         innerProdKernel = device.buildKernel(oklDir + 
                                         "linAlgInnerProd.okl",
@@ -185,6 +191,7 @@ linAlg_t::~linAlg_t() {
   maxKernel.free();
   norm2Kernel.free();
   weightedNorm2Kernel.free();
+  weightedNorm2ManyKernel.free();
   innerProdKernel.free();
   weightedInnerProdKernel.free();
 }
@@ -404,6 +411,26 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
 
   weightedNorm2Kernel(Nblock, N, o_w, o_a, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  dfloat norm = 0;
+  for(dlong n=0;n<Nblock;++n){
+    norm += scratch[n];
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+  return sqrt(norm);
+}
+dfloat linAlg_t::weightedNorm2Many(const dlong N, const dlong Nfields, const dlong offset, occa::memory& o_w,
+                               occa::memory& o_a, MPI_Comm _comm) {
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+
+  weightedNorm2ManyKernel(Nblock, N, Nfields, offset, o_w, o_a, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
 

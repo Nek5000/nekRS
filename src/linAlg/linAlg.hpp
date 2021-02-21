@@ -45,7 +45,6 @@ private:
 
   void setup();
   void reallocBuffers(const dlong Nbytes);
-public:
   linAlg_t(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
     blocksize = BLOCKSIZE;
     device = _device;
@@ -55,6 +54,16 @@ public:
   }
 
   ~linAlg_t();
+  static linAlg_t* singleton;
+public:
+  static linAlg_t* getInstance(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
+    if(!singleton)
+      singleton = new linAlg_t(_device, _kernelInfo, _comm);
+    return singleton;
+  }
+  static linAlg_t* getInstance(){
+    return singleton;
+  }
 
   /*********************/
   /* vector operations */
@@ -136,6 +145,8 @@ public:
   // ||o_a||_w2
   dfloat weightedNorm2(const dlong N, occa::memory& o_w, occa::memory& o_a,
                        MPI_Comm _comm);
+  dfloat weightedNorm2Many(const dlong N, const dlong Nfields, const dlong offset, occa::memory& o_w, occa::memory& o_a,
+                       MPI_Comm _comm);
 
   // o_w.o_x.o_y
   dfloat weightedInnerProd(const dlong N, occa::memory& o_w, occa::memory& o_x,
@@ -160,6 +171,7 @@ public:
   occa::kernel maxKernel;
   occa::kernel norm2Kernel;
   occa::kernel weightedNorm2Kernel;
+  occa::kernel weightedNorm2ManyKernel;
   occa::kernel innerProdKernel;
   occa::kernel weightedInnerProdKernel;
 };
