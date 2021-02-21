@@ -608,7 +608,7 @@ void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* ellipt
 mesh_t* create_extended_mesh(elliptic_t* elliptic)
 {
 
-  platform_t* platform = platform_t::getInstance();
+  //platform_t* platform = platform_t::getInstance();
   mesh_t* meshRoot = elliptic->mesh;
 
   int buildOnly  = 0;
@@ -756,7 +756,7 @@ void extrude(pfloat* arr1,
 
 void MGLevel::generate_weights()
 {
-  platform_t* platform = platform_t::getInstance();
+  //platform_t* platform = platform_t::getInstance();
   const pfloat one = 1.0;
   const pfloat zero = 0.0;
   const pfloat onem = -1.0;
@@ -794,7 +794,7 @@ void MGLevel::generate_weights()
 void MGLevel::build(
   elliptic_t* pSolver)
 {
-  platform_t* platform = platform_t::getInstance();
+  //platform_t* platform = platform_t::getInstance();
   if(elliptic->elementType != HEXAHEDRA) {
     printf("ERROR: Unsupported element type!");
     ABORT(EXIT_FAILURE);

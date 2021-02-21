@@ -7,6 +7,10 @@
 #include "configReader.hpp"
 #include "runTime.hpp"
 #include "platform.hpp"
+#include "nrssys.hpp"
+
+// extern variable from nrssys.hpp
+platform_t* platform;
 
 static int rank, size;
 static MPI_Comm comm;
@@ -71,7 +75,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   setOUDF(options);
 
   // configure device
-  platform_t* platform = platform_t::getInstance(options, comm);
+  platform_t* _platform = platform_t::getInstance(options, comm);
+  platform = _platform;
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
