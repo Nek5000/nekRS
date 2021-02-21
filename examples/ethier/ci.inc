@@ -81,12 +81,13 @@ dfloat min(dfloat const * const array, const int size, MPI_Comm comm)
 void ciTestLinAlg(nrs_t *nrs, const int N)
 {
   linAlg_t* linAlg = nrs->linAlg;
+  platform_t* platform = platform_t::getInstance();
   MPI_Comm comm = nrs->mesh->comm;
   int rank = nrs->mesh->rank;
   dfloat* x = (dfloat*) calloc(N, sizeof(dfloat));
   for(int i = 0 ; i < N; ++i)
     x[i] = drand48();
-  occa::memory o_x = nrs->mesh->device.malloc(N*sizeof(dfloat), x);
+  occa::memory o_x = platform->device.malloc(N*sizeof(dfloat), x);
   const dfloat referenceSum = sum(x,N,comm);
   const dfloat referenceMax = max(x,N,comm);
   const dfloat referenceMin = min(x,N,comm);

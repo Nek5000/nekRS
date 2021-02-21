@@ -37,6 +37,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  platform_t* platform = platform_t::getInstance();
   mesh_t *mesh = nrs->mesh;
 
   udf.uEqnSource = &userf;
@@ -47,8 +48,8 @@ void UDF_Setup(nrs_t *nrs)
   double *FUy = (double *) nek_scPtr(3);
   double *FUz = (double *) nek_scPtr(4);
 
-  o_nekFU  = mesh->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
-  o_nekMue = mesh->device.malloc(              nrs->fieldOffset*sizeof(dfloat));
+  o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
+  o_nekMue = platform->device.malloc(              nrs->fieldOffset*sizeof(dfloat));
 
   o_nekMue.copyFrom(mul, mesh->Nlocal*sizeof(dfloat));
   o_nekFU.copyFrom (FUx, mesh->Nlocal*sizeof(dfloat), 0*nrs->fieldOffset*sizeof(dfloat));
