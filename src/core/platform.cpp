@@ -1,5 +1,6 @@
 #include "platform.hpp"
 #include "nrs.hpp"
+#include "linAlg.hpp"
 platform_t* platform_t::singleton = nullptr;
 platform_t::platform_t(setupAide& options, MPI_Comm _comm)
 : 
@@ -52,6 +53,7 @@ platform_t::platform_t(setupAide& options, MPI_Comm _comm)
     // kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
     // kernelInfo["compiler_flags"] += " -ffast-math ";
   }
+  linAlg = linAlg_t::getInstance();
 }
 void
 platform_t::create_mempool(const dlong offset, const dlong fields)

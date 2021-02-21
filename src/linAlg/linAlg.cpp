@@ -29,8 +29,19 @@ SOFTWARE.
 
 linAlg_t* linAlg_t::singleton = nullptr;
 
-linAlg_t::linAlg_t() {
-  platform_t* platform = platform_t::getInstance();
+linAlg_t*
+linAlg_t::getInstance(platform_t* platform)
+{
+  if(!singleton)
+    singleton = new linAlg_t(platform);
+  return singleton;
+}
+linAlg_t*
+linAlg_t::getInstance()
+{
+  return singleton;
+}
+linAlg_t::linAlg_t(platform_t* platform) {
   blocksize = BLOCKSIZE;
   comm = platform->comm;
   setup();

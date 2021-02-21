@@ -5,6 +5,7 @@
 #include "nrssys.hpp"
 #include "timer.hpp"
 class setupAide;
+class linAlg_t;
 class device_t : public occa::device{
   public:
     MPI_Comm comm;
@@ -23,6 +24,7 @@ struct platform_t{
   device_t device;
   occa::properties kernelInfo;
   timer::timer_t timer;
+  linAlg_t* linAlg;
   MPI_Comm comm;
   dfloat* mempool;
   occa::memory o_mempool;
