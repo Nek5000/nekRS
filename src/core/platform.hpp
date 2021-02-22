@@ -8,6 +8,7 @@ class setupAide;
 class linAlg_t;
 class device_t : public occa::device{
   public:
+    device_t(setupAide& options, MPI_Comm comm);
     MPI_Comm comm;
     occa::kernel buildNativeKernel(const std::string &filename,
                              const std::string &kernelName,
