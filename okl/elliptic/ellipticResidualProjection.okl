@@ -86,16 +86,14 @@
 {
   for(dlong b = 0; b < Nblock; ++b; @outer(0)) {
     @shared volatile dfloat s_wxy[p_threadBlockSize];
-    @exclusive dfloat w_loc;
-    @exclusive dfloat y_loc[p_Nfields];
+    @exclusive dfloat tmp[p_Nfields];
 
     for(int t = 0; t < p_threadBlockSize; ++t; @inner(0)) {
       const dlong id = t + p_threadBlockSize * b;
       if(id < N) {
-        w_loc = w[id];
         #pragma unroll
         for(dlong fld = 0; fld < p_Nfields; ++fld)
-          y_loc[fld] = y[id + offset + fld * fieldOffset];
+          tmp[fld] = w[id] * y[id + offset + fld * fieldOffset];
       }
     }
     @barrier("local");
@@ -107,7 +105,7 @@
         if(id < N) {
           #pragma unroll
           for(dlong fld = 0; fld < p_Nfields; ++fld)
-            res += w_loc * x[id + p_Nfields * fieldOffset * v + fld * fieldOffset] * y_loc[fld];
+            res += x[id + p_Nfields * fieldOffset * v + fld * fieldOffset] * tmp[fld];
         }
         s_wxy[t] = res;
       }
