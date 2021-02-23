@@ -93,7 +93,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_div,
     nrs->o_wrk0);
 
-  //if (nrs->options.compareArgs("VARIABLE VISCOSITY", "TRUE"))
   if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
     nrs->pressureStressKernel(
          mesh->Nelements,
