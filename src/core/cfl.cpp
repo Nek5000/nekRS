@@ -51,5 +51,5 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_U,
                  nrs->o_wrk0);
 
-  return platform->linAlg->max(mesh->Nlocal, nrs->o_wrk0, mesh->comm);
+  return platform->linAlg->max(mesh->Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
 }

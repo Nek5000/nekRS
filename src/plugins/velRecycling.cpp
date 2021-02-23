@@ -45,7 +45,7 @@ void velRecycling::buildKernel(nrs_t* nrs)
   
 
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/velRecycling.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;
@@ -97,7 +97,7 @@ void velRecycling::copy()
     sbuf[0] += tmp1[n];
     sbuf[1] += tmp2[n];
   }
-  MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, platform->comm);
+  MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
   const dfloat scale = -wbar * sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
@@ -133,7 +133,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
     }
   }
 
-  ogs = ogsSetup(Ntotal, ids, platform->comm, 1, platform->device);
+  ogs = ogsSetup(Ntotal, ids, platform->comm.mpiComm, 1, platform->device);
   free(ids);
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;

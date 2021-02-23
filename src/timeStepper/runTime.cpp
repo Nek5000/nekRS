@@ -30,7 +30,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   cds_t* cds = nrs->cds;
 
   platform->device.finish();
-  MPI_Barrier(platform->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();
 
   nrs->dt[0] = dt;
@@ -79,14 +79,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   nrs->dt[1] = nrs->dt[0];
 
   platform->device.finish();
-  MPI_Barrier(platform->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tElapsedStep = MPI_Wtime() - tStart;
   tElapsed += tElapsedStep;
   platform->timer.set("solve", tElapsed);
 
   // print some diagnostics
   const dfloat cfl = computeCFL(nrs);
-  if(mesh->rank == 0) {
+  if(platform->comm.mpiRank == 0) {
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + nrs->dt[0], nrs->dt[0], cfl);
 
@@ -136,7 +136,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(cfl > 30 || std::isnan(cfl)) {
-    if(mesh->rank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
+    if(platform->comm.mpiRank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
     ABORT(1);
   }
 
@@ -171,7 +171,7 @@ void extbdfCoefficents(nrs_t* nrs, int order)
   nrs->o_extbdfA.copyFrom(nrs->extbdfA);
 
 #if 0
-  if (nrs->mesh->rank == 0) {
+  if (platform->comm.mpiRank == 0) {
     cout << "DT:" << nrs->dt[0] << "," << nrs->dt[1] << "," << nrs->dt[2] << "\n";
     cout << "BDF:" << nrs->g0 << "," << nrs->extbdfB[0] << "," << nrs->extbdfB[1] << "," << nrs->extbdfB[2] << "\n";
     cout << "EXT:" << nrs->extbdfA[0] << "," << nrs->extbdfA[1] << "," << nrs->extbdfA[2] << "\n";

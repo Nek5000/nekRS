@@ -49,7 +49,7 @@ void avg::buildKernel(nrs_t* nrs)
   
 
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;

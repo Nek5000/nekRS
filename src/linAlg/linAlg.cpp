@@ -38,7 +38,7 @@ linAlg_t::getInstance()
 }
 linAlg_t::linAlg_t() {
   blocksize = BLOCKSIZE;
-  comm = platform->comm;
+  comm = platform->comm.mpiComm;
   setup();
 }
 void linAlg_t::reallocBuffers(const dlong Nbytes)

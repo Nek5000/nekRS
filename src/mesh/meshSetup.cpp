@@ -18,10 +18,6 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
-
   mesh->cht = 0;
   mesh->Nfields = 1;
   mesh->dim = 3;
@@ -47,12 +43,12 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 
   hlong allNelements = NX * NY * NZ;
 
-  hlong chunkNelements = allNelements / mesh->size;
+  hlong chunkNelements = allNelements / platform->comm.mpiCommSize;
 
-  hlong start = chunkNelements * mesh->rank;
-  hlong end   = chunkNelements * (mesh->rank + 1);
+  hlong start = chunkNelements * platform->comm.mpiRank;
+  hlong end   = chunkNelements * (platform->comm.mpiRank + 1);
 
-  if(mesh->rank == (mesh->size - 1))
+  if(platform->comm.mpiRank == (platform->comm.mpiCommSize - 1))
     end = allNelements;
 
   mesh->Nnodes = NX * NY * NZ;
@@ -137,7 +133,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (mesh->rank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // set up halo exchange info for MPI (do before connect face nodes)
@@ -180,9 +176,6 @@ mesh_t* createMesh(MPI_Comm comm,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
   mesh->cht  = isMeshT;
 
   // get mesh from nek
@@ -198,7 +191,7 @@ mesh_t* createMesh(MPI_Comm comm,
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (mesh->rank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // set up halo exchange info for MPI (do before connect face nodes)

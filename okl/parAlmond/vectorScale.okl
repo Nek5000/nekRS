@@ -29,7 +29,7 @@ SOFTWARE.
                          const dfloat alpha,
                          @restrict dfloat * x){
 
-  for(dlong i=0;i<n;++i;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong i=0;i<n;++i;@tile(p_blockSize,@outer,@inner)){
     x[i] *= alpha;
   }
 }

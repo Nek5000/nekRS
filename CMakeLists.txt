@@ -201,10 +201,6 @@ set(SRC
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
-<<<<<<< HEAD
-=======
-    src/linearSolver/PCG.cpp
->>>>>>> Omnibus commit for refactoring
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}

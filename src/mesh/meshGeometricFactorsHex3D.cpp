@@ -68,7 +68,7 @@ void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 void meshGeometricFactorsHex3D(mesh3D* mesh)
 {
   double tStart = MPI_Wtime();
-  if(platform->rank == 0)  printf("computing geometric factors ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
       
   /* unified storage array for geometric factors */
   mesh->Nvgeo = 12;
@@ -293,16 +293,16 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   {
     dfloat globalMinJ, globalMaxJ, globalMaxSkew;
 
-    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, platform->comm);
-    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm);
-    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm);
+    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, platform->comm.mpiComm);
+    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
+    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
 
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("J [%g,%g] ", globalMinJ, globalMaxJ);
       //printf("J [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
 
     dfloat globalVolume;
-    MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
+    MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     mesh->volume = globalVolume;
   }
 
@@ -326,6 +326,6 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   free(cubzse);
   free(cubzte);
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }

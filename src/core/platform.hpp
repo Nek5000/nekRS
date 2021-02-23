@@ -21,12 +21,18 @@ class device_t : public occa::device{
                              const occa::properties &props,
                              MPI_Comm comm) const;
 };
+struct comm_t{
+  comm_t(MPI_Comm);
+  MPI_Comm mpiComm;
+  int mpiRank;
+  int mpiCommSize;
+};
 struct platform_t{
   device_t device;
   occa::properties kernelInfo;
   timer::timer_t timer;
+  comm_t comm;
   linAlg_t* linAlg;
-  MPI_Comm comm;
   dfloat* mempool;
   occa::memory o_mempool;
   occa::memory o_slice0, o_slice1, o_slice2, o_slice3, o_slice4, o_slice5, o_slice6, o_slice7;

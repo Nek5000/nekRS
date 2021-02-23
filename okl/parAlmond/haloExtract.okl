@@ -30,7 +30,7 @@ SOFTWARE.
                          @restrict const dfloat * q,
                          @restrict       dfloat * haloq){
 
-  for(dlong e=0;e<Nhalo;++e;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong e=0;e<Nhalo;++e;@tile(p_blockSize,@outer,@inner)){
     const dlong id = haloIds[e];
     haloq[e] = q[id];
   }

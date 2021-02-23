@@ -64,14 +64,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
       levelDegree[i] = elliptic->levels[i];
   } else {
     cout << "Unknown coarsening type!";
-    MPI_Abort(platform->comm, 1);
+    MPI_Abort(platform->comm.mpiComm, 1);
   }
 
   int Nmax = levelDegree[0];
   int Nmin = levelDegree[numMGLevels - 1];
 
   //initialize parAlmond
-  precon->parAlmond = parAlmond::Init(platform->device, platform->comm, options);
+  precon->parAlmond = parAlmond::Init(platform->device, platform->comm.mpiComm, options);
   parAlmond::multigridLevel** levels = precon->parAlmond->levels;
 
   oogs_mode oogsMode = OOGS_AUTO;
@@ -80,7 +80,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 
   //set up the finest level
   if (Nmax > Nmin) {
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmax);
 
     auto callback = [&]()
@@ -92,7 +92,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     levels[0] = new MGLevel(elliptic, lambda, Nmax, options,
-                            precon->parAlmond->ktype, platform->comm);
+                            precon->parAlmond->ktype, platform->comm.mpiComm);
     MGLevelAllocateStorage((MGLevel*) levels[0], 0,
                            precon->parAlmond->ctype);
     precon->parAlmond->numLevels++;
@@ -103,7 +103,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     int Nc = levelDegree[n];
     int Nf = levelDegree[n - 1];
     //build elliptic struct for this degree
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nc);
 
     elliptic_t* ellipticC = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
@@ -128,7 +128,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                             lambda,
                             Nf, Nc,
                             options,
-                            precon->parAlmond->ktype, platform->comm);
+                            precon->parAlmond->ktype, platform->comm.mpiComm);
     MGLevelAllocateStorage((MGLevel*) levels[n], n,
                            precon->parAlmond->ctype);
     precon->parAlmond->numLevels++;
@@ -145,7 +145,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     int Nc = levelDegree[numMGLevels - 1];
     int Nf = levelDegree[numMGLevels - 2];
 
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmin);
 
     ellipticCoarse = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
@@ -167,7 +167,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   int basisNp = ellipticCoarse->mesh->Np;
   dfloat* basis = NULL;
 
-  hlong* coarseGlobalStarts = (hlong*) calloc(mesh->size + 1, sizeof(hlong));
+  hlong* coarseGlobalStarts = (hlong*) calloc(platform->comm.mpiCommSize + 1, sizeof(hlong));
 
   if(options.compareArgs("GALERKIN COARSE OPERATOR","TRUE"))
     ellipticBuildContinuousGalerkinHex3D(ellipticCoarse,elliptic,lambda,&coarseA,&nnzCoarseA,
@@ -214,11 +214,11 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                           lambda,
                                           Nf, Nc,
                                           options,
-                                          precon->parAlmond->ktype, platform->comm
+                                          precon->parAlmond->ktype, platform->comm.mpiComm
                                           );
   } else {
     levels[numMGLevels - 1] = new MGLevel(ellipticCoarse, lambda, Nmin, options,
-                                          precon->parAlmond->ktype, platform->comm);
+                                          precon->parAlmond->ktype, platform->comm.mpiComm);
   }
   MGLevelAllocateStorage((MGLevel*) levels[numMGLevels - 1], numMGLevels - 1,
                          precon->parAlmond->ctype);
@@ -264,7 +264,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   free(meshLevels);
 
   //report top levels
-  if (mesh->rank == 0) { //report the upper multigrid levels
+  if (platform->comm.mpiRank == 0) { //report the upper multigrid levels
     printf("--------------------Multigrid Report---------------------\n");
     printf("---------------------------------------------------------\n");
     printf("level|    Type    |                 |     Smoother      |\n");
@@ -273,14 +273,14 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   }
 
   for(int lev = 0; lev < precon->parAlmond->numLevels; lev++) {
-    if(mesh->rank == 0) {
+    if(platform->comm.mpiRank == 0) {
       printf(" %3d ", lev);
       fflush(stdout);
     }
     levels[lev]->Report();
   }
 
-  if (mesh->rank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("---------------------------------------------------------\n");
 }
 

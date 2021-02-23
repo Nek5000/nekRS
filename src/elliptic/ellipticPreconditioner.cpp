@@ -53,8 +53,8 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
   }else {
-    if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
-    MPI_Abort(platform->comm, 1);
+    if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
+    MPI_Abort(platform->comm.mpiComm, 1);
     //o_z.copyFrom(o_r);
   }
   platform->timer.toc("preconditioner");

@@ -68,7 +68,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
   kernelInfo["defines/p_tiny"]          = coeff[13];
 
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/RANSktau.okl";
   {
@@ -80,7 +80,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
   }
 
   if(nrs->Nscalar < 2) {
-    if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
+    if(platform->comm.mpiRank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
     ABORT(1);
   }
   nrs->options.setArgs("STRESSFORMULATION", "TRUE");

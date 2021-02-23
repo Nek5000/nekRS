@@ -54,7 +54,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
           platform->linAlg->innerProd(Nlocal,
             elliptic->o_invDegree,
             o_q,
-            platform->comm,
+            platform->comm.mpiComm,
             fld * elliptic->Ntotal);
 #ifdef ELLIPTIC_ENABLE_TIMER
         platform->timer.toc("dotp");
@@ -73,9 +73,9 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 #endif
   dfloat qmeanGlobal = 0.0;
 #if USE_WEIGHTED == 1
-    qmeanGlobal = platform->linAlg->innerProd(mesh->Nlocal, elliptic->o_invDegree, o_q, platform->comm);
+    qmeanGlobal = platform->linAlg->innerProd(mesh->Nlocal, elliptic->o_invDegree, o_q, platform->comm.mpiComm);
 #else
-    qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm);
+    qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm.mpiComm);
 #endif
 #ifdef ELLIPTIC_ENABLE_TIMER
     platform->timer.toc("dotp");

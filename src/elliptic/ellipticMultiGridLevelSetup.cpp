@@ -191,12 +191,12 @@ void MGLevel::Report()
   hlong totalNrows = 0;
   dfloat avgNrows;
 
-  MPI_Allreduce(&Nrows, &maxNrows, 1, MPI_DLONG, MPI_MAX, platform->comm);
-  MPI_Allreduce(&hNrows, &totalNrows, 1, MPI_HLONG, MPI_SUM, platform->comm);
-  avgNrows = (dfloat) totalNrows / mesh->size;
+  MPI_Allreduce(&Nrows, &maxNrows, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&hNrows, &totalNrows, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+  avgNrows = (dfloat) totalNrows / platform->comm.mpiCommSize;
 
   if (Nrows == 0) Nrows = maxNrows; //set this so it's ignored for the global min
-  MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, platform->comm);
+  MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, platform->comm.mpiComm);
 
   char smootherString[BUFSIZ];
   if (degree != 1) {
@@ -210,7 +210,7 @@ void MGLevel::Report()
       strcpy(smootherString, "Chebyshev+Schwarz");
   }
 
-  if (mesh->rank == 0) {
+  if (platform->comm.mpiRank == 0) {
     if(degree == 1) {
       strcpy(smootherString, "BoomerAMG        ");
       printf(     "|    AMG     |   Matrix        | %s |\n", smootherString);
@@ -287,16 +287,16 @@ static void eig(const int Nrows, double* A, double* WR, double* WI)
 
 dfloat MGLevel::maxEigSmoothAx()
 {
-  MPI_Barrier(platform->mpiComm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
-  if(platform->mpiRank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
      
   const dlong N = Nrows;
   const dlong M = Ncols;
 
   hlong Nlocal = (hlong) Nrows;
   hlong Ntotal = 0;
-  MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm);
+  MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
   const int k = std::min((hlong)20, Ntotal); 
 
@@ -395,8 +395,8 @@ dfloat MGLevel::maxEigSmoothAx()
   //free((void*)o_V);
   delete[] o_V;
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);
 
   return rho;
 }

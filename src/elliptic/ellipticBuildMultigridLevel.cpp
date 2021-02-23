@@ -59,7 +59,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     if(!options.compareArgs("BOX DOMAIN", "TRUE")) {
       meshConnectFaceNodes3D(mesh);
     }else {
-      if(mesh->rank == 0)
+      if(platform->comm.mpiRank == 0)
         printf("WARNING: connecting periodic box\n");
 
       dfloat XMIN = -1, XMAX = +1; // default bi-unit cube
@@ -164,7 +164,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   //set the normalization constant for the allNeumann Poisson problem on this coarse mesh
   hlong localElements = (hlong) mesh->Nelements;
   hlong totalElements = 0;
-  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm);
+  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
   elliptic->allNeumannScale = 1.0 / sqrt(mesh->Np * totalElements);
 
   elliptic->allNeumannPenalty = 0;
@@ -176,7 +176,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, platform->comm, verbose);
+  meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   elliptic->mapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
@@ -220,7 +220,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
   //use the masked ids to make another gs handle
-  elliptic->ogs = ogsSetup(Ntotal, mesh->maskedGlobalIds, platform->comm, verbose, platform->device);
+  elliptic->ogs = ogsSetup(Ntotal, mesh->maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
 
   occa::properties kernelInfo = ellipticKernelInfo(mesh);
@@ -231,9 +231,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   string filename, kernelName;
 
-  MPI_Barrier(platform->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0) printf("loading elliptic MG kernels ... ");
+  if(platform->comm.mpiRank == 0) printf("loading elliptic MG kernels ... ");
   fflush(stdout);
 
   string install_dir;
@@ -308,8 +308,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
   }
 
-  MPI_Barrier(platform->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
   //new precon struct

@@ -86,7 +86,6 @@ SOFTWARE.
 
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
-<<<<<<< HEAD
       dfloat res = 0.0;
       while (id<N) {
         for(int fld = 0; fld < Nfields; ++fld){
@@ -95,15 +94,6 @@ SOFTWARE.
           res += wid*xid*xid;
         }
         s_wx2[t] = res;
-=======
-      s_wx2[t] = 0.0;
-      while (id<N) {
-        for(int fld = 0; fld < Nfields; ++fld){
-          const dfloat xid = x[id + fld*offset];
-          const dfloat wid = w[id + fld*offset];
-          s_wx2[t] += wid*xid*xid;
-        }
->>>>>>> Consolidate linAlg type operations to use linAlg_t
         id += p_blockSize*Nblocks;
       }
     }
@@ -132,9 +122,5 @@ SOFTWARE.
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) wx2[b] = s_wx2[0] + s_wx2[1];
   }
-<<<<<<< HEAD
 }
 
-=======
-}
->>>>>>> Consolidate linAlg type operations to use linAlg_t

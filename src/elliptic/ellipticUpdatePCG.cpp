@@ -65,7 +65,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
     dfloat globalrdotr1 = 0;
     if(enableReductions)
-      MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
+      MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     else
       globalrdotr1 = 1;
 #ifdef ELLIPTIC_ENABLE_TIMER
@@ -122,7 +122,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
       rdotr1 += elliptic->tmpNormr[n];
 
     dfloat globalrdotr1 = 0;
-    MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm);
+    MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
     rdotr1 = globalrdotr1;
   }

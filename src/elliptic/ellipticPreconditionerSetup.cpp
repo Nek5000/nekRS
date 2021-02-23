@@ -34,18 +34,18 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
 
   if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    if(mesh->rank == 0) printf("building MG preconditioner ... "); fflush(stdout);
+    if(platform->comm.mpiRank == 0) printf("building MG preconditioner ... "); fflush(stdout);
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     //ellipticSEMFEMSetup(elliptic,precon);
     printf("ERROR: SEMFEM not supported!\n");
     ABORT(EXIT_FAILURE);;
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-    if(platform->rank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
+    if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
     precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
     ellipticUpdateJacobi(elliptic);
   } else {
@@ -53,6 +53,6 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     ABORT(EXIT_FAILURE);
   }
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }

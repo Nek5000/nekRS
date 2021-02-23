@@ -42,9 +42,6 @@
 
 struct mesh_t
 {
-  MPI_Comm comm;
-  int rank, size; // MPI rank and size (process count)
-
   int dim;
   int Nverts, Nfaces, NfaceVertices;
 

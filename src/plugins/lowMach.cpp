@@ -15,7 +15,7 @@ void lowMach::setup(nrs_t* nrs)
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
-    if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
+    if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   nrs->options.setArgs("LOWMACH", "TRUE"); 

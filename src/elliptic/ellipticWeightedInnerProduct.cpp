@@ -50,7 +50,7 @@ dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
     o_w,
     o_a,
     o_b,
-    platform->comm
+    platform->comm.mpiComm
   );
 
 

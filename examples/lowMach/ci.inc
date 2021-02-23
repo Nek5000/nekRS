@@ -27,7 +27,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
 
   nrs->o_div.copyTo(nrs->div);
   dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;

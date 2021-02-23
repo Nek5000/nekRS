@@ -98,7 +98,7 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   int rank;
   mesh_t* mesh = nrs->mesh;
   
-  MPI_Comm_rank(platform->comm, &rank);
+  MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
   string install_dir;
   occa::properties kernelInfo = *nrs->kernelInfo;

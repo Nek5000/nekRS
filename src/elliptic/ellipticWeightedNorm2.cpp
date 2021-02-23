@@ -38,7 +38,7 @@ dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memo
   platform->timer.tic("dotp",1);
 #endif
 
-  const dfloat globalwa2 = platform->linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, mesh->comm);
+  const dfloat result = platform->linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, platform->comm.mpiComm);
 #ifdef ELLIPTIC_ENABLE_TIMER
   platform->timer.toc("dotp");
 #endif

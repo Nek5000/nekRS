@@ -82,8 +82,8 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
 {
   linAlg_t* linAlg = nrs->linAlg;
   platform_t* platform = platform_t::getInstance();
-  MPI_Comm comm = nrs->mesh->comm;
-  int rank = nrs->mesh->rank;
+  MPI_Comm comm = platform->comm.mpiComm;
+  int rank = platform->comm.mpiRank;
   dfloat* x = (dfloat*) calloc(N, sizeof(dfloat));
   for(int i = 0 ; i < N; ++i)
     x[i] = drand48();
@@ -112,7 +112,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
  
   nek_ocopyFrom(time, tstep);
   nek_userchk();
@@ -124,6 +124,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   
   int pIterErr;
   int velIterErr;
+
+  int NiterU, NiterP;
 
   ciTestLinAlg(nrs, BLOCKSIZE / 16);
   ciTestLinAlg(nrs, BLOCKSIZE / 8);
@@ -142,10 +144,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   NiterP = nrs->pSolver->Niter;
 
-  NiterS01 = nrs->cds->solver[0]->Niter;
-  NiterS02 = nrs->cds->solver[1]->Niter;
-  s01IterErr = abs(NiterS01 - 2);
-  s02IterErr = abs(NiterS02 - 2);
+  int NiterS01 = nrs->cds->solver[0]->Niter;
+  int NiterS02 = nrs->cds->solver[1]->Niter;
+  int s01IterErr = abs(NiterS01 - 2);
+  int s02IterErr = abs(NiterS02 - 2);
 
   switch (ciMode) {
     case 1 : velIterErr = abs(NiterU - 10);

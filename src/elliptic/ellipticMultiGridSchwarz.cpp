@@ -615,9 +615,6 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
 
   mesh_t* mesh = new mesh_t();
-  mesh->rank = meshRoot->rank;
-  mesh->size = meshRoot->size;
-  mesh->comm = meshRoot->comm;
   mesh->N = meshRoot->N + 2;
   mesh->Np = (mesh->N + 1) * (mesh->N + 1) * (mesh->N + 1);
   mesh->Nelements = meshRoot->Nelements;
@@ -648,7 +645,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   meshConnectFaceNodes3D(mesh);
   meshParallelConnectNodes(mesh, buildOnly);
 
-  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm, 1, platform->device);
+  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
@@ -818,7 +815,7 @@ void MGLevel::build(
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0,
-                                    ogsPfloat, extendedMesh->comm, 1, platform->device,
+                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device,
                                     NULL, oogsMode);
   meshFree(extendedMesh);
 

@@ -81,7 +81,7 @@ void filterSetup(nrs_t* nrs)
 
   nrs->o_filterMT =  platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
 
-  if(mesh->rank == 0)
+  if(platform->comm.mpiRank == 0)
     printf("High pass filter relaxation: chi = %.4f using %d mode(s)\n",
            fabs(nrs->filterS), nrs->filterNc);
 

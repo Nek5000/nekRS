@@ -36,7 +36,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   
   setupAide options = elliptic->options;
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
@@ -47,7 +47,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if (elliptic->blockSolver &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION",
                            "CONTINUOUS") && !options.compareArgs("PRECONDITIONER","JACOBI") ) {
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("ERROR: Block solver is implemented for C0-HEXAHEDRA with Jacobi preconditioner only\n");
 
     ABORT(EXIT_FAILURE);
@@ -55,7 +55,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   if (options.compareArgs("COEFFICIENT","VARIABLE") &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
-    if(mesh->rank == 0)
+    if(platform->comm.mpiRank == 0)
       printf("ERROR: Varibale coefficient solver is implemented for C0-HEXAHEDRA only\n");
 
     ABORT(EXIT_FAILURE);
@@ -65,7 +65,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     if(options.compareArgs("PRECONDITIONER",
                            "MULTIGRID") &&
        !options.compareArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE")) {
-      if(mesh->rank == 0)
+      if(platform->comm.mpiRank == 0)
         printf(
           "ERROR: Varibale coefficient solver is implemented for constant multigrid preconditioner only\n");
 
@@ -164,14 +164,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   hlong NelementsLocal = mesh->Nelements;
   hlong NelementsGlobal = 0;
 
-  MPI_Allreduce(&NelementsLocal, &NelementsGlobal, 1, MPI_HLONG, MPI_SUM, platform->comm);
+  MPI_Allreduce(&NelementsLocal, &NelementsGlobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
   elliptic->NelementsGlobal = NelementsGlobal;
 
   elliptic->allNeumannPenalty = 1.;
   hlong localElements = (hlong) mesh->Nelements;
   hlong totalElements = 0;
-  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm);
+  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
   elliptic->allNeumannScale = 1. / sqrt((dfloat)mesh->Np * totalElements);
 
   elliptic->allNeumannPenalty = 0;
@@ -213,14 +213,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
     int lallNeumann, gallNeumann;
     lallNeumann = allNeumann[fld] ? 0:1;
-    MPI_Allreduce(&lallNeumann, &gallNeumann, 1, MPI_INT, MPI_SUM, platform->comm);
+    MPI_Allreduce(&lallNeumann, &gallNeumann, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
     elliptic->allBlockNeumann[fld] = (gallNeumann > 0) ? 0: 1;
     // even if there is a single allNeumann activate Null space correction
     if(elliptic->allBlockNeumann[fld])
       elliptic->allNeumann = 1;
   }
 
-  if(mesh->rank == 0)
+  if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
   //copy boundary flags
@@ -230,7 +230,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm, verbose);
+  if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
@@ -286,7 +286,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
    // Create a gs handle independent from BC handler
   if(elliptic->blockSolver) {
-    elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, platform->comm, verbose, platform->device);
+    elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose, platform->device);
     elliptic->invDegree = (dfloat*)calloc(elliptic->Ntotal * elliptic->Nfields, sizeof(dfloat));
 
     for(int n = 0; n < elliptic->Ntotal * elliptic->Nfields; n++) elliptic->invDegree[n] = 1.0;
@@ -302,7 +302,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     for (dlong n = 0; n < elliptic->Nmasked; n++)
       mesh->maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
-    elliptic->ogs = ogsSetup(Nlocal, mesh->maskedGlobalIds, platform->comm, verbose, platform->device);
+    elliptic->ogs = ogsSetup(Nlocal, mesh->maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
 
@@ -330,13 +330,13 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
-  MPI_Barrier(platform->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0) printf("loading elliptic kernels ... ");
+  if(platform->comm.mpiRank == 0) printf("loading elliptic kernels ... ");
   fflush(stdout);
 
   for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+    if ((r == 0 && platform->comm.mpiRank == 0) || (r == 1 && platform->comm.mpiRank > 0)) {
       const string oklpath = install_dir + "/okl/core/";
       string filename;
 
@@ -410,7 +410,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
       }
     }
-    MPI_Barrier(platform->comm);
+    MPI_Barrier(platform->comm.mpiComm);
   }
 
   // add custom defines
@@ -467,7 +467,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
 
   for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+    if ((r == 0 && platform->comm.mpiRank == 0) || (r == 1 && platform->comm.mpiRank > 0)) {
       const string oklpath = install_dir + "/okl/elliptic/";
       string filename;
 
@@ -609,11 +609,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
     }
 
-    MPI_Barrier(platform->comm);
+    MPI_Barrier(platform->comm.mpiComm);
   }
 
-  MPI_Barrier(platform->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
   if(elliptic->blockSolver) {
@@ -621,17 +621,15 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
       const dlong nullProjectWeightGlobal =
-        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm, fld * elliptic->Ntotal);
+        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm, fld * elliptic->Ntotal);
 
       elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
     }
   }else{
       const dlong nullProjectWeightGlobal =
-        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm);
+        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm);
     elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
   }
-
-  long long int pre = platform->device.memoryAllocated();
 
   oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
@@ -644,7 +642,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
-  long long int pre = mesh->device.memoryAllocated();
+  long long int pre = platform->device.memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs, kernelInfo);
 
   long long int usedBytes = platform->device.memoryAllocated() - pre;
@@ -661,7 +659,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
   }
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
   fflush(stdout);
 }

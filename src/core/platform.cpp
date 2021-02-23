@@ -2,6 +2,14 @@
 #include "nrs.hpp"
 #include "linAlg.hpp"
 #include "omp.h"
+
+comm_t::comm_t(MPI_Comm _comm)
+{
+  mpiComm = _comm;
+  MPI_Comm_rank(_comm, &mpiRank);
+  MPI_Comm_size(_comm, &mpiCommSize);
+}
+
 platform_t* platform_t::singleton = nullptr;
 platform_t::platform_t(setupAide& options, MPI_Comm _comm)
 : device(options, _comm),
@@ -10,24 +18,11 @@ platform_t::platform_t(setupAide& options, MPI_Comm _comm)
 {
   kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-  kernelInfo["defines/" "p_BLOCKSIZE"] = BLOCKSIZE;
-  if(sizeof(dfloat) == 4) {
-    kernelInfo["defines/" "dfloat"] = "float";
-    kernelInfo["defines/" "dfloat4"] = "float4";
-    kernelInfo["defines/" "dfloat8"] = "float8";
-  }
-  if(sizeof(dfloat) == 8) {
-    kernelInfo["defines/" "dfloat"] = "double";
-    kernelInfo["defines/" "dfloat4"] = "double4";
-    kernelInfo["defines/" "dfloat8"] = "double8";
-  }
-
-  if(sizeof(dlong) == 4)
-    kernelInfo["defines/" "dlong"] = "int";
-  if(sizeof(dlong) == 8)
-    kernelInfo["defines/" "dlong"] = "long long int";
-  if(sizeof(hlong) == 8)
-    kernelInfo["defines/" "hlong"] = "long long int";
+  kernelInfo["defines/" "dfloat4"] = dfloatString"4";
+  kernelInfo["defines/" "dfloat8"] = dfloatString"8";
+  kernelInfo["defines/" "dfloat"] = dfloatString;
+  kernelInfo["defines/" "dlong"] = dlongString;
+  kernelInfo["defines/" "hlong"] = hlongString;
 
   if(device.mode() == "CUDA") { // add backend compiler optimization for CUDA
     kernelInfo["compiler_flags"] += "--ftz=true ";
