@@ -541,11 +541,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     double startTime;
     nek_copyTo(startTime);
     nrs->options.setArgs("START TIME", to_string_f(startTime));
-  }
 
-  if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
-  udf.setup(nrs);
-  if(mesh->rank == 0)  printf("done\n"); fflush(stdout);
+    if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
+    udf.setup(nrs);
+    if(mesh->rank == 0)  printf("done\n"); fflush(stdout);
+   }
 
   // setup elliptic solvers
 
