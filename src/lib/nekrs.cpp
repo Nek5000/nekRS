@@ -20,7 +20,7 @@ static void dryRun(setupAide &options, int npTarget);
 
 namespace nekrs
 {
-const double startTime(void)
+double startTime(void)
 {
   double val = 0;
   nrs->options.getArgs("START TIME", val);
@@ -167,25 +167,25 @@ void nekUserchk(void)
   nek_userchk();
 }
 
-const double dt(void)
+double dt(void)
 {
   // TODO: adjust dt for target CFL
   return nrs->dt[0];
 }
 
-const double writeInterval(void)
+double writeInterval(void)
 {
   double val = -1;
   nrs->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
   return val;
 }
 
-const int writeControlRunTime(void) 
+int writeControlRunTime(void)
 {
   return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
-const int isOutputStep(double time, int tStep)
+int isOutputStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
@@ -202,21 +202,21 @@ void outfld(double time)
   lastOutputTime = time;
 }
 
-const double endTime(void)
+double endTime(void)
 {
   double endTime = -1;
   nrs->options.getArgs("END TIME", endTime);
   return endTime;
 }
 
-const int numSteps(void)
+int numSteps(void)
 {
   int numSteps = -1;
   nrs->options.getArgs("NUMBER TIMESTEPS", numSteps);
   return numSteps;
 }
 
-const int lastStep(double time, int tstep, double elapsedTime)
+int lastStep(double time, int tstep, double elapsedTime)
 {
   if(!nrs->options.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
@@ -285,7 +285,7 @@ static void setOUDF(setupAide &options)
   std::string oklFile;
   options.getArgs("UDF OKL FILE",oklFile);
 
-  char buf[FILENAME_MAX];
+  // char buf[FILENAME_MAX];
 
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
@@ -358,7 +358,8 @@ static void setOUDF(setupAide &options)
 static void setOccaVars(string dir)
 {
   char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
+  char * ret = getcwd(buf, sizeof(buf));
+  if(!ret) ABORT(EXIT_FAILURE);;
   string cwd;
   cwd.assign(buf);
 

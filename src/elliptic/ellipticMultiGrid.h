@@ -111,20 +111,20 @@ public:
           parAlmond::KrylovType ktype_,
           MPI_Comm comm_);
 
-  void Ax(dfloat* x, dfloat* Ax) {}
+  void Ax(dfloat* /*x*/, dfloat* /*Ax*/) {}
   void Ax(occa::memory o_x, occa::memory o_Ax);
 
-  void residual(dfloat* rhs, dfloat* x, dfloat* res) {}
+  void residual(dfloat* /*rhs*/, dfloat* /*x*/, dfloat* /*res*/) {}
   void residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res);
 
-  void coarsen(dfloat* x, dfloat* Cx) {}
+  void coarsen(dfloat* /*x*/, dfloat* /*Cx*/) {}
   void coarsen(occa::memory o_x, occa::memory o_Cx);
 
-  void prolongate(dfloat* x, dfloat* Px) {}
+  void prolongate(dfloat* /*x*/, dfloat* /*Px*/) {}
   void prolongate(occa::memory o_x, occa::memory o_Px);
 
   //smoother ops
-  void smooth(dfloat* rhs, dfloat* x, bool x_is_zero) {}
+  void smooth(dfloat* /*rhs*/, dfloat* /*x*/, bool /*x_is_zero*/) {}
   void smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero);
 
   void smoother(occa::memory o_x, occa::memory o_Sx, bool xIsZero);

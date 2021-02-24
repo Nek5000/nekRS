@@ -12,7 +12,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options);
 void UDF_Setup(nrs_t* nrs);
 void UDF_LoadKernels(nrs_t* nrs);
 void UDF_ExecuteStep(nrs_t* nrs, dfloat time, int tstep);
-};
+}
 
 typedef void (* udfsetup0)(MPI_Comm comm, setupAide &options);
 typedef void (* udfsetup)(nrs_t* nrs);
