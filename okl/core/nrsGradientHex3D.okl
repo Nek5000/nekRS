@@ -93,7 +93,8 @@
           gradP[id + 2 * offset] = JW * (drdz * dpdr + dsdz * dpds + dtdz * dpdt);
         }
       }
-    }
+      @barrier("local");
+    } // k-loop
   }
 }
 
