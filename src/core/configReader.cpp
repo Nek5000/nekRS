@@ -83,12 +83,6 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nek5000_pplist", buf);
   setenv("NEKRS_NEK5000_PPLIST", buf.c_str(), 1);
 
-  buf = install_dir + "/libparanumal";
-  setenv("NEKRS_LIBP_DIR", buf.c_str(), 1);
-
-  ini.extract("general", "libp_defines", buf);
-  setenv("NEKRS_LIBP_DEFINES", buf.c_str(), 1);
-
   buf = install_dir + "/udf";
   setenv("NEKRS_UDF_DIR", buf.c_str(), 1);
 
@@ -98,8 +92,11 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_cxx", buf);
   if(!getenv("OCCA_CXX")) setenv("OCCA_CXX", buf.c_str(), 1);
 
-  ini.extract("general", "occa_cxxflags", buf);
-  if(!getenv("OCCA_CXXFLAGS")) setenv("OCCA_CXXFLAGS", buf.c_str(), 1);
+  ini.extract("general", "occa_cxx", buf);
+  if(!getenv("OCCA_CXX")) setenv("OCCA_CXX", buf.c_str(), 1);
+
+  ini.extract("general", "ogs_mpi_support", buf);
+  if(!getenv("OGS_MPI_SUPPORT")) setenv("OGS_MPI_SUPPORT", buf.c_str(), 1);
 
   buf = install_dir;
   setenv("NEKRS_INSTALL_DIR", buf.c_str(), 1);

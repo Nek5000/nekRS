@@ -33,6 +33,8 @@ set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH
 set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING 
   "Preprocessor macros for libparanumal")
 
+set(OGS_MPI_SUPPORT "${OGS_MPI}" CACHE STRING "OGS GPU aware MPI")
+
 set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
 set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
         CACHE STRING "C++ flags for OCCA JIT compile")

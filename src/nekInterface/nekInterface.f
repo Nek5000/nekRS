@@ -161,6 +161,8 @@ c-----------------------------------------------------------------------
 
       call read_re2_hdr(ifbswap, .true.)
 
+      if(ndim.eq.2) call exitti('Mesh has to be 3D!$', ndim) 
+
       call setDefaultParam
       cpfld(1,2) = rho
       cpfld(1,1) = mue

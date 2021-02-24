@@ -6,11 +6,21 @@
 ###############################################################################
 
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+# MPI wrapper compilers
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
 
-# compiler settings for CPU backend
+# GPU backends
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=0}
+: ${OCCA_OPENCL_ENABLED:=0}
+
+# GPU aware MPI
+: ${OGS_MPI_SUPPORT:=0}
+
+# CPU backend
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 
@@ -81,36 +91,6 @@ if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-if [[ "$#" -lt 1 ]]; then
-  if [ -z ${OCCA_CUDA_ENABLED} ]; then
-      read -p "enable CUDA backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_CUDA_ENABLED=1
-          ;;
-      esac
-  fi
-  if [ -z ${OCCA_HIP_ENABLED} ]; then
-      read -p "enable HIP backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_HIP_ENABLED=1
-          ;;
-      esac
-  fi
-  if [ -z ${OCCA_OPENCL_ENABLED} ]; then
-      read -p "enable OPENCL backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_OPENCL_ENABLED=1
-          ;;
-      esac
-  fi
-fi
-
-: ${OCCA_CUDA_ENABLED:=0}
-: ${OCCA_HIP_ENABLED:=0}
-: ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_METAL_ENABLED:=0}
 
 : ${NEKRS_CXXFLAGS:=""}
@@ -163,6 +143,26 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
+echo ""
+echo "Configuration"
+echo "-------------"
+echo "Installation directory:" $NEKRS_INSTALL_DIR 
+echo "C compiler:" $NEKRS_CC
+echo "C++ compiler:" $NEKRS_CXX
+echo "Fortran compiler:" $NEKRS_FC
+echo "CPU backend compiler:" $OCCA_CXX "(flags: $OCCA_CXXFLAGS)"
+echo "CUDA backend support:" $OCCA_CUDA_ENABLED
+echo "HIP backend support:" $OCCA_HIP_ENABLED 
+echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED
+echo "GS GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI)"
+echo ""
+read -p "continue? [Y]" yn
+case $yn in
+   [Nn]* )
+   ${NEKRS_EXIT_CMD} 1
+   ;;
+esac
+
 # =======================
 # Run CMake
 # =======================
@@ -187,6 +187,7 @@ cmake -Wno-dev \
       -DUSE_OCCA_MEM_BYTE_ALIGN="${USE_OCCA_MEM_BYTE_ALIGN}" \
       -DOCCA_CXX="${OCCA_CXX}" \
       -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
+      -DOGS_MPI="${OGS_MPI_SUPPORT}" \
       -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
