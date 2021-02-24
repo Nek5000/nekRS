@@ -252,7 +252,7 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  cout << "performing dry-run to jit-compile for >"
+  cout << "performing dry-run to jit-compile for >="
        << npTarget
        << " MPI tasks ...\n" << endl;
 

@@ -65,8 +65,6 @@ typedef struct
   int isOutputStep;
   int outputForceStep;
 
-  int NiterU, NiterV, NiterW, NiterP;
-
   dfloat* U, * P;
   dfloat* BF, * FU;
 

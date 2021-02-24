@@ -134,42 +134,53 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   ciTestLinAlg(nrs, 8 * BLOCKSIZE);
   ciTestLinAlg(nrs, 16 * BLOCKSIZE);
 
+  if(nrs->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    NiterU = nrs->uvwSolver->Niter;
+  else
+    NiterU = nrs->uSolver->Niter;
+
+  NiterP = nrs->pSolver->Niter;
+
+  NiterS01 = nrs->cds->solver[0]->Niter;
+  NiterS02 = nrs->cds->solver[1]->Niter;
+  s01IterErr = abs(NiterS01 - 2);
+  s02IterErr = abs(NiterS02 - 2);
+
   switch (ciMode) {
-    case 1 : velIterErr = abs(nrs->NiterU - 10);
+    case 1 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
              s2Err = abs((err[3] - 6.09E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 4);
+             pIterErr = abs(NiterP - 4);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.17E-10)/err[1]);
              break;
-    case 2 : velIterErr = abs(nrs->NiterU - 10);
+    case 2 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 6.49E-12)/err[2]);
              s2Err = abs((err[3] - 7.28E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.38E-10)/err[1]);
              break;
-    case 3 : velIterErr = abs(nrs->NiterU - 4);
+    case 3 : velIterErr = abs(NiterU - 4);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
              s2Err = abs((err[3] - 6.09E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.34E-10)/err[1]);
              break;
-    case 4 : velIterErr = abs(nrs->NiterU - 1);
+    case 4 : velIterErr = abs(NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
              s2Err = abs((err[3] - 2.00E-11)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 3.65E-10)/err[0]);
              prErr = abs((err[1] - 6.71E-10)/err[1]);
              break;
   }
 
   if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d\n", 
-           vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr);
-
+    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
+           vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr, s01IterErr, s02IterErr);
 
   (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
-  velIterErr <= 1 && pIterErr <= 2) ? (PASS) : (FAIL); 
+   velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
 }

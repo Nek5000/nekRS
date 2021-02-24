@@ -42,7 +42,6 @@ typedef struct
   int dtAdaptStep;
 
   int compute[NSCALAR_MAX];
-  int Niter[NSCALAR_MAX];
 
   dfloat* U, * S;
   dfloat* rkNS;
