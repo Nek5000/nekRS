@@ -151,7 +151,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 1);
+  meshGlobalIds(mesh, 1);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
 
@@ -223,12 +223,11 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 0);
+  meshGlobalIds(mesh, 0);
 
   bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
-
   if(options.compareArgs("MOVING MESH", "TRUE")){
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -240,8 +239,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     occa::properties meshKernelInfoBC = meshKernelInfo;
     const string bcDataFile = install_dir + "/include/core/bcData.h";
     meshKernelInfoBC["includes"] += bcDataFile.c_str();
-    for (int r = 0; r < 2; r++) {
-      if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
+    {
         mesh->nStagesSumVectorKernel = 
           platform->device.buildKernel(filename.c_str(),
                                    "nStagesSumVector",
@@ -266,8 +264,95 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
           platform->device.buildKernel(filename.c_str(),
                                    "nrsDivergenceVolumeHex3D",
                                    meshKernelInfoBC);
-      }
-      MPI_Barrier(platform->comm.mpiComm);
+    }
+  }
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvLMM();
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int maxTemporalOrder = 3;
+    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+  }
+}
+
+mesh_t* duplicateMesh(MPI_Comm comm,
+                      int N,
+                      int cubN,
+                      mesh_t* meshT,
+                      setupAide &options,
+                      occa::device device,
+                      occa::properties& kernelInfo)
+{
+  mesh_t* mesh = new mesh_t[1];
+
+  // shallow copy
+  memcpy(mesh, meshT, sizeof(*meshT));
+
+  mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
+
+  // load reference (r,s,t) element nodes
+  meshLoadReferenceNodesHex3D(mesh, N, cubN);
+  if (platform->comm.mpiRank == 0)
+    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh, 0);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
+  meshGlobalIds(mesh, 0);
+
+  bcMap::check(mesh);
+
+  meshOccaSetup3D(mesh, options, kernelInfo);
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    std::string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    std::string oklpath = install_dir + "/okl/core/";
+    std::string filename = oklpath + "nStagesSum.okl";
+    occa::properties meshKernelInfo = kernelInfo;
+    meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+    meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
+    occa::properties meshKernelInfoBC = meshKernelInfo;
+    const string bcDataFile = install_dir + "/include/core/bcData.h";
+    meshKernelInfoBC["includes"] += bcDataFile.c_str();
+    {
+        mesh->nStagesSumVectorKernel = 
+          platform->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+        filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        mesh->geometricFactorsKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "meshGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+        mesh->surfaceGeometricFactorsKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "meshSurfaceGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+        filename = oklpath + "nrsDivergenceHex3D.okl";
+        mesh->strongDivergenceKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "nrsDivergenceVolumeHex3D",
+                                   meshKernelInfoBC);
     }
   }
 
@@ -288,6 +373,8 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
+
+  return mesh;
 }
 
 void createMeshV(mesh_t* mesh,
@@ -298,11 +385,7 @@ void createMeshV(mesh_t* mesh,
                     setupAide &options,
                     occa::properties& kernelInfo)
 {
-  int order = -1;
-  if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
-  if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
-  else order = 3;
-  mesh->nAB = order;
+  options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
@@ -324,30 +407,25 @@ void createMeshV(mesh_t* mesh,
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
-  // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh, 0);
+  //meshPhysicalNodesHex3D(mesh, 0);
+  mesh->x = meshT->x;
+  mesh->y = meshT->y;
+  mesh->z = meshT->z;
 
   meshHaloPhysicalNodes(mesh);
 
-  // compute geometric factors
-  meshGeometricFactorsHex3D(mesh);
-
-  free(mesh->vgeo);
+  // meshGeometricFactorsHex3D(mesh);
   mesh->vgeo = meshT->vgeo;
-  free(mesh->cubvgeo);
   mesh->cubvgeo = meshT->cubvgeo;
-
-  free(mesh->ggeo);
   mesh->ggeo = meshT->ggeo;
-  free(mesh->cubggeo);
   mesh->cubggeo = meshT->cubggeo;
 
   // connect face nodes (find trace indices)
   // find vmapM, vmapP, mapP based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
-  // uniquely label each node with a global index, used for gatherScatter (mesh->globalIds)
-  meshParallelConnectNodes(mesh, 0);
+  // meshGlobalIds(mesh, 0); correct?
+  mesh->globalIds = meshT->globalIds;
 
   bcMap::check(mesh);
 

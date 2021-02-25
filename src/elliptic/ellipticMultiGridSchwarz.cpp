@@ -643,7 +643,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   meshPhysicalNodesHex3D(mesh, buildOnly);
   meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
-  meshParallelConnectNodes(mesh, buildOnly);
+  meshGlobalIds(mesh, buildOnly);
 
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
 

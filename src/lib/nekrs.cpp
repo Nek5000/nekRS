@@ -59,7 +59,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if (rank == 0) {
 #include "printHeader.inc"
     cout << "MPI tasks: " << size << endl << endl;
-    cout << "using OCCA_DIR: " << occa::env::OCCA_DIR << endl;
+    string install_dir;
+    install_dir.assign(getenv("NEKRS_HOME"));
+    cout << "using NEKRS_HOME: " << install_dir << endl;
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
@@ -372,9 +374,6 @@ static void setOccaVars(string dir)
   string cwd;
   cwd.assign(buf);
 
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_HOME"));
-
   if (dir.empty())
     sprintf(buf,"%s/.cache", cwd.c_str());
   else
@@ -389,8 +388,7 @@ static void setOccaVars(string dir)
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 
-  if (!getenv("OCCA_DIR"))
-    occa::env::OCCA_DIR = install_dir + "/";
-
-  occa::env::OCCA_INSTALL_DIR = occa::env::OCCA_DIR;
+  string occa_dir;
+  occa_dir.assign(getenv("OCCA_DIR"));
+  occa::env::OCCA_INSTALL_DIR = occa_dir;
 }

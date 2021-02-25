@@ -151,10 +151,10 @@ echo "C compiler:" $NEKRS_CC
 echo "C++ compiler:" $NEKRS_CXX
 echo "Fortran compiler:" $NEKRS_FC
 echo "CPU backend compiler:" $OCCA_CXX "(flags: $OCCA_CXXFLAGS)"
-echo "CUDA backend support:" $OCCA_CUDA_ENABLED
-echo "HIP backend support:" $OCCA_HIP_ENABLED 
+echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED
+echo "AMD HIP backend support:" $OCCA_HIP_ENABLED 
 echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED
-echo "GS GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI)"
+echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
 echo ""
 read -p "continue? [Y]" yn
 case $yn in

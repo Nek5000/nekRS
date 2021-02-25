@@ -4,7 +4,7 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshSetup.cpp
     ${MESH_SOURCE_DIR}/meshNekReader.cpp
     ${MESH_SOURCE_DIR}/meshPhysicalNodesHex3D.cpp
-    ${MESH_SOURCE_DIR}/meshParallelConnectNodes.cpp
+    ${MESH_SOURCE_DIR}/meshGlobalIds.cpp
     ${MESH_SOURCE_DIR}/meshBasis1D.cpp
     ${MESH_SOURCE_DIR}/meshBasisHex3D.cpp
     ${MESH_SOURCE_DIR}/meshApplyElementMatrix.cpp

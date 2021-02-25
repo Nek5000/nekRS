@@ -26,7 +26,7 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
     mesh->globalIds[id] = nekData.glo_num[id];
 }
 
-void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
+void meshGlobalIds(mesh_t* mesh, int nrsBuildOnly)
 {
   
   if(!nrsBuildOnly) {
