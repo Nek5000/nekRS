@@ -111,7 +111,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
       linAlgKernelInfo["compiler_flags"] += " -O3 ";
       linAlgKernelInfo["compiler_flags"] += " -ffp-contract=fast ";
     }
-    linAlg_t* linAlg = new linAlg_t(device, linAlgKernelInfo, comm);
+    linAlg_t* linAlg = linAlg_t::getInstance(device, linAlgKernelInfo, comm);
     nrs->linAlg = linAlg;
   }
   timer::init(comm, device, 0);

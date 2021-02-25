@@ -134,17 +134,19 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   ciTestLinAlg(nrs, 8 * BLOCKSIZE);
   ciTestLinAlg(nrs, 16 * BLOCKSIZE);
 
+  int NiterU;
+
   if(nrs->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
     NiterU = nrs->uvwSolver->Niter;
   else
     NiterU = nrs->uSolver->Niter;
 
-  NiterP = nrs->pSolver->Niter;
+  int NiterP = nrs->pSolver->Niter;
 
-  NiterS01 = nrs->cds->solver[0]->Niter;
-  NiterS02 = nrs->cds->solver[1]->Niter;
-  s01IterErr = abs(NiterS01 - 2);
-  s02IterErr = abs(NiterS02 - 2);
+  int NiterS01 = nrs->cds->solver[0]->Niter;
+  int NiterS02 = nrs->cds->solver[1]->Niter;
+  int s01IterErr = abs(NiterS01 - 2);
+  int s02IterErr = abs(NiterS02 - 2);
 
   switch (ciMode) {
     case 1 : velIterErr = abs(NiterU - 10);
