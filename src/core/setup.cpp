@@ -205,19 +205,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
     {
-      o_scratch.copyFrom(mesh->o_LMM, nrs->Nlocal * sizeof(dfloat));
-      mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
-      mesh->o_LMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
-      o_scratch.copyFrom(mesh->o_invLMM, nrs->Nlocal * sizeof(dfloat));
-      mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
-      mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
+      platform->o_mempool.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
+      mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_LMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
+      platform->o_mempool.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
+      mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_invLMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
     }
 
-    mesh->o_BdivW = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat), scratch);
+    mesh->o_BdivW = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat), platform->mempool);
 
     const int nAB = mesh->nAB;
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
-    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
+    mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
   }
 
 
@@ -406,7 +406,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       fileName = oklpath + "nrsDivergence" + suffix + ".okl";
       kernelName = "nrswDivergenceVolume" + suffix;
       nrs->wDivergenceVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
       kernelName = "nrsDivergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
@@ -418,11 +418,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       fileName = oklpath + "nrsAdvectMeshVelocity.okl";
       kernelName = "nrsAdvectMeshVelocity";
       nrs->advectMeshVelocityKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       // nrsSurfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
       if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
-        if(mesh->rank == 0)
+        if(platform->comm.mpiRank == 0)
           printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
             "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
         ABORT(EXIT_FAILURE);
@@ -1092,7 +1092,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       fileName = oklpath + "cdsAdvectMeshVelocity.okl";
       kernelName = "cdsAdvectMeshVelocity";
       cds->advectMeshVelocityKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "mask.okl";
       kernelName = "maskCopy";

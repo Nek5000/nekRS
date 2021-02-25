@@ -5,7 +5,7 @@ void mesh_t::computeInvLMM()
 {
   o_invLMM.copyFrom(o_LMM, Nelements * Np * sizeof(dfloat));
   oogs::startFinish(o_invLMM, 1, 0, ogsDfloat, ogsAdd, oogs);
-  linAlg->ady(Nelements * Np, 1.0, o_invLMM);
+  platform->linAlg->ady(Nelements * Np, 1.0, o_invLMM);
 }
 void mesh_t::computeBdivW()
 {
@@ -46,7 +46,7 @@ void mesh_t::update(){
         o_ggeo,
         o_cubvgeo
     );
-    volume = linAlg->sum(Nelements * Np, o_LMM, comm);
+    volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
     computeInvLMM();
     surfaceGeometricFactorsKernel(
         Nelements,

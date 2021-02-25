@@ -155,7 +155,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   meshOccaSetup3D(mesh, options, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
@@ -181,7 +181,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                    setupAide &options,
                    occa::properties& kernelInfo)
 {
-  options.compareArgs("MESH INTEGRATION ORDER", mesh->nAB);
+  options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -267,11 +267,11 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                                    "nrsDivergenceVolumeHex3D",
                                    meshKernelInfoBC);
       }
-      MPI_Barrier(mesh->comm);
+      MPI_Barrier(platform->comm.mpiComm);
     }
   }
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
@@ -353,7 +353,7 @@ void createMeshV(mesh_t* mesh,
 
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);

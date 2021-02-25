@@ -184,9 +184,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                      mesh->vgeo + Nlocal * mesh->Nvgeo);
 
     mesh->o_vgeo =
-      mesh->device.malloc((Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat), mesh->vgeo);
+      platform->device.malloc((Nlocal + Nhalo) * mesh->Nvgeo * sizeof(dfloat), mesh->vgeo);
     //mesh->o_faceNodes =
-    //  mesh->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
+    //  platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
     free(vgeoSendBuffer);
   }
 

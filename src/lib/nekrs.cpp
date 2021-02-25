@@ -79,6 +79,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
   platform->linAlg = linAlg_t::getInstance();
+  nrs->linAlg = platform->linAlg;
 
   if (buildOnly) {
     dryRun(options, sizeTarget);

@@ -125,8 +125,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   int pIterErr;
   int velIterErr;
 
-  int NiterU, NiterP;
-
   ciTestLinAlg(nrs, BLOCKSIZE / 16);
   ciTestLinAlg(nrs, BLOCKSIZE / 8);
   ciTestLinAlg(nrs, BLOCKSIZE / 4);

@@ -118,7 +118,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   
   if(nrs->pSolver->allNeumann){
     const dfloat dd = (1.0 - gamma0) / gamma0;
-    const dlong Nlocal = nrs->Nlocal;
+    const dlong Nlocal = mesh->Nlocal;
 
     linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
     const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
@@ -163,6 +163,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 void lowMach::dpdt(occa::memory o_FU)
 {
   nrs_t* nrs = the_nrs;
+  mesh_t* mesh = nrs->mesh;
   if(!qThermal)
-    nrs->linAlg->add(nrs->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
+    nrs->linAlg->add(mesh->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
 }

@@ -70,7 +70,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     if(nrs->Nscalar) {
       if(geom == 0) {
         timer::tic("makeq", 1);
-        cds->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+        platform->linAlg->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
         makeq(nrs, time, cds->o_FS, cds->o_BF);
         timer::toc("makeq");
       }
@@ -91,14 +91,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
     if(udf.div && geom == 1){
       linAlg_t* linAlg = nrs->linAlg;
-      linAlg->fill(nrs->Nlocal, 0.0, nrs->o_div);
+      linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
       udf.div(nrs, time + nrs->dt[0], nrs->o_div);
     }
 
     if(nrs->flow) {
       if(geom == 0) {
         timer::tic("makef", 1);
-        nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+        platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
         makef(nrs, time, nrs->o_FU, nrs->o_BF);
         timer::toc("makef");
       }
@@ -519,14 +519,13 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
     const dlong offset = torder * nrs->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
     if (torder == nrs->nEXT - 1){
-      nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-                           o_U, 0.0, 0, o_p0);
+      linAlg->axpby(nrs->NVfields * nrs->fieldOffset, b, o_U, 0.0, o_p0, toffset, 0);
       occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
-      linAlg->axmyMany(nrs->Nlocal, nrs->NVfields, nrs->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
+      linAlg->axmyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
     }
     else{
       nrs->subCycleExtrapolateFieldKernel(
-        nrs->Nlocal,
+        mesh->Nlocal,
         nrs->NVfields,
         nrs->fieldOffset,
         toffset,
@@ -577,9 +576,9 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           break;
         }
         nrs->o_extC.copyFrom(nrs->extC);
-        nrs->subCycleExtrapolateScalarKernel(nrs->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_extC, mesh->o_LMM, o_bmst);
+        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_extC, mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
-          nrs->Nlocal,
+          mesh->Nlocal,
           nrs->NVfields,
           nrs->fieldOffset,
           0,
@@ -660,7 +659,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
 
         oogs::finish(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
         linAlg->axmyMany(
-          nrs->Nlocal,
+          mesh->Nlocal,
           nrs->NVfields,
           nrs->fieldOffset,
           0,
@@ -669,10 +668,10 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           o_rhs
         );
 
-        if(rk != 3 ) linAlg->axpbyzMany(nrs->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_p0, -sdt * nrs->Srka[rk+1], o_rhs, o_u1);
+        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_p0, -sdt * nrs->Srka[rk+1], o_rhs, o_u1);
         else{
           nrs->subCycleRKKernel(
-            nrs->Nlocal,
+            mesh->Nlocal,
             nrs->NVfields,
             nrs->fieldOffset,
             sdt,
@@ -849,7 +848,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
       }
     }
   }
-  linAlg->axmyMany(nrs->Nlocal, 3, nrs->fieldOffset, 0, 1.0, mesh->o_LMM, nrs->o_wrk0);
+  linAlg->axmyMany(mesh->Nlocal, 3, nrs->fieldOffset, 0, 1.0, mesh->o_LMM, nrs->o_wrk0);
   return nrs->o_wrk0;
 }
 
@@ -877,13 +876,13 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
                           torder * cds->NSfields * cds->fieldOffset;
     const dlong offset = torder * cds->fieldOffset;
     if (torder == cds->nEXT - 1){
-      cds->scaledAddKernel(cds->fieldOffset, cds->coeffBDF[torder],
-                           toffset, o_S, 0.0, 0, o_p0);
+      linAlg->axpby(cds->fieldOffset, cds->coeffBDF[torder],
+                           o_S, 0.0, o_p0, toffset, 0);
       occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
-      linAlg->axmy(cds->Nlocal, 1.0, o_LMM_slice, o_p0);
+      linAlg->axmy(mesh->Nlocal, 1.0, o_LMM_slice, o_p0);
     }
     else{
-      cds->subCycleExtrapolateFieldKernel(cds->Nlocal, toffset, offset, cds->coeffBDF[torder], mesh->o_LMM,
+      cds->subCycleExtrapolateFieldKernel(mesh->Nlocal, toffset, offset, cds->coeffBDF[torder], mesh->o_LMM,
         o_S, o_p0);
     }
 
@@ -894,7 +893,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
 
     for(int ststep = 0; ststep < cds->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
-      o_u1.copyFrom(o_p0, cds->Nlocal * sizeof(dfloat));
+      o_u1.copyFrom(o_p0, mesh->Nlocal * sizeof(dfloat));
       for(int rk = 0; rk < cds->SNrk; ++rk)
       {
         occa::memory o_rhs;
@@ -926,8 +925,8 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
           break;
         }
         cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(cds->Nlocal, cds->nEXT, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
-        linAlg->aydx(cds->Nlocal, 1.0, o_bmst, o_u1);
+        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, cds->nEXT, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
+        linAlg->aydx(mesh->Nlocal, 1.0, o_bmst, o_u1);
 
         if(mesh->NglobalGatherElements) {
           if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -1001,13 +1000,13 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
 
         oogs::finish(o_rhs, 1, cds->fieldOffset, ogsDfloat, ogsAdd, cds->gsh);
 
-        linAlg->axmy(cds->Nlocal, 1.0, o_bmst, o_rhs);
+        linAlg->axmy(mesh->Nlocal, 1.0, o_bmst, o_rhs);
         if(rk != 3) {
-          linAlg->axpbyz(cds->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_rhs, o_u1);
+          linAlg->axpbyz(mesh->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_rhs, o_u1);
         }
         else{
           cds->subCycleRKKernel(
-            cds->Nlocal,
+            mesh->Nlocal,
             sdt,
             cds->o_Srkb,
             o_r1,
@@ -1036,7 +1035,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     if (torder == cds->nEXT - 1){
       platform->linAlg->axpby(
         cds->fieldOffset,
-        cds->extbdfB[torder],
+        cds->coeffBDF[torder],
         o_S,
         0.0,
         cds->o_wrk0,
@@ -1046,7 +1045,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     else{
       platform->linAlg->axpby(
         cds->fieldOffset,
-        cds->extbdfB[torder],
+        cds->coeffBDF[torder],
         o_S,
         1.0,
         cds->o_wrk0,
@@ -1181,7 +1180,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
       }
     }
   }
-  linAlg->axmy(cds->Nlocal, 1.0, mesh->o_LMM, cds->o_wrk0);
+  linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, cds->o_wrk0);
   return cds->o_wrk0;
 }
 void meshUpdate(nrs_t* nrs)

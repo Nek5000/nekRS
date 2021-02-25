@@ -254,6 +254,7 @@ struct mesh_t
 
   occa::memory o_gllw;
   occa::memory o_cubw;
+  occa::memory o_faceNodes;
 
   occa::kernel gatherKernel;
   occa::kernel scatterKernel;
