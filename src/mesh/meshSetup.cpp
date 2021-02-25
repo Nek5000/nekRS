@@ -157,7 +157,7 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 1);
+  meshGlobalIds(mesh, 1);
 
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
@@ -218,7 +218,43 @@ mesh_t* createMesh(MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshParallelConnectNodes(mesh, 0);
+  meshGlobalIds(mesh, 0);
+
+  bcMap::check(mesh);
+
+  mesh->device = device;
+  meshOccaSetup3D(mesh, options, kernelInfo);
+
+  return mesh;
+}
+
+mesh_t* duplicateMesh(MPI_Comm comm,
+                      int N,
+                      int cubN,
+                      mesh_t* meshT,
+                      setupAide &options,
+                      occa::device device,
+                      occa::properties& kernelInfo)
+{
+  mesh_t* mesh = new mesh_t[1];
+
+  // shallow copy
+  memcpy(mesh, meshT, sizeof(*meshT));
+
+  mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
+
+  // load reference (r,s,t) element nodes
+  meshLoadReferenceNodesHex3D(mesh, N, cubN);
+  if (mesh->rank == 0)
+    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh, 0);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
+  meshGlobalIds(mesh, 0);
 
   bcMap::check(mesh);
 
@@ -257,31 +293,25 @@ mesh_t* createMeshV(MPI_Comm comm,
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
-  // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh, 0);
+  //meshPhysicalNodesHex3D(mesh, 0);
+  mesh->x = meshT->x;
+  mesh->y = meshT->y;
+  mesh->z = meshT->z;
 
   meshHaloPhysicalNodes(mesh);
 
-  // compute geometric factors
-  meshGeometricFactorsHex3D(mesh);
-
-  free(mesh->vgeo);
+  // meshGeometricFactorsHex3D(mesh);
   mesh->vgeo = meshT->vgeo;
-  free(mesh->cubvgeo);
   mesh->cubvgeo = meshT->cubvgeo;
-
-  free(mesh->ggeo);
   mesh->ggeo = meshT->ggeo;
-  free(mesh->cubggeo);
   mesh->cubggeo = meshT->cubggeo;
 
   // connect face nodes (find trace indices)
   // find vmapM, vmapP, mapP based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
-  // uniquely label each node with a global index, used for gatherScatter
-  // mesh->globalIds
-  meshParallelConnectNodes(mesh, 0);
+  // meshGlobalIds(mesh, 0); correct?
+  mesh->globalIds = meshT->globalIds;
 
   bcMap::check(mesh);
 

@@ -64,17 +64,24 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
   DegreeRaiseMatrix1D(mesh->N, mesh->N + 1, mesh->interpRaise);
   DegreeRaiseMatrix1D(mesh->N - 1, mesh->N, mesh->interpLower);
 
+  /*
+  intr = (dfloat*) malloc(meshP->Nq * sizeof(dfloat));
+  intw = (dfloat*) malloc(meshP->Nq * sizeof(dfloat));
+  JacobiGLL(meshP->N, intr, intw);
+  mesh->interp = (dfloat*) calloc(mesh->Nq * meshP->Nq, sizeof(dfloat));
+  InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, meshP->Nq, intr, mesh->interp);
+  free(intr);
+  free(intw);
+  */
+
   mesh->cubNfp = mesh->cubNq * mesh->cubNq;
   mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
-  // cubN+1 point Gauss-Legendre quadrature
   mesh->cubr = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
   mesh->cubw = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
-  JacobiGLL(mesh->cubNq - 1, mesh->cubr, mesh->cubw);
-
+  //JacobiGLL(mesh->cubNq - 1, mesh->cubr, mesh->cubw);
+  JacobiGQ(0, 0, mesh->cubNq - 1, mesh->cubr, mesh->cubw);
   mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
   InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
-
-  //cubature project cubProject = cubInterp^T
   mesh->cubProject = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
   matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
 
@@ -121,6 +128,4 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
         (mesh->t[n] - 1) * (mesh->t[n] - 1) < NODETOL)
       mesh->vertexNodes[7] = n;
   }
-
-  mesh->max_EL_nnz = 0;
 }

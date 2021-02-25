@@ -36,7 +36,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
   const double tStart = MPI_Wtime();
 
   if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    if(mesh->rank == 0) printf("building MG preconditioner ... "); fflush(stdout);
+    if(mesh->rank == 0) printf("building MG preconditioner ...\n"); fflush(stdout);
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     //ellipticSEMFEMSetup(elliptic,precon);

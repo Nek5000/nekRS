@@ -95,7 +95,7 @@ void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kern
 void meshOccaSetupQuad3D(mesh_t* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 void meshOccaSetupTri3D(mesh_t* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 
-void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo);
+void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 void meshOccaCloneDevice(mesh_t* donorMesh, mesh_t* mesh);
 
 // functions that call OCCA kernels

@@ -488,7 +488,7 @@ void meshConnect(mesh_t* mesh);
 void meshParallelConnect(mesh_t* mesh);
 
 /* build global connectivity in parallel */
-void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly);
+void meshGlobalIds(mesh_t* mesh, int nrsBuildOnly);
 
 void meshHaloSetup(mesh_t* mesh);
 void meshHaloPhysicalNodes(mesh_t* mesh);

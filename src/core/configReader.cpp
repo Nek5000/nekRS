@@ -92,8 +92,8 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_cxx", buf);
   if(!getenv("OCCA_CXX")) setenv("OCCA_CXX", buf.c_str(), 1);
 
-  ini.extract("general", "occa_cxx", buf);
-  if(!getenv("OCCA_CXX")) setenv("OCCA_CXX", buf.c_str(), 1);
+  buf = install_dir + "/";
+  setenv("OCCA_DIR", buf.c_str(), 1);
 
   ini.extract("general", "ogs_mpi_support", buf);
   if(!getenv("OGS_MPI_SUPPORT")) setenv("OGS_MPI_SUPPORT", buf.c_str(), 1);
