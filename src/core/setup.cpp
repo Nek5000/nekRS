@@ -55,7 +55,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     int err = 0;
     int npTarget = size;
     if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget);
+    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget, nrs->options);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if (err) ABORT(EXIT_FAILURE);; 
 
@@ -71,12 +71,23 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   // create mesh
   if (buildOnly) {
-    nrs->meshT = createMeshDummy(comm, N, cubN, nrs->options, device, kernelInfo);
-    nrs->mesh = nrs->meshT;
+    mesh_t* mesh = new mesh_t();
+    mesh->linAlg = nrs->linAlg;
+    createMeshDummy(mesh, comm, N, cubN, nrs->options, device, kernelInfo);
+    nrs->meshT = mesh;
+    nrs->mesh = mesh;
   } else {
-    nrs->meshT = createMesh(comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
-    nrs->mesh = nrs->meshT;
-    if (nrs->cht) nrs->mesh = createMeshV(comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+    mesh_t* mesh = new mesh_t();
+    mesh->linAlg = nrs->linAlg;
+    createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
+    nrs->meshT = mesh;
+    nrs->mesh = mesh;
+    if (nrs->cht) {
+      mesh_t* meshV = new mesh_t();
+      meshV->linAlg = nrs->linAlg;
+      createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+      nrs->mesh = meshV;
+    }
   }
   mesh_t* mesh = nrs->mesh;
 
@@ -103,20 +114,20 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   mesh->Nfields = 1;
 
-  nrs->extbdfA = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extbdfB = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extbdfC = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffEXT = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffBDF = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->extC = (dfloat*) calloc(3, sizeof(dfloat));
 
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
-    nrs->Nstages = 1;
-    nrs->temporalOrder = 1;
+    nrs->nEXT = 1;
+    nrs->nBDF = 1;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
-    nrs->Nstages = 2;
-    nrs->temporalOrder = 2;
+    nrs->nEXT = 2;
+    nrs->nBDF = 2;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
-    nrs->Nstages = 3;
-    nrs->temporalOrder = 3;
+    nrs->nEXT = 3;
+    nrs->nBDF = 3;
   }
 
   dfloat mue = 1;
@@ -145,6 +156,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     const int pageW = PAGESIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
+  nrs->meshT->fieldOffset = nrs->fieldOffset;
+  nrs->mesh->fieldOffset = nrs->fieldOffset;
 
   nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
@@ -175,9 +188,10 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->ellipticWrkOffset = wrkNflds * nrs->fieldOffset;
 
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
-  scratch   = (dfloat*) calloc(scratchNflds * nrs->fieldOffset,sizeof(dfloat));
-  o_scratch = mesh->device.malloc(scratchNflds * nrs->fieldOffset * sizeof(dfloat), scratch);
+  scratch  = (dfloat*) calloc(scratchNflds * nrs->fieldOffset,sizeof(dfloat));
+  nrs->wrk = scratch;
 
+  o_scratch = mesh->device.malloc(scratchNflds * nrs->fieldOffset * sizeof(dfloat), scratch);
   nrs->o_wrk0  = o_scratch.slice( 0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk1  = o_scratch.slice( 1 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk2  = o_scratch.slice( 2 * nrs->fieldOffset * sizeof(dfloat));
@@ -189,18 +203,39 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->o_wrk9  = o_scratch.slice( 9 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_wrk18 = o_scratch.slice(18 * nrs->fieldOffset * sizeof(dfloat));
 
-  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    // realloc o_LMM, o_invLMMM to be large enough
+    const int nBDF = nrs->nBDF;
+    {
+      o_scratch.copyFrom(mesh->o_LMM, nrs->Nlocal * sizeof(dfloat));
+      mesh->o_LMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_LMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
+      o_scratch.copyFrom(mesh->o_invLMM, nrs->Nlocal * sizeof(dfloat));
+      mesh->o_invLMM = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_invLMM.copyFrom(o_scratch, nrs->Nlocal * sizeof(dfloat));
+    }
+
+    mesh->o_BdivW = mesh->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat), scratch);
+
+    const int nAB = mesh->nAB;
+    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
+    mesh->o_U = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
+  }
+
+
+  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset,sizeof(dfloat));
+  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
 
-  nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset * sizeof(dfloat), nrs->U);
+  nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
   nrs->o_Ue = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
   nrs->o_P  = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
   nrs->o_BF = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->Nstages * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
   nrs->var_coeff = 1; // use always var coeff elliptic
   nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
@@ -222,15 +257,16 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   nrs->o_rkC     = mesh->device.malloc(4 * sizeof(dfloat),rkC);
-  nrs->o_extbdfA = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfA);
-  nrs->o_extbdfB = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfB);
-  nrs->o_extbdfC = mesh->device.malloc(3 * sizeof(dfloat), nrs->extbdfA);
+  nrs->o_coeffEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
+  nrs->o_coeffBDF = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
+  nrs->o_coeffSubEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_extC    = mesh->device.malloc(3 * sizeof(dfloat), nrs->extC);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
   kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
-  kernelInfo["defines/" "p_Nstages"] =  nrs->Nstages;
+  kernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
+  kernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
   if(nrs->Nsubsteps)
     kernelInfo["defines/" "p_SUBCYCLING"] =  1;
   else
@@ -242,6 +278,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
   kernelInfo["defines/" "p_NblockV"] = NblockV;
 
+  const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
+
   // jit compile udf kernels
   if (udf.loadKernels) {
     if (mesh->rank == 0) cout << "loading udf kernels ... ";
@@ -249,22 +288,21 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if (mesh->rank == 0) cout << "done" << endl;
   }
 
-  nrs->linAlg = linAlg_t::getInstance(mesh->device, kernelInfo, mesh->comm);
-
   meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
+
+  linAlg_t * linAlg = nrs->linAlg;
 
   if(!buildOnly) {
     int err = 0;
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    nrs->linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
-    //ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    oogs::startFinish(nrs->o_wrk0, 1, 0, ogsDfloat, ogsAdd, nrs->gsh);
-    nrs->linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
+    ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
@@ -291,20 +329,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     if(err) ABORT(1);
     free(tmp);
   }
-
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix  = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
 
   // setup boundary mapping
   dfloat largeNumber = 1 << 20;
@@ -393,6 +417,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsDivergence" + suffix + ".okl";
+      kernelName = "nrswDivergenceVolume" + suffix;
+      nrs->wDivergenceVolumeKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
       kernelName = "nrsDivergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
@@ -400,6 +427,19 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       kernelName = "nrsDivergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      fileName = oklpath + "nrsAdvectMeshVelocity.okl";
+      kernelName = "nrsAdvectMeshVelocity";
+      nrs->advectMeshVelocityKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+
+      // nrsSurfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
+      if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
+        if(mesh->rank == 0)
+          printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+            "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
+        ABORT(EXIT_FAILURE);
+      }
 
       fileName = oklpath + "nrsPressureRhs" + suffix + ".okl";
       kernelName = "nrsPressureRhsTOMBO" + suffix;
@@ -448,6 +488,16 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       if(nrs->SNrk == 4) kernelName = "nrsSubCycleERKUpdate";
       nrs->subCycleRKUpdateKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "nrsSubCycleRK";
+      nrs->subCycleRKKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+      kernelName = "nrsSubCycleExtrapolateField";
+      nrs->subCycleExtrapolateFieldKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      kernelName = "nrsSubCycleExtrapolateScalar";
+      nrs->subCycleExtrapolateScalarKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsExtrapolate" + ".okl";
       kernelName = "nrsMultiExtrapolate";
@@ -493,11 +543,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       fileName = oklpath + "nrsCfl" + suffix + ".okl";
       kernelName = "nrsCfl" + suffix;
       nrs->cflKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "nrsQtl" + suffix + ".okl";
-      kernelName = "nrsQtl" + suffix;
-      nrs->qtlKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsPressureAddQtl" + ".okl";
@@ -863,7 +908,6 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     ellipticSolveSetup(nrs->pSolver, kernelInfoP);
 
   } // flow
-
 }
 
 static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH)
@@ -881,20 +925,20 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->NVfields    = nrs->NVfields;
   cds->NSfields    = nrs->Nscalar;
 
-  cds->extbdfA = nrs->extbdfA;
-  cds->extbdfB = nrs->extbdfB;
-  cds->extbdfC = nrs->extbdfC;
+  cds->coeffEXT = nrs->coeffEXT;
+  cds->coeffBDF = nrs->coeffBDF;
+  cds->coeffSubEXT = nrs->coeffSubEXT;
   cds->extC    = nrs->extC;
 
-  cds->Nstages       = nrs->Nstages;
-  cds->temporalOrder = nrs->temporalOrder;
+  cds->nBDF       = nrs->nBDF;
+  cds->nEXT       = nrs->nEXT;
 
   // time stepper
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   cds->o_rkC     = nrs->o_rkC;
-  cds->o_extbdfA = nrs->o_extbdfA;
-  cds->o_extbdfB = nrs->o_extbdfB;
-  cds->o_extbdfC = nrs->o_extbdfC;
+  cds->o_coeffEXT = nrs->o_coeffEXT;
+  cds->o_coeffBDF = nrs->o_coeffBDF;
+  cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
   cds->o_extC    = nrs->o_extC;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
@@ -919,7 +963,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->gsh = nrs->gsh;
   
   if(nrs->cht) {
-    meshParallelGatherScatterSetup(mesh, cds->Nlocal, mesh->globalIds, mesh->comm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
     if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
     cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
@@ -927,28 +970,13 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     cds->gshT = cds->gsh;
   }
 
-  // build mass + inverse mass matrix
-  dfloat* lumpedMassMatrix = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
-  for(hlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      lumpedMassMatrix[e * mesh->Np +
-                       n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  ogsGatherScatter(lumpedMassMatrix, ogsDfloat, ogsAdd, mesh->ogs);
-  mesh->o_LMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_LMM.copyTo(mesh->LMM);
-  for(int n = 0; n < mesh->Np * mesh->Nelements; ++n)
-    lumpedMassMatrix[n] = 1. / lumpedMassMatrix[n];
-  mesh->o_invLMM.copyFrom(lumpedMassMatrix, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_invLMM.copyTo(mesh->invLMM);
-  free(lumpedMassMatrix);
-
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * cds->Nstages * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
@@ -995,12 +1023,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat), cds->S);
+    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat));
+    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
   cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * cds->Nstages * cds->fieldOffset * sizeof(dfloat),
+    mesh->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {
@@ -1095,6 +1123,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
                                                                            kernelInfo);
 
       // ===========================================================================
+      fileName = oklpath + "cdsAdvectMeshVelocity.okl";
+      kernelName = "cdsAdvectMeshVelocity";
+      cds->advectMeshVelocityKernel =
+        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "math.okl";
       kernelName = "fill";
@@ -1153,6 +1185,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
         kernelName = "cdsSubCycleLSERKUpdate";
         if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "cdsSubCycleRK";
+        cds->subCycleRKKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "subCycleExtrapolateField";
+        cds->subCycleExtrapolateFieldKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "cdsSubCycleExtrapolateScalar";
+        cds->subCycleExtrapolateScalarKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
       }
     }
     MPI_Barrier(mesh->comm);

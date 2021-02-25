@@ -17,12 +17,13 @@
 #include "timer.hpp"
 #include "inipp.hpp"
 
-typedef struct
+struct nrs_t
 {
   int dim, elementType;
 
   mesh_t* mesh;
   mesh_t* meshT;
+  linAlg_t* linAlg;
 
   elliptic_t* uSolver;
   elliptic_t* vSolver;
@@ -33,8 +34,6 @@ typedef struct
   cds_t* cds;
 
   oogs_t* gsh;
-
-  linAlg_t* linAlg;
 
   dlong ellipticWrkOffset;
 
@@ -53,15 +52,16 @@ typedef struct
   int Nblock;
 
   dfloat dt[3], idt;
+  dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat dp0thdt;
   int tstep;
   int lastStep;
   dfloat g0, ig0;
 
   int cht;
 
-  int temporalOrder;
-  int ExplicitOrder;
-  int Nstages;
+  int nEXT;
+  int nBDF;
   int isOutputStep;
   int outputForceStep;
 
@@ -78,14 +78,14 @@ typedef struct
   dfloat* rkC;
 
   //EXTBDF data
-  dfloat* extbdfA, * extbdfB, * extbdfC;
+  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
   dfloat* extC;
 
   int* VmapB;
   occa::memory o_VmapB;
 
   occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6, o_wrk7,
-               o_wrk9, o_wrk12, o_wrk15;
+               o_wrk9, o_wrk12, o_wrk15, o_wrk18;
 
   int Nsubsteps;
   dfloat* Ue, sdt;
@@ -106,8 +106,8 @@ typedef struct
   dfloat* filterM, filterS;
   occa::memory o_filterMT; // transpose of filter matrix
   occa::kernel filterRTKernel; // Relaxation-Term based filtering
+  occa::kernel advectMeshVelocityKernel;
 
-  occa::kernel qtlKernel;
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
@@ -121,6 +121,9 @@ typedef struct
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel extrapolateKernel;
+  occa::kernel subCycleRKKernel;
+  occa::kernel subCycleExtrapolateFieldKernel;
+  occa::kernel subCycleExtrapolateScalarKernel;
 
   occa::kernel wgradientVolumeKernel;
 
@@ -133,6 +136,8 @@ typedef struct
 
   occa::memory o_BF;
   occa::memory o_FU;
+
+  dfloat* wrk;
 
   int var_coeff;
   dfloat* prop, * ellipticCoeff;
@@ -150,7 +155,7 @@ typedef struct
   occa::memory o_rkC;
 
   //EXTBDF data
-  occa::memory o_extbdfA, o_extbdfB, o_extbdfC;
+  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
   occa::memory o_extC;
 
   occa::kernel advectionVolumeKernel;
@@ -164,6 +169,7 @@ typedef struct
 
   occa::kernel gradientVolumeKernel;
 
+  occa::kernel wDivergenceVolumeKernel;
   occa::kernel divergenceVolumeKernel;
   occa::kernel divergenceSurfaceKernel;
 
@@ -197,7 +203,7 @@ typedef struct
   occa::memory o_EToB;
 
   occa::properties* kernelInfo;
-} nrs_t;
+};
 
 
 #include "io.hpp"

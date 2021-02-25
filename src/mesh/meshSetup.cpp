@@ -1,18 +1,17 @@
 #include "nrs.hpp"
 #include "bcMap.hpp"
 #include "meshNekReader.hpp"
+#include <string>
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
 
-mesh_t* createMeshDummy(MPI_Comm comm,
+void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
                         int N,
                         int cubN,
                         setupAide &options,
                         occa::device device,
                         occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
-
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -162,10 +161,26 @@ mesh_t* createMeshDummy(MPI_Comm comm,
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
-  return mesh;
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvLMM();
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int maxTemporalOrder = 3;
+    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+  }
 }
 
-mesh_t* createMesh(MPI_Comm comm,
+void createMesh(mesh_t* mesh, MPI_Comm comm,
                    int N,
                    int cubN,
                    int isMeshT,
@@ -173,7 +188,11 @@ mesh_t* createMesh(MPI_Comm comm,
                    occa::device device,
                    occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
+  int order = -1;
+  if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
+  if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
+  else order = 3;
+  mesh->nAB = order;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -225,17 +244,80 @@ mesh_t* createMesh(MPI_Comm comm,
   mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
-  return mesh;
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    std::string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    std::string oklpath = install_dir + "/okl/core/";
+    std::string filename = oklpath + "nStagesSum.okl";
+    occa::properties meshKernelInfo = kernelInfo;
+    meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+    meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
+    occa::properties meshKernelInfoBC = meshKernelInfo;
+    const string bcDataFile = install_dir + "/include/core/bcData.h";
+    meshKernelInfoBC["includes"] += bcDataFile.c_str();
+    for (int r = 0; r < 2; r++) {
+      if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
+        mesh->nStagesSumVectorKernel = 
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+        filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        mesh->geometricFactorsKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "meshGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+        mesh->surfaceGeometricFactorsKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "meshSurfaceGeometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+        filename = oklpath + "nrsDivergenceHex3D.okl";
+        mesh->strongDivergenceKernel =
+          mesh->device.buildKernel(filename.c_str(),
+                                   "nrsDivergenceVolumeHex3D",
+                                   meshKernelInfoBC);
+      }
+      MPI_Barrier(mesh->comm);
+    }
+  }
+
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
+  mesh->computeInvLMM();
+
+  if(options.compareArgs("MOVING MESH", "TRUE")){
+    const int maxTemporalOrder = 3;
+    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
+    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+  }
 }
 
-mesh_t* createMeshV(MPI_Comm comm,
+void createMeshV(mesh_t* mesh,
+                    MPI_Comm comm,
                     int N,
                     int cubN,
                     mesh_t* meshT,
                     setupAide &options,
                     occa::properties& kernelInfo)
 {
-  mesh_t* mesh = new mesh_t[1];
+  int order = -1;
+  if(options.compareArgs("TIME INTEGRATOR", "TOMBO1")) order = 1;
+  if(options.compareArgs("TIME INTEGRATOR", "TOMBO2")) order = 2;
+  else order = 3;
+  mesh->nAB = order;
 
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
@@ -279,15 +361,19 @@ mesh_t* createMeshV(MPI_Comm comm,
   // find vmapM, vmapP, mapP based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
-  // uniquely label each node with a global index, used for gatherScatter
-  // mesh->globalIds
+  // uniquely label each node with a global index, used for gatherScatter (mesh->globalIds)
   meshParallelConnectNodes(mesh, 0);
 
   bcMap::check(mesh);
 
   meshVOccaSetup3D(mesh, options, kernelInfo);
 
-  return mesh;
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
+  oogs_mode oogsMode = OOGS_AUTO; 
+  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
+
+  mesh->computeInvLMM();
 }
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)
@@ -346,4 +432,6 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
   mesh->o_vmapP =
     mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapP);
+  mesh->o_invLMM =
+    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
 }

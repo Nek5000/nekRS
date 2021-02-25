@@ -125,7 +125,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->mesh->o_invLMM,
     nrs->o_wrk6);
 
-  nrs->divergenceVolumeKernel(
+  nrs->wDivergenceVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,

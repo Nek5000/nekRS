@@ -268,6 +268,12 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
 
   mesh->o_z =
     mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->z);
+  mesh->o_gllw =
+    mesh->device.malloc( mesh->Nq * sizeof(dfloat), mesh->gllw);
+  mesh->o_cubw =
+    mesh->device.malloc( mesh->cubNq * sizeof(dfloat), mesh->cubw);
+  mesh->o_faceNodes =
+    mesh->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
 
   if(mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE

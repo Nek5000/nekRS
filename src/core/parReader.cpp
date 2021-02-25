@@ -29,6 +29,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("NUMBER OF SCALARS", "0");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
+  options.setArgs("MESH INTEGRATION ORDER", "2");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
   options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
@@ -96,6 +97,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   //options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
+  options.setArgs("MOVING MESH", "FALSE");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
@@ -183,11 +185,16 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   par->extract("general", "timestepper", timeStepper);
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
+    options.setArgs("MESH INTEGRATION ORDER", "3");
   }
-  if(timeStepper == "bdf2" || timeStepper == "tombo2")
+  if(timeStepper == "bdf2" || timeStepper == "tombo2"){
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
-  if(timeStepper == "bdf1" || timeStepper == "tombo1")
+    options.setArgs("MESH INTEGRATION ORDER", "2");
+  }
+  if(timeStepper == "bdf1" || timeStepper == "tombo1"){
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
+    options.setArgs("MESH INTEGRATION ORDER", "1");
+  }
 
   bool variableDt = false;
   par->extract("general", "variabledt", variableDt);

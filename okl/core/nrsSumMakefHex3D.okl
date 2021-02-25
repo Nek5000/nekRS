@@ -25,10 +25,10 @@
  */
 
 @kernel void nrsSumMakefHex3D(const dlong Nelements,
-                              @restrict const dfloat*  vgeo,
+                              @restrict const dfloat*  massMatrix,
                               const dfloat idt,
-                              @restrict const dfloat*  extbdfA,
-                              @restrict const dfloat*  extbdfB,
+                              @restrict const dfloat*  coeffEXT,
+                              @restrict const dfloat*  coeffBDF,
                               const dlong fieldOffset,
                               @restrict const dfloat*  U,
                               @restrict const dfloat*  NU,
@@ -44,8 +44,7 @@
 #pragma unroll p_Nq
             for(int k = 0; k < p_Nq; ++k) {
               const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
-              const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + e * p_Np * p_Nvgeo;
-              const dfloat JW = vgeo[gid + p_JWID * p_Np];
+              dfloat JW = massMatrix[id];
 
               dfloat bfx = 0;
               dfloat bfy = 0;
@@ -59,35 +58,42 @@
                 bfy += idt * NUy;
                 bfz += idt * NUz;
 
-                for (int s = 0; s < p_Nstages; s++) {
+                for (int s = 0; s < p_nEXT; s++) {
                   // FU
                   const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  bfx += extbdfA[s] * FUx;
-                  bfy += extbdfA[s] * FUy;
-                  bfz += extbdfA[s] * FUz;
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  bfx += JW * coeffEXT[s] * FUx;
+                  bfy += JW * coeffEXT[s] * FUy;
+                  bfz += JW * coeffEXT[s] * FUz;
                 }
               } else {
-                for (int s = 0; s < p_Nstages; s++) {
+                for (int s = 0; s < p_nEXT; s++) {
+                  // FU
+                  const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
+                  const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
+                  const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  bfx += JW * coeffEXT[s] * FUx;
+                  bfy += JW * coeffEXT[s] * FUy;
+                  bfz += JW * coeffEXT[s] * FUz;
+                }
+                for (int s = 0; s < p_nBDF; s++) {
                   //U
                   const dfloat Um  = U[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat Vm  = U[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
                   const dfloat Wm  = U[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  // FU
-                  const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-
-                  bfx += idt * extbdfB[s] * Um + extbdfA[s] * FUx;
-                  bfy += idt * extbdfB[s] * Vm + extbdfA[s] * FUy;
-                  bfz += idt * extbdfB[s] * Wm + extbdfA[s] * FUz;
+                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                  bfx += JW * (idt * coeffBDF[s] * Um);
+                  bfy += JW * (idt * coeffBDF[s] * Vm);
+                  bfz += JW * (idt * coeffBDF[s] * Wm);
                 }
               }
 
-              BF[id + 0 * fieldOffset] = JW * bfx;
-              BF[id + 1 * fieldOffset] = JW * bfy;
-              BF[id + 2 * fieldOffset] = JW * bfz;
+              BF[id + 0 * fieldOffset] = bfx;
+              BF[id + 1 * fieldOffset] = bfy;
+              BF[id + 2 * fieldOffset] = bfz;
             }
           }
         }
