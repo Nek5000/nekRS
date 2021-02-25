@@ -1,14 +1,16 @@
 #include "nrs.hpp"
 #include "udf.hpp"
+#include "linAlg.hpp"
 
 namespace tombo
 {
 occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
+  
 
   //enforce Dirichlet BCs
-  nrs->fillKernel((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
+  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -68,14 +70,15 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
                   nrs->o_wrk0);
 
   oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
-
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
+  
+  platform->linAlg->axmyVector(
+    mesh->Nlocal,
     nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
+    0,
+    1.0,
     nrs->mesh->o_invLMM,
-    nrs->o_wrk0);
+    nrs->o_wrk0
+  );
 
   nrs->curlKernel(
     mesh->Nelements,
@@ -117,13 +120,14 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
+  platform->linAlg->axmyVector(
+    mesh->Nlocal,
     nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
+    0,
+    1.0,
     nrs->mesh->o_invLMM,
-    nrs->o_wrk6);
+    nrs->o_wrk6
+  );
 
   nrs->wDivergenceVolumeKernel(
     mesh->Nelements,
@@ -160,6 +164,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 occa::memory velocitySolve(nrs_t* nrs, dfloat time)
 {
   mesh_t* mesh = nrs->mesh;
+  
 
   dfloat scale = -1./3;
   if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
@@ -204,13 +209,11 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     nrs->o_P,
     nrs->o_wrk3); 
 
-  nrs->scaledAddKernel(
+  platform->linAlg->axpby(
     nrs->NVfields*nrs->fieldOffset,
     1.0,
-    0*nrs->fieldOffset,
     nrs->o_wrk3,
     -1.0,
-    0*nrs->fieldOffset,
     nrs->o_wrk0);
 #endif
 

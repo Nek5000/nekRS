@@ -7,6 +7,7 @@
 #include "udf.hpp"
 
 #include "lowMach.hpp"
+#include "linAlg.hpp"
 
 namespace{
 
@@ -23,22 +24,22 @@ void buildKernels(nrs_t* nrs)
   mesh_t* mesh = nrs->mesh;
   occa::properties kernelInfo = *(nrs->kernelInfo);
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/lowMach.okl";
   if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
-    if(mesh->rank == 0)
+    if(rank == 0)
       printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
         "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
     ABORT(EXIT_FAILURE);
   }
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      qtlKernel        = mesh->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
-      p0thHelperKernel = mesh->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
-      surfaceFluxKernel = mesh->device.buildKernel(fileName.c_str(), "surfaceFlux", kernelInfo);
+      qtlKernel        = platform->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
+      p0thHelperKernel = platform->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
+      surfaceFluxKernel = platform->device.buildKernel(fileName.c_str(), "surfaceFlux", kernelInfo);
     }
-    MPI_Barrier(mesh->comm);
+    MPI_Barrier(platform->comm.mpiComm);
   }
 }
 
@@ -53,7 +54,7 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
-    if(mesh->rank == 0) cout << "lowMach requires solving for temperature!\n";
+    if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   buildKernels(nrs);
@@ -79,20 +80,20 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 
   oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
+  platform->linAlg->axmyVector(
+    mesh->Nlocal,
     nrs->fieldOffset,
-    nrs->NVfields,
-    mesh->o_vgeo,
+    0,
+    1.0,
     nrs->mesh->o_invLMM,
     cds->o_wrk0);
 
   if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
+    platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
-    timer::toc("udfSEqnSource");
+    platform->timer.toc("udfSEqnSource");
   } else {
-    nrs->fillKernel(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
   }
 
   qtlKernel(
@@ -109,11 +110,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
-    1,
-    mesh->o_vgeo,
+  platform->linAlg->axmy(
+    mesh->Nlocal,
+    1.0,
     nrs->mesh->o_invLMM,
     o_div);
   
@@ -122,7 +121,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     const dlong Nlocal = nrs->Nlocal;
 
     linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
-    const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);
+    const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
 
     surfaceFluxKernel(
       mesh->Nelements,
@@ -136,7 +135,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     nrs->o_wrk0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
     dfloat termV = 0.0;
     for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
-    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
     p0thHelperKernel(Nlocal,
       dd,
@@ -146,7 +145,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       nrs->o_wrk0,
       nrs->o_wrk1 
     );
-    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, nrs->o_wrk0, mesh->comm);;
+    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
     linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
 
     dfloat Saqpq = 0.0;

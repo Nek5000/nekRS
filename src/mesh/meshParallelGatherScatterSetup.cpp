@@ -29,6 +29,7 @@
 #include <stddef.h>
 
 #include "mesh.h"
+#include "platform.hpp"
 
 void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,
@@ -36,11 +37,12 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     MPI_Comm &comm,
                                     int verbose)
 {
+  
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  mesh->ogs = ogsSetup(N, globalIds, comm, verbose, mesh->device);
+  mesh->ogs = ogsSetup(N, globalIds, comm, verbose, platform->device);
 
   //use the gs to find what nodes are local to this rank
   int* minRank = (int*) calloc(N,sizeof(int));
@@ -96,9 +98,9 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
 
   if(globalCount)
     mesh->o_globalGatherElementList =
-      mesh->device.malloc(globalCount * sizeof(dlong), mesh->globalGatherElementList);
+      platform->device.malloc(globalCount * sizeof(dlong), mesh->globalGatherElementList);
 
   if(localCount)
     mesh->o_localGatherElementList =
-      mesh->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
+      platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
 }

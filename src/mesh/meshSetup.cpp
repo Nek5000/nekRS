@@ -9,16 +9,11 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
                         int N,
                         int cubN,
                         setupAide &options,
-                        occa::device device,
                         occa::properties& kernelInfo)
 {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
 
   mesh->cht = 0;
   mesh->Nfields = 1;
@@ -45,12 +40,12 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   hlong allNelements = NX * NY * NZ;
 
-  hlong chunkNelements = allNelements / mesh->size;
+  hlong chunkNelements = allNelements / platform->comm.mpiCommSize;
 
-  hlong start = chunkNelements * mesh->rank;
-  hlong end   = chunkNelements * (mesh->rank + 1);
+  hlong start = chunkNelements * platform->comm.mpiRank;
+  hlong end   = chunkNelements * (platform->comm.mpiRank + 1);
 
-  if(mesh->rank == (mesh->size - 1))
+  if(platform->comm.mpiRank == (platform->comm.mpiCommSize - 1))
     end = allNelements;
 
   mesh->Nnodes = NX * NY * NZ;
@@ -135,7 +130,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (mesh->rank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // set up halo exchange info for MPI (do before connect face nodes)
@@ -158,7 +153,6 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
   // global nodes
   meshParallelConnectNodes(mesh, 1);
 
-  mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 0);
@@ -176,7 +170,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
 }
 
@@ -185,22 +179,14 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                    int cubN,
                    int isMeshT,
                    setupAide &options,
-                   occa::device device,
                    occa::properties& kernelInfo)
 {
-  int order = -1;
-  if(options.compareArgs("MESH INTEGRATION ORDER", "1")) order = 1;
-  if(options.compareArgs("MESH INTEGRATION ORDER", "2")) order = 2;
-  else order = 3;
-  mesh->nAB = order;
+  options.compareArgs("MESH INTEGRATION ORDER", mesh->nAB);
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  mesh->comm = comm;
-  mesh->rank = rank;
-  mesh->size = size;
   mesh->cht  = isMeshT;
 
   // get mesh from nek
@@ -216,7 +202,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (mesh->rank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   // set up halo exchange info for MPI (do before connect face nodes)
@@ -241,7 +227,6 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
 
   bcMap::check(mesh);
 
-  mesh->device = device;
   meshOccaSetup3D(mesh, options, kernelInfo);
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
@@ -258,27 +243,27 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     for (int r = 0; r < 2; r++) {
       if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
         mesh->nStagesSumVectorKernel = 
-          mesh->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename.c_str(),
                                    "nStagesSumVector",
                                    meshKernelInfo);
         filename = oklpath + "meshGeometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
-          mesh->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename.c_str(),
                                    "meshGeometricFactorsHex3D",
                                    meshKernelInfo);
         filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
         mesh->surfaceGeometricFactorsKernel =
-          mesh->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename.c_str(),
                                    "meshSurfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
         filename = oklpath + "nStagesSum.okl";
         mesh->nStagesSumVectorKernel =
-          mesh->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename.c_str(),
                                    "nStagesSumVector",
                                    meshKernelInfo);
         filename = oklpath + "nrsDivergenceHex3D.okl";
         mesh->strongDivergenceKernel =
-          mesh->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename.c_str(),
                                    "nrsDivergenceVolumeHex3D",
                                    meshKernelInfoBC);
       }
@@ -301,7 +286,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = mesh->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
 }
 
@@ -378,6 +363,7 @@ void createMeshV(mesh_t* mesh,
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)
 {
+  
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
   dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
@@ -397,10 +383,10 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
   mesh->NinternalElements = Ninterior;
   mesh->NnotInternalElements = NnotInterior;
   if(Ninterior)
-    mesh->o_internalElementIds    = mesh->device.malloc(Ninterior * sizeof(dlong),
+    mesh->o_internalElementIds    = platform->device.malloc(Ninterior * sizeof(dlong),
                                                         internalElementIds);
   if(NnotInterior > 0)
-    mesh->o_notInternalElementIds = mesh->device.malloc(NnotInterior * sizeof(dlong),
+    mesh->o_notInternalElementIds = platform->device.malloc(NnotInterior * sizeof(dlong),
                                                         notInternalElementIds);
 
   free(internalElementIds);
@@ -409,29 +395,29 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
   if(mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE
     mesh->o_haloElementList =
-      mesh->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
+      platform->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
 
     // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
     mesh->o_haloBuffer =
-      mesh->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
+      platform->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
 
     // node ids
     mesh->o_haloGetNodeIds =
-      mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
+      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
 
     mesh->o_haloPutNodeIds =
-      mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
+      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
   mesh->o_EToB =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
+    platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
                         mesh->EToB);
   mesh->o_vmapM =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
+    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapM);
   mesh->o_vmapP =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
+    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapP);
   mesh->o_invLMM =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
 }

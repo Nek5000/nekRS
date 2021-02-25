@@ -15,8 +15,8 @@ typedef struct
 void meshNekParallelConnectNodes(mesh_t* mesh)
 {
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  rank = platform->comm.mpiRank;
+  size = platform->comm.mpiCommSize;
 
   dlong localNodeCount = mesh->Np * mesh->Nelements;
 
@@ -28,6 +28,7 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
 
 void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
 {
+  
   if(!nrsBuildOnly) {
     // hotfix as libP version seems to be broken
     meshNekParallelConnectNodes(mesh);
@@ -35,15 +36,15 @@ void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
   }
 
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  rank = platform->comm.mpiRank;
+  size = platform->comm.mpiCommSize;
 
   dlong localNodeCount = mesh->Np * mesh->Nelements;
   dlong* allLocalNodeCounts = (dlong*) calloc(size, sizeof(dlong));
 
   MPI_Allgather(&localNodeCount,    1, MPI_DLONG,
                 allLocalNodeCounts, 1, MPI_DLONG,
-                mesh->comm);
+                platform->comm.mpiComm);
 
   hlong gatherNodeStart = 0;
   for(int r = 0; r < rank; ++r)
@@ -113,7 +114,7 @@ void meshParallelConnectNodes(mesh_t* mesh, int nrsBuildOnly)
       }
 
     // sum up changes
-    MPI_Allreduce(&localChange, &gatherChange, 1, MPI_DLONG, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&localChange, &gatherChange, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
   }
 
   //make a locally-ordered version

@@ -37,10 +37,10 @@ SOFTWARE.
 
   for(dlong b=0;b<Nblocks;++b;@outer(0)){
 
-    @shared volatile dfloat s_ip[p_BLOCKSIZE];
+    @shared volatile dfloat s_ip[p_blockSize];
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)){
-      dlong id = t + b*p_BLOCKSIZE;
+    for(int t=0;t<p_blockSize;++t;@inner(0)){
+      dlong id = t + b*p_blockSize;
 
       s_ip[t] = 0.0;
       while (id<N) {
@@ -53,43 +53,43 @@ SOFTWARE.
         y[id] = r;
 
         s_ip[t] += (r*r);
-        id += p_BLOCKSIZE*Nblocks;
+        id += p_blockSize*Nblocks;
       }
     }
     @barrier("local");
 
-#if p_BLOCKSIZE>512
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<512) s_ip[t] += s_ip[t+512];
+#if p_blockSize>512
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<512) s_ip[t] += s_ip[t+512];
     @barrier("local");
 #endif
 
-#if p_BLOCKSIZE>256
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<256) s_ip[t] += s_ip[t+256];
+#if p_blockSize>256
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<256) s_ip[t] += s_ip[t+256];
     @barrier("local");
 #endif
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<128) s_ip[t] += s_ip[t+128];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<128) s_ip[t] += s_ip[t+128];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 64) s_ip[t] += s_ip[t+ 64];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 64) s_ip[t] += s_ip[t+ 64];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 32) s_ip[t] += s_ip[t+ 32];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 32) s_ip[t] += s_ip[t+ 32];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 16) s_ip[t] += s_ip[t+ 16];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_ip[t] += s_ip[t+ 16];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  8) s_ip[t] += s_ip[t+  8];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_ip[t] += s_ip[t+  8];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  4) s_ip[t] += s_ip[t+  4];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_ip[t] += s_ip[t+  4];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  2) s_ip[t] += s_ip[t+  2];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_ip[t] += s_ip[t+  2];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  1) ip[b] = s_ip[0] + s_ip[1];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) ip[b] = s_ip[0] + s_ip[1];
   }
 }
 
@@ -106,10 +106,10 @@ SOFTWARE.
 
   for(dlong b=0;b<Nblocks;++b;@outer(0)){
 
-    @shared volatile dfloat s_ip[p_BLOCKSIZE];
+    @shared volatile dfloat s_ip[p_blockSize];
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)){
-      dlong id = t + b*p_BLOCKSIZE;
+    for(int t=0;t<p_blockSize;++t;@inner(0)){
+      dlong id = t + b*p_blockSize;
 
       s_ip[t] = 0.0;
       while (id<N) {
@@ -122,43 +122,43 @@ SOFTWARE.
         y[id] = r;
 
         s_ip[t] += (w[id]*r*r);
-        id += p_BLOCKSIZE*Nblocks;
+        id += p_blockSize*Nblocks;
       }
     }
     @barrier("local");
 
-#if p_BLOCKSIZE>512
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<512) s_ip[t] += s_ip[t+512];
+#if p_blockSize>512
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<512) s_ip[t] += s_ip[t+512];
     @barrier("local");
 #endif
 
-#if p_BLOCKSIZE>256
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<256) s_ip[t] += s_ip[t+256];
+#if p_blockSize>256
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<256) s_ip[t] += s_ip[t+256];
     @barrier("local");
 #endif
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<128) s_ip[t] += s_ip[t+128];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<128) s_ip[t] += s_ip[t+128];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 64) s_ip[t] += s_ip[t+ 64];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 64) s_ip[t] += s_ip[t+ 64];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 32) s_ip[t] += s_ip[t+ 32];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 32) s_ip[t] += s_ip[t+ 32];
     @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t< 16) s_ip[t] += s_ip[t+ 16];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_ip[t] += s_ip[t+ 16];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  8) s_ip[t] += s_ip[t+  8];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_ip[t] += s_ip[t+  8];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  4) s_ip[t] += s_ip[t+  4];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_ip[t] += s_ip[t+  4];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  2) s_ip[t] += s_ip[t+  2];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_ip[t] += s_ip[t+  2];
     //    @barrier("local");
 
-    for(int t=0;t<p_BLOCKSIZE;++t;@inner(0)) if(t<  1) ip[b] = s_ip[0] + s_ip[1];
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) ip[b] = s_ip[0] + s_ip[1];
   }
 }
 

@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "linAlg.hpp"
 
 void BuildLocalContinuousDiagHex3D (elliptic_t* elliptic,
                                     mesh_t* mesh,
@@ -47,6 +48,7 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
   mesh_t* mesh       = elliptic->mesh;
   setupAide options  = elliptic->options;
   precon_t* precon   = elliptic->precon;
+  
 
   const dfloat allNeumannScale = elliptic->allNeumannPenalty * elliptic->allNeumannScale *
                                  elliptic->allNeumannScale;
@@ -67,10 +69,7 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
   oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
 
   const dfloat one = 1.0;
-  if(elliptic->blockSolver)
-    elliptic->scalarDivideManyKernel(Nlocal, elliptic->Ntotal, one, precon->o_invDiagA);
-  else
-    elliptic->scalarDivideKernel(Nlocal, one, precon->o_invDiagA);
+  platform->linAlg->adyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
@@ -78,9 +77,9 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("building Jacobi ... ");
+  if(platform->comm.mpiRank == 0) printf("building Jacobi ... ");
   fflush(stdout);
 
   // surface mass matrices MS = MM*LIFT
@@ -197,8 +196,8 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
     }
   }
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 
   free(diagA);
   free(MS);

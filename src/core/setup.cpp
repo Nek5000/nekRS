@@ -7,15 +7,15 @@
 #include <vector>
 #include <map>
 
-static dfloat* scratch;
-static occa::memory o_scratch;
-
 static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
 
-void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs)
+void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
+  platform_t* platform = platform_t::getInstance();
+  device_t& device = platform->device;
   nrs->options = options;
   nrs->kernelInfo = new occa::properties();
+  *(nrs->kernelInfo) = platform->kernelInfo;
   occa::properties& kernelInfo = *nrs->kernelInfo;
   kernelInfo["defines"].asObject();
   kernelInfo["includes"].asArray();
@@ -73,13 +73,13 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   if (buildOnly) {
     mesh_t* mesh = new mesh_t();
     mesh->linAlg = nrs->linAlg;
-    createMeshDummy(mesh, comm, N, cubN, nrs->options, device, kernelInfo);
+    createMeshDummy(mesh, comm, N, cubN, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
     nrs->mesh = mesh;
   } else {
     mesh_t* mesh = new mesh_t();
     mesh->linAlg = nrs->linAlg;
-    createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options, device, kernelInfo);
+    createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
     nrs->mesh = mesh;
     if (nrs->cht) {
@@ -92,14 +92,14 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   mesh_t* mesh = nrs->mesh;
 
   if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
-    if (mesh->rank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
+    if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
 
   { 
     dlong retVal; 
-    MPI_Allreduce(&mesh->NinternalElements,&retVal,1,MPI_DLONG,MPI_MIN,mesh->comm);
-    if(mesh->rank == 0) printf("min NinternalElements: %d (ratio: %4.2f)\n", retVal, (double)retVal/mesh->Nelements);
+    MPI_Allreduce(&mesh->NinternalElements,&retVal,1,MPI_DLONG,MPI_MIN,platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) printf("min NinternalElements: %d (ratio: %4.2f)\n", retVal, (double)retVal/mesh->Nelements);
   }
 
   occa::properties kernelInfoV  = kernelInfo;
@@ -141,7 +141,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
 
-  nrs->Nlocal = Nlocal;
+  mesh->Nlocal = Nlocal;
   nrs->Ntotal = Ntotal;
 
   // ensure that offset is large enough for v and t mesh and is properly aligned
@@ -175,11 +175,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       memcpy(nrs->Srkb, rkb, nrs->SNrk * sizeof(dfloat));
       memcpy(nrs->Srkc, rkc, nrs->SNrk * sizeof(dfloat));
     }else{
-      if(mesh->rank == 0) cout << "Unsupported subcycling scheme!\n";
+      if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
-    nrs->o_Srka = mesh->device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srka);
-    nrs->o_Srkb = mesh->device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srkb);
+    nrs->o_Srka = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srka);
+    nrs->o_Srkb = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srkb);
   }
 
   // setup scratch space
@@ -188,23 +188,19 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->ellipticWrkOffset = wrkNflds * nrs->fieldOffset;
 
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
-  scratch  = (dfloat*) calloc(scratchNflds * nrs->fieldOffset,sizeof(dfloat));
-  nrs->wrk = scratch;
+  platform->create_mempool(nrs->fieldOffset, scratchNflds);
 
-  o_scratch = mesh->device.malloc(scratchNflds * nrs->fieldOffset * sizeof(dfloat), scratch);
-  nrs->o_wrk0  = o_scratch.slice( 0 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk1  = o_scratch.slice( 1 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk2  = o_scratch.slice( 2 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk3  = o_scratch.slice( 3 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk4  = o_scratch.slice( 4 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk5  = o_scratch.slice( 5 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk6  = o_scratch.slice( 6 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk7  = o_scratch.slice( 7 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk9  = o_scratch.slice( 9 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk12 = o_scratch.slice(12 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk15 = o_scratch.slice(15 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_wrk18 = o_scratch.slice(18 * nrs->fieldOffset * sizeof(dfloat));
-
+  nrs->o_wrk0  = platform->o_slice0;
+  nrs->o_wrk1  = platform->o_slice1;
+  nrs->o_wrk2  = platform->o_slice2;
+  nrs->o_wrk3  = platform->o_slice3;
+  nrs->o_wrk4  = platform->o_slice4;
+  nrs->o_wrk5  = platform->o_slice5;
+  nrs->o_wrk6  = platform->o_slice6;
+  nrs->o_wrk7  = platform->o_slice7;
+  nrs->o_wrk9  = platform->o_slice9;
+  nrs->o_wrk12 = platform->o_slice12;
+  nrs->o_wrk15 = platform->o_slice15;
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
@@ -231,15 +227,15 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
 
-  nrs->o_U  = mesh->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
-  nrs->o_Ue = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
-  nrs->o_P  = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
-  nrs->o_BF = mesh->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = mesh->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_U  = platform->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
+  nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
+  nrs->o_P  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
+  nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
+  nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
   nrs->var_coeff = 1; // use always var coeff elliptic
   nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_ellipticCoeff = mesh->device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
+  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
                                              nrs->ellipticCoeff);
 
   nrs->prop =  (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
@@ -248,19 +244,19 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
       nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
     }
-  nrs->o_prop = mesh->device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
+  nrs->o_prop = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
   nrs->o_mue = nrs->o_prop.slice(0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_rho = nrs->o_prop.slice(1 * nrs->fieldOffset * sizeof(dfloat));
 
   nrs->div   = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_div = mesh->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
+  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  nrs->o_rkC     = mesh->device.malloc(4 * sizeof(dfloat),rkC);
-  nrs->o_coeffEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_coeffBDF = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
-  nrs->o_coeffSubEXT = mesh->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_extC    = mesh->device.malloc(3 * sizeof(dfloat), nrs->extC);
+  nrs->o_rkC     = platform->device.malloc(4 * sizeof(dfloat),rkC);
+  nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
+  nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
+  nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
+  nrs->o_extC    = platform->device.malloc(3 * sizeof(dfloat), nrs->extC);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
@@ -283,12 +279,12 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
   // jit compile udf kernels
   if (udf.loadKernels) {
-    if (mesh->rank == 0) cout << "loading udf kernels ... ";
+    if (platform->comm.mpiRank == 0) cout << "loading udf kernels ... ";
     udf.loadKernels(nrs);
-    if (mesh->rank == 0) cout << "done" << endl;
+    if (platform->comm.mpiRank == 0) cout << "done" << endl;
   }
 
-  meshParallelGatherScatterSetup(mesh, nrs->Nlocal, mesh->globalIds, mesh->comm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
@@ -298,7 +294,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   if(!buildOnly) {
     int err = 0;
     dlong gNelements = mesh->Nelements;
-    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, mesh->comm);
+    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
     linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
     ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
@@ -307,10 +303,10 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     sum1 = abs(sum1 - sum2) / sum2;
     if(sum1 > 1e-15) {
-      if(mesh->rank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
+      if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
       fflush(stdout);
       err++;
     }
@@ -319,9 +315,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     double* vmult = (double*) nek_ptr("vmult");
     sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     if(sum1 > 1e-15) {
-      if(mesh->rank == 0) printf("multiplicity test err=%g!\n", sum1);
+      if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
       fflush(stdout);
       err++;
     }
@@ -356,8 +352,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
     if (nrs->VmapB[n] == largeNumber) nrs->VmapB[n] = 0;
 
-  nrs->o_EToB = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
-  nrs->o_VmapB = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
+  nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
+  nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
 
   if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(nrs);
@@ -367,12 +363,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   const string suffix = "Hex3D";
   const string oklpath = install_dir + "/okl/core/";
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0)  printf("loading ns kernels ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+  {
 
       occa::properties kernelInfoBC = kernelInfo;
       const string bcDataFile = install_dir + "/include/core/bcData.h";
@@ -384,37 +379,29 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       fileName = oklpath + "nrsAdvection" + suffix + ".okl";
       kernelName = "nrsStrongAdvectionVolume" + suffix;
       nrs->advectionStrongVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       kernelName = "nrsStrongAdvectionCubatureVolume" + suffix;
       nrs->advectionStrongCubatureVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsCurl" + suffix + ".okl";
       kernelName = "nrsCurl" + suffix;
       nrs->curlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "nrsMassMatrix" + ".okl";
-      kernelName = "nrsMassMatrix" + suffix;
-      nrs->massMatrixKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "nrsInvMassMatrix" + suffix;
-      nrs->invMassMatrixKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsGradient" + suffix + ".okl";
       kernelName = "nrsGradientVolume" + suffix;
-      nrs->gradientVolumeKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      nrs->gradientVolumeKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
 
       kernelName = "nrswGradientVolume" + suffix;
       nrs->wgradientVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsSumMakef" + suffix + ".okl";
       kernelName = "nrsSumMakef" + suffix;
       nrs->sumMakefKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsDivergence" + suffix + ".okl";
       kernelName = "nrswDivergenceVolume" + suffix;
@@ -422,11 +409,11 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
       kernelName = "nrsDivergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       kernelName = "nrsDivergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "nrsAdvectMeshVelocity.okl";
       kernelName = "nrsAdvectMeshVelocity";
@@ -444,136 +431,113 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       fileName = oklpath + "nrsPressureRhs" + suffix + ".okl";
       kernelName = "nrsPressureRhsTOMBO" + suffix;
       nrs->pressureRhsKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsPressureStress" + suffix + ".okl";
       kernelName = "nrsPressureStress" + suffix;
       nrs->pressureStressKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsPressureBC" + suffix + ".okl";
       kernelName = "nrsPressureDirichletBC" + suffix;
       nrs->pressureDirichletBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "nrsPressureUpdate" + ".okl";
       kernelName = "nrsPressureUpdate";
-      nrs->pressureUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      nrs->pressureUpdateKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "nrsVelocityRhs" + suffix + ".okl";
       kernelName = "nrsVelocityRhsTOMBO" + suffix;
       nrs->velocityRhsKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsVelocityBC" + suffix + ".okl";
       kernelName = "nrsVelocityDirichletBC" + suffix;
       nrs->velocityDirichletBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       kernelName = "nrsVelocityNeumannBC" + suffix;
       nrs->velocityNeumannBCKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
       fileName = oklpath + "nrsSubCycle" + suffix + ".okl";
       kernelName = "nrsSubCycleStrongCubatureVolume" + suffix;
       nrs->subCycleStrongCubatureVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       kernelName = "nrsSubCycleStrongVolume" + suffix;
       nrs->subCycleStrongVolumeKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsSubCycleRKUpdate" + ".okl";
       kernelName = "nrsSubCycleLSERKUpdate";
       if(nrs->SNrk == 4) kernelName = "nrsSubCycleERKUpdate";
       nrs->subCycleRKUpdateKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       kernelName = "nrsSubCycleRK";
       nrs->subCycleRKKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       kernelName = "nrsSubCycleExtrapolateField";
       nrs->subCycleExtrapolateFieldKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       kernelName = "nrsSubCycleExtrapolateScalar";
       nrs->subCycleExtrapolateScalarKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsExtrapolate" + ".okl";
       kernelName = "nrsMultiExtrapolate";
       nrs->extrapolateKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
 
-      fileName = install_dir + "/okl/core/scaledAdd.okl";
-      kernelName = "scaledAddwOffset";
-      nrs->scaledAddKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = install_dir + "/okl/core/dotMultiply.okl";
-      kernelName = "dotMultiply";
-      nrs->dotMultiplyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = oklpath + "math" + ".okl";
-      kernelName = "fill";
-      nrs->fillKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "max";
-      nrs->maxKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      kernelName = "scalarScaledAdd";
-      nrs->scalarScaledAddKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      fileName = oklpath + "mask" + ".okl";
 
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       // ===========================================================================
 
       fileName = oklpath + "nrsFilterRT" + suffix + ".okl";
       kernelName = "nrsFilterRT" + suffix;
       nrs->filterRTKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsCfl" + suffix + ".okl";
       kernelName = "nrsCfl" + suffix;
       nrs->cflKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "nrsPressureAddQtl" + ".okl";
       kernelName = "nrsPressureAddQtl";
       nrs->pressureAddQtlKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName = oklpath + "setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, kernelInfo);
 
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "nrsPQ.okl";
       kernelName = "nrsPQ";
       nrs->PQKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "nrsMueDiv.okl";
       kernelName = "nrsMueDiv";
       nrs->mueDivKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
+        device.buildKernel(fileName, kernelName, kernelInfo);
   }
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
     mesh_t* msh;
@@ -587,9 +551,9 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     nek_copyTo(startTime);
     nrs->options.setArgs("START TIME", to_string_f(startTime));
 
-    if(mesh->rank == 0)  printf("calling udf_setup ... "); fflush(stdout);
+    if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
     udf.setup(nrs);
-    if(mesh->rank == 0)  printf("done\n"); fflush(stdout);
+    if(platform->comm.mpiRank == 0)  printf("done\n"); fflush(stdout);
    }
 
   // setup elliptic solvers
@@ -612,7 +576,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       mesh_t* mesh;
       (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
 
-      if (mesh->rank == 0)
+      if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
 
       int nbrBIDs = bcMap::size(0);
@@ -621,7 +585,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
  
       for (int bID = 1; bID <= nbrBIDs; bID++) {
         string bcTypeText(bcMap::text(bID, "scalar" + sid));
-        if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+        if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
         sBCType[bID] = bcMap::type(bID, "scalar" + sid);
       }
  
@@ -629,8 +593,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
       cds->solver[is]->Ntotal = nrs->fieldOffset;
-      cds->solver[is]->wrk = scratch + nrs->ellipticWrkOffset;
-      cds->solver[is]->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      cds->solver[is]->wrk = platform->mempool + nrs->ellipticWrkOffset;
+      cds->solver[is]->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       cds->solver[is]->mesh = mesh;
       cds->solver[is]->dim = cds->dim;
       cds->solver[is]->elementType = cds->elementType;
@@ -649,7 +613,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   }
 
   if (nrs->flow) {
-    if (mesh->rank == 0) printf("================ ELLIPTIC SETUP VELOCITY ================\n");
+    if (platform->comm.mpiRank == 0) printf("================ ELLIPTIC SETUP VELOCITY ================\n");
 
     nrs->uvwSolver = NULL;
 
@@ -662,7 +626,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     int* wBCType = uvwBCType + 2 * NBCType;
     for (int bID = 1; bID <= nbrBIDs; bID++) {
       string bcTypeText(bcMap::text(bID, "velocity"));
-      if(mesh->rank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+      if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
 
       uBCType[bID] = bcMap::type(bID, "x-velocity");
       vBCType[bID] = bcMap::type(bID, "y-velocity");
@@ -700,8 +664,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
       nrs->uvwSolver->Ntotal = nrs->fieldOffset;
-      nrs->uvwSolver->wrk = scratch + nrs->ellipticWrkOffset;
-      nrs->uvwSolver->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uvwSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
+      nrs->uvwSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uvwSolver->mesh = mesh;
       nrs->uvwSolver->options = nrs->vOptions;
       nrs->uvwSolver->dim = nrs->dim;
@@ -720,8 +684,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
       nrs->uSolver->Ntotal = nrs->fieldOffset;
-      nrs->uSolver->wrk = scratch + nrs->ellipticWrkOffset;
-      nrs->uSolver->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
+      nrs->uSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uSolver->mesh = mesh;
       nrs->uSolver->options = nrs->vOptions;
       nrs->uSolver->dim = nrs->dim;
@@ -740,8 +704,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
       nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
       nrs->vSolver->Ntotal = nrs->fieldOffset;
-      nrs->vSolver->wrk = scratch + nrs->ellipticWrkOffset;
-      nrs->vSolver->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->vSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
+      nrs->vSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->vSolver->mesh = mesh;
       nrs->vSolver->options = nrs->vOptions;
       nrs->vSolver->dim = nrs->dim;
@@ -761,8 +725,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
         nrs->wSolver->blockSolver = 0;
         nrs->wSolver->Nfields = 1;
         nrs->wSolver->Ntotal = nrs->fieldOffset;
-        nrs->wSolver->wrk = scratch + nrs->ellipticWrkOffset;
-        nrs->wSolver->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+        nrs->wSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
+        nrs->wSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
         nrs->wSolver->mesh = mesh;
         nrs->wSolver->options = nrs->vOptions;
         nrs->wSolver->dim = nrs->dim;
@@ -781,7 +745,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
   } // flow
 
   if (nrs->flow) {
-    if (mesh->rank == 0) printf("================ ELLIPTIC SETUP PRESSURE ================\n");
+    if (platform->comm.mpiRank == 0) printf("================ ELLIPTIC SETUP PRESSURE ================\n");
 
     int* pBCType = (int*) calloc(NBCType, sizeof(int));
     for (int bID = 1; bID <= nbrBIDs; bID++)
@@ -819,8 +783,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
     nrs->pSolver->Ntotal = nrs->fieldOffset;
-    nrs->pSolver->wrk = scratch + nrs->ellipticWrkOffset;
-    nrs->pSolver->o_wrk = o_scratch.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+    nrs->pSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
+    nrs->pSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
     nrs->pSolver->mesh = mesh;
     nrs->pSolver->dim = nrs->dim;
     nrs->pSolver->elementType = nrs->elementType;
@@ -845,7 +809,7 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 
       if(nrs->pSolver->levels[0] > mesh->N || 
          nrs->pSolver->levels[nrs->pSolver->nLevels-1] < 1) {
-        if(mesh->rank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
+        if(platform->comm.mpiRank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
         ABORT(EXIT_FAILURE);;
       }
       nrs->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
@@ -913,6 +877,8 @@ void nrsSetup(MPI_Comm comm, occa::device device, setupAide &options, nrs_t *nrs
 static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH)
 {
   cds_t* cds = new cds_t();
+  platform_t* platform = platform_t::getInstance();
+  device_t& device = platform->device;
   cds->mesh = mesh;
 
   string install_dir;
@@ -945,7 +911,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
   dlong Nlocal = mesh->Np * mesh->Nelements;
   dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-  cds->Nlocal  = Nlocal;
+  mesh->Nlocal = Nlocal;
   cds->Ntotal  = Ntotal;
 
   cds->vFieldOffset = nrs->fieldOffset;
@@ -963,6 +929,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->gsh = nrs->gsh;
   
   if(nrs->cht) {
+    meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
     if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
     cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
@@ -1012,7 +979,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       }
   }
   cds->o_prop =
-    mesh->device.malloc(cds->NSfields * 2 * cds->fieldOffset * sizeof(dfloat), cds->prop);
+    device.malloc(cds->NSfields * 2 * cds->fieldOffset * sizeof(dfloat), cds->prop);
   cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
   cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
 
@@ -1023,12 +990,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    mesh->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
-  cds->o_BF = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
+  cds->o_BF = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    mesh->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
+    platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {
@@ -1086,8 +1053,8 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
       if (mapB[n] == largeNumber) mapB[n] = 0;
 
-    cds->o_EToB[is] = mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
-    cds->o_mapB[is] = mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
+    cds->o_EToB[is] = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
+    cds->o_mapB[is] = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
   }
 
   // build kernels
@@ -1099,12 +1066,11 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   const string suffix = "Hex3D";
   const string oklpath = install_dir + "/okl/core/";
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(mesh->rank == 0)  printf("loading cds kernels ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("loading cds kernels ... "); fflush(stdout);
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+   {
       fileName = oklpath + "cdsAdvection" + suffix + ".okl";
 
       const string bcDataFile = install_dir + "/include/core/bcData.h";
@@ -1115,10 +1081,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
       kernelName = "cdsStrongAdvectionVolume" + suffix;
       cds->advectionStrongVolumeKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, kernelInfo);
 
       kernelName = "cdsStrongAdvectionCubatureVolume" + suffix;
-      cds->advectionStrongCubatureVolumeKernel =  mesh->device.buildKernel(fileName,
+      cds->advectionStrongCubatureVolumeKernel =  device.buildKernel(fileName,
                                                                            kernelName,
                                                                            kernelInfo);
 
@@ -1128,76 +1094,58 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
       cds->advectMeshVelocityKernel =
         mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "math.okl";
-      kernelName = "fill";
-      cds->fillKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
+      fileName = oklpath + "mask.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
       kernelName = "cdsSumMakef" + suffix;
-      cds->sumMakefKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+      cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "cdsHelmholtzBC" + suffix + ".okl";
       kernelName = "cdsHelmholtzBC" + suffix;
-      cds->helmholtzRhsBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
+      cds->helmholtzRhsBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       kernelName = "cdsDirichletBC";
-      cds->dirichletBCKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfoBC);
+      cds->dirichletBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       fileName = oklpath + "setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       cds->setEllipticCoeffKernel =
-        mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "cdsMassMatrix.okl";
-      kernelName = "cdsMassMatrix" + suffix;
-      cds->massMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);
-
-      kernelName = "cdsInvMassMatrix" + suffix;
-      cds->invMassMatrixKernel = mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "cdsFilterRT" + suffix + ".okl";
       kernelName = "cdsFilterRT" + suffix;
       cds->filterRTKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
-      fileName = install_dir + "/okl/core/scaledAdd.okl";
-      kernelName = "scaledAddwOffset";
-      cds->scaledAddKernel =
-        mesh->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps) {
         fileName = oklpath + "cdsSubCycle" + suffix + ".okl";
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
-        cds->subCycleStrongCubatureVolumeKernel =  mesh->device.buildKernel(fileName,
+        cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName,
                                                                             kernelName,
                                                                             kernelInfo);
 
         kernelName = "cdsSubCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
-          mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+          device.buildKernel(fileName, kernelName, kernelInfo);
 
         fileName = oklpath + "cdsSubCycleRKUpdate.okl";
         kernelName = "cdsSubCycleLSERKUpdate";
         if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
-        cds->subCycleRKUpdateKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "cdsSubCycleRK";
-        cds->subCycleRKKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "subCycleExtrapolateField";
-        cds->subCycleExtrapolateFieldKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleExtrapolateFieldKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "cdsSubCycleExtrapolateScalar";
-        cds->subCycleExtrapolateScalarKernel =  mesh->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleExtrapolateScalarKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
       }
-    }
-    MPI_Barrier(mesh->comm);
   }
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   return cds;
 }

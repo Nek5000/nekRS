@@ -188,6 +188,7 @@ set(SRC
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
+    src/core/platform.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp
     src/linAlg/matrixInverse.cpp

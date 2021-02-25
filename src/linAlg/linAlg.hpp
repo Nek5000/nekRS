@@ -33,7 +33,6 @@ using std::string;
 
 class linAlg_t {
 private:
-  occa::device device;
   occa::properties kernelInfo;
   MPI_Comm comm;
   int blocksize;
@@ -45,25 +44,12 @@ private:
 
   void setup();
   void reallocBuffers(const dlong Nbytes);
-  linAlg_t(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
-    blocksize = BLOCKSIZE;
-    device = _device;
-    kernelInfo = _kernelInfo;
-    comm = _comm;
-    setup();
-  }
 
   ~linAlg_t();
+  linAlg_t();
   static linAlg_t* singleton;
 public:
-  static linAlg_t* getInstance(occa::device& _device, occa::properties& _kernelInfo, MPI_Comm& _comm) {
-    if(!singleton)
-      singleton = new linAlg_t(_device, _kernelInfo, _comm);
-    return singleton;
-  }
-  static linAlg_t* getInstance(){
-    return singleton;
-  }
+  static linAlg_t* getInstance();
 
   /*********************/
   /* vector operations */
@@ -74,12 +60,16 @@ public:
 
   // o_a[n] *= alpha
   void scale(const dlong N, const dfloat alpha, occa::memory& o_a);
+  void scaleMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha, occa::memory& o_a, const dlong offset = 0);
 
   // o_a[n] += alpha
-  void add(const dlong N, const dfloat alpha, occa::memory& o_a);
+  void add(const dlong N, const dfloat alpha, occa::memory& o_a, const dlong offset = 0);
 
   // o_y[n] = beta*o_y[n] + alpha*o_x[n]
   void axpby(const dlong N, const dfloat alpha, occa::memory& o_x,
+                            const dfloat beta,  occa::memory& o_y,
+                            const dlong xOffset = 0, const dlong yOffset = 0);
+  void axpbyMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha, occa::memory& o_x,
                             const dfloat beta,  occa::memory& o_y);
 
   // o_z[n] = beta*o_y[n] + alpha*o_x[n]
@@ -102,14 +92,23 @@ public:
             const dlong offset, const dlong mode,
             const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
+  void axmyVector(const dlong N, 
+            const dlong offset, const dlong mode,
+            const dfloat alpha,
+            occa::memory& o_x, occa::memory& o_y);
 
   // o_z[n] = alpha*o_x[n]*o_y[n] (new)
   void axmyz(const dlong N, const dfloat alpha,
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
+  void axmyzMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha,
+             occa::memory& o_x, occa::memory& o_y,
+             occa::memory& o_z);
 
   // o_y[n] = alpha/o_y[n]
   void ady(const dlong N, const dfloat alpha,
+            occa::memory& o_y);
+  void adyMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha,
             occa::memory& o_y);
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha,
@@ -127,7 +126,7 @@ public:
     occa::memory& o_x, occa::memory& o_y);
 
   // \sum o_a
-  dfloat sum(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlong offset = 0);
 
   // \min o_a
   dfloat min(const dlong N, occa::memory& o_a, MPI_Comm _comm);
@@ -140,33 +139,45 @@ public:
 
   // o_x.o_y
   dfloat innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
-                    MPI_Comm _comm);
+                    MPI_Comm _comm, const dlong offset = 0);
 
   // ||o_a||_w2
   dfloat weightedNorm2(const dlong N, occa::memory& o_w, occa::memory& o_a,
                        MPI_Comm _comm);
-  dfloat weightedNorm2Many(const dlong N, const dlong Nfields, const dlong offset, occa::memory& o_w, occa::memory& o_a,
-                       MPI_Comm _comm);
+  dfloat weightedNorm2Many(const dlong N,
+                           const dlong Nfields,
+                           const dlong fieldOffset,
+                           occa::memory& o_w, occa::memory& o_a,
+                           MPI_Comm _comm);
 
   // o_w.o_x.o_y
   dfloat weightedInnerProd(const dlong N, occa::memory& o_w, occa::memory& o_x,
+                            occa::memory& o_y, MPI_Comm _comm);
+  dfloat weightedInnerProdMany(const dlong N,
+                               const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
 
   occa::kernel fillKernel;
   occa::kernel addKernel;
   occa::kernel scaleKernel;
+  occa::kernel scaleManyKernel;
   occa::kernel axpbyKernel;
+  occa::kernel axpbyManyKernel;
   occa::kernel axpbyzKernel;
   occa::kernel axpbyzManyKernel;
   occa::kernel axmyKernel;
   occa::kernel axmyManyKernel;
+  occa::kernel axmyVectorKernel;
   occa::kernel axmyzKernel;
+  occa::kernel axmyzManyKernel;
   occa::kernel axdyKernel;
   occa::kernel aydxKernel;
   occa::kernel aydxManyKernel;
   occa::kernel adyKernel;
+  occa::kernel adyManyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
+  occa::kernel sumFieldKernel;
   occa::kernel minKernel;
   occa::kernel maxKernel;
   occa::kernel norm2Kernel;
@@ -174,6 +185,7 @@ public:
   occa::kernel weightedNorm2ManyKernel;
   occa::kernel innerProdKernel;
   occa::kernel weightedInnerProdKernel;
+  occa::kernel weightedInnerProdManyKernel;
 };
 
 #endif

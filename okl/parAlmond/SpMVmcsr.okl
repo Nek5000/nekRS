@@ -35,7 +35,7 @@ SOFTWARE.
                        @restrict        dfloat * y){
 
   // y = alpha * A * x + beta * y
-  for(dlong n=0;n<Nrows;++n;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong n=0;n<Nrows;++n;@tile(p_blockSize,@outer,@inner)){
     const dlong row = rows[n];
 
     dfloat betay = 0.;
@@ -67,7 +67,7 @@ SOFTWARE.
                        @restrict        dfloat * z){
 
   // z = alpha * A * x + beta * y
-  for(dlong n=0;n<Nrows;++n;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong n=0;n<Nrows;++n;@tile(p_blockSize,@outer,@inner)){
     const dlong row = rows[n];
 
     dfloat result = 0.;

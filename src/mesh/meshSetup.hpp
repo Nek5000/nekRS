@@ -7,7 +7,6 @@ void createMeshDummy(mesh_t* mesh,
                      int N,
                      int cubN,
                      setupAide &options,
-                     occa::device device,
                      occa::properties &kernelInfo);
 
 void createMesh(mesh_t* mesh,
@@ -16,7 +15,6 @@ void createMesh(mesh_t* mesh,
                 int cubN,
                 int isMeshT,
                 setupAide &options,
-                occa::device device,
                 occa::properties &kernelInfo);
 
 void createMeshV(mesh_t* mesh,

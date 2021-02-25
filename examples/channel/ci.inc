@@ -29,7 +29,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
  
   nek_ocopyFrom(time, tstep);
   nek_userchk();

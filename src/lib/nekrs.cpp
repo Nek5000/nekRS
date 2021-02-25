@@ -6,10 +6,15 @@
 #include "parReader.hpp"
 #include "configReader.hpp"
 #include "runTime.hpp"
+#include "platform.hpp"
+#include "nrssys.hpp"
+#include "linAlg.hpp"
+
+// extern variable from nrssys.hpp
+platform_t* platform;
 
 static int rank, size;
 static MPI_Comm comm;
-static occa::device device;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
@@ -71,57 +76,16 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   setOUDF(options);
 
   // configure device
-  device = occaDeviceConfig(options, comm);
-  {
-    occa::properties linAlgKernelInfo;
-    if(sizeof(dfloat) == 4) {
-      linAlgKernelInfo["defines/" "dfloat"] = "float";
-      linAlgKernelInfo["defines/" "dfloat4"] = "float4";
-      linAlgKernelInfo["defines/" "dfloat8"] = "float8";
-    }
-    if(sizeof(dfloat) == 8) {
-      linAlgKernelInfo["defines/" "dfloat"] = "double";
-      linAlgKernelInfo["defines/" "dfloat4"] = "double4";
-      linAlgKernelInfo["defines/" "dfloat8"] = "double8";
-    }
-
-    if(sizeof(dlong) == 4)
-      linAlgKernelInfo["defines/" "dlong"] = "int";
-    if(sizeof(dlong) == 8)
-      linAlgKernelInfo["defines/" "dlong"] = "long long int";
-
-    if(device.mode() == "CUDA") { // add backend compiler optimization for CUDA
-      linAlgKernelInfo["compiler_flags"] += "--ftz=true ";
-      linAlgKernelInfo["compiler_flags"] += "--prec-div=false ";
-      linAlgKernelInfo["compiler_flags"] += "--prec-sqrt=false ";
-      linAlgKernelInfo["compiler_flags"] += "--use_fast_math ";
-      linAlgKernelInfo["compiler_flags"] += "--fmad=true "; // compiler option for cuda
-    }
-
-    if(device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
-      linAlgKernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-      linAlgKernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-      linAlgKernelInfo["compiler_flags"] += " -cl-mad-enable ";
-      linAlgKernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-      linAlgKernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-      linAlgKernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-    }
-
-    if(device.mode() == "HIP") { // add backend compiler optimization for HIP
-      linAlgKernelInfo["compiler_flags"] += " -O3 ";
-      linAlgKernelInfo["compiler_flags"] += " -ffp-contract=fast ";
-    }
-    linAlg_t* linAlg = linAlg_t::getInstance(device, linAlgKernelInfo, comm);
-    nrs->linAlg = linAlg;
-  }
-  timer::init(comm, device, 0);
+  platform_t* _platform = platform_t::getInstance(options, comm);
+  platform = _platform;
+  platform->linAlg = linAlg_t::getInstance();
 
   if (buildOnly) {
     dryRun(options, sizeTarget);
     return;
   }
 
-  timer::tic("setup", 1);
+  platform->timer.tic("setup", 1);
 
   // jit compile udf
   string udfFile;
@@ -140,7 +104,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrsSetup(comm, device, options, nrs);
+  nrsSetup(comm, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -166,17 +130,17 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
   nek_ocopyFrom(startTime(), 0);
 
-  timer::toc("setup");
-  const double setupTime = timer::query("setup", "DEVICE:MAX");
+  platform->timer.toc("setup");
+  const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    cout << "device memory usage: " << nrs->mesh->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "device memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
     cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);
 
-  timer::reset();
-  timer::set("setup", setupTime);
+  platform->timer.reset();
+  platform->timer.set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -191,7 +155,7 @@ void copyToNek(double time, int tstep)
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
-  timer::tic("udfExecuteStep", 1);
+  platform->timer.tic("udfExecuteStep", 1);
   if (isOutputStep) {
     nek_ifoutfld(1);
     nrs->isOutputStep = 1;
@@ -201,7 +165,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep)
 
   nek_ifoutfld(0);
   nrs->isOutputStep = 0;
-  timer::toc("udfExecuteStep");
+  platform->timer.toc("udfExecuteStep");
 }
 
 void nekUserchk(void)
@@ -288,7 +252,8 @@ void* nrsPtr(void)
 
 void printRuntimeStatistics()
 {
-  timer::printRunStat();
+  platform_t* platform = platform_t::getInstance(options, comm);
+  platform->timer.printRunStat();
 }
 } // namespace
 
@@ -317,7 +282,8 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   // init solver
-  nrsSetup(comm, device, options, nrs);
+  platform_t* platform = platform_t::getInstance();
+  nrsSetup(comm, options, nrs);
 
   cout << "\nBuild successful." << endl;
 }

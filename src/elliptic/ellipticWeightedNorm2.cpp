@@ -25,21 +25,22 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 #include "linAlg.hpp"
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a)
 {
+
+  
+  mesh_t* mesh = elliptic->mesh;
+
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::tic("dotp");
+  platform->timer.tic("dotp",1);
 #endif
 
-  linAlg_t* linAlg = linAlg_t::getInstance();
-  mesh_t* mesh = elliptic->mesh;
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
-  const dfloat result = linAlg->weightedNorm2Many(Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, mesh->comm);
-
+  const dfloat result = platform->linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_w, o_a, platform->comm.mpiComm);
 #ifdef ELLIPTIC_ENABLE_TIMER
-  timer::toc("dotp");
+  platform->timer.toc("dotp");
 #endif
 
   return result;

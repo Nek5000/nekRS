@@ -25,6 +25,8 @@ SOFTWARE.
 */
 
 @kernel void axpby(const dlong N,
+                   const dlong xOffset,
+                   const dlong yOffset,
                    const dfloat alpha,
                    @restrict const dfloat *x,
                    const dfloat beta,
@@ -32,9 +34,29 @@ SOFTWARE.
 
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if (beta!=0)
-      y[n] = alpha*x[n] + beta*y[n];
+      y[n+yOffset] = alpha*x[n+xOffset] + beta*y[n+yOffset];
     else
-      y[n] = alpha*x[n];
+      y[n+yOffset] = alpha*x[n+xOffset];
+  }
+}
+@kernel void axpbyMany(const dlong N,
+                   const dlong Nfields,
+                   const dlong offset,
+                   const dfloat alpha,
+                   @restrict const dfloat *x,
+                   const dfloat beta,
+                   @restrict dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const dlong id = n + fld * offset;
+      if (beta!=0){
+        y[id] = alpha*x[id] + beta*y[id];
+      }
+      else{
+        y[id] = alpha*x[id];
+      }
+    }
   }
 }
 

@@ -7,6 +7,7 @@
 #include "udf.hpp"
 #include "tombo.hpp"
 #include "cfl.hpp"
+#include "linAlg.hpp"
 
 void computeCoefficients(nrs_t* nrs, int order, int meshOrder);
 
@@ -31,10 +32,11 @@ double tElapsed = 0;
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
   mesh_t* mesh = nrs->mesh;
+  
   cds_t* cds = nrs->cds;
 
-  mesh->device.finish();
-  MPI_Barrier(mesh->comm);
+  platform->device.finish();
+  MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();
 
   nrs->dt[0] = dt;
@@ -108,15 +110,15 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
 
-  mesh->device.finish();
-  MPI_Barrier(mesh->comm);
+  platform->device.finish();
+  MPI_Barrier(platform->comm.mpiComm);
   const double tElapsedStep = MPI_Wtime() - tStart;
   tElapsed += tElapsedStep;
-  timer::set("solve", tElapsed);
+  platform->timer.set("solve", tElapsed);
 
   // print some diagnostics
   const dfloat cfl = computeCFL(nrs);
-  if(mesh->rank == 0) {
+  if(platform->comm.mpiRank == 0) {
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
            tstep, time + nrs->dt[0], nrs->dt[0], cfl);
 
@@ -166,7 +168,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(cfl > 30 || std::isnan(cfl)) {
-    if(mesh->rank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
+    if(platform->comm.mpiRank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
     ABORT(1);
   }
 
@@ -216,7 +218,7 @@ void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
   nrs->o_coeffEXT.copyFrom(nrs->coeffEXT);
 
 #if 0
-  if (nrs->mesh->rank == 0) {
+  if (platform->comm.mpiRank == 0) {
     cout << "DT:" << nrs->dt[0] << "," << nrs->dt[1] << "," << nrs->dt[2] << "\n";
     cout << "BDF:" << nrs->g0 << "," << nrs->coeffBDF[0] << "," << nrs->coeffBDF[1] << "," << nrs->coeffBDF[2] << "\n";
     cout << "EXT:" << nrs->coeffEXT[0] << "," << nrs->coeffEXT[1] << "," << nrs->coeffEXT[2] << "\n";
@@ -233,11 +235,12 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->mesh;
+  
 
   if(udf.sEqnSource) {
-    timer::tic("udfSEqnSource", 1);
+    platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, o_FS);
-    timer::toc("udfSEqnSource");
+    platform->timer.toc("udfSEqnSource");
   }
 
   for(int is = 0; is < cds->NSfields; is++) {
@@ -302,18 +305,17 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
             cds->o_S,
             cds->o_rho,
             cds->o_wrk0);
- 
-        nrs->scaledAddKernel(
+        platform->linAlg->axpby(
           cds->meshV->Nelements * cds->meshV->Np,
           -1.0,
-          0 * cds->fieldOffset,
           cds->o_wrk0,
           1.0,
-          isOffset,
-          o_FS);
+          o_FS,
+          0, isOffset
+        );
       }
     } else {
-      cds->fillKernel(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
+      platform->linAlg->fill(cds->fieldOffset * cds->NVfields, 0.0, o_adv);
     } 
 
     cds->sumMakefKernel(
@@ -336,6 +338,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 {
   cds_t* cds   = nrs->cds;
+  
 
   for (int s = cds->nBDF; s > 1; s--) {
     const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
@@ -343,7 +346,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 
-  timer::tic("scalarSolve", 1);
+  platform->timer.tic("scalarSolve", 1);
   for (int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
 
@@ -351,7 +354,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     (is) ? mesh = cds->meshV : mesh = cds->mesh;
 
     cds->setEllipticCoeffKernel(
-      cds->Nlocal,
+      mesh->Nlocal,
       cds->g0 * cds->idt,
       is * cds->fieldOffset,
       cds->fieldOffset,
@@ -360,29 +363,31 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
       cds->o_ellipticCoeff);
 
     if(cds->o_BFDiag.ptr())
-      cds->scaledAddKernel(
-        cds->Nlocal,
+      platform->linAlg->axpby(
+        mesh->Nlocal,
         1.0,
-        is * cds->fieldOffset,
         cds->o_BFDiag,
         1.0,
-        cds->fieldOffset,
-        cds->o_ellipticCoeff);
+        cds->o_ellipticCoeff,
+        is * cds->fieldOffset,
+        cds->fieldOffset
+      );
 
     occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0]);
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
-  timer::toc("scalarSolve");
+  platform->timer.toc("scalarSolve");
 }
 
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->mesh;
+  
 
   if(udf.uEqnSource) {
-    timer::tic("udfUEqnSource", 1);
+    platform->timer.tic("udfUEqnSource", 1);
     udf.uEqnSource(nrs, time, nrs->o_U, o_FU);
-    timer::toc("udfUEqnSource");
+    platform->timer.toc("udfUEqnSource");
   }
 
   if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
@@ -431,18 +436,16 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
           nrs->fieldOffset,
           nrs->o_U,
           nrs->o_wrk0);
- 
-      nrs->scaledAddKernel(
+      platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         -1.0,
-        0,
         nrs->o_wrk0,
         1.0,
-        0,
-        o_FU);
+        o_FU
+      );
     }
   } else {
-    if(nrs->Nsubsteps) nrs->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
   }
 
   nrs->sumMakefKernel(
@@ -469,19 +472,19 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 
-  timer::tic("pressureSolve", 1);
+  platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
-    nrs->Nlocal,
+    mesh->Nlocal,
     nrs->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0]);
   nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
-  timer::toc("pressureSolve");
+  platform->timer.toc("pressureSolve");
 
-  timer::tic("velocitySolve", 1);
+  platform->timer.tic("velocitySolve", 1);
   nrs->setEllipticCoeffKernel(
-    nrs->Nlocal,
+    mesh->Nlocal,
     nrs->g0 * nrs->idt,
     0 * nrs->fieldOffset,
     nrs->fieldOffset,
@@ -491,7 +494,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 
   occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0]);
   o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  timer::toc("velocitySolve");
+  platform->timer.toc("velocitySolve");
 }
 
 occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::memory o_U)
@@ -696,12 +699,28 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
-    if (torder == nrs->nEXT - 1)
-      nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-                           o_U, 0.0, 0, nrs->o_wrk0);
-    else
-      nrs->scaledAddKernel(nrs->NVfields * nrs->fieldOffset, b, toffset,
-                           o_U, 1.0, 0, nrs->o_wrk0);
+    if (torder == nrs->nEXT - 1){
+      platform->linAlg->axpby(
+        nrs->NVfields * nrs->fieldOffset,
+        b,
+        o_U,
+        0.0,
+        nrs->o_wrk0,
+        toffset,
+        0
+      );
+    }
+    else{
+      platform->linAlg->axpby(
+        nrs->NVfields * nrs->fieldOffset,
+        b,
+        o_U,
+        1.0,
+        nrs->o_wrk0,
+        toffset,
+        0
+      );
+    }
 
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
     dfloat tsub = time;
@@ -1014,12 +1033,26 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     const dlong toffset = is * cds->fieldOffset +
                           torder * cds->NSfields * cds->fieldOffset;
-    if (torder == cds->nEXT - 1)
-      cds->scaledAddKernel(cds->fieldOffset, cds->coeffBDF[torder],
-                           toffset, o_S, 0.0, 0, cds->o_wrk0);
-    else
-      cds->scaledAddKernel(cds->fieldOffset, cds->coeffBDF[torder],
-                           toffset, o_S, 1.0, 0, cds->o_wrk0);
+    if (torder == cds->nEXT - 1){
+      platform->linAlg->axpby(
+        cds->fieldOffset,
+        cds->extbdfB[torder],
+        o_S,
+        0.0,
+        cds->o_wrk0,
+        toffset, 0
+      );
+    }
+    else{
+      platform->linAlg->axpby(
+        cds->fieldOffset,
+        cds->extbdfB[torder],
+        o_S,
+        1.0,
+        cds->o_wrk0,
+        toffset, 0
+      );
+    }
 
     // Advance SubProblem to t^(n-torder+1)
     dfloat tsub = time;

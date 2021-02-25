@@ -32,6 +32,7 @@
 #include <string>
 #include <sstream>
 #include <exception>
+#include "platform.hpp"
 
 struct ElementLengths
 {
@@ -606,16 +607,14 @@ void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* ellipt
 
 mesh_t* create_extended_mesh(elliptic_t* elliptic)
 {
+
+  //platform_t* platform = platform_t::getInstance();
   mesh_t* meshRoot = elliptic->mesh;
 
   int buildOnly  = 0;
   if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
 
   mesh_t* mesh = new mesh_t();
-  mesh->rank = meshRoot->rank;
-  mesh->size = meshRoot->size;
-  mesh->comm = meshRoot->comm;
-  mesh->device = meshRoot->device;
   mesh->N = meshRoot->N + 2;
   mesh->Np = (mesh->N + 1) * (mesh->N + 1) * (mesh->N + 1);
   mesh->Nelements = meshRoot->Nelements;
@@ -646,7 +645,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   meshConnectFaceNodes3D(mesh);
   meshParallelConnectNodes(mesh, buildOnly);
 
-  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
+  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
@@ -754,6 +753,7 @@ void extrude(pfloat* arr1,
 
 void MGLevel::generate_weights()
 {
+  //platform_t* platform = platform_t::getInstance();
   const pfloat one = 1.0;
   const pfloat zero = 0.0;
   const pfloat onem = -1.0;
@@ -781,7 +781,7 @@ void MGLevel::generate_weights()
 
   for(dlong i = 0; i < weightSize; ++i)
     wts[i] = 1.0 / wts[i];
-  o_wts = mesh->device.malloc  (weightSize * sizeof(pfloat));
+  o_wts = platform->device.malloc  (weightSize * sizeof(pfloat));
   o_wts.copyFrom(wts, weightSize * sizeof(pfloat));
   free(work1);
   free(work2);
@@ -791,6 +791,7 @@ void MGLevel::generate_weights()
 void MGLevel::build(
   elliptic_t* pSolver)
 {
+  //platform_t* platform = platform_t::getInstance();
   if(elliptic->elementType != HEXAHEDRA) {
     printf("ERROR: Unsupported element type!");
     ABORT(EXIT_FAILURE);
@@ -814,15 +815,9 @@ void MGLevel::build(
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0,
-                                    ogsPfloat, extendedMesh->comm, 1, extendedMesh->device,
+                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device,
                                     NULL, oogsMode);
   meshFree(extendedMesh);
-
-/*
-   ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, 1, 0,
-                            ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
-                            NULL, oogsMode);
- */
 
   ogs = (void*) elliptic->oogs;
 
@@ -862,13 +857,13 @@ void MGLevel::build(
   free(lengths);
 
   const dlong weightSize = Np * Nelements;
-  o_Sx = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sy = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sz = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_invL = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
-  o_work1 = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
+  o_Sx = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_Sy = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_Sz = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_invL = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
+  o_work1 = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
   if(!options.compareArgs("MULTIGRID SMOOTHER","RAS"))
-    o_work2 = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
+    o_work2 = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
   o_Sx.copyFrom(casted_Sx, Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sy.copyFrom(casted_Sy, Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sz.copyFrom(casted_Sz, Nq_e * Nq_e * Nelements * sizeof(pfloat));
@@ -886,10 +881,9 @@ void MGLevel::build(
   const string oklpath = install_dir + "/okl/elliptic/";
   string filename, kernelName;
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
+  {
       occa::properties properties;
-      properties += mesh->device.properties();
+      properties += platform->device.properties();
       properties["defines/p_Nq_e"] = Nq_e;
       properties["defines/p_threadBlockSize"] = BLOCKSIZE;
       properties["defines/p_Nq"] = Nq;
@@ -902,12 +896,9 @@ void MGLevel::build(
         properties["defines/p_restrict"] = 1;
 
       filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
-      preFDMKernel = mesh->device.buildKernel(filename.c_str(), "preFDM", properties);
-      fusedFDMKernel = mesh->device.buildKernel(filename.c_str(), "fusedFDM", properties);
-      postFDMKernel = mesh->device.buildKernel(filename.c_str(), "postFDM", properties);
-      collocateKernel = mesh->device.buildKernel(filename.c_str(), "collocate", properties);
-    }
-    MPI_Barrier(mesh->comm);
+      preFDMKernel = platform->device.buildKernel(filename.c_str(), "preFDM", properties);
+      fusedFDMKernel = platform->device.buildKernel(filename.c_str(), "fusedFDM", properties);
+      postFDMKernel = platform->device.buildKernel(filename.c_str(), "postFDM", properties);
   }
 }
 

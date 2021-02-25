@@ -26,10 +26,12 @@
 
 #include "elliptic.h"
 #include "timer.hpp"
+#include "linAlg.hpp"
 
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT, dfloat &res0, dfloat &res)
 {
+  
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
@@ -47,14 +49,14 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory &o_Ap = elliptic->o_Ap;
   occa::memory &o_weight = elliptic->o_invDegree;
 
-  elliptic->fillKernel(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
+  platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
 
   pAp = 0;
   rdotz1 = 1;
 
   const dfloat rdotr0 = ellipticWeightedNorm2(elliptic, o_weight, o_r) * elliptic->resNormFactor;
   if(std::isnan(rdotr0)) {
-    if(mesh->rank == 0) cout << "Unreasonable residual norm!\n" << endl;
+    if(platform->comm.mpiRank == 0) cout << "Unreasonable residual norm!\n" << endl;
     ABORT(1);
   }
 
@@ -96,7 +98,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     rdotr =
       ellipticUpdatePCG(elliptic, o_p, o_Ap, alpha, o_x, o_r) * elliptic->resNormFactor;
 
-    if (verbose && (mesh->rank == 0))
+    if (verbose && (platform->comm.mpiRank == 0))
       printf("it %d r norm %12.12le\n", iter, sqrt(rdotr));
 
     if(rdotr <= TOL && !fixedIterationCountFlag) break;

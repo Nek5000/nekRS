@@ -16,6 +16,7 @@
 #include "linAlg.hpp"
 #include "timer.hpp"
 #include "inipp.hpp"
+#include "platform.hpp"
 
 struct nrs_t
 {
@@ -47,7 +48,7 @@ struct nrs_t
 
   int NVfields, NTfields;
   dlong fieldOffset;
-  dlong Nlocal, Ntotal;
+  dlong Ntotal;
 
   int Nblock;
 
@@ -113,10 +114,7 @@ struct nrs_t
 
   occa::kernel PQKernel;
   occa::kernel mueDivKernel;
-  occa::kernel dotMultiplyKernel;
 
-  occa::kernel scalarScaledAddKernel;
-  occa::kernel scaledAddKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
@@ -184,19 +182,13 @@ struct nrs_t
   occa::kernel velocityNeumannBCKernel;
   occa::kernel velocityDirichletBCKernel;
 
-  occa::kernel fillKernel;
-
   occa::kernel cflKernel;
-  occa::kernel maxKernel;
 
   occa::kernel setEllipticCoeffKernel;
   occa::kernel setEllipticCoeffPressureKernel;
 
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
-  occa::kernel invMassMatrixKernel;
-  occa::kernel massMatrixKernel;
-
   occa::kernel maskCopyKernel;
 
   int* EToB;
@@ -207,8 +199,6 @@ struct nrs_t
 
 
 #include "io.hpp"
-
-occa::device occaDeviceConfig(setupAide &options, MPI_Comm comm);
 
 // std::to_string might be not accurate enough
 static string to_string_f(double a)

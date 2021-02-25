@@ -1,6 +1,8 @@
 #include "nrs.hpp"
+#include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "RANSktau.hpp"
+#include "linAlg.hpp"
 
 // private members
 namespace
@@ -46,6 +48,7 @@ static dfloat coeff[] = {
 void RANSktau::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->mesh;
+  
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/p_sigma_k"]       = coeff[0];
@@ -65,22 +68,19 @@ void RANSktau::buildKernel(nrs_t* nrs)
   kernelInfo["defines/p_tiny"]          = coeff[13];
 
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/RANSktau.okl";
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      computeKernel    = mesh->device.buildKernel(fileName.c_str(), "computeHex3D", kernelInfo);
-      SijOijKernel     = mesh->device.buildKernel(fileName.c_str(), "SijOijHex3D", kernelInfo);
-      SijOijMag2Kernel = mesh->device.buildKernel(fileName.c_str(), "SijOijMag2", kernelInfo);
-      limitKernel      = mesh->device.buildKernel(fileName.c_str(), "limit", kernelInfo);
-      mueKernel        = mesh->device.buildKernel(fileName.c_str(), "mue", kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
+  {
+      computeKernel    = platform->device.buildKernel(fileName.c_str(), "computeHex3D", kernelInfo);
+      SijOijKernel     = platform->device.buildKernel(fileName.c_str(), "SijOijHex3D", kernelInfo);
+      SijOijMag2Kernel = platform->device.buildKernel(fileName.c_str(), "SijOijMag2", kernelInfo);
+      limitKernel      = platform->device.buildKernel(fileName.c_str(), "limit", kernelInfo);
+      mueKernel        = platform->device.buildKernel(fileName.c_str(), "mue", kernelInfo);
   }
 
   if(nrs->Nscalar < 2) {
-    if(mesh->rank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
+    if(platform->comm.mpiRank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
     ABORT(1);
   }
   nrs->options.setArgs("STRESSFORMULATION", "TRUE");
@@ -115,6 +115,7 @@ void RANSktau::updateSourceTerms()
 {
   mesh_t* mesh = nrs->mesh;
   cds_t* cds = nrs->cds;
+  
 
   occa::memory o_OiOjSk  = nrs->o_wrk0;
   occa::memory o_SijMag2 = nrs->o_wrk1;
@@ -138,11 +139,12 @@ void RANSktau::updateSourceTerms()
                        ogsAdd,
                        mesh->ogs);
 
-  nrs->invMassMatrixKernel(
-    mesh->Nelements,
-    nrs->fieldOffset,
+  platform->linAlg->axmyMany(
+    mesh->Nlocal,
     NSOfields,
-    mesh->o_vgeo,
+    nrs->fieldOffset,
+    0,
+    1.0,
     nrs->mesh->o_invLMM,
     o_SijOij);
 
@@ -177,6 +179,8 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
                      int ifld, const dfloat* coeffIn)
 {
   if(setupCalled) return;
+  
+  
 
   nrs    = nrsIn;
   mueLam = mueIn;
@@ -191,11 +195,11 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
   o_k   = cds->o_S + kFieldIndex * cds->fieldOffset * sizeof(dfloat);
   o_tau = cds->o_S + (kFieldIndex + 1) * cds->fieldOffset * sizeof(dfloat);
 
-  o_mut = mesh->device.malloc(cds->fieldOffset * sizeof(dfloat));
+  o_mut = platform->device.malloc(cds->fieldOffset * sizeof(dfloat));
 
   if(!cds->o_BFDiag.ptr()) {
-    cds->o_BFDiag = mesh->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-    nrs->fillKernel(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
+    cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat));
+    platform->linAlg->fill(cds->NSfields * cds->fieldOffset, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;

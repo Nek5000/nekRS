@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 size_t MGLevel::smootherResidualBytes;
 pfloat* MGLevel::smootherResidual;
@@ -40,6 +41,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
                  ktype_,
                  comm_)
 {
+  
   elliptic = ellipticBase;
   mesh = elliptic->mesh;
   options = options_;
@@ -56,8 +58,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_xPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
-  o_rhsPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
+  o_xPfloat = platform->device.malloc(Nrows * sizeof(pfloat));
+  o_rhsPfloat = platform->device.malloc(Nrows * sizeof(pfloat));
 }
 
 //build a level and connect it to the previous one
@@ -76,6 +78,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
                  ktype_,
                  comm_)
 {
+  
   elliptic = ellipticCoarse;
   mesh = elliptic->mesh;
   options = options_;
@@ -98,12 +101,13 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  o_xPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
-  o_rhsPfloat = mesh->device.malloc(Nrows * sizeof(pfloat));
+  o_xPfloat = platform->device.malloc(Nrows * sizeof(pfloat));
+  o_rhsPfloat = platform->device.malloc(Nrows * sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 {
+  
   if (degree == 1) return; // solved by coarse grid solver
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
@@ -131,7 +135,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       ellipticBuildJacobi(elliptic,&invDiagA);
       for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
         casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
-      o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
+      o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
       if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
         smtypeUp = JACOBI;
       if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI"))
@@ -146,7 +150,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
       casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
 
-    o_invDiagA = mesh->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
+    o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
 
     if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
       stype = CHEBYSHEV;
@@ -180,18 +184,19 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 
 void MGLevel::Report()
 {
+  platform_t * platform = platform_t::getInstance();
   hlong hNrows = (hlong) Nrows;
 
   dlong minNrows = 0, maxNrows = 0;
   hlong totalNrows = 0;
   dfloat avgNrows;
 
-  MPI_Allreduce(&Nrows, &maxNrows, 1, MPI_DLONG, MPI_MAX, mesh->comm);
-  MPI_Allreduce(&hNrows, &totalNrows, 1, MPI_HLONG, MPI_SUM, mesh->comm);
-  avgNrows = (dfloat) totalNrows / mesh->size;
+  MPI_Allreduce(&Nrows, &maxNrows, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&hNrows, &totalNrows, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+  avgNrows = (dfloat) totalNrows / platform->comm.mpiCommSize;
 
   if (Nrows == 0) Nrows = maxNrows; //set this so it's ignored for the global min
-  MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, mesh->comm);
+  MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, platform->comm.mpiComm);
 
   char smootherString[BUFSIZ];
   if (degree != 1) {
@@ -205,7 +210,7 @@ void MGLevel::Report()
       strcpy(smootherString, "Chebyshev+Schwarz");
   }
 
-  if (mesh->rank == 0) {
+  if (platform->comm.mpiRank == 0) {
     if(degree == 1) {
       strcpy(smootherString, "BoomerAMG        ");
       printf(     "|    AMG     |   Matrix        | %s |\n", smootherString);
@@ -219,6 +224,7 @@ void MGLevel::Report()
 
 void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
 {
+  
   int NqFine   = Nf + 1;
   int NqCoarse = Nc + 1;
   dfloat* P    = (dfloat*) calloc(NqFine * NqCoarse,sizeof(dfloat));
@@ -248,7 +254,7 @@ void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
   for (int i = 0; i < NqCoarse; i++)
     for (int j = 0; j < NqFine; j++)
       R[i * NqFine + j] = P[j * NqCoarse + i];
-  o_R = elliptic->mesh->device.malloc(NqFine * NqCoarse * sizeof(dfloat), R);
+  o_R = platform->device.malloc(NqFine * NqCoarse * sizeof(dfloat), R);
 
   free(P);
   free(Ptmp);
@@ -281,16 +287,16 @@ static void eig(const int Nrows, double* A, double* WR, double* WI)
 
 dfloat MGLevel::maxEigSmoothAx()
 {
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
-  if(mesh->rank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
      
   const dlong N = Nrows;
   const dlong M = Ncols;
 
   hlong Nlocal = (hlong) Nrows;
   hlong Ntotal = 0;
-  MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, mesh->comm);
+  MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
   const int k = std::min((hlong)20, Ntotal); 
 
@@ -304,13 +310,13 @@ dfloat MGLevel::maxEigSmoothAx()
   //  occa::memory *o_V = (occa::memory *) calloc(k+1, sizeof(occa::memory));
   occa::memory* o_V = new occa::memory[k + 1];
 
-  occa::memory o_Vx  = mesh->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_AVx = mesh->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_AVxPfloat = mesh->device.malloc(M * sizeof(pfloat));
-  occa::memory o_VxPfloat = mesh->device.malloc(M * sizeof(pfloat));
+  occa::memory o_Vx  = platform->device.malloc(M * sizeof(dfloat),Vx);
+  occa::memory o_AVx = platform->device.malloc(M * sizeof(dfloat),Vx);
+  occa::memory o_AVxPfloat = platform->device.malloc(M * sizeof(pfloat));
+  occa::memory o_VxPfloat = platform->device.malloc(M * sizeof(pfloat));
 
   for(int i = 0; i <= k; i++)
-    o_V[i] = mesh->device.malloc(M * sizeof(dfloat),Vx);
+    o_V[i] = platform->device.malloc(M * sizeof(dfloat),Vx);
 
   // generate a random vector for initial basis vector
   for (dlong i = 0; i < N; i++) Vx[i] = (dfloat) drand48();
@@ -389,8 +395,8 @@ dfloat MGLevel::maxEigSmoothAx()
   //free((void*)o_V);
   delete[] o_V;
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);
 
   return rho;
 }

@@ -31,7 +31,7 @@ SOFTWARE.
                         @restrict const dfloat * x,
                         @restrict       dfloat * y){
 
-  for(dlong i=0;i<N;++i;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong i=0;i<N;++i;@tile(p_blockSize,@outer,@inner)){
     dfloat yi = 0.0;
     if (beta)
       yi = beta*y[i];
@@ -48,7 +48,7 @@ SOFTWARE.
                         @restrict const dfloat * y,
                         @restrict       dfloat * z){
 
-  for(dlong i=0;i<N;++i;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong i=0;i<N;++i;@tile(p_blockSize,@outer,@inner)){
     z[i] = beta*y[i] + alpha*x[i];
   }
 }

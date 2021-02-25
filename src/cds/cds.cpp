@@ -1,8 +1,10 @@
 #include <limits>
 #include "nrs.hpp"
+#include "linAlg.hpp"
 
 occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
 {
+  
   mesh_t* mesh;
   oogs_t* gsh;
   if(is) {
@@ -17,7 +19,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   cds->o_wrk0.copyFrom(cds->o_S, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
 
   //enforce Dirichlet BCs
-  cds->fillKernel(cds->fieldOffset, std::numeric_limits<dfloat>::min(), cds->o_wrk2); 
+  platform->linAlg->fill(cds->fieldOffset, std::numeric_limits<dfloat>::min(), cds->o_wrk2); 
   for (int sweep = 0; sweep < 2; sweep++) {
     cds->dirichletBCKernel(mesh->Nelements,
                            cds->fieldOffset,

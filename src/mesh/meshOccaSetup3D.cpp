@@ -30,6 +30,7 @@
 #include  "mpi.h"
 
 #include "mesh3D.h"
+#include "platform.hpp"
 
 void reportMemoryUsage(occa::device &device, const char* mess)
 {
@@ -40,6 +41,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
 
 void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
+  
   // find elements that have all neighbors on this process
   dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
   dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
@@ -56,17 +58,17 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
       notInternalElementIds[NnotInterior++] = e;
   }
 
-  mesh->o_elementInfo = mesh->device.malloc(mesh->Nelements * sizeof(dlong), 
+  mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
  
   mesh->NinternalElements = Ninterior;
   mesh->NnotInternalElements = NnotInterior;
   if(Ninterior)
-    mesh->o_internalElementIds    = mesh->device.malloc(Ninterior * sizeof(dlong),
+    mesh->o_internalElementIds    = platform->device.malloc(Ninterior * sizeof(dlong),
                                                         internalElementIds);
 
   if(NnotInterior > 0)
-    mesh->o_notInternalElementIds = mesh->device.malloc(NnotInterior * sizeof(dlong),
+    mesh->o_notInternalElementIds = platform->device.malloc(NnotInterior * sizeof(dlong),
                                                         notInternalElementIds);
 
   if (mesh->Nverts == 8) {    // hardcoded for hexes
@@ -96,7 +98,7 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
     dfloat* LIFTT = (dfloat*) calloc(mesh->Np * mesh->Nfaces * mesh->Nfp, sizeof(dfloat));
 
     mesh->o_LIFTT =
-      mesh->device.malloc(1 * sizeof(dfloat)); // dummy
+      platform->device.malloc(1 * sizeof(dfloat)); // dummy
 
     mesh->intx = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
     mesh->inty = (dfloat*) calloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp, sizeof(dfloat));
@@ -157,91 +159,91 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
 
     mesh->LMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
     mesh->o_LMM =
-      mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+      platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
     mesh->invLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
     mesh->o_invLMM =
-      mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+      platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
 
     mesh->o_MM =
-      mesh->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat),
+      platform->device.malloc(mesh->Np * mesh->Np * sizeof(dfloat),
                           mesh->MM); //dummy
 
-    mesh->o_D = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+    mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
-    mesh->o_DW = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
+    mesh->o_DW = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
 
-    mesh->o_Dmatrices = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+    mesh->o_Dmatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
     dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq,sizeof(dfloat));
     for(int j = 0; j < mesh->Nq; ++j)
       for(int i = 0; i < mesh->Nq; ++i)
         DT[i * mesh->Nq + j] = mesh->D[j * mesh->Nq + i];
 
-    mesh->o_Smatrices = mesh->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
+    mesh->o_Smatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
 
     mesh->o_vgeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
                           mesh->vgeo);
 
     mesh->o_sgeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
                           mesh->sgeo);
 
     mesh->o_ggeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
 
     mesh->o_cubvgeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
                           mesh->cubvgeo);
 
     /*
     mesh->o_cubsgeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * mesh->Nsgeo *
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * mesh->Nsgeo *
                           sizeof(dfloat),
                           mesh->cubsgeo);
     mesh->o_cubggeo =
-      mesh->device.malloc(mesh->Nelements * mesh->Nggeo * mesh->cubNp * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nggeo * mesh->cubNp * sizeof(dfloat),
                           mesh->cubggeo);
     */		  
 
     mesh->o_cubInterpT =
-      mesh->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
                           cubInterpT);
 
     mesh->o_cubProjectT =
-      mesh->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
                           cubProjectT);
 
     mesh->o_cubDWT =
-      mesh->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
                           cubDWT);
 
     mesh->o_cubD =
-      mesh->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
                           mesh->cubD);
 
-    mesh->o_cubDWmatrices = mesh->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), cubDWT);
+    mesh->o_cubDWmatrices = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), cubDWT);
 
     // just neeeded to combine quad and hex cub kernels
     mesh->o_cubDiffInterpT = mesh->o_cubDWmatrices;
 
     mesh->o_intx =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
                           mesh->intx);
 
     mesh->o_inty =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
                           mesh->inty);
 
     mesh->o_intz =
-      mesh->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->cubNfp * sizeof(dfloat),
                           mesh->intz);
 
-    mesh->o_intInterpT = mesh->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
+    mesh->o_intInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
     mesh->o_intInterpT.copyFrom(mesh->o_cubInterpT);
 
-    mesh->o_intLIFTT = mesh->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
+    mesh->o_intLIFTT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat));
     mesh->o_intLIFTT.copyFrom(mesh->o_cubProjectT);
 
   } else {
@@ -249,47 +251,47 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   }
 
   mesh->o_vmapM =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
+    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapM);
 
   mesh->o_vmapP =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
+    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapP);
 
   mesh->o_EToB =
-    mesh->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
+    platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
                         mesh->EToB);
 
   mesh->o_x =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->x);
+    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->x);
 
   mesh->o_y =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->y);
+    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->y);
 
   mesh->o_z =
-    mesh->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->z);
+    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat), mesh->z);
   mesh->o_gllw =
-    mesh->device.malloc( mesh->Nq * sizeof(dfloat), mesh->gllw);
+    platform->device.malloc( mesh->Nq * sizeof(dfloat), mesh->gllw);
   mesh->o_cubw =
-    mesh->device.malloc( mesh->cubNq * sizeof(dfloat), mesh->cubw);
+    platform->device.malloc( mesh->cubNq * sizeof(dfloat), mesh->cubw);
   mesh->o_faceNodes =
-    mesh->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
+    platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
 
   if(mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE
     mesh->o_haloElementList =
-      mesh->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
+      platform->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
 
     // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
     //printf("mesh->Nfields = %d\n", mesh->Nfields);
     mesh->o_haloBuffer =
-      mesh->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
+      platform->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
 
     mesh->o_haloGetNodeIds =
-      mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
+      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
 
     mesh->o_haloPutNodeIds =
-      mesh->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
+      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
   kernelInfo["defines/" "p_dim"] = 3;
@@ -303,8 +305,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_Nvgeo"] = mesh->Nvgeo;
   kernelInfo["defines/" "p_Nsgeo"] = mesh->Nsgeo;
   kernelInfo["defines/" "p_Nggeo"] = mesh->Nggeo;
-
-  kernelInfo["defines/" "p_max_EL_nnz"] = mesh->max_EL_nnz; // for Bernstein Bezier lift
 
   kernelInfo["defines/" "p_NXID"] = NXID;
   kernelInfo["defines/" "p_NYID"] = NYID;
@@ -331,47 +331,6 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
   kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
   kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
   kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
-
-  if(sizeof(dfloat) == 4) {
-    kernelInfo["defines/" "dfloat"] = "float";
-    kernelInfo["defines/" "dfloat4"] = "float4";
-    kernelInfo["defines/" "dfloat8"] = "float8";
-  }
-  if(sizeof(dfloat) == 8) {
-    kernelInfo["defines/" "dfloat"] = "double";
-    kernelInfo["defines/" "dfloat4"] = "double4";
-    kernelInfo["defines/" "dfloat8"] = "double8";
-  }
-
-  if(sizeof(dlong) == 4)
-    kernelInfo["defines/" "dlong"] = "int";
-  if(sizeof(dlong) == 8)
-    kernelInfo["defines/" "dlong"] = "long long int";
-
-  if(mesh->device.mode() == "CUDA") { // add backend compiler optimization for CUDA
-    kernelInfo["compiler_flags"] += "--ftz=true ";
-    kernelInfo["compiler_flags"] += "--prec-div=false ";
-    kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
-    kernelInfo["compiler_flags"] += "--use_fast_math ";
-    kernelInfo["compiler_flags"] += "--fmad=true "; // compiler option for cuda
-    //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
-  }
-
-  if(mesh->device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
-    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-  }
-
-  if(mesh->device.mode() == "HIP") { // add backend compiler optimization for HIP
-    kernelInfo["compiler_flags"] += " -O3 ";
-    kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
-    // kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
-    // kernelInfo["compiler_flags"] += " -ffast-math ";
-  }
 
   kernelInfo["defines/" "p_G00ID"] = G00ID;
   kernelInfo["defines/" "p_G01ID"] = G01ID;
@@ -400,20 +359,5 @@ void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::propert
 
 void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
-  //make seperate stream for halo exchange
-  mesh->defaultStream = mesh->device.getStream();
-  mesh->dataStream = mesh->device.createStream();
-  mesh->computeStream = mesh->device.createStream();
-  mesh->device.setStream(mesh->defaultStream);
-
   meshOccaPopulateDevice3D(mesh, newOptions, kernelInfo);
-}
-
-void meshOccaCloneDevice(mesh_t* donorMesh, mesh_t* mesh)
-{
-  mesh->device = donorMesh->device;
-
-  mesh->defaultStream = donorMesh->defaultStream;
-  mesh->dataStream = donorMesh->dataStream;
-  mesh->computeStream = donorMesh->computeStream;
 }

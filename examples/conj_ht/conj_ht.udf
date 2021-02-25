@@ -25,7 +25,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   cds_t *cds   = nrs->cds;
 
   if(updateProperties) {
-    if(nrs->mesh->rank == 0) cout << "updating properties" << "\n";
+    if(platform->comm.mpiRank == 0) cout << "updating properties" << "\n";
     const dfloat rho = 1.0;
     const dfloat mue = 1/1000.0;
     const dfloat rhoCpFluid = rho*1.0;

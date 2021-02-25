@@ -50,13 +50,10 @@ struct mesh_t
   void computeBdivW();
   void solve();
   linAlg_t* linAlg;
-  MPI_Comm comm;
-  int rank, size; // MPI rank and size (process count)
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration
   occa::memory o_coeffAB;
-
   int dim;
   int Nverts, Nfaces, NfaceVertices;
 
@@ -69,6 +66,7 @@ struct mesh_t
 
   dlong Nelements;
   dlong fieldOffset;
+  dlong Nlocal;
   hlong* EToV; // element-to-vertex connectivity
   dlong* EToE; // element-to-element connectivity
   int* EToF;   // element-to-(local)face connectivity
@@ -120,9 +118,6 @@ struct mesh_t
   dlong* FPairsToE;
   int* FPairsToF;
 
-  // NBN: streams / command queues
-  occa::stream stream0, stream1;
-
   // volumeGeometricFactors;
   dlong Nvgeo;
   dfloat* vgeo;
@@ -142,10 +137,7 @@ struct mesh_t
   dfloat* Ssr,* Sss, * Sst;
   dfloat* Str,* Sts, * Stt;
   dfloat* Smatrices;
-  int maxNnzPerRow;
   dfloat* x, * y, * z;    // coordinates of physical nodes
-
-  dfloat sphereRadius;  // for Quad3D
 
   dfloat volume;
 
@@ -159,27 +151,6 @@ struct mesh_t
   dfloat* DW; // weak 1D differentiation matrix (for tensor-product)
   dfloat* gllz; // 1D GLL quadrature nodes
   dfloat* gllw; // 1D GLL quadrature weights
-
-  int gjNq;
-  dfloat* gjr,* gjw; // 1D nodes and weights for Gauss Jacobi quadature
-  dfloat* gjI,* gjD; // 1D GLL to Gauss node interpolation and differentiation matrices
-  dfloat* gjD2;     // 1D GJ to GJ node differentiation
-
-  // transform to/from eigenmodes of 1D laplacian (with built in weighting)
-  dfloat* oasForward;
-  dfloat* oasBack;
-  dfloat* oasDiagOp;
-
-  // transform to/from eigenmode of IPDG 1D laplacian
-  dfloat* oasForwardDg;
-  dfloat* oasBackDg;
-  dfloat* oasDiagOpDg;
-
-  //rotated node ids
-  int* rmapP;
-
-  //reference patch inverse (for OAS precon)
-  dfloat* invAP;
 
   // face node info
   int Nfp;        // number of nodes per face
@@ -198,13 +169,6 @@ struct mesh_t
 
   // field info for PDE solver
   int Nfields;
-  dfloat* q;    // solution data array
-  dfloat* fQM, * fQP; //solution trace arrays
-  dfloat* rhsq, * rhsq2, * rhsq3; // right hand side data array
-  dfloat* resq; // residual data array (for LSERK time-stepping)
-
-  dfloat Lambda2; // square of penalty paramater used in constructing q^*
-
   // cubature
   int cubNp, cubNfp, cubNq;
   dfloat* cubr, * cubs, * cubt, * cubw; // coordinates and weights of local cubature nodes
@@ -223,136 +187,14 @@ struct mesh_t
   dfloat* cubsgeo;  //surface geometric data at cubature points
   dfloat* cubggeo;  //second type volume geometric data at cubature points
 
-  // c2 at cubature points (for wadg)
-  dfloat* c2;
-
-  //source injection
-  dfloat* sourceq;
-  dfloat sourceX0, sourceY0, sourceZ0, sourceT0, sourceC2, sourceFreq;
-  int sourceNelements;
-  dlong* MRABsourceNelements;
-  dlong* sourceElements;
+  dfloat* interpRaise;
+  dfloat* interpLower;
 
   // surface integration node info
   int intNfp;       // number of integration nodes on each face
   dfloat* intInterp; // interp from surface node to integration nodes
   dfloat* intLIFT;   // lift from surface integration nodes to W&B volume nodes
   dfloat* intx, * inty, * intz; // coordinates of suface integration nodes
-
-  // Bernstein-Bezier info
-  dfloat* VB, * invVB; // Bernstein Vandermonde matrices
-  dfloat* BBMM;
-  dfloat* invVB1D, * invVB2D;
-  int* D0ids, * D1ids, * D2ids, * D3ids; // Bernstein deriv matrix indices
-  dfloat* Dvals; // Bernstein deriv matrix values
-  int* D0Tids, * D1Tids, * D2Tids, * D3Tids; // Bernstein transpose deriv matrix indices
-  dfloat* DTvals; // Bernstein transpose deriv matrix values
-  dfloat* VBq, * PBq; // cubature interpolation/projection matrices
-  int* L0ids; // L0 matrix ids
-  dfloat* L0vals; // L0 values (L0 tridiagonal in 2D)
-  int* ELids; // lift reduction matrix indices
-  dfloat* ELvals; // lift reduction matrix values
-  int max_EL_nnz; // max number of non-zeros per row of EL
-  int* BBRaiseids; //Bernstein elevate matrix indices
-  dfloat* BBRaiseVals; //Bernstein elevate matrix values
-  dfloat* BBLower; //Berstein projection matrix.
-
-  //degree raising and lowering interpolation matrices
-  dfloat* interpRaise;
-  dfloat* interpLower;
-
-  //sparse basis info
-  dfloat* sparseV, * invSparseV;
-  dfloat* sparseMM;
-  int* FaceModes;
-  int SparseNnzPerRow;
-  int SparseNnzPerRowNonPadded;
-  int* sparseStackedNZ;
-  dfloat* sparseSrrT;
-  dfloat* sparseSrsT;
-  dfloat* sparseSssT;
-  int* Ind;
-
-  dlong* mmapM, * mmapP;
-  int* mmapS;
-  dfloat* mapSgn;
-
-  // MRAB,SAAB coefficients
-  dfloat mrab[3], mrabb[3], saab[3], saabexp; // AK: deprecated
-  int MRABNlevels;
-  int* MRABlevel;
-  dlong* MRABNelements, * MRABNhaloElements;
-  dlong** MRABelementIds, ** MRABhaloIds;
-  int* MRABshiftIndex;
-
-  dlong* MRABpmlNelements, * MRABpmlNhaloElements;
-  dlong** MRABpmlElementIds, ** MRABpmlIds;
-  dlong** MRABpmlHaloElementIds, ** MRABpmlHaloIds;
-
-  dlong pmlNelements, nonPmlNelements;
-  dlong* nonPmlElementIds, * pmlElementIds, * pmlIds;
-  int shiftIndex;
-
-  dfloat dtfactor; //Delete later for script run
-  dfloat maxErrorBoltzmann;
-
-  dfloat* errtmp;
-  dfloat rkC[7], rkA[7 * 7], rkE[7];
-
-  occa::memory o_rkq, o_rkrhsq, o_rkerr; // deprecated, AK.
-  occa::memory o_errtmp;
-  occa::memory o_rkA, o_rkE;
-
-  occa::memory o_faceNodes;
-
-  // ploting info for generating field vtu
-  int plotNverts;       // number of vertices for each plot element
-  int plotNp;           // number of plot nodes per element
-  int plotNelements;    // number of "plot elements" per element
-  int* plotEToV;        // triangulation of plot nodes
-  dfloat* plotR, * plotS, * plotT; // coordinates of plot nodes in reference element
-  dfloat* plotInterp;    // warp & blend to plot node interpolation matrix
-
-  int* contourEToV;
-  dfloat* contourVX, * contourVY, * contourVZ;
-  dfloat* contourInterp, * contourInterp1, * contourFilter;
-
-  //SEMFEM data
-  int NpFEM, NelFEM;
-  int* FEMEToV;
-  dfloat* rFEM, * sFEM, * tFEM;
-  dfloat* SEMFEMInterp;
-
-  occa::memory o_SEMFEMInterp;
-  occa::memory o_SEMFEMAnterp;
-
-  // Boltzmann specific stuff
-  dfloat RT, sqrtRT, tauInv, Ma, Re; // Deprecated: AK
-
-  // pml stuff
-  int pmlNfields;
-  //  dlong    pmlNelements; // deprecated
-  dlong* pmlElementList;   // deprecated
-
-  int Ntscale; // Will be removed, for time accuracy test
-
-  dfloat* invTau; // deprecated in Boltzmann
-
-  // Probe Data
-  int probeN, probeNTotal;
-  dfloat* probeR, * probeS, * probeT;
-  // dfloat *probeX, *probeY, *probeZ;
-  dlong* probeElementIds, * probeIds;
-  dfloat* probeI;
-
-  // occa stuff
-  occa::device device;
-
-  occa::stream defaultStream;
-  occa::stream dataStream;
-  occa::stream computeStream;
-
-  occa::memory o_q, o_rhsq, o_resq, o_fQM, o_fQP;
 
   occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
   occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
@@ -398,16 +240,6 @@ struct mesh_t
 
   occa::memory o_cubvgeo, o_cubsgeo, o_cubggeo;
 
-  occa::memory o_c2;
-
-  //MRAB element lists
-  occa::memory* o_MRABelementIds;
-  occa::memory* o_MRABhaloIds;
-  occa::memory* o_MRABpmlElementIds;
-  occa::memory* o_MRABpmlIds;
-  occa::memory* o_MRABpmlHaloElementIds;
-  occa::memory* o_MRABpmlHaloIds;
-
   // DG halo exchange info
   occa::memory o_haloElementList;
   occa::memory o_haloBuffer;
@@ -417,34 +249,8 @@ struct mesh_t
   occa::memory o_internalElementIds;
   occa::memory o_notInternalElementIds;
 
-  // Bernstein-Bezier occa arrays
-  occa::memory o_BBMM;
-  occa::memory o_D0ids, o_D1ids, o_D2ids, o_D3ids, o_Dvals; // Bernstein deriv matrix indices
-  occa::memory o_packedDids; // char4 packed increments (D1ids-D0ids)
-
-  occa::memory o_invVB1DT, o_invVB2DT;
-  occa::memory o_VBq, o_PBq; // cubature interpolation/projection matrices
-  occa::memory o_L0ids, o_L0vals, o_ELids, o_ELvals;
-
-  /* sparse basis occa arrays */
-  occa::memory o_sparseStackedNZ;
-  occa::memory o_sparseSrrT;
-  occa::memory o_sparseSrsT;
-  occa::memory o_sparseSssT;
-  occa::memory o_mapSgn;
-
-  // pml vars
-  occa::memory o_sigmax, o_sigmay, o_sigmaz; // AK: deprecated
-
-  occa::memory o_pmlElementIds;
-  occa::memory o_nonPmlElementIds;
-  occa::memory o_pmlIds;
-
-  occa::memory o_pmlElementList;
-
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
-  occa::memory o_projectL2; // local weights for projection.
 
   occa::memory o_gllw;
   occa::memory o_cubw;
@@ -456,17 +262,6 @@ struct mesh_t
 
   occa::kernel getKernel;
   occa::kernel putKernel;
-
-  occa::kernel sumKernel;
-  occa::kernel addScalarKernel;
-
-  occa::kernel innerProductKernel;
-  occa::kernel weightedInnerProduct1Kernel;
-  occa::kernel weightedInnerProduct2Kernel;
-  occa::kernel scaledAddKernel;
-  occa::kernel scalarDivideKernel;
-  occa::kernel dotMultiplyKernel;
-  occa::kernel dotDivideKernel;
 
   occa::kernel lagFieldKernel;
   occa::kernel lagVectorFieldKernel;
