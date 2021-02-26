@@ -36,10 +36,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
  
   const int rank = nrs->mesh->rank;
  
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyFromNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(1);
+  double *err = (double *) nek::scPtr(1);
   const int Nfields = 6;
   dfloat expectedErr[Nfields];
   if(ciMode == 1)

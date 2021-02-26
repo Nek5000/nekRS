@@ -33,10 +33,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
   memcpy(nekData.qtl, nrs->div, sizeof(dfloat)*Nlocal);
  
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyFromNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(1);
+  double *err = (double *) nek::scPtr(1);
   double vxErr, prErr, sErr;
 
   switch (ciMode) {

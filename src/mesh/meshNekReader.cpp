@@ -29,7 +29,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   const int vtxmap[8] = {0, 1, 3, 2, 4, 5, 7, 6};
 
   // build vertex numbering
-  mesh->Nnodes = nek_set_glo_num(2, mesh->cht);
+  mesh->Nnodes = nek::set_glo_num(2, mesh->cht);
 
   mesh->EToV
     = (hlong*) calloc(mesh->Nelements * mesh->Nverts, sizeof(hlong));

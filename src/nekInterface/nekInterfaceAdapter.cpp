@@ -50,8 +50,6 @@ static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
 static void (* nek_updggeom_ptr)(void);
-static void (* nek_admeshv_ptr)(void);
-static void (* nek_admesht_ptr)(void);
 
 void noop_func(void) {}
 
@@ -63,7 +61,8 @@ void check_error(const char* error)
   }
 }
 
-void* nek_ptr(const char* id)
+namespace nek{
+void* ptr(const char* id)
 {
   void* ptr;
   int len = strlen(id);
@@ -71,14 +70,14 @@ void* nek_ptr(const char* id)
   return ptr;
 }
 
-void* nek_scPtr(int id)
+void* scPtr(int id)
 {
   void* ptr;
   (*nek_scptr_ptr)(&id, &ptr);
   return ptr;
 }
 
-void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
+void outfld(const char* suffix, dfloat t, int coords, int FP64,
                 void* o_uu, void* o_pp, void* o_ss,
                 int NSfields)
 {
@@ -148,17 +147,17 @@ void nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
   (*nek_restoresol_ptr)();
 }
 
-void nek_uic(int ifield)
+void uic(int ifield)
 {
   (*nek_uic_ptr)(&ifield);
 }
 
-void nek_end()
+void end()
 {
   (*nek_end_ptr)();
 }
 
-void nek_setic(void)
+void setic(void)
 {
   int readRestartFile;
   options->getArgs("RESTART FROM FILE", readRestartFile);
@@ -175,7 +174,7 @@ void nek_setic(void)
   (*nek_setics_ptr)();
 }
 
-void nek_map_m_to_n(double* a, int na, double* b, int nb)
+void map_m_to_n(double* a, int na, double* b, int nb)
 {
   // output a, intput b
   int if3d = (nekData.ndim == 3);
@@ -188,31 +187,32 @@ void nek_map_m_to_n(double* a, int na, double* b, int nb)
   free(w);
 }
 
-void nek_uf(double* u, double* v, double* w)
+void uf(double* u, double* v, double* w)
 {
   (*nek_uf_ptr)(u, v, w);
 }
 
-int nek_lglel(int e)
+int lglel(int e)
 {
   int ee = e + 1;
   return (*nek_lglel_ptr)(&ee) - 1;
 }
 
-void nek_ifoutfld(int i)
+void ifoutfld(int i)
 {
   (*nek_ifoutfld_ptr)(&i);
 }
 
-void nek_setics(void)
+void setics(void)
 {
   (*nek_setics_ptr)();
 }
 
-void nek_userchk(void)
+void userchk(void)
 {
   if(rank == 0) printf("calling nek_userchk ...\n");
   (*userchk_ptr)();
+}
 }
 
 DEFINE_USER_FUNC(usrdat)
@@ -310,10 +310,6 @@ void set_function_handles(const char* session_in,int verbose)
   nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
   check_error(dlerror());
   nek_updggeom_ptr = (void (*)(void))dlsym(handle, fname("nekf_updggeom"));
-  check_error(dlerror());
-  nek_admeshv_ptr = (void (*)(void))dlsym(handle, fname("admeshv"));
-  check_error(dlerror());
-  nek_admesht_ptr = (void (*)(void))dlsym(handle, fname("admesht"));
   check_error(dlerror());
 
 #define postfix(x) x ## _ptr
@@ -538,17 +534,18 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   return 0;
 }
 
-int nek_bcmap(int bid, int ifld)
+namespace nek{
+int bcmap(int bid, int ifld)
 {
   return (*nek_bcmap_ptr)(&bid, &ifld);
 }
 
-void nek_gen_bcmap()
+void gen_bcmap()
 {
   (*nek_gen_bcmap_ptr)();
 }
 
-int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
+int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
 {
   options = &options_in;
   nrs = nrs_in;
@@ -605,76 +602,72 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
 		   &rho, &mue, &rhoCp, &lambda, 
                    cwd.length(), casename.length()); 
 
-  nekData.param = (double*) nek_ptr("param");
-  nekData.ifield = (int*) nek_ptr("ifield");
-  nekData.istep = (int*) nek_ptr("istep");
-  nekData.time = (double*) nek_ptr("time");
+  nekData.param = (double*) ptr("param");
+  nekData.ifield = (int*) ptr("ifield");
+  nekData.istep = (int*) ptr("istep");
+  nekData.time = (double*) ptr("time");
 
-  nekData.ndim = *(int*) nek_ptr("ndim");
-  nekData.nelt = *(int*) nek_ptr("nelt");
-  nekData.nelv = *(int*) nek_ptr("nelv");
-  nekData.lelt = *(int*) nek_ptr("lelt");
-  nekData.ldimt = *(int*) nek_ptr("ldimt");
-  nekData.nx1 =  *(int*) nek_ptr("nx1");
+  nekData.ndim = *(int*) ptr("ndim");
+  nekData.nelt = *(int*) ptr("nelt");
+  nekData.nelv = *(int*) ptr("nelv");
+  nekData.lelt = *(int*) ptr("lelt");
+  nekData.ldimt = *(int*) ptr("ldimt");
+  nekData.nx1 =  *(int*) ptr("nx1");
 
-  nekData.vx = (double*) nek_ptr("vx");
-  nekData.vy = (double*) nek_ptr("vy");
-  nekData.vz = (double*) nek_ptr("vz");
-  nekData.pr = (double*) nek_ptr("pr");
-  nekData.t  = (double*) nek_ptr("t");
+  nekData.vx = (double*) ptr("vx");
+  nekData.vy = (double*) ptr("vy");
+  nekData.vz = (double*) ptr("vz");
+  nekData.pr = (double*) ptr("pr");
+  nekData.t  = (double*) ptr("t");
 
-  nekData.qtl = (double*) nek_ptr("qtl");
+  nekData.qtl = (double*) ptr("qtl");
 
-  nekData.ifgetu  = (int*) nek_ptr("ifgetu");
-  nekData.ifgetp  = (int*) nek_ptr("ifgetp");
-  nekData.ifgett  = (int*) nek_ptr("ifgett");
-  nekData.ifgetps = (int*) nek_ptr("ifgetps");
+  nekData.ifgetu  = (int*) ptr("ifgetu");
+  nekData.ifgetp  = (int*) ptr("ifgetp");
+  nekData.ifgett  = (int*) ptr("ifgett");
+  nekData.ifgetps = (int*) ptr("ifgetps");
 
-  nekData.unx = (double*) nek_ptr("unx");
-  nekData.uny = (double*) nek_ptr("uny");
-  nekData.unz = (double*) nek_ptr("unz");
+  nekData.unx = (double*) ptr("unx");
+  nekData.uny = (double*) ptr("uny");
+  nekData.unz = (double*) ptr("unz");
 
-  nekData.xm1 = (double*) nek_ptr("xm1");
-  nekData.ym1 = (double*) nek_ptr("ym1");
-  nekData.zm1 = (double*) nek_ptr("zm1");
-  nekData.xc = (double*) nek_ptr("xc");
-  nekData.yc = (double*) nek_ptr("yc");
-  nekData.zc = (double*) nek_ptr("zc");
+  nekData.xm1 = (double*) ptr("xm1");
+  nekData.ym1 = (double*) ptr("ym1");
+  nekData.zm1 = (double*) ptr("zm1");
+  nekData.xc = (double*) ptr("xc");
+  nekData.yc = (double*) ptr("yc");
+  nekData.zc = (double*) ptr("zc");
 
-  nekData.glo_num = (long long*) nek_ptr("glo_num");
-  nekData.cbscnrs = (double*) nek_ptr("cb_scnrs");
-  nekData.cbc = (char*) nek_ptr("cbc");
+  nekData.glo_num = (long long*) ptr("glo_num");
+  nekData.cbscnrs = (double*) ptr("cb_scnrs");
+  nekData.cbc = (char*) ptr("cbc");
 
-  nekData.boundaryID  = (int*) nek_ptr("boundaryID");
-  nekData.boundaryIDt = (int*) nek_ptr("boundaryIDt");
+  nekData.boundaryID  = (int*) ptr("boundaryID");
+  nekData.boundaryIDt = (int*) ptr("boundaryIDt");
 
-  nekData.eface1 = (int*) nek_ptr("eface1");
-  nekData.eface = (int*) nek_ptr("eface");
-  nekData.icface = (int*) nek_ptr("icface");
-  nekData.comm = MPI_Comm_f2c(*(int*) nek_ptr("nekcomm"));
+  nekData.eface1 = (int*) ptr("eface1");
+  nekData.eface = (int*) ptr("eface");
+  nekData.icface = (int*) ptr("icface");
+  nekData.comm = MPI_Comm_f2c(*(int*) ptr("nekcomm"));
   
-  nekData.p0th = (double*) nek_ptr("p0th");
-  nekData.dp0thdt = (double*) nek_ptr("dp0thdt");
+  nekData.p0th = (double*) ptr("p0th");
+  nekData.dp0thdt = (double*) ptr("dp0thdt");
 
-  nekData.wx = (double*) nek_ptr("wx");
-  nekData.wy = (double*) nek_ptr("wy");
-  nekData.wz = (double*) nek_ptr("wz");
-  nekData.bfx = (double*) nek_ptr("bfx");
-  nekData.bfy = (double*) nek_ptr("bfy");
-  nekData.bfz = (double*) nek_ptr("bfz");
-  nekData.bq = (double*) nek_ptr("bq");
+  nekData.wx = (double*) ptr("wx");
+  nekData.wy = (double*) ptr("wy");
+  nekData.wz = (double*) ptr("wz");
 
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
 
   // import BCs from nek if not specified in par
   if(!bcInPar) {
-    nek_gen_bcmap();
+    gen_bcmap();
     if(flow) {
       int isTMesh = 0;
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
       int* map = (int*) calloc(nIDs, sizeof(int));
-      for(int id = 0; id < nIDs; id++) map[id] = nek_bcmap(id + 1, 1);
+      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1);
       bcMap::setBcMap("velocity", map, nIDs);
       free(map);
     }
@@ -688,7 +681,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
 
       int* map = (int*) calloc(nIDs, sizeof(int));
-      for(int id = 0; id < nIDs; id++) map[id] = nek_bcmap(id + 1, is + 2);
+      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, is + 2);
       bcMap::setBcMap("scalar" + sid, map, nIDs);
       free(map);
     }
@@ -706,7 +699,7 @@ int nek_setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   return 0;
 }
 
-void nek_copyFrom(dfloat time)
+void copyFromNek(dfloat time)
 {
   if(rank == 0) {
     printf("copying solution to nek\n");
@@ -736,7 +729,7 @@ void nek_copyFrom(dfloat time)
     memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
     memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
     memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
-    nek_recomputeGeometry();
+    recomputeGeometry();
   }
 
   memcpy(nekData.vx, vx, sizeof(dfloat) * Nlocal);
@@ -757,7 +750,7 @@ void nek_copyFrom(dfloat time)
   }
 }
 
-void nek_ocopyFrom(void)
+void ocopyFromNek(void)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
@@ -772,10 +765,10 @@ void nek_ocopyFrom(void)
     mesh->o_y.copyTo(mesh->y);
     mesh->o_z.copyTo(mesh->z);
   }
-  nek_copyFrom(0.0);
+  copyFromNek(0.0);
 }
 
-void nek_ocopyFrom(dfloat time, int tstep)
+void ocopyFromNek(dfloat time, int tstep)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
@@ -790,18 +783,18 @@ void nek_ocopyFrom(dfloat time, int tstep)
     mesh->o_y.copyTo(mesh->y);
     mesh->o_z.copyTo(mesh->z);
   }
-  nek_copyFrom(time, tstep);
+  copyFromNek(time, tstep);
 }
 
-void nek_copyFrom(dfloat time, int tstep)
+void copyFromNek(dfloat time, int tstep)
 {
   *(nekData.istep) = tstep;
-  nek_copyFrom(time);
+  copyFromNek(time);
 }
 
-void nek_ocopyTo(dfloat &time)
+void ocopyToNek(dfloat &time)
 {
-  nek_copyTo(time);
+  copyToNek(time);
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_U.copyFrom(nrs->U);
   if(nrs->Nscalar){
@@ -816,7 +809,7 @@ void nek_ocopyTo(dfloat &time)
   }
 }
 
-void nek_copyTo(dfloat &time)
+void copyToNek(dfloat &time)
 {
   if(rank == 0) {
     printf("copying solution from nek\n");
@@ -849,7 +842,7 @@ void nek_copyTo(dfloat &time)
     memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
     memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
     memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
-    nek_recomputeGeometry();
+    recomputeGeometry();
   }
   memcpy(nrs->P, nekData.pr, sizeof(dfloat) * Nlocal);
   if(nrs->Nscalar) {
@@ -865,12 +858,12 @@ void nek_copyTo(dfloat &time)
   }
 }
 
-long long nek_set_glo_num(int nx, int isTMesh)
+long long set_glo_num(int nx, int isTMesh)
 {
   return (*nek_set_vert_ptr)(&nx, &isTMesh);
 }
 
-void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order) 
+void bdfCoeff(double *g0, double *coeff, double *dt, int order) 
 {
   double nekCoeff[4];
   (*nek_setbd_ptr)(nekCoeff, dt, &order);
@@ -878,26 +871,18 @@ void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order)
   memcpy(coeff, &nekCoeff[1], 3*sizeof(double));
 }
 
-void nek_extCoeff(double *coeff, double *dt, int order)
+void extCoeff(double *coeff, double *dt, int order)
 {
   (*nek_setabbd_ptr)(coeff, dt, &order, &order);
 }
-void nek_coeffAB(double *coeff, double *dt, int order)
+void coeffAB(double *coeff, double *dt, int order)
 {
   int one = 1;
   (*nek_setabbd_ptr)(coeff, dt, &order, &one);
 }
 
-void nek_recomputeGeometry()
+void recomputeGeometry()
 {
   (*nek_updggeom_ptr)();
 }
-
-void nek_admeshv()
-{
-  (*nek_admeshv_ptr)();
-}
-void nek_admesht()
-{
-  (*nek_admesht_ptr)();
 }

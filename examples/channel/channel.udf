@@ -43,10 +43,10 @@ void UDF_Setup(nrs_t *nrs)
   udf.uEqnSource = &userf;
   udf.properties = &uservp;
 
-  double *mul = (double *) nek_scPtr(1);
-  double *FUx = (double *) nek_scPtr(2);
-  double *FUy = (double *) nek_scPtr(3);
-  double *FUz = (double *) nek_scPtr(4);
+  double *mul = (double *) nek::scPtr(1);
+  double *FUx = (double *) nek::scPtr(2);
+  double *FUy = (double *) nek::scPtr(3);
+  double *FUz = (double *) nek::scPtr(4);
 
   o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
   o_nekMue = platform->device.malloc(              nrs->fieldOffset*sizeof(dfloat));
@@ -60,8 +60,8 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyFromNek(time, tstep);
+    nek::userchk();
   }
   if (ciMode) ciTestErrors(nrs, time, tstep);
 }

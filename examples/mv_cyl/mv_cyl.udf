@@ -73,8 +73,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     mesh->o_U);
 
   if(nrs->isOutputStep){
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyFromNek(time, tstep);
+    nek::userchk();
   }
   if (ciMode) ciTestErrors(nrs, time, tstep);
 }

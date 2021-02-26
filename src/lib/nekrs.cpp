@@ -131,7 +131,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
-  nek_ocopyFrom(startTime(), 0);
+  nek::ocopyFromNek(startTime(), 0);
 
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
@@ -153,27 +153,27 @@ void runStep(double time, double dt, int tstep)
 
 void copyToNek(double time, int tstep)
 {
-  nek_ocopyFrom(time, tstep);
+  nek::ocopyFromNek(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
   platform->timer.tic("udfExecuteStep", 1);
   if (isOutputStep) {
-    nek_ifoutfld(1);
+    nek::ifoutfld(1);
     nrs->isOutputStep = 1;
   }
 
   if (udf.executeStep) udf.executeStep(nrs, time, tstep);
 
-  nek_ifoutfld(0);
+  nek::ifoutfld(0);
   nrs->isOutputStep = 0;
   platform->timer.toc("udfExecuteStep");
 }
 
 void nekUserchk(void)
 {
-  nek_userchk();
+  nek::userchk();
 }
 
 double dt(void)
@@ -243,7 +243,7 @@ int lastStep(double time, int tstep, double elapsedTime)
 
 void* nekPtr(const char* id)
 {
-  return nek_ptr(id);
+  return nek::ptr(id);
 }
 
 void* nrsPtr(void)

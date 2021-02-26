@@ -120,7 +120,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
 
   for (int e = 0; e < mesh->Nelements; e++) {
     // establish a unique numbering
-    const hlong eg = nek_lglel(e); // 0-based
+    const hlong eg = nek::lglel(e); // 0-based
 
     for (int n = 0; n < mesh->Np; n++)
       ids[e * mesh->Np + n] = eg * mesh->Np + (n + 1);

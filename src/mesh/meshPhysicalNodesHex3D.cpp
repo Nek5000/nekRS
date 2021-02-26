@@ -122,9 +122,9 @@ void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
     dlong cnt = 0;
     for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
       hlong offset = e * nx1 * nx1 * nx1;
-      nek_map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
-      nek_map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
-      nek_map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
+      nek::map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
+      nek::map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
+      nek::map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
  
       for(int n = 0; n < mesh->Np; ++n) { /* for each node */
         /* physical coordinate of interpolation node */

@@ -60,9 +60,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (err) ABORT(EXIT_FAILURE);; 
 
     if (!buildOnly) {
-      nek_setup(comm, nrs->options, nrs);
-      nek_setic();
-      nek_userchk();
+      nek::setup(comm, nrs->options, nrs);
+      nek::setic();
+      nek::userchk();
     }
   }
 
@@ -312,7 +312,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     }
 
     mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
-    double* vmult = (double*) nek_ptr("vmult");
+    double* vmult = (double*) nek::ptr("vmult");
     sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -548,7 +548,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(!buildOnly) {
     // get IC + t0 from nek
     double startTime;
-    nek_copyTo(startTime);
+    nek::copyToNek(startTime);
     nrs->options.setArgs("START TIME", to_string_f(startTime));
 
     if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);

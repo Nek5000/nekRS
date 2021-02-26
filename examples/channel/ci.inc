@@ -31,10 +31,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
  
   const int rank = platform->comm.mpiRank;
  
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyFromNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(5);
+  double *err = (double *) nek::scPtr(5);
 
   double vxErr = abs((err[0] - 9.5942E-09)/err[0]);
   double vyErr = abs((err[1] - 2.3012E-07)/err[1]);

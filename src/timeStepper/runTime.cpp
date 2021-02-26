@@ -188,16 +188,16 @@ void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
     nrs->coeffEXT[2] = 0.0;
     nrs->nEXT = 1;
   } else if(order == 2) {
-    nek_bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
+    nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
     nrs->coeffBDF[2] = 0.0;
 
     nrs->nEXT = 2;
-    nek_extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
+    nek::extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
     nrs->coeffEXT[2] = 0.0;
   } else if(order == 3) {
-    nek_bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
+    nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
     nrs->nEXT = 3;
-    nek_extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
+    nek::extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
   }
 
   if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
@@ -206,7 +206,7 @@ void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
     for(int i = 0 ; i < maxIntegrationOrder; ++i){
       mesh->coeffAB[i] = 0.0;
     }
-    nek_coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
+    nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
     for(int i = 0 ; i < maxIntegrationOrder; ++i){
       mesh->coeffAB[i] *= nrs->dt[0];
     }
