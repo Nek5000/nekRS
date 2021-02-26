@@ -31,7 +31,7 @@ SOFTWARE.
                    @restrict const  float *  q,
                    @restrict float *  scatterq){
 
-  for(dlong s=0;s<Nscatter;++s;@tile(256,@outer,@inner)){
+  for(dlong s=0;s<Nscatter;++s;@tile(p_blockSize,@outer,@inner)){
 
     const float qs = q[s];
     
@@ -51,7 +51,7 @@ SOFTWARE.
                    @restrict const  double *  q,
                    @restrict double *  scatterq){
 
-  for(dlong s=0;s<Nscatter;++s;@tile(256,@outer,@inner)){
+  for(dlong s=0;s<Nscatter;++s;@tile(p_blockSize,@outer,@inner)){
 
     const double qs = q[s];
     
@@ -71,7 +71,7 @@ SOFTWARE.
                    @restrict const  int *  q,
                    @restrict int *  scatterq){
 
-  for(dlong s=0;s<Nscatter;++s;@tile(256,@outer,@inner)){
+  for(dlong s=0;s<Nscatter;++s;@tile(p_blockSize,@outer,@inner)){
 
     const int qs = q[s];
     
@@ -91,7 +91,7 @@ SOFTWARE.
                    @restrict const  hlong *  q,
                    @restrict hlong *  scatterq){
 
-  for(dlong s=0;s<Nscatter;++s;@tile(256,@outer,@inner)){
+  for(dlong s=0;s<Nscatter;++s;@tile(p_blockSize,@outer,@inner)){
 
     const hlong qs = q[s];
     

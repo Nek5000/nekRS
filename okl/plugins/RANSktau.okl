@@ -276,7 +276,7 @@
                         @restrict dfloat* OIOJSK,
                         @restrict dfloat* MAGSIJ)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       const dfloat s1 = SOIJ[n + 0 * offset];
       const dfloat s2 = SOIJ[n + 1 * offset];
@@ -303,7 +303,7 @@
                    @restrict dfloat* K,
                    @restrict dfloat* TAU)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       dfloat k   = K[n];
       dfloat tau = TAU[n];
@@ -325,7 +325,7 @@
                  @restrict dfloat* MUE,
                  @restrict dfloat* DIFF)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       const dfloat k   = K[n];
       const dfloat tau = TAU[n];

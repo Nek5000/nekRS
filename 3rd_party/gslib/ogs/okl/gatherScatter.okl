@@ -30,7 +30,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict float *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -56,7 +56,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict double *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -82,7 +82,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict int *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -108,7 +108,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict hlong *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -134,7 +134,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict float *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -160,7 +160,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict double *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -186,7 +186,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict int *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -212,7 +212,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict hlong *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -239,7 +239,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict float *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -266,7 +266,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict double *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -293,7 +293,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict int *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -320,7 +320,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict hlong *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -347,7 +347,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict float *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -374,7 +374,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict double *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -401,7 +401,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict int *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];
@@ -428,7 +428,7 @@ SOFTWARE.
                                     @restrict const  dlong *  gatherIds,
                                     @restrict hlong *  q){
   
-  for(dlong g=0;g<Ngather;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong start = gatherStarts[g];
     const dlong end = gatherStarts[g+1];

@@ -3,7 +3,7 @@
                     const dfloat CONST,
                     @restrict dfloat * NU) 
 {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       const dlong id = n + offset;
       NU[id] = CONST;

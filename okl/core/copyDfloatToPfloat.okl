@@ -28,7 +28,7 @@ SOFTWARE.
                       @restrict pfloat *  y,
                       @restrict const dfloat * x){
   
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       y[n]=x[n];
     }

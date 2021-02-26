@@ -5,7 +5,7 @@
                      @restrict const  dfloat *  z,                      
                      const dlong offset,
                      @restrict dfloat * FS) {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       const dfloat xn = x[n]; 
       const dfloat yn = y[n]; 
@@ -125,7 +125,7 @@ void grad_u(dfloat *grad_u_x, dfloat *grad_u_y, dfloat *grad_u_z,
                        const dlong offset,
                        @restrict dfloat * P,
                        @restrict dfloat * U) {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       dfloat u, v, w, p;
       const dfloat x = X[n];

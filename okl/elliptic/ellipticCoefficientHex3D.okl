@@ -31,7 +31,7 @@
                                       const dlong offset,
                                       @restrict dfloat*  mu)
 {
-  for(dlong n = 0; n < p_Np * Nelements; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < p_Np * Nelements; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < p_Np * Nelements) {
       const dfloat xn = x[n];
       const dfloat yn = y[n];

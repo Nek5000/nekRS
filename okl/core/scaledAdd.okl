@@ -32,7 +32,7 @@ SOFTWARE.
                       const dfloat gamma,
                       @restrict dfloat * x){
   
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       const dfloat value = alpha*res[n];
       d[n] = value;
@@ -49,7 +49,7 @@ SOFTWARE.
                       @restrict dfloat * d,
                       @restrict dfloat * x){
   
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       const dfloat value = -1.0*Ad[n] + 1.0*res[n];
       const dfloat d_value = rhoDivDelta * value + rho_np1 * rho_n * d[n];
@@ -63,7 +63,7 @@ SOFTWARE.
                       const dfloat beta,
                       @restrict dfloat *  y){
   
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       y[n] = alpha*x[n] + beta*y[n];
     }
@@ -78,7 +78,7 @@ SOFTWARE.
                       const dfloat beta,
                       @restrict dfloat *  y){
   
-for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
   if(n<N){
     for(int fld = 0; fld<p_eNfields; fld++){
       y[n + fld*offset] = (alpha*x[n+fld*offset] + beta*y[n+fld*offset]); 
@@ -96,7 +96,7 @@ for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
                       const dlong destOffset,
                       @restrict dfloat *  y){
   
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       y[n+destOffset] = alpha*x[n+sourceOffset] + beta*y[n+destOffset];
     }

@@ -10,7 +10,7 @@ void scalarDirichletConditions(bcData *bc) {
                     const dlong offset,
                     @restrict const dfloat *S,
                     @restrict dfloat * FU) { 
-  for (dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)) {
+  for (dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)) {
     if (n<Ntotal) {
       FU[n + 0*offset] = 0.0;
       FU[n + 1*offset] = 0.0;

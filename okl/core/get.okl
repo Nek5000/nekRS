@@ -30,7 +30,7 @@ SOFTWARE.
 		@restrict const  dlong   *  ids,
 		@restrict dfloat *  subv){
 
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       const dlong id = ids[n];
       if (id >-1) {

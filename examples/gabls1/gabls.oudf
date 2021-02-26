@@ -5,7 +5,7 @@
                       @restrict const dfloat * U, 
                       @restrict dfloat * OUT) 
 {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       const dfloat y    = Y[n];
       const dfloat temp = S[n];

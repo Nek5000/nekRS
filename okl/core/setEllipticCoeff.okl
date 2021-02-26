@@ -6,7 +6,7 @@
                               @restrict const dfloat* val1,
                               @restrict dfloat* coeff)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       coeff[0 * offset + n] = val0[fieldOffset + n];
       coeff[1 * offset + n] = lambda * val1[fieldOffset + n];
@@ -18,7 +18,7 @@
                                       @restrict const dfloat* rho,
                                       @restrict dfloat* coeff)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       coeff[0 * offset + n] = 1 / rho[n];
       coeff[1 * offset + n] = 0;

@@ -122,7 +122,7 @@
                       @restrict dfloat *  w1,
                       @restrict dfloat * w2)
 {
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
       w2[n] = w2_val;

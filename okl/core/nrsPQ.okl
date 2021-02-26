@@ -5,7 +5,7 @@
                    @restrict const  dfloat *  P,
                    @restrict dfloat *  PQ)
 {
-  for(dlong n=0;n<N;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       PQ[n] = P[n] + scale*MUE[n]*DIV[n];
     }
