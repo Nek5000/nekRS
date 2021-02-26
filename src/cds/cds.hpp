@@ -30,7 +30,6 @@ typedef struct
   dlong vFieldOffset;
   dlong fieldOffset;
   dlong Ntotal;
-  int Nblock;
   dfloat idt;
   dfloat *dt;
   int tstep;

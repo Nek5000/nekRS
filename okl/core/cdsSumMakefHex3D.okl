@@ -38,38 +38,35 @@
                               @restrict const dfloat*  RHO,
                               @restrict dfloat*  BF)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) {
-    for(int es = 0; es < p_NblockV; ++es; @inner(2)) {// for all elements in block
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong e = eo + es; // element in block
-          if(e < Nelements) {
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        if(e < Nelements) {
 #pragma unroll p_Nq
-            for(int k = 0; k < p_Nq; ++k) {
-              const dlong id  = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e; 
-              const dlong ids = id + isOffset;
-              dfloat JW = massMatrix[id];
-              const dfloat rhoM = RHO[id + isOffset];
+          for(int k = 0; k < p_Nq; ++k) {
+            const dlong id  = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e; 
+            const dlong ids = id + isOffset;
+            dfloat JW = massMatrix[id];
+            const dfloat rhoM = RHO[id + isOffset];
 
-              dfloat sum1 = 0;
-              if (p_SUBCYCLING) {
-                const dfloat NSm = NS[id];
-                sum1 += NSm;
-              }else {
-                for (int s = 0; s < p_nBDF; s++) {
-                  const dfloat Sm = S[ids + s * sOffset];
-                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  sum1 += JW * coeffBDF[s] * Sm;
-                }
-              }
-              dfloat sum2 = 0;
-              for (int s = 0; s < p_nEXT; s++) {
+            dfloat sum1 = 0;
+            if (p_SUBCYCLING) {
+              const dfloat NSm = NS[id];
+              sum1 += NSm;
+            }else {
+              for (int s = 0; s < p_nBDF; s++) {
+                const dfloat Sm = S[ids + s * sOffset];
                 if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                const dfloat FSm = FS[ids + s * sOffset];
-                sum2 += JW * coeffEXT[s] * FSm;  // already multiplied by rho
+                sum1 += JW * coeffBDF[s] * Sm;
               }
-              BF[ids] = (sum2 + rhoM*idt*sum1);
             }
+            dfloat sum2 = 0;
+            for (int s = 0; s < p_nEXT; s++) {
+              if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+              const dfloat FSm = FS[ids + s * sOffset];
+              sum2 += JW * coeffEXT[s] * FSm;  // already multiplied by rho
+            }
+            BF[ids] = (sum2 + rhoM*idt*sum1);
           }
         }
       }

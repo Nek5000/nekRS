@@ -125,8 +125,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
   fieldOffset(elliptic.Ntotal),
   Nfields(elliptic.Nfields),
-  Nblock(elliptic.Nblock),
-  Nblock2(elliptic.Nblock2),
   resNormFactor(elliptic.resNormFactor),
   rank(platform->comm.mpiRank),
   size(platform->comm.mpiCommSize),
@@ -142,12 +140,10 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   platform_t* platform = platform_t::getInstance();
   tmp = elliptic.tmp;
   timestep = 0;
-  const dlong Nblock = elliptic.Nblock;
   numVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  multiwork = (dfloat*) calloc(Nblock * maxNumVecsProjection, sizeof(dfloat));
   o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
   o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
   o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
@@ -228,21 +224,5 @@ void ResidualProjection::multiWeightedInnerProduct(
   occa::memory &o_b,
   const dlong offset)
 {
-#ifdef ELLIPTIC_ENABLE_TIMER
-  platform->timer.tic("dotp",1);
-#endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
-
-  o_wrk.copyTo(multiwork, sizeof(dfloat) * numVecsProjection * Nblock);
-  for(dlong k = 0; k < numVecsProjection; ++k) {
-    dfloat accum = 0.0;
-    for(dlong n = 0; n < Nblock; ++n)
-      accum += multiwork[n + k * Nblock];
-    alpha[k] = accum;
-  }
-  MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
-  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
-#ifdef ELLIPTIC_ENABLE_TIMER
-  platform->timer.toc("dotp");
-#endif
+  linAlg->multiweightedInnerProd(Nlocal, Nfields, fieldOffset, o_invDegree, o_a, o_b, platform->comm.mpiComm, alpha, Nfields * offset * fieldOffset);
 }

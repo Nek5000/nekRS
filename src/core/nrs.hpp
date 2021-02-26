@@ -50,7 +50,6 @@ struct nrs_t
   dlong fieldOffset;
   dlong Ntotal;
 
-  int Nblock;
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};

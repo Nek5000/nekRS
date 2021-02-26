@@ -159,8 +159,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->meshT->fieldOffset = nrs->fieldOffset;
   nrs->mesh->fieldOffset = nrs->fieldOffset;
 
-  nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
-
   if(nrs->Nsubsteps) {
     int Sorder;
     nrs->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
@@ -270,9 +268,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-
-  int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
-  kernelInfo["defines/" "p_NblockV"] = NblockV;
 
   const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
@@ -916,7 +911,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
   cds->vFieldOffset = nrs->fieldOffset;
   cds->fieldOffset  = nrs->fieldOffset;
-  cds->Nblock       = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   cds->o_wrk0 = nrs->o_wrk0;
   cds->o_wrk1 = nrs->o_wrk1;

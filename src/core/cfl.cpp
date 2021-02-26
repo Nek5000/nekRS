@@ -3,8 +3,6 @@
 #include "linAlg.hpp"
 
 static int firstTime = 1;
-static dfloat* tmp;
-static occa::memory o_tmp;
 
 void setup(nrs_t* nrs)
 {
@@ -29,10 +27,6 @@ void setup(nrs_t* nrs)
     nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
     free(dH);
   }
-
-  tmp = (dfloat*) calloc(nrs->Nblock, sizeof(dfloat));
-  o_tmp = platform->device.malloc(nrs->Nblock * sizeof(dfloat), tmp);
-
   firstTime = 0;
 }
 

@@ -73,9 +73,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     }
   }
 
-  dlong Nblock  = mymax(1,(Nlocal + BLOCKSIZE - 1) / BLOCKSIZE);
-  dlong Nblock2 = mymax(1,(Nblock + BLOCKSIZE - 1) / BLOCKSIZE);
-
   dlong NblocksUpdatePCG = mymin((Nlocal + BLOCKSIZE - 1) / BLOCKSIZE, 160);
   elliptic->NblocksUpdatePCG = NblocksUpdatePCG;
 
@@ -118,10 +115,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
-  elliptic->tmp = (dfloat*) calloc(Nblock, sizeof(dfloat));
-  elliptic->o_tmp = platform->device.malloc(Nblock * sizeof(dfloat), elliptic->tmp);
-  elliptic->o_tmp2 = platform->device.malloc(Nblock2 * sizeof(dfloat), elliptic->tmp);
-
   elliptic->tmpNormr = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
   elliptic->o_tmpNormr = platform->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
                                              elliptic->tmpNormr);
@@ -156,9 +149,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->recvBuffer = NULL;
   }
   elliptic->type = strdup(dfloatString);
-
-  elliptic->Nblock = Nblock;
-  elliptic->Nblock2 = Nblock2;
 
   //fill geometric factors in halo
   if(mesh->totalHaloPairs) {
@@ -455,30 +445,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     kernelInfo["defines/" "p_NqCoarse"] = 2;
   }
 
-  int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
-  kernelInfo["defines/" "p_Nmax"] = Nmax;
-
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-  kernelInfo["defines/" "p_maxNodes"] = maxNodes;
-
-  int NblockV = mymax(1,BLOCKSIZE / mesh->Np);
-  int NnodesV = 1; //hard coded for now
-  kernelInfo["defines/" "p_NblockV"] = NblockV;
-  kernelInfo["defines/" "p_NnodesV"] = NnodesV;
-  kernelInfo["defines/" "p_NblockVFine"] = NblockV;
-  kernelInfo["defines/" "p_NblockVCoarse"] = NblockV;
-
-  int NblockS = mymax(1,BLOCKSIZE / maxNodes);
-  kernelInfo["defines/" "p_NblockS"] = NblockS;
-
-  int NblockP = mymax(1,BLOCKSIZE / (4 * mesh->Np)); // get close to BLOCKSIZE threads
-  kernelInfo["defines/" "p_NblockP"] = NblockP;
-
-  int NblockG;
-  if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-  else NblockG = BLOCKSIZE / mesh->Np;
-  kernelInfo["defines/" "p_NblockG"] = NblockG;
-
   kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
   kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
@@ -625,17 +591,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         kernelName = "ellipticPreconProlongate" + suffix;
         elliptic->precon->prolongateKernel =
           platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-
-        filename = oklpath + "ellipticBlockJacobiPrecon.okl";
-        kernelName = "ellipticBlockJacobiPrecon";
-        elliptic->precon->blockJacobiKernel = platform->device.buildKernel(filename.c_str(),
-                                                                       kernelName.c_str(),
-                                                                       kernelInfo);
-
-        kernelName = "ellipticPartialBlockJacobiPrecon";
-        elliptic->precon->partialblockJacobiKernel = platform->device.buildKernel(filename.c_str(),
-                                                                              kernelName.c_str(),
-                                                                              kernelInfo);
       }
     }
 

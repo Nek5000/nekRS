@@ -35,66 +35,63 @@
                               @restrict const dfloat*  FU,
                               @restrict dfloat*  BF)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) {
-    for(int es = 0; es < p_NblockV; ++es; @inner(2)) {// for all elements in block
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong e = eo + es; // element in block
-          if(e < Nelements) {
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        if(e < Nelements) {
 #pragma unroll p_Nq
-            for(int k = 0; k < p_Nq; ++k) {
-              const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
-              dfloat JW = massMatrix[id];
+          for(int k = 0; k < p_Nq; ++k) {
+            const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + p_Np * e;
+            dfloat JW = massMatrix[id];
 
-              dfloat bfx = 0;
-              dfloat bfy = 0;
-              dfloat bfz = 0;
+            dfloat bfx = 0;
+            dfloat bfy = 0;
+            dfloat bfz = 0;
 
-              if (p_SUBCYCLING) {
-                const dfloat NUx = NU[id + 0 * fieldOffset];
-                const dfloat NUy = NU[id + 1 * fieldOffset];
-                const dfloat NUz = NU[id + 2 * fieldOffset];
-                bfx += idt * NUx;
-                bfy += idt * NUy;
-                bfz += idt * NUz;
+            if (p_SUBCYCLING) {
+              const dfloat NUx = NU[id + 0 * fieldOffset];
+              const dfloat NUy = NU[id + 1 * fieldOffset];
+              const dfloat NUz = NU[id + 2 * fieldOffset];
+              bfx += idt * NUx;
+              bfy += idt * NUy;
+              bfz += idt * NUz;
 
-                for (int s = 0; s < p_nEXT; s++) {
-                  // FU
-                  const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  bfx += JW * coeffEXT[s] * FUx;
-                  bfy += JW * coeffEXT[s] * FUy;
-                  bfz += JW * coeffEXT[s] * FUz;
-                }
-              } else {
-                for (int s = 0; s < p_nEXT; s++) {
-                  // FU
-                  const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  bfx += JW * coeffEXT[s] * FUx;
-                  bfy += JW * coeffEXT[s] * FUy;
-                  bfz += JW * coeffEXT[s] * FUz;
-                }
-                for (int s = 0; s < p_nBDF; s++) {
-                  //U
-                  const dfloat Um  = U[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat Vm  = U[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
-                  const dfloat Wm  = U[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
-                  if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
-                  bfx += JW * (idt * coeffBDF[s] * Um);
-                  bfy += JW * (idt * coeffBDF[s] * Vm);
-                  bfz += JW * (idt * coeffBDF[s] * Wm);
-                }
+              for (int s = 0; s < p_nEXT; s++) {
+                // FU
+                const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
+                if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                bfx += JW * coeffEXT[s] * FUx;
+                bfy += JW * coeffEXT[s] * FUy;
+                bfz += JW * coeffEXT[s] * FUz;
               }
-
-              BF[id + 0 * fieldOffset] = bfx;
-              BF[id + 1 * fieldOffset] = bfy;
-              BF[id + 2 * fieldOffset] = bfz;
+            } else {
+              for (int s = 0; s < p_nEXT; s++) {
+                // FU
+                const dfloat FUx  = FU[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat FUy  = FU[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat FUz  = FU[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
+                if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                bfx += JW * coeffEXT[s] * FUx;
+                bfy += JW * coeffEXT[s] * FUy;
+                bfz += JW * coeffEXT[s] * FUz;
+              }
+              for (int s = 0; s < p_nBDF; s++) {
+                //U
+                const dfloat Um  = U[id + 0 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat Vm  = U[id + 1 * fieldOffset + s * p_NVfields * fieldOffset];
+                const dfloat Wm  = U[id + 2 * fieldOffset + s * p_NVfields * fieldOffset];
+                if(p_MovingMesh) JW = massMatrix[id + s * fieldOffset];
+                bfx += JW * (idt * coeffBDF[s] * Um);
+                bfy += JW * (idt * coeffBDF[s] * Vm);
+                bfz += JW * (idt * coeffBDF[s] * Wm);
+              }
             }
+
+            BF[id + 0 * fieldOffset] = bfx;
+            BF[id + 1 * fieldOffset] = bfy;
+            BF[id + 2 * fieldOffset] = bfz;
           }
         }
       }

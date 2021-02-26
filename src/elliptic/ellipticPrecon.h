@@ -115,8 +115,6 @@ typedef struct
 
   // block Jacobi precon
   occa::memory o_invMM;
-  occa::kernel blockJacobiKernel;
-  occa::kernel partialblockJacobiKernel;
 
   //dummy almond level to store the OAS smoothing op
   // agmgLevel *OASLevel;

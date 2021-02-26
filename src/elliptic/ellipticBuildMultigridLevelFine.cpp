@@ -64,34 +64,9 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
 
   // add custom defines
-  kernelInfo["defines/" "p_NpP"] = (mesh->Np + mesh->Nfp * mesh->Nfaces);
   kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
 
-  int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
-  kernelInfo["defines/" "p_Nmax"] = Nmax;
-
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-  kernelInfo["defines/" "p_maxNodes"] = maxNodes;
-
-  int NblockV = mymax(1,BLOCKSIZE / mesh->Np);
-  kernelInfo["defines/" "p_NblockV"] = NblockV;
-
-  int one = 1; //set to one for now. TODO: try optimizing over these
-  kernelInfo["defines/" "p_NnodesV"] = one;
-
-  int NblockS = mymax(1,BLOCKSIZE / maxNodes);
-  kernelInfo["defines/" "p_NblockS"] = NblockS;
-
-  int NblockP = mymax(1,BLOCKSIZE / (4 * mesh->Np)); // get close to BLOCKSIZE threads
-  kernelInfo["defines/" "p_NblockP"] = NblockP;
-
-  int NblockG;
-  if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-  else NblockG = mymax(1,BLOCKSIZE / mesh->Np);
-  kernelInfo["defines/" "p_NblockG"] = NblockG;
-
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
-  kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
 
   string filename, kernelName;
 
