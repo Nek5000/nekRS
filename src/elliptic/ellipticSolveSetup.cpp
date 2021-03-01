@@ -73,9 +73,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     }
   }
 
-  dlong NblocksUpdatePCG = mymin((Nlocal + BLOCKSIZE - 1) / BLOCKSIZE, 160);
-  elliptic->NblocksUpdatePCG = NblocksUpdatePCG;
-
   // Assumes wrkoffset is set properly, i.e. workoffset = wrkoffset*Nfields
   if (elliptic->wrk) { // user-provided scratch space
     elliptic->p    = elliptic->wrk + 0 * elliptic->Ntotal * elliptic->Nfields;
@@ -115,8 +112,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
-  elliptic->tmpNormr = (dfloat*) calloc(elliptic->NblocksUpdatePCG,sizeof(dfloat));
-  elliptic->o_tmpNormr = platform->device.malloc(elliptic->NblocksUpdatePCG * sizeof(dfloat),
+  dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
+  elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));
+  elliptic->o_tmpNormr = platform->device.malloc(Nblocks * sizeof(dfloat),
                                              elliptic->tmpNormr);
 
   int useFlexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
