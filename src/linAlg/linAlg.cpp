@@ -491,7 +491,8 @@ void linAlg_t::multiWeightedInnerProd(const dlong N,
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
 
   //multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
-  multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
+  //multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
+  multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
 

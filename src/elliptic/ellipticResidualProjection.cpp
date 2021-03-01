@@ -45,7 +45,20 @@ void ResidualProjection::updateProjectionSpace()
   
   if(numVecsProjection <= 0) return;
 
-  multiWeightedInnerProduct(o_xx, o_bb, numVecsProjection - 1);
+  platform->linAlg->multiWeightedInnerProd(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_bb,
+    platform->comm.mpiComm,
+    alpha,
+    Nfields * (numVecsProjection-1) * fieldOffset
+  );
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
+
   const dfloat norm_orig = alpha[numVecsProjection - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
@@ -76,7 +89,19 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   dfloat zero = 0.0;
   dfloat mone = -1.0;
   if(numVecsProjection <= 0) return;
-  multiWeightedInnerProduct(o_xx,o_r,0);
+  platform->linAlg->multiWeightedInnerProd(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_r,
+    platform->comm.mpiComm,
+    alpha,
+    Nfields * 0 * fieldOffset
+  );
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
@@ -164,9 +189,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
       multiScaledAddwOffsetKernel = platform->device.buildKernel(filename.c_str(),
                                                                       "multiScaledAddwOffset",
                                                                       properties);
-      multiWeightedInnerProduct2Kernel = platform->device.buildKernel(filename.c_str(),
-                                                                           "multiWeightedInnerProduct2",
-                                                                           properties);
       accumulateKernel = platform->device.buildKernel(filename.c_str(), "accumulate", properties);
   }
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
@@ -214,24 +236,4 @@ void ResidualProjection::post(occa::memory& o_x)
   if(timestep < numTimeSteps)
     return;
   computePostProjection(o_x);
-}
-
-void ResidualProjection::multiWeightedInnerProduct(
-  occa::memory &o_a,
-  occa::memory &o_b,
-  const dlong offset)
-{
-  platform->linAlg->multiWeightedInnerProd(
-    Nlocal,
-    numVecsProjection,
-    Nfields,
-    fieldOffset,
-    o_invDegree,
-    o_a,
-    o_b,
-    platform->comm.mpiComm,
-    alpha,
-    Nfields * offset * fieldOffset
-  );
-  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 }
