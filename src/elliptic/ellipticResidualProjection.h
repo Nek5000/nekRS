@@ -61,9 +61,6 @@ private:
   occa::memory& o_invDegree;
   occa::memory& o_rtmp;
   occa::memory& o_Ap;
-  occa::memory& o_tmp;
-  occa::memory& o_tmp2;
-  occa::memory& o_wrk;
 
   occa::kernel scalarMultiplyKernel;
   occa::kernel multiScaledAddwOffsetKernel;

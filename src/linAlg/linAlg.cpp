@@ -480,20 +480,22 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
   return dot;
 }
 void linAlg_t::multiWeightedInnerProd(const dlong N, 
+                                   const dlong NVec,
                                    const dlong Nfields,
                                    const dlong fieldOffset,
                                    occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm, dfloat* result, const dlong offset) {
   int Nblock = (N+blocksize-1)/blocksize;
-  const dlong Nbytes = Nfields * Nblock * sizeof(dfloat);
+  const dlong Nbytes = NVec * Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
 
-  multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
+  //multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
+  multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
 
-  for(int field = 0; field < Nfields; ++field){
+  for(int field = 0; field < NVec; ++field){
     dfloat dot = 0;
     for(dlong n=0;n<Nblock;++n){
       dot += scratch[n + field * Nblock];
@@ -502,7 +504,7 @@ void linAlg_t::multiWeightedInnerProd(const dlong N,
   }
 
   if (_comm != MPI_COMM_NULL) 
-    MPI_Allreduce(MPI_IN_PLACE, result, Nfields, MPI_DFLOAT, MPI_SUM, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, result, NVec, MPI_DFLOAT, MPI_SUM, _comm);
 }
 dfloat linAlg_t::weightedInnerProdMany(const dlong N, 
                                    const dlong Nfields,

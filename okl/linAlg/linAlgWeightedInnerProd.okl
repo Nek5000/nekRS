@@ -123,28 +123,29 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) wxy[b] = s_wxy[0] + s_wxy[1];
   }
 }
-@kernel void multiWeightedInnerProd(const dlong Nblock,
-                                    const dlong N,
-                                    const dlong Nfields,
-                                    const dlong fieldOffset,
-                                    const dlong offset,
-                                    @restrict const dfloat* w,
-                                    @restrict const dfloat* x,
-                                    @restrict const dfloat* y,
-                                    @restrict dfloat* wxy)
+
+@kernel void multiWeightedInnerProd(const dlong N,
+                                        const dlong fieldOffset,
+                                        const dlong Nblock,
+                                        const dlong m,
+                                        const dlong Nfields,
+                                        const dlong offset,
+                                        @restrict const dfloat*  w,
+                                        @restrict const dfloat*  x,
+                                        @restrict const dfloat*  y,
+                                        @restrict dfloat*  wxy)
 {
   for(dlong b = 0; b < Nblock; ++b; @outer(0)) {
     @shared volatile dfloat s_wxy[p_blockSize];
-    for(int v = 0; v < Nfields; ++v) {
-      @barrier("local");
+
+    for(int v = 0; v < m; ++v) {
       for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
         const dlong id = t + p_blockSize * b;
         dfloat res = 0.0; 
         if(id < N) {
-          #pragma unroll
-          for(dlong fld = 0; fld < p_Nfields; ++fld){
+          for(dlong fld = 0; fld < Nfields; ++fld){
             const dfloat tmp = w[id] * y[id + offset + fld * fieldOffset];
-            res += x[id + p_Nfields * fieldOffset * v + fld * fieldOffset] * tmp;
+            res += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * tmp;
           }
         }
         s_wxy[t] = res;

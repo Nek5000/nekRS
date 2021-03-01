@@ -281,14 +281,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   {
       filename = oklpath + "ellipticBlockJacobiPrecon.okl";
       kernelName = "ellipticBlockJacobiPrecon";
-      elliptic->precon->blockJacobiKernel =
-        platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-
-      kernelName = "ellipticPartialBlockJacobiPrecon";
-      elliptic->precon->partialblockJacobiKernel = platform->device.buildKernel(filename.c_str(),
-                                                                            kernelName.c_str(),
-                                                                            kernelInfo);
-
       //sizes for the coarsen and prolongation kernels. degree NFine to degree N
       int NqFine   = (Nf + 1);
       int NqCoarse = (Nc + 1);

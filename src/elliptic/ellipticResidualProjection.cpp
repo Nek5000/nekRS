@@ -130,9 +130,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   size(platform->comm.mpiCommSize),
   comm(platform->comm.mpiComm),
   blockSolver(elliptic.blockSolver),
-  o_tmp(elliptic.o_tmp),
-  o_tmp2(elliptic.o_tmp2),
-  o_wrk(elliptic.o_wrk),
   o_invDegree(elliptic.mesh->ogs->o_invDegree),
   o_rtmp(elliptic.o_rtmp),
   o_Ap(elliptic.o_Ap)
@@ -224,5 +221,17 @@ void ResidualProjection::multiWeightedInnerProduct(
   occa::memory &o_b,
   const dlong offset)
 {
-  linAlg->multiweightedInnerProd(Nlocal, Nfields, fieldOffset, o_invDegree, o_a, o_b, platform->comm.mpiComm, alpha, Nfields * offset * fieldOffset);
+  platform->linAlg->multiWeightedInnerProd(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_a,
+    o_b,
+    platform->comm.mpiComm,
+    alpha,
+    Nfields * offset * fieldOffset
+  );
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 }
