@@ -163,8 +163,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         if(device.mode() == "HIP") fileName += "/okl/oogs-half.hip";
         occa::properties nativeProperties = ogs::kernelInfo;
         nativeProperties["okl/enabled"] = false;
-        gs->packBufFloatToHalfAddKernel = device.buildNativeKernel(fileName.c_str(), "packBuf_halfAdd", nativeProperties);
-        gs->unpackBufHalfToFloatAddKernel = device.buildNativeKernel(fileName.c_str(), "unpackBuf_halfAdd", nativeProperties);
+        gs->packBufFloatToHalfAddKernel = device.buildKernel(fileName.c_str(), "packBuf_halfAdd", nativeProperties);
+        gs->unpackBufHalfToFloatAddKernel = device.buildKernel(fileName.c_str(), "unpackBuf_halfAdd", nativeProperties);
       }
     }
     MPI_Barrier(gs->comm);
@@ -479,11 +479,11 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
 
 #ifdef OGS_ENABLE_TIMER
-    platform->timer.hostTic("oogsMPI",1);
+    ogsTic(gs->comm, 1);
 #endif
     pairwiseExchange(Nbytes*k, gs);
 #ifdef OGS_ENABLE_TIMER
-    platform->timer.hostToc("oogsMPI");
+    ogsToc();
 #endif
 
     if(gs->mode == OOGS_HOSTMPI)

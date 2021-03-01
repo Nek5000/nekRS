@@ -45,6 +45,7 @@ extern "C"
   void ogsHostScatterMany(void *v, const int k, const char *type, const char *op, void *gsh);
   
   void ogsHostFree(void *gsh);
+
 }
 
 #endif

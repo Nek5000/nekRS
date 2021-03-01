@@ -69,16 +69,16 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
     if(nrs->Nscalar) {
       if(geom == 0) {
-        timer::tic("makeq", 1);
+        platform->timer.tic("makeq", 1);
         platform->linAlg->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
         makeq(nrs, time, cds->o_FS, cds->o_BF);
-        timer::toc("makeq");
+        platform->timer.toc("makeq");
       }
       if(geom == 1) scalarSolve(nrs, time, cds->o_S); 
     }
 
     if(udf.properties && geom == 1) {
-      timer::tic("udfProperties", 1);
+      platform->timer.tic("udfProperties", 1);
       occa::memory o_S = nrs->o_wrk0;
       occa::memory o_SProp = nrs->o_wrk0;
       if(nrs->Nscalar) {
@@ -86,7 +86,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         o_SProp = cds->o_prop;
       }
       udf.properties(nrs, time + nrs->dt[0], nrs->o_U, o_S, nrs->o_prop, o_SProp);
-      timer::toc("udfProperties");
+      platform->timer.toc("udfProperties");
     }
 
     if(udf.div && geom == 1){
@@ -97,10 +97,10 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
     if(nrs->flow) {
       if(geom == 0) {
-        timer::tic("makef", 1);
+        platform->timer.tic("makef", 1);
         platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
         makef(nrs, time, nrs->o_FU, nrs->o_BF);
-        timer::toc("makef");
+        platform->timer.toc("makef");
       }
       if(geom == 1) fluidSolve(nrs, time, nrs->o_U); 
       if(geom == 0) nrs->meshT->solve(); 
