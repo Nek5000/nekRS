@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "nrssys.hpp"
 
+#define ENABLE_TIMER
+
 using std::string;
 
 class linAlg_t {

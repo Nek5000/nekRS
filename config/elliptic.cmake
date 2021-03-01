@@ -20,7 +20,6 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedInnerProduct.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedNorm2.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp)
 
