@@ -16,7 +16,7 @@ typedef struct
 {
   int dim, elementType;
 
-  mesh_t* meshT;
+  mesh_t* meshT[NSCALAR_MAX];
   mesh_t* meshV;
   elliptic_t* solver[NSCALAR_MAX];
 

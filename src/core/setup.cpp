@@ -569,7 +569,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(!cds->compute[is]) continue;
  
       mesh_t* mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->meshT; // only first scalar can be a CHT mesh
+      (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
@@ -874,7 +874,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->meshT = mesh;
+  cds->meshT[0] = mesh;
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -1004,7 +1004,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     }
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT; // only first scalar can be a CHT mesh
+    (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 

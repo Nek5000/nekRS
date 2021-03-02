@@ -55,7 +55,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                              nrs->o_U,
                              nrs->o_Ue);
     if(nrs->Nscalar && geom == 0) 
-      nrs->extrapolateKernel(cds->meshT->Nelements,
+      nrs->extrapolateKernel(cds->meshT[0]->Nelements,
                              cds->NSfields,
                              cds->nEXT,
                              cds->fieldOffset,
@@ -234,7 +234,7 @@ void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
 void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
-  mesh_t* mesh = cds->meshT;
+  mesh_t* mesh = cds->meshT[0];
   
 
   if(udf.sEqnSource) {
@@ -247,7 +247,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT;
+    (is) ? mesh = cds->meshV : mesh = cds->meshT[0];
     const dlong isOffset = is * cds->fieldOffset;
     occa::memory o_adv = cds->o_wrk0;
 
@@ -351,7 +351,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT;
+    (is) ? mesh = cds->meshV : mesh = cds->meshT[0];
 
     cds->setEllipticCoeffKernel(
       mesh->Nlocal,

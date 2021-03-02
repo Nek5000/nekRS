@@ -132,7 +132,7 @@ void avg::run(dfloat time)
   // scalars
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    const dlong N = cds->meshT->Nelements * cds->meshT->Np;
+    const dlong N = cds->meshT[0]->Nelements * cds->meshT[0]->Np;
     EX (N, a, b, cds->NSfields, cds->o_S, o_Savg);
     EXX(N, a, b, cds->NSfields, cds->o_S, o_Srms);
   }
