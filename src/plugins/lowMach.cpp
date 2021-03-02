@@ -76,9 +76,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     mesh->o_Dmatrices,
     nrs->fieldOffset,
     cds->o_S,
-    cds->o_wrk0);
+    platform->o_slice0);
 
-  oogs::startFinish(cds->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
+  oogs::startFinish(platform->o_slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmyVector(
     mesh->Nlocal,
@@ -86,14 +86,14 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     0,
     1.0,
     nrs->meshV->o_invLMM,
-    cds->o_wrk0);
+    platform->o_slice0);
 
   if(udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
-    udf.sEqnSource(nrs, time, cds->o_S, cds->o_wrk3);
+    udf.sEqnSource(nrs, time, cds->o_S, platform->o_slice3);
     platform->timer.toc("udfSEqnSource");
   } else {
-    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, cds->o_wrk3);
+    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_slice3);
   }
 
   qtlKernel(
@@ -101,11 +101,11 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     mesh->o_vgeo,
     mesh->o_Dmatrices,
     nrs->fieldOffset,
-    cds->o_wrk0,
+    platform->o_slice0,
     cds->o_S,
     cds->o_diff,
     cds->o_rho,
-    cds->o_wrk3,
+    platform->o_slice3,
     o_div);
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
@@ -120,8 +120,8 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     const dfloat dd = (1.0 - gamma0) / gamma0;
     const dlong Nlocal = mesh->Nlocal;
 
-    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, nrs->o_wrk0);
-    const dfloat termQ = linAlg->sum(Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
+    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, platform->o_slice0);
+    const dfloat termQ = linAlg->sum(Nlocal, platform->o_slice0, platform->comm.mpiComm);
 
     surfaceFluxKernel(
       mesh->Nelements,
@@ -130,9 +130,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       nrs->o_EToB,
       nrs->fieldOffset,
       nrs->o_Ue,
-      nrs->o_wrk0
+      platform->o_slice0
     );
-    nrs->o_wrk0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
+    platform->o_slice0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
     dfloat termV = 0.0;
     for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -142,11 +142,11 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       cds->o_rho,
       nrs->o_rho,
       nrs->meshV->o_LMM,
-      nrs->o_wrk0,
-      nrs->o_wrk1 
+      platform->o_slice0,
+      platform->o_slice1 
     );
-    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
-    linAlg->axpby(Nlocal, -prhs, nrs->o_wrk1, 1.0, o_div);
+    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, platform->o_slice0, platform->comm.mpiComm);
+    linAlg->axpby(Nlocal, -prhs, platform->o_slice1, 1.0, o_div);
 
     dfloat Saqpq = 0.0;
     for(int i = 0 ; i < nrs->nBDF; ++i){

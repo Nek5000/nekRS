@@ -10,7 +10,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
   
 
   //enforce Dirichlet BCs
-  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
+  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_slice6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -25,7 +25,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    nrs->o_P,
-                                   nrs->o_wrk6);
+                                   platform->o_slice6);
 
     nrs->velocityDirichletBCKernel(mesh->Nelements,
                                    nrs->fieldOffset,
@@ -40,26 +40,26 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
                                    nrs->o_VmapB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
-                                   nrs->o_wrk7);
+                                   platform->o_slice7);
 
     //take care of Neumann-Dirichlet shared edges across elements
-    if (sweep == 0) oogs::startFinish(nrs->o_wrk6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
-    if (sweep == 1) oogs::startFinish(nrs->o_wrk6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
+    if (sweep == 0) oogs::startFinish(platform->o_slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
+    if (sweep == 1) oogs::startFinish(platform->o_slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
   }
 
   if (nrs->pSolver->Nmasked) nrs->maskCopyKernel(nrs->pSolver->Nmasked, 0, nrs->pSolver->o_maskIds,
-                                                 nrs->o_wrk6, nrs->o_P); 
+                                                 platform->o_slice6, nrs->o_P); 
 
   if (nrs->uvwSolver) {
     if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
-                                                     nrs->o_wrk7, nrs->o_U);
+                                                     platform->o_slice7, nrs->o_U);
   } else {
     if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds, 
-                                                   nrs->o_wrk7, nrs->o_U);
+                                                   platform->o_slice7, nrs->o_U);
     if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds, 
-                                                   nrs->o_wrk7, nrs->o_U);
+                                                   platform->o_slice7, nrs->o_U);
     if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds, 
-                                                   nrs->o_wrk7, nrs->o_U);
+                                                   platform->o_slice7, nrs->o_U);
   }
 
   nrs->curlKernel(mesh->Nelements,
@@ -67,9 +67,9 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
                   mesh->o_Dmatrices,
                   nrs->fieldOffset,
                   nrs->o_Ue,
-                  nrs->o_wrk0);
+                  platform->o_slice0);
 
-  oogs::startFinish(nrs->o_wrk0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
+  oogs::startFinish(platform->o_slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
   
   platform->linAlg->axmyVector(
     mesh->Nlocal,
@@ -77,7 +77,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     0,
     1.0,
     nrs->meshV->o_invLMM,
-    nrs->o_wrk0
+    platform->o_slice0
   );
 
   nrs->curlKernel(
@@ -85,8 +85,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     mesh->o_vgeo,
     mesh->o_Dmatrices,
     nrs->fieldOffset,
-    nrs->o_wrk0,
-    nrs->o_wrk3);
+    platform->o_slice0,
+    platform->o_slice3);
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -94,7 +94,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     mesh->o_Dmatrices,
     nrs->fieldOffset,
     nrs->o_div,
-    nrs->o_wrk0);
+    platform->o_slice0);
 
   if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
     nrs->pressureStressKernel(
@@ -105,7 +105,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
          nrs->o_mue,
          nrs->o_Ue,
          nrs->o_div,
-         nrs->o_wrk3);
+         platform->o_slice3);
 
   occa::memory o_irho = nrs->o_ellipticCoeff;
   nrs->pressureRhsKernel(
@@ -114,11 +114,11 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_mue,
     o_irho,
     nrs->o_BF,
-    nrs->o_wrk3,
-    nrs->o_wrk0,
-    nrs->o_wrk6);
+    platform->o_slice3,
+    platform->o_slice0,
+    platform->o_slice6);
 
-  oogs::startFinish(nrs->o_wrk6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
+  oogs::startFinish(platform->o_slice6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmyVector(
     mesh->Nlocal,
@@ -126,7 +126,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     0,
     1.0,
     nrs->meshV->o_invLMM,
-    nrs->o_wrk6
+    platform->o_slice6
   );
 
   nrs->wDivergenceVolumeKernel(
@@ -134,15 +134,15 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     mesh->o_vgeo,
     mesh->o_Dmatrices,
     nrs->fieldOffset,
-    nrs->o_wrk6,
-    nrs->o_wrk3);
+    platform->o_slice6,
+    platform->o_slice3);
 
   nrs->pressureAddQtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     nrs->g0 * nrs->idt,
     nrs->o_div,
-    nrs->o_wrk3);
+    platform->o_slice3);
 
   nrs->divergenceSurfaceKernel(
     mesh->Nelements,
@@ -151,14 +151,14 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_EToB,
     nrs->g0 * nrs->idt,
     nrs->fieldOffset,
-    nrs->o_wrk6,
+    platform->o_slice6,
     nrs->o_U,
-    nrs->o_wrk3);
+    platform->o_slice3);
 
-  nrs->o_wrk1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
-  ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
+  platform->o_slice1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
+  ellipticSolve(nrs->pSolver, platform->o_slice3, platform->o_slice1);
 
-  return nrs->o_wrk1;
+  return platform->o_slice1;
 }
 
 occa::memory velocitySolve(nrs_t* nrs, dfloat time)
@@ -176,30 +176,30 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
        nrs->o_mue,
        nrs->o_div,
        nrs->o_P,
-       nrs->o_wrk3); 
+       platform->o_slice3); 
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
     nrs->fieldOffset,
-    nrs->o_wrk3,
-    nrs->o_wrk0);
+    platform->o_slice3,
+    platform->o_slice0);
 #else
   nrs->mueDivKernel(
        mesh->Nelements*mesh->Np,
        scale,
        nrs->o_mue,
        nrs->o_div,
-       nrs->o_wrk3); 
+       platform->o_slice3); 
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_Dmatrices,
     nrs->fieldOffset,
-    nrs->o_wrk3,
-    nrs->o_wrk0);
+    platform->o_slice3,
+    platform->o_slice0);
 
   nrs->wgradientVolumeKernel(
     mesh->Nelements,
@@ -207,14 +207,14 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     mesh->o_Dmatrices,
     nrs->fieldOffset,
     nrs->o_P,
-    nrs->o_wrk3); 
+    platform->o_slice3); 
 
   platform->linAlg->axpby(
     nrs->NVfields*nrs->fieldOffset,
     1.0,
-    nrs->o_wrk3,
+    platform->o_slice3,
     -1.0,
-    nrs->o_wrk0);
+    platform->o_slice0);
 #endif
 
   nrs->velocityNeumannBCKernel(
@@ -230,42 +230,42 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
        mesh->o_z,
        nrs->o_usrwrk,
        nrs->o_U,
-       nrs->o_wrk0); 
+       platform->o_slice0); 
 
   nrs->velocityRhsKernel(
     mesh->Nelements,
     nrs->fieldOffset,
     nrs->o_BF,
-    nrs->o_wrk0,
+    platform->o_slice0,
     nrs->o_rho,
-    nrs->o_wrk3);
+    platform->o_slice3);
 
   if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
-    nrs->o_wrk0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+    platform->o_slice0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     if (nrs->uvwSolver) {
       if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
-                                                       nrs->o_U, nrs->o_wrk0);
+                                                       nrs->o_U, platform->o_slice0);
     } else {
       if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds,
-                                                     nrs->o_U, nrs->o_wrk0);
+                                                     nrs->o_U, platform->o_slice0);
       if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds,
-                                                     nrs->o_U, nrs->o_wrk0);
+                                                     nrs->o_U, platform->o_slice0);
       if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds,
-                                                     nrs->o_U, nrs->o_wrk0);
+                                                     nrs->o_U, platform->o_slice0);
     }
   } else {
-    nrs->o_wrk0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+    platform->o_slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   }
 
   if(nrs->uvwSolver) {
-    ellipticSolve(nrs->uvwSolver, nrs->o_wrk3, nrs->o_wrk0);
+    ellipticSolve(nrs->uvwSolver, platform->o_slice3, platform->o_slice0);
   } else {
-    ellipticSolve(nrs->uSolver, nrs->o_wrk3, nrs->o_wrk0);
-    ellipticSolve(nrs->vSolver, nrs->o_wrk4, nrs->o_wrk1);
-    ellipticSolve(nrs->wSolver, nrs->o_wrk5, nrs->o_wrk2);
+    ellipticSolve(nrs->uSolver, platform->o_slice3, platform->o_slice0);
+    ellipticSolve(nrs->vSolver, platform->o_slice4, platform->o_slice1);
+    ellipticSolve(nrs->wSolver, platform->o_slice5, platform->o_slice2);
   }
 
-  return nrs->o_wrk0;
+  return platform->o_slice0;
 }
 
 } // namespace

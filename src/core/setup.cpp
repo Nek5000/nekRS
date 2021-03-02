@@ -188,17 +188,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
   platform->create_mempool(nrs->fieldOffset, scratchNflds);
 
-  nrs->o_wrk0  = platform->o_slice0;
-  nrs->o_wrk1  = platform->o_slice1;
-  nrs->o_wrk2  = platform->o_slice2;
-  nrs->o_wrk3  = platform->o_slice3;
-  nrs->o_wrk4  = platform->o_slice4;
-  nrs->o_wrk5  = platform->o_slice5;
-  nrs->o_wrk6  = platform->o_slice6;
-  nrs->o_wrk7  = platform->o_slice7;
-  nrs->o_wrk9  = platform->o_slice9;
-  nrs->o_wrk12 = platform->o_slice12;
-  nrs->o_wrk15 = platform->o_slice15;
+  platform->o_slice0  = platform->o_slice0;
+  platform->o_slice1  = platform->o_slice1;
+  platform->o_slice2  = platform->o_slice2;
+  platform->o_slice3  = platform->o_slice3;
+  platform->o_slice4  = platform->o_slice4;
+  platform->o_slice5  = platform->o_slice5;
+  platform->o_slice6  = platform->o_slice6;
+  platform->o_slice7  = platform->o_slice7;
+  platform->o_slice9  = platform->o_slice9;
+  platform->o_slice12 = platform->o_slice12;
+  platform->o_slice15 = platform->o_slice15;
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
@@ -291,11 +291,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
-    ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_slice0);
+    ogsGatherScatter(platform->o_slice0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_slice0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
+    platform->o_slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -912,13 +912,13 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->vFieldOffset = nrs->fieldOffset;
   cds->fieldOffset  = nrs->fieldOffset;
 
-  cds->o_wrk0 = nrs->o_wrk0;
-  cds->o_wrk1 = nrs->o_wrk1;
-  cds->o_wrk2 = nrs->o_wrk2;
-  cds->o_wrk3 = nrs->o_wrk3;
-  cds->o_wrk4 = nrs->o_wrk4;
-  cds->o_wrk5 = nrs->o_wrk5;
-  cds->o_wrk6 = nrs->o_wrk6;
+  platform->o_slice0 = platform->o_slice0;
+  platform->o_slice1 = platform->o_slice1;
+  platform->o_slice2 = platform->o_slice2;
+  platform->o_slice3 = platform->o_slice3;
+  platform->o_slice4 = platform->o_slice4;
+  platform->o_slice5 = platform->o_slice5;
+  platform->o_slice6 = platform->o_slice6;
 
   cds->gsh = nrs->gsh;
   

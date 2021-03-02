@@ -92,8 +92,6 @@ struct cds_t
   dfloat* cU, * cSd, * cS, * FS, * BF;
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF, o_BFDiag;
 
-  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6;
-
   occa::kernel sumMakefKernel;
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
