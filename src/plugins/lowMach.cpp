@@ -73,7 +73,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     cds->o_S,
     platform->o_slice0);
@@ -99,7 +99,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     platform->o_slice0,
     cds->o_S,

@@ -108,8 +108,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         }
 
     mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_Dmatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_Smatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
+    mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
 
     mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
 
@@ -346,17 +345,17 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
-    mesh->o_DmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
-    mesh->o_SmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
                                        mesh->o_ggeo);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_DmatricesPfloat,
-                                       mesh->o_Dmatrices);
+                                       elliptic->mesh->o_DPfloat,
+                                       mesh->o_D);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_SmatricesPfloat,
-                                       mesh->o_Smatrices);
+                                       elliptic->mesh->o_DTPfloat,
+                                       mesh->o_DT);
   }
 
   return elliptic;

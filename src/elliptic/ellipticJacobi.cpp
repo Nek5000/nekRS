@@ -61,8 +61,8 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
                                  allNeumannScale,
                                  elliptic->o_mapB,
                                  mesh->o_ggeo,
-                                 mesh->o_Dmatrices,
-                                 mesh->o_Smatrices,
+                                 mesh->o_D,
+                                 mesh->o_DT,
                                  elliptic->o_lambda,
                                  precon->o_invDiagA);
 

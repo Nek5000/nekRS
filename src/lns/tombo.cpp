@@ -64,7 +64,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
   nrs->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
-                  mesh->o_Dmatrices,
+                  mesh->o_D,
                   nrs->fieldOffset,
                   nrs->o_Ue,
                   platform->o_slice0);
@@ -83,7 +83,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
   nrs->curlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     platform->o_slice0,
     platform->o_slice3);
@@ -91,7 +91,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     nrs->o_div,
     platform->o_slice0);
@@ -100,7 +100,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->pressureStressKernel(
          mesh->Nelements,
          mesh->o_vgeo,
-         mesh->o_Dmatrices,
+         mesh->o_D,
          nrs->fieldOffset,
          nrs->o_mue,
          nrs->o_Ue,
@@ -132,7 +132,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
   nrs->wDivergenceVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     platform->o_slice6,
     platform->o_slice3);
@@ -181,7 +181,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     platform->o_slice3,
     platform->o_slice0);
@@ -196,7 +196,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
   nrs->gradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     platform->o_slice3,
     platform->o_slice0);
@@ -204,7 +204,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
   nrs->wgradientVolumeKernel(
     mesh->Nelements,
     mesh->o_vgeo,
-    mesh->o_Dmatrices,
+    mesh->o_D,
     nrs->fieldOffset,
     nrs->o_P,
     platform->o_slice3); 

@@ -128,7 +128,7 @@ void RANSktau::updateSourceTerms()
   SijOijKernel(mesh->Nelements,
                nrs->fieldOffset,
                mesh->o_vgeo,
-               mesh->o_Dmatrices,
+               mesh->o_D,
                nrs->o_U,
                o_SijOij);
 
@@ -161,7 +161,7 @@ void RANSktau::updateSourceTerms()
                 rho,
                 mueLam,
                 mesh->o_vgeo,
-                mesh->o_Dmatrices,
+                mesh->o_D,
                 o_k,
                 o_tau,
                 o_SijMag2,

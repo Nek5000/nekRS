@@ -204,18 +204,17 @@ struct mesh_t
   occa::memory o_U;
   dfloat* U; // host shadow of mesh velocity
 
-  occa::memory o_Dmatrices;
-  occa::memory o_DmatricesPfloat;
+  occa::memory o_D;
+  occa::memory o_DPfloat;
   occa::memory o_FMMT;
   occa::memory o_sMT;
 
-  occa::memory o_D; // tensor product differentiation matrix (for Hexes)
   occa::memory o_DW; // tensor product differentiation matrix (for Hexes)
   occa::memory o_SrrT, o_SrsT, o_SrtT; //element stiffness matrices
   occa::memory o_SsrT, o_SssT, o_SstT;
   occa::memory o_Srr, o_Srs, o_Srt, o_Sss, o_Sst, o_Stt; // for char4-based kernels
-  occa::memory o_Smatrices;
-  occa::memory o_SmatricesPfloat;
+  occa::memory o_DT;
+  occa::memory o_DTPfloat;
   occa::memory o_IndT, o_IndTchar;
   occa::memory o_India, o_Indja;
   occa::memory o_StrT, o_StsT, o_SttT;
