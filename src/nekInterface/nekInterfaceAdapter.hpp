@@ -14,7 +14,7 @@
 
 struct setupAide;
 
-struct nekdata_private;
+struct nekdata_private
 {
   double* param;
 

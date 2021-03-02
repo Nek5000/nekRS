@@ -28,6 +28,7 @@ struct comm_t{
   int mpiCommSize;
 };
 struct platform_t{
+  int warpSize;
   device_t device;
   occa::properties kernelInfo;
   timer::timer_t timer;
