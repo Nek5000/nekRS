@@ -205,12 +205,6 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT, dfloat &res0, dfloat &res);
 
-void ellipticScaledAdd(elliptic_t* elliptic,
-                       dfloat alpha,
-                       occa::memory &o_a,
-                       dfloat beta,
-                       occa::memory &o_b);
-
 void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,

@@ -16,7 +16,6 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditioner.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditionerSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticResidualProjection.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticScaledAdd.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp

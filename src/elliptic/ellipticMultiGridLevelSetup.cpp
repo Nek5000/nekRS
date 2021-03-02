@@ -340,7 +340,16 @@ dfloat MGLevel::maxEigSmoothAx()
   );
   norm_vo = sqrt(norm_vo);
 
-  ellipticScaledAdd(elliptic, 1. / norm_vo, o_Vx, 0., o_V[0]);
+  const dlong Nlocal = mesh->Np * mesh->Nelements;
+  platform->linAlg->axpbyMany(
+    Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    1. / norm_vo,
+    o_Vx,
+    0.0,
+    o_V[0]
+  );
 
   for(int j = 0; j < k; j++) {
     // v[j+1] = invD*(A*v[j])
@@ -364,7 +373,15 @@ dfloat MGLevel::maxEigSmoothAx()
       );
 
       // v[j+1] = v[j+1] - hij*v[i]
-      ellipticScaledAdd(elliptic, -hij, o_V[i], 1., o_V[j + 1]);
+      platform->linAlg->axpbyMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        -hij,
+        o_V[i],
+        1.0,
+        o_V[j+1]
+      );
 
       H[i + j * k] = (double) hij;
     }
@@ -381,7 +398,13 @@ dfloat MGLevel::maxEigSmoothAx()
         platform->comm.mpiComm
       );
       norm_vj = sqrt(norm_vj);
-      ellipticScaledAdd(elliptic, 1 / norm_vj, o_V[j + 1], 0., o_V[j + 1]);
+      linAlg->scaleMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        1 / norm_vj,
+        o_V[j+1]
+      );
 
       H[j + 1 + j * k] = (double) norm_vj;
     }

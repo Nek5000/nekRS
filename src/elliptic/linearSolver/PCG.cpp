@@ -102,7 +102,16 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     }
 
     // p = z + beta*p
-    ellipticScaledAdd(elliptic, 1.f, o_z, beta, o_p);
+    const dlong Nlocal = mesh->Np * mesh->Nelements;
+    platform->linAlg->axpbyMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      o_z,
+      beta,
+      o_p
+    );
 
     // A*p
     ellipticOperator(elliptic, o_p, o_Ap, dfloatString);
