@@ -47,7 +47,6 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
                             mesh->o_sgeo,
                             mesh->o_vmapM,
                             mesh->o_EToB,
-                            mesh->o_sMT,
                             is,
                             time,
                             cds->fieldOffset,

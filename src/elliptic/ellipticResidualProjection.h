@@ -63,9 +63,6 @@ private:
   occa::kernel accumulateKernel;
 
   dfloat* alpha;
-  dfloat* work;
-  dfloat* multiwork;
-  dfloat* tmp;
 
   dlong numVecsProjection;
   const dlong Nlocal; // vector size

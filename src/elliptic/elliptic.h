@@ -78,10 +78,8 @@ struct elliptic_t
   dfloat allNeumannScale;
 
   // HOST shadow copies
-  dfloat* x, * p, * r, * z, * v, * t, * s, * shat, * Ap, * tmp, * grad;
+  dfloat* p, * z, * v, * Ap;
   dfloat* invDegree;
-
-  dfloat* Ry, * R; //multigrid restriction matrix
 
   int* EToB;
 
@@ -99,36 +97,19 @@ struct elliptic_t
   occa::memory o_maskIds;
   occa::memory o_mapB;
 
-  dfloat* sendBuffer, * recvBuffer;
-  dfloat* gradSendBuffer, * gradRecvBuffer;
-
-  occa::memory o_sendBuffer, o_recvBuffer;
-  occa::memory h_sendBuffer, h_recvBuffer;
-
-  occa::memory o_gradSendBuffer, o_gradRecvBuffer;
-  occa::memory h_gradSendBuffer, h_gradRecvBuffer;
-
   occa::stream defaultStream;
   occa::stream dataStream;
 
   occa::memory o_x;
   occa::memory o_x0;
   occa::memory o_r;
-  occa::memory o_s;
-  occa::memory o_shat;
-  occa::memory o_t;
-  occa::memory o_v;
   occa::memory o_p; // search direction
   occa::memory o_z; // preconditioner solution
   occa::memory o_res;
-  occa::memory o_Sres;
   occa::memory o_Ap; // A*search direction
-  occa::memory o_grad; // temporary gradient storage (part of A*)
   occa::memory o_rtmp;
   occa::memory o_invDegree;
   occa::memory o_EToB;
-  occa::memory o_R;
-  occa::memory o_Ry;
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
   occa::memory o_gllzw; // GLL nodes and weights
@@ -153,8 +134,6 @@ struct elliptic_t
   dfloat resNormFactor;
 
   // combined PCG update step
-  int NthreadsUpdatePCG;
-  dlong NblocksUpdatePCG;
   dfloat* tmpNormr;
   occa::memory o_tmpNormr;
   occa::kernel updatePCGKernel;

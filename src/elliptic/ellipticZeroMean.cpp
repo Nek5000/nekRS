@@ -34,7 +34,6 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
   dfloat qmeanLocal;
   dfloat qmeanGlobal;
 
-  dfloat* tmp = elliptic->tmp;
   mesh_t* mesh = elliptic->mesh;
   
 

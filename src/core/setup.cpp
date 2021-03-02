@@ -250,7 +250,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  nrs->o_rkC     = platform->device.malloc(4 * sizeof(dfloat),rkC);
   nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
@@ -896,7 +895,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
   // time stepper
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  cds->o_rkC     = nrs->o_rkC;
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;

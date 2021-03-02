@@ -82,23 +82,6 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
   if(platform->comm.mpiRank == 0) printf("building Jacobi ... ");
   fflush(stdout);
 
-  // surface mass matrices MS = MM*LIFT
-  dfloat* MS = (dfloat*) calloc(mesh->Nfaces * mesh->Nfp * mesh->Nfp,sizeof(dfloat));
-  for (int f = 0; f < mesh->Nfaces; f++)
-    for (int n = 0; n < mesh->Nfp; n++) {
-      int fn = mesh->faceNodes[f * mesh->Nfp + n];
-
-      for (int m = 0; m < mesh->Nfp; m++) {
-        dfloat MSnm = 0;
-
-        for (int i = 0; i < mesh->Np; i++)
-          MSnm += mesh->MM[fn + i * mesh->Np] *
-                  mesh->LIFT[i * mesh->Nfp * mesh->Nfaces + f * mesh->Nfp + m];
-
-        MS[m + n * mesh->Nfp + f * mesh->Nfp * mesh->Nfp]  = MSnm;
-      }
-    }
-
   // build some monolithic basis arrays (for quads and hexes)
   dfloat* B  = (dfloat*) calloc(mesh->Np * mesh->Np, sizeof(dfloat));
   dfloat* Br = (dfloat*) calloc(mesh->Np * mesh->Np, sizeof(dfloat));
@@ -200,7 +183,6 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
   if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 
   free(diagA);
-  free(MS);
   free(B);
   free(Br);
   free(Bs);

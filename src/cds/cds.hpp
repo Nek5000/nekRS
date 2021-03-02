@@ -61,24 +61,6 @@ struct cds_t
 
   occa::memory* o_usrwrk;
 
-  //halo data
-  dfloat* sendBuffer;
-  dfloat* recvBuffer;
-  dfloat* haloGatherTmp;
-  // //
-  dfloat* ssendBuffer;
-  dfloat* srecvBuffer;
-  dfloat* shaloGatherTmp;
-
-  occa::memory o_sendBuffer, h_sendBuffer;
-  occa::memory o_recvBuffer, h_recvBuffer;
-  occa::memory o_gatherTmpPinned, h_gatherTmpPinned;
-
-  //
-  occa::memory o_ssendBuffer, h_ssendBuffer;
-  occa::memory o_srecvBuffer, h_srecvBuffer;
-  occa::memory o_sgatherTmpPinned, h_sgatherTmpPinned;
-
   int Nsubsteps;
   dfloat sdt;
   dfloat* Ue;
@@ -108,32 +90,9 @@ struct cds_t
   occa::memory o_U;
   occa::memory o_S, o_Se;
 
-  // occa::memory o_Vort, o_Div; // Not sure to keep it
-  occa::memory o_haloBuffer;
-  occa::memory o_haloGatherTmp;
-
-  occa::memory o_shaloBuffer;
-  occa::memory o_shaloGatherTmp;
-
-  //ARK data
-  occa::memory o_rkC;
-
   //EXTBDF data
   occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
   occa::memory o_extC;
-
-// Will be depreceated.....AK
-  occa::kernel haloExtractKernel;
-  occa::kernel haloScatterKernel;
-  occa::kernel scalarHaloExtractKernel;
-  occa::kernel scalarHaloScatterKernel;
-
-  occa::kernel haloGetKernel;
-  occa::kernel haloPutKernel;
-  occa::kernel scalarHaloGetKernel;
-  occa::kernel scalarHaloPutKernel;
-
-  occa::kernel setFlowFieldKernel;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;

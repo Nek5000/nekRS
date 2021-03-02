@@ -73,42 +73,18 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     }
   }
 
-  // Assumes wrkoffset is set properly, i.e. workoffset = wrkoffset*Nfields
-  if (elliptic->wrk) { // user-provided scratch space
-    elliptic->p    = elliptic->wrk + 0 * elliptic->Ntotal * elliptic->Nfields;
-    elliptic->z    = elliptic->wrk + 1 * elliptic->Ntotal * elliptic->Nfields;
-    elliptic->Ap   = elliptic->wrk + 2 * elliptic->Ntotal * elliptic->Nfields;
-    elliptic->grad = elliptic->wrk + 4 * elliptic->Ntotal * elliptic->Nfields;
+  elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
+  elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
+  elliptic->Ap   = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
 
-    elliptic->o_p    =
-      elliptic->o_wrk.slice(0 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-    elliptic->o_z    =
-      elliptic->o_wrk.slice(1 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-    elliptic->o_Ap   =
-      elliptic->o_wrk.slice(2 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-    elliptic->o_rtmp =
-      elliptic->o_wrk.slice(3 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-
-    //elliptic->o_grad =
-    //  elliptic->o_wrk.slice(4 * elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  } else {
-    elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-    elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-    elliptic->Ap   = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-    elliptic->grad = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields * 4, sizeof(dfloat));
-
-    elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                           elliptic->p);
-    elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                           elliptic->z);
-    elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                           elliptic->Ap);
-    elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                           elliptic->p);
-    elliptic->o_grad = platform->device.malloc(
-      elliptic->Ntotal * elliptic->Nfields * 4 * sizeof(dfloat),
-      elliptic->grad);
-  }
+  elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
+                                         elliptic->p);
+  elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
+                                         elliptic->z);
+  elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
+                                         elliptic->Ap);
+  elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
+                                         elliptic->p);
 
   elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
@@ -119,33 +95,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   int useFlexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
 
-  //setup async halo stream
-  dlong Nbytes = mesh->totalHaloPairs * mesh->Np * sizeof(dfloat);
-  if(Nbytes > 0) {
-    elliptic->sendBuffer = (dfloat*) occaHostMallocPinned(platform->device,
-                                                          Nbytes * elliptic->Nfields,
-                                                          NULL,
-                                                          elliptic->o_sendBuffer,
-                                                          elliptic->h_sendBuffer);
-    elliptic->recvBuffer = (dfloat*) occaHostMallocPinned(platform->device,
-                                                          Nbytes * elliptic->Nfields,
-                                                          NULL,
-                                                          elliptic->o_recvBuffer,
-                                                          elliptic->h_recvBuffer);
-    elliptic->gradSendBuffer = (dfloat*) occaHostMallocPinned(platform->device,
-                                                              2 * Nbytes * elliptic->Nfields,
-                                                              NULL,
-                                                              elliptic->o_gradSendBuffer,
-                                                              elliptic->h_gradSendBuffer);
-    elliptic->gradRecvBuffer = (dfloat*) occaHostMallocPinned(platform->device,
-                                                              2 * Nbytes * elliptic->Nfields,
-                                                              NULL,
-                                                              elliptic->o_gradRecvBuffer,
-                                                              elliptic->h_gradRecvBuffer);
-  }else{
-    elliptic->sendBuffer = NULL;
-    elliptic->recvBuffer = NULL;
-  }
   elliptic->type = strdup(dfloatString);
 
   //fill geometric factors in halo

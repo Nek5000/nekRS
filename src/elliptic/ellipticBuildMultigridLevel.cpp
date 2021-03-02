@@ -133,8 +133,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
 
-    mesh->o_cubggeo = mesh->o_ggeo; // dummy
-
     mesh->o_vmapM =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapM);
@@ -143,8 +141,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapP);
 
-    mesh->LIFT = baseElliptic->mesh->LIFT; //dummy buffer
-    mesh->o_LIFTT = baseElliptic->mesh->o_LIFTT; //dummy buffer
   }
 
   mesh->o_vmapM =
@@ -286,35 +282,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       kernelInfo["defines/" "p_NqFine"] = Nf + 1;
       kernelInfo["defines/" "p_NqCoarse"] = Nc + 1;
 
-      int NpFine, NpCoarse;
-      switch(elliptic->elementType) {
-      case TRIANGLES:
-        NpFine   = (Nf + 1) * (Nf + 2) / 2;
-        NpCoarse = (Nc + 1) * (Nc + 2) / 2;
-        break;
-      case QUADRILATERALS:
-        NpFine   = (Nf + 1) * (Nf + 1);
-        NpCoarse = (Nc + 1) * (Nc + 1);
-        break;
-      case TETRAHEDRA:
-        NpFine   = (Nf + 1) * (Nf + 2) * (Nf + 3) / 6;
-        NpCoarse = (Nc + 1) * (Nc + 2) * (Nc + 3) / 6;
-        break;
-      case HEXAHEDRA:
-        NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
-        NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
-        break;
-      }
+      const int NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
+      const int NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
       kernelInfo["defines/" "p_NpFine"] = NpFine;
       kernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
-
-      // Use the same kernel with quads for the following kenels
-      if(elliptic->dim == 3) {
-        if(elliptic->elementType == QUADRILATERALS)
-          suffix = strdup("Quad2D");
-        if(elliptic->elementType == TRIANGLES)
-          suffix = strdup("Tri2D");
-      }
 
       filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
       kernelName = "ellipticPreconCoarsen" + suffix;
@@ -326,21 +297,17 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   if(elliptic->elementType == HEXAHEDRA) {
-    if(options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-      if(options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
-        // pack gllz, gllw, and elementwise EXYZ
-        dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
+    // pack gllz, gllw, and elementwise EXYZ
+    dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
 
-        int sk = 0;
-        for(int n = 0; n < mesh->Nq; ++n)
-          gllzw[sk++] = mesh->gllz[n];
-        for(int n = 0; n < mesh->Nq; ++n)
-          gllzw[sk++] = mesh->gllw[n];
+    int sk = 0;
+    for(int n = 0; n < mesh->Nq; ++n)
+      gllzw[sk++] = mesh->gllz[n];
+    for(int n = 0; n < mesh->Nq; ++n)
+      gllzw[sk++] = mesh->gllw[n];
 
-        elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
-        free(gllzw);
-      }
-    }
+    elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
+    free(gllzw);
   }
 
   if(!strstr(pfloatString,dfloatString)) {
