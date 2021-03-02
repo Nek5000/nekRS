@@ -6,7 +6,7 @@ static int firstTime = 1;
 
 void setup(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   dfloat* dH;
@@ -32,7 +32,7 @@ void setup(nrs_t* nrs)
 
 dfloat computeCFL(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
   if(firstTime) setup(nrs);
 

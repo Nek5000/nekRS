@@ -45,7 +45,7 @@ static dfloat timel;
 
 void avg::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   string fileName;
@@ -109,7 +109,7 @@ void avg::run(dfloat time)
   const dfloat b = dtime / atime;
   const dfloat a = 1 - b;
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   const dlong N = mesh->Nelements * mesh->Np;
 
   // velocity
@@ -132,7 +132,7 @@ void avg::run(dfloat time)
   // scalars
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    const dlong N = cds->mesh->Nelements * cds->mesh->Np;
+    const dlong N = cds->meshT->Nelements * cds->meshT->Np;
     EX (N, a, b, cds->NSfields, cds->o_S, o_Savg);
     EXX(N, a, b, cds->NSfields, cds->o_S, o_Srms);
   }
@@ -148,7 +148,7 @@ void avg::setup(nrs_t* nrs_)
   }
 
   nrs = nrs_;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   if(setupCalled) return;
@@ -180,7 +180,7 @@ void avg::setup(nrs_t* nrs_)
 void avg::outfld()
 {
   cds_t* cds = nrs->cds;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   const int FP64 = 1;
   const int coords = 0;
 

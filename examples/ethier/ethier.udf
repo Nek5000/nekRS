@@ -15,9 +15,9 @@ occa::kernel exactUVWPKernel;
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  mesh_t *mesh = nrs->mesh; 
+  mesh_t *mesh = nrs->meshV; 
   cds_t *cds   = nrs->cds; 
-  const dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
+  const dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
 
   dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->fieldOffset, o_FS);
   dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset, o_FS);
@@ -54,7 +54,7 @@ void UDF_Setup(nrs_t *nrs)
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   if (tstep <= 5) {

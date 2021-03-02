@@ -12,7 +12,7 @@ occa::kernel userfKernel;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   const dfloat Re_tau = 2000.0; 
   const dfloat Re_b   = rho/mueLam; 
   const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
@@ -21,7 +21,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds   = nrs->cds;
 
   RANSktau::updateSourceTerms();
@@ -30,7 +30,7 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds   = nrs->cds;
 
   RANSktau::updateProperties();
@@ -51,7 +51,7 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   udf.properties = &uservp;

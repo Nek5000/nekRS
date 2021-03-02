@@ -21,7 +21,7 @@ static occa::kernel surfaceFluxKernel;
 
 void buildKernels(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   occa::properties kernelInfo = *(nrs->kernelInfo);
   string fileName;
   int rank = platform->comm.mpiRank;
@@ -50,7 +50,7 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   the_nrs = nrs;
   gamma0 = gamma;
   the_linAlg = nrs->linAlg;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   int err = 1;
   if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
@@ -67,7 +67,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   qThermal = 1;
   nrs_t* nrs = the_nrs;
   cds_t* cds = nrs->cds;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   linAlg_t * linAlg = nrs->linAlg;
 
   nrs->gradientVolumeKernel(
@@ -85,7 +85,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     nrs->fieldOffset,
     0,
     1.0,
-    nrs->mesh->o_invLMM,
+    nrs->meshV->o_invLMM,
     cds->o_wrk0);
 
   if(udf.sEqnSource) {
@@ -113,7 +113,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   platform->linAlg->axmy(
     mesh->Nlocal,
     1.0,
-    nrs->mesh->o_invLMM,
+    nrs->meshV->o_invLMM,
     o_div);
   
   if(nrs->pSolver->allNeumann){
@@ -141,7 +141,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       dd,
       cds->o_rho,
       nrs->o_rho,
-      nrs->mesh->o_LMM,
+      nrs->meshV->o_LMM,
       nrs->o_wrk0,
       nrs->o_wrk1 
     );
@@ -163,7 +163,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 void lowMach::dpdt(occa::memory o_FU)
 {
   nrs_t* nrs = the_nrs;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   if(!qThermal)
     nrs->linAlg->add(mesh->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
 }

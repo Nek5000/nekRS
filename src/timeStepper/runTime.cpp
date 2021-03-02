@@ -31,7 +31,7 @@ double tElapsed = 0;
 
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
   cds_t* cds = nrs->cds;
 
@@ -55,7 +55,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                              nrs->o_U,
                              nrs->o_Ue);
     if(nrs->Nscalar && geom == 0) 
-      nrs->extrapolateKernel(cds->mesh->Nelements,
+      nrs->extrapolateKernel(cds->meshT->Nelements,
                              cds->NSfields,
                              cds->nEXT,
                              cds->fieldOffset,
@@ -177,7 +177,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
 void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   if(order == 1) {
     nrs->g0 = 1.0;
     nrs->coeffBDF[0] = 1.0;
@@ -234,7 +234,7 @@ void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
 void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
-  mesh_t* mesh = cds->mesh;
+  mesh_t* mesh = cds->meshT;
   
 
   if(udf.sEqnSource) {
@@ -247,7 +247,7 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh;
+    (is) ? mesh = cds->meshV : mesh = cds->meshT;
     const dlong isOffset = is * cds->fieldOffset;
     occa::memory o_adv = cds->o_wrk0;
 
@@ -351,7 +351,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh;
+    (is) ? mesh = cds->meshV : mesh = cds->meshT;
 
     cds->setEllipticCoeffKernel(
       mesh->Nlocal,
@@ -381,7 +381,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   if(udf.uEqnSource) {
@@ -463,7 +463,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = nrs->linAlg;
 
   for (int s = nrs->nBDF; s > 1; s--) {
@@ -499,7 +499,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
 
 occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = mesh->linAlg;
 
   occa::memory& o_p0 = nrs->o_wrk0;
@@ -690,7 +690,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
 }
 occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = mesh->linAlg;
 
   // Solve for Each SubProblem
@@ -1196,7 +1196,7 @@ void meshUpdate(nrs_t* nrs)
 
   mesh->move();
 
-  if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvLMM();
+  if(nrs->meshV!= nrs->meshT) nrs->meshV->computeInvLMM();
 
   // lag mesh velocities
   for (int s = nrs->nBDF; s > 1; s--) {
@@ -1217,5 +1217,5 @@ void meshUpdateBdivW(nrs_t* nrs)
 
   mesh->computeBdivW();
 
-  if(nrs->mesh != nrs->meshT) nrs->mesh->computeBdivW();
+  if(nrs->meshV!= nrs->meshT) nrs->meshV->computeBdivW();
 }

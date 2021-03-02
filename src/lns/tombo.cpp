@@ -6,7 +6,7 @@ namespace tombo
 {
 occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   //enforce Dirichlet BCs
@@ -76,7 +76,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->fieldOffset,
     0,
     1.0,
-    nrs->mesh->o_invLMM,
+    nrs->meshV->o_invLMM,
     nrs->o_wrk0
   );
 
@@ -125,7 +125,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->fieldOffset,
     0,
     1.0,
-    nrs->mesh->o_invLMM,
+    nrs->meshV->o_invLMM,
     nrs->o_wrk6
   );
 
@@ -163,7 +163,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
 
 occa::memory velocitySolve(nrs_t* nrs, dfloat time)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   dfloat scale = -1./3;

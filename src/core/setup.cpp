@@ -75,21 +75,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->linAlg = nrs->linAlg;
     createMeshDummy(mesh, comm, N, cubN, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
   } else {
     mesh_t* mesh = new mesh_t();
     mesh->linAlg = nrs->linAlg;
     createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
     if (nrs->cht) {
       mesh_t* meshV = new mesh_t();
       meshV->linAlg = nrs->linAlg;
       createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
-      nrs->mesh = meshV;
+      nrs->meshV= meshV;
     }
   }
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
 
   if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
@@ -157,7 +157,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
   nrs->meshT->fieldOffset = nrs->fieldOffset;
-  nrs->mesh->fieldOffset = nrs->fieldOffset;
+  nrs->meshV->fieldOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     int Sorder;
@@ -536,7 +536,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nscalar) {
     mesh_t* msh;
-    (nrs->cht) ? msh = nrs->meshT : msh = nrs->mesh;
+    (nrs->cht) ? msh = nrs->meshT : msh = nrs->meshV;
     nrs->cds = cdsSetup(nrs, msh, nrs->options, kernelInfoS);
   }
 
@@ -558,7 +558,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nscalar) {
     mesh_t* mesh;
-    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->mesh;
+    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->meshV;
     cds_t* cds = nrs->cds;
 
     for (int is = 0; is < cds->NSfields; is++) {
@@ -569,7 +569,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(!cds->compute[is]) continue;
  
       mesh_t* mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+      (is) ? mesh = cds->meshV : mesh = cds->meshT; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
@@ -874,13 +874,13 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->mesh = mesh;
+  cds->meshT = mesh;
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   // set mesh, options
-  cds->meshV       = nrs->mesh;
+  cds->meshV       = nrs->meshV;
   cds->elementType = nrs->elementType;
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;
@@ -1004,7 +1004,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     }
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+    (is) ? mesh = cds->meshV : mesh = cds->meshT; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 

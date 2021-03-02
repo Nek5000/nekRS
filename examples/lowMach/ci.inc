@@ -30,7 +30,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   const int rank = platform->comm.mpiRank;
 
   nrs->o_div.copyTo(nrs->div);
-  dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
+  dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
   memcpy(nekData.qtl, nrs->div, sizeof(dfloat)*Nlocal);
  
   nek::ocopyFromNek(time, tstep);

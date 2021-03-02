@@ -82,7 +82,7 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
                 int NSfields)
 {
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   double time = t;
@@ -129,7 +129,7 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < NSfields; is++) {
       mesh_t* mesh;
-      (is) ? mesh = nrs->mesh : mesh = nrs->meshT;
+      (is) ? mesh = nrs->meshV: mesh = nrs->meshT;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
       occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
@@ -706,7 +706,7 @@ void copyFromNek(dfloat time)
     fflush(stdout);
   }
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
@@ -741,7 +741,7 @@ void copyFromNek(dfloat time)
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < nrs->Nscalar; is++) {
       mesh_t* mesh;
-      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
+      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->meshT;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
       dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
@@ -816,7 +816,7 @@ void copyToNek(dfloat &time)
     fflush(stdout);
   }
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
   time = *(nekData.time);
@@ -849,7 +849,7 @@ void copyToNek(dfloat &time)
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < nrs->Nscalar; is++) {
       mesh_t* mesh;
-      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->mesh;
+      (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->meshT;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
       dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
