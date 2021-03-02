@@ -217,8 +217,6 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_Aq,
                 const char* precision);
 
-dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
-
 void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
                              dlong* nnz, ogs_t** ogs, hlong* globalStarts);
 

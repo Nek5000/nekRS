@@ -23,6 +23,7 @@
    SOFTWARE.
 
  */
+#include "mesh.h"
 #include "elliptic.h"
 #include "ellipticResidualProjection.h"
 #include <iostream>
@@ -197,7 +198,14 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                    };
   weightedNorm = [&](occa::memory& o_x)
                  {
-                   return ellipticWeightedNorm2(&elliptic, o_invDegree, o_x);
+                   mesh_t* mesh = elliptic.mesh;
+                   return platform->linAlg->weightedNorm2Many(
+                     mesh->Nlocal,
+                     elliptic.Nfields,
+                     elliptic.Ntotal,
+                     o_invDegree,
+                     o_x,
+                     platform->comm.mpiComm);
                  };
 }
 

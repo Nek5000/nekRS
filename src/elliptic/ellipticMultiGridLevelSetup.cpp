@@ -340,7 +340,6 @@ dfloat MGLevel::maxEigSmoothAx()
   );
   norm_vo = sqrt(norm_vo);
 
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
   platform->linAlg->axpbyMany(
     Nlocal,
     elliptic->Nfields,
@@ -398,7 +397,7 @@ dfloat MGLevel::maxEigSmoothAx()
         platform->comm.mpiComm
       );
       norm_vj = sqrt(norm_vj);
-      linAlg->scaleMany(
+      platform->linAlg->scaleMany(
         Nlocal,
         elliptic->Nfields,
         elliptic->Ntotal,

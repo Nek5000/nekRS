@@ -63,7 +63,16 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    elliptic->res00 = sqrt(ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * elliptic->resNormFactor); 
+    elliptic->res00 = sqrt(
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_r,
+        platform->comm.mpiComm
+      )
+      * elliptic->resNormFactor); 
     elliptic->residualProjection->pre(o_r);
     platform->timer.toc("pre");
   }

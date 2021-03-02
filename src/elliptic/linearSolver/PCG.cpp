@@ -56,7 +56,9 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   pAp = 0;
   rdotz1 = 1;
 
-  const dfloat rdotr0 = ellipticWeightedNorm2(elliptic, o_weight, o_r) * elliptic->resNormFactor;
+  const dfloat rdotr0 =
+    platform->linAlg->weightedNorm2Many(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, o_weight, o_r, platform->comm.mpiComm)
+      * elliptic->resNormFactor;
 
   if(std::isnan(rdotr0)) {
     if(platform->comm.mpiRank == 0) cout << "Unreasonable residual norm!\n" << endl;
