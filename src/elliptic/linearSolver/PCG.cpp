@@ -29,17 +29,18 @@
 #include "linAlg.hpp"
 
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
-        const dfloat tol, const int MAXIT, dfloat &res0, dfloat &res)
+        const dfloat tol, const int MAXIT, dfloat &rdotr)
 {
   
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  int flexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
-  int verbose = options.compareArgs("VERBOSE", "TRUE");
-  int fixedIterationCountFlag = options.compareArgs("FIXED ITERATION COUNT", "TRUE");
+  const int flexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
+  const int verbose = options.compareArgs("VERBOSE", "TRUE");
+  const int fixedIterationCountFlag = options.compareArgs("FIXED ITERATION COUNT", "TRUE");
+  const dfloat TOL2 = tol*tol;
 
-  dfloat rdotz1 = 0;
+  dfloat rdotz1 = 1;
   dfloat rdotz2 = 0;
   dfloat alpha = 0, beta = 0, pAp = 0;
 
@@ -51,21 +52,10 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
   platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
 
-  pAp = 0;
-  rdotz1 = 1;
+  if(platform->comm.mpiRank == 0 && verbose)
+    printf("CG: initial res norm %e WE NEED TO GET TO %e \n", rdotr, sqrt(TOL2));
+  rdotr = 0;
 
-  const dfloat rdotr0 = ellipticWeightedNorm2(elliptic, o_weight, o_r) * elliptic->resNormFactor;
-  if(std::isnan(rdotr0)) {
-    if(platform->comm.mpiRank == 0) cout << "Unreasonable residual norm!\n" << endl;
-    ABORT(1);
-  }
-
-  const dfloat TOL =  tol * tol;
-
-  //if (rdotr0 <= TOL && !fixedIterationCountFlag) return 0;
-  if (rdotr0 == 0) return 0;
-
-  dfloat rdotr;
   int iter; 
   for(iter = 1; iter <= MAXIT; ++iter) {
     // z = Precon^{-1} r
@@ -79,7 +69,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       dfloat zdotAp = ellipticWeightedInnerProduct(elliptic, o_weight, o_z, o_Ap);
       beta = -alpha * zdotAp / rdotz2;
     } else {
-      beta = (iter == 1) ? 0:rdotz1 / rdotz2;
+      beta = (iter == 1) ? 0 : rdotz1/rdotz2;
     }
 
     // p = z + beta*p
@@ -95,17 +85,14 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     //  x <= x + alpha*p
     //  r <= r - alpha*A*p
     //  dot(r,r)
-    rdotr =
-      ellipticUpdatePCG(elliptic, o_p, o_Ap, alpha, o_x, o_r) * elliptic->resNormFactor;
-
+    rdotr = ellipticUpdatePCG(elliptic, o_p, o_Ap, alpha, o_x, o_r) * elliptic->resNormFactor;
+      
     if (verbose && (platform->comm.mpiRank == 0))
       printf("it %d r norm %12.12le\n", iter, sqrt(rdotr));
 
-    if(rdotr <= TOL && !fixedIterationCountFlag) break;
+    if(rdotr <= TOL2 && !fixedIterationCountFlag) break;
   }
 
-  res0 = sqrt(rdotr0);
-  res = sqrt(rdotr);
-
+  rdotr = sqrt(rdotr);
   return iter;
 }

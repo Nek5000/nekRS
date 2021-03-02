@@ -95,7 +95,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str());
+    if(rank == 0) err = udfBuild(udfFile.c_str(), 0);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);;
     udfLoad();
@@ -194,7 +194,7 @@ int writeControlRunTime(void)
   return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
-int isOutputStep(double time, int tStep)
+int outputStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
@@ -203,6 +203,11 @@ int isOutputStep(double time, int tStep)
     if (writeInterval() > 0) outputStep = (tStep%(int)writeInterval() == 0);
   }
   return outputStep;
+}
+
+void outputStep(int val)
+{
+  nrs->isOutputStep = val;
 }
 
 void outfld(double time)
@@ -269,12 +274,15 @@ static void dryRun(setupAide &options, int npTarget)
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
 
+  occa::properties &settings = occa::env::baseSettings();
+  settings["kernel/verbose"] = true;
+
   // jit compile udf
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str());
+    if(rank == 0) err = udfBuild(udfFile.c_str(), 1);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);;
     MPI_Barrier(comm);

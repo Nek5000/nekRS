@@ -314,7 +314,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if (elliptic->Nmasked) 
     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
-   // Create a gs handle independent from BC handler
   if(elliptic->blockSolver) {
     elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose, platform->device);
     elliptic->invDegree = (dfloat*)calloc(elliptic->Ntotal * elliptic->Nfields, sizeof(dfloat));
@@ -326,7 +325,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
     elliptic->o_invDegree = platform->device.malloc(
       elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat), elliptic->invDegree);
-  }else{
+  } else {
     mesh->maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
     memcpy(mesh->maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
     for (dlong n = 0; n < elliptic->Nmasked; n++)

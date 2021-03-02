@@ -51,7 +51,7 @@ typedef struct
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
 
   int Niter;
-  dfloat res00, res0, res;
+  dfloat res00Norm, res0Norm, resNorm;
 
   dlong Ntotal; // offset
 
@@ -208,7 +208,7 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
 
 //Linear solvers
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
-        const dfloat tol, const int MAXIT, dfloat &res0, dfloat &res);
+        const dfloat tol, const int MAXIT, dfloat &res);
 
 void ellipticScaledAdd(elliptic_t* elliptic,
                        dfloat alpha,
@@ -255,7 +255,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic, precon_t* precon);
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf);
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
-                         occa::memory &o_x, occa::memory &o_r);
+                          occa::memory &o_x, occa::memory &o_r);
 
 occa::properties ellipticKernelInfo(mesh_t* mesh);
 

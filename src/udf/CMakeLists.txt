@@ -2,6 +2,8 @@ project(libUDF)
 cmake_minimum_required(VERSION 2.8)
 enable_language(C CXX)
 
+set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+
 set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")

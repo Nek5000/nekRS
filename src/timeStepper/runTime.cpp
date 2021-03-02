@@ -16,68 +16,109 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time,
                                     occa::memory o_U);
 occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time,
                                     occa::memory o_U);
-void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U);
+void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
 
 void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF);
 occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
 occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
-void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S);
-void meshUpdate(nrs_t* nrs);
+void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage);
 void meshUpdateBdivW(nrs_t* nrs);
+
+void printInfo(nrs_t* nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed);
 
 double tElapsed = 0;
 
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
+  double tStart = MPI_Wtime();
+      
   mesh_t* mesh = nrs->mesh;
-  
   cds_t* cds = nrs->cds;
 
-  platform->device.finish();
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStart = MPI_Wtime();
-
   nrs->dt[0] = dt;
-
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
   computeCoefficients(nrs, mymin(tstep, nrs->nBDF), mymin(tstep, mesh->nAB));
 
-  for(int geom = 0; geom < 2; geom++) {
-    if(nrs->flow && geom == 0) 
-      nrs->extrapolateKernel(mesh->Nelements,
-                             nrs->NVfields,
-                             nrs->nEXT,
-                             nrs->fieldOffset,
-                             nrs->o_coeffEXT,
-                             nrs->o_U,
-                             nrs->o_Ue);
-    if(nrs->Nscalar && geom == 0) 
-      nrs->extrapolateKernel(cds->mesh->Nelements,
-                             cds->NSfields,
-                             cds->nEXT,
-                             cds->fieldOffset,
-                             cds->o_coeffEXT,
-                             cds->o_S,
-                             cds->o_Se);
+  const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  if(movingMesh) meshUpdateBdivW(nrs);
 
-    const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
-    if(movingMesh && geom == 0) meshUpdateBdivW(nrs);
-    if(movingMesh && geom == 1) meshUpdate(nrs); 
+  if(nrs->flow) 
+    nrs->extrapolateKernel(mesh->Nelements,
+                           nrs->NVfields,
+                           nrs->nEXT,
+                           nrs->fieldOffset,
+                           nrs->o_coeffEXT,
+                           nrs->o_U,
+                           nrs->o_Ue);
+  if(nrs->Nscalar) 
+    nrs->extrapolateKernel(cds->mesh->Nelements,
+                           cds->NSfields,
+                           cds->nEXT,
+                           cds->fieldOffset,
+                           cds->o_coeffEXT,
+                           cds->o_S,
+                           cds->o_Se);
 
-    if(nrs->Nscalar) {
-      if(geom == 0) {
-        timer::tic("makeq", 1);
-        platform->linAlg->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
-        makeq(nrs, time, cds->o_FS, cds->o_BF);
-        timer::toc("makeq");
-      }
-      if(geom == 1) scalarSolve(nrs, time, cds->o_S); 
+  if(nrs->Nscalar) {
+    timer::tic("makeq", 1);
+    platform->linAlg->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
+    makeq(nrs, time, cds->o_FS, cds->o_BF);
+    timer::toc("makeq");
+    for (int s = cds->nBDF; s > 1; s--) {
+      const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
+      cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+      cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
+  }
 
-    if(udf.properties && geom == 1) {
+  if(nrs->flow) {
+    timer::tic("makef", 1);
+    platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+    makef(nrs, time, nrs->o_FU, nrs->o_BF);
+    timer::toc("makef");
+    for (int s = nrs->nBDF; s > 1; s--) {
+      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+      nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+    }
+  }
+
+  if(movingMesh) {
+    mesh_t *mesh = nrs->meshT;
+    for (int s = nrs->nBDF; s > 1; s--) {
+      const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+      mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+      mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+    }
+    mesh->move();
+    if(mesh != nrs->mesh) nrs->mesh->computeInvLMM();
+    for (int s = nrs->nBDF; s > 1; s--) {
+      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+    }
+    mesh->solve();
+  } 
+
+  platform->device.finish();
+  MPI_Barrier(platform->comm.mpiComm);
+  tElapsed += (MPI_Wtime() - tStart);
+
+  const int isOutputStep = nrs->isOutputStep;
+  bool converged;
+  int stage = 0;
+  do {
+    stage++;
+    platform->device.finish();
+    MPI_Barrier(platform->comm.mpiComm);
+    double tStart = MPI_Wtime();
+      
+    if(nrs->Nscalar)
+      scalarSolve(nrs, time, cds->o_S, stage); 
+
+    if(udf.properties) {
       timer::tic("udfProperties", 1);
       occa::memory o_S = nrs->o_wrk0;
       occa::memory o_SProp = nrs->o_wrk0;
@@ -89,90 +130,40 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       timer::toc("udfProperties");
     }
 
-    if(udf.div && geom == 1){
+    if(udf.div){
       linAlg_t* linAlg = nrs->linAlg;
       linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
       udf.div(nrs, time + nrs->dt[0], nrs->o_div);
     }
 
-    if(nrs->flow) {
-      if(geom == 0) {
-        timer::tic("makef", 1);
-        platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
-        makef(nrs, time, nrs->o_FU, nrs->o_BF);
-        timer::toc("makef");
-      }
-      if(geom == 1) fluidSolve(nrs, time, nrs->o_U); 
-      if(geom == 0) nrs->meshT->solve(); 
-    }
+    if(nrs->flow)
+      fluidSolve(nrs, time, nrs->o_U, stage); 
+
+    platform->device.finish();
+    MPI_Barrier(platform->comm.mpiComm);
+    const double tElapsedStep = MPI_Wtime() - tStart;
+    tElapsed += tElapsedStep;
+
+    converged = true;
+    if(udf.converged) converged = udf.converged(nrs, stage);
+
+    platform->timer.tic("udfExecuteStep", 1);
+    if(isOutputStep && converged) {
+      nek::ifoutfld(1);
+      nrs->isOutputStep = 1;
+    } 
+    if(udf.executeStep) udf.executeStep(nrs, time, tstep);
+    nek::ifoutfld(0);
+    nrs->isOutputStep = 0;
+    platform->timer.toc("udfExecuteStep");
+
+    printInfo(nrs, time, tstep, tElapsedStep, tElapsed);
   }
+  while(!converged);
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
-
-  platform->device.finish();
-  MPI_Barrier(platform->comm.mpiComm);
-  const double tElapsedStep = MPI_Wtime() - tStart;
-  tElapsed += tElapsedStep;
   platform->timer.set("solve", tElapsed);
-
-  // print some diagnostics
-  const dfloat cfl = computeCFL(nrs);
-  if(platform->comm.mpiRank == 0) {
-    printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
-           tstep, time + nrs->dt[0], nrs->dt[0], cfl);
-
-    if(nrs->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || tstep < 101) {
-      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
-      if(nrs->flow) {
-        elliptic_t *solver = nrs->pSolver;
-        printf("  P  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", 
-	       solver->Niter, solver->res00, solver->res0, solver->res);
- 
-        if(nrs->uvwSolver) {
-          solver = nrs->uvwSolver;
-          printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
-
-	       solver->Niter, solver->res00, solver->res0, solver->res);
-        } else {
-          solver = nrs->uSolver;
-          printf("  U  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
-	         solver->Niter, solver->res00, solver->res0, solver->res);
-          solver = nrs->vSolver;
-          printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
-	         solver->Niter, solver->res00, solver->res0, solver->res);
-          solver = nrs->wSolver;
-          printf("  W  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
-	         solver->Niter, solver->res00, solver->res0, solver->res);
-        }
-      }
-
-      for(int is = 0; is < nrs->Nscalar; is++) {
-	elliptic_t * solver = cds->solver[is];
-        printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
-	       solver->Niter, solver->res00, solver->res0, solver->res);
-      }	
-    }  else {
-      if(nrs->flow) {
-        if(nrs->uvwSolver)
-          printf("  UVW: %d  P: %d", nrs->uvwSolver->Niter, nrs->pSolver->Niter);
-        else
-          printf("  U: %d  V: %d  W: %d  P: %d", 
-         	       nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter, nrs->pSolver->Niter);
-      }
-      for(int is = 0; is < nrs->Nscalar; is++)
-        if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
-
-      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
-    }
-  }
-
-  if(cfl > 30 || std::isnan(cfl)) {
-    if(platform->comm.mpiRank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
-    ABORT(1);
-  }
-
-  if(tstep % 10 == 0) fflush(stdout);
 }
 
 void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
@@ -335,17 +326,10 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
   }
 }
 
-void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
+void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
 {
   cds_t* cds   = nrs->cds;
   
-
-  for (int s = cds->nBDF; s > 1; s--) {
-    const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
-    cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-  }
-
   platform->timer.tic("scalarSolve", 1);
   for (int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
@@ -373,7 +357,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
         cds->fieldOffset
       );
 
-    occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0]);
+    occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0], stage);
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
   platform->timer.toc("scalarSolve");
@@ -382,7 +366,6 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
 void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->mesh;
-  
 
   if(udf.uEqnSource) {
     platform->timer.tic("udfUEqnSource", 1);
@@ -461,16 +444,10 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
     o_BF);
 }
 
-void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
+void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
 {
   mesh_t* mesh = nrs->mesh;
   linAlg_t* linAlg = nrs->linAlg;
-
-  for (int s = nrs->nBDF; s > 1; s--) {
-    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-    nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-  }
 
   platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
@@ -478,7 +455,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
-  occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0]);
+  occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0], stage);
   nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
@@ -492,7 +469,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->o_rho,
     nrs->o_ellipticCoeff);
 
-  occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0]);
+  occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0], stage);
   o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   platform->timer.toc("velocitySolve");
 }
@@ -1183,28 +1160,6 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
   linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, cds->o_wrk0);
   return cds->o_wrk0;
 }
-void meshUpdate(nrs_t* nrs)
-{
-  mesh_t * mesh = nrs->meshT;
-  cds_t * cds = nrs->cds;
-
-  for (int s = nrs->nBDF; s > 1; s--) {
-    const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
-    mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
-    mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
-  }
-
-  mesh->move();
-
-  if(nrs->mesh != nrs->meshT) nrs->mesh->computeInvLMM();
-
-  // lag mesh velocities
-  for (int s = nrs->nBDF; s > 1; s--) {
-    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-    mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-  }
-}
-
 void meshUpdateBdivW(nrs_t* nrs)
 {
   mesh_t * mesh = nrs->meshT;
@@ -1218,4 +1173,67 @@ void meshUpdateBdivW(nrs_t* nrs)
   mesh->computeBdivW();
 
   if(nrs->mesh != nrs->meshT) nrs->mesh->computeBdivW();
+}
+
+void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed)
+{
+  cds_t *cds = nrs->cds;
+      
+  const int enforceVerbose = tstep < 101;
+  const dfloat cfl = computeCFL(nrs);
+  if(platform->comm.mpiRank == 0) {
+    printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
+           tstep, time + nrs->dt[0], nrs->dt[0], cfl);
+ 
+    if(nrs->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose) {
+      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
+      if(nrs->flow) {
+        elliptic_t *solver = nrs->pSolver;
+        printf("  P  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", 
+               solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+ 
+        if(nrs->uvwSolver) {
+          solver = nrs->uvwSolver;
+          printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+ 
+               solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+        } else {
+          solver = nrs->uSolver;
+          printf("  U  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+                 solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+          solver = nrs->vSolver;
+          printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+                 solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+          solver = nrs->wSolver;
+          printf("  W  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+                 solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+        }
+      }
+ 
+      for(int is = 0; is < nrs->Nscalar; is++) {
+        elliptic_t * solver = cds->solver[is];
+        printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
+               solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+      }	
+    }  else {
+      if(nrs->flow) {
+        if(nrs->uvwSolver)
+          printf("  UVW: %d  P: %d", nrs->uvwSolver->Niter, nrs->pSolver->Niter);
+        else
+          printf("  U: %d  V: %d  W: %d  P: %d", 
+         	       nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter, nrs->pSolver->Niter);
+      }
+      for(int is = 0; is < nrs->Nscalar; is++)
+        if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
+ 
+      printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
+    }
+  }
+
+  if(cfl > 30 || std::isnan(cfl)) {
+    if(platform->comm.mpiRank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
+    ABORT(1);
+  }
+
+  if(tstep % 10 == 0) fflush(stdout);
 }

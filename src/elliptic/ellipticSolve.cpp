@@ -37,13 +37,12 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
   dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
-
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
-  // compute initial residual r = rhs - x0
+  // compute initial residual r = rhs - Ax0
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
@@ -54,23 +53,27 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    elliptic->res00 = sqrt(ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * elliptic->resNormFactor); 
+    elliptic->res00Norm = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor); 
+    if(std::isnan(elliptic->res00Norm)) {
+      if(platform->comm.mpiRank == 0) printf("Unreasonable res00Norm!\n");
+      ABORT(EXIT_FAILURE);
+    }
     elliptic->residualProjection->pre(o_r);
     platform->timer.toc("pre");
   }
 
-  dlong Niter;
-  if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
-    elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->res0, elliptic->res);
-  }else{
-    printf("NONBLOCKING Krylov solvers currently not supported!");
+  elliptic->res0Norm = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor);
+  if(std::isnan(elliptic->res0Norm)) {
+    if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);
-/*
-    if(!options.compareArgs("KRYLOV SOLVER", "FLEXIBLE"))
-      Niter = nbpcg (elliptic, o_r, o_x, tol, maxIter);
-    else
-      Niter = nbfpcg (elliptic, o_r, o_x, tol, maxIter);
- */
+  }
+
+  if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
+    elliptic->resNorm = elliptic->res0Norm;
+    elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
+  }else{
+    if(platform->comm.mpiRank == 0) printf("NONBLOCKING Krylov solvers currently not supported!");
+    ABORT(EXIT_FAILURE);
   }
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
@@ -80,7 +83,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->timer.toc("post");
     ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
   } else {
-    elliptic->res00 = elliptic->res0;
+    elliptic->res00Norm = elliptic->res0Norm;
   }
 
   if(elliptic->allNeumann)

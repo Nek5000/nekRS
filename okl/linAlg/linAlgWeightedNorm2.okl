@@ -36,11 +36,10 @@ SOFTWARE.
     @shared volatile dfloat s_wx2[p_blockSize];
 
     for(int t=0;t<p_blockSize;++t;@inner(0)){
-      dlong id = t + b*p_blockSize;
+      const dlong id = t + b*p_blockSize;
       s_wx2[t] = 0.0;
-      while (id<N) {
+      if (id<N) {
         s_wx2[t] += w[id]*x[id]*x[id];
-        id += p_blockSize*Nblocks;
       }
     }
 
@@ -85,16 +84,15 @@ SOFTWARE.
     @shared volatile dfloat s_wx2[p_blockSize];
 
     for(int t=0;t<p_blockSize;++t;@inner(0)){
-      dlong id = t + b*p_blockSize;
+      const dlong id = t + b*p_blockSize;
+      const dfloat wid = w[id];
       dfloat res = 0.0;
-      while (id<N) {
+      if (id<N) {
         for(int fld = 0; fld < Nfields; ++fld){
-          const dfloat wid = w[id + fld * offset];
           const dfloat xid = x[id + fld * offset];
-          res += wid*xid*xid;
+          res += xid*xid;
         }
-        s_wx2[t] = res;
-        id += p_blockSize*Nblocks;
+        s_wx2[t] = wid*res;
       }
     }
 

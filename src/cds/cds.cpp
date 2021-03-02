@@ -2,7 +2,7 @@
 #include "nrs.hpp"
 #include "linAlg.hpp"
 
-occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
+occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
 {
   
   mesh_t* mesh;
@@ -63,7 +63,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   std::stringstream ss;
   ss << std::setfill('0') << std::setw(2) << is;
   string sid = ss.str();
-  if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION")) {
+  if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage < 2) {
     cds->o_wrk0.copyFrom(cds->o_Se, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
     if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, cds->o_wrk2, cds->o_wrk0);
   }

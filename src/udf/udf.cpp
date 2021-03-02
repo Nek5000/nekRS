@@ -23,7 +23,7 @@ uint32_t fchecksum(std::ifstream& file)
     return checksum;
 }
 
-int udfBuild(const char* udfFile)
+int udfBuild(const char* udfFile, int buildOnly)
 {
   char cmd[BUFSIZ];
   char abs_path[BUFSIZ];
@@ -32,7 +32,7 @@ int udfBuild(const char* udfFile)
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  if(! realpath(udfFile, abs_path)) {
+  if(!realpath(udfFile, abs_path)) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
     return EXIT_FAILURE;
   }
@@ -42,17 +42,30 @@ int udfBuild(const char* udfFile)
 
   if(isFileNewer(udfFile, udfFileCache)) {
     printf("building udf ... "); fflush(stdout);
-    sprintf(cmd,
-            "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-             CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-             cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
-             make >>build.log 2>&1",
-            cache_dir,
-            cache_dir,
-            udf_dir,
-            udf_dir,
-            abs_path);
-
+    if(buildOnly) {
+      printf("\n");
+      sprintf(cmd,
+              "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
+               CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
+               cmake -Wno-dev -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
+               make",
+              cache_dir,
+              cache_dir,
+              udf_dir,
+              udf_dir,
+              abs_path);
+    } else {	  
+      sprintf(cmd,
+              "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
+               CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
+               cmake -Wno-dev -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
+               make >>build.log 2>&1",
+              cache_dir,
+              cache_dir,
+              udf_dir,
+              udf_dir,
+              abs_path);
+    }
     if(system(cmd)) { 
       printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
       return EXIT_FAILURE;
@@ -109,9 +122,5 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   string oudf;
   nrs->options.getArgs("DATA FILE", oudf);
 
-  occa::kernel k;
-  {
-    k = platform->device.buildKernel(oudf.c_str(), function, kernelInfo);
-  }
-  return k;
+  return platform->device.buildKernel(oudf.c_str(), function, kernelInfo);
 }

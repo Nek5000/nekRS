@@ -30,8 +30,6 @@
 
 dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a)
 {
-
-  
   mesh_t* mesh = elliptic->mesh;
 
 #ifdef ELLIPTIC_ENABLE_TIMER

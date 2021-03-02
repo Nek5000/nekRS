@@ -78,7 +78,7 @@ if [[ "$#" -eq 1 ]]; then
     set -e
     exit 0
   elif [[ "$1" = *"tar"* ]]; then
-    nekrs_info "Downloading sources and creating distribution tarball ..."
+    nekrs_info "Creating distribution tarball ..."
   else
     nekrs_info "Usage: makenrs [clean|tar]"
     ${NEKRS_EXIT_CMD} 1
@@ -143,25 +143,27 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-echo ""
-echo "Configuration"
-echo "-------------"
-echo "Installation directory:" $NEKRS_INSTALL_DIR 
-echo "C compiler:" $NEKRS_CC
-echo "C++ compiler:" $NEKRS_CXX
-echo "Fortran compiler:" $NEKRS_FC
-echo "CPU backend compiler:" $OCCA_CXX "(flags: $OCCA_CXXFLAGS)"
-echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED
-echo "AMD HIP backend support:" $OCCA_HIP_ENABLED 
-echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED
-echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
-echo ""
-read -p "continue? [Y]" yn
-case $yn in
-   [Nn]* )
-   ${NEKRS_EXIT_CMD} 1
-   ;;
-esac
+if [ "$#" -eq 0 ]; then
+  echo ""
+  echo "Configuration"
+  echo "-------------"
+  echo "Installation directory:" $NEKRS_INSTALL_DIR 
+  echo "C compiler:" `which $NEKRS_CC` 
+  echo "C++ compiler:" `which $NEKRS_CXX`
+  echo "Fortran compiler:" `which $NEKRS_FC`
+  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
+  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED
+  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED 
+  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED
+  echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
+  echo ""
+  read -p "continue? [Y]" yn
+  case $yn in
+    [Nn]* )
+    ${NEKRS_EXIT_CMD} 1
+    ;;
+  esac
+fi
 
 # =======================
 # Run CMake

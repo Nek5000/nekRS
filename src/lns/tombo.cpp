@@ -4,10 +4,9 @@
 
 namespace tombo
 {
-occa::memory pressureSolve(nrs_t* nrs, dfloat time)
+occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 {
   mesh_t* mesh = nrs->mesh;
-  
 
   //enforce Dirichlet BCs
   platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), nrs->o_wrk6);
@@ -155,37 +154,21 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_U,
     nrs->o_wrk3);
 
+  nrs->o_wrk2.copyFrom(nrs->o_wrk3, nrs->Ntotal * sizeof(dfloat));
+
   nrs->o_wrk1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
   ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
 
   return nrs->o_wrk1;
 }
 
-occa::memory velocitySolve(nrs_t* nrs, dfloat time)
+occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 {
   mesh_t* mesh = nrs->mesh;
   
-
   dfloat scale = -1./3;
   if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
-#if 0
-  nrs->PQKernel(
-       mesh->Nelements*mesh->Np,
-       -scale,
-       nrs->o_mue,
-       nrs->o_div,
-       nrs->o_P,
-       nrs->o_wrk3); 
-
-  nrs->gradientVolumeKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_Dmatrices,
-    nrs->fieldOffset,
-    nrs->o_wrk3,
-    nrs->o_wrk0);
-#else
   nrs->mueDivKernel(
        mesh->Nelements*mesh->Np,
        scale,
@@ -215,7 +198,6 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     nrs->o_wrk3,
     -1.0,
     nrs->o_wrk0);
-#endif
 
   nrs->velocityNeumannBCKernel(
        mesh->Nelements,
@@ -240,7 +222,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time)
     nrs->o_rho,
     nrs->o_wrk3);
 
-  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION")) { 
+  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage < 2) { 
     nrs->o_wrk0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     if (nrs->uvwSolver) {
       if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,

@@ -156,6 +156,6 @@ typedef struct
   occa::properties* kernelInfo;
 }cds_t;
 
-occa::memory cdsSolve(int i, cds_t* cds, dfloat time);
+occa::memory cdsSolve(int i, cds_t* cds, dfloat time, int stage);
 
 #endif

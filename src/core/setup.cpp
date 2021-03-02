@@ -110,7 +110,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
 
   nrs->SNrk = 0;
-  nrs->options.getArgs("SUBCYCLING TIME STAGE NUMBER", nrs->SNrk);
+
 
   mesh->Nfields = 1;
 
