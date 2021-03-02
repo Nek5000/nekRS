@@ -12,7 +12,7 @@
 
 #define NSCALAR_MAX 100
 
-typedef struct
+struct cds_t
 {
   int dim, elementType;
 
@@ -153,7 +153,7 @@ typedef struct
   occa::kernel maskCopyKernel;
 
   occa::properties* kernelInfo;
-}cds_t;
+};
 
 occa::memory cdsSolve(int i, cds_t* cds, dfloat time);
 

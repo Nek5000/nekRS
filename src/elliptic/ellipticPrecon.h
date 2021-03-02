@@ -24,15 +24,15 @@
 
  */
 
-typedef struct
+struct nonZero_t
 {
   hlong row;
   hlong col;
   int ownerRank;
   dfloat val;
-}nonZero_t;
+};
 
-typedef struct
+struct precon_t
 {
   long long int preconBytes;
 
@@ -157,4 +157,4 @@ typedef struct
   ogs_t* oasOgs;
 
   bool additive;
-} precon_t;
+};

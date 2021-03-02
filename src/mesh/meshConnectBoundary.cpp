@@ -31,7 +31,7 @@
 // structure used to encode vertices that make
 // each face, the element/face indices, and
 // the neighbor element/face indices (if any)
-typedef struct
+struct boundaryFace_t
 {
   dlong element;
   int face;
@@ -41,7 +41,7 @@ typedef struct
   hlong v[4]; // max number of face vertices
 
   int bctype;
-}boundaryFace_t;
+};
 
 // comparison function that orders vertices
 // based on their combined vertex indices

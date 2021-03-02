@@ -11,14 +11,14 @@ namespace timer
 {
 namespace
 {
-typedef struct tagData_
+struct tagData
 {
   int count;
   double hostElapsed;
   double deviceElapsed;
   double startTime;
   occa::streamTag startTag;
-} tagData;
+};
 std::map<std::string,tagData> m_;
 
 const int NEKRS_TIMER_INVALID_KEY    = -1;

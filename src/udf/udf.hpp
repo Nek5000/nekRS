@@ -26,7 +26,7 @@ typedef void (* udfproperties)(nrs_t* nrs, dfloat time, occa::memory o_U,
                                occa::memory o_SProp);
 typedef void (* udfdiv)(nrs_t* nrs, dfloat time, occa::memory o_div);
 
-typedef struct
+struct UDF
 {
   udfsetup0 setup0;
   udfsetup setup;
@@ -36,7 +36,7 @@ typedef struct
   udfsEqnSource sEqnSource;
   udfproperties properties;
   udfdiv div;
-} UDF;
+};
 
 extern UDF udf;
 

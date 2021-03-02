@@ -30,14 +30,14 @@
 #include "mesh.h"
 #include "platform.hpp"
 
-typedef struct
+struct parallelFace_t
 {
   hlong v[4]; // vertices on face
   dlong element, elementN;
   int NfaceVertices;
   int face, rank;    // face info
   int faceN, rankN; // N for neighbor face info
-}parallelFace_t;
+};
 
 // comparison function that orders vertices
 // based on their combined vertex indices

@@ -43,7 +43,7 @@
 
 class ResidualProjection;
 
-typedef struct
+struct elliptic_t
 {
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
@@ -171,7 +171,7 @@ typedef struct
   int* levels;
 
   ResidualProjection* residualProjection;
-}elliptic_t;
+};
 
 #include "ellipticMultiGrid.h"
 #include "ellipticResidualProjection.h"

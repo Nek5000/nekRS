@@ -31,7 +31,7 @@
 #include "mesh.h"
 #include "platform.hpp"
 
-typedef struct
+struct parallelNode2_t
 {
   dlong localId;
   hlong globalId;
@@ -39,7 +39,7 @@ typedef struct
   hlong newGlobalId;
   int originalRank;
   int ownerRank;
-}parallelNode2_t;
+};
 
 // compare on global indices
 int parallelCompareGlobalIndices(const void* a, const void* b)
