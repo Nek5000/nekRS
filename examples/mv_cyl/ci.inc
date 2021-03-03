@@ -42,6 +42,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   double *err = (double *) nek::scPtr(1);
   const int Nfields = 6;
   dfloat expectedErr[Nfields];
+  int expectedPIter;
   if(ciMode == 1)
   {
     expectedErr[0] = 0.2465620E-06;
@@ -50,6 +51,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.1080412E-05;
+    expectedPIter = 10;
   }
   if(ciMode == 2)
   {
@@ -59,10 +61,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
+    expectedPIter = 11;
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
-  const int expectedPIter = 10;
   const int expectedVIter = 8;
 
   double vxErr, prErr;
@@ -81,8 +83,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
       if(relErr > EPS) passed = false;
     }
   }
-  velIterErr = abs(expectedVIter - nrs->NiterU);
-  pIterErr = abs(expectedPIter - nrs->NiterP);
+  velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
+  pIterErr = abs(expectedPIter - nrs->pSolver->Niter);
   if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
   if(velIterErr >= 1) passed = false;
   if(pIterErr >= 1) passed = false;
