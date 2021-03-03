@@ -70,21 +70,21 @@ void velRecycling::copy()
   const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
-  o_wrk.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  setBCVectorValueKernel(mesh->Nelements, zero, bID, nrs->fieldOffset,
+  o_wrk.copyFrom(nrs->o_U, nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat));
+  setBCVectorValueKernel(mesh->Nelements, zero, bID, nrs->meshV->fieldOffset,
                          o_wrk, mesh->o_vmapM, mesh->o_EToB);
 
-  ogsGatherScatterMany(o_wrk, nrs->NVfields, nrs->fieldOffset,
+  ogsGatherScatterMany(o_wrk, nrs->NVfields, nrs->meshV->fieldOffset,
                        ogsDfloat, ogsAdd, ogs);
 
 /*
    for(int k=0;k<nrs->dim;++k)
-    ogsGatherScatter(o_wrk+k*nrs->fieldOffset*sizeof(dfloat),
+    ogsGatherScatter(o_wrk+k*nrs->meshV->fieldOffset*sizeof(dfloat),
                      ogsDfloat, ogsAdd, ogs);
  */
 
   // rescale
-  getBCFluxKernel(mesh->Nelements, bID, nrs->fieldOffset, o_wrk,
+  getBCFluxKernel(mesh->Nelements, bID, nrs->meshV->fieldOffset, o_wrk,
                   mesh->o_vmapM, mesh->o_EToB, mesh->o_sgeo, o_area, o_flux);
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;
@@ -101,7 +101,7 @@ void velRecycling::copy()
 
   const dfloat scale = -wbar * sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
-  scalarMultiplyKernel(nrs->NVfields * nrs->fieldOffset, scale, o_wrk);
+  scalarMultiplyKernel(nrs->NVfields * nrs->meshV->fieldOffset, scale, o_wrk);
 }
 
 void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, const int bID_,

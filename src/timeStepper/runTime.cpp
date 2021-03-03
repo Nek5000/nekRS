@@ -50,7 +50,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     nrs->extrapolateKernel(mesh->Nelements,
                            nrs->NVfields,
                            nrs->nEXT,
-                           nrs->fieldOffset,
+                           nrs->meshV->fieldOffset,
                            nrs->o_coeffEXT,
                            nrs->o_U,
                            nrs->o_Ue);
@@ -80,15 +80,15 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   if(nrs->flow) {
     platform->timer.tic("makef", 1);
-    platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+    platform->linAlg->fillKernel(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
     makef(nrs, time, nrs->o_FU, nrs->o_BF);
     platform->timer.toc("makef");
     for (int s = nrs->nBDF; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      const dlong Nbyte = nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat);
       nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
     for (int s = nrs->nEXT; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      const dlong Nbyte = nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat);
       nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
   }
@@ -96,14 +96,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(movingMesh) {
     mesh_t *mesh = nrs->meshT;
     for (int s = nrs->nBDF; s > 1; s--) {
-      const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+      const dlong NbyteScalar = nrs->meshV->fieldOffset * sizeof(dfloat);
       mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
       mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     }
     mesh->move();
     if(mesh != nrs->meshV) nrs->meshV->computeInvLMM();
     for (int s = nrs->nBDF; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      const dlong Nbyte = nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat);
       mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
     mesh->solve();
@@ -386,7 +386,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       mesh->Nelements,
       nrs->o_filterMT,
       nrs->filterS,
-      nrs->fieldOffset,
+      nrs->meshV->fieldOffset,
       nrs->o_U,
       o_FU);
   const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
@@ -395,7 +395,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       mesh->Nelements,
       mesh->o_vgeo,
       mesh->o_D,
-      nrs->fieldOffset,
+      nrs->meshV->fieldOffset,
       mesh->o_U,
       nrs->o_U,
       o_FU
@@ -416,7 +416,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
           mesh->o_cubDiffInterpT,
           mesh->o_cubInterpT,
           mesh->o_cubProjectT,
-          nrs->fieldOffset,
+          nrs->meshV->fieldOffset,
           nrs->o_U,
           platform->o_slice0);
       else
@@ -424,11 +424,11 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
           mesh->Nelements,
           mesh->o_vgeo,
           mesh->o_D,
-          nrs->fieldOffset,
+          nrs->meshV->fieldOffset,
           nrs->o_U,
           platform->o_slice0);
       platform->linAlg->axpby(
-        nrs->NVfields * nrs->fieldOffset,
+        nrs->NVfields * nrs->meshV->fieldOffset,
         -1.0,
         platform->o_slice0,
         1.0,
@@ -436,7 +436,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
       );
     }
   } else {
-    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_adv);
   }
 
   nrs->sumMakefKernel(
@@ -445,7 +445,7 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
     nrs->idt,
     nrs->o_coeffEXT,
     nrs->o_coeffBDF,
-    nrs->fieldOffset,
+    nrs->meshV->fieldOffset,
     nrs->o_U,
     o_adv,
     o_FU,
@@ -460,25 +460,25 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
   platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
     mesh->Nlocal,
-    nrs->fieldOffset,
+    nrs->meshV->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0], stage);
-  nrs->o_P.copyFrom(o_Pnew, nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_P.copyFrom(o_Pnew, nrs->meshV->fieldOffset * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
   platform->timer.tic("velocitySolve", 1);
   nrs->setEllipticCoeffKernel(
     mesh->Nlocal,
     nrs->g0 * nrs->idt,
-    0 * nrs->fieldOffset,
-    nrs->fieldOffset,
+    0 * nrs->meshV->fieldOffset,
+    nrs->meshV->fieldOffset,
     nrs->o_mue,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
 
   occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0], stage);
-  o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  o_U.copyFrom(o_Unew, nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat));
   platform->timer.toc("velocitySolve");
 }
 
@@ -500,19 +500,19 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
   // Solve for Each SubProblem
   for (int torder = nrs->nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
-    dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
-    const dlong offset = torder * nrs->fieldOffset;
+    dlong toffset = torder * nrs->NVfields * nrs->meshV->fieldOffset;
+    const dlong offset = torder * nrs->meshV->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
     if (torder == nrs->nEXT - 1){
-      linAlg->axpby(nrs->NVfields * nrs->fieldOffset, b, o_U, 0.0, o_p0, toffset, 0);
+      linAlg->axpby(nrs->NVfields * nrs->meshV->fieldOffset, b, o_U, 0.0, o_p0, toffset, 0);
       occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
-      linAlg->axmyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
+      linAlg->axmyMany(mesh->Nlocal, nrs->NVfields, nrs->meshV->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
     }
     else{
       nrs->subCycleExtrapolateFieldKernel(
         mesh->Nlocal,
         nrs->NVfields,
-        nrs->fieldOffset,
+        nrs->meshV->fieldOffset,
         toffset,
         offset,
         b,
@@ -530,7 +530,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
     for(int ststep = 0; ststep < nrs->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
 
-      o_u1.copyFrom(o_p0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+      o_u1.copyFrom(o_p0, nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat));
 
       for(int rk = 0; rk < nrs->nRK; ++rk) {
         occa::memory o_rhs;
@@ -561,11 +561,11 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           break;
         }
         nrs->o_coeffRK.copyFrom(nrs->coeffRK);
-        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_coeffRK, mesh->o_LMM, o_bmst);
+        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->meshV->fieldOffset, nrs->o_coeffRK, mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
           mesh->Nlocal,
           nrs->NVfields,
-          nrs->fieldOffset,
+          nrs->meshV->fieldOffset,
           0,
           1.0,
           o_bmst,
@@ -582,7 +582,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
@@ -596,7 +596,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               mesh->o_globalGatherElementList,
               mesh->o_vgeo,
               mesh->o_D,
-              nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
@@ -606,7 +606,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               o_rhs);
         }
 
-        oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
+        oogs::start(o_rhs, nrs->NVfields, nrs->meshV->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
           if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -618,7 +618,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
@@ -632,7 +632,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               mesh->o_localGatherElementList,
               mesh->o_vgeo,
               mesh->o_D,
-              nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
@@ -642,23 +642,23 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               o_rhs);
         }
 
-        oogs::finish(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
+        oogs::finish(o_rhs, nrs->NVfields, nrs->meshV->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
         linAlg->axmyMany(
           mesh->Nlocal,
           nrs->NVfields,
-          nrs->fieldOffset,
+          nrs->meshV->fieldOffset,
           0,
           1.0,
           o_bmst,
           o_rhs
         );
 
-        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_p0, -sdt * nrs->Srka[rk+1], o_rhs, o_u1);
+        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->meshV->fieldOffset, 1.0, o_p0, -sdt * nrs->Srka[rk+1], o_rhs, o_u1);
         else{
           nrs->subCycleRKKernel(
             mesh->Nlocal,
             nrs->NVfields,
-            nrs->fieldOffset,
+            nrs->meshV->fieldOffset,
             sdt,
             nrs->o_Srkb,
             o_r1,
@@ -681,11 +681,11 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
   // Solve for Each SubProblem
   for (int torder = nrs->nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
-    dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
+    dlong toffset = torder * nrs->NVfields * nrs->meshV->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
     if (torder == nrs->nEXT - 1){
       platform->linAlg->axpby(
-        nrs->NVfields * nrs->fieldOffset,
+        nrs->NVfields * nrs->meshV->fieldOffset,
         b,
         o_U,
         0.0,
@@ -696,7 +696,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
     }
     else{
       platform->linAlg->axpby(
-        nrs->NVfields * nrs->fieldOffset,
+        nrs->NVfields * nrs->meshV->fieldOffset,
         b,
         o_U,
         1.0,
@@ -714,8 +714,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
     for(int ststep = 0; ststep < nrs->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
 
-      platform->o_slice0.copyFrom(platform->o_slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),
-                           nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),0);
+      platform->o_slice0.copyFrom(platform->o_slice0, nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat),
+                           nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat),0);
 
       for(int rk = 0; rk < nrs->nRK; ++rk) {
         // Extrapolate velocity to subProblem stage time
@@ -752,8 +752,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              nrs->fieldOffset,
-              rk * nrs->NVfields * nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
+              rk * nrs->NVfields * nrs->meshV->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
               nrs->o_coeffRK,
@@ -766,8 +766,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               mesh->o_globalGatherElementList,
               mesh->o_vgeo,
               mesh->o_D,
-              nrs->fieldOffset,
-              rk * nrs->NVfields * nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
+              rk * nrs->NVfields * nrs->meshV->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
               nrs->o_coeffRK,
@@ -782,7 +782,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
         if(rk == 2) o_rhs = platform->o_slice12;
         if(rk == 3) o_rhs = platform->o_slice15;
 
-        oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
+        oogs::start(o_rhs, nrs->NVfields, nrs->meshV->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
           if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -794,8 +794,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
-              nrs->fieldOffset,
-              rk * nrs->NVfields * nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
+              rk * nrs->NVfields * nrs->meshV->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
               nrs->o_coeffRK,
@@ -808,8 +808,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               mesh->o_localGatherElementList,
               mesh->o_vgeo,
               mesh->o_D,
-              nrs->fieldOffset,
-              rk * nrs->NVfields * nrs->fieldOffset,
+              nrs->meshV->fieldOffset,
+              rk * nrs->NVfields * nrs->meshV->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
               nrs->o_coeffRK,
@@ -818,13 +818,13 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               platform->o_slice6);
         }
 
-        oogs::finish(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
+        oogs::finish(o_rhs, nrs->NVfields, nrs->meshV->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         nrs->subCycleRKUpdateKernel(
           mesh->Nelements,
           rk,
           sdt,
-          nrs->fieldOffset,
+          nrs->meshV->fieldOffset,
           nrs->o_Srka,
           nrs->o_Srkb,
           platform->o_slice3,
@@ -833,7 +833,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
       }
     }
   }
-  linAlg->axmyMany(mesh->Nlocal, 3, nrs->fieldOffset, 0, 1.0, mesh->o_LMM, platform->o_slice0);
+  linAlg->axmyMany(mesh->Nlocal, 3, nrs->meshV->fieldOffset, 0, 1.0, mesh->o_LMM, platform->o_slice0);
   return platform->o_slice0;
 }
 
@@ -1174,7 +1174,7 @@ void meshUpdateBdivW(nrs_t* nrs)
   cds_t * cds = nrs->cds;
 
   for (int s = nrs->nBDF; s > 1; s--) {
-    const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+    const dlong NbyteScalar = nrs->meshV->fieldOffset * sizeof(dfloat);
     mesh->o_BdivW.copyFrom (mesh->o_BdivW , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
   }
 

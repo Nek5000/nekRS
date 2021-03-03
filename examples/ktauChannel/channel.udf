@@ -16,7 +16,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   const dfloat Re_tau = 2000.0; 
   const dfloat Re_b   = rho/mueLam; 
   const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
-  userfKernel(mesh->Nlocal, 0*nrs->fieldOffset, DPDX, o_FU);
+  userfKernel(mesh->Nlocal, 0*nrs->meshV->fieldOffset, DPDX, o_FU);
 }
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)

@@ -19,9 +19,9 @@ void UDF_Setup(nrs_t *nrs)
    dfloat x = mesh->x[n];
    dfloat y = mesh->y[n];
    dfloat z = mesh->z[n];
-   nrs->U[n+0*nrs->fieldOffset] = sin(x)*cos(y)*cos(z);;
-   nrs->U[n+1*nrs->fieldOffset] = -cos(x)*sin(y)*cos(z); 
-   nrs->U[n+2*nrs->fieldOffset] = 0; 
+   nrs->U[n+0*nrs->meshV->fieldOffset] = sin(x)*cos(y)*cos(z);;
+   nrs->U[n+1*nrs->meshV->fieldOffset] = -cos(x)*sin(y)*cos(z); 
+   nrs->U[n+2*nrs->meshV->fieldOffset] = 0; 
  }
 }
 

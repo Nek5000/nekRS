@@ -41,7 +41,7 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->dt[0],
                  mesh->o_vgeo,
                  nrs->o_idH,
-                 nrs->fieldOffset,
+                 nrs->meshV->fieldOffset,
                  nrs->o_U,
                  platform->o_slice0);
 

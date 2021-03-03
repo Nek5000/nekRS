@@ -34,8 +34,8 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     const dfloat conSolid = 10*conFluid;
 
     // velocity 
-    const occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
-    const occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
+    const occa::memory o_mue = o_UProp.slice(0*nrs->meshV->fieldOffset*sizeof(dfloat));
+    const occa::memory o_rho = o_UProp.slice(1*nrs->meshV->fieldOffset*sizeof(dfloat));
     cFillKernel(nrs->meshV->Nelements, mue, 0, nrs->meshV->o_elementInfo, o_mue);
     cFillKernel(nrs->meshV->Nelements, rho, 0, nrs->meshV->o_elementInfo, o_rho);
     // temperature 

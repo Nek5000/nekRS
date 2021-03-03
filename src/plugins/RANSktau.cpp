@@ -96,7 +96,7 @@ void RANSktau::updateProperties()
 
   limitKernel(mesh->Nelements * mesh->Np, o_k, o_tau);
   mueKernel(mesh->Nelements * mesh->Np,
-            nrs->fieldOffset,
+            nrs->meshV->fieldOffset,
             rho,
             mueLam,
             o_k,
@@ -126,7 +126,7 @@ void RANSktau::updateSourceTerms()
 
   const int NSOfields = 9;
   SijOijKernel(mesh->Nelements,
-               nrs->fieldOffset,
+               nrs->meshV->fieldOffset,
                mesh->o_vgeo,
                mesh->o_D,
                nrs->o_U,
@@ -134,7 +134,7 @@ void RANSktau::updateSourceTerms()
 
   ogsGatherScatterMany(o_SijOij,
                        NSOfields,
-                       nrs->fieldOffset,
+                       nrs->meshV->fieldOffset,
                        ogsDfloat,
                        ogsAdd,
                        mesh->ogs);
@@ -142,14 +142,14 @@ void RANSktau::updateSourceTerms()
   platform->linAlg->axmyMany(
     mesh->Nlocal,
     NSOfields,
-    nrs->fieldOffset,
+    nrs->meshV->fieldOffset,
     0,
     1.0,
     nrs->meshV->o_invLMM,
     o_SijOij);
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,
-                   nrs->fieldOffset,
+                   nrs->meshV->fieldOffset,
                    o_SijOij,
                    o_OiOjSk,
                    o_SijMag2);

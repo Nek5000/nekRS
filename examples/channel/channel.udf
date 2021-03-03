@@ -12,15 +12,15 @@ static occa::memory o_nekMue;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  o_FU.copyFrom(o_nekFU, nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
+  o_FU.copyFrom(o_nekFU, nrs->NVfields*nrs->meshV->fieldOffset*sizeof(dfloat));
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
     mesh_t* mesh = nrs->meshV;
-    occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
-    occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
+    occa::memory o_mue = o_UProp.slice(0*nrs->meshV->fieldOffset*sizeof(dfloat));
+    occa::memory o_rho = o_UProp.slice(1*nrs->meshV->fieldOffset*sizeof(dfloat));
     nrs->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
     o_mue.copyFrom(o_nekMue, mesh->Nlocal*sizeof(dfloat));
 }
@@ -48,13 +48,13 @@ void UDF_Setup(nrs_t *nrs)
   double *FUy = (double *) nek::scPtr(3);
   double *FUz = (double *) nek::scPtr(4);
 
-  o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
-  o_nekMue = platform->device.malloc(              nrs->fieldOffset*sizeof(dfloat));
+  o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->meshV->fieldOffset*sizeof(dfloat));
+  o_nekMue = platform->device.malloc(              nrs->meshV->fieldOffset*sizeof(dfloat));
 
   o_nekMue.copyFrom(mul, mesh->Nlocal*sizeof(dfloat));
-  o_nekFU.copyFrom (FUx, mesh->Nlocal*sizeof(dfloat), 0*nrs->fieldOffset*sizeof(dfloat));
-  o_nekFU.copyFrom (FUy, mesh->Nlocal*sizeof(dfloat), 1*nrs->fieldOffset*sizeof(dfloat));
-  o_nekFU.copyFrom (FUz, mesh->Nlocal*sizeof(dfloat), 2*nrs->fieldOffset*sizeof(dfloat));
+  o_nekFU.copyFrom (FUx, mesh->Nlocal*sizeof(dfloat), 0*nrs->meshV->fieldOffset*sizeof(dfloat));
+  o_nekFU.copyFrom (FUy, mesh->Nlocal*sizeof(dfloat), 1*nrs->meshV->fieldOffset*sizeof(dfloat));
+  o_nekFU.copyFrom (FUz, mesh->Nlocal*sizeof(dfloat), 2*nrs->meshV->fieldOffset*sizeof(dfloat));
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

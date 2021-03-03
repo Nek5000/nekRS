@@ -113,9 +113,9 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
     xo = 1;
   }
   if(o_u.ptr()) {
-    occa::memory o_vx = o_u + 0 * nrs->fieldOffset * sizeof(dfloat);
-    occa::memory o_vy = o_u + 1 * nrs->fieldOffset * sizeof(dfloat);
-    occa::memory o_vz = o_u + 2 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vx = o_u + 0 * nrs->meshV->fieldOffset * sizeof(dfloat);
+    occa::memory o_vy = o_u + 1 * nrs->meshV->fieldOffset * sizeof(dfloat);
+    occa::memory o_vz = o_u + 2 * nrs->meshV->fieldOffset * sizeof(dfloat);
     o_vx.copyTo(nekData.vx, Nlocal * sizeof(dfloat));
     o_vy.copyTo(nekData.vy, Nlocal * sizeof(dfloat));
     o_vz.copyTo(nekData.vz, Nlocal * sizeof(dfloat));
@@ -132,7 +132,7 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
       (is) ? mesh = nrs->meshV: mesh = nrs->meshT;
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
-      occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
+      occa::memory o_Si = o_s + is * nrs->meshV->fieldOffset * sizeof(dfloat);
       o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
     }
     so = 1;
@@ -708,9 +708,9 @@ void copyFromNek(dfloat time)
   mesh_t* mesh = nrs->meshV;
   dlong Nlocal = mesh->Nelements * mesh->Np;
 
-  dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
-  dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
-  dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
+  dfloat* vx = nrs->U + 0 * nrs->meshV->fieldOffset;
+  dfloat* vy = nrs->U + 1 * nrs->meshV->fieldOffset;
+  dfloat* vz = nrs->U + 2 * nrs->meshV->fieldOffset;
 
   *(nekData.time) = time;
   *(nekData.p0th) = nrs->p0th[0];
@@ -719,9 +719,9 @@ void copyFromNek(dfloat time)
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
     mesh_t* mesh = nrs->meshT;
     const dlong Nlocal = mesh->Nelements * mesh->Np;
-    dfloat* wx = mesh->U + 0 * nrs->fieldOffset;
-    dfloat* wy = mesh->U + 1 * nrs->fieldOffset;
-    dfloat* wz = mesh->U + 2 * nrs->fieldOffset;
+    dfloat* wx = mesh->U + 0 * nrs->meshV->fieldOffset;
+    dfloat* wy = mesh->U + 1 * nrs->meshV->fieldOffset;
+    dfloat* wz = mesh->U + 2 * nrs->meshV->fieldOffset;
     memcpy(nekData.wx, wx, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wy, wy, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wz, wz, sizeof(dfloat) * Nlocal);
@@ -822,9 +822,9 @@ void copyToNek(dfloat &time)
   nrs->p0th[0] = *(nekData.p0th);
   nrs->dp0thdt = *(nekData.dp0thdt);
 
-  dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
-  dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
-  dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
+  dfloat* vx = nrs->U + 0 * nrs->meshV->fieldOffset;
+  dfloat* vy = nrs->U + 1 * nrs->meshV->fieldOffset;
+  dfloat* vz = nrs->U + 2 * nrs->meshV->fieldOffset;
 
   memcpy(vx, nekData.vx, sizeof(dfloat) * Nlocal);
   memcpy(vy, nekData.vy, sizeof(dfloat) * Nlocal);
@@ -832,9 +832,9 @@ void copyToNek(dfloat &time)
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")){
     mesh_t* mesh = nrs->meshT;
     const dlong Nlocal = mesh->Nelements * mesh->Np;
-    dfloat* wx = mesh->U + 0 * nrs->fieldOffset;
-    dfloat* wy = mesh->U + 1 * nrs->fieldOffset;
-    dfloat* wz = mesh->U + 2 * nrs->fieldOffset;
+    dfloat* wx = mesh->U + 0 * nrs->meshV->fieldOffset;
+    dfloat* wy = mesh->U + 1 * nrs->meshV->fieldOffset;
+    dfloat* wz = mesh->U + 2 * nrs->meshV->fieldOffset;
     memcpy(wx, nekData.wx, sizeof(dfloat) * Nlocal);
     memcpy(wy, nekData.wy, sizeof(dfloat) * Nlocal);
     memcpy(wz, nekData.wz, sizeof(dfloat) * Nlocal);

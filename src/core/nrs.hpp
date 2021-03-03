@@ -47,7 +47,6 @@ struct nrs_t
   inipp::Ini<char> *par;
 
   int NVfields, NTfields;
-  dlong fieldOffset;
 
 
   dfloat dt[3], idt;

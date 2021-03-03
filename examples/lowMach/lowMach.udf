@@ -29,7 +29,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->meshT[0]->fieldOffset, 
+  userVpKernel(mesh->Nelements, nrs->meshV->fieldOffset, nrs->cds->meshT[0]->fieldOffset, 
                o_S, o_UProp, o_SProp);
 }
 

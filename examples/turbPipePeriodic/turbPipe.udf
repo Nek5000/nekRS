@@ -16,7 +16,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   const dfloat RE_B = rho/mue; 
   const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
 
-  occa::memory o_FUz = o_FU + 2*nrs->fieldOffset*sizeof(dfloat);
+  occa::memory o_FUz = o_FU + 2*nrs->meshV->fieldOffset*sizeof(dfloat);
   nrs->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
 }
 
