@@ -539,7 +539,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
         if(rk == 2) o_rhs = o_r3;
         if(rk == 3) o_rhs = o_r4;
         // Extrapolate velocity to subProblem stage time
-        const dfloat t   = tstage +  sdt * nrs->Srkc[rk];
+        const dfloat t   = tstage +  sdt * nrs->nodesRK[rk];
         const dfloat tn0 = time;
         const dfloat tn1 = time - nrs->dt[1];
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
@@ -653,14 +653,14 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           o_rhs
         );
 
-        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->meshV->fieldOffset, 1.0, o_p0, -sdt * nrs->Srka[rk+1], o_rhs, o_u1);
+        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->meshV->fieldOffset, 1.0, o_p0, -sdt * nrs->coeffsfRK[rk+1], o_rhs, o_u1);
         else{
           nrs->subCycleRKKernel(
             mesh->Nlocal,
             nrs->NVfields,
             nrs->meshV->fieldOffset,
             sdt,
-            nrs->o_Srkb,
+            nrs->o_weightsRK,
             o_r1,
             o_r2,
             o_r3,
@@ -719,7 +719,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
 
       for(int rk = 0; rk < nrs->nRK; ++rk) {
         // Extrapolate velocity to subProblem stage time
-        const dfloat t   = tstage +  sdt * nrs->Srkc[rk];
+        const dfloat t   = tstage +  sdt * nrs->nodesRK[rk];
         const dfloat tn0 = time;
         const dfloat tn1 = time - nrs->dt[1];
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
@@ -825,8 +825,8 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
           rk,
           sdt,
           nrs->meshV->fieldOffset,
-          nrs->o_Srka,
-          nrs->o_Srkb,
+          nrs->o_coeffsfRK,
+          nrs->o_weightsRK,
           platform->o_slice3,
           platform->o_slice6,
           platform->o_slice0);
@@ -888,7 +888,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
         if(rk == 3) o_rhs = o_r4;
 
         // Extrapolate velocity to subProblem stage time
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
+        const dfloat t   = tstage +  sdt * cds->nodesRK[rk];
         const dfloat tn0 = time;
         const dfloat tn1 = time - cds->dt[1];
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
@@ -987,13 +987,13 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
 
         linAlg->axmy(mesh->Nlocal, 1.0, o_bmst, o_rhs);
         if(rk != 3) {
-          linAlg->axpbyz(mesh->Nlocal, 1.0, o_p0, -sdt * cds->Srka[rk+1], o_rhs, o_u1);
+          linAlg->axpbyz(mesh->Nlocal, 1.0, o_p0, -sdt * cds->coeffsfRK[rk+1], o_rhs, o_u1);
         }
         else{
           cds->subCycleRKKernel(
             mesh->Nlocal,
             sdt,
-            cds->o_Srkb,
+            cds->o_weightsRK,
             o_r1,
             o_r2,
             o_r3,
@@ -1051,7 +1051,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
 
       for(int rk = 0; rk < cds->nRK; ++rk) {
         // Extrapolate velocity to subProblem stage time
-        const dfloat t   = tstage +  sdt * cds->Srkc[rk];
+        const dfloat t   = tstage +  sdt * cds->nodesRK[rk];
         const dfloat tn0 = time;
         const dfloat tn1 = time - cds->dt[1];
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
@@ -1157,8 +1157,8 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
           rk,
           sdt,
           cds->meshT[0]->fieldOffset,
-          cds->o_Srka,
-          cds->o_Srkb,
+          cds->o_coeffsfRK,
+          cds->o_weightsRK,
           platform->o_slice1,
           platform->o_slice2,
           platform->o_slice0);

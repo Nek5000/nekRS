@@ -166,18 +166,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
       dfloat rkc[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
-      nrs->Srka = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
-      nrs->Srkb = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
-      nrs->Srkc = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
-      memcpy(nrs->Srka, rka, nrs->nRK * sizeof(dfloat));
-      memcpy(nrs->Srkb, rkb, nrs->nRK * sizeof(dfloat));
-      memcpy(nrs->Srkc, rkc, nrs->nRK * sizeof(dfloat));
+      nrs->coeffsfRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->weightsRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->nodesRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      memcpy(nrs->coeffsfRK, rka, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->weightsRK, rkb, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }else{
       if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
-    nrs->o_Srka = device.malloc(nrs->nRK * sizeof(dfloat), nrs->Srka);
-    nrs->o_Srkb = device.malloc(nrs->nRK * sizeof(dfloat), nrs->Srkb);
+    nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
+    nrs->o_weightsRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->weightsRK);
   }
 
   // setup scratch space
@@ -934,11 +934,11 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
     cds->nRK   = nrs->nRK;
-    cds->Srka   = nrs->Srka;
-    cds->Srkb   = nrs->Srkb;
-    cds->Srkc   = nrs->Srkc;
-    cds->o_Srka = nrs->o_Srka;
-    cds->o_Srkb = nrs->o_Srkb;
+    cds->coeffsfRK   = nrs->coeffsfRK;
+    cds->weightsRK   = nrs->weightsRK;
+    cds->nodesRK   = nrs->nodesRK;
+    cds->o_coeffsfRK = nrs->o_coeffsfRK;
+    cds->o_weightsRK = nrs->o_weightsRK;
   }
 
   cds->dt  = nrs->dt;

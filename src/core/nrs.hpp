@@ -68,8 +68,8 @@ struct nrs_t
 
   //RK Subcycle Data
   int nRK;
-  dfloat* Srka, * Srkb, * Srkc;
-  occa::memory o_Srka, o_Srkb;
+  dfloat* coeffsfRK, * weightsRK, * nodesRK;
+  occa::memory o_coeffsfRK, o_weightsRK;
 
   //ARK data
   int Nrk;
