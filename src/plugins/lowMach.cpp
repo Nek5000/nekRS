@@ -132,9 +132,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       nrs->o_Ue,
       platform->o_slice0
     );
-    platform->o_slice0.copyTo(nrs->wrk, mesh->Nelements * sizeof(dfloat));
+    platform->o_slice0.copyTo(platform->mempool, mesh->Nelements * sizeof(dfloat));
     dfloat termV = 0.0;
-    for(int i = 0 ; i < mesh->Nelements; ++i) termV += nrs->wrk[i];
+    for(int i = 0 ; i < mesh->Nelements; ++i) termV += platform->mempool[i];
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
     p0thHelperKernel(Nlocal,
