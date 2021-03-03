@@ -168,10 +168,10 @@ void avg::setup(nrs_t* nrs_)
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    o_Savg = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    o_Srms = platform->device.malloc(cds->fieldOffset * cds->NSfields * sizeof(dfloat));
-    platform->linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    platform->linAlg->fill(cds->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    o_Savg = platform->device.malloc(cds->meshT[0]->fieldOffset * cds->NSfields * sizeof(dfloat));
+    o_Srms = platform->device.malloc(cds->meshT[0]->fieldOffset * cds->NSfields * sizeof(dfloat));
+    platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Savg);
+    platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;

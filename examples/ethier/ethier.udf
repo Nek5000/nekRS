@@ -19,8 +19,8 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
   cds_t *cds   = nrs->cds; 
   const dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
 
-  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->fieldOffset, o_FS);
-  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset, o_FS);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->meshT[0]->fieldOffset, o_FS);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->meshT[0]->fieldOffset, o_FS);
 }                                                   
 
 void UDF_LoadKernels(nrs_t *nrs)
@@ -60,8 +60,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   if (tstep <= 5) {
     exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
     ellipticZeroMean(nrs->pSolver, nrs->o_P);
-    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->fieldOffset*sizeof(dfloat));
-    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->fieldOffset*sizeof(dfloat));
+    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->meshT[0]->fieldOffset*sizeof(dfloat));
+    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->meshT[0]->fieldOffset*sizeof(dfloat));
   }
 
   if (nrs->isOutputStep) {

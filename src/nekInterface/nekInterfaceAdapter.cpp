@@ -743,7 +743,7 @@ void copyFromNek(dfloat time)
       (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->meshT[0];
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
-      dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
+      dfloat* Si = nrs->cds->S + is * nrs->cds->meshT[0]->fieldOffset;
       memcpy(Ti, Si, Nlocal * sizeof(dfloat));
     }
   }
@@ -851,7 +851,7 @@ void copyToNek(dfloat &time)
       (is) ? mesh = nrs->cds->meshV : mesh = nrs->cds->meshT[0];
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t   + is * nekFieldOffset;
-      dfloat* Si = nrs->cds->S + is * nrs->cds->fieldOffset;
+      dfloat* Si = nrs->cds->S + is * nrs->cds->meshT[0]->fieldOffset;
       memcpy(Si, Ti, Nlocal * sizeof(dfloat));
     }
   }

@@ -904,10 +904,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   dlong Nlocal = mesh->Np * mesh->Nelements;
   dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
   mesh->Nlocal = Nlocal;
-  cds->fieldOffset  = Ntotal;
+  cds->meshT[0]->fieldOffset  = Ntotal;
 
   cds->vFieldOffset = nrs->fieldOffset;
-  cds->fieldOffset  = nrs->fieldOffset;
+  cds->meshT[0]->fieldOffset  = nrs->fieldOffset;
 
   platform->o_slice0 = platform->o_slice0;
   platform->o_slice1 = platform->o_slice1;
@@ -923,7 +923,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
     if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
-    cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
+    cds->gshT = oogs::setup(mesh->ogs, 1, cds->meshT[0]->fieldOffset, ogsDfloat, NULL, oogsMode);
   } else {
     cds->gshT = cds->gsh;
   }
@@ -931,10 +931,10 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
-  cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset,sizeof(dfloat));
+  cds->BF    = (dfloat*) calloc(cds->NSfields * cds->meshT[0]->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
@@ -949,7 +949,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->dt  = nrs->dt;
   cds->sdt = nrs->sdt;
 
-  cds->prop = (dfloat*) calloc(cds->NSfields * 2 * cds->fieldOffset,sizeof(dfloat));
+  cds->prop = (dfloat*) calloc(cds->NSfields * 2 * cds->meshT[0]->fieldOffset,sizeof(dfloat));
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -962,17 +962,17 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     options.getArgs("SCALAR" + sid + " DIFFUSIVITY", diff);
     options.getArgs("SCALAR" + sid + " DENSITY", rho);
 
-    const dlong off = cds->NSfields * cds->fieldOffset;
+    const dlong off = cds->NSfields * cds->meshT[0]->fieldOffset;
     for (int e = 0; e < mesh->Nelements; e++)
       for (int n = 0; n < mesh->Np; n++) {
-        cds->prop[0 * off + is * cds->fieldOffset + e * mesh->Np + n] = diff;
-        cds->prop[1 * off + is * cds->fieldOffset + e * mesh->Np + n] = rho;
+        cds->prop[0 * off + is * cds->meshT[0]->fieldOffset + e * mesh->Np + n] = diff;
+        cds->prop[1 * off + is * cds->meshT[0]->fieldOffset + e * mesh->Np + n] = rho;
       }
   }
   cds->o_prop =
-    device.malloc(cds->NSfields * 2 * cds->fieldOffset * sizeof(dfloat), cds->prop);
-  cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-  cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
+    device.malloc(cds->NSfields * 2 * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->prop);
+  cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat));
+  cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat));
 
   cds->var_coeff = 1; // use always var coeff elliptic
   cds->ellipticCoeff   = nrs->ellipticCoeff;
@@ -981,12 +981,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
-  cds->o_BF = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat));
+  cds->o_BF = platform->device.malloc(cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
+    platform->device.malloc(cds->NSfields * cds->nEXT * cds->meshT[0]->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {

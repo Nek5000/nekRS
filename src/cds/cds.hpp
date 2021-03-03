@@ -28,7 +28,6 @@ struct cds_t
   oogs_t *gsh, *gshT;
 
   dlong vFieldOffset;
-  dlong fieldOffset;
   dfloat idt;
   dfloat *dt;
   int tstep;

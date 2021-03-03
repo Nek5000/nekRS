@@ -16,13 +16,13 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
   }
   elliptic_t* solver = cds->solver[is];
 
-  platform->o_slice0.copyFrom(cds->o_S, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+  platform->o_slice0.copyFrom(cds->o_S, cds->meshT[0]->fieldOffset * sizeof(dfloat), 0, is * cds->meshT[0]->fieldOffset * sizeof(dfloat));
 
   //enforce Dirichlet BCs
-  platform->linAlg->fill(cds->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_slice2); 
+  platform->linAlg->fill(cds->meshT[0]->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_slice2); 
   for (int sweep = 0; sweep < 2; sweep++) {
     cds->dirichletBCKernel(mesh->Nelements,
-                           cds->fieldOffset,
+                           cds->meshT[0]->fieldOffset,
                            is,
                            time,
                            mesh->o_sgeo,
@@ -36,20 +36,20 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                            platform->o_slice2);
 
     //take care of Neumann-Dirichlet shared edges across elements
-    if(sweep == 0) oogs::startFinish(platform->o_slice2, 1, cds->fieldOffset, ogsDfloat, ogsMax, gsh);
-    if(sweep == 1) oogs::startFinish(platform->o_slice2, 1, cds->fieldOffset, ogsDfloat, ogsMin, gsh);
+    if(sweep == 0) oogs::startFinish(platform->o_slice2, 1, cds->meshT[0]->fieldOffset, ogsDfloat, ogsMax, gsh);
+    if(sweep == 1) oogs::startFinish(platform->o_slice2, 1, cds->meshT[0]->fieldOffset, ogsDfloat, ogsMin, gsh);
   }
   if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_slice2, platform->o_slice0);
 
   //build RHS
-  platform->o_slice1.copyFrom(cds->o_BF, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+  platform->o_slice1.copyFrom(cds->o_BF, cds->meshT[0]->fieldOffset * sizeof(dfloat), 0, is * cds->meshT[0]->fieldOffset * sizeof(dfloat));
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_sgeo,
                             mesh->o_vmapM,
                             mesh->o_EToB,
                             is,
                             time,
-                            cds->fieldOffset,
+                            cds->meshT[0]->fieldOffset,
                             mesh->o_x,
                             mesh->o_y,
                             mesh->o_z,
@@ -63,7 +63,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
   ss << std::setfill('0') << std::setw(2) << is;
   string sid = ss.str();
   if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) {
-    platform->o_slice0.copyFrom(cds->o_Se, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+    platform->o_slice0.copyFrom(cds->o_Se, cds->meshT[0]->fieldOffset * sizeof(dfloat), 0, is * cds->meshT[0]->fieldOffset * sizeof(dfloat));
     if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_slice2, platform->o_slice0);
   }
   ellipticSolve(solver, platform->o_slice1, platform->o_slice0);
