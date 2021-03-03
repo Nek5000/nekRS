@@ -82,7 +82,16 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->timer.toc("pre");
   }
 
-  elliptic->res0Norm = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor);
+  elliptic->res0Norm = sqrt(
+    platform->linAlg->weightedNorm2Many(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      elliptic->o_invDegree,
+      o_r,
+      platform->comm.mpiComm
+    )
+    * elliptic->resNormFactor); 
   if(std::isnan(elliptic->res0Norm)) {
     if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);

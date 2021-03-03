@@ -65,7 +65,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
     // r.z
     rdotz1 = platform->linAlg->weightedInnerProdMany(
-      Nlocal,
+      mesh->Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
       o_weight,
@@ -75,7 +75,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     );
     if(flexible) {
       const dfloat zdotAp = platform->linAlg->weightedInnerProdMany(
-        Nlocal,
+        mesh->Nlocal,
         elliptic->Nfields,
         elliptic->Ntotal,
         o_weight,
@@ -89,9 +89,8 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     }
 
     // p = z + beta*p
-    const dlong Nlocal = mesh->Np * mesh->Nelements;
     platform->linAlg->axpbyMany(
-      Nlocal,
+      mesh->Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
       1.0,
@@ -105,7 +104,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
     // dot(p,A*p)
     pAp = platform->linAlg->weightedInnerProdMany(
-      Nlocal,
+      mesh->Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
       o_weight,

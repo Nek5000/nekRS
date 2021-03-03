@@ -55,7 +55,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            nrs->o_U,
                            nrs->o_Ue);
   if(nrs->Nscalar) 
-    nrs->extrapolateKernel(cds->mesh->Nelements,
+    nrs->extrapolateKernel(cds->meshT[0]->Nelements,
                            cds->NSfields,
                            cds->nEXT,
                            cds->fieldOffset,
@@ -64,10 +64,10 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_Se);
 
   if(nrs->Nscalar) {
-    timer::tic("makeq", 1);
+    platform->timer.tic("makeq", 1);
     platform->linAlg->fillKernel(cds->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
     makeq(nrs, time, cds->o_FS, cds->o_BF);
-    timer::toc("makeq");
+    platform->timer.toc("makeq");
     for (int s = cds->nBDF; s > 1; s--) {
       const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
       cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
@@ -79,10 +79,10 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(nrs->flow) {
-    timer::tic("makef", 1);
+    platform->timer.tic("makef", 1);
     platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
     makef(nrs, time, nrs->o_FU, nrs->o_BF);
-    timer::toc("makef");
+    platform->timer.toc("makef");
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
       nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
@@ -101,7 +101,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     }
     mesh->move();
-    if(mesh != nrs->mesh) nrs->mesh->computeInvLMM();
+    if(mesh != nrs->meshV) nrs->meshV->computeInvLMM();
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
       mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
@@ -126,9 +126,9 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       scalarSolve(nrs, time, cds->o_S, stage); 
 
     if(udf.properties) {
-      timer::tic("udfProperties", 1);
-      occa::memory o_S = nrs->o_wrk0;
-      occa::memory o_SProp = nrs->o_wrk0;
+      platform->timer.tic("udfProperties", 1);
+      occa::memory o_S = platform->o_slice0;
+      occa::memory o_SProp = platform->o_slice0;
       if(nrs->Nscalar) {
         o_S = cds->o_S;
         o_SProp = cds->o_prop;
@@ -365,7 +365,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
       );
 
     occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0], stage);
-    o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
+    o_Snew.copyTo(o_S, cds->fieldOffset * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
   platform->timer.toc("scalarSolve");
 }
@@ -464,7 +464,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     nrs->o_rho,
     nrs->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0], stage);
-  nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
+  nrs->o_P.copyFrom(o_Pnew, nrs->fieldOffset * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
   platform->timer.tic("velocitySolve", 1);
@@ -1180,7 +1180,7 @@ void meshUpdateBdivW(nrs_t* nrs)
 
   mesh->computeBdivW();
 
-  if(nrs->mesh != nrs->meshT) nrs->mesh->computeBdivW();
+  if(nrs->meshV != nrs->meshT) nrs->meshV->computeBdivW();
 }
 
 void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed)

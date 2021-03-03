@@ -502,30 +502,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
 
       // combined PCG update and r.r kernel
-      if(elliptic->blockSolver) {
-        if(serial) {
-          filename = oklpath + "ellipticSerialUpdatePCG.c";
-          elliptic->updatePCGKernel =
-            platform->device.buildKernel(filename.c_str(),
-                                     "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
-        } else {
-          filename = oklpath + "ellipticUpdatePCG.okl";
-          elliptic->updatePCGKernel =
-            platform->device.buildKernel(filename.c_str(),
-                                     "ellipticBlockUpdatePCG", dfloatKernelInfo);
-        }
-      }else{
-        if(serial) {
-          filename = oklpath + "ellipticSerialUpdatePCG.c";
-          elliptic->updatePCGKernel =
-            platform->device.buildKernel(filename.c_str(),
-                                     "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
-        } else {
-          filename = oklpath + "ellipticUpdatePCG.okl";
-          elliptic->updatePCGKernel =
-            platform->device.buildKernel(filename.c_str(),
-                                     "ellipticUpdatePCG", dfloatKernelInfo);
-        }
+      if(serial) {
+        filename = oklpath + "ellipticSerialUpdatePCG.c";
+        elliptic->updatePCGKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
+      } else {
+        filename = oklpath + "ellipticUpdatePCG.okl";
+        elliptic->updatePCGKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "ellipticBlockUpdatePCG", dfloatKernelInfo);
       }
 
       if(!elliptic->blockSolver) {
