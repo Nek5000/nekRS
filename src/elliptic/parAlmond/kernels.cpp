@@ -86,49 +86,6 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
       filename = oklpath + "vectorDotStar.okl";
       vectorDotStarKernel1 = device.buildKernel(filename.c_str(), "vectorDotStar1", kernelInfo);
       vectorDotStarKernel2 = device.buildKernel(filename.c_str(), "vectorDotStar2", kernelInfo);
-
-      /*
-      filename = oklpath + "SpMVcsr.okl";
-      SpMVcsrKernel1  = device.buildKernel(filename.c_str(),  "SpMVcsr1",  kernelInfo);
-      SpMVcsrKernel2  = device.buildKernel(filename.c_str(),  "SpMVcsr2",  kernelInfo);
-
-      filename = oklpath + "SpMVell.okl";
-      SpMVellKernel1  = device.buildKernel(filename.c_str(),  "SpMVell1",  kernelInfo);
-      SpMVellKernel2  = device.buildKernel(filename.c_str(),  "SpMVell2",  kernelInfo);
-
-      filename = oklpath + "SpMVmcsr.okl";
-      SpMVmcsrKernel1 = device.buildKernel(filename.c_str(), "SpMVmcsr1", kernelInfo);
-      SpMVmcsrKernel2 = device.buildKernel(filename.c_str(), "SpMVmcsr2", kernelInfo);
-
-      filename = oklpath + "vectorSet.okl";
-      vectorSetKernel = device.buildKernel(filename.c_str(), "vectorSet", kernelInfo);
-
-      filename = oklpath + "vectorScale.okl";
-      vectorScaleKernel = device.buildKernel(filename.c_str(), "vectorScale", kernelInfo);
-
-      filename = oklpath + "vectorAddScalar.okl";
-      vectorAddScalarKernel = device.buildKernel(filename.c_str(), "vectorAddScalar", kernelInfo);
-
-      filename = oklpath + "vectorAdd.okl";
-      vectorAddKernel1 = device.buildKernel(filename.c_str(), "vectorAdd1", kernelInfo);
-      vectorAddKernel2 = device.buildKernel(filename.c_str(), "vectorAdd2", kernelInfo);
-
-      filename = oklpath + "vectorInnerProd.okl";
-      vectorInnerProdKernel = device.buildKernel(filename.c_str(), "vectorInnerProd", kernelInfo);
-
-      filename = oklpath + "vectorAddInnerProd.okl";
-      vectorAddInnerProdKernel = device.buildKernel(filename.c_str(), "vectorAddInnerProd", kernelInfo);
-      vectorAddWeightedInnerProdKernel = device.buildKernel(filename.c_str(), "vectorAddWeightedInnerProd", kernelInfo);
-
-      filename = oklpath + "kcycleCombinedOp.okl";
-      kcycleCombinedOp1Kernel = device.buildKernel(filename.c_str(), "kcycleCombinedOp1", kernelInfo);
-      kcycleCombinedOp2Kernel = device.buildKernel(filename.c_str(), "kcycleCombinedOp2", kernelInfo);
-      kcycleWeightedCombinedOp1Kernel = device.buildKernel(filename.c_str(), "kcycleWeightedCombinedOp1", kernelInfo);
-      kcycleWeightedCombinedOp2Kernel = device.buildKernel(filename.c_str(), "kcycleWeightedCombinedOp2", kernelInfo);
-
-      filename = oklpath + "haloExtract.okl";
-      haloExtractKernel = device.buildKernel(filename.c_str(), "haloExtract", kernelInfo);
-      */
     }
     MPI_Barrier(comm);
   }
@@ -137,31 +94,8 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
 }
 
 void freeParAlmondKernels() {
-
-  haloExtractKernel.free();
-
-  SpMVcsrKernel1.free();
-  SpMVcsrKernel2.free();
-  SpMVellKernel1.free();
-  SpMVellKernel2.free();
-  SpMVmcsrKernel1.free();
-  SpMVmcsrKernel2.free();
-
-  vectorSetKernel.free();
-  vectorScaleKernel.free();
-  vectorAddScalarKernel.free();
-  vectorAddKernel1.free();
-  vectorAddKernel2.free();
   vectorDotStarKernel1.free();
   vectorDotStarKernel2.free();
-  vectorInnerProdKernel.free();
-  kcycleCombinedOp1Kernel.free();
-  kcycleCombinedOp2Kernel.free();
-  kcycleWeightedCombinedOp1Kernel.free();
-  kcycleWeightedCombinedOp2Kernel.free();
-  vectorAddInnerProdKernel.free();
-  vectorAddWeightedInnerProdKernel.free();
-
 }
 
 

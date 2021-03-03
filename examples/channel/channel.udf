@@ -18,7 +18,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-    mesh_t* mesh = nrs->mesh;
+    mesh_t* mesh = nrs->meshV;
     occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
     occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
     nrs->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
@@ -38,7 +38,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 void UDF_Setup(nrs_t *nrs)
 {
   platform_t* platform = platform_t::getInstance();
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
 
   udf.uEqnSource = &userf;
   udf.properties = &uservp;

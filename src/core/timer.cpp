@@ -5,45 +5,20 @@
 
 #include "timer.hpp"
 #include "platform.hpp"
+#include "ogs.hpp"
 
 namespace timer
 {
-
-void tic(const std::string tag){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.tic(tag);
-}
-void tic(const std::string tag,int ifSync){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.tic(tag, ifSync);
-}
-void toc(const std::string tag){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.toc(tag);
-}
-void hostTic(const std::string tag){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.hostTic(tag);
-}
-void hostTic(const std::string tag,int ifSync){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.hostTic(tag, ifSync);
-}
-void hostToc(const std::string tag){
-  platform_t* platform = platform_t::getInstance();
-  platform->timer.hostToc(tag);
-}
-
 namespace
 {
-typedef struct tagData_
+struct tagData
 {
   int count;
   double hostElapsed;
   double deviceElapsed;
   double startTime;
   occa::streamTag startTag;
-} tagData;
+};
 std::map<std::string,tagData> m_;
 
 const int NEKRS_TIMER_INVALID_KEY    = -1;
@@ -279,7 +254,7 @@ void timer_t::printRunStat()
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
-  hEtime[1] = query("oogsMPI", "HOST:MAX");
+  hEtime[1] = ogsTime();
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );

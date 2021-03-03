@@ -75,21 +75,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->linAlg = nrs->linAlg;
     createMeshDummy(mesh, comm, N, cubN, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
   } else {
     mesh_t* mesh = new mesh_t();
     mesh->linAlg = nrs->linAlg;
     createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
     if (nrs->cht) {
       mesh_t* meshV = new mesh_t();
       meshV->linAlg = nrs->linAlg;
       createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
-      nrs->mesh = meshV;
+      nrs->meshV= meshV;
     }
   }
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
 
   if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
@@ -142,7 +142,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
 
   mesh->Nlocal = Nlocal;
-  nrs->Ntotal = Ntotal;
+  nrs->fieldOffset = Ntotal;
 
   // ensure that offset is large enough for v and t mesh and is properly aligned
   {
@@ -157,9 +157,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
   nrs->meshT->fieldOffset = nrs->fieldOffset;
-  nrs->mesh->fieldOffset = nrs->fieldOffset;
-
-  nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
+  nrs->meshV->fieldOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     int Sorder;
@@ -190,17 +188,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
   platform->create_mempool(nrs->fieldOffset, scratchNflds);
 
-  nrs->o_wrk0  = platform->o_slice0;
-  nrs->o_wrk1  = platform->o_slice1;
-  nrs->o_wrk2  = platform->o_slice2;
-  nrs->o_wrk3  = platform->o_slice3;
-  nrs->o_wrk4  = platform->o_slice4;
-  nrs->o_wrk5  = platform->o_slice5;
-  nrs->o_wrk6  = platform->o_slice6;
-  nrs->o_wrk7  = platform->o_slice7;
-  nrs->o_wrk9  = platform->o_slice9;
-  nrs->o_wrk12 = platform->o_slice12;
-  nrs->o_wrk15 = platform->o_slice15;
+  platform->o_slice0  = platform->o_slice0;
+  platform->o_slice1  = platform->o_slice1;
+  platform->o_slice2  = platform->o_slice2;
+  platform->o_slice3  = platform->o_slice3;
+  platform->o_slice4  = platform->o_slice4;
+  platform->o_slice5  = platform->o_slice5;
+  platform->o_slice6  = platform->o_slice6;
+  platform->o_slice7  = platform->o_slice7;
+  platform->o_slice9  = platform->o_slice9;
+  platform->o_slice12 = platform->o_slice12;
+  platform->o_slice15 = platform->o_slice15;
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
@@ -252,7 +250,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  nrs->o_rkC     = platform->device.malloc(4 * sizeof(dfloat),rkC);
   nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
@@ -270,9 +267,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-
-  int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
-  kernelInfo["defines/" "p_NblockV"] = NblockV;
 
   const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
@@ -296,11 +290,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
-    ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_slice0);
+    ogsGatherScatter(platform->o_slice0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_slice0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
+    platform->o_slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -540,7 +534,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nscalar) {
     mesh_t* msh;
-    (nrs->cht) ? msh = nrs->meshT : msh = nrs->mesh;
+    (nrs->cht) ? msh = nrs->meshT : msh = nrs->meshV;
     nrs->cds = cdsSetup(nrs, msh, nrs->options, kernelInfoS);
   }
 
@@ -562,7 +556,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nscalar) {
     mesh_t* mesh;
-    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->mesh;
+    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->meshV;
     cds_t* cds = nrs->cds;
 
     for (int is = 0; is < cds->NSfields; is++) {
@@ -573,7 +567,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(!cds->compute[is]) continue;
  
       mesh_t* mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+      (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
@@ -878,13 +872,13 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->mesh = mesh;
+  cds->meshT[0] = mesh;
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   // set mesh, options
-  cds->meshV       = nrs->mesh;
+  cds->meshV       = nrs->meshV;
   cds->elementType = nrs->elementType;
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;
@@ -900,7 +894,6 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
   // time stepper
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  cds->o_rkC     = nrs->o_rkC;
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
@@ -911,19 +904,18 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   dlong Nlocal = mesh->Np * mesh->Nelements;
   dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
   mesh->Nlocal = Nlocal;
-  cds->Ntotal  = Ntotal;
+  cds->fieldOffset  = Ntotal;
 
   cds->vFieldOffset = nrs->fieldOffset;
   cds->fieldOffset  = nrs->fieldOffset;
-  cds->Nblock       = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
-  cds->o_wrk0 = nrs->o_wrk0;
-  cds->o_wrk1 = nrs->o_wrk1;
-  cds->o_wrk2 = nrs->o_wrk2;
-  cds->o_wrk3 = nrs->o_wrk3;
-  cds->o_wrk4 = nrs->o_wrk4;
-  cds->o_wrk5 = nrs->o_wrk5;
-  cds->o_wrk6 = nrs->o_wrk6;
+  platform->o_slice0 = platform->o_slice0;
+  platform->o_slice1 = platform->o_slice1;
+  platform->o_slice2 = platform->o_slice2;
+  platform->o_slice3 = platform->o_slice3;
+  platform->o_slice4 = platform->o_slice4;
+  platform->o_slice5 = platform->o_slice5;
+  platform->o_slice6 = platform->o_slice6;
 
   cds->gsh = nrs->gsh;
   
@@ -1009,7 +1001,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     }
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+    (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 

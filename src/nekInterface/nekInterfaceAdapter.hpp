@@ -14,7 +14,7 @@
 
 struct setupAide;
 
-typedef struct
+struct nekdata_private
 {
   double* param;
 
@@ -78,7 +78,7 @@ typedef struct
 
   /* mesh velocities */
   double *wx, *wy, *wz;
-} nekdata_private;
+};
 
 extern nekdata_private nekData;
 

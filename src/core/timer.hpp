@@ -6,13 +6,6 @@
 #include "nrssys.hpp"
 
 namespace timer{
-void tic(const std::string tag);
-void tic(const std::string tag,int ifSync);
-void toc(const std::string tag);
-void hostTic(const std::string tag);
-void hostTic(const std::string tag,int ifSync);
-void hostToc(const std::string tag);
-
 struct timer_t
 {
 timer_t(MPI_Comm comm,occa::device device,int ifsync = 0);

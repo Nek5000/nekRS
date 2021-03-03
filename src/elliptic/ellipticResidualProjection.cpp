@@ -23,6 +23,7 @@
    SOFTWARE.
 
  */
+#include "mesh.h"
 #include "elliptic.h"
 #include "ellipticResidualProjection.h"
 #include <iostream>
@@ -45,7 +46,20 @@ void ResidualProjection::updateProjectionSpace()
   
   if(numVecsProjection <= 0) return;
 
-  multiWeightedInnerProduct(o_xx, o_bb, numVecsProjection - 1);
+  platform->linAlg->multiWeightedInnerProd(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_bb,
+    platform->comm.mpiComm,
+    alpha,
+    Nfields * (numVecsProjection-1) * fieldOffset
+  );
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
+
   const dfloat norm_orig = alpha[numVecsProjection - 1];
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
@@ -76,7 +90,19 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   dfloat zero = 0.0;
   dfloat mone = -1.0;
   if(numVecsProjection <= 0) return;
-  multiWeightedInnerProduct(o_xx,o_r,0);
+  platform->linAlg->multiWeightedInnerProd(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_r,
+    platform->comm.mpiComm,
+    alpha,
+    Nfields * 0 * fieldOffset
+  );
+  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
@@ -125,29 +151,20 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
   fieldOffset(elliptic.Ntotal),
   Nfields(elliptic.Nfields),
-  Nblock(elliptic.Nblock),
-  Nblock2(elliptic.Nblock2),
   resNormFactor(elliptic.resNormFactor),
   rank(platform->comm.mpiRank),
   size(platform->comm.mpiCommSize),
   comm(platform->comm.mpiComm),
   blockSolver(elliptic.blockSolver),
-  o_tmp(elliptic.o_tmp),
-  o_tmp2(elliptic.o_tmp2),
-  o_wrk(elliptic.o_wrk),
   o_invDegree(elliptic.mesh->ogs->o_invDegree),
   o_rtmp(elliptic.o_rtmp),
   o_Ap(elliptic.o_Ap)
 {
   platform_t* platform = platform_t::getInstance();
-  tmp = elliptic.tmp;
   timestep = 0;
-  const dlong Nblock = elliptic.Nblock;
   numVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  work = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  multiwork = (dfloat*) calloc(Nblock * maxNumVecsProjection, sizeof(dfloat));
   o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
   o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
   o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
@@ -171,9 +188,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
       multiScaledAddwOffsetKernel = platform->device.buildKernel(filename.c_str(),
                                                                       "multiScaledAddwOffset",
                                                                       properties);
-      multiWeightedInnerProduct2Kernel = platform->device.buildKernel(filename.c_str(),
-                                                                           "multiWeightedInnerProduct2",
-                                                                           properties);
       accumulateKernel = platform->device.buildKernel(filename.c_str(), "accumulate", properties);
   }
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
@@ -182,7 +196,14 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                    };
   weightedNorm = [&](occa::memory& o_x)
                  {
-                   return ellipticWeightedNorm2(&elliptic, o_invDegree, o_x);
+                   mesh_t* mesh = elliptic.mesh;
+                   return platform->linAlg->weightedNorm2Many(
+                     mesh->Nlocal,
+                     elliptic.Nfields,
+                     elliptic.Ntotal,
+                     o_invDegree,
+                     o_x,
+                     platform->comm.mpiComm);
                  };
 }
 
@@ -221,28 +242,4 @@ void ResidualProjection::post(occa::memory& o_x)
   if(timestep < numTimeSteps)
     return;
   computePostProjection(o_x);
-}
-
-void ResidualProjection::multiWeightedInnerProduct(
-  occa::memory &o_a,
-  occa::memory &o_b,
-  const dlong offset)
-{
-#ifdef ELLIPTIC_ENABLE_TIMER
-  platform->timer.tic("dotp",1);
-#endif
-  multiWeightedInnerProduct2Kernel(Nlocal, fieldOffset, Nblock, numVecsProjection, Nfields * offset * fieldOffset, o_invDegree, o_a, o_b, o_wrk);
-
-  o_wrk.copyTo(multiwork, sizeof(dfloat) * numVecsProjection * Nblock);
-  for(dlong k = 0; k < numVecsProjection; ++k) {
-    dfloat accum = 0.0;
-    for(dlong n = 0; n < Nblock; ++n)
-      accum += multiwork[n + k * Nblock];
-    alpha[k] = accum;
-  }
-  MPI_Allreduce(MPI_IN_PLACE, alpha, numVecsProjection, MPI_DFLOAT, MPI_SUM, comm);
-  o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
-#ifdef ELLIPTIC_ENABLE_TIMER
-  platform->timer.toc("dotp");
-#endif
 }

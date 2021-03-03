@@ -1,6 +1,8 @@
 #if !defined(ogstypes_h)
 #define ogstypes_h 
 
+#define BLOCKSIZE 256
+
 //float data type
 #if 0
 #define DFLOAT_SINGLE

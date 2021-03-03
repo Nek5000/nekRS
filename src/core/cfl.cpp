@@ -3,12 +3,10 @@
 #include "linAlg.hpp"
 
 static int firstTime = 1;
-static dfloat* tmp;
-static occa::memory o_tmp;
 
 void setup(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   dfloat* dH;
@@ -29,16 +27,12 @@ void setup(nrs_t* nrs)
     nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
     free(dH);
   }
-
-  tmp = (dfloat*) calloc(nrs->Nblock, sizeof(dfloat));
-  o_tmp = platform->device.malloc(nrs->Nblock * sizeof(dfloat), tmp);
-
   firstTime = 0;
 }
 
 dfloat computeCFL(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
   if(firstTime) setup(nrs);
 
@@ -49,7 +43,7 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_idH,
                  nrs->fieldOffset,
                  nrs->o_U,
-                 nrs->o_wrk0);
+                 platform->o_slice0);
 
-  return platform->linAlg->max(mesh->Nlocal, nrs->o_wrk0, platform->comm.mpiComm);
+  return platform->linAlg->max(mesh->Nlocal, platform->o_slice0, platform->comm.mpiComm);
 }

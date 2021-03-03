@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "nrssys.hpp"
 
+#define ENABLE_TIMER
+
 using std::string;
 
 class linAlg_t {
@@ -153,6 +155,9 @@ public:
   // o_w.o_x.o_y
   dfloat weightedInnerProd(const dlong N, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
+  void multiWeightedInnerProd(const dlong N, const dlong NVec, const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
+                            occa::memory& o_y, MPI_Comm _comm,
+                            dfloat* result, const dlong offset = 0);
   dfloat weightedInnerProdMany(const dlong N,
                                const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
@@ -186,6 +191,7 @@ public:
   occa::kernel innerProdKernel;
   occa::kernel weightedInnerProdKernel;
   occa::kernel weightedInnerProdManyKernel;
+  occa::kernel multiWeightedInnerProdKernel;
 };
 
 #endif

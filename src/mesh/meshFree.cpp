@@ -67,11 +67,6 @@ void meshFree(mesh_t* mesh)
   // list of elements that are not needed for global gather-scatter
   if(mesh->localGatherElementList) free(mesh->localGatherElementList);
 
-  //list of fair pairs
-  if(mesh->EToFPairs) free(mesh->EToFPairs);
-  if(mesh->FPairsToE) free(mesh->FPairsToE);
-  if(mesh->FPairsToF) free(mesh->FPairsToF);
-
   if(mesh->vgeo) free(mesh->vgeo);
 
   if(mesh->ggeo) free(mesh->ggeo);
@@ -80,23 +75,7 @@ void meshFree(mesh_t* mesh)
   if(mesh->r) free(mesh->r);
   if(mesh->s) free(mesh->s);
   if(mesh->t) free(mesh->t);      // coordinates of local nodes
-  if(mesh->Dr) free(mesh->Dr);
-  if(mesh->Ds) free(mesh->Ds);
-  if(mesh->Dt) free(mesh->Dt);   // collocation differentiation matrices
-  if(mesh->Dmatrices) free(mesh->Dmatrices);
-  if(mesh->MM) free(mesh->MM);
-  if(mesh->invMM) free(mesh->invMM);             // reference mass matrix
   if(mesh->invLMM) free(mesh->invLMM);
-  if(mesh->Srr) free(mesh->Srr);
-  if(mesh->Srs) free(mesh->Srs);
-  if(mesh->Srt) free(mesh->Srt);   //element stiffness matrices
-  if(mesh->Ssr) free(mesh->Ssr);
-  if(mesh->Sss) free(mesh->Sss);
-  if(mesh->Sst) free(mesh->Sst);
-  if(mesh->Str) free(mesh->Str);
-  if(mesh->Sts) free(mesh->Sts);
-  if(mesh->Stt) free(mesh->Stt);
-  if(mesh->Smatrices) free(mesh->Smatrices);
   if(mesh->x) free(mesh->x);
   if(mesh->y) free(mesh->y);
   if(mesh->z) free(mesh->z);      // coordinates of physical nodes
@@ -113,9 +92,6 @@ void meshFree(mesh_t* mesh)
   if(mesh->mapP) free(mesh->mapP);       // list of surface nodes that are paired with -ve surface  nodes
   if(mesh->faceVertices) free(mesh->faceVertices);   // list of mesh vertices on each face
 
-  if(mesh->LIFT) free(mesh->LIFT);   // lift matrix
-  if(mesh->FMM) free(mesh->FMM);    // Face Mass Matrix
-
   if(mesh->sgeo) free(mesh->sgeo);
 
   if(mesh->cubr) free(mesh->cubr);
@@ -130,9 +106,6 @@ void meshFree(mesh_t* mesh)
   if(mesh->cubD) free(mesh->cubD);         // 1D differentiation matrix
   if(mesh->cubDiffInterp) free(mesh->cubDiffInterp);       // 1D weak differentiation matrix
   if(mesh->cubDW) free(mesh->cubDW);       // 1D weak differentiation matrix
-  if(mesh->cubDrW) free(mesh->cubDrW);      // 'r' weak differentiation matrix
-  if(mesh->cubDsW) free(mesh->cubDsW);      // 's' weak differentiation matrix
-  if(mesh->cubDtW) free(mesh->cubDtW);      // 't' weak differentiation matrix
   if(mesh->cubDWmatrices) free(mesh->cubDWmatrices);
 
   if(mesh->cubvgeo) free(mesh->cubvgeo);    //volume geometric data at cubature points
@@ -141,7 +114,6 @@ void meshFree(mesh_t* mesh)
 
   // surface integration node info
   if(mesh->intInterp) free(mesh->intInterp);   // interp from surface node to integration nodes
-  if(mesh->intLIFT) free(mesh->intLIFT);     // lift from surface integration nodes to W&B volume nodes
   if(mesh->intx) free(mesh->intx);
   if(mesh->inty) free(mesh->inty);
   if(mesh->intz) free(mesh->intz);   // coordinates of suface integration nodes

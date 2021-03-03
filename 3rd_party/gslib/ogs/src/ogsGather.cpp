@@ -31,6 +31,23 @@ SOFTWARE.
 
 #include "gather.tpp"
 
+static double startTime = 0.0;
+static double stopTime = 0.0;
+static double elapsedTime = 0.0;
+
+void ogsTic(MPI_Comm comm, int ifSync){
+  if(ifSync) MPI_Barrier(comm);
+  startTime = MPI_Wtime();
+}
+
+void ogsToc(){
+  stopTime = MPI_Wtime();
+  elapsedTime += (stopTime - startTime);
+}
+
+double ogsTime(){
+  return elapsedTime;
+}
 void ogsGather_add(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
 void ogsGather_mul(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
 void ogsGather_min(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
@@ -106,12 +123,12 @@ void ogsGatherFinish(occa::memory o_gv,
     ogs->device.finish();
 
 #ifdef OGS_ENABLE_TIMER
-  platform->timer.tic("gsMPI",1);
+  ogsTic(ogs->comm, 1);
 #endif
     // MPI based gather using libgs
     ogsHostGather(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  platform->timer.toc("gsMPI");
+  ogsToc();
 #endif
 
     // copy totally gather halo data back from HOST to DEVICE

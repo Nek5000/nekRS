@@ -41,7 +41,7 @@ static int Nblock;
 
 void velRecycling::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   string fileName;
@@ -65,7 +65,7 @@ void velRecycling::buildKernel(nrs_t* nrs)
 
 void velRecycling::copy()
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
   const dfloat zero = 0.0;
 
@@ -112,7 +112,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
   bID = bID_;
   wbar = wbar_;
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   const dlong Ntotal = mesh->Np * mesh->Nelements;

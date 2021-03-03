@@ -70,8 +70,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   if(NnotInterior > 0)
     mesh->o_notInternalElementIds = platform->device.malloc(NnotInterior * sizeof(dlong),
                                                         notInternalElementIds);
-  mesh->LIFT = (dfloat*) calloc(mesh->Np * mesh->Nfaces * mesh->Nfp, sizeof(dfloat));
-  mesh->o_LIFTT = platform->device.malloc(1 * sizeof(dfloat)); // dummy
 
   dfloat* cubDWT = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
   dfloat* cubProjectT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
@@ -115,12 +113,11 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
 
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
   mesh->o_DW = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
-  mesh->o_Dmatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
   dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq,sizeof(dfloat));
   for(int j = 0; j < mesh->Nq; ++j)
     for(int i = 0; i < mesh->Nq; ++i)
       DT[i * mesh->Nq + j] = mesh->D[j * mesh->Nq + i];
-  mesh->o_Smatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
+  mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
   free(DT);
 
   mesh->o_vgeo =

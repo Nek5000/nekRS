@@ -24,15 +24,15 @@
 
  */
 
-typedef struct
+struct nonZero_t
 {
   hlong row;
   hlong col;
   int ownerRank;
   dfloat val;
-}nonZero_t;
+};
 
-typedef struct
+struct precon_t
 {
   long long int preconBytes;
 
@@ -115,8 +115,6 @@ typedef struct
 
   // block Jacobi precon
   occa::memory o_invMM;
-  occa::kernel blockJacobiKernel;
-  occa::kernel partialblockJacobiKernel;
 
   //dummy almond level to store the OAS smoothing op
   // agmgLevel *OASLevel;
@@ -159,4 +157,4 @@ typedef struct
   ogs_t* oasOgs;
 
   bool additive;
-} precon_t;
+};

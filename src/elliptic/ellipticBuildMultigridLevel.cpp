@@ -90,11 +90,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     free(mesh->z);
 
   dlong Ntotal = mesh->Np * mesh->Nelements;
-  dlong Nblock = mymax(1,(Ntotal + BLOCKSIZE - 1) / BLOCKSIZE);
-  dlong Nblock2 = mymax(1,(Nblock + BLOCKSIZE - 1) / BLOCKSIZE);
-
-  elliptic->Nblock = Nblock;
-  elliptic->Nblock2 = Nblock2;
 
   if (elliptic->elementType == HEXAHEDRA) {
     //lumped mass matrix
@@ -113,8 +108,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         }
 
     mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_Dmatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_Smatrices = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
+    mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
 
     mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
 
@@ -139,8 +133,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
 
-    mesh->o_cubggeo = mesh->o_ggeo; // dummy
-
     mesh->o_vmapM =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapM);
@@ -149,8 +141,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapP);
 
-    mesh->LIFT = baseElliptic->mesh->LIFT; //dummy buffer
-    mesh->o_LIFTT = baseElliptic->mesh->o_LIFTT; //dummy buffer
   }
 
   mesh->o_vmapM =
@@ -169,10 +159,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   elliptic->allNeumannPenalty = 0;
   elliptic->allNeumannScale = 0;
-
-  elliptic->tmp = (dfloat*) calloc(Nblock, sizeof(dfloat));
-  elliptic->o_tmp = platform->device.malloc(Nblock * sizeof(dfloat), elliptic->tmp);
-  elliptic->o_tmp2 = platform->device.malloc(Nblock2 * sizeof(dfloat), elliptic->tmp);
 
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
@@ -243,35 +229,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   {
       kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
 
-      // add custom defines
-      kernelInfo["defines/" "p_NpP"] = (mesh->Np + mesh->Nfp * mesh->Nfaces);
       kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
-
-      int Nmax = mymax(mesh->Np, mesh->Nfaces * mesh->Nfp);
-      kernelInfo["defines/" "p_Nmax"] = Nmax;
-
-      int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-      kernelInfo["defines/" "p_maxNodes"] = maxNodes;
-
-      int NblockV = mymax(1,BLOCKSIZE / mesh->Np); // works for CUDA
-      kernelInfo["defines/" "p_NblockV"] = NblockV;
-
-      int one = 1; //set to one for now. TODO: try optimizing over these
-      kernelInfo["defines/" "p_NnodesV"] = one;
-
-      int NblockS = mymax(1,BLOCKSIZE / maxNodes); // works for CUDA
-      kernelInfo["defines/" "p_NblockS"] = NblockS;
-
-      int NblockP = mymax(1,BLOCKSIZE / (4 * mesh->Np)); // get close to BLOCKSIZE threads
-      kernelInfo["defines/" "p_NblockP"] = NblockP;
-
-      int NblockG;
-      if(mesh->Np <= 32) NblockG = ( 32 / mesh->Np );
-      else NblockG = mymax(1,BLOCKSIZE / mesh->Np);
-      kernelInfo["defines/" "p_NblockG"] = NblockG;
-
-      kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
-
       occa::properties AxKernelInfo = kernelInfo;
       filename = oklpath + "ellipticAx" + suffix + ".okl";
       kernelName = "ellipticAx" + suffix;
@@ -318,54 +276,16 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   {
       filename = oklpath + "ellipticBlockJacobiPrecon.okl";
       kernelName = "ellipticBlockJacobiPrecon";
-      elliptic->precon->blockJacobiKernel =
-        platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
-
-      kernelName = "ellipticPartialBlockJacobiPrecon";
-      elliptic->precon->partialblockJacobiKernel = platform->device.buildKernel(filename.c_str(),
-                                                                            kernelName.c_str(),
-                                                                            kernelInfo);
-
       //sizes for the coarsen and prolongation kernels. degree NFine to degree N
       int NqFine   = (Nf + 1);
       int NqCoarse = (Nc + 1);
       kernelInfo["defines/" "p_NqFine"] = Nf + 1;
       kernelInfo["defines/" "p_NqCoarse"] = Nc + 1;
 
-      int NpFine, NpCoarse;
-      switch(elliptic->elementType) {
-      case TRIANGLES:
-        NpFine   = (Nf + 1) * (Nf + 2) / 2;
-        NpCoarse = (Nc + 1) * (Nc + 2) / 2;
-        break;
-      case QUADRILATERALS:
-        NpFine   = (Nf + 1) * (Nf + 1);
-        NpCoarse = (Nc + 1) * (Nc + 1);
-        break;
-      case TETRAHEDRA:
-        NpFine   = (Nf + 1) * (Nf + 2) * (Nf + 3) / 6;
-        NpCoarse = (Nc + 1) * (Nc + 2) * (Nc + 3) / 6;
-        break;
-      case HEXAHEDRA:
-        NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
-        NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
-        break;
-      }
+      const int NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
+      const int NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
       kernelInfo["defines/" "p_NpFine"] = NpFine;
       kernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
-
-      int NblockVFine = BLOCKSIZE / NpFine;
-      int NblockVCoarse = BLOCKSIZE / NpCoarse;
-      kernelInfo["defines/" "p_NblockVFine"] = NblockVFine;
-      kernelInfo["defines/" "p_NblockVCoarse"] = NblockVCoarse;
-
-      // Use the same kernel with quads for the following kenels
-      if(elliptic->dim == 3) {
-        if(elliptic->elementType == QUADRILATERALS)
-          suffix = strdup("Quad2D");
-        if(elliptic->elementType == TRIANGLES)
-          suffix = strdup("Tri2D");
-      }
 
       filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
       kernelName = "ellipticPreconCoarsen" + suffix;
@@ -377,36 +297,32 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   if(elliptic->elementType == HEXAHEDRA) {
-    if(options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-      if(options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
-        // pack gllz, gllw, and elementwise EXYZ
-        dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
+    // pack gllz, gllw, and elementwise EXYZ
+    dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
 
-        int sk = 0;
-        for(int n = 0; n < mesh->Nq; ++n)
-          gllzw[sk++] = mesh->gllz[n];
-        for(int n = 0; n < mesh->Nq; ++n)
-          gllzw[sk++] = mesh->gllw[n];
+    int sk = 0;
+    for(int n = 0; n < mesh->Nq; ++n)
+      gllzw[sk++] = mesh->gllz[n];
+    for(int n = 0; n < mesh->Nq; ++n)
+      gllzw[sk++] = mesh->gllw[n];
 
-        elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
-        free(gllzw);
-      }
-    }
+    elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
+    free(gllzw);
   }
 
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
-    mesh->o_DmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
-    mesh->o_SmatricesPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
                                        mesh->o_ggeo);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_DmatricesPfloat,
-                                       mesh->o_Dmatrices);
+                                       elliptic->mesh->o_DPfloat,
+                                       mesh->o_D);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_SmatricesPfloat,
-                                       mesh->o_Smatrices);
+                                       elliptic->mesh->o_DTPfloat,
+                                       mesh->o_DT);
   }
 
   return elliptic;

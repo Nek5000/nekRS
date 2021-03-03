@@ -329,10 +329,26 @@ dfloat MGLevel::maxEigSmoothAx()
   }
 
   o_Vx.copyFrom(Vx); //copy to device
-  dfloat norm_vo = ellipticWeightedInnerProduct(elliptic, elliptic->o_invDegree, o_Vx, o_Vx);
+  dfloat norm_vo = platform->linAlg->weightedInnerProdMany(
+    Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    elliptic->o_invDegree,
+    o_Vx,
+    o_Vx,
+    platform->comm.mpiComm
+  );
   norm_vo = sqrt(norm_vo);
 
-  ellipticScaledAdd(elliptic, 1. / norm_vo, o_Vx, 0., o_V[0]);
+  platform->linAlg->axpbyMany(
+    Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    1. / norm_vo,
+    o_Vx,
+    0.0,
+    o_V[0]
+  );
 
   for(int j = 0; j < k; j++) {
     // v[j+1] = invD*(A*v[j])
@@ -345,23 +361,49 @@ dfloat MGLevel::maxEigSmoothAx()
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {
       // H(i,j) = v[i]'*A*v[j]
-      dfloat hij =
-        ellipticWeightedInnerProduct(elliptic, elliptic->o_invDegree, o_V[i], o_V[j + 1]);
+      dfloat hij = platform->linAlg->weightedInnerProdMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_V[i],
+        o_V[j+1],
+        platform->comm.mpiComm
+      );
 
       // v[j+1] = v[j+1] - hij*v[i]
-      ellipticScaledAdd(elliptic, -hij, o_V[i], 1., o_V[j + 1]);
+      platform->linAlg->axpbyMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        -hij,
+        o_V[i],
+        1.0,
+        o_V[j+1]
+      );
 
       H[i + j * k] = (double) hij;
     }
 
     if(j + 1 < k) {
       // v[j+1] = v[j+1]/||v[j+1]||
-      dfloat norm_vj = ellipticWeightedInnerProduct(elliptic,
-                                                    elliptic->o_invDegree,
-                                                    o_V[j + 1],
-                                                    o_V[j + 1]);
+      dfloat norm_vj = platform->linAlg->weightedInnerProdMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_V[j+1],
+        o_V[j+1],
+        platform->comm.mpiComm
+      );
       norm_vj = sqrt(norm_vj);
-      ellipticScaledAdd(elliptic, 1 / norm_vj, o_V[j + 1], 0., o_V[j + 1]);
+      platform->linAlg->scaleMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        1 / norm_vj,
+        o_V[j+1]
+      );
 
       H[j + 1 + j * k] = (double) norm_vj;
     }

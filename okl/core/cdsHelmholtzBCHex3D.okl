@@ -55,7 +55,6 @@
                                  @restrict const dfloat*  sgeo,
                                  @restrict const dlong*  vmapM,
                                  @restrict const int*  EToBM,
-                                 @restrict const dlong*  sMT,
                                  const dlong scalarId,
                                  const dfloat time,
                                  const dlong offset,

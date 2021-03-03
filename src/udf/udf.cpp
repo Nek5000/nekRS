@@ -107,7 +107,7 @@ void udfLoad(void)
 occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
 {
   int rank;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
   MPI_Comm_rank(platform->comm.mpiComm, &rank);
 

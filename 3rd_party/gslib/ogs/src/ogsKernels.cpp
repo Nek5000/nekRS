@@ -27,7 +27,6 @@ SOFTWARE.
 #include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsKernels.hpp"
-#include "platform.hpp"
 
 namespace ogs {
 
@@ -160,8 +159,10 @@ namespace ogs {
 
 void ogs::initKernels(MPI_Comm comm, occa::device device) {
 
-  platform_t* platform = platform_t::getInstance();
-  ogs::kernelInfo = platform->kernelInfo;
+  ogs::kernelInfo["defines/ " "p_blockSize"] = BLOCKSIZE;
+  ogs::kernelInfo["defines/ " "dlong"] = dlongString;
+  ogs::kernelInfo["defines/ " "hlong"] = hlongString;
+
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);

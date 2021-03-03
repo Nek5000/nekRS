@@ -64,22 +64,55 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     rdotz2 = rdotz1;
 
     // r.z
-    rdotz1 = ellipticWeightedInnerProduct(elliptic, o_weight, o_r, o_z);
+    rdotz1 = platform->linAlg->weightedInnerProdMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      o_weight,
+      o_r,
+      o_z,
+      platform->comm.mpiComm
+    );
     if(flexible) {
-      dfloat zdotAp = ellipticWeightedInnerProduct(elliptic, o_weight, o_z, o_Ap);
+      const dfloat zdotAp = platform->linAlg->weightedInnerProdMany(
+        Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        o_weight,
+        o_z,
+        o_Ap,
+        platform->comm.mpiComm
+      );
       beta = -alpha * zdotAp / rdotz2;
     } else {
       beta = (iter == 1) ? 0 : rdotz1/rdotz2;
     }
 
     // p = z + beta*p
-    ellipticScaledAdd(elliptic, 1.f, o_z, beta, o_p);
+    const dlong Nlocal = mesh->Np * mesh->Nelements;
+    platform->linAlg->axpbyMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      o_z,
+      beta,
+      o_p
+    );
 
     // A*p
     ellipticOperator(elliptic, o_p, o_Ap, dfloatString);
 
     // dot(p,A*p)
-    pAp =  ellipticWeightedInnerProduct(elliptic, o_weight, o_p, o_Ap);
+    pAp = platform->linAlg->weightedInnerProdMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      o_weight,
+      o_p,
+      o_Ap,
+      platform->comm.mpiComm
+    );
     alpha = rdotz1 / pAp;
 
     //  x <= x + alpha*p

@@ -47,7 +47,7 @@ static dfloat coeff[] = {
 
 void RANSktau::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   occa::properties kernelInfo = *(nrs->kernelInfo);
@@ -88,7 +88,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
 
 void RANSktau::updateProperties()
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
 
   occa::memory o_mue  = nrs->o_mue;
@@ -113,13 +113,13 @@ occa::memory RANSktau::o_mue_t()
 
 void RANSktau::updateSourceTerms()
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
   
 
-  occa::memory o_OiOjSk  = nrs->o_wrk0;
-  occa::memory o_SijMag2 = nrs->o_wrk1;
-  occa::memory o_SijOij  = nrs->o_wrk2;
+  occa::memory o_OiOjSk  = platform->o_slice0;
+  occa::memory o_SijMag2 = platform->o_slice1;
+  occa::memory o_SijOij  = platform->o_slice2;
 
   occa::memory o_FS      = cds->o_FS     + kFieldIndex * cds->fieldOffset * sizeof(dfloat);
   occa::memory o_BFDiag  = cds->o_BFDiag + kFieldIndex * cds->fieldOffset * sizeof(dfloat);
@@ -128,7 +128,7 @@ void RANSktau::updateSourceTerms()
   SijOijKernel(mesh->Nelements,
                nrs->fieldOffset,
                mesh->o_vgeo,
-               mesh->o_Dmatrices,
+               mesh->o_D,
                nrs->o_U,
                o_SijOij);
 
@@ -145,7 +145,7 @@ void RANSktau::updateSourceTerms()
     nrs->fieldOffset,
     0,
     1.0,
-    nrs->mesh->o_invLMM,
+    nrs->meshV->o_invLMM,
     o_SijOij);
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,
@@ -161,7 +161,7 @@ void RANSktau::updateSourceTerms()
                 rho,
                 mueLam,
                 mesh->o_vgeo,
-                mesh->o_Dmatrices,
+                mesh->o_D,
                 o_k,
                 o_tau,
                 o_SijMag2,
@@ -188,7 +188,7 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
   kFieldIndex = ifld;
 
   cds_t* cds = nrs->cds;
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
 
   if(coeffIn) memcpy(coeff, coeffIn, sizeof(coeff));
 
