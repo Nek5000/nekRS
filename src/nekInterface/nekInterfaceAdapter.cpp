@@ -489,26 +489,6 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
     system(buf);
   }
 
-  // create makefile
-  sprintf(buf,"%s/makefile",cache_dir);
-  if(access(buf,F_OK) != 0) {
-    char fflags[BUFSIZ];
-    char cflags[BUFSIZ];
-
-    //TODO: Add support for different compilers
-    sprintf(fflags, "\"${NEKRS_FFLAGS} -mcmodel=medium -fPIC -fcray-pointer -I../../ \"");
-    sprintf(cflags, "\"${NEKRS_CXXFLAGS} -mcmodel=medium -fPIC -I${NEKRS_NEKINTERFACE_DIR}\"");
-
-    sprintf(buf, "cd %s && yes n 2>/dev/null | "
-	    "FC=\"${NEKRS_FC}\" CC=\"${NEKRS_CC}\" "
-	    "FFLAGS=%s CFLAGS=%s " 
-            "PPLIST=\"${NEKRS_NEK5000_PPLIST}\" "
-	    "NEK_SOURCE_ROOT=%s "
-            "%s/bin/nekconfig %s >build.log 2>&1", 
-	    cache_dir, fflags,cflags, nek5000_dir, nek5000_dir, casename);
-    system(buf);
-  }
- 
   // build 
   char libFile[BUFSIZ];
   sprintf(libFile,"%s/lib%s.so",cache_dir,casename);
@@ -520,10 +500,10 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   if(recompile) {
     printf("building nek ... "); fflush(stdout);
     double tStart = MPI_Wtime();
-    sprintf(buf, "cd %s && make -j4 NEKRS_WORKING_DIR=%s -f %s/Makefile lib usr libnekInterface "
-            ">build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
+    sprintf(buf, "cd %s && cp %s/makefile . && make -s -j4 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s -f %s/Makefile lib usr libnekInterface",
+            cache_dir, nek5000_dir, nek5000_dir, casename, cache_dir, cache_dir, nekInterface_dir);
     if(system(buf)) {
-      printf("\nCannot compile nek5000 lib, see %s/build.log for details!\n", cache_dir);
+      printf("\nCannot compile nek5000 lib!\n", cache_dir);
       return EXIT_FAILURE;
     } 
     printf("done (%gs)\n\n", MPI_Wtime() - tStart);

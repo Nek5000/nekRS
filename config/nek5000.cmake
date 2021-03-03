@@ -128,6 +128,9 @@ install(DIRECTORY ${NEK5000_SOURCE_DIR}/core DESTINATION nek5000
 
 install(PROGRAMS ${NEK5000_SOURCE_DIR}/bin/nekconfig DESTINATION nek5000/bin)
 
+ExternalProject_Get_property(nek5000_deps BINARY_DIR)
+install(FILES ${BINARY_DIR}/makefile DESTINATION nek5000)
+
 install(FILES ${NEK5000_GS_LIB_DIR}/libgs.a DESTINATION nek5000/3rd_party/gslib/lib)
 install(DIRECTORY ${NEK5000_GS_INCLUDE_DIR} DESTINATION nek5000/3rd_party/gslib)
 

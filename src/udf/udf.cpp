@@ -42,28 +42,16 @@ int udfBuild(const char* udfFile, int buildOnly)
 
   if(isFileNewer(udfFile, udfFileCache)) {
     printf("building udf ... "); fflush(stdout);
-    if(buildOnly) {
-      printf("\n");
-      sprintf(cmd,
-              "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-               cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
-               make",
-              cache_dir,
-              cache_dir,
-              udf_dir,
-              udf_dir,
-              abs_path);
-    } else {	  
-      sprintf(cmd,
-              "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-               cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
-               make >>build.log 2>&1",
-              cache_dir,
-              cache_dir,
-              udf_dir,
-              udf_dir,
-              abs_path);
-    }
+    printf("\n");
+    sprintf(cmd,
+            "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
+             cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
+             make",
+             cache_dir,
+             cache_dir,
+             udf_dir,
+             udf_dir,
+            abs_path);
     if(system(cmd)) { 
       printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
       return EXIT_FAILURE;
