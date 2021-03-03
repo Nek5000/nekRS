@@ -109,7 +109,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NVfields = 3;
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
 
-  nrs->SNrk = 0;
+  nrs->SNrk = 4;
 
 
   mesh->Nfields = 1;
@@ -388,7 +388,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       kernelName = "nrsCurl" + suffix;
       nrs->curlKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-
 
       fileName = oklpath + "nrsGradient" + suffix + ".okl";
       kernelName = "nrsGradientVolume" + suffix;

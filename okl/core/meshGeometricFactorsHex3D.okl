@@ -203,7 +203,7 @@ SOFTWARE.
 
             /** update the mass matrix **/
             massMatrix[p_Np*e + n] = JW;
-            vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_IJWID] = 1.f/JW;
+            vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_IJWID] = 1./JW;
   
             ggeo[p_Nggeo*p_Np*e + n + p_Np*p_G00ID] = JW*(rx*rx+ry*ry+rz*rz);
             ggeo[p_Nggeo*p_Np*e + n + p_Np*p_G01ID] = JW*(rx*sx+ry*sy+rz*sz);

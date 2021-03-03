@@ -39,6 +39,8 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   options.getArgs("SOLVER TOLERANCE", tol);
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
+  //printf("RHS norm %.15e\n", ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor));
+
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 

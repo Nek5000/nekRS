@@ -163,14 +163,14 @@ int main(int argc, char** argv)
     else
       dt = nekrs::dt();
 
-    nekrs::runStep(time, dt, tStep);
-    time += dt;
-
-    int outputStep = nekrs::outputStep(time, tStep);
+    int outputStep = nekrs::outputStep(time+dt, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
     if (lastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
     nekrs::outputStep(outputStep);
+
+    nekrs::runStep(time, dt, tStep);
+    time += dt;
 
     if (outputStep) nekrs::outfld(time); 
 

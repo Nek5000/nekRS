@@ -234,7 +234,7 @@ void set_function_handles(const char* session_in,int verbose)
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   sprintf(lib_session, "%s/nek5000/lib%s.so", cache_dir, session_in);
 
-  void* handle = dlopen(lib_session,RTLD_NOW | RTLD_GLOBAL);
+  void* handle = dlopen(lib_session,RTLD_NOW | RTLD_LOCAL);
   if(!handle) {
     fprintf(stderr, "%s\n", dlerror());
     ABORT(EXIT_FAILURE);
@@ -506,7 +506,6 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
 	    "NEK_SOURCE_ROOT=%s "
             "%s/bin/nekconfig %s >build.log 2>&1", 
 	    cache_dir, fflags,cflags, nek5000_dir, nek5000_dir, casename);
-
     system(buf);
   }
  
@@ -521,7 +520,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   if(recompile) {
     printf("building nek ... "); fflush(stdout);
     double tStart = MPI_Wtime();
-    sprintf(buf, "cd %s && NEKRS_WORKING_DIR=%s make -j4 -f %s/Makefile lib usr libnekInterface "
+    sprintf(buf, "cd %s && make -j4 NEKRS_WORKING_DIR=%s -f %s/Makefile lib usr libnekInterface "
             ">build.log 2>&1", cache_dir, cache_dir, nekInterface_dir);
     if(system(buf)) {
       printf("\nCannot compile nek5000 lib, see %s/build.log for details!\n", cache_dir);

@@ -69,8 +69,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     timer::toc("makeq");
     for (int s = cds->nBDF; s > 1; s--) {
       const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
-      cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
       cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+    }
+    for (int s = cds->nEXT; s > 1; s--) {
+      const dlong Nbyte = cds->fieldOffset * cds->NSfields * sizeof(dfloat);
+      cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
   }
 
@@ -81,8 +84,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     timer::toc("makef");
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-      nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
       nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+    }
+    for (int s = nrs->nEXT; s > 1; s--) {
+      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
   }
 
@@ -147,17 +153,17 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     converged = true;
     if(udf.converged) converged = udf.converged(nrs, stage);
 
+    printInfo(nrs, time, tstep, tElapsedStep, tElapsed);
+
     platform->timer.tic("udfExecuteStep", 1);
     if(isOutputStep && converged) {
       nek::ifoutfld(1);
       nrs->isOutputStep = 1;
     } 
-    if(udf.executeStep) udf.executeStep(nrs, time, tstep);
+    if(udf.executeStep) udf.executeStep(nrs, time+dt, tstep);
     nek::ifoutfld(0);
     nrs->isOutputStep = 0;
     platform->timer.toc("udfExecuteStep");
-
-    printInfo(nrs, time, tstep, tElapsedStep, tElapsed);
   }
   while(!converged);
 
@@ -226,7 +232,6 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->mesh;
-  
 
   if(udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
@@ -1182,11 +1187,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
   const int enforceVerbose = tstep < 101;
   const dfloat cfl = computeCFL(nrs);
   if(platform->comm.mpiRank == 0) {
-    printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
-           tstep, time + nrs->dt[0], nrs->dt[0], cfl);
- 
     if(nrs->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose) {
-      printf("  eTime= %.2e, %.5e s\n", tElapsedStep, tElapsed);
       if(nrs->flow) {
         elliptic_t *solver = nrs->pSolver;
         printf("  P  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", 
@@ -1195,7 +1196,6 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
         if(nrs->uvwSolver) {
           solver = nrs->uvwSolver;
           printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
- 
                solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
         } else {
           solver = nrs->uSolver;
@@ -1215,19 +1215,21 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
         printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
                solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
       }	
-    }  else {
-      if(nrs->flow) {
-        if(nrs->uvwSolver)
-          printf("  UVW: %d  P: %d", nrs->uvwSolver->Niter, nrs->pSolver->Niter);
-        else
-          printf("  U: %d  V: %d  W: %d  P: %d", 
-         	       nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter, nrs->pSolver->Niter);
-      }
-      for(int is = 0; is < nrs->Nscalar; is++)
-        if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
- 
-      printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
     }
+    printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
+           tstep, time + nrs->dt[0], nrs->dt[0], cfl);
+
+    if(nrs->flow) {
+      if(nrs->uvwSolver)
+        printf("  UVW: %d  P: %d", nrs->uvwSolver->Niter, nrs->pSolver->Niter);
+      else
+        printf("  U: %d  V: %d  W: %d  P: %d", 
+       	       nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter, nrs->pSolver->Niter);
+    }
+    for(int is = 0; is < nrs->Nscalar; is++)
+      if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
+ 
+    printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
   }
 
   if(cfl > 30 || std::isnan(cfl)) {

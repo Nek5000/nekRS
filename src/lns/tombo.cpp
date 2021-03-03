@@ -154,8 +154,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->o_U,
     nrs->o_wrk3);
 
-  nrs->o_wrk2.copyFrom(nrs->o_wrk3, nrs->Ntotal * sizeof(dfloat));
-
   nrs->o_wrk1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
   ellipticSolve(nrs->pSolver, nrs->o_wrk3, nrs->o_wrk1);
 
@@ -222,7 +220,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
     nrs->o_rho,
     nrs->o_wrk3);
 
-  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage < 2) { 
+  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) { 
     nrs->o_wrk0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     if (nrs->uvwSolver) {
       if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,

@@ -32,7 +32,7 @@ double startTime(void)
   return val;
 }
 
-void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
+void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
            int ciMode, string cacheDir, string _setupFile,
            string _backend, string _deviceID)
 {
@@ -80,11 +80,19 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   // configure device
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
+
+  if (buildOnly) {
+    cout << "performing dry-run to jit-compile for >="
+         << commSizeTarget
+         << " MPI tasks ...\n" << endl;
+    fflush(stdout);
+  }
+
   platform->linAlg = linAlg_t::getInstance();
   nrs->linAlg = platform->linAlg;
 
   if (buildOnly) {
-    dryRun(options, sizeTarget);
+    dryRun(options, commSizeTarget);
     return;
   }
 
@@ -267,10 +275,6 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  cout << "performing dry-run to jit-compile for >="
-       << npTarget
-       << " MPI tasks ...\n" << endl;
-
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
 
@@ -284,7 +288,7 @@ static void dryRun(setupAide &options, int npTarget)
     int err = 0;
     if(rank == 0) err = udfBuild(udfFile.c_str(), 1);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) ABORT(EXIT_FAILURE);;
+    if(err) ABORT(EXIT_FAILURE);
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);

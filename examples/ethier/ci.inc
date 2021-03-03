@@ -12,7 +12,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("9"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("VISCOSITY", string("0.01"));
   options.setArgs("DENSITY", string("1"));
   options.setArgs("NUMBER OF SCALARS", string("2"));

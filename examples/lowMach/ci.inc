@@ -11,7 +11,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("7"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("END TIME", string("0.3"));
   options.setArgs("DT", string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));

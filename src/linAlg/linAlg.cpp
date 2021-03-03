@@ -72,6 +72,10 @@ void linAlg_t::setup() {
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
   oklDir += "/okl/linAlg/";
 
+  MPI_Barrier(platform->comm.mpiComm);
+  double tStartLoadKernel = MPI_Wtime();
+  if(platform->comm.mpiRank == 0)  printf("loading linAlg kernels ... "); fflush(stdout);
+
   {
       if (fillKernel.isInitialized()==false)
         fillKernel = device.buildKernel(oklDir + 
@@ -214,6 +218,8 @@ void linAlg_t::setup() {
                                         "weightedInnerProdMany",
                                         kernelInfo);
   }
+
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 }
 
 linAlg_t::~linAlg_t() {

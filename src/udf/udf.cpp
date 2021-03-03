@@ -46,8 +46,7 @@ int udfBuild(const char* udfFile, int buildOnly)
       printf("\n");
       sprintf(cmd,
               "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-               CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-               cmake -Wno-dev -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
+               cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
                make",
               cache_dir,
               cache_dir,
@@ -57,8 +56,7 @@ int udfBuild(const char* udfFile, int buildOnly)
     } else {	  
       sprintf(cmd,
               "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-               CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-               cmake -Wno-dev -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
+               cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
                make >>build.log 2>&1",
               cache_dir,
               cache_dir,
