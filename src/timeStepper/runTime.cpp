@@ -532,7 +532,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
 
       o_u1.copyFrom(o_p0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
-      for(int rk = 0; rk < nrs->SNrk; ++rk) {
+      for(int rk = 0; rk < nrs->nRK; ++rk) {
         occa::memory o_rhs;
         if(rk == 0) o_rhs = o_r1;
         if(rk == 1) o_rhs = o_r2;
@@ -545,23 +545,23 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
         switch(nrs->nEXT) {
         case 1:
-          nrs->extC[0] = 1;
-          nrs->extC[1] = 0;
-          nrs->extC[2] = 0;
+          nrs->coeffRK[0] = 1;
+          nrs->coeffRK[1] = 0;
+          nrs->coeffRK[2] = 0;
           break;
         case 2:
-          nrs->extC[0] = (t - tn1) / (tn0 - tn1);
-          nrs->extC[1] = (t - tn0) / (tn1 - tn0);
-          nrs->extC[2] = 0;
+          nrs->coeffRK[0] = (t - tn1) / (tn0 - tn1);
+          nrs->coeffRK[1] = (t - tn0) / (tn1 - tn0);
+          nrs->coeffRK[2] = 0;
           break;
         case 3:
-          nrs->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
-          nrs->extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
-          nrs->extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
+          nrs->coeffRK[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
+          nrs->coeffRK[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
+          nrs->coeffRK[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        nrs->o_extC.copyFrom(nrs->extC);
-        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_extC, mesh->o_LMM, o_bmst);
+        nrs->o_coeffRK.copyFrom(nrs->coeffRK);
+        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->fieldOffset, nrs->o_coeffRK, mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
           mesh->Nlocal,
           nrs->NVfields,
@@ -586,7 +586,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -600,7 +600,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -622,7 +622,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -636,7 +636,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
               0,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -717,7 +717,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
       platform->o_slice0.copyFrom(platform->o_slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),
                            nrs->NVfields * nrs->fieldOffset * sizeof(dfloat),0);
 
-      for(int rk = 0; rk < nrs->SNrk; ++rk) {
+      for(int rk = 0; rk < nrs->nRK; ++rk) {
         // Extrapolate velocity to subProblem stage time
         const dfloat t   = tstage +  sdt * nrs->Srkc[rk];
         const dfloat tn0 = time;
@@ -725,22 +725,22 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
         switch(nrs->nEXT) {
         case 1:
-          nrs->extC[0] = 1;
-          nrs->extC[1] = 0;
-          nrs->extC[2] = 0;
+          nrs->coeffRK[0] = 1;
+          nrs->coeffRK[1] = 0;
+          nrs->coeffRK[2] = 0;
           break;
         case 2:
-          nrs->extC[0] = (t - tn1) / (tn0 - tn1);
-          nrs->extC[1] = (t - tn0) / (tn1 - tn0);
-          nrs->extC[2] = 0;
+          nrs->coeffRK[0] = (t - tn1) / (tn0 - tn1);
+          nrs->coeffRK[1] = (t - tn0) / (tn1 - tn0);
+          nrs->coeffRK[2] = 0;
           break;
         case 3:
-          nrs->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
-          nrs->extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
-          nrs->extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
+          nrs->coeffRK[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
+          nrs->coeffRK[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
+          nrs->coeffRK[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        nrs->o_extC.copyFrom(nrs->extC);
+        nrs->o_coeffRK.copyFrom(nrs->coeffRK);
 
         if(mesh->NglobalGatherElements) {
           if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -756,7 +756,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice6);
@@ -770,7 +770,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice6);
@@ -798,7 +798,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice6);
@@ -812,7 +812,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              nrs->o_extC,
+              nrs->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice6);
@@ -879,7 +879,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
     for(int ststep = 0; ststep < cds->Nsubsteps; ++ststep) {
       const dfloat tstage = tsub + ststep * sdt;
       o_u1.copyFrom(o_p0, mesh->Nlocal * sizeof(dfloat));
-      for(int rk = 0; rk < cds->SNrk; ++rk)
+      for(int rk = 0; rk < cds->nRK; ++rk)
       {
         occa::memory o_rhs;
         if(rk == 0) o_rhs = o_r1;
@@ -894,23 +894,23 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
         switch(cds->nEXT) {
         case 1:
-          cds->extC[0] = 1;
-          cds->extC[1] = 0;
-          cds->extC[2] = 0;
+          cds->coeffRK[0] = 1;
+          cds->coeffRK[1] = 0;
+          cds->coeffRK[2] = 0;
           break;
         case 2:
-          cds->extC[0] = (t - tn1) / (tn0 - tn1);
-          cds->extC[1] = (t - tn0) / (tn1 - tn0);
-          cds->extC[2] = 0;
+          cds->coeffRK[0] = (t - tn1) / (tn0 - tn1);
+          cds->coeffRK[1] = (t - tn0) / (tn1 - tn0);
+          cds->coeffRK[2] = 0;
           break;
         case 3:
-          cds->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
-          cds->extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
-          cds->extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
+          cds->coeffRK[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
+          cds->coeffRK[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
+          cds->coeffRK[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        cds->o_extC.copyFrom(cds->extC);
-        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, cds->nEXT, cds->fieldOffset, cds->o_extC, mesh->o_LMM, o_bmst);
+        cds->o_coeffRK.copyFrom(cds->coeffRK);
+        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, cds->nEXT, cds->fieldOffset, cds->o_coeffRK, mesh->o_LMM, o_bmst);
         linAlg->aydx(mesh->Nlocal, 1.0, o_bmst, o_u1);
 
         if(mesh->NglobalGatherElements) {
@@ -927,7 +927,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -941,7 +941,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
               mesh->o_D,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -963,7 +963,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC, 
+              cds->o_coeffRK, 
               o_U,
               o_u1,
               o_rhs);
@@ -977,7 +977,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
               mesh->o_D,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               o_u1,
               o_rhs);
@@ -1049,7 +1049,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
       platform->o_slice0.copyFrom(platform->o_slice0, cds->fieldOffset * sizeof(dfloat),
                            cds->fieldOffset * sizeof(dfloat), 0);
 
-      for(int rk = 0; rk < cds->SNrk; ++rk) {
+      for(int rk = 0; rk < cds->nRK; ++rk) {
         // Extrapolate velocity to subProblem stage time
         const dfloat t   = tstage +  sdt * cds->Srkc[rk];
         const dfloat tn0 = time;
@@ -1057,22 +1057,22 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
         switch(cds->nEXT) {
         case 1:
-          cds->extC[0] = 1;
-          cds->extC[1] = 0;
-          cds->extC[2] = 0;
+          cds->coeffRK[0] = 1;
+          cds->coeffRK[1] = 0;
+          cds->coeffRK[2] = 0;
           break;
         case 2:
-          cds->extC[0] = (t - tn1) / (tn0 - tn1);
-          cds->extC[1] = (t - tn0) / (tn1 - tn0);
-          cds->extC[2] = 0;
+          cds->coeffRK[0] = (t - tn1) / (tn0 - tn1);
+          cds->coeffRK[1] = (t - tn0) / (tn1 - tn0);
+          cds->coeffRK[2] = 0;
           break;
         case 3:
-          cds->extC[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
-          cds->extC[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
-          cds->extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
+          cds->coeffRK[0] = (t - tn1) * (t - tn2) / ((tn0 - tn1) * (tn0 - tn2));
+          cds->coeffRK[1] = (t - tn0) * (t - tn2) / ((tn1 - tn0) * (tn1 - tn2));
+          cds->coeffRK[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        cds->o_extC.copyFrom(cds->extC);
+        cds->o_coeffRK.copyFrom(cds->coeffRK);
 
         if(mesh->NglobalGatherElements) {
           if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -1088,7 +1088,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice2);
@@ -1102,7 +1102,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_D,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice2);
@@ -1130,7 +1130,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC, 
+              cds->o_coeffRK, 
               o_U,
               platform->o_slice0,
               platform->o_slice2);
@@ -1144,7 +1144,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
               mesh->o_D,
               mesh->o_invLMM,
               mesh->o_BdivW,
-              cds->o_extC,
+              cds->o_coeffRK,
               o_U,
               platform->o_slice0,
               platform->o_slice2);

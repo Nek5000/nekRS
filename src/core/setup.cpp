@@ -109,7 +109,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NVfields = 3;
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
 
-  nrs->SNrk = 4;
+  nrs->nRK = 4;
 
 
   mesh->Nfields = 1;
@@ -117,7 +117,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->coeffEXT = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->coeffBDF = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extC = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffRK = (dfloat*) calloc(3, sizeof(dfloat));
 
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     nrs->nEXT = 1;
@@ -162,22 +162,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(nrs->Nsubsteps) {
     int Sorder;
     nrs->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
-    if(Sorder == 4 && nrs->SNrk == 4) { // ERK(4,4)
+    if(Sorder == 4 && nrs->nRK == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
       dfloat rkc[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
-      nrs->Srka = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      nrs->Srkb = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      nrs->Srkc = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      memcpy(nrs->Srka, rka, nrs->SNrk * sizeof(dfloat));
-      memcpy(nrs->Srkb, rkb, nrs->SNrk * sizeof(dfloat));
-      memcpy(nrs->Srkc, rkc, nrs->SNrk * sizeof(dfloat));
+      nrs->Srka = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->Srkb = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->Srkc = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      memcpy(nrs->Srka, rka, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->Srkb, rkb, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->Srkc, rkc, nrs->nRK * sizeof(dfloat));
     }else{
       if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
-    nrs->o_Srka = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srka);
-    nrs->o_Srkb = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srkb);
+    nrs->o_Srka = device.malloc(nrs->nRK * sizeof(dfloat), nrs->Srka);
+    nrs->o_Srkb = device.malloc(nrs->nRK * sizeof(dfloat), nrs->Srkb);
   }
 
   // setup scratch space
@@ -253,7 +253,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_extC    = platform->device.malloc(3 * sizeof(dfloat), nrs->extC);
+  nrs->o_coeffRK    = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffRK);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
@@ -465,7 +465,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       fileName = oklpath + "nrsSubCycleRKUpdate" + ".okl";
       kernelName = "nrsSubCycleLSERKUpdate";
-      if(nrs->SNrk == 4) kernelName = "nrsSubCycleERKUpdate";
+      if(nrs->nRK == 4) kernelName = "nrsSubCycleERKUpdate";
       nrs->subCycleRKUpdateKernel =
         platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       kernelName = "nrsSubCycleRK";
@@ -887,7 +887,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->coeffEXT = nrs->coeffEXT;
   cds->coeffBDF = nrs->coeffBDF;
   cds->coeffSubEXT = nrs->coeffSubEXT;
-  cds->extC    = nrs->extC;
+  cds->coeffRK    = nrs->coeffRK;
 
   cds->nBDF       = nrs->nBDF;
   cds->nEXT       = nrs->nEXT;
@@ -897,7 +897,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
-  cds->o_extC    = nrs->o_extC;
+  cds->o_coeffRK    = nrs->o_coeffRK;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
 
@@ -938,7 +938,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
-    cds->SNrk   = nrs->SNrk;
+    cds->nRK   = nrs->nRK;
     cds->Srka   = nrs->Srka;
     cds->Srkb   = nrs->Srkb;
     cds->Srkc   = nrs->Srkc;
@@ -1124,7 +1124,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
         fileName = oklpath + "cdsSubCycleRKUpdate.okl";
         kernelName = "cdsSubCycleLSERKUpdate";
-        if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
+        if(cds->nRK == 4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "cdsSubCycleRK";
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);

@@ -68,7 +68,7 @@ struct nrs_t
   dfloat* BF, * FU;
 
   //RK Subcycle Data
-  int SNrk;
+  int nRK;
   dfloat* Srka, * Srkb, * Srkc;
   occa::memory o_Srka, o_Srkb;
 
@@ -78,7 +78,7 @@ struct nrs_t
 
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
-  dfloat* extC;
+  dfloat* coeffRK;
 
   int* VmapB;
   occa::memory o_VmapB;
@@ -136,7 +136,7 @@ struct nrs_t
 
   //EXTBDF data
   occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
-  occa::memory o_extC;
+  occa::memory o_coeffRK;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionCubatureVolumeKernel;

@@ -46,13 +46,13 @@ struct cds_t
   dfloat* rkS;
 
   //RK Subcycle Data
-  int SNrk;
+  int nRK;
   dfloat* Srka, * Srkb, * Srkc;
   occa::memory o_Srka, o_Srkb;
 
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
-  dfloat* extC;
+  dfloat* coeffRK;
 
   int* mapB[NSCALAR_MAX], * EToB[NSCALAR_MAX];
   occa::memory o_mapB[NSCALAR_MAX];
@@ -91,7 +91,7 @@ struct cds_t
 
   //EXTBDF data
   occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
-  occa::memory o_extC;
+  occa::memory o_coeffRK;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;
