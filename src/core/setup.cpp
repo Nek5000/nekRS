@@ -142,7 +142,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
 
   mesh->Nlocal = Nlocal;
-  nrs->Ntotal = Ntotal;
+  nrs->fieldOffset = Ntotal;
 
   // ensure that offset is large enough for v and t mesh and is properly aligned
   {
@@ -905,7 +905,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   dlong Nlocal = mesh->Np * mesh->Nelements;
   dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
   mesh->Nlocal = Nlocal;
-  cds->Ntotal  = Ntotal;
+  cds->fieldOffset  = Ntotal;
 
   cds->vFieldOffset = nrs->fieldOffset;
   cds->fieldOffset  = nrs->fieldOffset;

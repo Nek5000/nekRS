@@ -29,7 +29,6 @@ struct cds_t
 
   dlong vFieldOffset;
   dlong fieldOffset;
-  dlong Ntotal;
   dfloat idt;
   dfloat *dt;
   int tstep;

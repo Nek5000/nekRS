@@ -374,7 +374,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S)
       );
 
     occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0]);
-    o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
+    o_Snew.copyTo(o_S, cds->fieldOffset * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
   platform->timer.toc("scalarSolve");
 }
@@ -479,7 +479,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U)
     nrs->o_rho,
     nrs->o_ellipticCoeff);
   occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0]);
-  nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
+  nrs->o_P.copyFrom(o_Pnew, nrs->fieldOffset * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
   platform->timer.tic("velocitySolve", 1);

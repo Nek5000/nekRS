@@ -48,7 +48,6 @@ struct nrs_t
 
   int NVfields, NTfields;
   dlong fieldOffset;
-  dlong Ntotal;
 
 
   dfloat dt[3], idt;

@@ -16,7 +16,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   }
   elliptic_t* solver = cds->solver[is];
 
-  platform->o_slice0.copyFrom(cds->o_S, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+  platform->o_slice0.copyFrom(cds->o_S, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
 
   //enforce Dirichlet BCs
   platform->linAlg->fill(cds->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_slice2); 
@@ -42,7 +42,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_slice2, platform->o_slice0);
 
   //build RHS
-  platform->o_slice1.copyFrom(cds->o_BF, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+  platform->o_slice1.copyFrom(cds->o_BF, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
   cds->helmholtzRhsBCKernel(mesh->Nelements,
                             mesh->o_sgeo,
                             mesh->o_vmapM,
@@ -63,7 +63,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time)
   ss << std::setfill('0') << std::setw(2) << is;
   string sid = ss.str();
   if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION")) {
-    platform->o_slice0.copyFrom(cds->o_Se, cds->Ntotal * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
+    platform->o_slice0.copyFrom(cds->o_Se, cds->fieldOffset * sizeof(dfloat), 0, is * cds->fieldOffset * sizeof(dfloat));
     if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_slice2, platform->o_slice0);
   }
   ellipticSolve(solver, platform->o_slice1, platform->o_slice0);

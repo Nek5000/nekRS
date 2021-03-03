@@ -155,7 +155,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time)
     nrs->o_U,
     platform->o_slice3);
 
-  platform->o_slice1.copyFrom(nrs->o_P, nrs->Ntotal * sizeof(dfloat));
+  platform->o_slice1.copyFrom(nrs->o_P, nrs->fieldOffset * sizeof(dfloat));
   ellipticSolve(nrs->pSolver, platform->o_slice3, platform->o_slice1);
 
   return platform->o_slice1;
