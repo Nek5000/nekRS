@@ -7,7 +7,9 @@
 #include <vector>
 #include <map>
 
-static cds_t* cdsSetup(ins_t* ins, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH);
+namespace{
+cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH);
+}
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
@@ -75,21 +77,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->linAlg = nrs->linAlg;
     createMeshDummy(mesh, comm, N, cubN, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
   } else {
     mesh_t* mesh = new mesh_t();
     mesh->linAlg = nrs->linAlg;
     createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
     nrs->meshT = mesh;
-    nrs->mesh = mesh;
+    nrs->meshV= mesh;
     if (nrs->cht) {
       mesh_t* meshV = new mesh_t();
       meshV->linAlg = nrs->linAlg;
       createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
-      nrs->mesh = meshV;
+      nrs->meshV= meshV;
     }
   }
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
 
   if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
@@ -109,7 +111,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NVfields = 3;
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
 
-  nrs->SNrk = 4;
+  nrs->nRK = 4;
 
 
   mesh->Nfields = 1;
@@ -117,7 +119,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->coeffEXT = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->coeffBDF = (dfloat*) calloc(3, sizeof(dfloat));
   nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->extC = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffRK = (dfloat*) calloc(3, sizeof(dfloat));
 
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     nrs->nEXT = 1;
@@ -142,121 +144,116 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
 
   mesh->Nlocal = Nlocal;
-  nrs->Ntotal = Ntotal;
+  nrs->meshV->fieldOffset = Ntotal;
 
   // ensure that offset is large enough for v and t mesh and is properly aligned
   {
     const dlong NtotalT = nrs->meshT->Np * (nrs->meshT->Nelements + nrs->meshT->totalHaloPairs);
-    nrs->fieldOffset = mymax(Ntotal, NtotalT);
+    nrs->meshV->fieldOffset = mymax(Ntotal, NtotalT);
 
     int PAGESIZE = 4096; // default is 4kB
     char* tmp;
     tmp = getenv("NEKRS_PAGE_SIZE");
     if (tmp != NULL) PAGESIZE = std::stoi(tmp);
     const int pageW = PAGESIZE / sizeof(dfloat);
-    if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
+    if (nrs->meshV->fieldOffset % pageW) nrs->meshV->fieldOffset = (nrs->meshV->fieldOffset / pageW + 1) * pageW;
   }
-  nrs->meshT->fieldOffset = nrs->fieldOffset;
-  nrs->mesh->fieldOffset = nrs->fieldOffset;
-
-  nrs->Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   if(nrs->Nsubsteps) {
     int Sorder;
     nrs->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
-    if(Sorder == 4 && nrs->SNrk == 4) { // ERK(4,4)
+    if(Sorder == 4 && nrs->nRK == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
       dfloat rkc[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
-      nrs->Srka = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      nrs->Srkb = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      nrs->Srkc = (dfloat*) calloc(nrs->SNrk, sizeof(dfloat));
-      memcpy(nrs->Srka, rka, nrs->SNrk * sizeof(dfloat));
-      memcpy(nrs->Srkb, rkb, nrs->SNrk * sizeof(dfloat));
-      memcpy(nrs->Srkc, rkc, nrs->SNrk * sizeof(dfloat));
+      nrs->coeffsfRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->weightsRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      nrs->nodesRK = (dfloat*) calloc(nrs->nRK, sizeof(dfloat));
+      memcpy(nrs->coeffsfRK, rka, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->weightsRK, rkb, nrs->nRK * sizeof(dfloat));
+      memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }else{
       if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
-    nrs->o_Srka = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srka);
-    nrs->o_Srkb = device.malloc(nrs->SNrk * sizeof(dfloat), nrs->Srkb);
+    nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
+    nrs->o_weightsRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->weightsRK);
   }
 
   // setup scratch space
   const int wrkNflds = 6;
   const int ellipticWrkNflds = 15;
-  nrs->ellipticWrkOffset = wrkNflds * nrs->fieldOffset;
+  nrs->ellipticWrkOffset = wrkNflds * nrs->meshV->fieldOffset;
 
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
-  platform->create_mempool(nrs->fieldOffset, scratchNflds);
+  platform->create_mempool(nrs->meshV->fieldOffset, scratchNflds);
 
-  nrs->o_wrk0  = platform->o_slice0;
-  nrs->o_wrk1  = platform->o_slice1;
-  nrs->o_wrk2  = platform->o_slice2;
-  nrs->o_wrk3  = platform->o_slice3;
-  nrs->o_wrk4  = platform->o_slice4;
-  nrs->o_wrk5  = platform->o_slice5;
-  nrs->o_wrk6  = platform->o_slice6;
-  nrs->o_wrk7  = platform->o_slice7;
-  nrs->o_wrk9  = platform->o_slice9;
-  nrs->o_wrk12 = platform->o_slice12;
-  nrs->o_wrk15 = platform->o_slice15;
+  platform->o_slice0  = platform->o_slice0;
+  platform->o_slice1  = platform->o_slice1;
+  platform->o_slice2  = platform->o_slice2;
+  platform->o_slice3  = platform->o_slice3;
+  platform->o_slice4  = platform->o_slice4;
+  platform->o_slice5  = platform->o_slice5;
+  platform->o_slice6  = platform->o_slice6;
+  platform->o_slice7  = platform->o_slice7;
+  platform->o_slice9  = platform->o_slice9;
+  platform->o_slice12 = platform->o_slice12;
+  platform->o_slice15 = platform->o_slice15;
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
     {
       platform->o_mempool.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_LMM = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat));
       mesh->o_LMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
       platform->o_mempool.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_invLMM = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat));
       mesh->o_invLMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
     }
 
-    mesh->o_BdivW = platform->device.malloc(nrs->fieldOffset * nBDF * sizeof(dfloat), platform->mempool);
+    mesh->o_BdivW = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat), platform->mempool);
 
     const int nAB = mesh->nAB;
-    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
-    mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
+    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->meshV->fieldOffset * nAB, sizeof(dfloat));
+    mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->meshV->fieldOffset * nAB * sizeof(dfloat), mesh->U);
   }
 
 
-  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
-  nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
-  nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
+  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->P  = (dfloat*) calloc(nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->meshV->fieldOffset,sizeof(dfloat));
 
-  nrs->o_U  = platform->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
-  nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
-  nrs->o_P  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
-  nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_U  = platform->device.malloc(nrs->NVfields * nrs->nBDF * nrs->meshV->fieldOffset * sizeof(dfloat), nrs->U);
+  nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat), nrs->Ue);
+  nrs->o_P  = platform->device.malloc(nrs->meshV->fieldOffset * sizeof(dfloat), nrs->P);
+  nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->meshV->fieldOffset * sizeof(dfloat), nrs->BF);
+  nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->meshV->fieldOffset * sizeof(dfloat), nrs->FU);
 
   nrs->var_coeff = 1; // use always var coeff elliptic
-  nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
+  nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->o_ellipticCoeff = device.malloc(2 * nrs->meshV->fieldOffset * sizeof(dfloat),
                                              nrs->ellipticCoeff);
 
-  nrs->prop =  (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
+  nrs->prop =  (dfloat*) calloc(2 * nrs->meshV->fieldOffset,sizeof(dfloat));
   for (int e = 0; e < mesh->Nelements; e++)
     for (int n = 0; n < mesh->Np; n++) {
-      nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
-      nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
+      nrs->prop[0 * nrs->meshV->fieldOffset + e * mesh->Np + n] = mue;
+      nrs->prop[1 * nrs->meshV->fieldOffset + e * mesh->Np + n] = rho;
     }
-  nrs->o_prop = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
-  nrs->o_mue = nrs->o_prop.slice(0 * nrs->fieldOffset * sizeof(dfloat));
-  nrs->o_rho = nrs->o_prop.slice(1 * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_prop = device.malloc(2 * nrs->meshV->fieldOffset * sizeof(dfloat), nrs->prop);
+  nrs->o_mue = nrs->o_prop.slice(0 * nrs->meshV->fieldOffset * sizeof(dfloat));
+  nrs->o_rho = nrs->o_prop.slice(1 * nrs->meshV->fieldOffset * sizeof(dfloat));
 
-  nrs->div   = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
+  nrs->div   = (dfloat*) calloc(nrs->meshV->fieldOffset,sizeof(dfloat));
+  nrs->o_div = device.malloc(nrs->meshV->fieldOffset * sizeof(dfloat), nrs->div);
 
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  nrs->o_rkC     = platform->device.malloc(4 * sizeof(dfloat),rkC);
   nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_extC    = platform->device.malloc(3 * sizeof(dfloat), nrs->extC);
+  nrs->o_coeffRK    = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffRK);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
@@ -271,9 +268,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
 
-  int NblockV = mymax(1, BLOCKSIZE/mesh->Np);
-  kernelInfo["defines/" "p_NblockV"] = NblockV;
-
   const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
 
@@ -287,7 +281,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(nrs->options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
-  nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
+  nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->meshV->fieldOffset, ogsDfloat, NULL, oogsMode);
 
   linAlg_t * linAlg = nrs->linAlg;
 
@@ -296,11 +290,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg->fillKernel(nrs->fieldOffset, 1.0, nrs->o_wrk0);
-    ogsGatherScatter(nrs->o_wrk0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, nrs->o_wrk0); 
+    linAlg->fillKernel(nrs->meshV->fieldOffset, 1.0, platform->o_slice0);
+    ogsGatherScatter(platform->o_slice0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_slice0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    nrs->o_wrk0.copyTo(tmp, Nlocal * sizeof(dfloat));
+    platform->o_slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -471,7 +465,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       fileName = oklpath + "nrsSubCycleRKUpdate" + ".okl";
       kernelName = "nrsSubCycleLSERKUpdate";
-      if(nrs->SNrk == 4) kernelName = "nrsSubCycleERKUpdate";
+      if(nrs->nRK == 4) kernelName = "nrsSubCycleERKUpdate";
       nrs->subCycleRKUpdateKernel =
         platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
       kernelName = "nrsSubCycleRK";
@@ -539,9 +533,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    mesh_t* msh;
-    (nrs->cht) ? msh = nrs->meshT : msh = nrs->mesh;
-    nrs->cds = cdsSetup(nrs, msh, nrs->options, kernelInfoS);
+    nrs->cds = cdsSetup(nrs, nrs->options, kernelInfoS);
   }
 
   if(!buildOnly) {
@@ -562,7 +554,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nscalar) {
     mesh_t* mesh;
-    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->mesh;
+    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->meshV;
     cds_t* cds = nrs->cds;
 
     for (int is = 0; is < cds->NSfields; is++) {
@@ -573,7 +565,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(!cds->compute[is]) continue;
  
       mesh_t* mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+      (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
@@ -591,7 +583,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is] = new elliptic_t();
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
-      cds->solver[is]->Ntotal = nrs->fieldOffset;
+      cds->solver[is]->Ntotal = nrs->meshV->fieldOffset;
       cds->solver[is]->wrk = platform->mempool + nrs->ellipticWrkOffset;
       cds->solver[is]->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       cds->solver[is]->mesh = mesh;
@@ -601,7 +593,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs + 1) * sizeof(int));
       free(sBCType);
       cds->solver[is]->var_coeff = cds->var_coeff;
-      for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
+      for (int i = 0; i < 2 * nrs->meshV->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
       cds->solver[is]->lambda = cds->ellipticCoeff;
       cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
       cds->solver[is]->loffset = 0;
@@ -654,7 +646,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
 
     // coeff used by ellipticSetup to detect allNeumann
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
+    for (int i = 0; i < 2 * nrs->meshV->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
 
     if(nrs->uvwSolver) {
       nrs->uvwSolver->blockSolver = 1;
@@ -662,7 +654,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(options.compareArgs("STRESSFORMULATION", "TRUE"))
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
-      nrs->uvwSolver->Ntotal = nrs->fieldOffset;
+      nrs->uvwSolver->Ntotal = nrs->meshV->fieldOffset;
       nrs->uvwSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
       nrs->uvwSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uvwSolver->mesh = mesh;
@@ -682,7 +674,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uSolver = new elliptic_t();
       nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
-      nrs->uSolver->Ntotal = nrs->fieldOffset;
+      nrs->uSolver->Ntotal = nrs->meshV->fieldOffset;
       nrs->uSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
       nrs->uSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uSolver->mesh = mesh;
@@ -702,7 +694,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->vSolver = new elliptic_t();
       nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
-      nrs->vSolver->Ntotal = nrs->fieldOffset;
+      nrs->vSolver->Ntotal = nrs->meshV->fieldOffset;
       nrs->vSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
       nrs->vSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->vSolver->mesh = mesh;
@@ -723,7 +715,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->wSolver = new elliptic_t();
         nrs->wSolver->blockSolver = 0;
         nrs->wSolver->Nfields = 1;
-        nrs->wSolver->Ntotal = nrs->fieldOffset;
+        nrs->wSolver->Ntotal = nrs->meshV->fieldOffset;
         nrs->wSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
         nrs->wSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
         nrs->wSolver->mesh = mesh;
@@ -781,7 +773,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
-    nrs->pSolver->Ntotal = nrs->fieldOffset;
+    nrs->pSolver->Ntotal = nrs->meshV->fieldOffset;
     nrs->pSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
     nrs->pSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
     nrs->pSolver->mesh = mesh;
@@ -792,7 +784,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->var_coeff = 1;
     //// coeff used by ellipticSetup to detect allNeumann
     // and coeff[0] to setup MG levels
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 0;
+    for (int i = 0; i < 2 * nrs->meshV->fieldOffset; i++) nrs->ellipticCoeff[i] = 0;
     nrs->pSolver->lambda = nrs->ellipticCoeff;
     nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;
     nrs->pSolver->loffset = 0;
@@ -873,18 +865,20 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   } // flow
 }
 
-static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::properties &kernelInfoH)
+namespace{
+cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
 {
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->mesh = mesh;
+  cds->meshT[0] = nrs->meshT;
+  mesh_t* mesh = cds->meshT[0];
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   // set mesh, options
-  cds->meshV       = nrs->mesh;
+  cds->meshV       = nrs->meshV;
   cds->elementType = nrs->elementType;
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;
@@ -893,37 +887,30 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->coeffEXT = nrs->coeffEXT;
   cds->coeffBDF = nrs->coeffBDF;
   cds->coeffSubEXT = nrs->coeffSubEXT;
-  cds->extC    = nrs->extC;
+  cds->coeffRK    = nrs->coeffRK;
 
   cds->nBDF       = nrs->nBDF;
   cds->nEXT       = nrs->nEXT;
 
   // time stepper
   dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  cds->o_rkC     = nrs->o_rkC;
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
-  cds->o_extC    = nrs->o_extC;
+  cds->o_coeffRK    = nrs->o_coeffRK;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
 
-  dlong Nlocal = mesh->Np * mesh->Nelements;
-  dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-  mesh->Nlocal = Nlocal;
-  cds->Ntotal  = Ntotal;
+  cds->vFieldOffset = nrs->meshV->fieldOffset;
+  cds->meshT[0]->fieldOffset  = nrs->meshV->fieldOffset;
 
-  cds->vFieldOffset = nrs->fieldOffset;
-  cds->fieldOffset  = nrs->fieldOffset;
-  cds->Nblock       = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
-
-  cds->o_wrk0 = nrs->o_wrk0;
-  cds->o_wrk1 = nrs->o_wrk1;
-  cds->o_wrk2 = nrs->o_wrk2;
-  cds->o_wrk3 = nrs->o_wrk3;
-  cds->o_wrk4 = nrs->o_wrk4;
-  cds->o_wrk5 = nrs->o_wrk5;
-  cds->o_wrk6 = nrs->o_wrk6;
+  platform->o_slice0 = platform->o_slice0;
+  platform->o_slice1 = platform->o_slice1;
+  platform->o_slice2 = platform->o_slice2;
+  platform->o_slice3 = platform->o_slice3;
+  platform->o_slice4 = platform->o_slice4;
+  platform->o_slice5 = platform->o_slice5;
+  platform->o_slice6 = platform->o_slice6;
 
   cds->gsh = nrs->gsh;
   
@@ -931,7 +918,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
     if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
-    cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset, ogsDfloat, NULL, oogsMode);
+    cds->gshT = oogs::setup(mesh->ogs, 1, cds->meshT[0]->fieldOffset, ogsDfloat, NULL, oogsMode);
   } else {
     cds->gshT = cds->gsh;
   }
@@ -939,25 +926,25 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
-  cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset,sizeof(dfloat));
+  cds->BF    = (dfloat*) calloc(cds->NSfields * cds->meshT[0]->fieldOffset,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset,sizeof(dfloat));
+    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
-    cds->SNrk   = nrs->SNrk;
-    cds->Srka   = nrs->Srka;
-    cds->Srkb   = nrs->Srkb;
-    cds->Srkc   = nrs->Srkc;
-    cds->o_Srka = nrs->o_Srka;
-    cds->o_Srkb = nrs->o_Srkb;
+    cds->nRK   = nrs->nRK;
+    cds->coeffsfRK   = nrs->coeffsfRK;
+    cds->weightsRK   = nrs->weightsRK;
+    cds->nodesRK   = nrs->nodesRK;
+    cds->o_coeffsfRK = nrs->o_coeffsfRK;
+    cds->o_weightsRK = nrs->o_weightsRK;
   }
 
   cds->dt  = nrs->dt;
   cds->sdt = nrs->sdt;
 
-  cds->prop = (dfloat*) calloc(cds->NSfields * 2 * cds->fieldOffset,sizeof(dfloat));
+  cds->prop = (dfloat*) calloc(cds->NSfields * 2 * cds->meshT[0]->fieldOffset,sizeof(dfloat));
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -970,17 +957,17 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     options.getArgs("SCALAR" + sid + " DIFFUSIVITY", diff);
     options.getArgs("SCALAR" + sid + " DENSITY", rho);
 
-    const dlong off = cds->NSfields * cds->fieldOffset;
+    const dlong off = cds->NSfields * cds->meshT[0]->fieldOffset;
     for (int e = 0; e < mesh->Nelements; e++)
       for (int n = 0; n < mesh->Np; n++) {
-        cds->prop[0 * off + is * cds->fieldOffset + e * mesh->Np + n] = diff;
-        cds->prop[1 * off + is * cds->fieldOffset + e * mesh->Np + n] = rho;
+        cds->prop[0 * off + is * cds->meshT[0]->fieldOffset + e * mesh->Np + n] = diff;
+        cds->prop[1 * off + is * cds->meshT[0]->fieldOffset + e * mesh->Np + n] = rho;
       }
   }
   cds->o_prop =
-    device.malloc(cds->NSfields * 2 * cds->fieldOffset * sizeof(dfloat), cds->prop);
-  cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
-  cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->fieldOffset * sizeof(dfloat));
+    device.malloc(cds->NSfields * 2 * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->prop);
+  cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat));
+  cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat));
 
   cds->var_coeff = 1; // use always var coeff elliptic
   cds->ellipticCoeff   = nrs->ellipticCoeff;
@@ -989,12 +976,12 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat), cds->S);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset * sizeof(dfloat));
-  cds->o_BF = platform->device.malloc(cds->NSfields * cds->fieldOffset * sizeof(dfloat), cds->BF);
+    platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat));
+  cds->o_BF = platform->device.malloc(cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset * sizeof(dfloat),
+    platform->device.malloc(cds->NSfields * cds->nEXT * cds->meshT[0]->fieldOffset * sizeof(dfloat),
                         cds->FS);
 
   for (int is = 0; is < cds->NSfields; is++) {
@@ -1009,7 +996,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
     }
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->mesh; // only first scalar can be a CHT mesh
+    (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 
@@ -1132,7 +1119,7 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
 
         fileName = oklpath + "cdsSubCycleRKUpdate.okl";
         kernelName = "cdsSubCycleLSERKUpdate";
-        if(cds->SNrk == 4) kernelName = "cdsSubCycleERKUpdate";
+        if(cds->nRK == 4) kernelName = "cdsSubCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "cdsSubCycleRK";
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1147,4 +1134,5 @@ static cds_t* cdsSetup(nrs_t* nrs, mesh_t* mesh, setupAide options, occa::proper
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   return cds;
+}
 }

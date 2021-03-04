@@ -47,7 +47,16 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   // compute initial residual r = rhs - Ax0
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_x, elliptic->o_Ap, dfloatString);
-  ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
+  const dlong Nlocal = mesh->Np * mesh->Nelements;
+  platform->linAlg->axpbyMany(
+    Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    -1.0,
+    elliptic->o_Ap,
+    1.0,
+    o_r
+  );
   if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
   oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
   if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
@@ -55,7 +64,16 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    elliptic->res00Norm = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor); 
+    elliptic->res00Norm = sqrt(
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_r,
+        platform->comm.mpiComm
+      )
+      * elliptic->resNormFactor); 
     if(std::isnan(elliptic->res00Norm)) {
       if(platform->comm.mpiRank == 0) printf("Unreasonable res00Norm!\n");
       ABORT(EXIT_FAILURE);
@@ -64,7 +82,16 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->timer.toc("pre");
   }
 
-  elliptic->res0Norm = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor);
+  elliptic->res0Norm = sqrt(
+    platform->linAlg->weightedNorm2Many(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      elliptic->o_invDegree,
+      o_r,
+      platform->comm.mpiComm
+    )
+    * elliptic->resNormFactor); 
   if(std::isnan(elliptic->res0Norm)) {
     if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);
@@ -79,11 +106,28 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   }
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
-    ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
+    const dlong Nlocal = mesh->Np * mesh->Nelements;
+    platform->linAlg->axpbyMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      -1.0,
+      elliptic->o_x0,
+      1.0,
+      o_x
+    );
     platform->timer.tic("post",1);
     elliptic->residualProjection->post(o_x);
     platform->timer.toc("post");
-    ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
+    platform->linAlg->axpbyMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      elliptic->o_x0,
+      1.0,
+      o_x
+    );
   } else {
     elliptic->res00Norm = elliptic->res0Norm;
   }

@@ -24,9 +24,9 @@ void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset, nrs->p0th[0],
+  userVpKernel(mesh->Nelements, nrs->meshV->fieldOffset, nrs->cds->meshT[0]->fieldOffset, nrs->p0th[0],
                o_S, o_UProp, o_SProp);
 }
 
@@ -59,13 +59,13 @@ void UDF_Setup(nrs_t *nrs)
 }
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
   linAlg_t* linAlg = nrs->linAlg;
   const dfloat ymin = linAlg->min(nrs->Nlocal, mesh->o_y, mesh->comm);
   const dfloat ymax = linAlg->max(nrs->Nlocal, mesh->o_y, mesh->comm);
   userMeshVelocityKernel(mesh->Nelements,
-    nrs->fieldOffset,
+    nrs->meshV->fieldOffset,
     ymin,
     ymax,
     time,

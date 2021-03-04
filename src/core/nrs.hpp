@@ -22,7 +22,7 @@ struct nrs_t
 {
   int dim, elementType;
 
-  mesh_t* mesh;
+  mesh_t* meshV;
   mesh_t* meshT;
   linAlg_t* linAlg;
 
@@ -47,10 +47,7 @@ struct nrs_t
   inipp::Ini<char> *par;
 
   int NVfields, NTfields;
-  dlong fieldOffset;
-  dlong Ntotal;
 
-  int Nblock;
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};
@@ -70,9 +67,9 @@ struct nrs_t
   dfloat* BF, * FU;
 
   //RK Subcycle Data
-  int SNrk;
-  dfloat* Srka, * Srkb, * Srkc;
-  occa::memory o_Srka, o_Srkb;
+  int nRK;
+  dfloat* coeffsfRK, * weightsRK, * nodesRK;
+  occa::memory o_coeffsfRK, o_weightsRK;
 
   //ARK data
   int Nrk;
@@ -80,13 +77,10 @@ struct nrs_t
 
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
-  dfloat* extC;
+  dfloat* coeffRK;
 
   int* VmapB;
   occa::memory o_VmapB;
-
-  occa::memory o_wrk0, o_wrk1, o_wrk2, o_wrk3, o_wrk4, o_wrk5, o_wrk6, o_wrk7,
-               o_wrk9, o_wrk12, o_wrk15, o_wrk18;
 
   int Nsubsteps;
   dfloat* Ue, sdt;
@@ -128,8 +122,6 @@ struct nrs_t
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 
-  occa::kernel constrainKernel;
-
   occa::memory o_U, o_P;
 
   occa::memory o_BF;
@@ -141,29 +133,15 @@ struct nrs_t
   dfloat* prop, * ellipticCoeff;
   occa::memory o_prop, o_ellipticCoeff;
 
-  occa::memory o_UH;
-
-  occa::memory o_vHaloBuffer, o_pHaloBuffer;
-  occa::memory o_velocityHaloGatherTmp;
-
-  occa::kernel haloGetKernel;
-  occa::kernel haloPutKernel;
-
-  //ARK data
-  occa::memory o_rkC;
-
   //EXTBDF data
   occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
-  occa::memory o_extC;
+  occa::memory o_coeffRK;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionCubatureVolumeKernel;
 
   occa::kernel advectionStrongVolumeKernel;
   occa::kernel advectionStrongCubatureVolumeKernel;
-
-  occa::kernel diffusionKernel;
-  occa::kernel velocityGradientKernel;
 
   occa::kernel gradientVolumeKernel;
 
@@ -175,7 +153,6 @@ struct nrs_t
   occa::kernel sumMakefKernel;
   occa::kernel pressureRhsKernel;
   occa::kernel pressureDirichletBCKernel;
-  occa::kernel pressurePenaltyKernel;
   occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;

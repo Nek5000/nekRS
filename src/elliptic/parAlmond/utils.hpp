@@ -47,17 +47,17 @@ void allocatePinnedScratchSpace(size_t requiredBytes, occa::device device);
 void freeScratchSpace();
 void freePinnedScratchSpace();
 
-typedef struct {
+struct parallelId_t {
 
   dlong localId;
   hlong globalId;
 
   dlong newId;
 
-} parallelId_t;
+};
 
 
-typedef struct {
+struct parallelAggregate_t {
 
   dlong fineId;
   hlong coarseId;
@@ -66,16 +66,16 @@ typedef struct {
   int originRank;
   int ownerRank;
 
-} parallelAggregate_t;
+};
 
 
-typedef struct {
+struct nonzero_t {
 
   hlong row;
   hlong col;
   dfloat val;
 
-} nonzero_t;
+};
 
 
 int CompareGlobalId(const void *a, const void *b);

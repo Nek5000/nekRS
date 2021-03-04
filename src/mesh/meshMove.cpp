@@ -12,7 +12,7 @@ void mesh_t::computeBdivW()
   strongDivergenceKernel(
     Nelements,
     o_vgeo,
-    o_Dmatrices,
+    o_D,
     fieldOffset,
     o_U,
     o_BdivW

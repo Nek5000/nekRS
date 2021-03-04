@@ -31,7 +31,7 @@
 // structure used to encode vertices that make
 // each face, the element/face indices, and
 // the neighbor element/face indices (if any)
-typedef struct
+struct face_t
 {
   dlong element;
   int face;
@@ -42,7 +42,7 @@ typedef struct
   int NfaceVertices;
 
   hlong v[4];
-}face_t;
+};
 
 // comparison function that orders vertices
 // based on their combined vertex indices

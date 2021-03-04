@@ -12,11 +12,11 @@ occa::kernel coriolisKernel;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   coriolisKernel(
     mesh->Nlocal, 
-    nrs->fieldOffset, 
-    nrs->mesh->o_y,
+    nrs->meshV->fieldOffset, 
+    nrs->meshV->o_y,
     nrs->cds->o_S,
     nrs->o_U,
     o_FU);

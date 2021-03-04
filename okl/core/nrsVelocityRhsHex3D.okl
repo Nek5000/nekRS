@@ -31,11 +31,9 @@
                                       @restrict const dfloat*  RHO,
                                       @restrict dfloat*  rhsU)
 {
-  for(dlong eo = 0; eo < Nelements; eo += p_NblockV; @outer(0)) {
-    for(int es = 0; es < p_NblockV; ++es; @inner(2)) {// for all elements in block
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong e = eo + es; // element in block
           if(e < Nelements) {
 #pragma unroll p_Nq
             for(int k = 0; k < p_Nq; ++k) {
@@ -57,6 +55,5 @@
           }
         }
       }
-    }
   }
 }

@@ -53,7 +53,6 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   else
     elliptic->updatePCGKernel(mesh->Nlocal,
                               elliptic->Ntotal,
-                              elliptic->NblocksUpdatePCG,
                               elliptic->o_invDegree,
                               o_p,
                               o_Ap,
@@ -63,15 +62,16 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                               elliptic->o_tmpNormr);
 
   dfloat rdotr1;
+  const dlong Nblock = (mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 #ifdef ELLIPTIC_ENABLE_TIMER
     platform->timer.tic("dotp",1);
 #endif
   if(serial) {
     elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
   } else {
-    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, elliptic->NblocksUpdatePCG*sizeof(dfloat));
+    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, Nblock*sizeof(dfloat));
     rdotr1 = 0;
-    for(int n = 0; n < elliptic->NblocksUpdatePCG; ++n)
+    for(int n = 0; n < Nblock; ++n)
       rdotr1 += elliptic->tmpNormr[n];
   }
   MPI_Allreduce(MPI_IN_PLACE, &rdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);

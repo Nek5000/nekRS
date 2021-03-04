@@ -28,11 +28,11 @@
 #include "platform.hpp"
 #include "mesh.h"
 
-typedef struct
+struct facePair_t
 {
   dlong element, elementN;
   int face, faceN, rankN;
-}facePair_t;
+};
 
 /* comparison function that orders halo element/face
    based on their indexes */

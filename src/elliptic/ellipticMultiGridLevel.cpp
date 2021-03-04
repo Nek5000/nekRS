@@ -37,7 +37,16 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
   if(stype != SCHWARZ) {
     ellipticOperator(elliptic,o_x,o_res, dfloatString);
     // subtract r = b - A*x
-    ellipticScaledAdd(elliptic, 1.f, o_rhs, -1.f, o_res);
+    const dlong Nlocal = mesh->Np * mesh->Nelements;
+    platform->linAlg->axpbyMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      o_rhs,
+      -1.0,
+      o_res
+    );
   } else {
     o_res.copyFrom(o_rhs, Nrows*sizeof(dfloat));
   }

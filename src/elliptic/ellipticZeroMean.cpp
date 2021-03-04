@@ -33,11 +33,8 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
   dfloat qmeanLocal;
   dfloat qmeanGlobal;
 
-  dlong Nblock = elliptic->Nblock;
-  dfloat* tmp = elliptic->tmp;
   mesh_t* mesh = elliptic->mesh;
   
-  occa::memory &o_tmp = elliptic->o_tmp;
   const dlong Nlocal =  mesh->Np * mesh->Nelements;
 
   if(elliptic->blockSolver) {

@@ -217,6 +217,11 @@ void linAlg_t::setup() {
                                         "linAlgWeightedInnerProd.okl",
                                         "weightedInnerProdMany",
                                         kernelInfo);
+      if (multiWeightedInnerProdKernel.isInitialized()==false)
+        multiWeightedInnerProdKernel = device.buildKernel(oklDir + 
+                                        "linAlgWeightedInnerProd.okl",
+                                        "multiWeightedInnerProd",
+                                        kernelInfo);
   }
 
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
@@ -439,6 +444,9 @@ dfloat linAlg_t::norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 // o_x.o_y
 dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
                            MPI_Comm _comm, const dlong offset) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
@@ -455,6 +463,9 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
   if (_comm != MPI_COMM_NULL) 
     MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
 
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
   return dot;
 }
 
@@ -462,6 +473,9 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
@@ -478,7 +492,44 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
   if (_comm != MPI_COMM_NULL) 
     MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
 
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
   return dot;
+}
+void linAlg_t::multiWeightedInnerProd(const dlong N, 
+                                   const dlong NVec,
+                                   const dlong Nfields,
+                                   const dlong fieldOffset,
+                                   occa::memory& o_w,
+                                   occa::memory& o_x, occa::memory& o_y,
+                                   MPI_Comm _comm, dfloat* result, const dlong offset) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = NVec * Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+
+  //multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
+  //multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
+  multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  for(int field = 0; field < NVec; ++field){
+    dfloat dot = 0;
+    for(dlong n=0;n<Nblock;++n){
+      dot += scratch[n + field * Nblock];
+    }
+    result[field] = dot;
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, result, NVec, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 }
 dfloat linAlg_t::weightedInnerProdMany(const dlong N, 
                                    const dlong Nfields,
@@ -486,6 +537,9 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
                                    occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
@@ -501,6 +555,9 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 
   if (_comm != MPI_COMM_NULL) 
     MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 
   return dot;
 }
@@ -508,6 +565,9 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 // ||o_a||_w2
 dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
@@ -523,6 +583,9 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
 
   if (_comm != MPI_COMM_NULL) 
     MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 
   return sqrt(norm);
 }
@@ -531,6 +594,9 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
                                    const dlong fieldOffset,
                                    occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
@@ -547,5 +613,8 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
   if (_comm != MPI_COMM_NULL) 
     MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
 
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
   return sqrt(norm);
 }

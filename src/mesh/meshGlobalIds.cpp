@@ -5,11 +5,11 @@
 #include "mesh.h"
 #include "nekInterfaceAdapter.hpp"
 
-typedef struct
+struct parallelNode_t
 {
   int baseRank;
   hlong baseId;
-}parallelNode_t;
+};
 
 // uniquely label each node with a global index, used for gatherScatter
 void meshNekParallelConnectNodes(mesh_t* mesh)

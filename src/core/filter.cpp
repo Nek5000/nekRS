@@ -11,7 +11,7 @@ dfloat filterFactorial(int n);
 
 void filterSetup(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
   
 
   // First construct filter function

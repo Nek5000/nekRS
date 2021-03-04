@@ -112,12 +112,6 @@ struct mesh_t
   dlong* localGatherElementList;
   occa::memory o_localGatherElementList;
 
-  //list of fair pairs
-  dlong NfacePairs;
-  dlong* EToFPairs;
-  dlong* FPairsToE;
-  int* FPairsToF;
-
   // volumeGeometricFactors;
   dlong Nvgeo;
   dfloat* vgeo;
@@ -129,14 +123,8 @@ struct mesh_t
   // volume node info
   int N, Np;
   dfloat* r, * s, * t;    // coordinates of local nodes
-  dfloat* Dr, * Ds, * Dt; // collocation differentiation matrices
-  dfloat* Dmatrices;
-  dfloat* MM, * invMM;           // reference mass matrix
+  dfloat* MM;
   dfloat* LMM, * invLMM;
-  dfloat* Srr,* Srs, * Srt; //element stiffness matrices
-  dfloat* Ssr,* Sss, * Sst;
-  dfloat* Str,* Sts, * Stt;
-  dfloat* Smatrices;
   dfloat* x, * y, * z;    // coordinates of physical nodes
 
   dfloat volume;
@@ -160,10 +148,6 @@ struct mesh_t
   dlong* mapP;     // list of surface nodes that are paired with -ve surface  nodes
   int* faceVertices; // list of mesh vertices on each face
 
-  dfloat* LIFT; // lift matrix
-  dfloat* FMM;  // Face Mass Matrix
-  dfloat* sMT; // surface mass (MM*LIFT)^T
-
   dlong Nsgeo;
   dfloat* sgeo;
 
@@ -178,9 +162,6 @@ struct mesh_t
   dfloat* cubD;       // 1D differentiation matrix
   dfloat* cubDiffInterp;     // 1D weak differentiation matrix
   dfloat* cubDW;     // 1D weak differentiation matrix
-  dfloat* cubDrW;    // 'r' weak differentiation matrix
-  dfloat* cubDsW;    // 's' weak differentiation matrix
-  dfloat* cubDtW;    // 't' weak differentiation matrix
   dfloat* cubDWmatrices;
 
   dfloat* cubvgeo;  //volume geometric data at cubature points
@@ -193,52 +174,33 @@ struct mesh_t
   // surface integration node info
   int intNfp;       // number of integration nodes on each face
   dfloat* intInterp; // interp from surface node to integration nodes
-  dfloat* intLIFT;   // lift from surface integration nodes to W&B volume nodes
   dfloat* intx, * inty, * intz; // coordinates of suface integration nodes
 
-  occa::memory o_Dr, o_Ds, o_Dt, o_LIFT, o_MM, o_invMM, o_MMPfloat;
-  occa::memory o_DrT, o_DsT, o_DtT, o_LIFTT;
   occa::memory o_LMM, o_invLMM, o_BdivW;
 
   // mesh velocity
   occa::memory o_U;
   dfloat* U; // host shadow of mesh velocity
 
-  occa::memory o_Dmatrices;
-  occa::memory o_DmatricesPfloat;
-  occa::memory o_FMMT;
-  occa::memory o_sMT;
+  occa::memory o_D;
+  occa::memory o_DPfloat;
 
-  occa::memory o_D; // tensor product differentiation matrix (for Hexes)
   occa::memory o_DW; // tensor product differentiation matrix (for Hexes)
-  occa::memory o_SrrT, o_SrsT, o_SrtT; //element stiffness matrices
-  occa::memory o_SsrT, o_SssT, o_SstT;
-  occa::memory o_Srr, o_Srs, o_Srt, o_Sss, o_Sst, o_Stt; // for char4-based kernels
-  occa::memory o_Smatrices;
-  occa::memory o_SmatricesPfloat;
-  occa::memory o_IndT, o_IndTchar;
-  occa::memory o_India, o_Indja;
-  occa::memory o_StrT, o_StsT, o_SttT;
-  occa::memory o_Ind; // for sparse index storage
+  occa::memory o_DT;
+  occa::memory o_DTPfloat;
 
   occa::memory o_vgeo, o_sgeo;
   occa::memory o_vmapM, o_vmapP, o_mapP;
 
-  occa::memory o_rmapP;
-
-  occa::memory o_EToE, o_EToF, o_EToB, o_x, o_y, o_z;
-
-  occa::memory o_EToFPairs, o_FPairsToE, o_FPairsToF;
+  occa::memory o_EToB, o_x, o_y, o_z;
 
   // cubature (for wadg)
-  occa::memory o_intLIFTT, o_intInterpT, o_intx, o_inty, o_intz;
   occa::memory o_cubDWT, o_cubD;
-  occa::memory o_cubDrWT, o_cubDsWT, o_cubDtWT, o_cubDiffInterpT;
+  occa::memory o_cubDiffInterpT;
   occa::memory o_cubDWmatrices;
   occa::memory o_cubInterpT, o_cubProjectT;
-  occa::memory o_invMc; // for comparison: inverses of weighted mass matrices
 
-  occa::memory o_cubvgeo, o_cubsgeo, o_cubggeo;
+  occa::memory o_cubvgeo, o_cubsgeo;
 
   // DG halo exchange info
   occa::memory o_haloElementList;
@@ -256,16 +218,8 @@ struct mesh_t
   occa::memory o_cubw;
   occa::memory o_faceNodes;
 
-  occa::kernel gatherKernel;
-  occa::kernel scatterKernel;
-  occa::kernel gatherScatterKernel;
   occa::kernel haloExtractKernel;
 
-  occa::kernel getKernel;
-  occa::kernel putKernel;
-
-  occa::kernel lagFieldKernel;
-  occa::kernel lagVectorFieldKernel;
   occa::kernel maskKernel;
   occa::kernel maskPfloatKernel;
 

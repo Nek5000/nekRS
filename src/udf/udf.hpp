@@ -27,7 +27,7 @@ typedef void (* udfproperties)(nrs_t* nrs, dfloat time, occa::memory o_U,
 typedef void (* udfdiv)(nrs_t* nrs, dfloat time, occa::memory o_div);
 typedef int (* udfconv)(nrs_t* nrs, int stage);
 
-typedef struct
+struct UDF
 {
   udfsetup0 setup0;
   udfsetup setup;
@@ -38,7 +38,7 @@ typedef struct
   udfproperties properties;
   udfdiv div;
   udfconv converged;
-} UDF;
+};
 
 extern UDF udf;
 

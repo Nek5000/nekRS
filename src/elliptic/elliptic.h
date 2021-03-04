@@ -43,7 +43,7 @@
 
 class ResidualProjection;
 
-typedef struct
+struct elliptic_t
 {
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
@@ -67,9 +67,6 @@ typedef struct
 
   char* type;
 
-  dlong Nblock;
-  dlong Nblock2; // second reduction
-
   dfloat tau;
 
   int* BCType;
@@ -81,10 +78,8 @@ typedef struct
   dfloat allNeumannScale;
 
   // HOST shadow copies
-  dfloat* x, * p, * r, * z, * v, * t, * s, * shat, * Ap, * tmp, * grad;
+  dfloat* p, * z, * v, * Ap;
   dfloat* invDegree;
-
-  dfloat* Ry, * R; //multigrid restriction matrix
 
   int* EToB;
 
@@ -102,38 +97,19 @@ typedef struct
   occa::memory o_maskIds;
   occa::memory o_mapB;
 
-  dfloat* sendBuffer, * recvBuffer;
-  dfloat* gradSendBuffer, * gradRecvBuffer;
-
-  occa::memory o_sendBuffer, o_recvBuffer;
-  occa::memory h_sendBuffer, h_recvBuffer;
-
-  occa::memory o_gradSendBuffer, o_gradRecvBuffer;
-  occa::memory h_gradSendBuffer, h_gradRecvBuffer;
-
   occa::stream defaultStream;
   occa::stream dataStream;
 
   occa::memory o_x;
   occa::memory o_x0;
   occa::memory o_r;
-  occa::memory o_s;
-  occa::memory o_shat;
-  occa::memory o_t;
-  occa::memory o_v;
   occa::memory o_p; // search direction
   occa::memory o_z; // preconditioner solution
   occa::memory o_res;
-  occa::memory o_Sres;
   occa::memory o_Ap; // A*search direction
-  occa::memory o_tmp; // temporary
-  occa::memory o_tmp2; // temporary (second reduction)
-  occa::memory o_grad; // temporary gradient storage (part of A*)
   occa::memory o_rtmp;
   occa::memory o_invDegree;
   occa::memory o_EToB;
-  occa::memory o_R;
-  occa::memory o_Ry;
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
   occa::memory o_gllzw; // GLL nodes and weights
@@ -158,8 +134,6 @@ typedef struct
   dfloat resNormFactor;
 
   // combined PCG update step
-  int NthreadsUpdatePCG;
-  dlong NblocksUpdatePCG;
   dfloat* tmpNormr;
   occa::memory o_tmpNormr;
   occa::kernel updatePCGKernel;
@@ -176,7 +150,7 @@ typedef struct
   int* levels;
 
   ResidualProjection* residualProjection;
-}elliptic_t;
+};
 
 #include "ellipticMultiGrid.h"
 #include "ellipticResidualProjection.h"
@@ -210,16 +184,6 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT, dfloat &res);
 
-void ellipticScaledAdd(elliptic_t* elliptic,
-                       dfloat alpha,
-                       occa::memory &o_a,
-                       dfloat beta,
-                       occa::memory &o_b);
-
-dfloat ellipticWeightedInnerProduct(elliptic_t* elliptic,
-                                    occa::memory &o_w,
-                                    occa::memory &o_a,
-                                    occa::memory &o_b);
 void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,
@@ -231,8 +195,6 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_q,
                 occa::memory &o_Aq,
                 const char* precision);
-
-dfloat ellipticWeightedNorm2(elliptic_t* elliptic, occa::memory &o_w, occa::memory &o_a);
 
 void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
                              dlong* nnz, ogs_t** ogs, hlong* globalStarts);
