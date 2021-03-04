@@ -6,11 +6,9 @@ for x in "$@"; do
   fi
 done
 
-touch SIZE tmp.usr
-
-export CFLAGS="${CFLAGS} -w -fPIC -mcmodel=medium"
-export FFLAGS="${FFLAGS} -w -fPIC -fcray-pointer -mcmodel=medium -I../../"
 ${NEK5000_SOURCE_DIR}/bin/nekconfig -build-dep
-${NEK5000_SOURCE_DIR}/bin/nekconfig
 
+touch SIZE tmp.usr
+${NEK5000_SOURCE_DIR}/bin/nekconfig
+mv makefile makefile.template
 rm SIZE tmp.usr

@@ -400,7 +400,11 @@ static void setOccaVars(string dir)
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 
-  string occa_dir;
-  occa_dir.assign(getenv("OCCA_DIR"));
-  occa::env::OCCA_INSTALL_DIR = occa_dir;
+  string install_dir;
+  install_dir.assign(getenv("NEKRS_HOME"));
+
+  if (!getenv("OCCA_DIR"))
+    occa::env::OCCA_DIR = install_dir + "/";
+
+  occa::env::OCCA_INSTALL_DIR = occa::env::OCCA_DIR;
 }

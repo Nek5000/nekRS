@@ -122,7 +122,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     double tStart = MPI_Wtime();
       
     if(nrs->Nscalar)
-      scalarSolve(nrs, time, cds->o_S, stage); 
+      scalarSolve(nrs, time + cds->dt[0], cds->o_S, stage); 
 
     if(udf.properties) {
       timer::tic("udfProperties", 1);
@@ -143,7 +143,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     }
 
     if(nrs->flow)
-      fluidSolve(nrs, time, nrs->o_U, stage); 
+      fluidSolve(nrs, time + nrs->dt[0], nrs->o_U, stage); 
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -153,14 +153,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     converged = true;
     if(udf.converged) converged = udf.converged(nrs, stage);
 
-    printInfo(nrs, time, tstep, tElapsedStep, tElapsed);
+    printInfo(nrs, time + nrs->dt[0], tstep, tElapsedStep, tElapsed);
 
     platform->timer.tic("udfExecuteStep", 1);
     if(isOutputStep && converged) {
       nek::ifoutfld(1);
       nrs->isOutputStep = 1;
     } 
-    if(udf.executeStep) udf.executeStep(nrs, time+dt, tstep);
+    if(udf.executeStep) udf.executeStep(nrs, time + nrs->dt[0], tstep);
     nek::ifoutfld(0);
     nrs->isOutputStep = 0;
     platform->timer.toc("udfExecuteStep");
@@ -362,7 +362,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
         cds->fieldOffset
       );
 
-    occa::memory o_Snew = cdsSolve(is, cds, time + cds->dt[0], stage);
+    occa::memory o_Snew = cdsSolve(is, cds, time, stage);
     o_Snew.copyTo(o_S, cds->Ntotal * sizeof(dfloat), is * cds->fieldOffset * sizeof(dfloat));
   }
   platform->timer.toc("scalarSolve");
@@ -460,7 +460,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     nrs->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
-  occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0], stage);
+  occa::memory o_Pnew = tombo::pressureSolve(nrs, time, stage);
   nrs->o_P.copyFrom(o_Pnew, nrs->Ntotal * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
@@ -474,7 +474,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     nrs->o_rho,
     nrs->o_ellipticCoeff);
 
-  occa::memory o_Unew = tombo::velocitySolve(nrs, time + nrs->dt[0], stage);
+  occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);
   o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   platform->timer.toc("velocitySolve");
 }
@@ -1217,7 +1217,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
       }	
     }
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
-           tstep, time + nrs->dt[0], nrs->dt[0], cfl);
+           tstep, time, nrs->dt[0], cfl);
 
     if(nrs->flow) {
       if(nrs->uvwSolver)

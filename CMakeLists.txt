@@ -7,8 +7,8 @@ include(FetchContent)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-##set(CMAKE_VERBOSE_MAKEFILE on)
-set(FETCHCONTENT_QUIET off)
+#set(CMAKE_VERBOSE_MAKEFILE on)
+set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
 #Link:https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling

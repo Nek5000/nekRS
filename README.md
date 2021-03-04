@@ -28,7 +28,7 @@ Requirements:
 * GNU compiler collection version 6.2 or later
 * MPI-3.1 or later
 * CMake version 3.11 or later
-* Login shell bash or zsh
+* bash
 
 Download the latest release tarball
 

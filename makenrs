@@ -85,16 +85,8 @@ if [[ "$#" -eq 1 ]]; then
   fi
 fi
 
-
-if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then 
-  echo "Error: user's login shell needs to be bash or zsh!"
-  ${NEKRS_EXIT_CMD} 1
-fi
-
 : ${OCCA_METAL_ENABLED:=0}
-
 : ${NEKRS_CXXFLAGS:=""}
-
 USE_OCCA_MEM_BYTE_ALIGN="64" 
 
 if uname -a | grep 'ppc64'; then

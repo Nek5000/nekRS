@@ -485,27 +485,25 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
     sprintf(buf, "%s/core/zero.usr", nek5000_dir);
     copyFile(buf, usrFileCache);
   } else if(isFileNewer(usrFile, usrFileCache)) {
-    sprintf(buf, "cp -pf %s.usr %s",casename,usrFileCache);
-    system(buf);
+    copyFile(usrFile, usrFileCache);
   }
 
-  // build 
+  // build
   char libFile[BUFSIZ];
   sprintf(libFile,"%s/lib%s.so",cache_dir,casename);
   int recompile = 0;
   if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
   sprintf(buf,"%s/SIZE",cache_dir);
   if(isFileNewer(buf, libFile)) recompile = 1;  
-
   if(recompile) {
     printf("building nek ... "); fflush(stdout);
     double tStart = MPI_Wtime();
-    sprintf(buf, "cd %s && cp %s/makefile . && make -s -j4 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s -f %s/Makefile lib usr libnekInterface",
-            cache_dir, nek5000_dir, nek5000_dir, casename, cache_dir, cache_dir, nekInterface_dir);
-    if(system(buf)) {
-      printf("\nCannot compile nek5000 lib!\n", cache_dir);
-      return EXIT_FAILURE;
-    } 
+    sprintf(buf, "cd %s && cp %s/makefile.template makefile && \
+		 make -s -j4 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s NEKRS_NEKINTERFACE_DIR=%s \
+		 -f %s/Makefile lib usr libnekInterface",
+            cache_dir, nek5000_dir, nek5000_dir, casename, cache_dir, cache_dir, nekInterface_dir, nekInterface_dir);
+    //printf("build cmd: %s\n", buf);
+    if(system(buf)) return EXIT_FAILURE;
     printf("done (%gs)\n\n", MPI_Wtime() - tStart);
     fflush(stdout);
   }
