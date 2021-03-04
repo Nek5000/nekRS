@@ -9,19 +9,17 @@
 #include "cfl.hpp"
 #include "linAlg.hpp"
 
-void computeCoefficients(nrs_t* nrs, int order, int meshOrder);
+void computeCoefficients(nrs_t* nrs, int tstep);
 
-void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF);
-occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time,
-                                    occa::memory o_U);
-occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time,
-                                    occa::memory o_U);
+void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o_BF);
+occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U);
+occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U);
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
 
-void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF);
-occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
+void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF);
+occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
-occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
+occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S);
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage);
 void meshUpdateBdivW(nrs_t* nrs);
@@ -41,7 +39,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   nrs->dt[0] = dt;
   nrs->idt = 1/nrs->dt[0];
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  computeCoefficients(nrs, mymin(tstep, nrs->nBDF), mymin(tstep, mesh->nAB));
+  computeCoefficients(nrs, tstep);
 
   const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
   if(movingMesh) meshUpdateBdivW(nrs);
@@ -66,7 +64,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(nrs->Nscalar) {
     platform->timer.tic("makeq", 1);
     platform->linAlg->fillKernel(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, cds->o_FS);
-    makeq(nrs, time, cds->o_FS, cds->o_BF);
+    makeq(nrs, time, tstep, cds->o_FS, cds->o_BF);
     platform->timer.toc("makeq");
     for (int s = cds->nBDF; s > 1; s--) {
       const dlong Nbyte = cds->meshT[0]->fieldOffset * cds->NSfields * sizeof(dfloat);
@@ -81,7 +79,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(nrs->flow) {
     platform->timer.tic("makef", 1);
     platform->linAlg->fillKernel(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
-    makef(nrs, time, nrs->o_FU, nrs->o_BF);
+    makef(nrs, time, tstep, nrs->o_FU, nrs->o_BF);
     platform->timer.toc("makef");
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong Nbyte = nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat);
@@ -121,9 +119,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
     double tStart = MPI_Wtime();
-      
+     
+    const dfloat timeNew = time + nrs->dt[0]; 
+
     if(nrs->Nscalar)
-      scalarSolve(nrs, time + cds->dt[0], cds->o_S, stage); 
+      scalarSolve(nrs, timeNew, cds->o_S, stage); 
 
     if(udf.properties) {
       platform->timer.tic("udfProperties", 1);
@@ -133,18 +133,18 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         o_S = cds->o_S;
         o_SProp = cds->o_prop;
       }
-      udf.properties(nrs, time + nrs->dt[0], nrs->o_U, o_S, nrs->o_prop, o_SProp);
+      udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
       platform->timer.toc("udfProperties");
     }
 
     if(udf.div){
       linAlg_t* linAlg = nrs->linAlg;
       linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
-      udf.div(nrs, time + nrs->dt[0], nrs->o_div);
+      udf.div(nrs, timeNew, nrs->o_div);
     }
 
     if(nrs->flow)
-      fluidSolve(nrs, time + nrs->dt[0], nrs->o_U, stage); 
+      fluidSolve(nrs, timeNew, nrs->o_U, stage); 
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -154,14 +154,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     converged = true;
     if(udf.converged) converged = udf.converged(nrs, stage);
 
-    printInfo(nrs, time + nrs->dt[0], tstep, tElapsedStep, tElapsed);
+    printInfo(nrs, timeNew, tstep, tElapsedStep, tElapsed);
 
     platform->timer.tic("udfExecuteStep", 1);
     if(isOutputStep && converged) {
       nek::ifoutfld(1);
       nrs->isOutputStep = 1;
     } 
-    if(udf.executeStep) udf.executeStep(nrs, time + nrs->dt[0], tstep);
+    if(udf.executeStep) udf.executeStep(nrs, timeNew, tstep);
     nek::ifoutfld(0);
     nrs->isOutputStep = 0;
     platform->timer.toc("udfExecuteStep");
@@ -173,63 +173,36 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   platform->timer.set("solve", tElapsed);
 }
 
-void computeCoefficients(nrs_t* nrs, int order, int meshOrder)
+void computeCoefficients(nrs_t* nrs, int tstep)
 {
-  mesh_t* mesh = nrs->meshV;
-  if(order == 1) {
-    nrs->g0 = 1.0;
-    nrs->coeffBDF[0] = 1.0;
-    nrs->coeffBDF[1] = 0.0;
-    nrs->coeffBDF[2] = 0.0;
-    nrs->coeffEXT[0] = 1.0;
-    nrs->coeffEXT[1] = 0.0;
-    nrs->coeffEXT[2] = 0.0;
-    nrs->nEXT = 1;
-  } else if(order == 2) {
-    nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
-    nrs->coeffBDF[2] = 0.0;
+  const int bdfOrder = mymin(tstep, nrs->nBDF);
+  const int extOrder = mymin(tstep, nrs->nEXT);
+  const int meshOrder = bdfOrder;
 
-    nrs->nEXT = 2;
-    nek::extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
-    nrs->coeffEXT[2] = 0.0;
-  } else if(order == 3) {
-    nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, order);
-    nrs->nEXT = 3;
-    nek::extCoeff(nrs->coeffEXT, nrs->dt, nrs->nEXT);
-  }
+  nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, bdfOrder);
+  nek::extCoeff(nrs->coeffEXT, nrs->dt, extOrder);
 
-  if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
-  {
-    const int maxIntegrationOrder = 3;
-    for(int i = 0 ; i < maxIntegrationOrder; ++i){
-      mesh->coeffAB[i] = 0.0;
-    }
+  for(int i = nrs->nEXT; i < extOrder; i--) nrs->coeffEXT[i-1] = 0.0;
+  for(int i = nrs->nBDF; i < bdfOrder; i--) nrs->coeffBDF[i-1] = 0.0;
+
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
+    mesh_t* mesh = nrs->meshV;
     nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
-    for(int i = 0 ; i < maxIntegrationOrder; ++i){
-      mesh->coeffAB[i] *= nrs->dt[0];
-    }
-    mesh->o_coeffAB.copyFrom(mesh->coeffAB, maxIntegrationOrder * sizeof(dfloat));
+    for(int i = 0 ; i < meshOrder; ++i) mesh->coeffAB[i] *= nrs->dt[0];
+    for(int i = mesh->nAB; i < meshOrder; i--) mesh->coeffAB[i-1] = 0.0;
+    mesh->o_coeffAB.copyFrom(mesh->coeffAB, mesh->nAB * sizeof(dfloat));
   }
 
   nrs->ig0 = 1.0 / nrs->g0;
   nrs->o_coeffBDF.copyFrom(nrs->coeffBDF);
   nrs->o_coeffEXT.copyFrom(nrs->coeffEXT);
 
-#if 0
-  if (platform->comm.mpiRank == 0) {
-    cout << "DT:" << nrs->dt[0] << "," << nrs->dt[1] << "," << nrs->dt[2] << "\n";
-    cout << "BDF:" << nrs->g0 << "," << nrs->coeffBDF[0] << "," << nrs->coeffBDF[1] << "," << nrs->coeffBDF[2] << "\n";
-    cout << "EXT:" << nrs->coeffEXT[0] << "," << nrs->coeffEXT[1] << "," << nrs->coeffEXT[2] << "\n";
-  }
-#endif
-
   if (nrs->Nscalar) {
-    nrs->cds->nEXT = nrs->nEXT;
     nrs->cds->g0 = nrs->g0;
     nrs->cds->ig0 = nrs->ig0;
   }
 }
-void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
+void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
   mesh_t* mesh = cds->meshT[0];
@@ -275,8 +248,9 @@ void makeq(nrs_t* nrs, dfloat time, occa::memory o_FS, occa::memory o_BF)
 
     if(cds->options[is].compareArgs("ADVECTION", "TRUE")) {
       if(cds->Nsubsteps) {
-        o_adv = movingMesh ? scalarStrongSubCycleMovingMesh(cds, time, is, cds->o_U, cds->o_S) :
-          scalarStrongSubCycle(cds, time, is, cds->o_U, cds->o_S);
+        o_adv = movingMesh ? 
+		scalarStrongSubCycleMovingMesh(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S) :
+                scalarStrongSubCycle(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
       } else {
         if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
           cds->advectionStrongCubatureVolumeKernel(
@@ -370,7 +344,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
   platform->timer.toc("scalarSolve");
 }
 
-void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
+void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->meshV;
   
@@ -405,8 +379,9 @@ void makef(nrs_t* nrs, dfloat time, occa::memory o_FU, occa::memory o_BF)
   occa::memory o_adv = platform->o_slice0;
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
     if(nrs->Nsubsteps) {
-      o_adv = movingMesh ? velocityStrongSubCycleMovingMesh(nrs, time, nrs->o_U) :
-              velocityStrongSubCycle(nrs, time, nrs->o_U);
+      o_adv = movingMesh ? 
+	      velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U) :
+              velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
     } else {
       if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
@@ -463,7 +438,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     nrs->meshV->fieldOffset,
     nrs->o_rho,
     nrs->o_ellipticCoeff);
-  occa::memory o_Pnew = tombo::pressureSolve(nrs, time + nrs->dt[0], stage);
+  occa::memory o_Pnew = tombo::pressureSolve(nrs, time, stage);
   nrs->o_P.copyFrom(o_Pnew, nrs->meshV->fieldOffset * sizeof(dfloat));
   platform->timer.toc("pressureSolve");
 
@@ -482,7 +457,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
   platform->timer.toc("velocitySolve");
 }
 
-occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::memory o_U)
+occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = mesh->linAlg;
@@ -498,12 +473,12 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
   occa::memory o_bmst = platform->o_slice18;
 
   // Solve for Each SubProblem
-  for (int torder = nrs->nEXT - 1; torder >= 0; torder--) {
+  for (int torder = nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->meshV->fieldOffset;
     const dlong offset = torder * nrs->meshV->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
-    if (torder == nrs->nEXT - 1){
+    if (torder == nEXT - 1){
       linAlg->axpby(nrs->NVfields * nrs->meshV->fieldOffset, b, o_U, 0.0, o_p0, toffset, 0);
       occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
       linAlg->axmyMany(mesh->Nlocal, nrs->NVfields, nrs->meshV->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
@@ -543,7 +518,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
         const dfloat tn0 = time;
         const dfloat tn1 = time - nrs->dt[1];
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
-        switch(nrs->nEXT) {
+        switch(nEXT) {
         case 1:
           nrs->coeffRK[0] = 1;
           nrs->coeffRK[1] = 0;
@@ -561,7 +536,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
           break;
         }
         nrs->o_coeffRK.copyFrom(nrs->coeffRK);
-        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nrs->nEXT, nrs->meshV->fieldOffset, nrs->o_coeffRK, mesh->o_LMM, o_bmst);
+        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->meshV->fieldOffset, nrs->o_coeffRK, mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
           mesh->Nlocal,
           nrs->NVfields,
@@ -673,17 +648,17 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, dfloat time, occa::mem
   }
   return o_p0;
 }
-occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
+occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = mesh->linAlg;
 
   // Solve for Each SubProblem
-  for (int torder = nrs->nEXT - 1; torder >= 0; torder--) {
+  for (int torder = nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->meshV->fieldOffset;
     const dfloat b = nrs->coeffBDF[torder];
-    if (torder == nrs->nEXT - 1){
+    if (torder == nEXT - 1){
       platform->linAlg->axpby(
         nrs->NVfields * nrs->meshV->fieldOffset,
         b,
@@ -723,7 +698,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
         const dfloat tn0 = time;
         const dfloat tn1 = time - nrs->dt[1];
         const dfloat tn2 = time - (nrs->dt[1] + nrs->dt[2]);
-        switch(nrs->nEXT) {
+        switch(nEXT) {
         case 1:
           nrs->coeffRK[0] = 1;
           nrs->coeffRK[1] = 0;
@@ -837,7 +812,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, dfloat time, occa::memory o_U)
   return platform->o_slice0;
 }
 
-occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
+occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
 
@@ -855,12 +830,12 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
   occa::memory& o_bmst = platform->o_slice1;
 
   // Solve for Each SubProblem
-  for (int torder = (cds->nEXT - 1); torder >= 0; torder--) {
+  for (int torder = (nEXT - 1); torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     const dlong toffset = is * cds->meshT[0]->fieldOffset +
                           torder * cds->NSfields * cds->meshT[0]->fieldOffset;
     const dlong offset = torder * cds->meshT[0]->fieldOffset;
-    if (torder == cds->nEXT - 1){
+    if (torder == nEXT - 1){
       linAlg->axpby(cds->meshT[0]->fieldOffset, cds->coeffBDF[torder],
                            o_S, 0.0, o_p0, toffset, 0);
       occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
@@ -892,7 +867,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
         const dfloat tn0 = time;
         const dfloat tn1 = time - cds->dt[1];
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        switch(cds->nEXT) {
+        switch(nEXT) {
         case 1:
           cds->coeffRK[0] = 1;
           cds->coeffRK[1] = 0;
@@ -910,7 +885,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
           break;
         }
         cds->o_coeffRK.copyFrom(cds->coeffRK);
-        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, cds->nEXT, cds->meshT[0]->fieldOffset, cds->o_coeffRK, mesh->o_LMM, o_bmst);
+        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, cds->meshT[0]->fieldOffset, cds->o_coeffRK, mesh->o_LMM, o_bmst);
         linAlg->aydx(mesh->Nlocal, 1.0, o_bmst, o_u1);
 
         if(mesh->NglobalGatherElements) {
@@ -1006,18 +981,18 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, dfloat time, int is,
   }
   return o_p0;
 }
-occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
+occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
   mesh_t* mesh = cds->meshV;
   linAlg_t* linAlg= mesh->linAlg;
 
   // Solve for Each SubProblem
-  for (int torder = (cds->nEXT - 1); torder >= 0; torder--) {
+  for (int torder = (nEXT - 1); torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     const dlong toffset = is * cds->meshT[0]->fieldOffset +
                           torder * cds->NSfields * cds->meshT[0]->fieldOffset;
-    if (torder == cds->nEXT - 1){
+    if (torder == nEXT - 1){
       platform->linAlg->axpby(
         cds->meshT[0]->fieldOffset,
         cds->coeffBDF[torder],
@@ -1055,7 +1030,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, dfloat time, int is,
         const dfloat tn0 = time;
         const dfloat tn1 = time - cds->dt[1];
         const dfloat tn2 = time - (cds->dt[1] + cds->dt[2]);
-        switch(cds->nEXT) {
+        switch(nEXT) {
         case 1:
           cds->coeffRK[0] = 1;
           cds->coeffRK[1] = 0;

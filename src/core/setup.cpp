@@ -110,16 +110,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->NVfields = 3;
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
-
-  nrs->nRK = 4;
-
-
   mesh->Nfields = 1;
-
-  nrs->coeffEXT = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->coeffBDF = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->coeffRK = (dfloat*) calloc(3, sizeof(dfloat));
 
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     nrs->nEXT = 1;
@@ -131,6 +122,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->nEXT = 3;
     nrs->nBDF = 3;
   }
+  nrs->coeffEXT = (dfloat*) calloc(nrs->nEXT, sizeof(dfloat));
+  nrs->coeffBDF = (dfloat*) calloc(nrs->nBDF, sizeof(dfloat));
+
+  nrs->nRK = 4;
+  nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
+  nrs->coeffRK = (dfloat*) calloc(3, sizeof(dfloat));
 
   dfloat mue = 1;
   dfloat rho = 1;
@@ -249,11 +246,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->div   = (dfloat*) calloc(nrs->meshV->fieldOffset,sizeof(dfloat));
   nrs->o_div = device.malloc(nrs->meshV->fieldOffset * sizeof(dfloat), nrs->div);
 
-  dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
-  nrs->o_coeffEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_coeffBDF = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffBDF);
+  nrs->o_coeffEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
+  nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_coeffRK    = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffRK);
+  nrs->o_coeffRK     = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffRK);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
@@ -893,7 +889,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
   cds->nEXT       = nrs->nEXT;
 
   // time stepper
-  dfloat rkC[4]  = {1.0, 0.0, -1.0, -2.0};
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;

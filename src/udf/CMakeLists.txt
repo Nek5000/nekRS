@@ -45,5 +45,3 @@ if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
 set_target_properties(UDF PROPERTIES LINKER_LANGUAGE CXX)
-
-message("UDF CXXFLAGS: ${CMAKE_CXX_FLAGS}")
