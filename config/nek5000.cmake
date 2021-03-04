@@ -94,7 +94,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
   set(FPIC_FLAG "-fPIC")
 endif()
 
-include(checkfortrancompilerflag)
+include(CheckFortranCompilerFlag)
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   CHECK_Fortran_COMPILER_FLAG("-fcray-pointer" COMPILER_Fortran_SUPPORTS_CRAYPTR)
   if(COMPILER_Fortran_SUPPORTS_CRAYPTR)

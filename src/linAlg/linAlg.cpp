@@ -587,7 +587,7 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
   platform->timer.toc("dotp");
 #endif
 
-  return sqrt(norm);
+  return norm;
 }
 dfloat linAlg_t::weightedNorm2Many(const dlong N,
                                    const dlong Nfields,
@@ -616,5 +616,5 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
 #ifdef ENABLE_TIMER
   platform->timer.toc("dotp");
 #endif
-  return sqrt(norm);
+  return norm;
 }
