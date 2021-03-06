@@ -252,16 +252,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
   if(elliptic->blockSolver) {
-    elliptic->ogs = ogsSetup(Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose, platform->device);
-    elliptic->invDegree = (dfloat*)calloc(elliptic->Ntotal * elliptic->Nfields, sizeof(dfloat));
-
-    for(int n = 0; n < elliptic->Ntotal * elliptic->Nfields; n++) elliptic->invDegree[n] = 1.0;
-    for(int fld = 0; fld < elliptic->Nfields; fld++)
-      for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
-        elliptic->invDegree[n + fld * elliptic->Ntotal] = elliptic->ogs->invDegree[n];
-
-    elliptic->o_invDegree = platform->device.malloc(
-      elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat), elliptic->invDegree);
+    elliptic->ogs = mesh->ogs; // mixed BC's possible in each field
+    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   } else {
     mesh->maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
     memcpy(mesh->maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
@@ -533,19 +525,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
+  const dlong nullProjectWeightGlobal =
+    platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm);
+  elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
+
   if(elliptic->blockSolver) {
     elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
 
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
-      const dlong nullProjectWeightGlobal =
-        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm, fld * elliptic->Ntotal);
-
-      elliptic->nullProjectBlockWeightGlobal[fld] = 1.0 / nullProjectWeightGlobal;
+      elliptic->nullProjectBlockWeightGlobal[fld] = elliptic->nullProjectWeightGlobal;
     }
-  }else{
-      const dlong nullProjectWeightGlobal =
-        platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm);
-    elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
   }
 
   oogs_mode oogsMode = OOGS_AUTO;

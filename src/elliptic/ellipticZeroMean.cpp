@@ -47,8 +47,8 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 #endif
         dfloat qmeanGlobal =
           platform->linAlg->innerProd(Nlocal,
-            elliptic->o_invDegree,
             o_q,
+            elliptic->o_invDegree,
             platform->comm.mpiComm,
             fld * elliptic->Ntotal);
 #ifdef ELLIPTIC_ENABLE_TIMER

@@ -91,7 +91,7 @@ SOFTWARE.
         for(int fld = 0 ; fld < Nfields; ++fld){
           const double xid = x[id + fld * offset];
           const double yid = y[id + fld * offset];
-          const double wid = w[id + fld * offset];
+          const double wid = w[id];
           s_wxy[t] += wid*xid*yid;
         }
         id += p_blockSize*Nblocks;
