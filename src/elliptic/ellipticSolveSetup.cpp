@@ -266,16 +266,13 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->precon = new precon_t();
 
-  string suffix;
-  if(elliptic->elementType == HEXAHEDRA)
-    suffix = "Hex3D";
+  string suffix = "Hex3D";
 
   string filename, kernelName;
 
   kernelInfo["defines/pfloat"] = pfloatString;
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
-  kernelInfo["defines/p_Nalign"] = USE_OCCA_MEM_BYTE_ALIGN;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
 
   occa::properties pfloatKernelInfo = kernelInfo;
@@ -293,8 +290,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(platform->comm.mpiRank == 0) printf("loading elliptic kernels ... ");
   fflush(stdout);
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && platform->comm.mpiRank == 0) || (r == 1 && platform->comm.mpiRank > 0)) {
+  {
       const string oklpath = install_dir + "/okl/core/";
       string filename;
 
@@ -315,23 +311,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         platform->device.buildKernel(filename.c_str(),
                                  "mask",
                                  pfloatKernelInfo);
-
-      if(elliptic->blockSolver) {
-        filename = oklpath + "scaledAdd.okl";
-        elliptic->scaledAddPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
-                                   "scaledBlockAdd",
-                                   pfloatKernelInfo);
-
-
-        filename = oklpath + "dotMultiply.okl";
-        elliptic->dotMultiplyPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
-                                   "dotBlockMultiply",
-                                   pfloatKernelInfo);
-
-      }else{
-
         filename = oklpath + "copyDfloatToPfloat.okl";
         elliptic->copyDfloatToPfloatKernel =
           platform->device.buildKernel(filename.c_str(),
@@ -365,10 +344,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
           platform->device.buildKernel(filename.c_str(),
                                    "dotMultiply",
                                    pfloatKernelInfo);
-
-      }
-    }
-    MPI_Barrier(platform->comm.mpiComm);
   }
 
   // add custom defines
@@ -386,9 +361,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
   kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
-  kernelInfo["defines/" "p_NthreadsUpdatePCG"] = (int) BLOCKSIZE;
-  kernelInfo["defines/" "p_NwarpsUpdatePCG"] = (int) (BLOCKSIZE/32); // WARNING: CUDA SPECIFIC
-
   occa::properties dfloatKernelInfo = kernelInfo;
   occa::properties floatKernelInfo = kernelInfo;
   floatKernelInfo["defines/" "pfloat"] = pfloatString;
@@ -400,17 +372,13 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   dfloatKernelInfoNoOKL["defines/" "pfloat"] = dfloatString;
   if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && platform->comm.mpiRank == 0) || (r == 1 && platform->comm.mpiRank > 0)) {
+  {
       const string oklpath = install_dir + "/okl/elliptic/";
       string filename;
 
       if(elliptic->var_coeff) {
         filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
-        if(elliptic->blockSolver)
-          kernelName = "ellipticBlockBuildDiagonal" + suffix;
-        else
-          kernelName = "ellipticBuildDiagonal" + suffix;
+        kernelName = "ellipticBlockBuildDiagonal" + suffix;
         elliptic->updateDiagonalKernel = platform->device.buildKernel(filename.c_str(),
                                                                   kernelName.c_str(),
                                                                   dfloatKernelInfo);
@@ -516,9 +484,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         elliptic->precon->prolongateKernel =
           platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
       }
-    }
-
-    MPI_Barrier(platform->comm.mpiComm);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

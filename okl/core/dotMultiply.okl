@@ -25,17 +25,6 @@ SOFTWARE.
 */
 
 
-@kernel void collocate(const dlong N,
-			@restrict const  dfloat *  w,
-			@restrict dfloat *  v){
-
-  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    if(n<N){
-      v [n] = w[n]*v[n];
-    }
-  }
-
-}
 @kernel void dotMultiply(const dlong N,
 			@restrict const  dfloat *  w,
 			@restrict const  dfloat *  v,
@@ -44,23 +33,6 @@ SOFTWARE.
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
       wv [n] = w[n]*v[n];
-    }
-  }
-
-}
-
-@kernel void dotBlockMultiply(const dlong N,
-			const dlong offset, 
-			@restrict const  dfloat *  w,
-			@restrict const  dfloat *  v,
-			@restrict dfloat *  wv){
-
-  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    if(n<N){
-      for(int fld=0; fld<p_eNfields;fld++){
-      	const dlong id = n + fld*offset; 
-        wv[id] = w[id]*v[id];
-      }
     }
   }
 
