@@ -227,8 +227,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   const string oklpath = install_dir + "/okl/elliptic/";
 
   {
-      kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-
       kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
       occa::properties AxKernelInfo = kernelInfo;
       filename = oklpath + "ellipticAx" + suffix + ".okl";
@@ -279,21 +277,22 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       //sizes for the coarsen and prolongation kernels. degree NFine to degree N
       int NqFine   = (Nf + 1);
       int NqCoarse = (Nc + 1);
-      kernelInfo["defines/" "p_NqFine"] = Nf + 1;
-      kernelInfo["defines/" "p_NqCoarse"] = Nc + 1;
+      occa::properties coarsenProlongateKernelInfo = kernelInfo;
+      coarsenProlongateKernelInfo["defines/" "p_NqFine"] = Nf + 1;
+      coarsenProlongateKernelInfo["defines/" "p_NqCoarse"] = Nc + 1;
 
       const int NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
       const int NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
-      kernelInfo["defines/" "p_NpFine"] = NpFine;
-      kernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
+      coarsenProlongateKernelInfo["defines/" "p_NpFine"] = NpFine;
+      coarsenProlongateKernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
 
       filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
       kernelName = "ellipticPreconCoarsen" + suffix;
-      elliptic->precon->coarsenKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
+      elliptic->precon->coarsenKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),coarsenProlongateKernelInfo);
 
       filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
       kernelName = "ellipticPreconProlongate" + suffix;
-      elliptic->precon->prolongateKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
+      elliptic->precon->prolongateKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),coarsenProlongateKernelInfo);
   }
 
   if(elliptic->elementType == HEXAHEDRA) {

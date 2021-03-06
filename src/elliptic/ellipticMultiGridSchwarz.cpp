@@ -882,14 +882,9 @@ void MGLevel::build(
   string filename, kernelName;
 
   {
-      occa::properties properties;
-      properties += platform->device.properties();
-      properties["defines/p_Nq_e"] = Nq_e;
-      properties["defines/p_threadBlockSize"] = BLOCKSIZE;
+      occa::properties properties = platform->kernelInfo;
       properties["defines/p_Nq"] = Nq;
-      properties["defines/pfloat"] = pfloatString;
-      properties["defines/dfloat"] = dfloatString;
-      properties["defines/dlong"] = dlongString;
+      properties["defines/p_Nq_e"] = Nq_e;
       properties["defines/p_restrict"] = 0;
       properties["defines/p_overlap"] = (int) overlap;
       if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))

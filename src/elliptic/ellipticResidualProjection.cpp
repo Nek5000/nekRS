@@ -176,12 +176,7 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   string filename, kernelName;
 
   {
-      occa::properties properties;
-      properties += platform->device.properties();
-      properties["defines/p_threadBlockSize"] = BLOCKSIZE;
-      properties["defines/p_blockSize"] = BLOCKSIZE;
-      properties["defines/dfloat"] = dfloatString;
-      properties["defines/dlong"] = dlongString;
+      occa::properties properties = platform->kernelInfo;
       properties["defines/p_Nfields"] = Nfields;
 
       filename = oklpath + "ellipticResidualProjection.okl";

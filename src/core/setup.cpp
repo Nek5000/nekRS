@@ -254,18 +254,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
   kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
-  kernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
-  kernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
-  if(nrs->Nsubsteps)
-    kernelInfo["defines/" "p_SUBCYCLING"] =  1;
-  else
-    kernelInfo["defines/" "p_SUBCYCLING"] =  0;
-
-  kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-  //kernelInfo["parser/" "automate-add-barriers"] =  "disabled";
-
-  const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
-  kernelInfo["defines/" "p_MovingMesh"] = movingMesh;
 
   // jit compile udf kernels
   if (udf.loadKernels) {
@@ -387,10 +375,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->wgradientVolumeKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName = oklpath + "nrsSumMakef" + suffix + ".okl";
-      kernelName = "nrsSumMakef" + suffix;
-      nrs->sumMakefKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      {
+        occa::properties sumMakefKernelInfo = kernelInfo;
+        const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+        sumMakefKernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
+        sumMakefKernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
+        sumMakefKernelInfo["defines/" "p_MovingMesh"] = movingMesh;
+        if(nrs->Nsubsteps)
+          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 1;
+        else
+          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 0;
+          
+        fileName   = oklpath + "nrsSumMakef" + suffix + ".okl";
+        kernelName = "nrsSumMakef" + suffix;
+        nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+      }
 
       fileName = oklpath + "nrsDivergence" + suffix + ".okl";
       kernelName = "nrswDivergenceVolume" + suffix;
@@ -450,30 +449,38 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->velocityNeumannBCKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfoBC);
 
-      fileName = oklpath + "nrsSubCycle" + suffix + ".okl";
-      kernelName = "nrsSubCycleStrongCubatureVolume" + suffix;
-      nrs->subCycleStrongCubatureVolumeKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      if(nrs->Nsubsteps){
+        occa::properties subcyclingProperties = kernelInfo;
+        const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+        subcyclingProperties["defines/" "p_MovingMesh"] = movingMesh;
+        subcyclingProperties["defines/" "p_nEXT"] =  nrs->nEXT;
+        subcyclingProperties["defines/" "p_nBDF"] =  nrs->nBDF;
 
-      kernelName = "nrsSubCycleStrongVolume" + suffix;
-      nrs->subCycleStrongVolumeKernel =
-        device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        fileName = oklpath + "nrsSubCycle" + suffix + ".okl";
+        kernelName = "nrsSubCycleStrongCubatureVolume" + suffix;
+        nrs->subCycleStrongCubatureVolumeKernel =
+          device.buildKernel(fileName.c_str(), kernelName.c_str(), subcyclingProperties);
 
-      fileName = oklpath + "nrsSubCycleRKUpdate" + ".okl";
-      kernelName = "nrsSubCycleLSERKUpdate";
-      if(nrs->nRK == 4) kernelName = "nrsSubCycleERKUpdate";
-      nrs->subCycleRKUpdateKernel =
-        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "nrsSubCycleRK";
-      nrs->subCycleRKKernel =
-        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        kernelName = "nrsSubCycleStrongVolume" + suffix;
+        nrs->subCycleStrongVolumeKernel =
+          device.buildKernel(fileName.c_str(), kernelName.c_str(), subcyclingProperties);
 
-      kernelName = "nrsSubCycleExtrapolateField";
-      nrs->subCycleExtrapolateFieldKernel =
-        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
-      kernelName = "nrsSubCycleExtrapolateScalar";
-      nrs->subCycleExtrapolateScalarKernel =
-        platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        fileName = oklpath + "nrsSubCycleRKUpdate" + ".okl";
+        kernelName = "nrsSubCycleLSERKUpdate";
+        if(nrs->nRK == 4) kernelName = "nrsSubCycleERKUpdate";
+        nrs->subCycleRKUpdateKernel =
+          platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        kernelName = "nrsSubCycleRK";
+        nrs->subCycleRKKernel =
+          platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+
+        kernelName = "nrsSubCycleExtrapolateField";
+        nrs->subCycleExtrapolateFieldKernel =
+          platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+        kernelName = "nrsSubCycleExtrapolateScalar";
+        nrs->subCycleExtrapolateScalarKernel =
+          platform->device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
+      }
 
       fileName = oklpath + "nrsExtrapolate" + ".okl";
       kernelName = "nrsMultiExtrapolate";
@@ -1080,9 +1087,21 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
       cds->maskCopyKernel =
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
-      fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
-      kernelName = "cdsSumMakef" + suffix;
-      cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
+      {
+        occa::properties sumMakefKernelInfo = kernelInfo;
+        const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
+        sumMakefKernelInfo["defines/" "p_MovingMesh"] = movingMesh;
+        sumMakefKernelInfo["defines/" "p_nEXT"] =  cds->nEXT;
+        sumMakefKernelInfo["defines/" "p_nBDF"] =  cds->nBDF;
+        if(cds->Nsubsteps)
+          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 1;
+        else
+          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 0;
+          
+        fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
+        kernelName = "cdsSumMakef" + suffix;
+        cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+      }
 
       fileName = oklpath + "cdsHelmholtzBC" + suffix + ".okl";
       kernelName = "cdsHelmholtzBC" + suffix;
@@ -1102,15 +1121,20 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
         device.buildKernel(fileName.c_str(), kernelName.c_str(), kernelInfo);
 
       if(cds->Nsubsteps) {
+        occa::properties subcyclingProperties = kernelInfo;
+        const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
+        subcyclingProperties["defines/" "p_MovingMesh"] = movingMesh;
+        subcyclingProperties["defines/" "p_nEXT"] =  cds->nEXT;
+        subcyclingProperties["defines/" "p_nBDF"] =  cds->nBDF;
         fileName = oklpath + "cdsSubCycle" + suffix + ".okl";
         kernelName = "cdsSubCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName,
                                                                             kernelName,
-                                                                            kernelInfo);
+                                                                            subcyclingProperties);
 
         kernelName = "cdsSubCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, kernelInfo);
+          device.buildKernel(fileName, kernelName, subcyclingProperties);
 
         fileName = oklpath + "cdsSubCycleRKUpdate.okl";
         kernelName = "cdsSubCycleLSERKUpdate";

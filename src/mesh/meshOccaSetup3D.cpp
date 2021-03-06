@@ -200,11 +200,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   kernelInfo["defines/" "p_SBYID"] = SBYID;
   kernelInfo["defines/" "p_SBZID"] = SBZID;
 
-  int maxNodes = mymax(mesh->Np, (mesh->Nfp * mesh->Nfaces));
-  kernelInfo["defines/" "p_maxNodes"] = maxNodes;
-
-  kernelInfo["defines/" "p_Lambda2"] = 0.5f;
-
   kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
   kernelInfo["defines/" "p_cubNfp"] = mesh->cubNfp;
   kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;

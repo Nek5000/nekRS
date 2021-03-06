@@ -232,19 +232,12 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
     std::string oklpath = install_dir + "/okl/core/";
-    std::string filename = oklpath + "nStagesSum.okl";
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-    meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
     occa::properties meshKernelInfoBC = meshKernelInfo;
     const string bcDataFile = install_dir + "/include/core/bcData.h";
     meshKernelInfoBC["includes"] += bcDataFile.c_str();
     {
-        mesh->nStagesSumVectorKernel = 
-          platform->device.buildKernel(filename.c_str(),
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
-        filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        std::string filename = oklpath + "meshGeometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename.c_str(),
                                    "meshGeometricFactorsHex3D",
@@ -254,16 +247,17 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
           platform->device.buildKernel(filename.c_str(),
                                    "meshSurfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
-        filename = oklpath + "nStagesSum.okl";
-        mesh->nStagesSumVectorKernel =
-          platform->device.buildKernel(filename.c_str(),
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
         filename = oklpath + "nrsDivergenceHex3D.okl";
         mesh->strongDivergenceKernel =
           platform->device.buildKernel(filename.c_str(),
                                    "nrsDivergenceVolumeHex3D",
                                    meshKernelInfoBC);
+        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+        filename = oklpath + "nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
     }
   }
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
@@ -321,19 +315,12 @@ mesh_t* duplicateMesh(MPI_Comm comm,
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
     std::string oklpath = install_dir + "/okl/core/";
-    std::string filename = oklpath + "nStagesSum.okl";
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-    meshKernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
     occa::properties meshKernelInfoBC = meshKernelInfo;
     const string bcDataFile = install_dir + "/include/core/bcData.h";
     meshKernelInfoBC["includes"] += bcDataFile.c_str();
     {
-        mesh->nStagesSumVectorKernel = 
-          platform->device.buildKernel(filename.c_str(),
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
-        filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        std::string filename = oklpath + "meshGeometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename.c_str(),
                                    "meshGeometricFactorsHex3D",
@@ -343,16 +330,17 @@ mesh_t* duplicateMesh(MPI_Comm comm,
           platform->device.buildKernel(filename.c_str(),
                                    "meshSurfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
-        filename = oklpath + "nStagesSum.okl";
-        mesh->nStagesSumVectorKernel =
-          platform->device.buildKernel(filename.c_str(),
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
         filename = oklpath + "nrsDivergenceHex3D.okl";
         mesh->strongDivergenceKernel =
           platform->device.buildKernel(filename.c_str(),
                                    "nrsDivergenceVolumeHex3D",
                                    meshKernelInfoBC);
+        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+        filename = oklpath + "nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          platform->device.buildKernel(filename.c_str(),
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
     }
   }
 

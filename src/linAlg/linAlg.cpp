@@ -63,9 +63,6 @@ void linAlg_t::setup() {
 
   occa::properties kernelInfo = platform->kernelInfo;
 
-  //add defines
-  kernelInfo["defines/" "p_blockSize"] = blocksize;
-
   reallocBuffers(blocksize * sizeof(dfloat));
 
   string oklDir;

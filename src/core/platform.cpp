@@ -19,9 +19,8 @@ platform_t::platform_t(setupAide& options, MPI_Comm _comm)
 {
   kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-  kernelInfo["defines/" "dfloat4"] = dfloatString"4";
-  kernelInfo["defines/" "dfloat8"] = dfloatString"8";
   kernelInfo["defines/" "dfloat"] = dfloatString;
+  kernelInfo["defines/" "pfloat"] = pfloatString;
   kernelInfo["defines/" "dlong"] = dlongString;
   kernelInfo["defines/" "hlong"] = hlongString;
 

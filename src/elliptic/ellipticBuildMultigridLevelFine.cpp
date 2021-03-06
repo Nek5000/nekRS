@@ -61,8 +61,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
-  kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
-
   // add custom defines
   kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
 
