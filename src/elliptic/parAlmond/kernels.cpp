@@ -84,8 +84,8 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
       string filename;
 
       filename = oklpath + "vectorDotStar.okl";
-      vectorDotStarKernel1 = device.buildKernel(filename.c_str(), "vectorDotStar1", kernelInfo);
-      vectorDotStarKernel2 = device.buildKernel(filename.c_str(), "vectorDotStar2", kernelInfo);
+      vectorDotStarKernel1 = device.buildKernel(filename, "vectorDotStar1", kernelInfo);
+      vectorDotStarKernel2 = device.buildKernel(filename, "vectorDotStar2", kernelInfo);
     }
     MPI_Barrier(comm);
   }

@@ -50,14 +50,14 @@ void velRecycling::buildKernel(nrs_t* nrs)
   fileName += "/okl/plugins/velRecycling.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;
   {
-      setBCVectorValueKernel =  platform->device.buildKernel(fileName.c_str(),
+      setBCVectorValueKernel =  platform->device.buildKernel(fileName,
                                                          "setBCVectorValue",
                                                          kernelInfo);
-      getBCFluxKernel        =  platform->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
-      sumReductionKernel     =  platform->device.buildKernel(fileName.c_str(),
+      getBCFluxKernel        =  platform->device.buildKernel(fileName, "getBCFlux", kernelInfo);
+      sumReductionKernel     =  platform->device.buildKernel(fileName,
                                                          "sumReduction",
                                                          kernelInfo);
-      scalarMultiplyKernel   =  platform->device.buildKernel(fileName.c_str(),
+      scalarMultiplyKernel   =  platform->device.buildKernel(fileName,
                                                          "scalarMultiply",
                                                          kernelInfo);
   }

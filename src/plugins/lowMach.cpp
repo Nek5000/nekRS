@@ -35,9 +35,9 @@ void buildKernels(nrs_t* nrs)
   }
   for (int r = 0; r < 2; r++) {
     if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      qtlKernel        = platform->device.buildKernel(fileName.c_str(), "qtlHex3D"  , kernelInfo);
-      p0thHelperKernel = platform->device.buildKernel(fileName.c_str(), "p0thHelper", kernelInfo);
-      surfaceFluxKernel = platform->device.buildKernel(fileName.c_str(), "surfaceFlux", kernelInfo);
+      qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
+      p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
+      surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
     }
     MPI_Barrier(platform->comm.mpiComm);
   }

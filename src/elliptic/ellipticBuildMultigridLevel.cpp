@@ -235,11 +235,11 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
         AxKernelInfo["okl/enabled"] = false;
         filename = oklpath + "ellipticSerialAx" + suffix + ".c";
       }
-      elliptic->AxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+      elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
       if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
-        elliptic->AxPfloatKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
         AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
@@ -254,11 +254,11 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
 
       if(!serial) {
-        elliptic->partialAxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
           elliptic->partialAxPfloatKernel =
-            platform->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
+            platform->device.buildKernel(filename, kernelName, AxKernelInfo);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }
@@ -288,11 +288,11 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
       filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
       kernelName = "ellipticPreconCoarsen" + suffix;
-      elliptic->precon->coarsenKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),coarsenProlongateKernelInfo);
+      elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
 
       filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
       kernelName = "ellipticPreconProlongate" + suffix;
-      elliptic->precon->prolongateKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),coarsenProlongateKernelInfo);
+      elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
   }
 
   if(elliptic->elementType == HEXAHEDRA) {

@@ -72,11 +72,11 @@ void RANSktau::buildKernel(nrs_t* nrs)
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/RANSktau.okl";
   {
-      computeKernel    = platform->device.buildKernel(fileName.c_str(), "computeHex3D", kernelInfo);
-      SijOijKernel     = platform->device.buildKernel(fileName.c_str(), "SijOijHex3D", kernelInfo);
-      SijOijMag2Kernel = platform->device.buildKernel(fileName.c_str(), "SijOijMag2", kernelInfo);
-      limitKernel      = platform->device.buildKernel(fileName.c_str(), "limit", kernelInfo);
-      mueKernel        = platform->device.buildKernel(fileName.c_str(), "mue", kernelInfo);
+      computeKernel    = platform->device.buildKernel(fileName, "computeHex3D", kernelInfo);
+      SijOijKernel     = platform->device.buildKernel(fileName, "SijOijHex3D", kernelInfo);
+      SijOijMag2Kernel = platform->device.buildKernel(fileName, "SijOijMag2", kernelInfo);
+      limitKernel      = platform->device.buildKernel(fileName, "limit", kernelInfo);
+      mueKernel        = platform->device.buildKernel(fileName, "mue", kernelInfo);
   }
 
   if(nrs->Nscalar < 2) {

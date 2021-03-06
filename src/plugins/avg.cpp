@@ -54,9 +54,9 @@ void avg::buildKernel(nrs_t* nrs)
   fileName += "/okl/plugins/avg.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;
   {
-      EXKernel  = platform->device.buildKernel(fileName.c_str(), "EX", kernelInfo);
-      EXXKernel = platform->device.buildKernel(fileName.c_str(), "EXX", kernelInfo);
-      EXYKernel = platform->device.buildKernel(fileName.c_str(), "EXY", kernelInfo);
+      EXKernel  = platform->device.buildKernel(fileName, "EX", kernelInfo);
+      EXXKernel = platform->device.buildKernel(fileName, "EXX", kernelInfo);
+      EXYKernel = platform->device.buildKernel(fileName, "EXY", kernelInfo);
   }
   buildKernelCalled = 1;
 }

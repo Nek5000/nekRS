@@ -81,12 +81,12 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         AxKernelInfo["okl/enabled"] = false;
         filename = oklpath + "ellipticSerialAx" + suffix + ".c";
       }
-      elliptic->AxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+      elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
 
       if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
-        elliptic->AxPfloatKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
         AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
@@ -96,11 +96,11 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         kernelName = "ellipticPartialAx" + suffix;
 
       if(!serial) {
-        elliptic->partialAxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
           elliptic->partialAxPfloatKernel =
-            platform->device.buildKernel(filename.c_str(), kernelName.c_str(), AxKernelInfo);
+            platform->device.buildKernel(filename, kernelName, AxKernelInfo);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }

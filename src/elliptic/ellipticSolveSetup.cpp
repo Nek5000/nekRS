@@ -296,52 +296,52 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
       filename = oklpath + "meshHaloExtract2D.okl";
       mesh->haloExtractKernel =
-        platform->device.buildKernel(filename.c_str(),
+        platform->device.buildKernel(filename,
                                  "meshHaloExtract2D",
                                  kernelInfo);
 
       filename = oklpath + "mask.okl";
       mesh->maskKernel =
-        platform->device.buildKernel(filename.c_str(),
+        platform->device.buildKernel(filename,
                                  "mask",
                                  kernelInfo);
 
       filename = oklpath + "mask.okl";
       mesh->maskPfloatKernel =
-        platform->device.buildKernel(filename.c_str(),
+        platform->device.buildKernel(filename,
                                  "mask",
                                  pfloatKernelInfo);
         filename = oklpath + "copyDfloatToPfloat.okl";
         elliptic->copyDfloatToPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "copyDfloatToPfloat",
                                    kernelInfo);
 
         filename = oklpath + "copyPfloatToDfloat.okl";
         elliptic->copyPfloatToDPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "copyPfloatToDfloat",
                                    kernelInfo);
 
         filename = oklpath + "scaledAdd.okl";
         elliptic->scaledAddPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "scaledAdd",
                                    pfloatKernelInfo);
 
         elliptic->updateSmoothedSolutionVecKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "updateSmoothedSolutionVec",
                                    pfloatKernelInfo);
         elliptic->updateChebyshevSolutionVecKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "updateChebyshevSolutionVec",
                                    pfloatKernelInfo);
 
 
         filename = oklpath + "dotMultiply.okl";
         elliptic->dotMultiplyPfloatKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "dotMultiply",
                                    pfloatKernelInfo);
   }
@@ -379,8 +379,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       if(elliptic->var_coeff) {
         filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
         kernelName = "ellipticBlockBuildDiagonal" + suffix;
-        elliptic->updateDiagonalKernel = platform->device.buildKernel(filename.c_str(),
-                                                                  kernelName.c_str(),
+        elliptic->updateDiagonalKernel = platform->device.buildKernel(filename,
+                                                                  kernelName,
                                                                   dfloatKernelInfo);
       }
 
@@ -406,7 +406,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         else
           kernelName =  "ellipticAx" + suffix;
       }
-      elliptic->AxStressKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+      elliptic->AxStressKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
       if(elliptic->blockSolver) {
         filename = oklpath + "ellipticBlockAx" + suffix + ".okl";
         if(serial) filename = oklpath + "ellipticSerialAx" + suffix + ".c";
@@ -423,7 +423,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
           kernelName = "ellipticAx" + suffix;
       }
       // Keep other kernel around
-      elliptic->AxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+      elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
 
       if(!serial) {
         if(elliptic->elementType != HEXAHEDRA) {
@@ -457,32 +457,32 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
             }
           }
         }
-        elliptic->partialAxKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
-        elliptic->partialAxKernel2 = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),AxKernelInfo);
+        elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
+        elliptic->partialAxKernel2 = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
       }
 
       // combined PCG update and r.r kernel
       if(serial) {
         filename = oklpath + "ellipticSerialUpdatePCG.c";
         elliptic->updatePCGKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
       } else {
         filename = oklpath + "ellipticUpdatePCG.okl";
         elliptic->updatePCGKernel =
-          platform->device.buildKernel(filename.c_str(),
+          platform->device.buildKernel(filename,
                                    "ellipticBlockUpdatePCG", dfloatKernelInfo);
       }
 
       if(!elliptic->blockSolver) {
         filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
         kernelName = "ellipticPreconCoarsen" + suffix;
-        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
+        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,kernelInfo);
 
         filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
         kernelName = "ellipticPreconProlongate" + suffix;
         elliptic->precon->prolongateKernel =
-          platform->device.buildKernel(filename.c_str(),kernelName.c_str(),kernelInfo);
+          platform->device.buildKernel(filename,kernelName,kernelInfo);
       }
   }
 
