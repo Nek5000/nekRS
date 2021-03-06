@@ -28,20 +28,6 @@
 #define p_cubNq2 (p_cubNq * p_cubNq)
 #define p_Nq2 (p_Nq * p_Nq)
 
-#if 0
-#if p_cubNq == 8 || p_cubNq == 16
-#define p_cubPad 1
-#else
-#define p_cubPad 0
-#endif
-
-#if p_Nq == 8 || p_Nq == 16
-#define p_gllPad 1
-#else
-#define p_gllPad 0
-#endif
-#endif
-
 #define p_cubPad 0
 #define p_gllPad 0
 

@@ -37,9 +37,8 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
       s[t] = 9e30;
-      while (id<N) {
+      if (id<N) {
         s[t] = x[id];
-        id += p_blockSize*Nblocks;
       }
     }
 

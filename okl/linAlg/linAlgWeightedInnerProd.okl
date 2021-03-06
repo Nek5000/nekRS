@@ -39,9 +39,8 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
       s_wxy[t] = 0.0;
-      while (id<N) {
+      if (id<N) {
         s_wxy[t] += w[id]*x[id]*y[id];
-        id += p_blockSize*Nblocks;
       }
     }
 
@@ -87,14 +86,13 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
       s_wxy[t] = 0.0;
-      while (id<N) {
+      if (id<N) {
         for(int fld = 0 ; fld < Nfields; ++fld){
           const double xid = x[id + fld * offset];
           const double yid = y[id + fld * offset];
           const double wid = w[id];
           s_wxy[t] += wid*xid*yid;
         }
-        id += p_blockSize*Nblocks;
       }
     }
 
