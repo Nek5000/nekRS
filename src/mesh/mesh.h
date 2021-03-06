@@ -165,8 +165,6 @@ struct mesh_t
   dfloat* cubDWmatrices;
 
   dfloat* cubvgeo;  //volume geometric data at cubature points
-  dfloat* cubsgeo;  //surface geometric data at cubature points
-  dfloat* cubggeo;  //second type volume geometric data at cubature points
 
   dfloat* interpRaise;
   dfloat* interpLower;
@@ -200,7 +198,7 @@ struct mesh_t
   occa::memory o_cubDWmatrices;
   occa::memory o_cubInterpT, o_cubProjectT;
 
-  occa::memory o_cubvgeo, o_cubsgeo;
+  occa::memory o_cubvgeo;
 
   // DG halo exchange info
   occa::memory o_haloElementList;

@@ -82,7 +82,6 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   mesh->Nggeo = 7;
 
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
-  mesh->cubggeo = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->cubNp, sizeof(dfloat));
 
   dfloat minJ = 1e9, maxJ = -1e9, maxSkew = 0;
 
@@ -277,16 +276,6 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->cubvgeo[base + mesh->cubNp * JID]  = J;
           mesh->cubvgeo[base + mesh->cubNp * JWID] = JW;
           mesh->cubvgeo[base + mesh->cubNp * IJWID] = 1. / JW;
-
-          /* store second order geometric factors */
-          base = mesh->Nggeo * mesh->cubNp * e + n;
-          mesh->cubggeo[base + mesh->cubNp * G00ID] = JW * (rx * rx + ry * ry + rz * rz);
-          mesh->cubggeo[base + mesh->cubNp * G01ID] = JW * (rx * sx + ry * sy + rz * sz);
-          mesh->cubggeo[base + mesh->cubNp * G02ID] = JW * (rx * tx + ry * ty + rz * tz);
-          mesh->cubggeo[base + mesh->cubNp * G11ID] = JW * (sx * sx + sy * sy + sz * sz);
-          mesh->cubggeo[base + mesh->cubNp * G12ID] = JW * (sx * tx + sy * ty + sz * tz);
-          mesh->cubggeo[base + mesh->cubNp * G22ID] = JW * (tx * tx + ty * ty + tz * tz);
-          mesh->cubggeo[base + mesh->cubNp * GWJID] = JW;
         }
   }
 

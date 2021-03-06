@@ -406,7 +406,6 @@ void createMeshV(mesh_t* mesh,
   mesh->vgeo = meshT->vgeo;
   mesh->cubvgeo = meshT->cubvgeo;
   mesh->ggeo = meshT->ggeo;
-  mesh->cubggeo = meshT->cubggeo;
 
   // connect face nodes (find trace indices)
   // find vmapM, vmapP, mapP based on EToE and EToF

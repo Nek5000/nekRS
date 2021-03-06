@@ -109,8 +109,6 @@ void meshFree(mesh_t* mesh)
   if(mesh->cubDWmatrices) free(mesh->cubDWmatrices);
 
   if(mesh->cubvgeo) free(mesh->cubvgeo);    //volume geometric data at cubature points
-  if(mesh->cubsgeo) free(mesh->cubsgeo);    //surface geometric data at cubature points
-  if(mesh->cubggeo) free(mesh->cubggeo);    //second type volume geometric data at cubature points
 
   // surface integration node info
   if(mesh->intInterp) free(mesh->intInterp);   // interp from surface node to integration nodes
