@@ -185,17 +185,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const int scratchNflds = wrkNflds + ellipticWrkNflds;
   platform->create_mempool(nrs->meshV->fieldOffset, scratchNflds);
 
-  platform->o_slice0  = platform->o_slice0;
-  platform->o_slice1  = platform->o_slice1;
-  platform->o_slice2  = platform->o_slice2;
-  platform->o_slice3  = platform->o_slice3;
-  platform->o_slice4  = platform->o_slice4;
-  platform->o_slice5  = platform->o_slice5;
-  platform->o_slice6  = platform->o_slice6;
-  platform->o_slice7  = platform->o_slice7;
-  platform->o_slice9  = platform->o_slice9;
-  platform->o_slice12 = platform->o_slice12;
-  platform->o_slice15 = platform->o_slice15;
   if(options.compareArgs("MOVING MESH", "TRUE")){
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
@@ -905,14 +894,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
 
   cds->vFieldOffset = nrs->meshV->fieldOffset;
   cds->meshT[0]->fieldOffset  = nrs->meshV->fieldOffset;
-
-  platform->o_slice0 = platform->o_slice0;
-  platform->o_slice1 = platform->o_slice1;
-  platform->o_slice2 = platform->o_slice2;
-  platform->o_slice3 = platform->o_slice3;
-  platform->o_slice4 = platform->o_slice4;
-  platform->o_slice5 = platform->o_slice5;
-  platform->o_slice6 = platform->o_slice6;
 
   cds->gsh = nrs->gsh;
   
