@@ -326,7 +326,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // build kernels
   string fileName, kernelName;
   const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/core/";
+  const string oklpath = install_dir + "/okl/";
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
@@ -480,7 +480,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       // ===========================================================================
 
-      fileName = oklpath + "mask" + ".okl";
+      fileName = oklpath + "core/mask" + ".okl";
 
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
@@ -503,7 +503,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->pressureAddQtlKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "setEllipticCoeff.okl";
+      fileName = oklpath + "core/setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -512,8 +512,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->setEllipticCoeffPressureKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/pQ.okl";
-      kernelName = "pQ";
+      fileName = oklpath + "nrs/PQ.okl";
+      kernelName = "PQ";
       nrs->PQKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
@@ -1035,7 +1035,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
 
   string fileName, kernelName;
   const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/core/";
+  const string oklpath = install_dir + "/okl/";
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
@@ -1065,7 +1065,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
       cds->advectMeshVelocityKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "mask.okl";
+      fileName = oklpath + "core/mask.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1097,7 +1097,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
       kernelName = "dirichletBC";
       cds->dirichletBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      fileName = oklpath + "setEllipticCoeff.okl";
+      fileName = oklpath + "core/setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       cds->setEllipticCoeffKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);

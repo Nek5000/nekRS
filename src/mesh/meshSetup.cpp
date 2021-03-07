@@ -231,21 +231,21 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("MOVING MESH", "TRUE")){
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    std::string oklpath = install_dir + "/okl/core/";
+    std::string oklpath = install_dir + "/okl/";
     occa::properties meshKernelInfo = kernelInfo;
     {
         std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename,
-                                   "meshGeometricFactorsHex3D",
+                                   "geometricFactorsHex3D",
                                    meshKernelInfo);
         filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
         mesh->surfaceGeometricFactorsKernel =
           platform->device.buildKernel(filename,
-                                   "meshSurfaceGeometricFactorsHex3D",
+                                   "surfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
         meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "nStagesSum.okl";
+        filename = oklpath + "core/nStagesSum.okl";
         mesh->nStagesSumVectorKernel =
           platform->device.buildKernel(filename,
                                    "nStagesSumVector",
@@ -306,7 +306,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   if(options.compareArgs("MOVING MESH", "TRUE")){
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    std::string oklpath = install_dir + "/okl/core/";
+    std::string oklpath = install_dir + "/okl/";
     occa::properties meshKernelInfo = kernelInfo;
     {
         std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
@@ -320,7 +320,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
                                    "surfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
         meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "nStagesSum.okl";
+        filename = oklpath + "core/nStagesSum.okl";
         mesh->nStagesSumVectorKernel =
           platform->device.buildKernel(filename,
                                    "nStagesSumVector",

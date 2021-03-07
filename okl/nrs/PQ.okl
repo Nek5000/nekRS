@@ -1,4 +1,4 @@
-@kernel void pQ(const dlong N,
+@kernel void PQ(const dlong N,
                    const dfloat scale,
                    @restrict const  dfloat *  MUE,
                    @restrict const  dfloat *  DIV,
