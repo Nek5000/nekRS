@@ -1,4 +1,4 @@
-@kernel void nrsMueDiv(const dlong N,
+@kernel void mueDiv(const dlong N,
                        const dfloat scale,
                        @restrict const  dfloat *  MUE,
                        @restrict const  dfloat *  DIV,

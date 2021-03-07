@@ -23,7 +23,7 @@
 
  */
 
-@kernel void nrsAdvectMeshVelocity(const dlong Nelements,
+@kernel void advectMeshVelocity(const dlong Nelements,
                                       @restrict const dfloat*  vgeo,
                                       @restrict const dfloat*  D,
                                       const dlong offset,

@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsSubCycleExtrapolateScalar(const dlong N,
+@kernel void subCycleExtrapolateScalar(const dlong N,
                             const int Nstages,
                             const int offset,
                             @restrict const dfloat*  c,
@@ -39,7 +39,7 @@
     Se[n] = Sn;
   }
 }
-@kernel void nrsSubCycleExtrapolateField(const dlong N,
+@kernel void subCycleExtrapolateField(const dlong N,
                   const dlong Nfields,
                   const dlong fieldOffset,
                   const dlong toffset,
@@ -55,7 +55,7 @@
     }
   }
 }
-@kernel void nrsSubCycleRK(const dlong N,
+@kernel void subCycleRK(const dlong N,
                   const dlong Nfields,
                   const dlong offset,
                   const dfloat sdt,
@@ -78,7 +78,7 @@
     }
   }
 }
-@kernel void nrsSubCycleLSERKUpdate(const dlong Nelements,
+@kernel void subCycleLSERKUpdate(const dlong Nelements,
                                     const dfloat dt,
                                     const dfloat rka,
                                     const dfloat rkb,
@@ -105,7 +105,7 @@
   }
 }
 
-@kernel void nrsSubCycleERKUpdate(const dlong Nelements,
+@kernel void subCycleERKUpdate(const dlong Nelements,
                                   const int stage,
                                   const dfloat dt,
                                   const dlong offset,
@@ -139,7 +139,7 @@
   }
 }
 
-@kernel void nrsSubCycleExt(const dlong Nelements,
+@kernel void subCycleExt(const dlong Nelements,
                             const int Nstages,
                             const dlong fieldOffset,
                             @restrict const dfloat*  c,

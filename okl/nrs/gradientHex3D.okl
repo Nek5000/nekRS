@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsGradientVolumeHex3D(const dlong Nelements,
+@kernel void gradientVolumeHex3D(const dlong Nelements,
                                     @restrict const dfloat*  vgeo,
                                     @restrict const dfloat*  D,
                                     const dlong offset,

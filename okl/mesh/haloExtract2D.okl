@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void meshHaloExtract2D(const dlong NhaloElements,
+@kernel void haloExtract2D(const dlong NhaloElements,
 			      const int Nentries,
 			      @restrict const  dlong   *  haloElements,
 			      @restrict const  dfloat *  q,

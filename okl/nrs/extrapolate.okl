@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsMultiExtrapolate(const dlong Nelements,
+@kernel void multiExtrapolate(const dlong Nelements,
                                  const int Nfields,
                                  const int Nstages,
                                  const dlong fieldOffset,
@@ -49,7 +49,7 @@
   }
 }
 
-@kernel void nrsExtrapolate(const dlong Nelements,
+@kernel void extrapolate(const dlong Nelements,
                             const int Nstages,
                             const dlong fieldOffset,
                             const dlong stageOffset,

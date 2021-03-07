@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsFilterRTHex3D(const dlong Nelements,
+@kernel void filterRTHex3D(const dlong Nelements,
                               @restrict const dfloat* fMT,
                               const dfloat filterS,
                               const dlong offset,
@@ -159,7 +159,7 @@
   }
 }
 
-@kernel void nrsSFilterRTHex3D(const dlong Nelements,
+@kernel void sFilterRTHex3D(const dlong Nelements,
                                @restrict const dfloat* fMT,
                                const dfloat filterS,
                                const dlong offset,

@@ -23,7 +23,7 @@
    SOFTWARE.
 
  */
-@kernel void cdsSubCycleExtrapolateScalar(const dlong N,
+@kernel void subCycleExtrapolateScalar(const dlong N,
                             const int Nstages,
                             const int offset,
                             @restrict const dfloat*  c,
@@ -50,7 +50,7 @@
     BS[n] += coef * massMatrix[n + offset] * S[n + toffset];
   }
 }
-@kernel void cdsSubCycleRK(const dlong N,
+@kernel void subCycleRK(const dlong N,
                   const dfloat sdt,
                   @restrict const dfloat* rkb,
                   @restrict const dfloat* r1,
@@ -68,7 +68,7 @@
     y[n] += sn;
   }
 }
-@kernel void cdsSubCycleLSERKUpdate(const dlong Nelements,
+@kernel void subCycleLSERKUpdate(const dlong Nelements,
                                     const dfloat dt,
                                     const dfloat rka,
                                     const dfloat rkb,
@@ -92,7 +92,7 @@
   }
 }
 
-@kernel void cdsSubCycleERKUpdate(const dlong Nelements,
+@kernel void subCycleERKUpdate(const dlong Nelements,
                                   const int stage,
                                   const dfloat dt,
                                   const dlong offset,
@@ -118,7 +118,7 @@
   }
 }
 
-@kernel void cdsSubCycleExt(const dlong Nelements,
+@kernel void subCycleExt(const dlong Nelements,
                             const int Nstages,
                             const dlong voffset,
                             @restrict const dfloat*  c,

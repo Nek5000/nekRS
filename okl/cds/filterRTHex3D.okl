@@ -24,7 +24,7 @@
 
  */
 
-@kernel void cdsFilterRTHex3D(const dlong Nelements,
+@kernel void filterRTHex3D(const dlong Nelements,
                               @restrict const dfloat* fMT,
                               const dfloat filterS,
                               const dlong offset,

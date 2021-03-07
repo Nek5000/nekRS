@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsSumMakefHex3D(const dlong Nelements,
+@kernel void sumMakefHex3D(const dlong Nelements,
                               @restrict const dfloat*  massMatrix,
                               const dfloat idt,
                               @restrict const dfloat*  coeffEXT,

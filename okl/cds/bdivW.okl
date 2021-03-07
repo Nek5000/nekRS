@@ -22,7 +22,7 @@
    SOFTWARE.
 
  */
-@kernel void cdsBdivW(const dlong Nelements,
+@kernel void bdivW(const dlong Nelements,
                                     @restrict const dfloat*  vgeo,
                                     @restrict const dfloat*  D,
                                     const dlong offset,

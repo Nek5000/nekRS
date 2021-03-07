@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsCurlHex3D(const dlong Nelements,
+@kernel void curlHex3D(const dlong Nelements,
                           @restrict const dfloat*  vgeo,
                           @restrict const dfloat*  const D,
                           const dlong offset,

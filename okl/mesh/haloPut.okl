@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void meshHaloPut(const dlong NhaloElements,
+@kernel void haloPut(const dlong NhaloElements,
 			 const dlong Nelements,
 			 @restrict const  dlong  * haloPutNodeIds,
 			 @restrict const  dfloat * haloq,

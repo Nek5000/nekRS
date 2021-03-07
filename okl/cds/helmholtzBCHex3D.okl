@@ -51,7 +51,7 @@
   }
 
 //RHS contributions for continuous solver
-@kernel void cdsHelmholtzBCHex3D(const dlong Nelements,
+@kernel void helmholtzBCHex3D(const dlong Nelements,
                                  @restrict const dfloat*  sgeo,
                                  @restrict const dlong*  vmapM,
                                  @restrict const int*  EToBM,
@@ -227,7 +227,7 @@
   }
 }
 
-@kernel void cdsDirichletBC(const dlong Nelements,
+@kernel void dirichletBC(const dlong Nelements,
                             const dlong offset,
                             const dlong scalarId,
                             const dfloat time,

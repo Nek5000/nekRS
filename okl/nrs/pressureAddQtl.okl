@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsPressureAddQtl(const dlong Nelements,
+@kernel void pressureAddQtl(const dlong Nelements,
                                @restrict const dfloat* vgeo,
                                const dfloat lambda,
                                @restrict const dfloat* qtl,

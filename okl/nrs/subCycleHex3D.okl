@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsSubCycleStrongCubatureVolumeHex3D(const dlong Nelements,
+@kernel void subCycleStrongCubatureVolumeHex3D(const dlong Nelements,
                                                   @restrict const dlong*   elementList,
                                                   @restrict const dfloat*  vgeo,
                                                   @restrict const dfloat*  cubvgeo,
@@ -333,7 +333,7 @@
   }
 }
 
-@kernel void nrsSubCycleStrongVolumeHex3D(const dlong Nelements,
+@kernel void subCycleStrongVolumeHex3D(const dlong Nelements,
                                           @restrict const dlong*  elementList,
                                           @restrict const dfloat*  vgeo,
                                           @restrict const dfloat*  D,

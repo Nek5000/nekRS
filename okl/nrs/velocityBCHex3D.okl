@@ -58,7 +58,7 @@
   }
 
 //RHS contributions for continuous solver
-@kernel void nrsVelocityNeumannBCHex3D(const dlong Nelements,
+@kernel void velocityNeumannBCHex3D(const dlong Nelements,
                                        const dlong offset,
                                        @restrict const dfloat*  sgeo,
                                        @restrict const dlong*  vmapM,
@@ -253,7 +253,7 @@
   }
 }
 
-@kernel void nrsVelocityDirichletBCHex3D(const dlong Nelements,
+@kernel void velocityDirichletBCHex3D(const dlong Nelements,
                                          const dlong offset,
                                          const dfloat time,
                                          @restrict const dfloat*  sgeo,

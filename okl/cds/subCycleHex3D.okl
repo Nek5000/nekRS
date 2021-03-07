@@ -24,7 +24,7 @@
 
  */
 
-@kernel void cdsSubCycleStrongCubatureVolumeHex3D(const dlong Nelements,
+@kernel void subCycleStrongCubatureVolumeHex3D(const dlong Nelements,
                                                   @restrict const dlong*  elementList,
                                                   const dlong voffset,
                                                   const dlong NSOffset,
@@ -290,7 +290,7 @@
   }
 }
 
-@kernel void cdsSubCycleStrongVolumeHex3D(const dlong Nelements,
+@kernel void subCycleStrongVolumeHex3D(const dlong Nelements,
                                           @restrict const dlong*  elementList,
                                           const dlong voffset,
                                           const dlong NSOffset,

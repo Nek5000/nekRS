@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void meshSurfaceGeometricFactorsHex3D(const dlong Nelements,
+@kernel void surfaceGeometricFactorsHex3D(const dlong Nelements,
                @restrict const dfloat * D,
                @restrict const dfloat * gllw,
                @restrict const dlong * faceNodes,

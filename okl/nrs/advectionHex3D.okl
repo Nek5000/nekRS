@@ -23,7 +23,7 @@
    SOFTWARE.
 
  */
-@kernel void nrsStrongAdvectionVolumeHex3D(const dlong Nelements,
+@kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
                                            @restrict const dfloat*  vgeo,
                                            @restrict const dfloat*  D,
                                            const dlong offset,
@@ -133,7 +133,7 @@
   }
 }
 
-@kernel void nrsStrongAdvectionCubatureVolumeHex3D(const dlong Nelements,
+@kernel void strongAdvectionCubatureVolumeHex3D(const dlong Nelements,
                                                    @restrict const dfloat*  vgeo,
                                                    @restrict const dfloat*  cubvgeo,
                                                    @restrict const dfloat*  cubD,

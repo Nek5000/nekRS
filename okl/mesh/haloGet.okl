@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void meshHaloGet(const dlong NhaloElements,
+@kernel void haloGet(const dlong NhaloElements,
 			 @restrict const  dlong  * haloElements,
 			 @restrict const  dlong  * haloGetNodes,
 			 @restrict const  dfloat *  q,

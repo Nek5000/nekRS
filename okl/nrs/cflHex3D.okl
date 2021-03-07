@@ -25,7 +25,7 @@
  */
 
 // Compute Gradient in weak Form
-@kernel void nrsCflHex3D(const dlong Nelements,
+@kernel void cflHex3D(const dlong Nelements,
                          const dfloat dt,
                          @restrict const dfloat*  vgeo,
                          @restrict const dfloat*  idH,

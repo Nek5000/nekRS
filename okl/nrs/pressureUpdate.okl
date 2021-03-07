@@ -24,7 +24,7 @@
 
  */
 
-@kernel void nrsPressureUpdate(const dlong Nelements,
+@kernel void pressureUpdate(const dlong Nelements,
                                @restrict const int*  mapB,
                                @restrict const dfloat*  PI,
                                @restrict const dfloat*  P,

@@ -22,7 +22,7 @@
    SOFTWARE.
 
  */
-@kernel void nrsDivergenceVolumeHex3D(const dlong Nelements,
+@kernel void divergenceVolumeHex3D(const dlong Nelements,
                                     @restrict const dfloat*  vgeo,
                                     @restrict const dfloat*  D,
                                     const dlong offset,
@@ -230,7 +230,7 @@
     s_fluxDiv[m][j][i] = -WSJ*flux;                                                    \
   }
 
-@kernel void nrsDivergenceSurfaceTOMBOHex3D(const dlong Nelements,
+@kernel void divergenceSurfaceTOMBOHex3D(const dlong Nelements,
                                             @restrict const dfloat*  sgeo,
                                             @restrict const dlong*  vmapM,
                                             @restrict const int*  EToB,
