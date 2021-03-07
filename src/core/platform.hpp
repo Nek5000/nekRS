@@ -20,6 +20,10 @@ class device_t : public occa::device{
                              const std::string &kernelName,
                              const occa::properties &props,
                              MPI_Comm comm) const;
+    occa::memory calloc(const dlong Nwords, const dlong wordSize);
+  private:
+    dlong bufferSize;
+    void* _buffer;
 };
 struct comm_t{
   comm_t(MPI_Comm);

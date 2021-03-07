@@ -160,12 +160,10 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   numVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  dfloat* tmp = (dfloat*) calloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
-  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat), tmp);
-  o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat), tmp);
-  o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat), tmp);
-  o_bb = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat), tmp);
-  free(tmp);
+  o_alpha = platform->device.calloc(maxNumVecsProjection, sizeof(dfloat));
+  o_xbar = platform->device.calloc(Nfields * fieldOffset, sizeof(dfloat));
+  o_xx = platform->device.calloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
+  o_bb = platform->device.calloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));

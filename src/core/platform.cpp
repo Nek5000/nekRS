@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "platform.hpp"
 #include "nrs.hpp"
 #include "linAlg.hpp"
@@ -101,6 +102,19 @@ device_t::buildKernel(const std::string &filename,
   }
   return _kernel;
 }
+occa::memory
+device_t::calloc(const dlong Nword , const dlong wordSize)
+{
+  const dlong Nbytes = Nword * wordSize;
+  if(Nbytes > bufferSize)
+  {
+    if(bufferSize > 0) std::free(_buffer);
+    _buffer = std::calloc(Nword, wordSize);
+    bufferSize = Nbytes;
+  }
+  occa::memory o_buffer = occa::device::malloc(Nword * wordSize, _buffer);
+  return o_buffer;
+}
 device_t::device_t(setupAide& options, MPI_Comm comm)
 {
   // OCCA build stuff
@@ -114,7 +128,7 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   if(options.compareArgs("DEVICE NUMBER", "LOCAL-RANK")) {
     long int hostId = gethostid();
 
-    long int* hostIds = (long int*) calloc(size,sizeof(long int));
+    long int* hostIds = (long int*) std::calloc(size,sizeof(long int));
     MPI_Allgather(&hostId,1,MPI_LONG,hostIds,1,MPI_LONG,comm);
 
     int totalDevices = 0;
@@ -160,4 +174,6 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
 
   int Nthreads = 1;
   omp_set_num_threads(Nthreads);
+
+  bufferSize = 0;
 }

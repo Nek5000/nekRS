@@ -781,8 +781,7 @@ void MGLevel::generate_weights()
 
   for(dlong i = 0; i < weightSize; ++i)
     wts[i] = 1.0 / wts[i];
-  o_wts = platform->device.malloc  (weightSize * sizeof(pfloat));
-  o_wts.copyFrom(wts, weightSize * sizeof(pfloat));
+  o_wts = platform->device.malloc(weightSize * sizeof(pfloat), wts);
   free(work1);
   free(work2);
   free(wts);

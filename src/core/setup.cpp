@@ -190,10 +190,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int nBDF = nrs->nBDF;
     {
       platform->o_mempool.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_LMM = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_LMM = platform->device.calloc(nrs->meshV->fieldOffset * nBDF ,  sizeof(dfloat));
       mesh->o_LMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
       platform->o_mempool.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_invLMM = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat));
+      mesh->o_invLMM = platform->device.calloc(nrs->meshV->fieldOffset * nBDF ,  sizeof(dfloat));
       mesh->o_invLMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
     }
 
@@ -961,7 +961,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
   cds->o_S  =
     platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->S);
   cds->o_Se =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset * sizeof(dfloat));
+    platform->device.calloc(cds->NSfields * cds->nBDF * cds->meshT[0]->fieldOffset ,  sizeof(dfloat));
   cds->o_BF = platform->device.malloc(cds->NSfields * cds->meshT[0]->fieldOffset * sizeof(dfloat), cds->BF);
   cds->o_FS =
     platform->device.malloc(cds->NSfields * cds->nEXT * cds->meshT[0]->fieldOffset * sizeof(dfloat),

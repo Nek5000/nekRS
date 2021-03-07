@@ -464,7 +464,7 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
 
     // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
     mesh->o_haloBuffer =
-      platform->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
+      platform->device.calloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields ,  sizeof(dfloat));
 
     // node ids
     mesh->o_haloGetNodeIds =
@@ -484,5 +484,5 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapP);
   mesh->o_invLMM =
-    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+    platform->device.calloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
 }

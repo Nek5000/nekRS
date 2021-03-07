@@ -310,9 +310,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   if(!strstr(pfloatString,dfloatString)) {
-    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(pfloat));
-    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
-    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(pfloat));
+    mesh->o_ggeoPfloat = platform->device.calloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.calloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.calloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
                                        mesh->o_ggeo);

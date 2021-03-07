@@ -107,9 +107,9 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   mesh->LMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
   mesh->invLMM = (dfloat*) calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
   mesh->o_LMM =
-    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+    platform->device.calloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
   mesh->o_invLMM =
-    platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(dfloat));
+    platform->device.calloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
 
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
   mesh->o_DW = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
@@ -161,7 +161,7 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
       platform->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
 
     mesh->o_haloBuffer =
-      platform->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields * sizeof(dfloat));
+      platform->device.calloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields ,  sizeof(dfloat));
 
     mesh->o_haloGetNodeIds =
       platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);

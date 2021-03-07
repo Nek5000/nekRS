@@ -48,8 +48,8 @@ void UDF_Setup(nrs_t *nrs)
   double *FUy = (double *) nek::scPtr(3);
   double *FUz = (double *) nek::scPtr(4);
 
-  o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->meshV->fieldOffset*sizeof(dfloat));
-  o_nekMue = platform->device.malloc(              nrs->meshV->fieldOffset*sizeof(dfloat));
+  o_nekFU  = platform->device.calloc(nrs->NVfields*nrs->meshV->fieldOffset,  sizeof(dfloat));
+  o_nekMue = platform->device.calloc(              nrs->meshV->fieldOffset,  sizeof(dfloat));
 
   o_nekMue.copyFrom(mul, mesh->Nlocal*sizeof(dfloat));
   o_nekFU.copyFrom (FUx, mesh->Nlocal*sizeof(dfloat), 0*nrs->meshV->fieldOffset*sizeof(dfloat));

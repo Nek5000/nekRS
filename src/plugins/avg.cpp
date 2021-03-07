@@ -153,23 +153,23 @@ void avg::setup(nrs_t* nrs_)
 
   if(setupCalled) return;
 
-  o_Uavg = platform->device.malloc(nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat));
-  o_Urms = platform->device.malloc(nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Uavg = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
+  o_Urms = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
   platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
   platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
-  o_Urm2 = platform->device.malloc(nrs->meshV->fieldOffset * nrs->NVfields * sizeof(dfloat));
+  o_Urm2 = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
   platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
-  o_Pavg = platform->device.malloc(nrs->meshV->fieldOffset * sizeof(dfloat));
-  o_Prms = platform->device.malloc(nrs->meshV->fieldOffset * sizeof(dfloat));
+  o_Pavg = platform->device.calloc(nrs->meshV->fieldOffset ,  sizeof(dfloat));
+  o_Prms = platform->device.calloc(nrs->meshV->fieldOffset ,  sizeof(dfloat));
   platform->linAlg->fill(nrs->meshV->fieldOffset, 0.0, o_Pavg);
   platform->linAlg->fill(nrs->meshV->fieldOffset, 0.0, o_Prms);
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    o_Savg = platform->device.malloc(cds->meshT[0]->fieldOffset * cds->NSfields * sizeof(dfloat));
-    o_Srms = platform->device.malloc(cds->meshT[0]->fieldOffset * cds->NSfields * sizeof(dfloat));
+    o_Savg = platform->device.calloc(cds->meshT[0]->fieldOffset * cds->NSfields ,  sizeof(dfloat));
+    o_Srms = platform->device.calloc(cds->meshT[0]->fieldOffset * cds->NSfields ,  sizeof(dfloat));
     platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Savg);
     platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Srms);
   }

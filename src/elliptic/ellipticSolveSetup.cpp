@@ -86,7 +86,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
                                          elliptic->p);
 
-  elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  elliptic->o_x0 = platform->device.calloc(elliptic->Ntotal * elliptic->Nfields ,  sizeof(dfloat));
 
   dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));
