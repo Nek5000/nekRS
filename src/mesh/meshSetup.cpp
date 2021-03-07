@@ -312,12 +312,12 @@ mesh_t* duplicateMesh(MPI_Comm comm,
         std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename,
-                                   "meshGeometricFactorsHex3D",
+                                   "geometricFactorsHex3D",
                                    meshKernelInfo);
         filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
         mesh->surfaceGeometricFactorsKernel =
           platform->device.buildKernel(filename,
-                                   "meshSurfaceGeometricFactorsHex3D",
+                                   "surfaceGeometricFactorsHex3D",
                                    meshKernelInfo);
         meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
         filename = oklpath + "nStagesSum.okl";
