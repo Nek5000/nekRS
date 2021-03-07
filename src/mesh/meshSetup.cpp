@@ -234,12 +234,12 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
     std::string oklpath = install_dir + "/okl/core/";
     occa::properties meshKernelInfo = kernelInfo;
     {
-        std::string filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename,
                                    "meshGeometricFactorsHex3D",
                                    meshKernelInfo);
-        filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
         mesh->surfaceGeometricFactorsKernel =
           platform->device.buildKernel(filename,
                                    "meshSurfaceGeometricFactorsHex3D",
@@ -309,12 +309,12 @@ mesh_t* duplicateMesh(MPI_Comm comm,
     std::string oklpath = install_dir + "/okl/core/";
     occa::properties meshKernelInfo = kernelInfo;
     {
-        std::string filename = oklpath + "meshGeometricFactorsHex3D.okl";
+        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename,
                                    "meshGeometricFactorsHex3D",
                                    meshKernelInfo);
-        filename = oklpath + "meshSurfaceGeometricFactorsHex3D.okl";
+        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
         mesh->surfaceGeometricFactorsKernel =
           platform->device.buildKernel(filename,
                                    "meshSurfaceGeometricFactorsHex3D",
