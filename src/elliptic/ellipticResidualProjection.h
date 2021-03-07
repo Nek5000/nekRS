@@ -68,13 +68,7 @@ private:
   const dlong Nlocal; // vector size
   const dlong fieldOffset; // offset
   const dlong Nfields;
-  const dfloat resNormFactor;
-  const int rank;
-  const int size;
-  const int blockSolver;
-  MPI_Comm comm;
 
   std::function<void(occa::memory&,occa::memory&)> matvecOperator;
-  std::function<dfloat(occa::memory&)> weightedNorm;
 };
 #endif

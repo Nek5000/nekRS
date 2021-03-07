@@ -75,7 +75,7 @@ void ResidualProjection::updateProjectionSpace()
     platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
     platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
   } else {
-    if(verbose && rank == 0) {
+    if(verbose && platform->comm.mpiRank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
       std::cout << "Removing column : " << numVecsProjection << ".\n";
     }
@@ -151,11 +151,6 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
   fieldOffset(elliptic.Ntotal),
   Nfields(elliptic.Nfields),
-  resNormFactor(elliptic.resNormFactor),
-  rank(platform->comm.mpiRank),
-  size(platform->comm.mpiCommSize),
-  comm(platform->comm.mpiComm),
-  blockSolver(elliptic.blockSolver),
   o_invDegree(elliptic.mesh->ogs->o_invDegree),
   o_rtmp(elliptic.o_rtmp),
   o_Ap(elliptic.o_Ap)
@@ -165,10 +160,12 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   numVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
-  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
-  o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat));
-  o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
-  o_bb = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat));
+  dfloat* tmp = (dfloat*) calloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
+  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat), tmp);
+  o_xbar = platform->device.malloc(Nfields * fieldOffset * sizeof(dfloat), tmp);
+  o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat), tmp);
+  o_bb = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection * sizeof(dfloat), tmp);
+  free(tmp);
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -176,30 +173,19 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   string filename, kernelName;
 
   {
-      occa::properties properties = platform->kernelInfo;
-      properties["defines/p_Nfields"] = Nfields;
+    occa::properties properties = platform->kernelInfo;
+    properties["defines/p_Nfields"] = Nfields;
 
-      filename = oklpath + "ellipticResidualProjection.okl";
-      multiScaledAddwOffsetKernel = platform->device.buildKernel(filename,
-                                                                      "multiScaledAddwOffset",
-                                                                      properties);
-      accumulateKernel = platform->device.buildKernel(filename, "accumulate", properties);
+    filename = oklpath + "ellipticResidualProjection.okl";
+    multiScaledAddwOffsetKernel = platform->device.buildKernel(filename,
+                                                                    "multiScaledAddwOffset",
+                                                                    properties);
+    accumulateKernel = platform->device.buildKernel(filename, "accumulate", properties);
   }
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
                    {
                      ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);
                    };
-  weightedNorm = [&](occa::memory& o_x)
-                 {
-                   mesh_t* mesh = elliptic.mesh;
-                   return platform->linAlg->weightedNorm2Many(
-                     mesh->Nlocal,
-                     elliptic.Nfields,
-                     elliptic.Ntotal,
-                     o_invDegree,
-                     o_x,
-                     platform->comm.mpiComm);
-                 };
 }
 
 void ResidualProjection::pre(occa::memory& o_r)
@@ -209,27 +195,7 @@ void ResidualProjection::pre(occa::memory& o_r)
     return;
 
   if(numVecsProjection <= 0) return;
-  dfloat priorResidualNorm = 0.0;
-  if(verbose) priorResidualNorm =
-      sqrt(weightedNorm(o_r) * resNormFactor);
   computePreProjection(o_r);
-  dfloat postResidualNorm = 0.0;
-  dfloat ratio = 0.0;
-  if(verbose) {
-    postResidualNorm = sqrt(weightedNorm(o_r) * resNormFactor);
-    ratio = priorResidualNorm / postResidualNorm;
-  }
-  if(rank == 0 && verbose)
-    std::cout << "Residual projection : "
-              << "Prior Residual Norm = "
-              << priorResidualNorm << ", "
-              << "Post Residual Norm = "
-              << postResidualNorm << ", "
-              << "Reduction Ratio = "
-              << ratio << ", "
-              << "Number Vectors = "
-              << numVecsProjection
-              << "\n";
 }
 
 void ResidualProjection::post(occa::memory& o_x)

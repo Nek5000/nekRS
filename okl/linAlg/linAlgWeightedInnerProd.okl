@@ -137,6 +137,7 @@ SOFTWARE.
     @shared volatile dfloat s_wxy[p_blockSize];
 
     for(int v = 0; v < NVec; ++v) {
+      @barrier("local");
       for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
         const dlong id = t + p_blockSize * b;
         dfloat res = 0.0; 

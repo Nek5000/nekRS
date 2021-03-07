@@ -39,8 +39,6 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   options.getArgs("SOLVER TOLERANCE", tol);
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
-  //printf("RHS norm %.15e\n", ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r) * sqrt(elliptic->resNormFactor));
-
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
@@ -64,7 +62,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
     platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    elliptic->res00Norm = sqrt(
+    elliptic->res00Norm = 
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
         elliptic->Nfields,
@@ -73,7 +71,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
         o_r,
         platform->comm.mpiComm
       )
-      * elliptic->resNormFactor); 
+      * sqrt(elliptic->resNormFactor); 
     if(std::isnan(elliptic->res00Norm)) {
       if(platform->comm.mpiRank == 0) printf("Unreasonable res00Norm!\n");
       ABORT(EXIT_FAILURE);
@@ -82,7 +80,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->timer.toc("pre");
   }
 
-  elliptic->res0Norm = sqrt(
+  elliptic->res0Norm = 
     platform->linAlg->weightedNorm2Many(
       mesh->Nlocal,
       elliptic->Nfields,
@@ -91,7 +89,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       o_r,
       platform->comm.mpiComm
     )
-    * elliptic->resNormFactor); 
+    * sqrt(elliptic->resNormFactor); 
   if(std::isnan(elliptic->res0Norm)) {
     if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);
