@@ -33,13 +33,10 @@ void buildKernels(nrs_t* nrs)
         "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
     ABORT(EXIT_FAILURE);
   }
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
-      p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
-      surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
-    }
-    MPI_Barrier(platform->comm.mpiComm);
+  {
+    qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
+    p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
+    surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
   }
 }
 
