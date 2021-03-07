@@ -47,7 +47,6 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
-  void computeBdivW();
   void solve();
   linAlg_t* linAlg;
 
@@ -174,7 +173,7 @@ struct mesh_t
   dfloat* intInterp; // interp from surface node to integration nodes
   dfloat* intx, * inty, * intz; // coordinates of suface integration nodes
 
-  occa::memory o_LMM, o_invLMM, o_BdivW;
+  occa::memory o_LMM, o_invLMM;
 
   // mesh velocity
   occa::memory o_U;
@@ -224,7 +223,6 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
-  occa::kernel strongDivergenceKernel;
 };
 
 // serial sort

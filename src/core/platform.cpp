@@ -67,6 +67,7 @@ platform_t::create_mempool(const dlong offset, const dlong fields)
   o_slice12 = o_mempool.slice(12 * offset * sizeof(dfloat));
   o_slice15 = o_mempool.slice(15 * offset * sizeof(dfloat));
   o_slice18 = o_mempool.slice(18 * offset * sizeof(dfloat));
+  o_slice19 = o_mempool.slice(19 * offset * sizeof(dfloat));
 }
 
 occa::kernel

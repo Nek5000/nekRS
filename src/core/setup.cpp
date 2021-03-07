@@ -197,8 +197,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       mesh->o_invLMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
     }
 
-    mesh->o_BdivW = platform->device.malloc(nrs->meshV->fieldOffset * nBDF * sizeof(dfloat), platform->mempool);
-
     const int nAB = mesh->nAB;
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->meshV->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->meshV->fieldOffset * nAB * sizeof(dfloat), mesh->U);
@@ -444,6 +442,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         subcyclingProperties["defines/" "p_MovingMesh"] = movingMesh;
         subcyclingProperties["defines/" "p_nEXT"] =  nrs->nEXT;
         subcyclingProperties["defines/" "p_nBDF"] =  nrs->nBDF;
+        fileName = oklpath + "nrsBdivW.okl";
+        kernelName = "nrsBdivW";
+        nrs->BdivWKernel =
+          device.buildKernel(fileName, kernelName, subcyclingProperties);
 
         fileName = oklpath + "nrsSubCycle" + suffix + ".okl";
         kernelName = "nrsSubCycleStrongCubatureVolume" + suffix;
@@ -1067,7 +1069,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
-
       {
         occa::properties sumMakefKernelInfo = kernelInfo;
         const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
@@ -1082,6 +1083,11 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
         fileName   = oklpath + "cdsSumMakef" + suffix + ".okl";
         kernelName = "cdsSumMakef" + suffix;
         cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+        fileName = oklpath + "cdsBdivW.okl";
+        kernelName = "cdsBdivW";
+        cds->BdivWKernel =
+          device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+
       }
 
       fileName = oklpath + "cdsHelmholtzBC" + suffix + ".okl";

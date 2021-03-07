@@ -86,8 +86,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
   pIterErr = abs(expectedPIter - nrs->pSolver->Niter);
   if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
-  if(velIterErr >= 1) passed = false;
-  if(pIterErr >= 1) passed = false;
+  if(velIterErr >= 2) passed = false;
+  if(pIterErr >= 2) passed = false;
 
   passed ? (PASS) : (FAIL);
 }
