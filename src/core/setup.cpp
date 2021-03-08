@@ -155,6 +155,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int pageW = PAGESIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
+  nrs->meshT->fieldOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     int Sorder;
