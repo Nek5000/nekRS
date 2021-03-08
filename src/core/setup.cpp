@@ -333,7 +333,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
 
   {
-
       occa::properties kernelInfoBC = kernelInfo;
       const string bcDataFile = install_dir + "/include/core/bcData.h";
       kernelInfoBC["includes"] += bcDataFile.c_str();
@@ -341,13 +340,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-      fileName = oklpath + "nrs/advection" + suffix + ".okl";
-      kernelName = "strongAdvectionVolume" + suffix;
-      nrs->advectionStrongVolumeKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
-      kernelName = "strongAdvectionCubatureVolume" + suffix;
-      nrs->advectionStrongCubatureVolumeKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+      {
+        occa::properties prop = kernelInfo;
+        prop["defines/" "p_cubNq"] = nrs->meshV->cubNq;
+        prop["defines/" "p_cubNp"] = nrs->meshV->cubNp;
+	fileName = oklpath + "nrs/advection" + suffix + ".okl";
+        kernelName = "strongAdvectionVolume" + suffix;
+        nrs->advectionStrongVolumeKernel =
+          device.buildKernel(fileName, kernelName, prop);
+        kernelName = "strongAdvectionCubatureVolume" + suffix;
+        nrs->advectionStrongCubatureVolumeKernel =
+          device.buildKernel(fileName, kernelName, prop);
+      }
 
       fileName = oklpath + "nrs/curl" + suffix + ".okl";
       kernelName = "curl" + suffix;
@@ -363,19 +367,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.buildKernel(fileName, kernelName, kernelInfo);
 
       {
-        occa::properties sumMakefKernelInfo = kernelInfo;
+        occa::properties prop = kernelInfo;
         const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
-        sumMakefKernelInfo["defines/" "p_nEXT"] =  nrs->nEXT;
-        sumMakefKernelInfo["defines/" "p_nBDF"] =  nrs->nBDF;
-        sumMakefKernelInfo["defines/" "p_MovingMesh"] = movingMesh;
+        prop["defines/" "p_nEXT"] =  nrs->nEXT;
+        prop["defines/" "p_nBDF"] =  nrs->nBDF;
+        prop["defines/" "p_MovingMesh"] = movingMesh;
         if(nrs->Nsubsteps)
-          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 1;
+          prop["defines/" "p_SUBCYCLING"] = 1;
         else
-          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 0;
+          prop["defines/" "p_SUBCYCLING"] = 0;
           
-        fileName   = oklpath + "nrs/sumMakef" + suffix + ".okl";
+        fileName = oklpath + "nrs/sumMakef" + suffix + ".okl";
         kernelName = "sumMakef" + suffix;
-        nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+        nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
       }
 
       fileName = oklpath + "nrs/divergence" + suffix + ".okl";
@@ -437,24 +441,27 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       if(nrs->Nsubsteps){
-        occa::properties subcyclingProperties = kernelInfo;
+        occa::properties prop = kernelInfo;
         const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
-        subcyclingProperties["defines/" "p_MovingMesh"] = movingMesh;
-        subcyclingProperties["defines/" "p_nEXT"] =  nrs->nEXT;
-        subcyclingProperties["defines/" "p_nBDF"] =  nrs->nBDF;
+        prop["defines/" "p_MovingMesh"] = movingMesh;
+        prop["defines/" "p_nEXT"] =  nrs->nEXT;
+        prop["defines/" "p_nBDF"] =  nrs->nBDF;
+        prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
+        prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
+	
         fileName = oklpath + "nrs/bdivW.okl";
         kernelName = "bdivW";
         nrs->BdivWKernel =
-          device.buildKernel(fileName, kernelName, subcyclingProperties);
+          device.buildKernel(fileName, kernelName, prop);
 
         fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, subcyclingProperties);
+          device.buildKernel(fileName, kernelName, prop);
 
         kernelName = "subCycleStrongVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, subcyclingProperties);
+          device.buildKernel(fileName, kernelName, prop);
 
         fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
         kernelName = "subCycleLSERKUpdate";
@@ -478,15 +485,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->extrapolateKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      // ===========================================================================
-
       fileName = oklpath + "core/mask" + ".okl";
-
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
-
-      // ===========================================================================
 
       fileName = oklpath + "nrs/filterRT" + suffix + ".okl";
       kernelName = "filterRT" + suffix;
@@ -507,7 +509,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
-
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1037,26 +1038,29 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
   if(platform->comm.mpiRank == 0)  printf("loading cds kernels ... "); fflush(stdout);
 
    {
-      fileName = oklpath + "cds/advection" + suffix + ".okl";
-
       const string bcDataFile = install_dir + "/include/core/bcData.h";
       kernelInfoBC["includes"] += bcDataFile.c_str();
       string boundaryHeaderFileName;
       options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-      kernelName = "strongAdvectionVolume" + suffix;
-      cds->advectionStrongVolumeKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+      {
+        occa::properties prop = kernelInfo;
+        prop["defines/" "p_cubNq"] = cds->meshT[0]->cubNq;
+        prop["defines/" "p_cubNp"] = cds->meshT[0]->cubNp;
+        fileName = oklpath + "cds/advection" + suffix + ".okl";
 
-      kernelName = "strongAdvectionCubatureVolume" + suffix;
-      cds->advectionStrongCubatureVolumeKernel =  device.buildKernel(fileName,
-                                                                           kernelName,
-                                                                           kernelInfo);
+	kernelName = "strongAdvectionVolume" + suffix;
+        cds->advectionStrongVolumeKernel =
+          device.buildKernel(fileName, kernelName, prop);
 
-      // ===========================================================================
+	kernelName = "strongAdvectionCubatureVolume" + suffix;
+        cds->advectionStrongCubatureVolumeKernel =  
+          device.buildKernel(fileName, kernelName, prop);
+      }
+
       fileName = oklpath + "cds/advectMeshVelocity.okl";
-      kernelName = "advectMeshVelocity";
+  	kernelName = "advectMeshVelocity";
       cds->advectMeshVelocityKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
@@ -1064,31 +1068,31 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
+
       {
-        occa::properties sumMakefKernelInfo = kernelInfo;
+        occa::properties prop = kernelInfo;
         const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
-        sumMakefKernelInfo["defines/" "p_MovingMesh"] = movingMesh;
-        sumMakefKernelInfo["defines/" "p_nEXT"] =  cds->nEXT;
-        sumMakefKernelInfo["defines/" "p_nBDF"] =  cds->nBDF;
+        prop["defines/" "p_MovingMesh"] = movingMesh;
+        prop["defines/" "p_nEXT"] =  cds->nEXT;
+        prop["defines/" "p_nBDF"] =  cds->nBDF;
         if(cds->Nsubsteps)
-          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 1;
+          prop["defines/" "p_SUBCYCLING"] = 1;
         else
-          sumMakefKernelInfo["defines/" "p_SUBCYCLING"] = 0;
+          prop["defines/" "p_SUBCYCLING"] = 0;
           
         fileName   = oklpath + "cds/sumMakef" + suffix + ".okl";
         kernelName = "sumMakef" + suffix;
-        cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+        cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
         fileName = oklpath + "cds/bdivW.okl";
         kernelName = "bdivW";
         cds->BdivWKernel =
-          device.buildKernel(fileName, kernelName, sumMakefKernelInfo);
+          device.buildKernel(fileName, kernelName, prop);
 
       }
 
       fileName = oklpath + "cds/helmholtzBC" + suffix + ".okl";
       kernelName = "helmholtzBC" + suffix;
       cds->helmholtzRhsBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
-
       kernelName = "dirichletBC";
       cds->dirichletBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
 
@@ -1103,20 +1107,21 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
         device.buildKernel(fileName, kernelName, kernelInfo);
 
       if(cds->Nsubsteps) {
-        occa::properties subcyclingProperties = kernelInfo;
+        occa::properties prop = kernelInfo;
         const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
-        subcyclingProperties["defines/" "p_MovingMesh"] = movingMesh;
-        subcyclingProperties["defines/" "p_nEXT"] =  cds->nEXT;
-        subcyclingProperties["defines/" "p_nBDF"] =  cds->nBDF;
+        prop["defines/" "p_MovingMesh"] = movingMesh;
+        prop["defines/" "p_nEXT"] =  cds->nEXT;
+        prop["defines/" "p_nBDF"] =  cds->nBDF;
+        prop["defines/" "p_cubNq"] =  cds->meshT[0]->cubNq;
+        prop["defines/" "p_cubNp"] =  cds->meshT[0]->cubNp;
+ 
         fileName = oklpath + "cds/subCycle" + suffix + ".okl";
         kernelName = "subCycleStrongCubatureVolume" + suffix;
-        cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName,
-                                                                            kernelName,
-                                                                            subcyclingProperties);
+        cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName, kernelName, prop);
 
         kernelName = "subCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, subcyclingProperties);
+          device.buildKernel(fileName, kernelName, prop);
 
         fileName = oklpath + "cds/subCycleRKUpdate.okl";
         kernelName = "subCycleLSERKUpdate";

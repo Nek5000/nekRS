@@ -51,7 +51,6 @@ occa::properties ellipticKernelInfo(mesh_t* mesh)
   kernelInfo["defines/" "p_Nsgeo"] = mesh->Nsgeo;
   kernelInfo["defines/" "p_Nggeo"] = mesh->Nggeo;
 
-  kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
   kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
   kernelInfo["defines/" "p_NXID"] = NXID;
@@ -62,8 +61,6 @@ occa::properties ellipticKernelInfo(mesh_t* mesh)
   kernelInfo["defines/" "p_WSJID"] = WSJID;
   kernelInfo["defines/" "p_IHID"] = IHID;
 
-  kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
-  kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
   kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
   kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
 

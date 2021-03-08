@@ -4,6 +4,7 @@
 #include <string>
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
+void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
 
 void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
                         int N,
@@ -226,30 +227,8 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
-  if(options.compareArgs("MOVING MESH", "TRUE")){
-    std::string install_dir;
-    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    std::string oklpath = install_dir + "/okl/";
-    occa::properties meshKernelInfo = kernelInfo;
-    {
-        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
-        mesh->geometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "geometricFactorsHex3D",
-                                   meshKernelInfo);
-        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
-        mesh->surfaceGeometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "surfaceGeometricFactorsHex3D",
-                                   meshKernelInfo);
-        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "core/nStagesSum.okl";
-        mesh->nStagesSumVectorKernel =
-          platform->device.buildKernel(filename,
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
-    }
-  }
+  loadKernels(mesh, kernelInfo);
+
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
@@ -300,31 +279,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
-
-  if(options.compareArgs("MOVING MESH", "TRUE")){
-    std::string install_dir;
-    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    std::string oklpath = install_dir + "/okl/";
-    occa::properties meshKernelInfo = kernelInfo;
-    {
-        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
-        mesh->geometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "geometricFactorsHex3D",
-                                   meshKernelInfo);
-        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
-        mesh->surfaceGeometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "surfaceGeometricFactorsHex3D",
-                                   meshKernelInfo);
-        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "core/nStagesSum.okl";
-        mesh->nStagesSumVectorKernel =
-          platform->device.buildKernel(filename,
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
-    }
-  }
+  loadKernels(mesh, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -465,4 +420,37 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
                         mesh->vmapP);
   mesh->o_invLMM =
     platform->device.calloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
+}
+
+void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
+{
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
+    std::string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    std::string oklpath = install_dir + "/okl/";
+    {
+        occa::properties meshKernelInfo = kernelInfo;
+    	meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
+        meshKernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
+
+        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
+        mesh->geometricFactorsKernel =
+          platform->device.buildKernel(filename,
+                                   "geometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
+        mesh->surfaceGeometricFactorsKernel =
+          platform->device.buildKernel(filename,
+                                   "surfaceGeometricFactorsHex3D",
+                                   meshKernelInfo);
+
+        meshKernelInfo = kernelInfo;
+        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+        filename = oklpath + "core/nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          platform->device.buildKernel(filename,
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+    }
+  }
 }

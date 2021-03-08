@@ -37,11 +37,13 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
 
   if(device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
     kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
+    //kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
     kernelInfo["compiler_flags"] += " -cl-mad-enable ";
     kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
     kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
     kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
+
+    kernelInfo["defines/" "hlong"]="long";
   }
 
   if(device.mode() == "HIP") { // add backend compiler optimization for HIP

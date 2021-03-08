@@ -175,8 +175,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   kernelInfo["defines/" "p_N"] = mesh->N;
   kernelInfo["defines/" "p_Nq"] = mesh->N + 1;
   kernelInfo["defines/" "p_Np"] = mesh->Np;
-  kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
-  kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
   kernelInfo["defines/" "p_Nfp"] = mesh->Nfp;
   kernelInfo["defines/" "p_Nfaces"] = mesh->Nfaces;
   kernelInfo["defines/" "p_NfacesNfp"] = mesh->Nfp * mesh->Nfaces;
@@ -200,9 +198,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   kernelInfo["defines/" "p_SBYID"] = SBYID;
   kernelInfo["defines/" "p_SBZID"] = SBZID;
 
-  kernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
-  kernelInfo["defines/" "p_cubNfp"] = mesh->cubNfp;
-  kernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
   kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
   kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
   kernelInfo["defines/" "p_G00ID"] = G00ID;
