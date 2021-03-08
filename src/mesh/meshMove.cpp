@@ -21,8 +21,12 @@ void mesh_t::move(){
   update();
 }
 void mesh_t::update(){
+    int verbose;
+    platform->options.getArgs("VERBOSE", verbose);
     geometricFactorsKernel(
         Nelements,
+        1,
+        verbose,
         o_D,
         o_gllw,
         o_x,
@@ -33,8 +37,19 @@ void mesh_t::update(){
         o_LMM,
         o_vgeo,
         o_ggeo,
-        o_cubvgeo
+        o_cubvgeo,
+        platform->o_slice0,
+        platform->o_slice1
     );
+    // compute mesh quality metrics
+    if(verbose){
+      const dfloat maxSkew = platform->linAlg->max(Nelements * Np, platform->o_slice0, platform->comm.mpiComm);
+      const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_slice1, platform->comm.mpiComm);
+      const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_slice1, platform->comm.mpiComm);
+      if(platform->comm.mpiRank == 0){
+        printf("J [%g,%g] ", minJ, maxJ);
+      }
+    }
     volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
     computeInvLMM();
     surfaceGeometricFactorsKernel(

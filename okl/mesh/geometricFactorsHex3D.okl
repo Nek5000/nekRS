@@ -26,6 +26,8 @@ SOFTWARE.
 
 
 @kernel void geometricFactorsHex3D(const dlong Nelements,
+               const int ifcub,
+               const int computeMeshQuality,
                @restrict const  dfloat *D,
                @restrict const  dfloat *gllw,
                @restrict const  dfloat *x,
@@ -36,7 +38,9 @@ SOFTWARE.
                @restrict dfloat * massMatrix,
                @restrict dfloat *vgeo,
                @restrict dfloat *ggeo,
-               @restrict dfloat *cubvgeo)
+               @restrict dfloat *cubvgeo,
+               @restrict dfloat* skews,
+               @restrict dfloat* Jacobians)
 {
   for(dlong e=0;e<Nelements;++e;@outer(0)){  // for all elements
     @shared dfloat s_cubInterp[p_Nq][p_cubNq];
@@ -186,6 +190,19 @@ SOFTWARE.
             const dfloat sx = -(yr*zt - zr*yt)*Jinv, sy =  (xr*zt - zr*xt)*Jinv, sz = -(xr*yt - yr*xt)*Jinv;
             const dfloat tx =  (yr*zs - zr*ys)*Jinv, ty = -(xr*zs - zr*xs)*Jinv, tz =  (xr*ys - yr*xs)*Jinv;
             const dlong n = i + j * p_Nq + k *p_Nq * p_Nq;
+
+            // compute mesh quality metrics
+            if(computeMeshQuality)
+            {
+              Jacobians[e*p_Np + n] = J;
+              const dfloat hr = sqrt(xr * xr + yr * yr + zr * zr);
+              const dfloat hs = sqrt(xs * xs + ys * ys + zs * zs);
+              const dfloat ht = sqrt(xt * xt + yt * yt + zt * zt);
+              dfloat maxSkew = (hr > hs) ? hr : hs;
+              maxSkew = (maxSkew > ht) ? maxSkew : ht;
+              skews[e*p_Np + n] = maxSkew;
+            }
+            
             vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_RXID] = rx;
             vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_RYID] = ry;
             vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_RZID] = rz;
@@ -219,6 +236,7 @@ SOFTWARE.
         }
       }
       @barrier("local");
+      if(ifcub){
       // interpolate in 'r'
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
@@ -296,46 +314,49 @@ SOFTWARE.
           }
         }
       @barrier("local");
+      }
     }
-    // At end of k loop, have the interpolated points stored in register
-    #pragma unroll
-    for(int k = 0 ; k < p_cubNq; ++k){
-      for(int j = 0; j < p_cubNq; ++j; @inner(1))
-        for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          const int n = k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          dfloat xr = r_cubxre[k], xs = r_cubxse[k], xt = r_cubxte[k];
-          dfloat yr = r_cubyre[k], ys = r_cubyse[k], yt = r_cubyte[k];
-          dfloat zr = r_cubzre[k], zs = r_cubzse[k], zt = r_cubzte[k];
-          /* compute geometric factors for affine coordinate transform*/
-          dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
+    if(ifcub){
+      // At end of k loop, have the interpolated points stored in register
+      #pragma unroll
+      for(int k = 0 ; k < p_cubNq; ++k){
+        for(int j = 0; j < p_cubNq; ++j; @inner(1))
+          for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
+            const int n = k * p_cubNq * p_cubNq + j * p_cubNq + i;
+            dfloat xr = r_cubxre[k], xs = r_cubxse[k], xt = r_cubxte[k];
+            dfloat yr = r_cubyre[k], ys = r_cubyse[k], yt = r_cubyte[k];
+            dfloat zr = r_cubzre[k], zs = r_cubzse[k], zt = r_cubzte[k];
+            /* compute geometric factors for affine coordinate transform*/
+            dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
 
-          dfloat rx =  (ys * zt - zs * yt) / J, ry = -(xs * zt - zs * xt) / J,
-                 rz =  (xs * yt - ys * xt) / J;
-          dfloat sx = -(yr * zt - zr * yt) / J, sy =  (xr * zt - zr * xt) / J,
-                 sz = -(xr * yt - yr * xt) / J;
-          dfloat tx =  (yr * zs - zr * ys) / J, ty = -(xr * zs - zr * xs) / J,
-                 tz =  (xr * ys - yr * xs) / J;
+            dfloat rx =  (ys * zt - zs * yt) / J, ry = -(xs * zt - zs * xt) / J,
+                   rz =  (xs * yt - ys * xt) / J;
+            dfloat sx = -(yr * zt - zr * yt) / J, sy =  (xr * zt - zr * xt) / J,
+                   sz = -(xr * yt - yr * xt) / J;
+            dfloat tx =  (yr * zs - zr * ys) / J, ty = -(xr * zs - zr * xs) / J,
+                   tz =  (xr * ys - yr * xs) / J;
 
-          dfloat JW = J * s_cubW[i] * s_cubW[j] * s_cubW[k];
+            dfloat JW = J * s_cubW[i] * s_cubW[j] * s_cubW[k];
 
-          /* store geometric factors */
-          dlong base = p_Nvgeo * p_cubNp * e + n;
-          cubvgeo[base + p_cubNp * p_RXID] = rx;
-          cubvgeo[base + p_cubNp * p_RYID] = ry;
-          cubvgeo[base + p_cubNp * p_RZID] = rz;
+            /* store geometric factors */
+            dlong base = p_Nvgeo * p_cubNp * e + n;
+            cubvgeo[base + p_cubNp * p_RXID] = rx;
+            cubvgeo[base + p_cubNp * p_RYID] = ry;
+            cubvgeo[base + p_cubNp * p_RZID] = rz;
 
-          cubvgeo[base + p_cubNp * p_SXID] = sx;
-          cubvgeo[base + p_cubNp * p_SYID] = sy;
-          cubvgeo[base + p_cubNp * p_SZID] = sz;
+            cubvgeo[base + p_cubNp * p_SXID] = sx;
+            cubvgeo[base + p_cubNp * p_SYID] = sy;
+            cubvgeo[base + p_cubNp * p_SZID] = sz;
 
-          cubvgeo[base + p_cubNp * p_TXID] = tx;
-          cubvgeo[base + p_cubNp * p_TYID] = ty;
-          cubvgeo[base + p_cubNp * p_TZID] = tz;
+            cubvgeo[base + p_cubNp * p_TXID] = tx;
+            cubvgeo[base + p_cubNp * p_TYID] = ty;
+            cubvgeo[base + p_cubNp * p_TZID] = tz;
 
-          cubvgeo[base + p_cubNp * p_JID]  = J;
-          cubvgeo[base + p_cubNp * p_JWID] = JW;
-          cubvgeo[base + p_cubNp * p_IJWID] = 1. / JW;
-        }
+            cubvgeo[base + p_cubNp * p_JID]  = J;
+            cubvgeo[base + p_cubNp * p_JWID] = JW;
+            cubvgeo[base + p_cubNp * p_IJWID] = 1. / JW;
+          }
+      }
     }
   }
 }
