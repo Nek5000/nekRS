@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mesh3D.h"
-#define NODE_GEN
 
 void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
 {

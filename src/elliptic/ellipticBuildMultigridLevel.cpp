@@ -107,31 +107,31 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
           mesh->MM[n + n * mesh->Np] = mesh->gllw[i] * mesh->gllw[j] * mesh->gllw[k];
         }
 
-    mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+    //mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
     mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
 
     mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
 
-    dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
-    for(int n = 0; n < mesh->Nq; ++n)
-      for(int m = 0; m < mesh->cubNq; ++m)
-        cubInterpT[m + n * mesh->cubNq] = mesh->cubInterp[m * mesh->Nq + n];
+    //dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
+    //for(int n = 0; n < mesh->Nq; ++n)
+    //  for(int m = 0; m < mesh->cubNq; ++m)
+    //    cubInterpT[m + n * mesh->cubNq] = mesh->cubInterp[m * mesh->Nq + n];
 
-    mesh->o_cubInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat), cubInterpT);
+    //mesh->o_cubInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat), cubInterpT);
 
-    free(cubInterpT);
+    //free(cubInterpT);
 
-    mesh->o_vgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
-                          mesh->vgeo);
+    //mesh->o_vgeo =
+    //  platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
+    //                      mesh->vgeo);
 
     mesh->o_sgeo =
       platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
                           mesh->sgeo);
 
-    mesh->o_ggeo =
-      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
-                          mesh->ggeo);
+    //mesh->o_ggeo =
+    //  platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+    //                      mesh->ggeo);
 
     mesh->o_vmapM =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
