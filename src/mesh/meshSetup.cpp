@@ -424,6 +424,7 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
 
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
 {
+  platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
