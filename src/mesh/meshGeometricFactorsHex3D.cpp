@@ -69,17 +69,11 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
 {
   double tStart = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
-      
-  /* unified storage array for geometric factors */
-  mesh->Nvgeo = 12;
 
   /* note that we have volume geometric factors for each node */
   mesh->vgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
 
   mesh->cubvgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
-
-  /* number of second order geometric factors */
-  mesh->Nggeo = 7;
 
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
 

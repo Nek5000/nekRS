@@ -225,6 +225,7 @@ struct mesh_t
   occa::kernel nStagesSumVectorKernel;
 };
 
+occa::properties populateMeshProperties(mesh_t*);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 

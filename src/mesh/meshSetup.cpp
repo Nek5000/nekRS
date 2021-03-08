@@ -4,6 +4,63 @@
 #include <string>
 
 void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
+occa::properties populateMeshProperties(mesh_t* mesh)
+{
+  occa::properties meshProperties = platform->kernelInfo;
+
+  meshProperties["defines/" "p_dim"] = 3;
+  meshProperties["defines/" "p_Nfields"] = mesh->Nfields;
+  meshProperties["defines/" "p_N"] = mesh->N;
+  meshProperties["defines/" "p_Nq"] = mesh->N + 1;
+  meshProperties["defines/" "p_Np"] = mesh->Np;
+  meshProperties["defines/" "p_Nfp"] = mesh->Nfp;
+  meshProperties["defines/" "p_Nfaces"] = mesh->Nfaces;
+  meshProperties["defines/" "p_NfacesNfp"] = mesh->Nfp * mesh->Nfaces;
+
+  meshProperties["defines/" "p_Nvgeo"] = mesh->Nvgeo;
+  meshProperties["defines/" "p_Nsgeo"] = mesh->Nsgeo;
+  meshProperties["defines/" "p_Nggeo"] = mesh->Nggeo;
+
+  meshProperties["defines/" "p_NXID"] = NXID;
+  meshProperties["defines/" "p_NYID"] = NYID;
+  meshProperties["defines/" "p_NZID"] = NZID;
+  meshProperties["defines/" "p_SJID"] = SJID;
+  meshProperties["defines/" "p_IJID"] = IJID;
+  meshProperties["defines/" "p_IHID"] = IHID;
+  meshProperties["defines/" "p_WSJID"] = WSJID;
+  meshProperties["defines/" "p_WIJID"] = WIJID;
+  meshProperties["defines/" "p_STXID"] = STXID;
+  meshProperties["defines/" "p_STYID"] = STYID;
+  meshProperties["defines/" "p_STZID"] = STZID;
+  meshProperties["defines/" "p_SBXID"] = SBXID;
+  meshProperties["defines/" "p_SBYID"] = SBYID;
+  meshProperties["defines/" "p_SBZID"] = SBZID;
+
+  meshProperties["defines/" "p_G00ID"] = G00ID;
+  meshProperties["defines/" "p_G01ID"] = G01ID;
+  meshProperties["defines/" "p_G02ID"] = G02ID;
+  meshProperties["defines/" "p_G11ID"] = G11ID;
+  meshProperties["defines/" "p_G12ID"] = G12ID;
+  meshProperties["defines/" "p_G22ID"] = G22ID;
+  meshProperties["defines/" "p_GWJID"] = GWJID;
+
+  meshProperties["defines/" "p_RXID"] = RXID;
+  meshProperties["defines/" "p_SXID"] = SXID;
+  meshProperties["defines/" "p_TXID"] = TXID;
+
+  meshProperties["defines/" "p_RYID"] = RYID;
+  meshProperties["defines/" "p_SYID"] = SYID;
+  meshProperties["defines/" "p_TYID"] = TYID;
+
+  meshProperties["defines/" "p_RZID"] = RZID;
+  meshProperties["defines/" "p_SZID"] = SZID;
+  meshProperties["defines/" "p_TZID"] = TZID;
+
+  meshProperties["defines/" "p_JID"] = JID;
+  meshProperties["defines/" "p_JWID"] = JWID;
+  meshProperties["defines/" "p_IJWID"] = IJWID;
+  return meshProperties;
+}
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
 
 void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
@@ -134,6 +191,9 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  occa::properties meshKernelInfo = populateMeshProperties(mesh);
+  loadKernels(mesh, kernelInfo);
+
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
@@ -153,7 +213,6 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   // global nodes
   meshGlobalIds(mesh, 1);
-
   meshOccaSetup3D(mesh, options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
@@ -205,6 +264,9 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  occa::properties meshKernelInfo = populateMeshProperties(mesh);
+  loadKernels(mesh, meshKernelInfo);
+
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
@@ -224,11 +286,10 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
 
   // global nodes
   meshGlobalIds(mesh, 0);
-
   bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
-  loadKernels(mesh, kernelInfo);
+
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -269,6 +330,9 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  occa::properties meshKernelInfo = populateMeshProperties(mesh);
+  loadKernels(mesh, meshKernelInfo);
+
   meshHaloSetup(mesh);
   meshPhysicalNodesHex3D(mesh, 0);
   meshHaloPhysicalNodes(mesh);
@@ -278,9 +342,8 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   meshGlobalIds(mesh, 0);
 
   bcMap::check(mesh);
-
   meshOccaSetup3D(mesh, options, kernelInfo);
-  loadKernels(mesh, kernelInfo);
+
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -431,7 +494,7 @@ void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
     std::string oklpath = install_dir + "/okl/";
     {
         occa::properties meshKernelInfo = kernelInfo;
-    	meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
+        meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
         meshKernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
 
         std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";

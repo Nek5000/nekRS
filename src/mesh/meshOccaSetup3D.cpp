@@ -170,59 +170,7 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
       platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
-  kernelInfo["defines/" "p_dim"] = 3;
-  kernelInfo["defines/" "p_Nfields"] = mesh->Nfields;
-  kernelInfo["defines/" "p_N"] = mesh->N;
-  kernelInfo["defines/" "p_Nq"] = mesh->N + 1;
-  kernelInfo["defines/" "p_Np"] = mesh->Np;
-  kernelInfo["defines/" "p_Nfp"] = mesh->Nfp;
-  kernelInfo["defines/" "p_Nfaces"] = mesh->Nfaces;
-  kernelInfo["defines/" "p_NfacesNfp"] = mesh->Nfp * mesh->Nfaces;
-
-  kernelInfo["defines/" "p_Nvgeo"] = mesh->Nvgeo;
-  kernelInfo["defines/" "p_Nsgeo"] = mesh->Nsgeo;
-  kernelInfo["defines/" "p_Nggeo"] = mesh->Nggeo;
-
-  kernelInfo["defines/" "p_NXID"] = NXID;
-  kernelInfo["defines/" "p_NYID"] = NYID;
-  kernelInfo["defines/" "p_NZID"] = NZID;
-  kernelInfo["defines/" "p_SJID"] = SJID;
-  kernelInfo["defines/" "p_IJID"] = IJID;
-  kernelInfo["defines/" "p_IHID"] = IHID;
-  kernelInfo["defines/" "p_WSJID"] = WSJID;
-  kernelInfo["defines/" "p_WIJID"] = WIJID;
-  kernelInfo["defines/" "p_STXID"] = STXID;
-  kernelInfo["defines/" "p_STYID"] = STYID;
-  kernelInfo["defines/" "p_STZID"] = STZID;
-  kernelInfo["defines/" "p_SBXID"] = SBXID;
-  kernelInfo["defines/" "p_SBYID"] = SBYID;
-  kernelInfo["defines/" "p_SBZID"] = SBZID;
-
-  kernelInfo["defines/" "p_intNfp"] = mesh->intNfp;
-  kernelInfo["defines/" "p_intNfpNfaces"] = mesh->intNfp * mesh->Nfaces;
-  kernelInfo["defines/" "p_G00ID"] = G00ID;
-  kernelInfo["defines/" "p_G01ID"] = G01ID;
-  kernelInfo["defines/" "p_G02ID"] = G02ID;
-  kernelInfo["defines/" "p_G11ID"] = G11ID;
-  kernelInfo["defines/" "p_G12ID"] = G12ID;
-  kernelInfo["defines/" "p_G22ID"] = G22ID;
-  kernelInfo["defines/" "p_GWJID"] = GWJID;
-
-  kernelInfo["defines/" "p_RXID"] = RXID;
-  kernelInfo["defines/" "p_SXID"] = SXID;
-  kernelInfo["defines/" "p_TXID"] = TXID;
-
-  kernelInfo["defines/" "p_RYID"] = RYID;
-  kernelInfo["defines/" "p_SYID"] = SYID;
-  kernelInfo["defines/" "p_TYID"] = TYID;
-
-  kernelInfo["defines/" "p_RZID"] = RZID;
-  kernelInfo["defines/" "p_SZID"] = SZID;
-  kernelInfo["defines/" "p_TZID"] = TZID;
-
-  kernelInfo["defines/" "p_JID"] = JID;
-  kernelInfo["defines/" "p_JWID"] = JWID;
-  kernelInfo["defines/" "p_IJWID"] = IJWID;
+  kernelInfo += populateMeshProperties(mesh);
 }
 
 void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)

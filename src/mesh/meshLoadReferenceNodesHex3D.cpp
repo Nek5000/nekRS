@@ -38,6 +38,10 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
   mesh->Np = (N + 1) * (N + 1) * (N + 1);
   mesh->Nverts = 8;
 
+  mesh->Nvgeo = 12;
+  mesh->Nggeo = 7;
+  mesh->Nsgeo = 17;
+
   int Nrows, Ncols;
 
   mesh->r = (dfloat*) malloc(mesh->Np * sizeof(dfloat));

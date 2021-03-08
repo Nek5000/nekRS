@@ -62,7 +62,6 @@ void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* I
 void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
 {
   /* unified storage array for geometric factors */
-  mesh->Nsgeo = 17;
   mesh->sgeo = (dfloat*) calloc((mesh->Nelements + mesh->totalHaloPairs) *
                                 mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
                                 sizeof(dfloat));
