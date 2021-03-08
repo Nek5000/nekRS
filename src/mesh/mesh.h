@@ -226,6 +226,7 @@ struct mesh_t
 };
 
 occa::properties populateMeshProperties(mesh_t*);
+void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 

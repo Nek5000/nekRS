@@ -83,9 +83,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
     for(int m = 0; m < mesh->cubNq; ++m)
       cubDWT[n + m * mesh->cubNq] = mesh->cubDW[n * mesh->cubNq + m];
 
-  mesh->o_cubInterpT =
-    platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
-                        cubInterpT);
   mesh->o_cubProjectT =
     platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
                         cubProjectT);
@@ -127,8 +124,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
     platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
                         mesh->EToB);
 
-  mesh->o_cubw =
-    platform->device.malloc( mesh->cubNq * sizeof(dfloat), mesh->cubw);
   mesh->o_faceNodes =
     platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
 

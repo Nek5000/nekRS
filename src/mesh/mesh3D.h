@@ -69,7 +69,7 @@ void meshPlotAdaptiveContour3D(mesh_t* mesh, char* fname, dfloat* u, int Nlevels
 void meshGeometricFactorsTri3D(mesh3D* mesh);
 void meshGeometricFactorsQuad3D(mesh3D* mesh);
 void meshGeometricFactorsTet3D(mesh3D* mesh);
-void meshGeometricFactorsHex3D(mesh3D* mesh);
+void meshGeometricFactorsHex3D(mesh3D* mesh, int ifcub = 1);
 
 void meshSurfaceGeometricFactorsTri3D(mesh3D* mesh);
 void meshSurfaceGeometricFactorsQuad3D(mesh3D* mesh);

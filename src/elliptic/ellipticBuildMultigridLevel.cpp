@@ -51,10 +51,12 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   switch(elliptic->elementType) {
   case HEXAHEDRA:
     meshLoadReferenceNodesHex3D(mesh, Nc, 1);
+    occa::properties meshKernelInfo = populateMeshProperties(mesh);
+    loadKernels(mesh, meshKernelInfo);
     meshHaloSetup(mesh);
     meshPhysicalNodesHex3D(mesh, buildOnly);
     meshHaloPhysicalNodes(mesh);
-    meshGeometricFactorsHex3D(mesh);
+    meshGeometricFactorsHex3D(mesh, 0);
 
     if(!options.compareArgs("BOX DOMAIN", "TRUE")) {
       meshConnectFaceNodes3D(mesh);
