@@ -12,8 +12,9 @@ comm_t::comm_t(MPI_Comm _comm)
 }
 
 platform_t* platform_t::singleton = nullptr;
-platform_t::platform_t(setupAide& options, MPI_Comm _comm)
-: warpSize(32), // CUDA specific warp size
+platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
+: options(_options),
+  warpSize(32), // CUDA specific warp size
   device(options, _comm),
   timer(_comm, device, 0),
   comm(_comm)

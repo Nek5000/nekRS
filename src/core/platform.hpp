@@ -32,6 +32,7 @@ struct comm_t{
   int mpiCommSize;
 };
 struct platform_t{
+  setupAide& options;
   int warpSize;
   device_t device;
   occa::properties kernelInfo;
@@ -43,11 +44,11 @@ struct platform_t{
   occa::memory o_slice0, o_slice1, o_slice2, o_slice3, o_slice4, o_slice5, o_slice6, o_slice7;
   occa::memory o_slice9, o_slice12, o_slice15, o_slice18, o_slice19;
   void create_mempool(const dlong offset, const dlong fields);
-  platform_t(setupAide& options, MPI_Comm _comm);
+  platform_t(setupAide& _options, MPI_Comm _comm);
 
-  static platform_t* getInstance(setupAide& options, MPI_Comm _comm){
+  static platform_t* getInstance(setupAide& _options, MPI_Comm _comm){
     if(!singleton)
-      singleton = new platform_t(options, _comm);
+      singleton = new platform_t(_options, _comm);
     return singleton;
   }
   static platform_t* getInstance(){
