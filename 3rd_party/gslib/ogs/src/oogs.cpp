@@ -289,12 +289,11 @@ static void packBuf(oogs_t *gs,
                     occa::memory  o_gv)
 {
   if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, ogsAdd))) {
-    const int threadBlockSize = 256;
     occa::dim outer, inner;
     outer.dims = 1;
     inner.dims = 1;
-    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
-    inner[0] = threadBlockSize;
+    outer[0] = (Ngather * k + BLOCKSIZE - 1) / BLOCKSIZE;
+    inner[0] = BLOCKSIZE;
     gs->packBufFloatToHalfAddKernel.setRunDims(outer, inner);
     gs->packBufFloatToHalfAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
   } else if (!strcmp(type, "float") && !strcmp(op, ogsAdd)) {
@@ -325,12 +324,11 @@ static void unpackBuf(oogs_t *gs,
                       occa::memory  o_gv)
 {
   if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, ogsAdd))) {
-    const int threadBlockSize = 256;
     occa::dim outer, inner;
     outer.dims = 1;
     inner.dims = 1;
-    outer[0] = (Ngather * k + threadBlockSize - 1) / threadBlockSize;
-    inner[0] = threadBlockSize;
+    outer[0] = (Ngather * k + BLOCKSIZE - 1) / BLOCKSIZE;
+    inner[0] = BLOCKSIZE;
     gs->unpackBufHalfToFloatAddKernel.setRunDims(outer, inner);
     gs->unpackBufHalfToFloatAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
   } else if (!strcmp(type, "float") && !strcmp(op, ogsAdd)) {

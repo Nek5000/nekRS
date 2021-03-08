@@ -98,6 +98,15 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_cxxflags", buf);
   if(!getenv("OCCA_CXXFLAGS")) setenv("OCCA_CXXFLAGS", buf.c_str(), 1);
 
+  ini.extract("general", "occa_cuda_compiler_flags", buf);
+  if(!getenv("OCCA_CUDA_COMPILER_FLAGS")) setenv("OCCA_CUDA_COMPILER_FLAGS", buf.c_str(), 1);
+
+  ini.extract("general", "occa_hip_compiler_flags", buf);
+  if(!getenv("OCCA_HIP_COMPILER_FLAGS")) setenv("OCCA_HIP_COMPILER_FLAGS", buf.c_str(), 1);
+
+  ini.extract("general", "occa_opencl_compiler_flags", buf);
+  if(!getenv("OCCA_OPENCL_COMPILER_FLAGS")) setenv("OCCA_OPENCL_COMPILER_FLAGS", buf.c_str(), 1);
+
   ini.extract("general", "ogs_mpi_support", buf);
   if(!getenv("OGS_MPI_SUPPORT")) setenv("OGS_MPI_SUPPORT", buf.c_str(), 1);
 

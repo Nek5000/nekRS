@@ -26,18 +26,18 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
   kernelInfo["defines/" "dlong"] = dlongString;
   kernelInfo["defines/" "hlong"] = hlongString;
 
-  if(device.mode() == "CUDA") { // add backend compiler optimization for CUDA
+  if(device.mode() == "CUDA" && !getenv("OCCA_CUDA_COMPILER_FLAGS")) {
     kernelInfo["compiler_flags"] += "--ftz=true ";
     kernelInfo["compiler_flags"] += "--prec-div=false ";
     kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
     kernelInfo["compiler_flags"] += "--use_fast_math ";
-    kernelInfo["compiler_flags"] += "--fmad=true "; // compiler option for cuda
+    kernelInfo["compiler_flags"] += "--fmad=true ";
+
     //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
   }
 
-  if(device.mode() == "OpenCL") { // add backend compiler optimization for OPENCL
+  if(device.mode() == "OpenCL" && !getenv("OCCA_OPENCL_COMPILER_FLAGS")) {
     kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    //kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
     kernelInfo["compiler_flags"] += " -cl-mad-enable ";
     kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
     kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
@@ -46,11 +46,11 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
     kernelInfo["defines/" "hlong"]="long";
   }
 
-  if(device.mode() == "HIP") { // add backend compiler optimization for HIP
+  if(device.mode() == "HIP" && !getenv("OCCA_HIP_COMPILER_FLAGS")) {
     kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
-    // kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
-    // kernelInfo["compiler_flags"] += " -ffast-math ";
+    kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
+    kernelInfo["compiler_flags"] += " -ffast-math ";
   }
 }
 void
