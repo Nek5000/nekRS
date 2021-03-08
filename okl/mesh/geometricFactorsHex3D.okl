@@ -27,7 +27,6 @@ SOFTWARE.
 
 @kernel void geometricFactorsHex3D(const dlong Nelements,
                const int ifcub,
-               const int computeMeshQuality,
                @restrict const  dfloat *D,
                @restrict const  dfloat *gllw,
                @restrict const  dfloat *x,
@@ -39,7 +38,6 @@ SOFTWARE.
                @restrict dfloat *vgeo,
                @restrict dfloat *ggeo,
                @restrict dfloat *cubvgeo,
-               @restrict dfloat* skews,
                @restrict dfloat* Jacobians)
 {
   for(dlong e=0;e<Nelements;++e;@outer(0)){  // for all elements
@@ -191,17 +189,8 @@ SOFTWARE.
             const dfloat tx =  (yr*zs - zr*ys)*Jinv, ty = -(xr*zs - zr*xs)*Jinv, tz =  (xr*ys - yr*xs)*Jinv;
             const dlong n = i + j * p_Nq + k *p_Nq * p_Nq;
 
-            // compute mesh quality metrics
-            if(computeMeshQuality)
-            {
-              Jacobians[e*p_Np + n] = J;
-              const dfloat hr = sqrt(xr * xr + yr * yr + zr * zr);
-              const dfloat hs = sqrt(xs * xs + ys * ys + zs * zs);
-              const dfloat ht = sqrt(xt * xt + yt * yt + zt * zt);
-              dfloat maxSkew = (hr > hs) ? hr : hs;
-              maxSkew = (maxSkew > ht) ? maxSkew : ht;
-              skews[e*p_Np + n] = maxSkew;
-            }
+            // store mesh quality metrics
+            Jacobians[e*p_Np + n] = J;
             
             vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_RXID] = rx;
             vgeo[p_Nvgeo*p_Np*e + n + p_Np*p_RYID] = ry;

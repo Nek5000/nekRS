@@ -182,6 +182,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                    setupAide &options,
                    occa::properties& kernelInfo)
 {
+  platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -424,7 +425,6 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
 
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
 {
-  platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
