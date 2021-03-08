@@ -16,7 +16,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   const dfloat Re_tau = 2000.0; 
   const dfloat Re_b   = rho/mueLam; 
   const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
-  userfKernel(mesh->Nlocal, 0*nrs->meshV->fieldOffset, DPDX, o_FU);
+  userfKernel(mesh->Nlocal, 0*nrs->fieldOffset, DPDX, o_FU);
 }
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
@@ -39,7 +39,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   nrs->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
   const dfloat Pr_t = 0.7;
   occa::memory o_mue_t = RANSktau::o_mue_t();
-  occa::memory o_temp_mue = cds->o_diff + 0*cds->meshT[0]->fieldOffset*sizeof(dfloat);
+  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset[0]*sizeof(dfloat);
   nrs->scalarScaledAddKernel(mesh->Nlocal, conductivity, 1/Pr_t, o_mue_t, o_temp_mue); 
 }
 

@@ -17,6 +17,7 @@ struct cds_t
   int dim, elementType;
 
   mesh_t* meshT[NSCALAR_MAX];
+  dlong fieldOffset[NSCALAR_MAX];
   mesh_t* meshV;
   elliptic_t* solver[NSCALAR_MAX];
 

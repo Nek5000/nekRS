@@ -71,15 +71,15 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_D,
-    nrs->meshV->fieldOffset,
+    nrs->fieldOffset,
     cds->o_S,
     platform->o_slice0);
 
-  oogs::startFinish(platform->o_slice0, nrs->NVfields, nrs->meshV->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
+  oogs::startFinish(platform->o_slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmyVector(
     mesh->Nlocal,
-    nrs->meshV->fieldOffset,
+    nrs->fieldOffset,
     0,
     1.0,
     nrs->meshV->o_invLMM,
@@ -97,7 +97,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_D,
-    nrs->meshV->fieldOffset,
+    nrs->fieldOffset,
     platform->o_slice0,
     cds->o_S,
     cds->o_diff,
@@ -105,7 +105,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     platform->o_slice3,
     o_div);
 
-  oogs::startFinish(o_div, 1, nrs->meshV->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmy(
     mesh->Nlocal,
@@ -125,7 +125,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       mesh->o_sgeo,
       mesh->o_vmapM,
       nrs->o_EToB,
-      nrs->meshV->fieldOffset,
+      nrs->fieldOffset,
       nrs->o_Ue,
       platform->o_slice0
     );

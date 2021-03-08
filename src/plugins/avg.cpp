@@ -69,12 +69,12 @@ void avg::reset()
 
 void avg::EX (dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EX)
 {
-  EXKernel(N, nrs->meshV->fieldOffset, nflds, a, b, o_x, o_EX);
+  EXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EX);
 }
 
 void avg::EXX(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EXX)
 {
-  EXXKernel(N, nrs->meshV->fieldOffset, nflds, a, b, o_x, o_EXX);
+  EXXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EXX);
 }
 
 void avg::EXY(dlong N,
@@ -85,7 +85,7 @@ void avg::EXY(dlong N,
               occa::memory o_y,
               occa::memory o_EXY)
 {
-  EXYKernel(N, nrs->meshV->fieldOffset, nflds, a, b, o_x, o_y, o_EXY);
+  EXYKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_y, o_EXY);
 }
 
 void avg::run(dfloat time)
@@ -116,7 +116,7 @@ void avg::run(dfloat time)
   EX (N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
   EXX(N, a, b, nrs->NVfields, nrs->o_U, o_Urms);
 
-  const dlong offsetByte = nrs->meshV->fieldOffset * sizeof(dfloat);
+  const dlong offsetByte = nrs->fieldOffset * sizeof(dfloat);
   occa::memory o_vx = nrs->o_U + 0 * offsetByte;
   occa::memory o_vy = nrs->o_U + 1 * offsetByte;
   occa::memory o_vz = nrs->o_U + 2 * offsetByte;
@@ -153,25 +153,25 @@ void avg::setup(nrs_t* nrs_)
 
   if(setupCalled) return;
 
-  o_Uavg = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
-  o_Urms = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
-  platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
-  platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Urms);
+  o_Uavg = platform->device.calloc(nrs->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
+  o_Urms = platform->device.calloc(nrs->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
 
-  o_Urm2 = platform->device.calloc(nrs->meshV->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
-  platform->linAlg->fill(nrs->meshV->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
+  o_Urm2 = platform->device.calloc(nrs->fieldOffset * nrs->NVfields ,  sizeof(dfloat));
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
 
-  o_Pavg = platform->device.calloc(nrs->meshV->fieldOffset ,  sizeof(dfloat));
-  o_Prms = platform->device.calloc(nrs->meshV->fieldOffset ,  sizeof(dfloat));
-  platform->linAlg->fill(nrs->meshV->fieldOffset, 0.0, o_Pavg);
-  platform->linAlg->fill(nrs->meshV->fieldOffset, 0.0, o_Prms);
+  o_Pavg = platform->device.calloc(nrs->fieldOffset ,  sizeof(dfloat));
+  o_Prms = platform->device.calloc(nrs->fieldOffset ,  sizeof(dfloat));
+  platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Pavg);
+  platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Prms);
 
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
-    o_Savg = platform->device.calloc(cds->meshT[0]->fieldOffset * cds->NSfields ,  sizeof(dfloat));
-    o_Srms = platform->device.calloc(cds->meshT[0]->fieldOffset * cds->NSfields ,  sizeof(dfloat));
-    platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Savg);
-    platform->linAlg->fill(cds->meshT[0]->fieldOffset * cds->NSfields, 0.0, o_Srms);
+    o_Savg = platform->device.calloc(cds->fieldOffset[0] * cds->NSfields ,  sizeof(dfloat));
+    o_Srms = platform->device.calloc(cds->fieldOffset[0] * cds->NSfields ,  sizeof(dfloat));
+    platform->linAlg->fill(cds->fieldOffset[0] * cds->NSfields, 0.0, o_Savg);
+    platform->linAlg->fill(cds->fieldOffset[0] * cds->NSfields, 0.0, o_Srms);
   }
 
   setupCalled = 1;

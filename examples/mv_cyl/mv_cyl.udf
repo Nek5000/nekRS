@@ -26,7 +26,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->meshV->fieldOffset, nrs->cds->meshT[0]->fieldOffset, nrs->p0th[0],
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
                o_S, o_UProp, o_SProp);
 }
 
@@ -65,7 +65,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
   const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
   userMeshVelocityKernel(mesh->Nelements,
-    nrs->meshV->fieldOffset,
+    nrs->fieldOffset,
     ymin,
     ymax,
     time,

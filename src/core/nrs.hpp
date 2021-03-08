@@ -41,6 +41,7 @@ struct nrs_t
   int flow;
 
   int Nscalar;
+  dlong fieldOffset;
   setupAide options;
   setupAide vOptions, pOptions;
 
