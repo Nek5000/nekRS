@@ -22,3 +22,8 @@ void copyFile(const char *srcFile, const char* dstFile)
   src.close();
   dst.close();
 }
+
+bool fileExists(const char *file)
+{
+  return realpath(file, NULL);
+}

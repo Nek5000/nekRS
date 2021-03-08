@@ -149,7 +149,7 @@ if [ "$#" -eq 0 ]; then
   echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED
   echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
   echo ""
-  read -p "continue? [Y]" yn
+  read -p "Press ENTER to continue ..." yn
   case $yn in
     [Nn]* )
     ${NEKRS_EXIT_CMD} 1

@@ -151,6 +151,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     }
     nrs->p0th[2] = nrs->p0th[1];
     nrs->p0th[1] = nrs->p0th[0];
+
     nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
     nrs->dp0thdt = prhs * nrs->p0th[0];
   }

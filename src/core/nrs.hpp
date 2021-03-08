@@ -106,7 +106,6 @@ struct nrs_t
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
-  occa::kernel PQKernel;
   occa::kernel mueDivKernel;
 
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;

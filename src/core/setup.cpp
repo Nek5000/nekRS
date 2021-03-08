@@ -512,11 +512,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->setEllipticCoeffPressureKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/PQ.okl";
-      kernelName = "PQ";
-      nrs->PQKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
-
       fileName = oklpath + "nrs/mueDiv.okl";
       kernelName = "mueDiv";
       nrs->mueDivKernel =

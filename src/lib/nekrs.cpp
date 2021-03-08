@@ -82,21 +82,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform = _platform;
 
   if (buildOnly) {
-    cout << "performing dry-run to jit-compile for >="
-         << commSizeTarget
-         << " MPI tasks ...\n" << endl;
-    fflush(stdout);
-  }
-
-  platform->linAlg = linAlg_t::getInstance();
-  nrs->linAlg = platform->linAlg;
-
-  if (buildOnly) {
     dryRun(options, commSizeTarget);
     return;
   }
 
   platform->timer.tic("setup", 1);
+
+  platform->linAlg = linAlg_t::getInstance();
+  nrs->linAlg = platform->linAlg;
 
   // jit compile udf
   string udfFile;
@@ -275,11 +268,16 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
+  cout << "performing dry-run to jit-compile for >="
+       << npTarget 
+       << " MPI tasks ...\n" << endl;
+  fflush(stdout);	
+
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
 
-  occa::properties &settings = occa::env::baseSettings();
-  settings["kernel/verbose"] = true;
+  platform->linAlg = linAlg_t::getInstance();
+  nrs->linAlg = platform->linAlg;
 
   // jit compile udf
   string udfFile;

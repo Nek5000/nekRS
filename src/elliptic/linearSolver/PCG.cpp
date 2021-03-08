@@ -53,7 +53,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
 
   if(platform->comm.mpiRank == 0 && verbose)
-    printf("CG: initial res norm %e WE NEED TO GET TO %e \n", rdotr, sqrt(TOL2));
+    printf("CG: initial res norm %.15e WE NEED TO GET TO %e \n", rdotr, sqrt(TOL2));
   rdotr = 0;
 
   int iter; 

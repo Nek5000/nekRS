@@ -65,8 +65,8 @@
 #include "ogs.hpp"
 #include "setupAide.hpp"
 
-#define NEKRS_VERSION "20"
-#define NEKRS_SUBVERSION "1"
+#define NEKRS_VERSION "21"
+#define NEKRS_SUBVERSION "0"
 
 struct platform_t;
 extern platform_t* platform;

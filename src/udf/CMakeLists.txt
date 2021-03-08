@@ -37,7 +37,6 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 
-execute_process(COMMAND bash -c "cp -f ${FILENAME} ${CMAKE_CURRENT_SOURCE_DIR}/udf.cpp")
 add_library(UDF SHARED udf.cpp)
 target_include_directories(UDF PRIVATE ${INCLUDE_DIRS} ${UDF_DIR})
 

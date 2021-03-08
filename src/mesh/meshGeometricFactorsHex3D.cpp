@@ -290,6 +290,14 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
       printf("J [%g,%g] ", globalMinJ, globalMaxJ);
       //printf("J [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
 
+    if(globalMinJ < 0 || globalMaxJ < 0) {
+      if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
+	(platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
+        if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
+        ABORT(EXIT_FAILURE);
+      }
+    }  
+
     dfloat globalVolume;
     MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     mesh->volume = globalVolume;

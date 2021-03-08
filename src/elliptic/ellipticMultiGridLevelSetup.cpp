@@ -298,7 +298,11 @@ dfloat MGLevel::maxEigSmoothAx()
   hlong Ntotal = 0;
   MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
-  const int k = std::min((hlong)20, Ntotal); 
+  int k;
+  if(Ntotal > 10) 
+    k = 10;
+  else
+    k = (int) Ntotal;
 
   // do an arnoldi
 

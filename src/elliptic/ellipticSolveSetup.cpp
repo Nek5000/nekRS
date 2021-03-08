@@ -294,12 +294,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       const string oklpath = install_dir + "/okl/core/";
       string filename;
 
-      filename = install_dir + "/okl/mesh/haloExtract2D.okl";
-      mesh->haloExtractKernel =
-        platform->device.buildKernel(filename,
-                                 "haloExtract2D",
-                                 kernelInfo);
-
       filename = oklpath + "mask.okl";
       mesh->maskKernel =
         platform->device.buildKernel(filename,

@@ -25,34 +25,35 @@ uint32_t fchecksum(std::ifstream& file)
 
 int udfBuild(const char* udfFile, int buildOnly)
 {
-  char cmd[BUFSIZ];
-  char abs_path[BUFSIZ];
-
   double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  if(!realpath(udfFile, abs_path)) {
+  if(!fileExists(udfFile)) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
     return EXIT_FAILURE;
   }
 
   char udfFileCache[BUFSIZ];
   sprintf(udfFileCache,"%s/udf/udf.cpp",cache_dir);
+  char udfLib[BUFSIZ];
+  sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
-  if(isFileNewer(udfFile, udfFileCache)) {
-    printf("building udf ... "); fflush(stdout);
-    printf("\n");
+  if(isFileNewer(udfFile, udfFileCache) || !fileExists(udfLib)) {
+    printf("building udf ... \n"); fflush(stdout);
+    char udfFileResolved[BUFSIZ];
+    realpath(udfFile, udfFileResolved);
+    char cmd[BUFSIZ];
     sprintf(cmd,
-            "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
+            "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
              cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
-	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . && \
+	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" . && \
              make",
              cache_dir,
              cache_dir,
+             udfFileResolved,
              udf_dir,
-             udf_dir,
-            abs_path);
+             udf_dir);
     if(system(cmd)) return EXIT_FAILURE; 
     printf("done (%gs)\n", MPI_Wtime() - tStart);
     fflush(stdout);

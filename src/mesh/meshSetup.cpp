@@ -181,8 +181,6 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                    setupAide &options,
                    occa::properties& kernelInfo)
 {
-  options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
-
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -357,8 +355,6 @@ void createMeshV(mesh_t* mesh,
                     setupAide &options,
                     occa::properties& kernelInfo)
 {
-  options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
-
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
   mesh->cht = 0;

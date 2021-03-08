@@ -25,8 +25,6 @@ export OCCA_CXX="$XL_HOME/bin/xlc"
 export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
 export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 
-#export OCCA_VERBOSE=1
-
 export OMPI_MCA_io=romio321
 export ROMIO_HINTS="$(pwd)/.romio_hint"
 if [ ! -f "$ROMIO_HINTS" ]; then
@@ -112,7 +110,7 @@ do
   read -p "Do you want precompile (recommended)? [N]" yn
   case $yn in
     [Yy]* )
-      echo "jsrun -X 1 -n1 -r1 -a1 -c1 -g0 -b packed:1 -d packed $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend" >> $bsubfile
+      echo "OCCA_VERBOSE=1 jsrun -X 1 -n1 -r1 -a1 -c1 -g0 -b packed:1 -d packed $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend" >> $bsubfile
       break ;;
     * )
       break ;;
