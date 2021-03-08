@@ -285,6 +285,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   if(par->extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
+  string meshMotion; 
+  if(par->extract("mesh", "motion", meshMotion)){
+    options.setArgs("MOVING MESH", "TRUE");
+    options.setArgs("MESH MOTION", meshMotion);
+  }
+
   bool stressFormulation;
   if(par->extract("problemtype", "stressformulation", stressFormulation))
     if(stressFormulation) options.setArgs("STRESSFORMULATION", "TRUE");

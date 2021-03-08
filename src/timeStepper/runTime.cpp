@@ -102,7 +102,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
       mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
-    mesh->solve();
+    if(platform->options.compareArgs("MESH MOTION", "ELASTICITY")) mesh->solve();
   } 
 
   platform->device.finish();

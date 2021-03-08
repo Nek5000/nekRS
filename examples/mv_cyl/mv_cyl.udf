@@ -44,7 +44,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("MOVING MESH", "TRUE");
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 }
