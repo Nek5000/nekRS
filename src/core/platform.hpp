@@ -20,6 +20,8 @@ class device_t : public occa::device{
                              const std::string &kernelName,
                              const occa::properties &props,
                              MPI_Comm comm) const;
+    occa::memory malloc(const dlong Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
+    occa::memory malloc(const dlong Nbytes, const occa::properties& properties);
     occa::memory calloc(const dlong Nwords, const dlong wordSize);
   private:
     dlong bufferSize;
