@@ -110,10 +110,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
   free(DT);
 
-  mesh->o_sgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
-                        mesh->sgeo);
-
   mesh->o_vmapM =
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                         mesh->vmapM);
@@ -123,9 +119,6 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   mesh->o_EToB =
     platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
                         mesh->EToB);
-
-  mesh->o_faceNodes =
-    platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
 
   if(mesh->totalHaloPairs > 0) {
     mesh->o_haloElementList =
