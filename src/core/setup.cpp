@@ -525,7 +525,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(!buildOnly) {
     // get IC + t0 from nek
     double startTime;
-    nek::copyToNek(startTime);
+    nek::copyFromNek(startTime);
     nrs->options.setArgs("START TIME", to_string_f(startTime));
 
     if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);

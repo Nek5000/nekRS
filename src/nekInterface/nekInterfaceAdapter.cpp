@@ -676,7 +676,7 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   return 0;
 }
 
-void copyFromNek(dfloat time)
+void copyToNek(dfloat time)
 {
   if(rank == 0) {
     printf("copying solution to nek\n");
@@ -727,7 +727,7 @@ void copyFromNek(dfloat time)
   }
 }
 
-void ocopyFromNek(void)
+void ocopyToNek(void)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
@@ -742,10 +742,10 @@ void ocopyFromNek(void)
     mesh->o_y.copyTo(mesh->y);
     mesh->o_z.copyTo(mesh->z);
   }
-  copyFromNek(0.0);
+  copyToNek(0.0);
 }
 
-void ocopyFromNek(dfloat time, int tstep)
+void ocopyToNek(dfloat time, int tstep)
 {
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
@@ -760,18 +760,18 @@ void ocopyFromNek(dfloat time, int tstep)
     mesh->o_y.copyTo(mesh->y);
     mesh->o_z.copyTo(mesh->z);
   }
-  copyFromNek(time, tstep);
+  copyToNek(time, tstep);
 }
 
-void copyFromNek(dfloat time, int tstep)
+void copyToNek(dfloat time, int tstep)
 {
   *(nekData.istep) = tstep;
-  copyFromNek(time);
+  copyToNek(time);
 }
 
-void ocopyToNek(dfloat &time)
+void ocopyFromNek(dfloat &time)
 {
-  copyToNek(time);
+  copyFromNek(time);
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_U.copyFrom(nrs->U);
   if(nrs->Nscalar){
@@ -786,7 +786,7 @@ void ocopyToNek(dfloat &time)
   }
 }
 
-void copyToNek(dfloat &time)
+void copyFromNek(dfloat &time)
 {
   if(rank == 0) {
     printf("copying solution from nek\n");

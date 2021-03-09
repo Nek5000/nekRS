@@ -11,7 +11,7 @@ void setup(MPI_Comm comm, int buildOnly, int targetSize,
            std::string backend, std::string deviceID);
 
 void runStep(double time, double dt, int tstep);
-void copyToNek(double time, int tstep);
+void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);
 void outfld(double time);
 int outputStep(double time, int tStep);

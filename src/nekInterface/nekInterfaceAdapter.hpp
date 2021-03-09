@@ -121,12 +121,12 @@ void   setic(void);
 void   userchk(void);
 int    bcmap(int bid, int ifld);
 
-void copyFromNek(dfloat time, int tstep);
-void ocopyFromNek(void);
-void ocopyFromNek(dfloat time, int tstep);
-void copyFromNek(dfloat time);
-void copyToNek(dfloat &time);
-void ocopyToNek(dfloat &time);
+void copyToNek(dfloat time, int tstep);
+void ocopyToNek(void);
+void ocopyToNek(dfloat time, int tstep);
+void copyToNek(dfloat time);
+void copyFromNek(dfloat &time);
+void ocopyFromNek(dfloat &time);
 long long set_glo_num(int npts, int isTMesh);
 
 void bdfCoeff(double *g0, double *coeff, double *dt, int order);

@@ -33,7 +33,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
   memcpy(nekData.qtl, nrs->div, sizeof(dfloat)*Nlocal);
  
-  nek::ocopyFromNek(time, tstep);
+  nek::ocopyToNek(time, tstep);
   nek::userchk();
 
   double *err = (double *) nek::scPtr(1);

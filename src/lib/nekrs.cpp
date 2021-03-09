@@ -132,7 +132,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   }
 
   if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
-  nek::ocopyFromNek(startTime(), 0);
+  nek::ocopyToNek(startTime(), 0);
 
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
@@ -152,9 +152,9 @@ void runStep(double time, double dt, int tstep)
   runStep(nrs, time, dt, tstep);
 }
 
-void copyToNek(double time, int tstep)
+void copyFromNek(double time, int tstep)
 {
-  nek::ocopyFromNek(time, tstep);
+  nek::ocopyToNek(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)

@@ -55,8 +55,8 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek::ocopyFromNek(time, tstep);
+    nek::ocopyToNek(time, tstep);
     nek::userchk();
-    nek::ocopyToNek(time);
+    nek::ocopyFromNek(time);
   }
 }
