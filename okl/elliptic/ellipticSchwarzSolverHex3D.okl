@@ -12,14 +12,18 @@
       }
     }
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
-        for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
+        for(int i = 0; i < p_Nq_e; ++i; @inner){
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             sWork1[k + 1][j + 1][i + 1] = u[idx];
           }
+        }
+      }
+    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k; @inner)
       for(int j = 0; j < p_Nq_e; ++j; @inner)
@@ -48,13 +52,16 @@
           sWork1[i][j][p_Nq_e - l1 - 1] = sWork1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = p_Nq_e * p_Nq_e * p_Nq_e * elem;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[idx] = sWork1[k][j][i];
         }
+      }
+    }
   }
 }
 
@@ -67,14 +74,17 @@
   for (dlong elem = 0; elem < Nelements; ++elem; @outer) {
     @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
     @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
-    for(int k = 0; k < p_Nq_e; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = elem * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = my_work2[idx];
           work2[k][j][i] = my_work1[idx];
         }
+      }
+    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k; @inner)
       for(int j = 0; j < p_Nq_e; ++j; @inner)
@@ -136,14 +146,18 @@
                                          work1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
-        for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
+        for(int i = 0; i < p_Nq_e; ++i; @inner){
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
+        }
+      }
+    }
   }
 }
 
@@ -179,6 +193,7 @@
     @exclusive dlong element;
 
     for(int k = 0; k < p_Nq_e; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq_e; ++j; @inner) {
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
 #if p_overlap
@@ -261,6 +276,7 @@
     }
     @barrier("local");
     for (int k = 0; k < p_Nq_e; k++) {
+      @barrier("local");
       for (int j = 0; j < p_Nq_e; j++; @inner) {
         for (int i = 0; i < p_Nq_e; i++; @inner) {
           const int v = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
@@ -300,6 +316,7 @@
     }
     @barrier("local");
     for (int k = 0; k < p_Nq_e; k++) {
+      @barrier("local");
       for (int j = 0; j < p_Nq_e; j++; @inner) {
         for (int i = 0; i < p_Nq_e; i++; @inner) {
           pfloat value = 0.0;
@@ -345,24 +362,31 @@
           work2[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l2 - 1];
         }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         for(int i = 0; i < p_Nq_e; ++i; @inner) {
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           u[idx] = work2[k][j][i];
         }
+      }
+    }
 
 #else  /* if (!p_restrict) */
     @barrier("local");
-    for(int k = 0; k < p_Nq; ++k)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
-        for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq; ++k){
+      @barrier("local");
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
+        for(int i = 0; i < p_Nq_e; ++i; @inner){
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
           }
+        }
+      }
+    }
 
 #endif
   }

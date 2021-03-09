@@ -21,7 +21,7 @@
 : ${OGS_MPI_SUPPORT:=0}
 
 # OCCA backend
-: ${OCCA_CXX:="g++-10"}
+: ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 : ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
 : ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
