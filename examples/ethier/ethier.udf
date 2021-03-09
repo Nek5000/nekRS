@@ -45,6 +45,16 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  ciTestLinAlg(BLOCKSIZE / 16);
+  ciTestLinAlg(BLOCKSIZE / 8);
+  ciTestLinAlg(BLOCKSIZE / 4);
+  ciTestLinAlg(BLOCKSIZE / 2);
+  ciTestLinAlg(BLOCKSIZE);
+  ciTestLinAlg(2 * BLOCKSIZE);
+  ciTestLinAlg(4 * BLOCKSIZE);
+  ciTestLinAlg(8 * BLOCKSIZE);
+  ciTestLinAlg(16 * BLOCKSIZE);
+
 }
 
 void UDF_Setup(nrs_t *nrs)

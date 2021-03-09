@@ -78,10 +78,9 @@ dfloat min(dfloat const * const array, const int size, MPI_Comm comm)
   MPI_Allreduce(MPI_IN_PLACE, &minr, 1, MPI_DFLOAT, MPI_MIN, comm);
   return minr;
 }
-void ciTestLinAlg(nrs_t *nrs, const int N)
+void ciTestLinAlg(const int N)
 {
-  linAlg_t* linAlg = nrs->linAlg;
-  platform_t* platform = platform_t::getInstance();
+  linAlg_t* linAlg = platform->linAlg;
   MPI_Comm comm = platform->comm.mpiComm;
   int rank = platform->comm.mpiRank;
   dfloat* x = (dfloat*) calloc(N, sizeof(dfloat));
@@ -124,16 +123,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   
   int pIterErr;
   int velIterErr;
-
-  ciTestLinAlg(nrs, BLOCKSIZE / 16);
-  ciTestLinAlg(nrs, BLOCKSIZE / 8);
-  ciTestLinAlg(nrs, BLOCKSIZE / 4);
-  ciTestLinAlg(nrs, BLOCKSIZE / 2);
-  ciTestLinAlg(nrs, BLOCKSIZE);
-  ciTestLinAlg(nrs, 2 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 4 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 8 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 16 * BLOCKSIZE);
 
   int NiterU;
 
