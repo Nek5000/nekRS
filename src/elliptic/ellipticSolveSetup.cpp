@@ -273,7 +273,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   kernelInfo["defines/pfloat"] = pfloatString;
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
-  kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
 
   occa::properties pfloatKernelInfo = kernelInfo;
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
@@ -305,39 +304,35 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         platform->device.buildKernel(filename,
                                  "mask",
                                  pfloatKernelInfo);
-        filename = oklpath + "copyDfloatToPfloat.okl";
+        filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
         elliptic->copyDfloatToPfloatKernel =
           platform->device.buildKernel(filename,
                                    "copyDfloatToPfloat",
                                    kernelInfo);
 
-        filename = oklpath + "copyPfloatToDfloat.okl";
         elliptic->copyPfloatToDPfloatKernel =
           platform->device.buildKernel(filename,
                                    "copyPfloatToDfloat",
                                    kernelInfo);
 
-        filename = oklpath + "scaledAdd.okl";
         elliptic->scaledAddPfloatKernel =
           platform->device.buildKernel(filename,
                                    "scaledAdd",
-                                   pfloatKernelInfo);
-
-        elliptic->updateSmoothedSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateSmoothedSolutionVec",
-                                   pfloatKernelInfo);
-        elliptic->updateChebyshevSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateChebyshevSolutionVec",
-                                   pfloatKernelInfo);
-
-
-        filename = oklpath + "dotMultiply.okl";
+                                   kernelInfo);
         elliptic->dotMultiplyPfloatKernel =
           platform->device.buildKernel(filename,
                                    "dotMultiply",
-                                   pfloatKernelInfo);
+                                   kernelInfo);
+        filename = install_dir + "/okl/elliptic/chebyshev.okl";
+        elliptic->updateSmoothedSolutionVecKernel =
+          platform->device.buildKernel(filename,
+                                   "updateSmoothedSolutionVec",
+                                   kernelInfo);
+        elliptic->updateChebyshevSolutionVecKernel =
+          platform->device.buildKernel(filename,
+                                   "updateChebyshevSolutionVec",
+                                   kernelInfo);
+
   }
 
   // add custom defines

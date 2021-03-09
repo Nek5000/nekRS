@@ -23,17 +23,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
-
-
-@kernel void dotMultiply(const dlong N,
-			@restrict const  dfloat *  w,
-			@restrict const  dfloat *  v,
-			@restrict dfloat *  wv){
-
+@kernel void updateSmoothedSolutionVec(const dlong N,
+                      const pfloat alpha,
+                      @restrict const  pfloat *  res,
+                      const pfloat beta,
+                      @restrict pfloat *  d,
+                      const pfloat gamma,
+                      @restrict pfloat * x){
+  
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
-      wv [n] = w[n]*v[n];
+      const pfloat value = alpha*res[n];
+      d[n] = value;
+      x[n] = beta*value + gamma*x[n];
     }
   }
-
+}
+@kernel void updateChebyshevSolutionVec(const dlong N,
+                      const pfloat rhoDivDelta,
+                      const pfloat rho_np1,
+                      const pfloat rho_n,
+                      @restrict pfloat const * Ad,
+                      @restrict pfloat * res,
+                      @restrict pfloat * d,
+                      @restrict pfloat * x){
+  
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<N){
+      const pfloat value = -1.0*Ad[n] + 1.0*res[n];
+      const pfloat d_value = rhoDivDelta * value + rho_np1 * rho_n * d[n];
+      x[n] = x[n] + d_value;
+    }
+  }
 }
