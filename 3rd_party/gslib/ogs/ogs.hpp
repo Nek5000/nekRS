@@ -113,6 +113,7 @@ SOFTWARE.
 #define OGS_HPP 1
 
 #include <functional>
+#include <cstring>
 #include <math.h>
 #include <stdlib.h>
 #include <occa.hpp>

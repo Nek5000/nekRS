@@ -21,7 +21,7 @@
 : ${OGS_MPI_SUPPORT:=0}
 
 # OCCA backend
-: ${OCCA_CXX:="g++"}
+: ${OCCA_CXX:="g++-10"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 : ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
 : ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
@@ -90,7 +90,6 @@ fi
 
 : ${OCCA_METAL_ENABLED:=0}
 : ${NEKRS_CXXFLAGS:=""}
-USE_OCCA_MEM_BYTE_ALIGN="64" 
 
 if uname -a | grep 'ppc64'; then
   NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
@@ -118,7 +117,6 @@ export NEKRS_DEBUG
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 export NEKRS_INSTALL_DIR
-export NEKRS_LIBP_DEFINES
 export NEKRS_NEK5000_PPLIST
 
 export NEKRS_DIR=`pwd`
@@ -180,14 +178,12 @@ cmake -Wno-dev \
       -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
-      -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
-      -DUSE_OCCA_MEM_BYTE_ALIGN="${USE_OCCA_MEM_BYTE_ALIGN}" \
       -DOCCA_CXX="${OCCA_CXX}" \
       -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
       -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
       -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
       -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
-      -DOGS_MPI="${OGS_MPI_SUPPORT}" \
+      -DOGS_MPI_SUPPORT="${OGS_MPI_SUPPORT}" \
       -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \

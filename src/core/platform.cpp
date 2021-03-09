@@ -160,18 +160,18 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   occa::properties deviceProps;
 
   if(options.compareArgs("THREAD MODEL", "CUDA")) {
-    sprintf(deviceConfig, "mode: 'CUDA', device_id: %d", device_id);
+    sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
   }else if(options.compareArgs("THREAD MODEL", "HIP"))  {
-    sprintf(deviceConfig, "mode: 'HIP', device_id: %d",device_id);
+    sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
   }else if(options.compareArgs("THREAD MODEL", "OPENCL"))  {
     int plat;
     options.getArgs("PLATFORM NUMBER", plat);
-    sprintf(deviceConfig, "mode: 'OpenCL', device_id: %d, platform_id: %d", device_id, plat);
+    sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
   }else if(options.compareArgs("THREAD MODEL", "OPENMP"))  {
-    sprintf(deviceConfig, "mode: 'OpenMP' ");
+    sprintf(deviceConfig, "{mode: 'OpenMP'}");
   }else  {
-    sprintf(deviceConfig, "mode: 'Serial', memory: { use_host_pointer: true }");
-    sprintf(deviceConfig, "mode: 'Serial'");
+    //sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
+    sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
   }
 

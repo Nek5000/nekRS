@@ -173,10 +173,10 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   if(ogs->NhaloGather == 0) return gs;
 
   occa::properties props;
-  props["mapped"] = true;
+  props["host"] = true;
 
   gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-  gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props); 
+  gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(); 
   int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
   convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
@@ -188,7 +188,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   free(scatterIds);
 
   gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-  gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
+  gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
   int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
   convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
@@ -358,21 +358,21 @@ void reallocBuffers(int unit_size, oogs_t *gs)
   }
   if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
     occa::properties props;
-    props["mapped"] = true;
+    props["host"] = true;
     if(gs->o_bufSend.size()) gs->o_bufSend.free();
     gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
     if(gs->h_buffSend.size()) gs->h_buffSend.free();
     gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-    gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(props);
+    gs->bufSend = (unsigned char*)gs->h_buffSend.ptr();
   }
   if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
     occa::properties props;
-    props["mapped"] = true;
+    props["host"] = true;
     if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
     gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
     if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
     gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-    gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr(props);
+    gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
   }
 }
 

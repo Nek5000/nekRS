@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include <math.h>
 #include <stdlib.h>
+#include <cstring>
 
 #include "nrssys.hpp"
 

@@ -28,6 +28,7 @@
 
 #include "mesh.h"
 #include "platform.hpp"
+#include <cstring>
 
 // send data from partition boundary elements
 // and receive data to ghost elements

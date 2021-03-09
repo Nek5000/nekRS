@@ -5,9 +5,9 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
-set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+#set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-#set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE on)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
@@ -32,15 +32,13 @@ set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING
 set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
   "Directory for Nek5000 inteface source files")
 
-set(LIBP_DEFINES "-DUSE_NULL_PROJECTION=1" CACHE STRING 
-  "Preprocessor macros for libparanumal")
-
-set(OGS_MPI_SUPPORT "${OGS_MPI}" CACHE STRING "OGS GPU aware MPI")
-
 set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
 set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
         CACHE STRING "C++ flags for OCCA JIT compile")
-set(USE_OCCA_MEM_BYTE_ALIGN "64" CACHE STRING "Memory allignment for OCCA kernels")
+set(OCCA_CUDA_COMPILER_FLAGS "-O3 --fmad=true" CACHE STRING "CUDA flags for OCCA JIT compile")
+set(OCCA_HIP_COMPILER_FLAGS "-O3 -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
+set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
+set(OGS_MPI_SUPPORT "0" CACHE STRING "OGS GPU aware MPI")
 
 # From OCCA's CMakeLists. All default to ON, but are verified in config tests
 #   - ENABLE_OPENMP
@@ -101,8 +99,6 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-add_definitions(-DUSE_OCCA_MEM_BYTE_ALIGN=${USE_OCCA_MEM_BYTE_ALIGN})
-
 find_package(OpenMP)
 if (OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -120,7 +116,12 @@ function(set_external_flags lang)
   get_directory_property(compile_defs
           DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMPILE_DEFINITIONS )
   foreach(def "${compile_defs}")
-    set(ext_flags "${ext_flags} -D${def}")
+  
+    if ("${def}" STREQUAL "")
+      set(ext_flags "${ext_flags}")
+    else ()
+      set(ext_flags "${ext_flags} -D${def}")
+    endif()
   endforeach()
 
   set(EXTERNAL_${lang}_FLAGS "${ext_flags}" PARENT_SCOPE)
@@ -177,7 +178,6 @@ set(SRC
     src/io/utils.cpp
     src/core/utils/mysort.cpp
     src/core/utils/parallelSort.cpp
-    src/core/utils/occaHelpers.cpp
     src/core/utils/tinyexpr.c
     src/core/setupAide.cpp
     src/core/cfl.cpp
@@ -215,7 +215,6 @@ set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
-    ${LIBP_DEFINES}
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
     -DHYPRE)
 
@@ -302,7 +301,6 @@ add_custom_target(tar
   COMMAND ${CMAKE_COMMAND} 
       -DDEST_DIR=${DEST_DIR} 
       -DOCCA_SOURCE_DIR=${OCCA_SOURCE_DIR}
-      -DLIBP_SOURCE_DIR=${LIBP_SOURCE_DIR}
       -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR} 
       -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR} 
       -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake

@@ -347,12 +347,6 @@ void meshRecursiveSpectralBisectionPartition(mesh_t* mesh);
 void matrixInverse(int N, dfloat* A);
 dfloat matrixConditionNumber(int N, dfloat* A);
 
-#if 0
-void* occaHostMallocPinned(occa::device &device, size_t size, void* source, occa::memory &mem);
-#else
-void* occaHostMallocPinned(occa::device &device, size_t size, void* source, occa::memory &mem, occa::memory &h_mem);
-#endif
-
 void matrixRightSolve(int NrowsA, int NcolsA, dfloat* A, int NrowsB, int NcolsB, dfloat* B, dfloat* C);
 void matrixEig(int N, dfloat* A, dfloat* VR, dfloat* WR, dfloat* WI);
 void matrixTranspose(const int M, const int N,

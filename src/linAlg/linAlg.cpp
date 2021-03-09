@@ -49,9 +49,9 @@ void linAlg_t::reallocBuffers(const dlong Nbytes)
   //pinned scratch buffer
   {
     occa::properties props = kernelInfo;
-    props["mapped"] = true;
+    props["host"] = true;
     h_scratch = device.malloc(Nbytes, props);
-    scratch = (dfloat*) h_scratch.ptr(props);
+    scratch = (dfloat*) h_scratch.ptr();
   }
   o_scratch = device.malloc(Nbytes);
 }

@@ -25,6 +25,7 @@
  */
 
 #include <stdlib.h>
+#include <cstring>
 #include "mesh.h"
 
 void meshHaloExtract(mesh_t* mesh, size_t Nbytes, void* sourceBuffer, void* haloBuffer)

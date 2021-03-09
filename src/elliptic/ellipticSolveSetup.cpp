@@ -252,7 +252,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
   if(elliptic->blockSolver) {
-    elliptic->ogs = mesh->ogs; // mixed BC's possible in each field
+    elliptic->ogs = mesh->ogs; // cannot use maksed version as mixed BC's possible in each field
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   } else {
     mesh->maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
