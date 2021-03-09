@@ -46,7 +46,7 @@ void ResidualProjection::updateProjectionSpace()
   
   if(numVecsProjection <= 0) return;
 
-  platform->linAlg->multiWeightedInnerProd(
+  platform->linAlg->weightedInnerProdMulti(
     Nlocal,
     numVecsProjection,
     Nfields,
@@ -90,7 +90,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   dfloat zero = 0.0;
   dfloat mone = -1.0;
   if(numVecsProjection <= 0) return;
-  platform->linAlg->multiWeightedInnerProd(
+  platform->linAlg->weightedInnerProdMulti(
     Nlocal,
     numVecsProjection,
     Nfields,

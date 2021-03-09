@@ -214,10 +214,10 @@ void linAlg_t::setup() {
                                         "linAlgWeightedInnerProd.okl",
                                         "weightedInnerProdMany",
                                         kernelInfo);
-      if (multiWeightedInnerProdKernel.isInitialized()==false)
-        multiWeightedInnerProdKernel = device.buildKernel(oklDir + 
+      if (weightedInnerProdMultiKernel.isInitialized()==false)
+        weightedInnerProdMultiKernel = device.buildKernel(oklDir + 
                                         "linAlgWeightedInnerProd.okl",
-                                        "multiWeightedInnerProd",
+                                        "weightedInnerProdMulti",
                                         kernelInfo);
   }
 
@@ -253,6 +253,7 @@ linAlg_t::~linAlg_t() {
   innerProdKernel.free();
   weightedInnerProdKernel.free();
   weightedInnerProdManyKernel.free();
+  weightedInnerProdMultiKernel.free();
 }
 
 /*********************/
@@ -494,7 +495,7 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
 #endif
   return dot;
 }
-void linAlg_t::multiWeightedInnerProd(const dlong N, 
+void linAlg_t::weightedInnerProdMulti(const dlong N, 
                                    const dlong NVec,
                                    const dlong Nfields,
                                    const dlong fieldOffset,
@@ -508,9 +509,7 @@ void linAlg_t::multiWeightedInnerProd(const dlong N,
   const dlong Nbytes = NVec * Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
 
-  //multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
-  //multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
-  multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
+  weightedInnerProdMultiKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
 
