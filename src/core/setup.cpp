@@ -395,8 +395,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->divergenceSurfaceKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      fileName = oklpath + "nrs/advectMeshVelocity.okl";
-      kernelName = "advectMeshVelocity";
+      fileName = oklpath + "nrs/advectMeshVelocityHex3D.okl";
+      kernelName = "advectMeshVelocityHex3D";
       nrs->advectMeshVelocityKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfoBC);
 
@@ -450,8 +450,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
         prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
 	
-        fileName = oklpath + "nrs/bdivW.okl";
-        kernelName = "bdivW";
+        fileName = oklpath + "nrs/bdivWHex3D.okl";
+        kernelName = "bdivWHex3D";
         nrs->BdivWKernel =
           device.buildKernel(fileName, kernelName, prop);
 
@@ -1060,8 +1060,8 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
           device.buildKernel(fileName, kernelName, prop);
       }
 
-      fileName = oklpath + "cds/advectMeshVelocity.okl";
-  	kernelName = "advectMeshVelocity";
+      fileName = oklpath + "cds/advectMeshVelocityHex3D.okl";
+  	kernelName = "advectMeshVelocityHex3D";
       cds->advectMeshVelocityKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
@@ -1084,8 +1084,8 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
         fileName   = oklpath + "cds/sumMakef" + suffix + ".okl";
         kernelName = "sumMakef" + suffix;
         cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
-        fileName = oklpath + "cds/bdivW.okl";
-        kernelName = "bdivW";
+        fileName = oklpath + "cds/bdivWHex3D.okl";
+        kernelName = "bdivWHex3D";
         cds->BdivWKernel =
           device.buildKernel(fileName, kernelName, prop);
 
