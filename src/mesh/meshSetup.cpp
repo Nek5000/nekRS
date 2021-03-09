@@ -61,6 +61,7 @@ occa::properties populateMeshProperties(mesh_t* mesh)
   meshProperties["defines/" "p_IJWID"] = IJWID;
   return meshProperties;
 }
+void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
 
 void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
                         int N,
@@ -191,7 +192,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, meshKernelInfo);
+  loadKernels(mesh, kernelInfo);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
@@ -219,6 +220,11 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
@@ -290,6 +296,11 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
@@ -339,6 +350,11 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
+  // build mass + inverse mass matrix
+  for(dlong e = 0; e < mesh->Nelements; ++e)
+    for(int n = 0; n < mesh->Np; ++n)
+      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
+  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
@@ -472,30 +488,33 @@ void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernel
 
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
 {
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  std::string oklpath = install_dir + "/okl/";
-  occa::properties meshKernelInfo = kernelInfo;
-  meshKernelInfo["defines/" "p_cubNq"] = mymax(mesh->Nq, mesh->cubNq);
-  meshKernelInfo["defines/" "p_cubNp"] = mymax(mesh->Np, mesh->cubNp);
-
-  std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
-  mesh->geometricFactorsKernel =
-    platform->device.buildKernel(filename,
-                             "geometricFactorsHex3D",
-                             meshKernelInfo);
-  filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
-  mesh->surfaceGeometricFactorsKernel =
-    platform->device.buildKernel(filename,
-                             "surfaceGeometricFactorsHex3D",
-                             meshKernelInfo);
-
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-      meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-      filename = oklpath + "core/nStagesSum.okl";
-      mesh->nStagesSumVectorKernel =
-        platform->device.buildKernel(filename,
-                                 "nStagesSumVector",
-                                 meshKernelInfo);
+    std::string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    std::string oklpath = install_dir + "/okl/";
+    {
+        occa::properties meshKernelInfo = kernelInfo;
+        meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
+        meshKernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
+
+        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
+        mesh->geometricFactorsKernel =
+          platform->device.buildKernel(filename,
+                                   "geometricFactorsHex3D",
+                                   meshKernelInfo);
+        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
+        mesh->surfaceGeometricFactorsKernel =
+          platform->device.buildKernel(filename,
+                                   "surfaceGeometricFactorsHex3D",
+                                   meshKernelInfo);
+
+        meshKernelInfo = kernelInfo;
+        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
+        filename = oklpath + "core/nStagesSum.okl";
+        mesh->nStagesSumVectorKernel =
+          platform->device.buildKernel(filename,
+                                   "nStagesSumVector",
+                                   meshKernelInfo);
+    }
   }
 }

@@ -41,7 +41,7 @@ void mesh_t::update(){
     const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_slice0, platform->comm.mpiComm);
     const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_slice0, platform->comm.mpiComm);
     if(platform->comm.mpiRank == 0){
-      //printf("J [%g,%g]\n", minJ, maxJ);
+      printf("J [%g,%g]\n", minJ, maxJ);
     }
     volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
     computeInvLMM();

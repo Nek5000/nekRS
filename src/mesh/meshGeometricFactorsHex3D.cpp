@@ -30,7 +30,7 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-void meshGeometricFactorsHex3D(mesh3D* mesh, int ifcub)
+void meshGeometricFactorsHex3D(mesh3D* mesh)
 {
   double tStart = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
@@ -73,11 +73,11 @@ void meshGeometricFactorsHex3D(mesh3D* mesh, int ifcub)
     platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
                         cubInterpT);
 
-  occa::memory o_scratch = platform->device.calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  occa::memory o_scratch = device.calloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
 
   mesh->geometricFactorsKernel(
         mesh->Nelements,
-        ifcub,
+        1,
         mesh->o_D,
         mesh->o_gllw,
         mesh->o_x,
@@ -92,23 +92,9 @@ void meshGeometricFactorsHex3D(mesh3D* mesh, int ifcub)
         o_scratch
     );
 
-
-  // copy into host buffers
-  mesh->o_LMM.copyTo(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->o_vgeo.copyTo(mesh->vgeo, mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat));
-  mesh->o_cubvgeo.copyTo(mesh->cubvgeo, mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat));
-  mesh->o_ggeo.copyTo(mesh->ggeo, mesh->Nelements * mesh->Nggeo * mesh->Np * sizeof(dfloat));
-
-  // compute mesh quality metrics
-  const dfloat minJ = platform->linAlg->min(mesh->Nelements * mesh->Np, o_scratch, platform->comm.mpiComm);
-  const dfloat maxJ = platform->linAlg->max(mesh->Nelements * mesh->Np, o_scratch, platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0){
-    printf("J [%g,%g]\n", minJ, maxJ);
-  }
-  mesh->volume = platform->linAlg->sum(mesh->Nelements * mesh->Np, mesh->o_LMM, platform->comm.mpiComm);
-
-
   o_scratch.free();
+
+
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
