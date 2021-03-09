@@ -117,9 +117,9 @@ void RANSktau::updateSourceTerms()
   cds_t* cds = nrs->cds;
   
 
-  occa::memory o_OiOjSk  = platform->o_slice0;
-  occa::memory o_SijMag2 = platform->o_slice1;
-  occa::memory o_SijOij  = platform->o_slice2;
+  occa::memory o_OiOjSk  = platform->o_mempool.slice0;
+  occa::memory o_SijMag2 = platform->o_mempool.slice1;
+  occa::memory o_SijOij  = platform->o_mempool.slice2;
 
   occa::memory o_FS      = cds->o_FS     + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
   occa::memory o_BFDiag  = cds->o_BFDiag + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);

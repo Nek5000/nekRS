@@ -6,6 +6,19 @@
 #include "timer.hpp"
 class setupAide;
 class linAlg_t;
+struct memPool_t{
+  void allocate(const dlong offset, const dlong fields);
+  dfloat* slice0, *slice1, *slice2, *slice3, *slice4, *slice5, *slice6, *slice7;
+  dfloat* slice9, *slice12, *slice15, *slice18, *slice19;
+  dfloat* ptr;
+};
+struct deviceMemPool_t{
+
+  void allocate(memPool_t& hostMemory, const dlong offset, const dlong fields);
+  occa::memory slice0, slice1, slice2, slice3, slice4, slice5, slice6, slice7;
+  occa::memory slice9, slice12, slice15, slice18, slice19;
+  occa::memory o_ptr;
+};
 class device_t : public occa::device{
   public:
     device_t(setupAide& options, MPI_Comm comm);
@@ -41,10 +54,8 @@ struct platform_t{
   timer::timer_t timer;
   comm_t comm;
   linAlg_t* linAlg;
-  dfloat* mempool;
-  occa::memory o_mempool;
-  occa::memory o_slice0, o_slice1, o_slice2, o_slice3, o_slice4, o_slice5, o_slice6, o_slice7;
-  occa::memory o_slice9, o_slice12, o_slice15, o_slice18, o_slice19;
+  memPool_t mempool;
+  deviceMemPool_t o_mempool;
   void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _comm);
 

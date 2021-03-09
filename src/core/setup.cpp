@@ -185,12 +185,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     // realloc o_LMM, o_invLMMM to be large enough
     const int nBDF = nrs->nBDF;
     {
-      platform->o_mempool.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
+      platform->o_mempool.slice0.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
       mesh->o_LMM = platform->device.calloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
-      mesh->o_LMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
-      platform->o_mempool.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
+      mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+      platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
       mesh->o_invLMM = platform->device.calloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
-      mesh->o_invLMM.copyFrom(platform->o_mempool, mesh->Nlocal * sizeof(dfloat));
+      mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
     }
 
     const int nAB = mesh->nAB;
@@ -257,11 +257,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_slice0);
-    ogsGatherScatter(platform->o_slice0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_slice0); 
+    linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_mempool.slice0);
+    ogsGatherScatter(platform->o_mempool.slice0, ogsDfloat, ogsAdd, mesh->ogs);
+    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_mempool.slice0); 
     dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    platform->o_slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
+    platform->o_mempool.slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
     for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -568,8 +568,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
       cds->solver[is]->Ntotal = nrs->fieldOffset;
-      cds->solver[is]->wrk = platform->mempool + nrs->ellipticWrkOffset;
-      cds->solver[is]->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      cds->solver[is]->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+      cds->solver[is]->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       cds->solver[is]->mesh = mesh;
       cds->solver[is]->dim = cds->dim;
       cds->solver[is]->elementType = cds->elementType;
@@ -639,8 +639,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
       nrs->uvwSolver->Ntotal = nrs->fieldOffset;
-      nrs->uvwSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
-      nrs->uvwSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uvwSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+      nrs->uvwSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uvwSolver->mesh = mesh;
       nrs->uvwSolver->options = nrs->vOptions;
       nrs->uvwSolver->dim = nrs->dim;
@@ -659,8 +659,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
       nrs->uSolver->Ntotal = nrs->fieldOffset;
-      nrs->uSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
-      nrs->uSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+      nrs->uSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->uSolver->mesh = mesh;
       nrs->uSolver->options = nrs->vOptions;
       nrs->uSolver->dim = nrs->dim;
@@ -679,8 +679,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
       nrs->vSolver->Ntotal = nrs->fieldOffset;
-      nrs->vSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
-      nrs->vSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->vSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+      nrs->vSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
       nrs->vSolver->mesh = mesh;
       nrs->vSolver->options = nrs->vOptions;
       nrs->vSolver->dim = nrs->dim;
@@ -700,8 +700,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->wSolver->blockSolver = 0;
         nrs->wSolver->Nfields = 1;
         nrs->wSolver->Ntotal = nrs->fieldOffset;
-        nrs->wSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
-        nrs->wSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+        nrs->wSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+        nrs->wSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
         nrs->wSolver->mesh = mesh;
         nrs->wSolver->options = nrs->vOptions;
         nrs->wSolver->dim = nrs->dim;
@@ -758,8 +758,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
     nrs->pSolver->Ntotal = nrs->fieldOffset;
-    nrs->pSolver->wrk = platform->mempool + nrs->ellipticWrkOffset;
-    nrs->pSolver->o_wrk = platform->o_mempool.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+    nrs->pSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+    nrs->pSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
     nrs->pSolver->mesh = mesh;
     nrs->pSolver->dim = nrs->dim;
     nrs->pSolver->elementType = nrs->elementType;

@@ -53,24 +53,45 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
     kernelInfo["compiler_flags"] += " -ffast-math ";
   }
 }
+void memPool_t::allocate(const dlong offset, const dlong fields)
+{
+  ptr = (dfloat*) calloc(offset*fields, sizeof(dfloat));
+  slice0 = ptr + 0 * offset;
+  slice1 = ptr + 1 * offset;
+  slice2 = ptr + 2 * offset;
+  slice3 = ptr + 3 * offset;
+  slice4 = ptr + 4 * offset;
+  slice5 = ptr + 5 * offset;
+  slice6 = ptr + 6 * offset;
+  slice7 = ptr + 7 * offset;
+  slice9 = ptr + 9 * offset;
+  slice12 = ptr + 12 * offset;
+  slice15 = ptr + 15 * offset;
+  slice18 = ptr + 18 * offset;
+  slice19 = ptr + 19 * offset;
+}
+void deviceMemPool_t::allocate(memPool_t& hostMemory, const dlong offset, const dlong fields)
+{
+  o_ptr = platform->device.malloc(offset*fields*sizeof(dfloat), hostMemory.slice0);
+  slice0 = o_ptr.slice(0 * offset * sizeof(dfloat));
+  slice1 = o_ptr.slice(1 * offset * sizeof(dfloat));
+  slice2 = o_ptr.slice(2 * offset * sizeof(dfloat));
+  slice3 = o_ptr.slice(3 * offset * sizeof(dfloat));
+  slice4 = o_ptr.slice(4 * offset * sizeof(dfloat));
+  slice5 = o_ptr.slice(5 * offset * sizeof(dfloat));
+  slice6 = o_ptr.slice(6 * offset * sizeof(dfloat));
+  slice7 = o_ptr.slice(7 * offset * sizeof(dfloat));
+  slice9 = o_ptr.slice(9 * offset * sizeof(dfloat));
+  slice12 = o_ptr.slice(12 * offset * sizeof(dfloat));
+  slice15 = o_ptr.slice(15 * offset * sizeof(dfloat));
+  slice18 = o_ptr.slice(18 * offset * sizeof(dfloat));
+  slice19 = o_ptr.slice(19 * offset * sizeof(dfloat));
+}
 void
 platform_t::create_mempool(const dlong offset, const dlong fields)
 {
-  mempool = (dfloat*) calloc(offset*fields, sizeof(dfloat));
-  o_mempool = device.malloc(offset*fields*sizeof(dfloat));
-  o_slice0 = o_mempool.slice(0 * offset * sizeof(dfloat));
-  o_slice1 = o_mempool.slice(1 * offset * sizeof(dfloat));
-  o_slice2 = o_mempool.slice(2 * offset * sizeof(dfloat));
-  o_slice3 = o_mempool.slice(3 * offset * sizeof(dfloat));
-  o_slice4 = o_mempool.slice(4 * offset * sizeof(dfloat));
-  o_slice5 = o_mempool.slice(5 * offset * sizeof(dfloat));
-  o_slice6 = o_mempool.slice(6 * offset * sizeof(dfloat));
-  o_slice7 = o_mempool.slice(7 * offset * sizeof(dfloat));
-  o_slice9 = o_mempool.slice(9 * offset * sizeof(dfloat));
-  o_slice12 = o_mempool.slice(12 * offset * sizeof(dfloat));
-  o_slice15 = o_mempool.slice(15 * offset * sizeof(dfloat));
-  o_slice18 = o_mempool.slice(18 * offset * sizeof(dfloat));
-  o_slice19 = o_mempool.slice(19 * offset * sizeof(dfloat));
+  mempool.allocate(offset, fields);
+  o_mempool.allocate(mempool, offset, fields);
 }
 
 occa::kernel

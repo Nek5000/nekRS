@@ -119,8 +119,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   }
 
   if(udf.properties) {
-    occa::memory o_S = platform->o_slice0;
-    occa::memory o_SProp = platform->o_slice0;
+    occa::memory o_S = platform->o_mempool.slice0;
+    occa::memory o_SProp = platform->o_mempool.slice0;
     if(nrs->Nscalar) {
       o_S = nrs->cds->o_S;
       o_SProp = nrs->cds->o_prop;

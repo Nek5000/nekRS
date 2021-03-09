@@ -43,7 +43,7 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_idH,
                  nrs->fieldOffset,
                  nrs->o_U,
-                 platform->o_slice0);
+                 platform->o_mempool.slice0);
 
-  return platform->linAlg->max(mesh->Nlocal, platform->o_slice0, platform->comm.mpiComm);
+  return platform->linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
 }

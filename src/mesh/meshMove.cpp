@@ -35,11 +35,11 @@ void mesh_t::update(){
         o_vgeo,
         o_ggeo,
         o_cubvgeo,
-        platform->o_slice0
+        platform->o_mempool.slice0
     );
     // compute mesh quality metrics
-    const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_slice0, platform->comm.mpiComm);
-    const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_slice0, platform->comm.mpiComm);
+    const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
+    const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
     if(platform->comm.mpiRank == 0){
       printf("J [%g,%g]\n", minJ, maxJ);
     }
