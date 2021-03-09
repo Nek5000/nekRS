@@ -73,6 +73,12 @@ void linAlg_t::setup() {
   double tStartLoadKernel = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("loading linAlg kernels ... "); fflush(stdout);
 
+
+
+  occa::properties kernelInfoNoOkl = platform->kernelInfo;
+  kernelInfoNoOkl["okl/enabled"] = false;
+  const bool serial = platform->device.mode() == "SERIAL";
+
   {
       if (fillKernel.isInitialized()==false)
         fillKernel = device.buildKernel(oklDir + 
@@ -94,16 +100,32 @@ void linAlg_t::setup() {
                                         "linAlgScale.okl",
                                         "scaleMany",
                                         kernelInfo);
-      if (axpbyKernel.isInitialized()==false)
-        axpbyKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXPBY.okl",
-                                         "axpby",
-                                         kernelInfo);
-      if (axpbyManyKernel.isInitialized()==false)
-        axpbyManyKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXPBY.okl",
-                                         "axpbyMany",
-                                         kernelInfo);
+      if (axpbyKernel.isInitialized()==false){
+        if(serial){
+          axpbyKernel = device.buildKernel(oklDir + 
+                                           "linAlgAXPBY.c",
+                                           "axpby",
+                                           kernelInfoNoOkl);
+        } else {
+          axpbyKernel = device.buildKernel(oklDir + 
+                                           "linAlgAXPBY.okl",
+                                           "axpby",
+                                           kernelInfo);
+        }
+      }
+      if (axpbyManyKernel.isInitialized()==false){
+        if(serial){
+          axpbyManyKernel = device.buildKernel(oklDir + 
+                                           "linAlgAXPBY.c",
+                                           "axpbyMany",
+                                           kernelInfoNoOkl);
+        } else {
+          axpbyManyKernel = device.buildKernel(oklDir + 
+                                           "linAlgAXPBY.okl",
+                                           "axpbyMany",
+                                           kernelInfo);
+        }
+      }
       if (axpbyzKernel.isInitialized()==false)
         axpbyzKernel = device.buildKernel(oklDir + 
                                           "linAlgAXPBY.okl",
@@ -114,21 +136,45 @@ void linAlg_t::setup() {
                                           "linAlgAXPBY.okl",
                                           "axpbyzMany",
                                           kernelInfo);
-      if (axmyKernel.isInitialized()==false)
-        axmyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXMY.okl",
-                                        "axmy",
-                                        kernelInfo);
-      if (axmyManyKernel.isInitialized()==false)
-        axmyManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXMY.okl",
-                                        "axmyMany",
-                                        kernelInfo);
-      if (axmyVectorKernel.isInitialized()==false)
-        axmyVectorKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXMY.okl",
-                                        "axmyVector",
-                                        kernelInfo);
+      if (axmyKernel.isInitialized()==false){
+        if(serial){
+          axmyKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.c",
+                                          "axmy",
+                                          kernelInfoNoOkl);
+        } else {
+          axmyKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.okl",
+                                          "axmy",
+                                          kernelInfo);
+        }
+      }
+      if (axmyManyKernel.isInitialized()==false){
+        if(serial){
+          axmyManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.c",
+                                          "axmyMany",
+                                          kernelInfoNoOkl);
+        } else {
+          axmyManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.okl",
+                                          "axmyMany",
+                                          kernelInfo);
+        }
+      }
+      if (axmyVectorKernel.isInitialized()==false){
+        if(serial){
+          axmyVectorKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.c",
+                                          "axmyVector",
+                                          kernelInfoNoOkl);
+        } else {
+          axmyVectorKernel = device.buildKernel(oklDir + 
+                                          "linAlgAXMY.okl",
+                                          "axmyVector",
+                                          kernelInfo);
+        }
+      }
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
                                          "linAlgAXMY.okl",
@@ -189,35 +235,67 @@ void linAlg_t::setup() {
                                         "linAlgNorm2.okl",
                                         "norm2",
                                         kernelInfo);
-      if (weightedNorm2Kernel.isInitialized()==false)
-        weightedNorm2Kernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedNorm2.okl",
-                                        "weightedNorm2",
-                                        kernelInfo);
-      if (weightedNorm2ManyKernel.isInitialized()==false)
-        weightedNorm2ManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedNorm2.okl",
-                                        "weightedNorm2Many",
-                                        kernelInfo);
+      if (weightedNorm2Kernel.isInitialized()==false){
+        if(serial){
+          weightedNorm2Kernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedNorm2.c",
+                                          "weightedNorm2",
+                                          kernelInfoNoOkl);
+        } else {
+          weightedNorm2Kernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedNorm2.okl",
+                                          "weightedNorm2",
+                                          kernelInfo);
+        }
+      }
+      if (weightedNorm2ManyKernel.isInitialized()==false){
+        if(serial){
+          weightedNorm2ManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedNorm2.c",
+                                          "weightedNorm2Many",
+                                          kernelInfoNoOkl);
+        } else {
+          weightedNorm2ManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedNorm2.okl",
+                                          "weightedNorm2Many",
+                                          kernelInfo);
+        }
+      }
       if (innerProdKernel.isInitialized()==false)
         innerProdKernel = device.buildKernel(oklDir + 
                                         "linAlgInnerProd.okl",
                                         "innerProd",
                                         kernelInfo);
-      if (weightedInnerProdKernel.isInitialized()==false)
-        weightedInnerProdKernel = device.buildKernel(oklDir + 
+      if (weightedInnerProdKernel.isInitialized()==false){
+        if(serial){
+          weightedInnerProdKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedInnerProd.c",
+                                          "weightedInnerProd",
+                                          kernelInfoNoOkl);
+        } else {
+          weightedInnerProdKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedInnerProd.okl",
+                                          "weightedInnerProd",
+                                          kernelInfo);
+        }
+      }
+      if (weightedInnerProdManyKernel.isInitialized()==false){
+        if(serial){
+          weightedInnerProdManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedInnerProd.c",
+                                          "weightedInnerProdMany",
+                                          kernelInfoNoOkl);
+        } else {
+          weightedInnerProdManyKernel = device.buildKernel(oklDir + 
+                                          "linAlgWeightedInnerProd.okl",
+                                          "weightedInnerProdMany",
+                                          kernelInfo);
+        }
+      }
+      if (weightedInnerProdMultiKernel.isInitialized()==false)
+        weightedInnerProdMultiKernel = device.buildKernel(oklDir + 
                                         "linAlgWeightedInnerProd.okl",
-                                        "weightedInnerProd",
-                                        kernelInfo);
-      if (weightedInnerProdManyKernel.isInitialized()==false)
-        weightedInnerProdManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedInnerProd.okl",
-                                        "weightedInnerProdMany",
-                                        kernelInfo);
-      if (multiWeightedInnerProdKernel.isInitialized()==false)
-        multiWeightedInnerProdKernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedInnerProd.okl",
-                                        "multiWeightedInnerProd",
+                                        "weightedInnerProdMulti",
                                         kernelInfo);
   }
 
@@ -253,6 +331,7 @@ linAlg_t::~linAlg_t() {
   innerProdKernel.free();
   weightedInnerProdKernel.free();
   weightedInnerProdManyKernel.free();
+  weightedInnerProdMultiKernel.free();
 }
 
 /*********************/
@@ -470,6 +549,7 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
+  const bool serial = platform->device.mode() == "SERIAL";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -482,8 +562,13 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
   o_scratch.copyTo(scratch, Nbytes);
 
   dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+
+  if(serial){
+    dot = scratch[0];
+  } else {
+    for(dlong n=0;n<Nblock;++n){
+      dot += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
@@ -494,7 +579,7 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
 #endif
   return dot;
 }
-void linAlg_t::multiWeightedInnerProd(const dlong N, 
+void linAlg_t::weightedInnerProdMulti(const dlong N, 
                                    const dlong NVec,
                                    const dlong Nfields,
                                    const dlong fieldOffset,
@@ -508,9 +593,7 @@ void linAlg_t::multiWeightedInnerProd(const dlong N,
   const dlong Nbytes = NVec * Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
 
-  //multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, offset, o_w, o_x, o_y, o_scratch);
-  //multiWeightedInnerProdKernel(N, fieldOffset, Nblock, NVec, Nfields, offset, o_w, o_x, o_y, o_scratch);
-  multiWeightedInnerProdKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
+  weightedInnerProdMultiKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
 
@@ -534,6 +617,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
                                    occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
+  const bool serial = platform->device.mode() == "SERIAL";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -544,10 +628,14 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
   weightedInnerProdManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_x, o_y, o_scratch);
 
   o_scratch.copyTo(scratch, Nbytes);
-
   dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+
+  if(serial){
+    dot = scratch[0];
+  } else {
+    for(dlong n=0;n<Nblock;++n){
+      dot += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
@@ -562,6 +650,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 // ||o_a||_w2
 dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
+  const bool serial = platform->device.mode() == "SERIAL";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -573,9 +662,14 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
 
   o_scratch.copyTo(scratch, Nbytes);
 
+
   dfloat norm = 0;
-  for(dlong n=0;n<Nblock;++n){
-    norm += scratch[n];
+  if(serial){
+    norm = scratch[0];
+  } else {
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
@@ -591,6 +685,7 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
                                    const dlong fieldOffset,
                                    occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
+  const bool serial = platform->device.mode() == "SERIAL";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -603,8 +698,12 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
   o_scratch.copyTo(scratch, Nbytes);
 
   dfloat norm = 0;
-  for(dlong n=0;n<Nblock;++n){
-    norm += scratch[n];
+  if(serial){
+    norm = scratch[0];
+  } else {
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
