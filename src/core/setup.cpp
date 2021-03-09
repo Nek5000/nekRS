@@ -8,7 +8,7 @@
 #include <map>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH);
+cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoH);
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
@@ -71,23 +71,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->cht = 0;
   if (nekData.nelv != nekData.nelt && nrs->Nscalar) nrs->cht = 1;
 
+  mesh_t* meshT = new mesh_t();
+
   // create mesh
   if (buildOnly) {
-    mesh_t* mesh = new mesh_t();
-    mesh->linAlg = nrs->linAlg;
-    createMeshDummy(mesh, comm, N, cubN, nrs->options,  kernelInfo);
-    nrs->meshT = mesh;
-    nrs->meshV= mesh;
+    createMeshDummy(meshT, comm, N, cubN, nrs->options,  kernelInfo);
+    nrs->meshV = meshT;
   } else {
-    mesh_t* mesh = new mesh_t();
-    mesh->linAlg = nrs->linAlg;
-    createMesh(mesh, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
-    nrs->meshT = mesh;
-    nrs->meshV= mesh;
+    createMesh(meshT, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
+    nrs->meshV = meshT;
     if (nrs->cht) {
       mesh_t* meshV = new mesh_t();
-      meshV->linAlg = nrs->linAlg;
-      createMeshV(meshV, comm, N, cubN, nrs->meshT, nrs->options, kernelInfo);
+      createMeshV(meshV, comm, N, cubN, meshT, nrs->options, kernelInfo);
       nrs->meshV= meshV;
     }
   }
@@ -145,7 +140,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   // ensure that offset is large enough for v and t mesh and is properly aligned
   {
-    const dlong NtotalT = nrs->meshT->Np * (nrs->meshT->Nelements + nrs->meshT->totalHaloPairs);
+    const dlong NtotalT = meshT->Np * (meshT->Nelements + meshT->totalHaloPairs);
     nrs->fieldOffset = mymax(Ntotal, NtotalT);
 
     int PAGESIZE = 4096; // default is 4kB
@@ -155,7 +150,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int pageW = PAGESIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
-  nrs->meshT->fieldOffset = nrs->fieldOffset;
+  meshT->fieldOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     int Sorder;
@@ -524,7 +519,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    nrs->cds = cdsSetup(nrs, nrs->options, kernelInfoS);
+    nrs->cds = cdsSetup(nrs, meshT, nrs->options, kernelInfoS);
   }
 
   if(!buildOnly) {
@@ -544,8 +539,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   int NBCType = nbrBIDs + 1;
 
   if(nrs->Nscalar) {
-    mesh_t* mesh;
-    (nrs->cht) ? mesh = nrs->meshT : mesh = nrs->meshV;
     cds_t* cds = nrs->cds;
 
     for (int is = 0; is < cds->NSfields; is++) {
@@ -857,12 +850,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 }
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoH)
+cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoH)
 {
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->meshT[0] = nrs->meshT;
+  cds->meshT[0] = meshT;
   mesh_t* mesh = cds->meshT[0];
 
   string install_dir;

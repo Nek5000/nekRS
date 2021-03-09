@@ -26,6 +26,7 @@
 
 #include "elliptic.h"
 #include "platform.hpp"
+#include "linAlg.hpp"
 
 size_t MGLevel::smootherResidualBytes;
 pfloat* MGLevel::smootherResidual;

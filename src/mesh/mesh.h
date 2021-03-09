@@ -34,8 +34,8 @@
 #include <stdlib.h>
 
 #include "nrssys.hpp"
-#include "linAlg.hpp"
 #include "ogs.hpp"
+#include "linAlg.hpp"
 
 #define TRIANGLES 3
 #define QUADRILATERALS 4
@@ -48,7 +48,6 @@ struct mesh_t
   void update();
   void computeInvLMM();
   void solve();
-  linAlg_t* linAlg;
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration

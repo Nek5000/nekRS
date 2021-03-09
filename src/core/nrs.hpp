@@ -23,7 +23,6 @@ struct nrs_t
   int dim, elementType;
 
   mesh_t* meshV;
-  mesh_t* meshT;
   linAlg_t* linAlg;
 
   elliptic_t* uSolver;

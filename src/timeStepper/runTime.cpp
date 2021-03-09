@@ -90,7 +90,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(movingMesh) {
-    mesh_t *mesh = nrs->meshT;
+    mesh_t *mesh = nrs->cds->meshT[0];
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
       mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
@@ -458,7 +458,7 @@ void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
 occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->meshV;
-  linAlg_t* linAlg = mesh->linAlg;
+  linAlg_t* linAlg = platform->linAlg;
 
   occa::memory& o_p0 = platform->o_slice0;
   occa::memory& o_u1 = platform->o_slice3;
@@ -650,7 +650,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
 occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U)
 {
   mesh_t* mesh = nrs->meshV;
-  linAlg_t* linAlg = mesh->linAlg;
+  linAlg_t* linAlg = platform->linAlg;
 
   occa::memory o_BdivW;
 
@@ -818,7 +818,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
 {
 
   mesh_t* mesh = cds->meshV;
-  linAlg_t* linAlg = mesh->linAlg;
+  linAlg_t* linAlg = platform->linAlg;
 
   occa::memory& o_r1 = platform->o_slice2;
   occa::memory& o_r2 = platform->o_slice3;
@@ -996,7 +996,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
                                   occa::memory o_U, occa::memory o_S)
 {
   mesh_t* mesh = cds->meshV;
-  linAlg_t* linAlg= mesh->linAlg;
+  linAlg_t* linAlg= platform->linAlg;
 
   occa::memory o_BdivW;
 

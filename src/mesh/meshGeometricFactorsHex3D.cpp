@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include "mesh3D.h"
 #include "platform.hpp"
+#include "linAlg.hpp"
 
 void meshGeometricFactorsHex3D(mesh3D* mesh, int ifcub)
 {
