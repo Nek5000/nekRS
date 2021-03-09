@@ -95,7 +95,6 @@ struct mesh_t
 
   // CG gather-scatter info
   hlong* globalIds;
-  hlong* maskedGlobalIds;
   void* gsh, * hostGsh; // gslib struct pointer
   ogs_t* ogs; //occa gs pointer
   oogs_t* oogs; //occa gs pointer

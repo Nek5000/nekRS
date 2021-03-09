@@ -255,13 +255,14 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->ogs = mesh->ogs; // cannot use maksed version as mixed BC's possible in each field
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   } else {
-    mesh->maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
-    memcpy(mesh->maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
+    hlong* maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
+    memcpy(maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
     for (dlong n = 0; n < elliptic->Nmasked; n++)
-      mesh->maskedGlobalIds[elliptic->maskIds[n]] = 0;
+      maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
-    elliptic->ogs = ogsSetup(Nlocal, mesh->maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
+    elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
+    free(maskedGlobalIds);
   }
 
   elliptic->precon = new precon_t();
