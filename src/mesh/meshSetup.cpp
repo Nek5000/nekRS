@@ -192,7 +192,7 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
   occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, kernelInfo);
+  loadKernels(mesh, meshKernelInfo);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
