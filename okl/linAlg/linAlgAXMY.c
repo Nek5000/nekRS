@@ -21,14 +21,14 @@ SOFTWARE.
 
 extern "C" 
 void axmy(const dlong & N, 
+          const dfloat& alpha,
                  const dfloat * __restrict__ cpu_w,
-                 const dfloat * __restrict__ cpu_a,
-                 dfloat * __restrict__ cpu_wa){
+                 dfloat * __restrict__ cpu_a){
   
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat wi = cpu_w[i];
-    cpu_wa[i] = ai*wi;
+    cpu_a[i] = alpha*ai*wi;
   }
 
 }
@@ -38,35 +38,34 @@ void axmyMany(const dlong & N,
                       const dlong & Nfields,
                       const dlong & offset,
                       const dlong & mode,
+                      const dfloat & alpha,
                       const dfloat * __restrict__ cpu_w,
-                      const dfloat * __restrict__ cpu_a,
-                      dfloat * __restrict__ cpu_wa){
+                      dfloat * __restrict__ cpu_a){
   
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;
       const dfloat ai = cpu_a[id];
       const dfloat wi = cpu_w[i + mode * fld * offset];
-      cpu_wa[id] = ai*wi;
+      cpu_a[id] = alpha*ai*wi;
     }
   }
 
 }
 extern "C" 
 void axmyVector(const dlong & N, 
-                      const dlong & Nfields,
                       const dlong & offset,
                       const dlong & mode,
+                      const dfloat & alpha,
                       const dfloat * __restrict__ cpu_w,
-                      const dfloat * __restrict__ cpu_a,
-                      dfloat * __restrict__ cpu_wa){
+                      dfloat * __restrict__ cpu_a){
   
   for(int fld=0;fld<p_NVec;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;
       const dfloat ai = cpu_a[id];
       const dfloat wi = cpu_w[i + mode * fld * offset];
-      cpu_wa[id] = ai*wi;
+      cpu_a[id] = alpha*ai*wi;
     }
   }
 

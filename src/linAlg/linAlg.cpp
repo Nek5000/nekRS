@@ -77,7 +77,7 @@ void linAlg_t::setup() {
 
   occa::properties kernelInfoNoOkl = platform->kernelInfo;
   kernelInfoNoOkl["okl/enabled"] = false;
-  const bool serial = platform->device.mode() == "SERIAL";
+  const bool serial = platform->device.mode() == "Serial";
 
   {
       if (fillKernel.isInitialized()==false)
@@ -549,7 +549,7 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "SERIAL";
+  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -559,13 +559,14 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
 
   weightedInnerProdKernel(Nblock, N, o_w, o_x, o_y, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
 
   dfloat dot = 0;
 
   if(serial){
+    o_scratch.copyTo(scratch, sizeof(dfloat));
     dot = scratch[0];
   } else {
+    o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
       dot += scratch[n];
     }
@@ -617,7 +618,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
                                    occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "SERIAL";
+  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -627,12 +628,13 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 
   weightedInnerProdManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_x, o_y, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
   dfloat dot = 0;
 
   if(serial){
+    o_scratch.copyTo(scratch, sizeof(dfloat));
     dot = scratch[0];
   } else {
+    o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
       dot += scratch[n];
     }
@@ -650,7 +652,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 // ||o_a||_w2
 dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "SERIAL";
+  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -660,13 +662,14 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
 
   weightedNorm2Kernel(Nblock, N, o_w, o_a, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
 
 
   dfloat norm = 0;
   if(serial){
+    o_scratch.copyTo(scratch, sizeof(dfloat));
     norm = scratch[0];
   } else {
+    o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
       norm += scratch[n];
     }
@@ -685,7 +688,7 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
                                    const dlong fieldOffset,
                                    occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "SERIAL";
+  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -695,12 +698,13 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
 
   weightedNorm2ManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_a, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
 
   dfloat norm = 0;
   if(serial){
+    o_scratch.copyTo(scratch, sizeof(dfloat));
     norm = scratch[0];
   } else {
+    o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
       norm += scratch[n];
     }

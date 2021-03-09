@@ -19,7 +19,7 @@ SOFTWARE.
 */
 
 extern "C" 
-void weightedInnerProduct2(
+void weightedInnerProd(
             const dlong & Nblocks,
             const dlong & N,
             const dfloat * __restrict__ cpu_w,
@@ -41,7 +41,7 @@ void weightedInnerProduct2(
 }
 
 extern "C" 
-void weightedInnerProduct2Many(
+void weightedInnerProdMany(
             const dlong & Nblocks,
             const dlong & N,
             const dlong & Nfields,
@@ -58,7 +58,7 @@ void weightedInnerProduct2Many(
       const dlong id = i + fld*offset;
       const dfloat ai = cpu_a[id];
       const dfloat bi = cpu_b[id];
-      const dfloat wi = cpu_w[id];
+      const dfloat wi = cpu_w[i];
       wab += ai*bi*wi;
     }
   }

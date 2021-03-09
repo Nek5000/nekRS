@@ -31,7 +31,7 @@ void axpby(const dlong & N, const dlong & xOffset, const dlong& yOffset, const d
 }
 
 extern "C"
-void axpbyMany(const dlong & N, const dlong Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
+void axpbyMany(const dlong & N, const dlong & Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
                     const dfloat & beta, dfloat * __restrict__ cpu_b){
 
   for(int fld=0;fld<Nfields;fld++) { 
