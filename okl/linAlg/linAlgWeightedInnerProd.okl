@@ -86,13 +86,11 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
       s_wxy[t] = 0.0;
-      if (id<N) {
-        for(int fld = 0 ; fld < Nfields; ++fld){
-          const double xid = x[id + fld * offset];
-          const double yid = y[id + fld * offset];
-          const double wid = w[id];
-          s_wxy[t] += wid*xid*yid;
-        }
+      if(id<N) {
+        double sum = 0.0;
+        for(int fld = 0 ; fld < Nfields; ++fld)
+          sum += x[id + fld * offset] * y[id + fld * offset];
+        s_wxy[t] = w[id]*sum;
       }
     }
 
@@ -140,14 +138,13 @@ SOFTWARE.
       @barrier("local");
       for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
         const dlong id = t + p_blockSize * b;
-        dfloat res = 0.0; 
+        s_wxy[t] = 0.0;
         if(id < N) {
-          for(dlong fld = 0; fld < Nfields; ++fld){
-            const dfloat tmp = w[id] * y[id + offset + fld * fieldOffset];
-            res += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * tmp;
-          }
+          dfloat sum = 0.0; 
+          for(dlong fld = 0; fld < Nfields; ++fld)
+            sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + offset + fld * fieldOffset];
+          s_wxy[t] = w[id]*sum;
         }
-        s_wxy[t] = res;
       }
       @barrier("local");
 

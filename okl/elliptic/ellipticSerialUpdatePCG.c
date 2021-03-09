@@ -43,7 +43,7 @@ void ellipticUpdatePCG(const dlong & N,
       cpu_x[n] += alpha * cpu_p[n];
 
       const dfloat rn = cpu_r[n] - alpha * cpu_Ap[n];
-      rdotr += rn * rn * cpu_invDegree[n];
+      rdotr += rn * rn * cpu_invDegree[i];
       cpu_r[n] = rn;
     }
 

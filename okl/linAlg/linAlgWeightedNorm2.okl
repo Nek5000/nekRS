@@ -85,16 +85,15 @@ SOFTWARE.
 
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       const dlong id = t + b*p_blockSize;
-      dfloat res = 0.0;
-      if (id<N) {
-        const dfloat wid = w[id];
+      s_wx2[t] = 0.0;
+      if(id<N) {
+        dfloat sum = 0.0;
         for(int fld = 0; fld < Nfields; ++fld){
           const dfloat xid = x[id + fld * offset];
-          res += xid*xid;
+          sum += xid*xid;
         }
-        res *= wid;
+        s_wx2[t] = w[id]*sum;
       }
-      s_wx2[t] = res;
     }
 
     @barrier("local");
