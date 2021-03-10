@@ -91,9 +91,9 @@ void velocityDirichletConditions(bcData *bc)
                     @restrict dfloat * U)
 {
   for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
-      dfloat u, v, x, y;
-      x = x_coords[n];
-      y = y_coords[n];
+      dfloat u, v;
+      const dfloat x = x_coords[n];
+      const dfloat y = y_coords[n];
       exact(&u, &v, x, y, time, p_nu);
       U[n + 0 * offset] = u;
       U[n + 1 * offset] = v;

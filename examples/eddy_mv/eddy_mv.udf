@@ -53,6 +53,7 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->meshV;
+
   userMeshVelocityKernel(
     mesh->Nlocal,
     nrs->fieldOffset,
@@ -73,7 +74,6 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
       o_Uexact
     );
     nrs->o_U.copyFrom(o_Uexact, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-    nrs->o_U.copyTo(nrs->U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   }
 
   if(nrs->isOutputStep){
