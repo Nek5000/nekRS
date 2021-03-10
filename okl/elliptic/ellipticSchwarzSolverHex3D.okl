@@ -11,7 +11,9 @@
           sWork1[k][j][i] = 0.0;
       }
     }
+
     @barrier("local");
+
     for(int k = 0; k < p_Nq; ++k){
       @barrier("local");
       for(int j = 0; j < p_Nq_e; ++j; @inner){
@@ -24,33 +26,43 @@
         }
       }
     }
+
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
           sWork1[l1][j][k] = sWork1[l2][j][k];
           sWork1[p_Nq_e - l1 - 1][j][k] = sWork1[p_Nq_e - l2 - 1][j][k];
         }
+      }
+    }
+
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
           sWork1[i][l1][k] = sWork1[i][l2][k];
           sWork1[i][p_Nq_e - l1 - 1][k] = sWork1[i][p_Nq_e - l2 - 1][k];
         }
+      }
+    }
     @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int j = 0; j < p_Nq_e; ++j; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
           sWork1[i][j][l1] = sWork1[i][j][l2];
           sWork1[i][j][p_Nq_e - l1 - 1] = sWork1[i][j][p_Nq_e - l2 - 1];
         }
+      }
+    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k){
       @barrier("local");
@@ -86,8 +98,8 @@
       }
     }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
@@ -95,9 +107,11 @@
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] -
                                          work2[p_Nq_e - l2 - 1][j][k];
         }
+      }
+    }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
@@ -105,9 +119,11 @@
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] -
                                          work2[i][p_Nq_e - l2 - 1][k];
         }
+      }
+    }
     @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int j = 0; j < p_Nq_e; ++j; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
@@ -115,9 +131,11 @@
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] -
                                          work2[i][j][p_Nq_e - l2 - 1];
         }
+      }
+    }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 2;
           const int l2 = 0;
@@ -125,9 +143,11 @@
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] +
                                          work1[p_Nq_e - l2 - 1][j][k];
         }
+      }
+    }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
           const int l1 = 2;
           const int l2 = 0;
@@ -135,9 +155,11 @@
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] +
                                          work1[i][p_Nq_e - l2 - 1][k];
         }
+      }
+    }
     @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int j = 0; j < p_Nq_e; ++j; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 2;
           const int l2 = 0;
@@ -145,6 +167,8 @@
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] +
                                          work1[i][j][p_Nq_e - l2 - 1];
         }
+      }
+    }
     @barrier("local");
     for(int k = 0; k < p_Nq; ++k){
       @barrier("local");
@@ -208,8 +232,8 @@
       }
     }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
@@ -217,9 +241,11 @@
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] -
                                          work1[p_Nq_e - l2 - 1][j][k];
         }
+      }
+    }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
@@ -227,9 +253,11 @@
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] -
                                          work1[i][p_Nq_e - l2 - 1][k];
         }
+      }
+    }
     @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int j = 0; j < p_Nq_e; ++j; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 2;
@@ -237,8 +265,10 @@
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] -
                                          work1[i][j][p_Nq_e - l2 - 1];
         }
+      }
+    }
     @barrier("local");
-    for (int i = 0; i < p_Nq_e; i++; @inner)
+    for (int i = 0; i < p_Nq_e; i++; @inner){
       for (int j = 0; j < p_Nq_e; j++; @inner) {
         const int ij = j + i * p_Nq_e;
         S_x_e[i][j] = S_x[ij + element * p_Nq_e * p_Nq_e];
@@ -248,6 +278,7 @@
         S_y_eT[j][i] = S_y_e[i][j];
         S_z_eT[j][i] = S_z_e[i][j];
       }
+    }
     @barrier("local");
     for (int k = 0; k < p_Nq_e; k++; @inner) {
       for (int j = 0; j < p_Nq_e; j++; @inner) {
@@ -335,32 +366,38 @@
     }
 #if (!p_restrict)
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int j = 0; j < p_Nq_e; ++j; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int j = 0; j < p_Nq_e; ++j; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
           work2[l1][j][k] = work1[l2][j][k];
           work2[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l2 - 1][j][k];
         }
+      }
+    }
     @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int k = 0; k < p_Nq_e; ++k; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
           work2[i][l1][k] = work1[i][l2][k];
           work2[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l2 - 1][k];
         }
+      }
+    }
     @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner)
-      for(int i = 0; i < p_Nq_e; ++i; @inner)
+    for(int j = 0; j < p_Nq_e; ++j; @inner){
+      for(int i = 0; i < p_Nq_e; ++i; @inner){
         if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
           const int l1 = 0;
           const int l2 = 0;
           work2[i][j][l1] = work1[i][j][l2];
           work2[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l2 - 1];
         }
+      }
+    }
     @barrier("local");
     for(int k = 0; k < p_Nq_e; ++k){
       @barrier("local");
