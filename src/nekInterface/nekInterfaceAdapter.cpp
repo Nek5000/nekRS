@@ -473,6 +473,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   char ver[10];
   int ndim;
   hlong nelgv, nelgt;
+  // has to match header in re2
   sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
   int lelt = (int)(nelgt/np) + 3;
   if(lelt > nelgt) lelt = (int)nelgt;
@@ -483,7 +484,10 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   char usrFile[BUFSIZ], usrFileCache[BUFSIZ];
   sprintf(usrFile,"%s.usr",casename);
   sprintf(usrFileCache,"%s/%s",cache_dir,usrFile);
-  if(access(usrFile,F_OK) != 0) {
+  if(!fileExists(usrFile)) {
+    sprintf(buf, "%s/core/zero.usr", nek5000_dir);
+    copyFile(buf, usrFileCache);
+  } else if(isFileEmpty(usrFile)) {
     sprintf(buf, "%s/core/zero.usr", nek5000_dir);
     copyFile(buf, usrFileCache);
   } else if(isFileNewer(usrFile, usrFileCache)) {

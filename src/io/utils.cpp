@@ -27,3 +27,11 @@ bool fileExists(const char *file)
 {
   return realpath(file, NULL);
 }
+
+bool isFileEmpty(const char *file)
+{
+  std::ifstream f(file);
+  const bool isEmpty = f.peek() == std::ifstream::traits_type::eof();
+  f.close();
+  return isEmpty;
+}
