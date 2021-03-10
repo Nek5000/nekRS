@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+OCCA_DIR=$(dirname $(cd $(dirname "${BASH_SOURCE[0]}") && pwd))
+BIN_OCCA="${OCCA_DIR}/bin/occa"
+
+function verbose_run {
+    echo "$@"
+    "$@"
+}
+
+verbose_run "${BIN_OCCA}" autocomplete bash
+verbose_run "${BIN_OCCA}" clear
+verbose_run "${BIN_OCCA}" compile --help
+verbose_run "${BIN_OCCA}" env
+verbose_run "${BIN_OCCA}" info
+verbose_run "${BIN_OCCA}" modes
+verbose_run "${BIN_OCCA}" translate --help
+verbose_run "${BIN_OCCA}" translate --mode Serial examples/cpp/01_add_vectors/addVectors.okl
+verbose_run "${BIN_OCCA}" translate --mode CUDA examples/cpp/01_add_vectors/addVectors.okl
+verbose_run "${BIN_OCCA}" translate --mode CUDA --launcher examples/cpp/01_add_vectors/addVectors.okl
+verbose_run "${BIN_OCCA}" version
