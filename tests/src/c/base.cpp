@@ -6,10 +6,8 @@
 
 #include <occa.hpp>
 #include <occa.h>
-
-#include <occa/internal/c/types.hpp>
-#include <occa/internal/io.hpp>
-#include <occa/internal/utils/testing.hpp>
+#include <occa/c/types.hpp>
+#include <occa/tools/testing.hpp>
 
 void testGlobals();
 void testDeviceMethods();
@@ -30,7 +28,7 @@ int main(const int argc, const char **argv) {
 }
 
 void testGlobals() {
-  ASSERT_EQ(&occa::c::json(occaSettings()),
+  ASSERT_EQ(&occa::c::properties(occaSettings()),
             &occa::settings());
 }
 
@@ -41,31 +39,27 @@ void testDeviceMethods() {
   ASSERT_EQ(occa::c::device(occaGetDevice()),
             occa::getDevice());
 
-  occa::device fakeDevice({
-    {"mode", "Serial"},
-    {"key", "value"}
-  });
+  occa::device fakeDevice("mode: 'Serial',"
+                          "key: 'value'");
   occaSetDevice(occa::c::newOccaType(fakeDevice));
   ASSERT_EQ(occa::getDevice(),
             fakeDevice);
 
-  occaSetDeviceFromString(
-    "{"
-    "  mode: 'Serial',"
-    "  key: 'value',"
-    "}"
-  );
-  occa::json &fakeProps = occa::c::json(occaDeviceProperties());
+  occaSetDeviceFromString("mode: 'Serial',"
+                          "key: 'value'");
+  occa::properties &fakeProps = occa::c::properties(occaDeviceProperties());
   ASSERT_EQ((std::string) fakeProps["key"],
             "value");
+
+  occaLoadKernels("lib");
 
   occaFinish();
 }
 
 void testMemoryMethods() {
   size_t bytes = 10 * sizeof(int);
-  occaJson props = (
-    occaJsonParse("{a: 1, b: 2}")
+  occaProperties props = (
+    occaCreatePropertiesFromString("a: 1, b: 2")
   );
 
   // malloc
@@ -105,8 +99,8 @@ void testKernelMethods() {
     occa::io::read(addVectorsFile)
   );
 
-  occaJson props = occaCreateJson();
-  occaJsonObjectSet(props, "defines/foo", occaInt(3));
+  occaProperties props = occaCreateProperties();
+  occaPropertiesSet(props, "defines/foo", occaInt(3));
 
   // occaBuildKernel
   occaKernel addVectors = occaBuildKernel(addVectorsFile.c_str(),

@@ -1,4 +1,4 @@
-#include <occa/internal/c/types.hpp>
+#include <occa/c/types.hpp>
 #include <occa/c/scope.h>
 
 namespace occa {
@@ -8,37 +8,44 @@ namespace occa {
                          const bool isConst) {
     occa::scope& scope_ = occa::c::scope(scope);
 
-    scope_.add({
-      name,
-      occa::c::kernelArg(value),
-      occa::c::getDtype(value),
-      isConst,
-    });
+    const bool isPointer = (
+      (value.type == OCCA_PTR) || (value.type == OCCA_MEMORY)
+    );
+
+    scope_.add(
+      scopeVariable(
+        occa::c::getDtype(value),
+        isPointer,
+        isConst,
+        name,
+        occa::c::kernelArg(value)
+      )
+    );
   }
 }
 
 
 OCCA_START_EXTERN_C
 
-occaScope occaCreateScope(occaJson props) {
+occaScope OCCA_RFUNC occaCreateScope(occaProperties props) {
   occa::scope *scope;
   if (occa::c::isDefault(props)) {
     scope = new occa::scope();
   } else {
-    scope = new occa::scope(occa::c::json(props));
+    scope = new occa::scope(occa::c::properties(props));
   }
   return occa::c::newOccaType(*scope);
 }
 
-void occaScopeAdd(occaScope scope,
-                  const char *name,
-                  occaType value) {
+void OCCA_RFUNC occaScopeAdd(occaScope scope,
+                             const char *name,
+                             occaType value) {
   occa::addToScope(scope, name, value, false);
 }
 
-void occaScopeAddConst(occaScope scope,
-                       const char *name,
-                       occaType value) {
+void OCCA_RFUNC occaScopeAddConst(occaScope scope,
+                                  const char *name,
+                                  occaType value) {
   occa::addToScope(scope, name, value, true);
 }
 

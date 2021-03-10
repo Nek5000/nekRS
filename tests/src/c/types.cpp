@@ -1,7 +1,7 @@
 #include <occa.hpp>
-#include <occa.h>
-#include <occa/internal/c/types.hpp>
-#include <occa/internal/utils/testing.hpp>
+#include <occa/c/types.hpp>
+#include <occa/c/properties.h>
+#include <occa/tools/testing.hpp>
 
 void testNewOccaTypes();
 void testCTypeWrappers();
@@ -44,28 +44,25 @@ void testNewOccaTypes() {
   TEST_OCCA_TYPE((double) 1.0, OCCA_DOUBLE);
 
   {
-    occaType v = occa::c::newOccaType(*(new occa::json()), true);
-    ASSERT_EQ(v.type, OCCA_JSON);
+    occaType v = occa::c::newOccaType(*(new occa::properties()), true);
+    ASSERT_EQ(v.type, OCCA_PROPERTIES);
     occaFree(&v);
   }
   {
-    occa::json props;
+    occa::properties props;
     occaType v = occa::c::newOccaType(props, false);
-    ASSERT_EQ(v.type, OCCA_JSON);
+    ASSERT_EQ(v.type, OCCA_PROPERTIES);
     occaFree(&v);
   }
 
-  occaJson cProps = (
-    occaJsonParse("{a: 1, b: 2}")
+  occaProperties cProps = (
+    occaCreatePropertiesFromString("a: 1, b: 2")
   );
-  const occa::json &props = occa::c::json(cProps);
+  const occa::properties &props = occa::c::constProperties(cProps);
   ASSERT_EQ((int) props["a"],
             1);
   ASSERT_EQ((int) props["b"],
             2);
-
-  occaPrintTypeInfo(cProps);
-
   occaFree(&cProps);
 
 #undef TEST_OCCA_TYPE
@@ -86,7 +83,6 @@ void testCTypeWrappers() {
 #define TEST_OCCA_C_TYPE(VALUE, OCCA_TYPE)      \
   do {                                          \
     occaType value = VALUE;                     \
-    occaPrintTypeInfo(value);                   \
     ASSERT_EQ(value.type, OCCA_TYPE);           \
 } while (0)
 

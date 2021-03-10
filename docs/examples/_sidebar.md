@@ -1,4 +1,0 @@
-- [Examples](/examples/)
-  - [C++](/examples/cpp/)
-  - [C](/examples/c/)
-  - [Python](/examples/py/)

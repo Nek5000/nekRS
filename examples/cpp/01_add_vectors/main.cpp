@@ -1,13 +1,7 @@
 #include <iostream>
 
 #include <occa.hpp>
-
-//---[ Internal Tools ]-----------------
-// Note: These headers are not officially supported
-//       Please don't rely on it outside of the occa examples
-#include <occa/internal/utils/cli.hpp>
-#include <occa/internal/utils/testing.hpp>
-//======================================
+#include <occa/types/fp.hpp>
 
 occa::json parseArgs(int argc, const char **argv);
 
@@ -30,43 +24,24 @@ int main(int argc, const char **argv) {
   occa::kernel addVectors;
   occa::memory o_a, o_b, o_ab;
 
-  //---[ Device Setup ]-------------------------------------
+  //---[ Device setup with string flags ]-------------------
   device.setup((std::string) args["options/device"]);
 
-  /*
-   * Examples of setting up a device in other backend modes:
-   *
-   * device.setup({
-   *   {"mode", "Serial"}
-   * });
-   *
-   * device.setup({
-   *   {"mode"    , "OpenMP"},
-   *   {"schedule", "compact"},
-   *   {"chunk"   , 10},
-   * });
-   *
-   * device.setup({
-   *   {"mode"     , "CUDA"},
-   *   {"device_id", 0},
-   * });
-   *
-   * device.setup({
-   *   {"mode"     , "HIP"},
-   *   {"device_id", 0},
-   * });
-   *
-   * device.setup({
-   *   {"mode"       , "OpenCL"},
-   *   {"platform_id", 0},
-   *   {"device_id"  , 0},
-   * });
-   *
-   * device.setup({
-   *   {"mode"     , "Metal"},
-   *   {"device_id", 0},
-   * });
-   */
+  // device.setup("mode: 'Serial'");
+
+  // device.setup("mode     : 'OpenMP',"
+  //              "schedule : 'compact',"
+  //              "chunk    : 10");
+
+  // device.setup("mode      : 'CUDA',"
+  //              "device_id : 0");
+
+  // device.setup("mode        : 'OpenCL',"
+  //              "platform_id : 0,"
+  //              "device_id   : 1");
+
+  // device.setup("mode        : 'Metal',"
+  //              "device_id   : 1");
   //========================================================
 
   // Allocate memory on the device
@@ -110,6 +85,9 @@ int main(int argc, const char **argv) {
 }
 
 occa::json parseArgs(int argc, const char **argv) {
+  // Note:
+  //   occa::cli is not supported yet, please don't rely on it
+  //   outside of the occa examples
   occa::cli::parser parser;
   parser
     .withDescription(
@@ -117,9 +95,9 @@ occa::json parseArgs(int argc, const char **argv) {
     )
     .addOption(
       occa::cli::option('d', "device",
-                        "Device properties (default: \"{mode: 'Serial'}\")")
+                        "Device properties (default: \"mode: 'Serial'\")")
       .withArg()
-      .withDefaultValue("{mode: 'Serial'}")
+      .withDefaultValue("mode: 'Serial'")
     )
     .addOption(
       occa::cli::option('v', "verbose",
