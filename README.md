@@ -1,92 +1,109 @@
-# nekRS
+<p align="center">
+  <a href="https://libocca.org">
+    <img alt="occa" src="https://libocca.org/assets/images/logo/blue.svg" width=250>
+  </a>
+</p>
+&nbsp;
+<p align="center">
+  <a href="https://github.com/libocca/occa/workflows/Build/badge.svg"><img alt="Build" src="https://github.com/libocca/occa/workflows/Build/badge.svg"></a>
+  <a href="https://codecov.io/github/libocca/occa"><img alt="codecov.io" src="https://codecov.io/github/libocca/occa/coverage.svg"></a>
+  <a href="https://join.slack.com/t/libocca/shared_invite/zt-4jcnu451-qPpPWUzhm7YQKY_HMhIsIw"><img alt="Slack" src="https://img.shields.io/badge/Chat-on%20Slack-%23522653?logo=slack"></a>
+</p>
 
------------------
+&nbsp;
 
-[![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.com/Nek5000/nekRS)
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
+### What is OCCA?
 
-**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code started as a fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming across different backends [OCCA](https://github.com/libocca/occa) is used.  
+In a nutshell, OCCA (like *oca*-rina) is an open-source library which aims to
 
-Capabilities:
+- Make it easy to program different types of devices (e.g. _CPU_, _GPU_, _FPGA_)
+- Provide a [unified API](https://libocca.org/#/guide/occa/introduction) for interacting with backend device APIs (e.g. _OpenMP_, _CUDA_, _HIP_, _OpenCL_, _Metal_)
+- Use just-in-time compilation to build backend kernels
+- Provide a [kernel language](https://libocca.org/#/guide/okl/introduction), a minor extension to C, to abstract programming for each backend
 
-* Incompressible and low Mach-number Navier-Stokes + scalar transport 
-* CG-SEM using curvilinear conformal hexaheadral elements 
-* 3rd/2nd order semi-implicit time integration + operator integration factor splitting
-* MPI+X hybrid parallelism supporting CUDA, HIP, OPENCL and CPU
-* Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
-* Conjugate fluid-solid heat transfer
-* LES and RANS turbulence models
-* VisIt & Paraview support for data analysis and visualization
+&nbsp;
 
-Note, the code is an prototype so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
+### Links
 
+- [Documentation](https://libocca.org)
+- **Want to contribute?** Checkout the ['beginner' issues](https://github.com/libocca/occa/labels/beginner)
+- 🌟 Who is using OCCA?
+  - [Gallery](https://libocca.org/#/gallery)
+  - [Publications](https://libocca.org/#/publications)
 
-## Build Instructions
+&nbsp;
 
-Requirements:
-* POSIX compilant OS
-* GNU compiler collection version 6.2 or later
-* MPI-3.1 or later
-* CMake version 3.11 or later
-* bash
+### Installing
 
-Download the latest release tarball
-
-```sh
-wget https://github.com/Nek5000/nekRS/releases/download/v20.1/nekRS-v20.1.tar.gz 
-tar -zxf nekRS-v20.1.tar.gz 
+```bash
+git clone --depth 1 https://github.com/libocca/occa.git
+cd occa
+make -j 4
 ```
 
+&nbsp;
 
-or clone our GitHub repository:
+### Environment
 
-```sh
-git clone https://github.com/Nek5000/nekRS.git
+Setup environment variables inside the `occa` directory
+
+#### Linux
+
+```bash
+export PATH+=":${PWD}/bin"
+export LD_LIBRARY_PATH+=":${PWD}/lib"
 ```
 
-To build and install the code just run:
+#### Mac OSX
 
-```sh
-./makenrs
+```bash
+export PATH+=":${PWD}/bin"
+export DYLD_LIBRARY_PATH+=":${PWD}/lib"
 ```
-Build settings can be customized in the script.
 
+&nbsp;
 
-## Setting the Enviroment
+### Hello World
 
-Assuming you run bash and your install directory is $HOME/.local/nekrs, 
-add the following line to your $HOME/.bash_profile:
-
-```sh
-export NEKRS_HOME=$HOME/.local/nekrs
-PATH=${NEKRS_HOME}/bin:${PATH}
+```bash
+cd examples/cpp/1_add_vectors
+make
+./main
 ```
-then type `source $HOME/.bash_profile` in the current terminal window. 
 
-## Run Example
+&nbsp;
 
-```sh
-cd $NEKRS_HOME/examples/ethier
-nrspre ethier 2 # optional step to JIT precompile
-nrsmpi ethier 2 # run on two MPI ranks
+### CLI
+
+There is an executable `occa` provided inside `bin`
+
+```bash
+> occa --help
+
+Usage: occa COMMAND
+
+Can be used to display information of cache kernels.
+
+Commands:
+  autocomplete    Prints shell functions to autocomplete occa
+                  commands and arguments
+  cache           Cache kernels
+  clear           Clears cached files and cache locks
+  compile         Compile kernels
+  env             Print environment variables used in OCCA
+  info            Prints information about available backend modes
+  modes           Prints available backend modes
+  translate       Translate kernels
+  version         Prints OCCA library version
+
+Arguments:
+  COMMAND    Command to run
 ```
-You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
 
-## Contributing
-Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
+&nbsp;
 
-## Support
-Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
+### Bash Autocomplete
 
-## Reporting Bugs
-nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
-
-## License
-nekRS is released under the BSD 3-clause license (see LICENSE file). 
-All new contributions must be made under the BSD 3-clause license.
-
-## Acknowledgment
-This research was supported by the Exascale Computing Project (17-SC-20-SC), 
-a joint project of the U.S. Department of Energy’s Office of Science and National Nuclear Security 
-Administration, responsible for delivering a capable exascale ecosystem, including software, 
-applications, and hardware technology, to support the nation’s exascale computing imperative. 
+```bash
+. <(occa autocomplete bash)
+```

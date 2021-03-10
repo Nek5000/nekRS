@@ -1,310 +1,286 @@
-cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 20.1)
+cmake_minimum_required (VERSION 3.12 FATAL_ERROR)
 
-include(FortranCInterface)
-include(ExternalProject)
-include(FetchContent)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-#set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
-set(CMAKE_INSTALL_MESSAGE NEVER)
-set(CMAKE_VERBOSE_MAKEFILE on)
-set(FETCHCONTENT_QUIET on)
-set(FETCHCONTENT_UPDATES_DISCONNECTED on)
+message(STATUS "Using CMake version ${CMAKE_VERSION}")
+cmake_policy(SET CMP0054 NEW)
+cmake_policy(SET CMP0056 NEW)
 
-#Link:https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_SKIP_BUILD_RPATH FALSE)
-#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/occa/lib")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/elliptic")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/parAlmond")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/libparanumal")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherScatter")
+# Set project
+project (occa
+  DESCRIPTION "JIT Compilation for Multiple Architectures: C++, OpenMP, CUDA, HIP, OpenCL, Metal"
+  HOMEPAGE_URL "https://github.com/libocca/occa"
+  LANGUAGES C CXX)
 
-###############################################################################
-# Configure Options
-###############################################################################
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
 
-set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING 
-  "Preprocessor macros for Nek5000")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
-  "Directory for Nek5000 inteface source files")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
-set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
-        CACHE STRING "C++ flags for OCCA JIT compile")
-set(OCCA_CUDA_COMPILER_FLAGS "-O3 --fmad=true" CACHE STRING "CUDA flags for OCCA JIT compile")
-set(OCCA_HIP_COMPILER_FLAGS "-O3 -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
-set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
-set(OGS_MPI_SUPPORT "0" CACHE STRING "OGS GPU aware MPI")
+option(ENABLE_OPENMP "Build with OpenMP if available" ON)
+option(ENABLE_CUDA   "Build with CUDA if available" ON)
+option(ENABLE_OPENCL "Build with OpenCL if available" ON)
+option(ENABLE_HIP    "Build with HIP if available" ON)
+option(ENABLE_METAL  "Build with Metal if available" ON)
+#option(ENABLE_ONEAPI "Build with OneAPI if available" ON)
+option(ENABLE_MPI    "Build with MPI if available" ON)
 
-# From OCCA's CMakeLists. All default to ON, but are verified in config tests
-#   - ENABLE_OPENMP
-#   - ENABLE_CUDA
-#   - ENABLE_OPENCL
-#   - ENABLE_HIP
-#   - ENABLE_METAL
-#   - ENABLE_MPI
+option(ENABLE_TESTS    "Build tests" OFF)
+option(ENABLE_EXAMPLES "Build simple examples" OFF)
+option(ENABLE_UTILITY  "Build occa utility binary" ON)
+option(ENABLE_FORTRAN  "Enable Fortran interface" OFF)
 
-###############################################################################
-# Check compiler/MPI vendor, version and Fortran/C compatibility              #
-###############################################################################
+if (ENABLE_FORTRAN)
+  enable_language(Fortran)
+endif()
 
-macro(check_compiler_id compiler)
-  if(NOT "${compiler}" STREQUAL "GNU")
-    message(FATAL_ERROR "NekRS only supports GNU compilers")
+set(OCCA_USING_VS OFF)
+set(OCCA_UNSAFE OFF)
+
+# Test Apple first because UNIX==true for Apple and Linux.
+if (APPLE)
+  set(OCCA_OS "OCCA_MACOS_OS")
+elseif (UNIX)
+  set(OCCA_OS "OCCA_LINUX_OS")
+else()
+  set(OCCA_OS "OCCA_WINDOWS_OS")
+endif()
+
+include(SetCompilerFlags)
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
+message("-- System: ${CMAKE_SYSTEM}")
+message("-- Build type: ${CMAKE_BUILD_TYPE}")
+message("-- C flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+message("-- CXX flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+if (ENABLE_FORTRAN)
+  message("-- Fortran flags: ${CMAKE_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+endif()
+
+set(OCCA_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(OCCA_BUILD_DIR ${CMAKE_BINARY_DIR})
+
+if (ENABLE_FORTRAN)
+  set (CMAKE_Fortran_MODULE_DIRECTORY ${OCCA_BUILD_DIR}/mod)
+endif()
+
+##############################
+# LibOCCA Target
+##############################
+add_library(libocca SHARED)
+# Without this, CMake will create liblibocca.so
+set_target_properties(libocca PROPERTIES OUTPUT_NAME occa LIBRARY_OUTPUT_DIRECTORY ${OCCA_BUILD_DIR}/lib)
+
+#Find needed and requested packages
+find_package(Threads REQUIRED)
+target_link_libraries(libocca PRIVATE ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
+
+target_include_directories(libocca PUBLIC
+                          $<BUILD_INTERFACE:${OCCA_SOURCE_DIR}/include>
+                          $<BUILD_INTERFACE:${OCCA_BUILD_DIR}/include>)
+
+target_compile_definitions(libocca PRIVATE -DUSE_CMAKE)
+
+##############################
+# OpenMP
+##############################
+if (ENABLE_OPENMP)
+  find_package(OpenMP)
+
+  if (OPENMP_CXX_FOUND)
+    set(OCCA_OPENMP_ENABLED 1)
+
+    message("-- OpenMP include dirs: ${OpenMP_CXX_INCLUDE_DIRS}")
+    message("-- OpenMP libraries:    ${OpenMP_CXX_LIBRARIES}")
+
+    target_include_directories(libocca PRIVATE ${OpenMP_CXX_INCLUDE_DIRS})
+    target_link_libraries(libocca PRIVATE ${OpenMP_CXX_LIBRARIES})
+  else(OPENMP_CXX_FOUND)
+    set(OCCA_OPENMP_ENABLED 0)
+  endif(OPENMP_CXX_FOUND)
+endif(ENABLE_OPENMP)
+
+##############################
+# CUDA
+##############################
+if (ENABLE_CUDA)
+  find_package(CUDA)
+
+  if (CUDA_FOUND)
+    set(OCCA_CUDA_ENABLED 1)
+
+    #find the shared library, rather than the static that find_package returns
+    find_library(
+      CUDA_LIB
+      NAMES cuda
+      PATHS
+      ${CUDA_TOOLKIT_ROOT_DIR}
+      PATH_SUFFIXES lib64 lib lib64/stubs lib/stubs
+      DOC "CUDA driver lib location"
+      )
+
+    message("-- CUDA include dirs: ${CUDA_INCLUDE_DIRS}")
+    message("-- CUDA driver library: ${CUDA_LIB}")
+
+    target_include_directories(libocca PRIVATE ${CUDA_INCLUDE_DIRS})
+    target_link_libraries(libocca PRIVATE ${CUDA_LIB})
+  else (CUDA_FOUND)
+    set(OCCA_CUDA_ENABLED 0)
+  endif(CUDA_FOUND)
+endif(ENABLE_CUDA)
+
+##############################
+# OpenCL
+##############################
+if (ENABLE_OPENCL)
+  #Look in some default places for OpenCL and set OPENCL_ROOT
+
+  # Search in user specified path first
+  find_path(
+    OPENCL_ROOT
+    NAMES include/CL/cl.h
+    PATHS
+    ENV OPENCL_PATH
+    DOC "OPENCL root location"
+    NO_DEFAULT_PATH
+    )
+  # Now search in default path
+  find_path(
+    OPENCL_ROOT
+    NAMES include/CL/cl.h
+    PATHS
+    /usr/
+    /opt/rocm/opencl
+    /usr/local/cuda
+    DOC "OPENCL root location"
+    )
+
+  #Trick cmake's default OpenCL module to look in our directory
+  set(ENV{AMDAPPSDKROOT} ${OPENCL_ROOT})
+
+  find_package(OpenCL)
+
+  if (OpenCL_FOUND)
+    set(OCCA_OPENCL_ENABLED 1)
+
+    message("-- OpenCL include dirs: ${OpenCL_INCLUDE_DIRS}")
+    message("-- OpenCL libraries:    ${OpenCL_LIBRARIES}")
+
+    target_include_directories(libocca PRIVATE ${OpenCL_INCLUDE_DIRS})
+    target_link_libraries(libocca PRIVATE ${OpenCL_LIBRARIES})
+  else (OpenCL_FOUND)
+    set(OCCA_OPENCL_ENABLED 0)
+  endif(OpenCL_FOUND)
+endif(ENABLE_OPENCL)
+
+##############################
+# HIP
+##############################
+if (ENABLE_HIP)
+  find_package(HIP)
+
+  if (HIP_FOUND)
+    set(OCCA_HIP_ENABLED 1)
+
+    message("-- HIP version:      ${HIP_VERSION_STRING}")
+    message("-- HIP platform:     ${HIP_PLATFORM}")
+    message("-- HIP include dirs: ${HIP_INCLUDE_DIRS}")
+    message("-- HIP libraries:    ${HIP_LIBRARIES}")
+
+    target_compile_definitions(libocca PRIVATE -D${HIP_RUNTIME_DEFINE})
+    target_include_directories(libocca PRIVATE ${HIP_INCLUDE_DIRS})
+    target_link_libraries(libocca PRIVATE ${HIP_LIBRARIES})
+  else (HIP_FOUND)
+    set(OCCA_HIP_ENABLED 0)
+  endif(HIP_FOUND)
+endif(ENABLE_HIP)
+
+##############################
+# Metal
+##############################
+if (ENABLE_METAL AND APPLE)
+
+  find_library(METAL_LIBRARY Metal)
+  find_library(CORE_SERVICES CoreServices)
+  find_library(APP_KIT AppKit)
+
+  if (METAL_LIBRARY AND CORE_SERVICES AND APP_KIT)
+    set(OCCA_METAL_ENABLED 1)
+  else()
+    set(OCCA_METAL_ENABLED 0)
   endif()
-endmacro()
+endif()
 
-macro(check_compiler_version compiler_version)
-  if(${compiler_version} LESS 6.2)
-    message(FATAL_ERROR "NekRS only supports GNU compiler versions >= 6.2")
+##############################
+# MPI
+##############################
+if (ENABLE_MPI)
+  find_package(MPI)
+
+  if (MPI_FOUND)
+    set(OCCA_MPI_ENABLED 1)
+
+    message("-- MPI include dirs: ${MPI_CXX_INCLUDE_DIRS}")
+    message("-- MPI libraries:    ${MPI_CXX_LIBRARIES}")
+    message("-- MPI link flags:   ${MPI_CXX_LINK_FLAGS}")
+    message("-- MPI executable:   ${MPIEXEC_EXECUTABLE}")
+    message("-- MPI numproc flag: ${MPIEXEC_NUMPROC_FLAG}")
+
+    target_include_directories(libocca PUBLIC ${MPI_CXX_INCLUDE_DIRS})
+    target_link_libraries(libocca PUBLIC ${MPI_CXX_LIBRARIES})
+  else(MPI_FOUND)
+    set(OCCA_MPI_ENABLED 0)
+  endif(MPI_FOUND)
+endif(ENABLE_MPI)
+
+#Generate CompiledDefines from libraries we found
+configure_file(scripts/compiledDefinesTemplate.hpp.in ${OCCA_BUILD_DIR}/include/occa/defines/compiledDefines.hpp)
+install(FILES ${OCCA_BUILD_DIR}/include/occa/defines/compiledDefines.hpp DESTINATION include/occa/defines)
+
+#Find source files
+file(GLOB_RECURSE OCCA_SRC_cpp RELATIVE ${OCCA_SOURCE_DIR} "src/*.cpp")
+list(REMOVE_ITEM OCCA_SRC_cpp src/core/kernelOperators.cpp src/tools/runFunction.cpp)
+
+if (OCCA_OPENMP_ENABLED)
+  set_source_files_properties(${OCCA_SRC_cpp} PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+endif()
+
+if (ENABLE_FORTRAN)
+  file(GLOB_RECURSE OCCA_SRC_Fortran RELATIVE ${OCCA_SOURCE_DIR} "src/*.f90")
+  if (OCCA_OPENMP_ENABLED)
+    set_source_files_properties(${OCCA_SRC_Fortran} PROPERTIES COMPILE_FLAGS ${OpenMP_Fortran_FLAGS})
   endif()
-endmacro()
-
-check_compiler_id("${CMAKE_CXX_COMPILER_ID}")
-check_compiler_id("${CMAKE_C_COMPILER_ID}")
-check_compiler_id("${CMAKE_Fortran_COMPILER_ID}")
-
-check_compiler_version("${CMAKE_CXX_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_C_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_Fortran_COMPILER_VERSION}")
-
-## Sanity checks for MPI
-set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
-set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-set(MPI_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
-find_package(MPI REQUIRED)
-if(NOT MPI_FOUND)
-  message(FATAL_ERROR "MPI is not found for one of the languages: C/CXX/Fortran")
-endif()
-#if (MPI_VERSION VERSION_LESS "3.1")
-#  message(FATAL_ERROR "NekRS requires an MPI version >= 3.1")
-#endif()
-
-## Check Fortran/C interface
-FortranCInterface_VERIFY(CXX QUIET)
-if (NOT FortranCInterface_VERIFIED_CXX)
-    message(WARNING "C and Fortran may not work properly")
+  install (CODE "file(GLOB public-modules ${CMAKE_Fortran_MODULE_DIRECTORY}/*.mod)\n
+                 file(INSTALL DESTINATION ${CMAKE_INSTALL_PREFIX}/include TYPE FILE FILES \${public-modules})")
+  set_target_properties(libocca PROPERTIES LINKER_LANGUAGE C)
 endif()
 
-## Use c++14
-set (CMAKE_CXX_STANDARD 14)
-
-###############################################################################
-# Set compiler flags                                                          #
-###############################################################################
-
-set(CMAKE_POSITION_INDEPENDENT_CODE on)
-
-find_package(OpenMP)
-if (OPENMP_FOUND)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+if (OCCA_METAL_ENABLED)
+  file(GLOB_RECURSE OCCA_SRC_metal RELATIVE ${OCCA_SOURCE_DIR} "src/*.mm")
 endif()
 
-# For CMake targets, CMAKE_<LANG>_FLAGS, CMAKE_<LANG>_FLAGS_<CONFIG>, and
-# COMPILE_DEFINITIONS are included automatically, based on the current <CONFIG>.
-# For # external projects, we explicitly collect them
-function(set_external_flags lang)
-  string(TOUPPER "${CMAKE_BUILD_TYPE}" mode)
-  set(ext_flags "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${mode}}")
+set(OCCA_SRC ${OCCA_SRC_cpp} ${OCCA_SRC_Fortran} ${OCCA_SRC_metal})
 
-  get_directory_property(compile_defs
-          DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMPILE_DEFINITIONS )
-  foreach(def "${compile_defs}")
-  
-    if ("${def}" STREQUAL "")
-      set(ext_flags "${ext_flags}")
-    else ()
-      set(ext_flags "${ext_flags} -D${def}")
-    endif()
-  endforeach()
+target_sources(libocca PRIVATE ${OCCA_SRC})
 
-  set(EXTERNAL_${lang}_FLAGS "${ext_flags}" PARENT_SCOPE)
-endfunction()
+install(TARGETS libocca DESTINATION lib)
+install(DIRECTORY include/ DESTINATION include)
 
-set_external_flags("C")
-set_external_flags("CXX")
-set_external_flags("Fortran")
+if (ENABLE_TESTS)
+  include(CTest)
+  add_subdirectory(tests)
+endif(ENABLE_TESTS)
 
-###############################################################################
-# Generate nekrs.conf                                                       #
-###############################################################################
+if (ENABLE_EXAMPLES)
+  add_subdirectory(examples)
+endif(ENABLE_EXAMPLES)
 
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
-  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
-  @ONLY)
-
-###############################################################################
-# Build OCCA                                                                  #
-###############################################################################
-
-include(config/occa.cmake)
-
-###############################################################################
-# Build HYPRE
-###############################################################################
-
-include(config/hypre.cmake)
-
-###############################################################################
-# Build Nek5000 dependencies                                                  #
-###############################################################################
-
-include(config/nek5000.cmake)
-
-###############################################################################
-# Definitions for libP, gslib, and blaslapack
-###############################################################################
-
-
-include(config/mesh.cmake)
-include(config/elliptic.cmake)
-include(config/gslib.cmake)
-include(config/blaslapack.cmake)
-
-###############################################################################
-# Build NekRS
-###############################################################################
-
-set(SRC 
-    src/lib/nekrs.cpp
-    src/io/writeFld.cpp
-    src/io/utils.cpp
-    src/core/utils/mysort.cpp
-    src/core/utils/parallelSort.cpp
-    src/core/utils/tinyexpr.c
-    src/core/setupAide.cpp
-    src/core/cfl.cpp
-    src/core/filter.cpp
-    src/core/bcMap.cpp
-    src/core/setup.cpp
-    src/timeStepper/runTime.cpp
-    src/lns/tombo.cpp
-    src/cds/cds.cpp
-    src/core/parReader.cpp
-    src/core/configReader.cpp
-    src/core/timer.cpp
-    src/core/platform.cpp
-    src/linAlg/linAlg.cpp
-    src/linAlg/matrixConditionNumber.cpp
-    src/linAlg/matrixInverse.cpp
-    src/linAlg/matrixEig.cpp
-    src/linAlg/matrixTranspose.cpp
-    src/linAlg/matrixRightSolve.cpp
-    src/plugins/avg.cpp
-    src/plugins/velRecycling.cpp
-    src/plugins/RANSktau.cpp
-    src/plugins/lowMach.cpp
-    src/udf/udf.cpp
-    src/nekInterface/nekInterfaceAdapter.cpp
-    ${MESH_SOURCES}
-    ${PARALMOND_SOURCES}
-    ${ELLIPTIC_SOURCES}
-    ${BLASLAPACK_SOURCES}
-    ${OGS_SOURCES}
-)
-
-add_library(nekrs-lib SHARED ${SRC})
-set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
-
-target_compile_definitions(nekrs-lib PUBLIC
-    -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
-    -DHYPRE)
-
-target_include_directories(nekrs-lib 
-  PUBLIC 
-  src/core
-  src/core/utils
-  src/lib
-  src/io
-  src/udf
-  src/linAlg
-  src/timeStepper
-  src/lns
-  src/cds
-  ${MESH_SOURCE_DIR}
-  ${NEKINTERFACEDIR}
-  ${OGS_SOURCE_DIR}/include
-  ${OGS_SOURCE_DIR}
-  ${ELLIPTIC_SOURCE_DIR}
-  ${PARALMOND_SOURCE_DIR}
-  PRIVATE
-  ${HYPRE_SOURCE_DIR}/src
-  ${HYPRE_SOURCE_DIR}/src/utilities
-  ${HYPRE_SOURCE_DIR}/src/seq_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_ls
-  ${HYPRE_SOURCE_DIR}/src/IJ_mv
-  ${HYPRE_SOURCE_DIR}/src/multivector
-  ${HYPRE_SOURCE_DIR}/src/krylov
-  ${HYPRE_BINARY_DIR})
-
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
-
-add_executable(nekrs-bin src/main.cpp)
-target_include_directories(nekrs-bin PRIVATE src/lib)
-set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-bin nekrs-lib)
-
-#################################################################################
-### Install                                                                     #
-#################################################################################
-
-#install nekRS
-install(TARGETS nekrs-lib nekrs-bin
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
-
-# Trailing slash prevents parent directory from being copied
-install(DIRECTORY scripts/ DESTINATION bin
-  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
-install(FILES src/udf/CMakeLists.txt DESTINATION udf)
-install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
-
-# Examples will follow a different policy -- only copy if source tree is newer than install tree
-file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
-configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
-install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
-
-#################################################################################
-# Uninstall
-#################################################################################
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/config/uninstall.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
-  IMMEDIATE @ONLY)
-
-add_custom_target(uninstall
-  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake)
-
-#################################################################################
-# Make tarball
-#################################################################################
-
-set(DEST_DIR "nekRS-v${PROJECT_VERSION}")
-set(TAR_NAME "nekRS-v${PROJECT_VERSION}.tar.gz")
-
-add_custom_target(tar
-  COMMAND ${CMAKE_COMMAND} 
-      -DDEST_DIR=${DEST_DIR} 
-      -DOCCA_SOURCE_DIR=${OCCA_SOURCE_DIR}
-      -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR} 
-      -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR} 
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
-  COMMAND tar -czf ${TAR_NAME} ${DEST_DIR}
-  COMMAND rm -rf ${DEST_DIR}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
+if (ENABLE_UTILITY)
+  add_subdirectory(bin)
+endif(ENABLE_UTILITY)
