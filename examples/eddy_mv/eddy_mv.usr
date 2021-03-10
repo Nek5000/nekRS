@@ -74,7 +74,6 @@ c     This data from Walsh's Figure 1 [1]:
       data cpsi / 0, 5 ,  3, 4 ,  0,0  ,  0,0  ,  0,0  /
 
       one   = 1.
-      pi    = P_PI
 
       aa    = cpsi(2,1)**2
       arg   = -visc*tin*aa  ! domain is [0:2pi]
@@ -179,9 +178,7 @@ c
 
       n    = nx1*ny1*nz1*nelv
       visc = param(2)
-      u0   = param(96)
-      v0   = param(97)
-      call exact  (ue,ve,xm1,ym1,n,time,visc,u0,v0)
+      call exact  (ue,ve,xm1,ym1,n,time,visc,P_U0,P_V0)
 
       call sub3   (ud,ue,vx,n)
       call sub3   (vd,ve,vy,n)
@@ -201,8 +198,8 @@ c      if (io.eq.1) call outpost(ud,vd,vx,pr,t,'   ')
 
       if (nio.eq.0 .and. lastep.eq.1) then
           nn=lx1-1
-          write(6,11) istep,nn,dt,time,udx,umx,u0,'  X err'
-          write(6,11) istep,nn,dt,time,vdx,vmx,v0,'  Y err'
+          write(6,11) istep,nn,dt,time,udx,umx,P_U0,'  X err'
+          write(6,11) istep,nn,dt,time,vdx,vmx,P_V0,'  Y err'
    11     format(i8,i3,1p5e14.6,a7)
       endif
 
@@ -211,23 +208,21 @@ c      if (io.eq.1) call outpost(ud,vd,vx,pr,t,'   ')
          call copy (vy,ve,n)      !  temporal-accuracy behavior.
       endif
 
-      omega = P_OMEGA
-      ampd  = P_AMP
-      amp   = ampd*omega*cos(omega*time)
-      am2   = ampd*omega*cos(omega*time/2.)
+c      omega = P_OMEGA
+c      ampd  = P_AMP
+c      amp   = ampd*omega*cos(omega*time)
+c      am2   = ampd*omega*cos(omega*time/2.)
 
-      if (istep.eq.0) call opcopy(xo,yo,zo,xm1,ym1,zm1)
-
-      do i=1,n
-
-         arx = xo(i,1,1,1)/XLEN  ! in [0 1]
-         ary = yo(i,1,1,1)/YLEN  ! in [0 1]
-
-         !wy(i,1,1,1) = amp*sin(pi*arx)*ary - amp*sin(pi*arx)*(1-ary)
-         !wx(i,1,1,1) = am2*sin(pi*ary)
-
-      enddo
-
+c      if (istep.eq.0) call opcopy(xo,yo,zo,xm1,ym1,zm1)
+c
+c      do i=1,n
+c         arx = xo(i,1,1,1)/P_XLEN  ! in [0 1]
+c         ary = yo(i,1,1,1)/P_YLEN  ! in [0 1]
+c         wy(i,1,1,1) = amp*sin(pi*arx)*ary - amp*sin(pi*arx)*(1-ary)
+c         wx(i,1,1,1) = am2*sin(pi*ary)
+c
+c      enddo
+c
 c     call rzero(wx,n)
 c     call rzero(wy,n)
 c     call rzero(wz,n)
@@ -253,9 +248,7 @@ c     NOTE ::: This subroutine MAY NOT be called by every process
       if (icalld.ne.istep) then
          icalld = istep
          visc = param(2)
-         u0   = param(96)
-         v0   = param(97)
-         call exact (ue,ve,xm1,ym1,n,time,visc,u0,v0)
+         call exact (ue,ve,xm1,ym1,n,time,visc,P_U0,P_V0)
       endif
 
       e = gllel(eg)
@@ -286,12 +279,11 @@ c-----------------------------------------------------------------------
          icalld = icalld + 1
          time = 0.
          visc = param(2)
-         u0   = param(96)
-         v0   = param(97)
-         call exact (ue,ve,xm1,ym1,n,time,visc,u0,v0)
+         call exact (ue,ve,xm1,ym1,n,time,visc,P_U0,P_V0)
       endif
 
       e = gllel(eg)
+
       ux=ue(ix,iy,iz,e)
       uy=ve(ix,iy,iz,e)
       uz=0.0
@@ -314,9 +306,9 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      call rescale_x(xm1,0,XLEN)
-      call rescale_x(ym1,0,YLEN)
-      call rescale_x(zm1,0,ZLEN)
+      call rescale_x(xm1,0.0,P_XLEN)
+      call rescale_x(ym1,0.0,P_YLEN)
+      call rescale_x(zm1,0.0,P_ZLEN)
 
       do iel=1,nelt
       do ifc=5,6
@@ -327,7 +319,6 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-
       subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
       integer*8 glo_num(1)
 

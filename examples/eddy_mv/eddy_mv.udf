@@ -9,7 +9,7 @@
 
 static occa::kernel userMeshVelocityKernel;
 static occa::kernel exactVelocityKernel;
-static occa::memory o_Uexact;
+static occa::memory o_Uexact, o_x0, o_y0;
 
 /* UDF Functions */                                                      
 
@@ -20,6 +20,14 @@ void UDF_LoadKernels(nrs_t *nrs)
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho); 
   kernelInfo["defines/p_nu"] = mue/rho;
+  kernelInfo["defines/p_amp"] = P_AMP;
+  kernelInfo["defines/p_omega"] = P_OMEGA;
+  kernelInfo["defines/p_u0"] = P_U0;
+  kernelInfo["defines/p_v0"] = P_V0;
+  kernelInfo["defines/p_xlen"] = P_XLEN;
+  kernelInfo["defines/p_ylen"] = P_YLEN;
+  kernelInfo["defines/p_pi"] = M_PI;
+
   userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
   exactVelocityKernel = udfBuildKernel(nrs, "exactVelocity");
 }
@@ -33,23 +41,31 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  mesh_t* mesh = nrs->meshV;
+
   o_Uexact = platform->device.calloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
+  o_x0 = platform->device.calloc(nrs->fieldOffset, sizeof(dfloat));
+  o_y0 = platform->device.calloc(nrs->fieldOffset, sizeof(dfloat));
+  o_x0.copyFrom(mesh->o_x, mesh->Nlocal*sizeof(dfloat));
+  o_y0.copyFrom(mesh->o_y, mesh->Nlocal*sizeof(dfloat));
 }
+
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t* mesh = nrs->mesh;
-  userMeshVelocityKernel(mesh->Nelements,
+  mesh_t* mesh = nrs->meshV;
+  userMeshVelocityKernel(
+    mesh->Nlocal,
     nrs->fieldOffset,
     time,
-    mesh->o_x,
-    mesh->o_y,
+    o_x0,
+    o_y0,
     mesh->o_U);
 
   // reset velocity to eliminate start-up constributions
   // to temporal-accuracy behavior
   if(tstep <= 5){
     exactVelocityKernel(
-      mesh->Nelements,
+      mesh->Nlocal,
       nrs->fieldOffset,
       time,
       mesh->o_x,

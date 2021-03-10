@@ -1,11 +1,8 @@
-#include <casedata.h>
 // Boundary conditions
+
 void exact(dfloat *uu, dfloat *vv, const dfloat xx, const dfloat yy,
            const dfloat time, const dfloat visc)
 {
-      const dfloat u0 = 1.0; 
-      const dfloat v0 = 0.3;
-
       dfloat a [2][5] = {
         {-0.2, 0.25, 0, 0, 0},
         {-0.2,  0.0, 0, 0, 0}
@@ -16,7 +13,7 @@ void exact(dfloat *uu, dfloat *vv, const dfloat xx, const dfloat yy,
         {5.0, 4.0, 0, 0, 0}
       };
 
-      dfloat pi, aa, arg, e;
+      dfloat aa, arg, e;
       dfloat x, u, cx, sx;
       dfloat c1, c2;
       dfloat s1x, c1x, s2x, c2x;
@@ -25,14 +22,12 @@ void exact(dfloat *uu, dfloat *vv, const dfloat xx, const dfloat yy,
 
       int i,k;
 
-      pi    = M_PI;
-
       aa    = cpsi[1][0]*cpsi[1][0];
       arg   = -visc*time*aa;
       e     = exp(arg);
 
-      x = xx - u0*time;
-      y = yy - v0*time;
+      x = xx - p_u0*time;
+      y = yy - p_v0*time;
 
       sx = sin(cpsi[1][0]*x);
       cx = cos(cpsi[1][0]*x);
@@ -75,9 +70,10 @@ void exact(dfloat *uu, dfloat *vv, const dfloat xx, const dfloat yy,
          if (k==4) u = u - a[1][k]*s2x*c1y*c1;
          if (k==4) v = v + a[1][k]*c2x*s1y*c2;
       }
-      *uu = u*e + u0;
-      *vv = v*e + v0;
+      *uu = u*e + p_u0;
+      *vv = v*e + p_v0;
 }
+
 void velocityDirichletConditions(bcData *bc)
 {
   dfloat u, v;
@@ -86,43 +82,39 @@ void velocityDirichletConditions(bcData *bc)
   bc->v = v;
   bc->w = 0;
 }
-@kernel void exactVelocity(const dlong Nelements,
+
+@kernel void exactVelocity(const dlong Ntotal,
                     const dlong offset,
                     const dfloat time,
                     @restrict const dfloat * x_coords,
                     @restrict const dfloat * y_coords,
                     @restrict dfloat * U)
 {
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
       dfloat u, v, x, y;
-      x = x_coords[id];
-      y = y_coords[id];
+      x = x_coords[n];
+      y = y_coords[n];
       exact(&u, &v, x, y, time, p_nu);
-      U[id + 0 * offset] = u;
-      U[id + 1 * offset] = v;
-      U[id + 2 * offset] = 0.0;
-    }
+      U[n + 0 * offset] = u;
+      U[n + 1 * offset] = v;
+      U[n + 2 * offset] = 0.0;
   }
 }
-@kernel void userMeshVelocity(const dlong Nelements,
+
+@kernel void userMeshVelocity(const dlong Ntotal,
                     const dlong offset,
                     const dfloat time,
                     @restrict const dfloat * x,
                     @restrict const dfloat * y,
                     @restrict dfloat * W)
 {
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
-      const dfloat amp = P_AMP*P_OMEGA*cos(P_OMEGA*time);
-      const dfloat amp2 = P_AMP*P_OMEGA*cos(0.5*P_OMEGA*time);
-      const dfloat arx = x[id] / XLEN;
-      const dfloat ary = y[id] / XLEN;
-      W[id + 0 * offset] = amp2 * sin(P_PI*ary);
-      W[id + 1 * offset] = amp*sin(P_PI*arx)*ary - amp*sin(P_PI*arx)*(1.-ary);
-      W[id + 2 * offset] = 0.0;
-    }
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+      const dfloat amp = p_amp*p_omega*cos(p_omega*time);
+      const dfloat amp2 = p_amp*p_omega*cos(0.5*p_omega*time);
+      const dfloat arx = x[n] / p_xlen;
+      const dfloat ary = y[n] / p_ylen;
+      W[n + 0 * offset] = amp2 * sin(p_pi*ary);
+      W[n + 1 * offset] = amp*sin(p_pi*arx)*ary - amp*sin(p_pi*arx)*(1.-ary);
+      W[n + 2 * offset] = 0.0;
   }
 }

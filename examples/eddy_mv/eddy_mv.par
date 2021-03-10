@@ -13,7 +13,6 @@ writeInterval = 50
 [MESH]
 motion = user
 
-
 [PRESSURE]
 residualTol = 1e-10
 residualProj = false
