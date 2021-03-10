@@ -1,0 +1,68 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+#include "casedata.h"
+
+//#include "ci.inc"
+
+static occa::kernel userMeshVelocityKernel;
+static occa::kernel exactVelocityKernel;
+static occa::memory o_Uexact;
+
+/* UDF Functions */                                                      
+
+void UDF_LoadKernels(nrs_t *nrs)
+{
+  occa::properties& kernelInfo = *(nrs->kernelInfo);
+  dfloat mue, rho;
+  platform->options.getArgs("VISCOSITY", mue);
+  platform->options.getArgs("DENSITY", rho); 
+  kernelInfo["defines/p_nu"] = mue/rho;
+  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
+  exactVelocityKernel = udfBuildKernel(nrs, "exactVelocity");
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("MOVING MESH", "TRUE");
+  //options.getArgs("CI-MODE", ciMode);
+  //if (ciMode) ciSetup(comm, options);
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  o_Uexact = platform->device.calloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
+}
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  mesh_t* mesh = nrs->mesh;
+  userMeshVelocityKernel(mesh->Nelements,
+    nrs->fieldOffset,
+    time,
+    mesh->o_x,
+    mesh->o_y,
+    mesh->o_U);
+
+  // reset velocity to eliminate start-up constributions
+  // to temporal-accuracy behavior
+  if(tstep <= 5){
+    exactVelocityKernel(
+      mesh->Nelements,
+      nrs->fieldOffset,
+      time,
+      mesh->o_x,
+      mesh->o_y,
+      o_Uexact
+    );
+    nrs->o_U.copyFrom(o_Uexact, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+    nrs->o_U.copyTo(nrs->U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  }
+
+  if(nrs->isOutputStep){
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+  //if (ciMode) ciTestErrors(nrs, time, tstep);
+}

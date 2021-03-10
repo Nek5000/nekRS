@@ -1,0 +1,6 @@
+#define XLEN (7.0)
+#define YLEN (7.0)
+#define ZLEN (7.0)
+#define P_PI (3.14159265358979323846)
+#define P_OMEGA (5.0)
+#define P_AMP (1.0)
