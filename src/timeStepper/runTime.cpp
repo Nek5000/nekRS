@@ -90,7 +90,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   }
 
   if(movingMesh) {
-    mesh_t *mesh = nrs->cds->meshT[0];
+    mesh_t *mesh = nrs->meshV;
+    if(nrs->cht) mesh = nrs->cds->meshT[0];
     for (int s = nrs->nBDF; s > 1; s--) {
       const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
       mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
