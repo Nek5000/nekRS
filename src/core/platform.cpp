@@ -36,13 +36,14 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
     //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
   }
 
-  if(device.mode() == "OpenCL" && !getenv("OCCA_OPENCL_COMPILER_FLAGS")) {
-    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-
+  if(device.mode() == "OpenCL") {
+    if(!getenv("OCCA_OPENCL_COMPILER_FLAGS")) {
+      kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
+      kernelInfo["compiler_flags"] += " -cl-mad-enable ";
+      kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
+      kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
+      kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
+    }
     kernelInfo["defines/" "hlong"]="long";
   }
 
