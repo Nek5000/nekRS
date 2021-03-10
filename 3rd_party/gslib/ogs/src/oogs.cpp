@@ -173,11 +173,6 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   if(ogs->NhaloGather == 0) return gs;
 
   gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
-  //occa::properties props;
-  //props["host"] = true;
-  //gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-  //gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(); 
-  //gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
   int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
   convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
@@ -187,9 +182,6 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   free(scatterIds);
 
   gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
-  //gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-  //gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
-  //gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
   int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
   convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
@@ -211,13 +203,13 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     const int Ntests = 10;
     double elapsedMin = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
-    occa::memory o_q;
-    if(!stride)
-      o_q = device.malloc(ogs->N*unit_size);
-    else
-      o_q = device.malloc(stride*unit_size);
 
+    int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
+
+    char* q = (char*) calloc(std::max(stride,ogs->N)*unit_size, sizeof(char));
+    occa::memory o_q = device.malloc(std::max(stride,ogs->N)*unit_size, q);
     int* prepostRecv = (int*) calloc(oogs_mode_list.size(), sizeof(int));
+
     for (auto const& mode : oogs_mode_list)
     {
       gs->mode = mode;
@@ -358,21 +350,11 @@ void reallocBuffers(int unit_size, oogs_t *gs)
   if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
     if(gs->o_bufSend.size()) gs->o_bufSend.free();
     if(gs->h_buffSend.size()) gs->h_buffSend.free();
-    //gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
-    //occa::properties props;
-    //props["host"] = true;
-    //gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-    //gs->bufSend = (unsigned char*)gs->h_buffSend.ptr();
     gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
   }
   if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
     if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
     if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
-    //gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
-    //occa::properties props;
-    //props["host"] = true;
-    //gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-    //gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
     gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
   }
 }
