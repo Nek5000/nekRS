@@ -1,44 +1,44 @@
-#include <occa/internal/c/types.hpp>
+#include <occa/c/types.hpp>
 #include <occa/c/uva.h>
-#include <occa/utils/uva.hpp>
+#include <occa/tools/uva.hpp>
 
 OCCA_START_EXTERN_C
 
-bool occaIsManaged(void *ptr) {
+OCCA_LFUNC bool OCCA_RFUNC occaIsManaged(void *ptr) {
   return occa::isManaged(ptr);
 }
 
-void occaStartManaging(void *ptr) {
+OCCA_LFUNC void OCCA_RFUNC occaStartManaging(void *ptr) {
   occa::startManaging(ptr);
 }
 
-void occaStopManaging(void *ptr) {
+OCCA_LFUNC void OCCA_RFUNC occaStopManaging(void *ptr) {
   occa::stopManaging(ptr);
 }
 
-void occaSyncToDevice(void *ptr,
-                      const occaUDim_t bytes) {
+OCCA_LFUNC void OCCA_RFUNC occaSyncToDevice(void *ptr,
+                                            const occaUDim_t bytes) {
   occa::syncToDevice(ptr, bytes);
 }
 
-void occaSyncToHost(void *ptr,
-                    const occaUDim_t bytes) {
+OCCA_LFUNC void OCCA_RFUNC occaSyncToHost(void *ptr,
+                                          const occaUDim_t bytes) {
   occa::syncToHost(ptr, bytes);
 }
 
-bool occaNeedsSync(void *ptr) {
+OCCA_LFUNC bool OCCA_RFUNC occaNeedsSync(void *ptr) {
   return occa::needsSync(ptr);
 }
 
-void occaSync(void *ptr) {
+OCCA_LFUNC void OCCA_RFUNC occaSync(void *ptr) {
   occa::sync(ptr);
 }
 
-void occaDontSync(void *ptr) {
+OCCA_LFUNC void OCCA_RFUNC occaDontSync(void *ptr) {
   occa::dontSync(ptr);
 }
 
-void occaFreeUvaPtr(void *ptr) {
+void OCCA_RFUNC occaFreeUvaPtr(void *ptr) {
   occa::freeUvaPtr(ptr);
 }
 

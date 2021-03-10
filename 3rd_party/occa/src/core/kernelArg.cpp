@@ -1,33 +1,31 @@
-#include <cstring>
-
 #include <occa/core/device.hpp>
 #include <occa/core/memory.hpp>
 #include <occa/core/kernelArg.hpp>
-#include <occa/utils/uva.hpp>
-#include <occa/internal/core/memory.hpp>
-#include <occa/internal/core/device.hpp>
+#include <occa/tools/uva.hpp>
 
 namespace occa {
-  //---[ kernelArgData ]----------------
-  kernelArgData::kernelArgData() :
-      value(),
-      ptrSize(0),
-      modeMemory(NULL) {}
+  //---[ KernelArg ]--------------------
+  const nullKernelArg_t nullKernelArg;
 
-  kernelArgData::kernelArgData(const primitive &value_) :
-      value(value_),
-      ptrSize(0),
-      modeMemory(NULL) {}
+  kernelArgData::kernelArgData() :
+    modeMemory(NULL),
+    size(0),
+    info(kArgInfo::none) {
+    ::memset(&data, 0, sizeof(data));
+  }
 
   kernelArgData::kernelArgData(const kernelArgData &other) :
-      value(other.value),
-      ptrSize(other.ptrSize),
-      modeMemory(other.modeMemory) {}
+      modeMemory(other.modeMemory),
+      data(other.data),
+      size(other.size),
+      info(other.info) {}
 
   kernelArgData& kernelArgData::operator = (const kernelArgData &other) {
-    value = other.value;
-    ptrSize = other.ptrSize;
     modeMemory = other.modeMemory;
+
+    data = other.data;
+    size = other.size;
+    info = other.info;
 
     return *this;
   }
@@ -46,15 +44,18 @@ namespace occa {
   }
 
   void* kernelArgData::ptr() const {
-    return const_cast<void*>(value.ptr());
+    if (!isNull()) {
+      if (info & kArgInfo::usePointer) {
+        return data.void_;
+      } else {
+        return (void*) &data;
+      }
+    }
+    return NULL;
   }
 
-  udim_t kernelArgData::size() const {
-    return ptrSize ? ptrSize : value.sizeof_();
-  }
-
-  bool kernelArgData::isPointer() const {
-    return value.isPointer();
+  bool kernelArgData::isNull() const {
+    return (info & kArgInfo::isNull);
   }
 
   void kernelArgData::setupForKernelCall(const bool isConst) const {
@@ -72,10 +73,9 @@ namespace occa {
       modeMemory->memInfo |= uvaFlag::isStale;
     }
   }
-  //====================================
 
-  //---[ kernelArg ]--------------------
   kernelArg::kernelArg() {}
+  kernelArg::~kernelArg() {}
 
   kernelArg::kernelArg(const kernelArgData &arg) {
     args.push_back(arg);
@@ -89,16 +89,18 @@ namespace occa {
     return *this;
   }
 
-  kernelArg::~kernelArg() {}
-
   template <>
   kernelArg::kernelArg(modeMemory_t *arg) {
-    addMemory(arg);
+    if (arg && arg->size) {
+      add(arg->makeKernelArg());
+    } else {
+      add(kernelArg(nullKernelArg));
+    }
   }
 
   template <>
   kernelArg::kernelArg(const modeMemory_t *arg) {
-    addMemory(const_cast<modeMemory_t*>(arg));
+    add(arg->makeKernelArg());
   }
 
   int kernelArg::size() const {
@@ -122,6 +124,87 @@ namespace occa {
     return args[index];
   }
 
+  kernelArg::kernelArg(const nullKernelArg_t arg) {
+    kernelArgData kArg;
+    kArg.data.void_ = NULL;
+    kArg.size       = sizeof(void*);
+    kArg.info       = (
+      kArgInfo::usePointer
+      | kArgInfo::isNull
+    );
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const uint8_t arg) {
+    kernelArgData kArg;
+    kArg.data.uint8_ = arg;
+    kArg.size        = sizeof(uint8_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const uint16_t arg) {
+    kernelArgData kArg;
+    kArg.data.uint16_ = arg;
+    kArg.size         = sizeof(uint16_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const uint32_t arg) {
+    kernelArgData kArg;
+    kArg.data.uint32_ = arg;
+    kArg.size         = sizeof(uint32_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const uint64_t arg) {
+    kernelArgData kArg;
+    kArg.data.uint64_ = arg;
+    kArg.size         = sizeof(uint64_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const int8_t arg) {
+    kernelArgData kArg;
+    kArg.data.int8_ = arg;
+    kArg.size       = sizeof(int8_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const int16_t arg) {
+    kernelArgData kArg;
+    kArg.data.int16_ = arg;
+    kArg.size        = sizeof(int16_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const int32_t arg) {
+    kernelArgData kArg;
+    kArg.data.int32_ = arg;
+    kArg.size        = sizeof(int32_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const int64_t arg) {
+    kernelArgData kArg;
+    kArg.data.int64_ = arg;
+    kArg.size        = sizeof(int64_t);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const float arg) {
+    kernelArgData kArg;
+    kArg.data.float_ = arg;
+    kArg.size         = sizeof(float);
+    args.push_back(kArg);
+  }
+
+  kernelArg::kernelArg(const double arg) {
+    kernelArgData kArg;
+    kArg.data.double_ = arg;
+    kArg.size         = sizeof(double);
+    args.push_back(kArg);
+  }
+
   void kernelArg::add(const kernelArg &arg) {
     const int newArgs = (int) arg.args.size();
     for (int i = 0; i < newArgs; ++i) {
@@ -129,18 +212,13 @@ namespace occa {
     }
   }
 
-  void kernelArg::addPointer(void *arg,
-                             bool lookAtUva, bool argIsUva) {
-    addPointer(arg, sizeof(void*), lookAtUva, argIsUva);
+  void kernelArg::add(void *arg,
+                      bool lookAtUva, bool argIsUva) {
+    add(arg, sizeof(void*), lookAtUva, argIsUva);
   }
 
-  void kernelArg::addPointer(void *arg, size_t bytes,
-                             bool lookAtUva, bool argIsUva) {
-    if (!arg) {
-      args.push_back((primitive) nullptr);
-      return;
-    }
-
+  void kernelArg::add(void *arg, size_t bytes,
+                      bool lookAtUva, bool argIsUva) {
     modeMemory_t *modeMemory = NULL;
 
     if (argIsUva) {
@@ -153,103 +231,23 @@ namespace occa {
     }
 
     if (modeMemory) {
-      addMemory(modeMemory);
-    } else {
-      kernelArgData kArg(arg);
-      kArg.ptrSize = bytes;
+      add(modeMemory->makeKernelArg());
+    } else if (arg != NULL) {
+      kernelArgData kArg;
+      kArg.data.void_ = arg;
+      kArg.size       = bytes;
+      kArg.info       = kArgInfo::usePointer;
       args.push_back(kArg);
     }
   }
 
-  void kernelArg::addMemory(modeMemory_t *arg) {
-    if (!arg || !arg->size) {
-      add(nullptr);
-      return;
-    }
-
-    // Set the modeMemory origin
-    kernelArgData kArg(arg->getKernelArgPtr());
-    kArg.modeMemory = arg;
-    add(kArg);
-  }
-
   int kernelArg::argumentCount(const std::vector<kernelArg> &arguments) {
+    const int kArgCount = (int) arguments.size();
     int argc = 0;
-    for (auto &arg : arguments) {
-      argc += arg.size();
+    for (int i = 0; i < kArgCount; ++i) {
+      argc += arguments[i].args.size();
     }
     return argc;
-  }
-  //====================================
-
-  //---[ scopeKernelArg ]---------------
-  scopeKernelArg::scopeKernelArg(const std::string &name_,
-                                 const kernelArg &arg,
-                                 const dtype_t &dtype_,
-                                 const bool isConst_) :
-    kernelArg(arg),
-    name(name_),
-    dtype(dtype_),
-    isConst(isConst_) {}
-
-  scopeKernelArg::scopeKernelArg(const std::string &name_,
-                                 occa::memory &value_) :
-    kernelArg(value_),
-    name(name_),
-    dtype(value_.dtype()),
-    isConst(false) {}
-
-  scopeKernelArg::scopeKernelArg(const std::string &name_,
-                                 const occa::memory &value_) :
-    kernelArg(value_),
-    name(name_),
-    dtype(value_.dtype()),
-    isConst(false) {}
-
-  scopeKernelArg::scopeKernelArg(const std::string &name_,
-                                 const primitive &value_) :
-    name(name_),
-    isConst(true) {
-    primitiveConstructor(value_);
-  }
-
-  scopeKernelArg::~scopeKernelArg() {}
-
-  hash_t scopeKernelArg::hash() const {
-    return occa::hash(getDeclaration());
-  }
-
-  std::string scopeKernelArg::getDeclaration() const {
-    std::stringstream ss;
-
-    bool isFirst = true;
-    for (const kernelArgData &arg : args) {
-      if (!isFirst) {
-        ss << ", ";
-      }
-
-      if (isConst) {
-        ss << "const ";
-      }
-
-      const dtype_t &safeDtype = dtype || dtype::void_;
-      if (arg.isPointer()) {
-        ss << safeDtype << " *";
-      } else {
-        ss << safeDtype << ' ';
-      }
-
-      ss << name;
-
-      isFirst = false;
-    }
-
-    return ss.str();
-  }
-
-  template <>
-  hash_t hash(const occa::scopeKernelArg &arg) {
-    return arg.hash();
   }
   //====================================
 }

@@ -1,106 +1,104 @@
-#include <occa/internal/c/types.hpp>
+#include <occa/c/types.hpp>
 #include <occa/c/device.h>
-#include <occa/c/dtype.h>
 
 OCCA_START_EXTERN_C
 
-occaDevice occaCreateDevice(occaType info) {
+occaDevice OCCA_RFUNC occaCreateDevice(occaType info) {
   occa::device device;
-  if (info.type == occa::c::typeType::json) {
+  if (info.type == occa::c::typeType::properties) {
+    device = occa::device(occa::c::properties(info));
+  }
+  else if (info.type == occa::c::typeType::json) {
     device = occa::device(occa::c::json(info));
   }
   else if (info.type == occa::c::typeType::string) {
-    device = occa::device(
-      occa::json::parse(info.value.ptr)
-    );
+    device = occa::device(std::string(info.value.ptr));
   }
   else {
-    OCCA_FORCE_ERROR("occaCreateDevice expects: occaJson or occaString");
+    OCCA_FORCE_ERROR("occaCreateDevice expects: occaProperties, occaJson, or occaString");
   }
   device.dontUseRefs();
 
   return occa::c::newOccaType(device);
 }
 
-occaDevice occaCreateDeviceFromString(const char *info) {
-  occa::device device(
-    occa::json::parse(info)
-  );
+occaDevice OCCA_RFUNC occaCreateDeviceFromString(const char *info) {
+  occa::device device(info);
   device.dontUseRefs();
   return occa::c::newOccaType(device);
 }
 
-bool occaDeviceIsInitialized(occaDevice device) {
+bool OCCA_RFUNC occaDeviceIsInitialized(occaDevice device) {
   return (int) occa::c::device(device).isInitialized();
 }
 
-const char* occaDeviceMode(occaDevice device) {
+const char* OCCA_RFUNC occaDeviceMode(occaDevice device) {
   return occa::c::device(device).mode().c_str();
 }
 
-occaJson occaDeviceGetProperties(occaDevice device) {
-  const occa::json &props = occa::c::device(device).properties();
+occaProperties OCCA_RFUNC occaDeviceGetProperties(occaDevice device) {
+  const occa::properties &props = occa::c::device(device).properties();
   return occa::c::newOccaType(props, false);
 }
 
-occaJson occaDeviceGetKernelProperties(occaDevice device) {
-  const occa::json &props = occa::c::device(device).kernelProperties();
+occaProperties OCCA_RFUNC occaDeviceGetKernelProperties(occaDevice device) {
+  const occa::properties &props = occa::c::device(device).kernelProperties();
   return occa::c::newOccaType(props, false);
 }
 
-occaJson occaDeviceGetMemoryProperties(occaDevice device) {
-  const occa::json &props = occa::c::device(device).memoryProperties();
+occaProperties OCCA_RFUNC occaDeviceGetMemoryProperties(occaDevice device) {
+  const occa::properties &props = occa::c::device(device).memoryProperties();
   return occa::c::newOccaType(props, false);
 }
 
-occaJson occaDeviceGetStreamProperties(occaDevice device) {
-  const occa::json &props = occa::c::device(device).streamProperties();
+occaProperties OCCA_RFUNC occaDeviceGetStreamProperties(occaDevice device) {
+  const occa::properties &props = occa::c::device(device).streamProperties();
   return occa::c::newOccaType(props, false);
 }
 
-occaUDim_t occaDeviceMemorySize(occaDevice device) {
+occaUDim_t OCCA_RFUNC occaDeviceMemorySize(occaDevice device) {
   return occa::c::device(device).memorySize();
 }
 
-occaUDim_t occaDeviceMemoryAllocated(occaDevice device) {
+occaUDim_t OCCA_RFUNC occaDeviceMemoryAllocated(occaDevice device) {
   return occa::c::device(device).memoryAllocated();
 }
 
-void occaDeviceFinish(occaDevice device) {
+void OCCA_RFUNC occaDeviceFinish(occaDevice device) {
   occa::c::device(device).finish();
 }
 
-bool occaDeviceHasSeparateMemorySpace(occaDevice device) {
+OCCA_LFUNC bool OCCA_RFUNC occaDeviceHasSeparateMemorySpace(occaDevice device) {
   return (int) occa::c::device(device).hasSeparateMemorySpace();
 }
 
 //---[ Stream ]-------------------------
-occaStream occaDeviceCreateStream(occaDevice device,
-                                  occaJson props) {
+occaStream OCCA_RFUNC occaDeviceCreateStream(occaDevice device,
+                                             occaProperties props) {
   occa::device device_ = occa::c::device(device);
   occa::stream stream;
   if (occa::c::isDefault(props)) {
     stream = device_.createStream();
   } else {
-    stream = device_.createStream(occa::c::json(props));
+    stream = device_.createStream(occa::c::properties(props));
   }
   stream.dontUseRefs();
 
   return occa::c::newOccaType(stream);
 }
 
-occaStream occaDeviceGetStream(occaDevice device) {
+occaStream OCCA_RFUNC occaDeviceGetStream(occaDevice device) {
   occa::device device_ = occa::c::device(device);
   return occa::c::newOccaType(device_.getStream());
 }
 
-void occaDeviceSetStream(occaDevice device,
-                         occaStream stream) {
+void OCCA_RFUNC occaDeviceSetStream(occaDevice device,
+                                    occaStream stream) {
   occa::device device_ = occa::c::device(device);
   device_.setStream(occa::c::stream(stream));
 }
 
-occaStreamTag occaDeviceTagStream(occaDevice device) {
+occaStreamTag OCCA_RFUNC occaDeviceTagStream(occaDevice device) {
   occa::device device_ = occa::c::device(device);
   occa::streamTag tag = device_.tagStream();
   tag.dontUseRefs();
@@ -108,15 +106,15 @@ occaStreamTag occaDeviceTagStream(occaDevice device) {
   return occa::c::newOccaType(tag);
 }
 
-void occaDeviceWaitForTag(occaDevice device,
-                          occaStreamTag tag) {
+void OCCA_RFUNC occaDeviceWaitForTag(occaDevice device,
+                                     occaStreamTag tag) {
   occa::device device_ = occa::c::device(device);
   device_.waitFor(occa::c::streamTag(tag));
 }
 
-double occaDeviceTimeBetweenTags(occaDevice device,
-                                 occaStreamTag startTag,
-                                 occaStreamTag endTag) {
+double OCCA_RFUNC occaDeviceTimeBetweenTags(occaDevice device,
+                                            occaStreamTag startTag,
+                                            occaStreamTag endTag) {
   occa::device device_ = occa::c::device(device);
   return device_.timeBetween(occa::c::streamTag(startTag),
                              occa::c::streamTag(endTag));
@@ -124,10 +122,10 @@ double occaDeviceTimeBetweenTags(occaDevice device,
 //======================================
 
 //---[ Kernel ]-------------------------
-occaKernel occaDeviceBuildKernel(occaDevice device,
-                                 const char *filename,
-                                 const char *kernelName,
-                                 const occaJson props) {
+occaKernel OCCA_RFUNC occaDeviceBuildKernel(occaDevice device,
+                                            const char *filename,
+                                            const char *kernelName,
+                                            const occaProperties props) {
   occa::device device_ = occa::c::device(device);
   occa::kernel kernel;
 
@@ -137,17 +135,17 @@ occaKernel occaDeviceBuildKernel(occaDevice device,
   } else {
     kernel = device_.buildKernel(filename,
                                  kernelName,
-                                 occa::c::json(props));
+                                 occa::c::properties(props));
   }
   kernel.dontUseRefs();
 
   return occa::c::newOccaType(kernel);
 }
 
-occaKernel occaDeviceBuildKernelFromString(occaDevice device,
-                                           const char *str,
-                                           const char *kernelName,
-                                           const occaJson props) {
+occaKernel OCCA_RFUNC occaDeviceBuildKernelFromString(occaDevice device,
+                                                      const char *str,
+                                                      const char *kernelName,
+                                                      const occaProperties props) {
   occa::device device_ = occa::c::device(device);
   occa::kernel kernel;
 
@@ -157,17 +155,17 @@ occaKernel occaDeviceBuildKernelFromString(occaDevice device,
   } else {
     kernel = device_.buildKernelFromString(str,
                                            kernelName,
-                                           occa::c::json(props));
+                                           occa::c::properties(props));
   }
   kernel.dontUseRefs();
 
   return occa::c::newOccaType(kernel);
 }
 
-occaKernel occaDeviceBuildKernelFromBinary(occaDevice device,
-                                           const char *filename,
-                                           const char *kernelName,
-                                           const occaJson props) {
+occaKernel OCCA_RFUNC occaDeviceBuildKernelFromBinary(occaDevice device,
+                                                      const char *filename,
+                                                      const char *kernelName,
+                                                      const occaProperties props) {
   occa::device device_ = occa::c::device(device);
   occa::kernel kernel;
 
@@ -177,7 +175,7 @@ occaKernel occaDeviceBuildKernelFromBinary(occaDevice device,
   } else {
     kernel = device_.buildKernelFromBinary(filename,
                                            kernelName,
-                                           occa::c::json(props));
+                                           occa::c::properties(props));
   }
   kernel.dontUseRefs();
 
@@ -186,22 +184,29 @@ occaKernel occaDeviceBuildKernelFromBinary(occaDevice device,
 //======================================
 
 //---[ Memory ]-------------------------
-occaMemory occaDeviceMalloc(occaDevice device,
-                            const occaUDim_t bytes,
-                            const void *src,
-                            occaJson props) {
-  return occaDeviceTypedMalloc(device,
-                               bytes,
-                               occaDtypeByte,
-                               src,
-                               props);
+occaMemory OCCA_RFUNC occaDeviceMalloc(occaDevice device,
+                                       const occaUDim_t bytes,
+                                       const void *src,
+                                       occaProperties props) {
+  occa::device device_ = occa::c::device(device);
+  occa::memory memory;
+  if (occa::c::isDefault(props)) {
+    memory = device_.malloc(bytes, src);
+  } else {
+    memory = device_.malloc(bytes,
+                            src,
+                            occa::c::properties(props));
+  }
+  memory.dontUseRefs();
+
+  return occa::c::newOccaType(memory);
 }
 
-occaMemory occaDeviceTypedMalloc(occaDevice device,
-                                 const occaUDim_t entries,
-                                 const occaDtype dtype,
-                                 const void *src,
-                                 occaJson props) {
+occaMemory OCCA_RFUNC occaDeviceTypedMalloc(occaDevice device,
+                                            const occaUDim_t entries,
+                                            const occaDtype dtype,
+                                            const void *src,
+                                            occaProperties props) {
   occa::device device_ = occa::c::device(device);
   const occa::dtype_t &dtype_ = occa::c::dtype(dtype);
 
@@ -212,29 +217,35 @@ occaMemory occaDeviceTypedMalloc(occaDevice device,
     memory = device_.malloc(entries,
                             dtype_,
                             src,
-                            occa::c::json(props));
+                            occa::c::properties(props));
   }
   memory.dontUseRefs();
 
   return occa::c::newOccaType(memory);
 }
 
-void* occaDeviceUMalloc(occaDevice device,
-                        const occaUDim_t bytes,
-                        const void *src,
-                        occaJson props) {
-  return occaDeviceTypedUMalloc(device,
-                                bytes,
-                                occaDtypeByte,
-                                src,
-                                props);
+void* OCCA_RFUNC occaDeviceUMalloc(occaDevice device,
+                                   const occaUDim_t bytes,
+                                   const void *src,
+                                   occaProperties props) {
+  occa::device device_ = occa::c::device(device);
+
+  if (occa::c::isDefault(props)) {
+    return device_.umalloc(bytes,
+                           occa::dtype::byte,
+                           src);
+  }
+  return device_.umalloc(bytes,
+                         occa::dtype::byte,
+                         src,
+                         occa::c::properties(props));
 }
 
-void* occaDeviceTypedUMalloc(occaDevice device,
-                             const occaUDim_t entries,
-                             const occaDtype dtype,
-                             const void *src,
-                             occaJson props) {
+void* OCCA_RFUNC occaDeviceTypedUMalloc(occaDevice device,
+                                        const occaUDim_t entries,
+                                        const occaDtype dtype,
+                                        const void *src,
+                                        occaProperties props) {
   occa::device device_ = occa::c::device(device);
   const occa::dtype_t &dtype_ = occa::c::dtype(dtype);
 
@@ -244,37 +255,7 @@ void* occaDeviceTypedUMalloc(occaDevice device,
   return device_.umalloc(entries,
                          dtype_,
                          src,
-                         occa::c::json(props));
-}
-
-occaMemory occaDeviceWrapMemory(occaDevice device,
-                                const void *ptr,
-                                const occaUDim_t bytes,
-                                occaJson props) {
-  return occaDeviceTypedWrapMemory(device,
-                                   ptr,
-                                   bytes,
-                                   occaDtypeByte,
-                                   props);
-}
-
-occaMemory occaDeviceTypedWrapMemory(occaDevice device,
-                                     const void *ptr,
-                                     const occaUDim_t entries,
-                                     const occaDtype dtype,
-                                     occaJson props) {
-  occa::device device_ = occa::c::device(device);
-  const occa::dtype_t &dtype_ = occa::c::dtype(dtype);
-
-  occa::memory memory;
-  if (occa::c::isDefault(props)) {
-    memory = device_.wrapMemory(ptr, entries, dtype_);
-  } else {
-    memory = device_.wrapMemory(ptr, entries, dtype_, occa::c::json(props));
-  }
-  memory.dontUseRefs();
-
-  return occa::c::newOccaType(memory);
+                         occa::c::properties(props));
 }
 //======================================
 

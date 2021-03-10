@@ -1,13 +1,12 @@
 #ifndef OCCA_TYPES_DIM_HEADER
 #define OCCA_TYPES_DIM_HEADER
 
-#include <ostream>
-
+#include <occa/io/output.hpp>
 #include <occa/types/typedefs.hpp>
 
 namespace occa {
   class dim {
-   public:
+  public:
     int dims;
     udim_t x, y, z;
 
@@ -24,20 +23,14 @@ namespace occa {
     dim operator * (const dim &d) const;
     dim operator / (const dim &d) const;
 
-    template <class T>
-    static inline bool hasNegativeBitSet(const T &t) {
-      return t & (1 << (sizeof(T) - 1));
-    }
-
-    bool isZero() const;
-    bool hasNegativeEntries() const;
+    bool hasNegativeEntries();
 
     udim_t& operator [] (int i);
     udim_t  operator [] (int i) const;
   };
 
   std::ostream& operator << (std::ostream &out,
-                             const dim &d);
+                           const dim &d);
 }
 
 #endif

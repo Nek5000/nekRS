@@ -9,8 +9,6 @@
 namespace occa {
   class memory;
 
-  typedef std::vector<dtype_t> dtypeVector;
-
   namespace dtype {
     extern const dtype_t none;
 
@@ -79,32 +77,16 @@ namespace occa {
     extern const dtype_t memory;
 
     // Templated types
-    template <class T>
+    template <class TM>
     dtype_t get() {
-      if (!typeMetadata<T>::isPointer) {
+      if (!typeMetadata<TM>::isPointer) {
         return none;
       }
-      return get<typename typeMetadata<T>::baseType>();
-    }
-
-    template <class T = void, class ...Types>
-    dtypeVector getMany() {
-      dtypeVector types = { get<T>() };
-
-      dtypeVector tail = getMany<Types...>();
-      types.insert(types.end(), tail.begin(), tail.end());
-
-      return types;
-    }
-
-    template <>
-    inline dtypeVector getMany() {
-      return {};
+      return get<typename typeMetadata<TM>::baseType>();
     }
 
     // Primitive types
     template <> dtype_t get<void>();
-    template <> dtype_t get<bool>();
     template <> dtype_t get<char>();
     template <> dtype_t get<signed char>();
     template <> dtype_t get<unsigned char>();
