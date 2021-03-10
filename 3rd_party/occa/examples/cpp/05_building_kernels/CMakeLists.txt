@@ -1,0 +1,1 @@
+compile_cpp_example_with_modes(05_building_kernels main.cpp)
