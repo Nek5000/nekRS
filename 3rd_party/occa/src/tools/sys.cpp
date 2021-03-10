@@ -605,10 +605,10 @@ namespace occa {
 #elif (OCCA_OS == OCCA_MACOS_OS)
       int64_t ram;
 
+#if 0
       int mib[2]   = {CTL_HW, HW_MEMSIZE};
       size_t bytes = sizeof(ram);
 
-#if 0
       sysctl(mib, 2, &ram, &bytes, NULL, 0);
 #endif
 
