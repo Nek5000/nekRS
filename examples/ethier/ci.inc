@@ -112,7 +112,17 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (!nrs->lastStep) return;
  
   const int rank = platform->comm.mpiRank;
- 
+
+  ciTestLinAlg(BLOCKSIZE / 16);
+  ciTestLinAlg(BLOCKSIZE / 8);
+  ciTestLinAlg(BLOCKSIZE / 4);
+  ciTestLinAlg(BLOCKSIZE / 2);
+  ciTestLinAlg(BLOCKSIZE);
+  ciTestLinAlg(2 * BLOCKSIZE);
+  ciTestLinAlg(4 * BLOCKSIZE);
+  ciTestLinAlg(8 * BLOCKSIZE);
+  ciTestLinAlg(16 * BLOCKSIZE);
+
   nek::ocopyToNek(time, tstep);
   nek::userchk();
 

@@ -172,28 +172,27 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 
   if(ogs->NhaloGather == 0) return gs;
 
-  occa::properties props;
-  props["host"] = true;
-
-  gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-  gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(); 
+  gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
+  //occa::properties props;
+  //props["host"] = true;
+  //gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
+  //gs->bufSend = (unsigned char*)gs->h_buffSend.ptr(); 
+  //gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
   int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
   convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
-
-  gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
   gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
   gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
   free(scatterOffsets);
   free(scatterIds);
 
-  gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-  gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
+  gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
+  //gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
+  //gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
+  //gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
   int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
   int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
   convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
-
-  gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
   gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
   gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
   free(gatherOffsets);
@@ -357,22 +356,24 @@ void reallocBuffers(int unit_size, oogs_t *gs)
     ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*unit_size, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
   }
   if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
-    occa::properties props;
-    props["host"] = true;
     if(gs->o_bufSend.size()) gs->o_bufSend.free();
-    gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
     if(gs->h_buffSend.size()) gs->h_buffSend.free();
-    gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
-    gs->bufSend = (unsigned char*)gs->h_buffSend.ptr();
+    //gs->o_bufSend = ogs->device.malloc(pwd->comm[send].total*unit_size);
+    //occa::properties props;
+    //props["host"] = true;
+    //gs->h_buffSend = ogs->device.malloc(pwd->comm[send].total*unit_size, props);
+    //gs->bufSend = (unsigned char*)gs->h_buffSend.ptr();
+    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
   }
   if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
-    occa::properties props;
-    props["host"] = true;
     if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
-    gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
     if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
-    gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
-    gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
+    //gs->o_bufRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size);
+    //occa::properties props;
+    //props["host"] = true;
+    //gs->h_buffRecv = ogs->device.malloc(pwd->comm[recv].total*unit_size, props);
+    //gs->bufRecv = (unsigned char*)gs->h_buffRecv.ptr();
+    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
   }
 }
 
