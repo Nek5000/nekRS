@@ -92,16 +92,16 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(movingMesh) {
     mesh_t *mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
-    for (int s = nrs->nBDF; s > 1; s--) {
+    for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
       const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
-      mesh->o_LMM.copyFrom (mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
-      mesh->o_invLMM.copyFrom (mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+      mesh->o_LMM.copyFrom(mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
+      mesh->o_invLMM.copyFrom(mesh->o_invLMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
     }
     mesh->move();
-    if(mesh != nrs->meshV) nrs->meshV->computeInvLMM();
-    for (int s = nrs->nBDF; s > 1; s--) {
+    if(nrs->cht) nrs->meshV->computeInvLMM();
+    for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-      mesh->o_U.copyFrom (mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+      mesh->o_U.copyFrom(mesh->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
     }
     if(platform->options.compareArgs("MESH MOTION", "ELASTICITY")) mesh->solve();
   } 
@@ -291,7 +291,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     } 
 
     cds->sumMakefKernel(
-      mesh->Nelements,
+      mesh->Nlocal,
       mesh->o_LMM,
       cds->idt,
       cds->o_coeffEXT,
@@ -382,6 +382,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       o_adv = movingMesh ? 
 	      velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U) :
               velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
+      //printf("o_adv norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_adv, platform->comm.mpiComm));
     } else {
       if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
@@ -415,7 +416,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
   }
 
   nrs->sumMakefKernel(
-    mesh->Nelements,
+    mesh->Nlocal,
     mesh->o_LMM,
     nrs->idt,
     nrs->o_coeffEXT,
@@ -547,6 +548,8 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
+        //printf("nEXT %d, extC %e %e %e\n", nEXT, extC[0], extC[1], extC[2]);
+
         nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
           mesh->Nlocal,
@@ -651,8 +654,9 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           o_rhs
         );
 
-        if(rk != 3 ) linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_p0, -sdt * nrs->coeffsfRK[rk+1], o_rhs, o_u1);
-        else{
+        if(rk != 3 ) 
+          linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_p0, -sdt * nrs->coeffsfRK[rk+1], o_rhs, o_u1);
+        else
           nrs->subCycleRKKernel(
             mesh->Nlocal,
             nrs->NVfields,
@@ -665,7 +669,6 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
             o_r4,
             o_p0
           );
-        }
       }
     }
   }
@@ -1021,10 +1024,9 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
         oogs::finish(o_rhs, 1, cds->fieldOffset[0], ogsDfloat, ogsAdd, cds->gsh);
 
         linAlg->axmy(mesh->Nlocal, 1.0, o_bmst, o_rhs);
-        if(rk != 3) {
+        if(rk != 3)
           linAlg->axpbyz(mesh->Nlocal, 1.0, o_p0, -sdt * cds->coeffsfRK[rk+1], o_rhs, o_u1);
-        }
-        else{
+        else
           cds->subCycleRKKernel(
             mesh->Nlocal,
             sdt,
@@ -1035,7 +1037,6 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
             o_r4,
             o_p0
           );
-        }
       }
     }
   }

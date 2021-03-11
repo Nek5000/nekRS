@@ -181,18 +181,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->create_mempool(nrs->fieldOffset, scratchNflds);
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
-    // realloc o_LMM, o_invLMMM to be large enough
-    const int nBDF = nrs->nBDF;
-    {
-      platform->o_mempool.slice0.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
-      mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
-      platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
-      mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
-      mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
-    }
+    const int nBDF = std::max(nrs->nBDF, nrs->nEXT);
+    platform->o_mempool.slice0.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
+    mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
+    mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+    platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
+    mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
+    mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
-    const int nAB = mesh->nAB;
+    const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
   }
@@ -371,8 +368,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         else
           prop["defines/" "p_SUBCYCLING"] = 0;
           
-        fileName = oklpath + "nrs/sumMakef" + suffix + ".okl";
-        kernelName = "sumMakef" + suffix;
+        fileName = oklpath + "nrs/sumMakef.okl";
+        kernelName = "sumMakef";
         nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
       }
 
@@ -1070,8 +1067,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         else
           prop["defines/" "p_SUBCYCLING"] = 0;
           
-        fileName   = oklpath + "cds/sumMakef" + suffix + ".okl";
-        kernelName = "sumMakef" + suffix;
+        fileName   = oklpath + "cds/sumMakef.okl";
+        kernelName = "sumMakef";
         cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
         fileName = oklpath + "cds/bdivWHex3D.okl";
         kernelName = "bdivWHex3D";

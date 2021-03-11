@@ -44,10 +44,8 @@ void UDF_Setup(nrs_t *nrs)
   mesh_t* mesh = nrs->meshV;
 
   o_Uexact = platform->device.malloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
-  o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
-  o_x0.copyFrom(mesh->o_x, mesh->Nlocal * sizeof(dfloat));
-  o_y0.copyFrom(mesh->o_y, mesh->Nlocal * sizeof(dfloat));
+  o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
+  o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

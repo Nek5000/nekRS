@@ -144,8 +144,7 @@ device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& pr
 occa::memory
 device_t::malloc(const dlong Nword , const dlong wordSize, occa::memory src)
 {
-  occa::memory o_buffer = occa::device::malloc(Nword * wordSize, src);
-  return o_buffer;
+  return occa::device::malloc(Nword * wordSize, src);
 }
 occa::memory
 device_t::malloc(const dlong Nword , const dlong wordSize)
@@ -157,8 +156,7 @@ device_t::malloc(const dlong Nword , const dlong wordSize)
     _buffer = std::calloc(Nword, wordSize);
     bufferSize = Nbytes;
   }
-  occa::memory o_buffer = occa::device::malloc(Nword * wordSize, _buffer);
-  return o_buffer;
+  return occa::device::malloc(Nword * wordSize, _buffer);
 }
 device_t::device_t(setupAide& options, MPI_Comm comm)
 {
