@@ -42,7 +42,13 @@ void mesh_t::update(){
     const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
     const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
 
-    // TODO ...
+    if(minJ < 0 || maxJ < 0) {
+      if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
+	      (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && N > 1)) { 
+        if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
+        ABORT(EXIT_FAILURE);
+      }
+    }  
 
     volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 
