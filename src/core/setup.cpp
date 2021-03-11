@@ -122,7 +122,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->nRK = 4;
   nrs->coeffSubEXT = (dfloat*) calloc(3, sizeof(dfloat));
-  nrs->coeffRK = (dfloat*) calloc(3, sizeof(dfloat));
 
   dfloat mue = 1;
   dfloat rho = 1;
@@ -232,7 +231,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_coeffEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffEXT);
-  nrs->o_coeffRK     = platform->device.malloc(3 * sizeof(dfloat), nrs->coeffRK);
 
   // define aux kernel constants
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
@@ -871,7 +869,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   cds->coeffEXT = nrs->coeffEXT;
   cds->coeffBDF = nrs->coeffBDF;
   cds->coeffSubEXT = nrs->coeffSubEXT;
-  cds->coeffRK    = nrs->coeffRK;
 
   cds->nBDF       = nrs->nBDF;
   cds->nEXT       = nrs->nEXT;
@@ -880,7 +877,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
-  cds->o_coeffRK    = nrs->o_coeffRK;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
 

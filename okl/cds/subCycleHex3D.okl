@@ -35,7 +35,9 @@
                                                   @restrict const dfloat*  cubProjectT,
                                                   @restrict const dfloat*  invLumpedMassMatrix,
                                                   @restrict const dfloat*  BdivW,
-                                                  @restrict const dfloat*  c,
+                                                  const dfloat c0,
+                                                  const dfloat c1,
+                                                  const dfloat c2,
                                                   @restrict const dfloat*  U,
                                                   @restrict const dfloat*  S,
                                                   @restrict dfloat*  NS)
@@ -72,7 +74,11 @@
 
 #pragma unroll p_nEXT
         for (int s = 0; s < p_nEXT; s++) {
-          r_c[s] = c[s];
+          dfloat coeff = 0;
+          if(s == 0) coeff = c0;
+          if(s == 1) coeff = c1;
+          if(s == 2) coeff = c2;
+          r_c[s] = coeff;
         }
 
         if (id < p_Nq * p_cubNq) {
@@ -298,7 +304,9 @@
                                           @restrict const dfloat*  D,
                                           @restrict const dfloat*  invLumpedMassMatrix,
                                           @restrict const dfloat* BdivW,
-                                          @restrict const dfloat*  c,
+                                          const dfloat c0,
+                                          const dfloat c1,
+                                          const dfloat c2,
                                           @restrict const dfloat*  U,
                                           @restrict const dfloat*  S,
                                           @restrict dfloat*  NS)
@@ -321,7 +329,11 @@
 
 #pragma unroll p_nEXT
           for (int s = 0; s < p_nEXT; s++) {
-            r_c[s] = c[s];
+            dfloat coeff = 0.0;
+            if(s == 0) coeff = c0;
+            if(s == 1) coeff = c1;
+            if(s == 2) coeff = c2;
+            r_c[s] = coeff;
           }
 
           if(k == 0)

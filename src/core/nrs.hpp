@@ -77,7 +77,6 @@ struct nrs_t
 
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
-  dfloat* coeffRK;
 
   int* VmapB;
   occa::memory o_VmapB;
@@ -133,7 +132,6 @@ struct nrs_t
 
   //EXTBDF data
   occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
-  occa::memory o_coeffRK;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionCubatureVolumeKernel;
