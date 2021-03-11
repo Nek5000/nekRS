@@ -183,9 +183,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int nBDF = std::max(nrs->nBDF, nrs->nEXT);
     platform->o_mempool.slice0.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
+    mesh->o_LMM.free();
     mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
     mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
     platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
+    mesh->o_invLMM.free();
     mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF ,  sizeof(dfloat));
     mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
@@ -194,7 +196,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
     if(nrs->Nsubsteps){
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
+
+      const dlong cubatureOffset = std::max(mesh->Nelements * mesh->cubNp, nrs->fieldOffset);
+      nrs->o_convection = platform->device.malloc(nBDF * nrs->NVfields * cubatureOffset, sizeof(dfloat));
     }
+    
   }
 
 
@@ -443,14 +449,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
         prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
 	
-        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
-        kernelName = "subCycleStrongCubatureVolume" + suffix;
-        nrs->subCycleStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+        if(movingMesh){
+          fileName = oklpath + "nrs/subCycleMovingMesh" + suffix + ".okl";
+          kernelName = "subCycleStrongCubatureMovingMeshVolume" + suffix;
+          nrs->subCycleStrongCubatureVolumeKernel =
+            device.buildKernel(fileName, kernelName, prop);
 
-        kernelName = "subCycleStrongVolume" + suffix;
-        nrs->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          kernelName = "subCycleMovingMeshComputeConvection" + suffix;
+          nrs->subCycleMovingMeshComputeConvectionKernel =
+            device.buildKernel(fileName, kernelName, prop);
+        }
+        else {
+          fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
+          kernelName = "subCycleStrongCubatureVolume" + suffix;
+          nrs->subCycleStrongCubatureVolumeKernel =
+            device.buildKernel(fileName, kernelName, prop);
+        }
 
         fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
         kernelName = "subCycleLSERKUpdate";

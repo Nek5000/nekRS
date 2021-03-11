@@ -114,7 +114,6 @@ struct nrs_t
   occa::kernel subCycleRKKernel;
   occa::kernel subCycleExtrapolateFieldKernel;
   occa::kernel subCycleExtrapolateScalarKernel;
-  occa::kernel divKernel;
 
   occa::kernel wgradientVolumeKernel;
 
@@ -122,6 +121,9 @@ struct nrs_t
   occa::kernel subCycleStrongVolumeKernel;
 
   occa::memory o_U, o_P;
+
+  occa::memory o_convection;
+  occa::kernel subCycleMovingMeshComputeConvectionKernel;
 
   occa::memory o_BF;
   occa::memory o_FU;
