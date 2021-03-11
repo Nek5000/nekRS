@@ -59,6 +59,25 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_S,
                            cds->o_Se);
 
+  if(movingMesh && nrs->Nsubsteps)
+  {
+    mesh_t* mesh = nrs->meshV;
+    if(nrs->cht) mesh = nrs->cds->meshT[0];
+    for (int s = nrs->nEXT; s > 1; s--) {
+      const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
+      mesh->o_divU.copyFrom(mesh->o_divU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+    }
+
+    nrs->divergenceVolumeKernel(
+      mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_D,
+      nrs->fieldOffset,
+      mesh->o_U,
+      mesh->o_divU
+    );
+  }
+
   if(nrs->Nscalar) {
     platform->timer.tic("makeq", 1);
     platform->linAlg->fillKernel(cds->fieldOffset[0] * cds->NSfields, 0.0, cds->o_FS);
@@ -377,12 +396,13 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
   }
 
   occa::memory o_adv = platform->o_mempool.slice0;
+  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
     if(nrs->Nsubsteps) {
       o_adv = movingMesh ? 
 	      velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U) :
               velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
-      //printf("o_adv norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_adv, platform->comm.mpiComm));
+      printf("o_adv norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_adv, platform->comm.mpiComm));
     } else {
       if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
@@ -472,17 +492,6 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
   occa::memory& o_r4 = platform->o_mempool.slice15;
 
   occa::memory& o_bmst = platform->o_mempool.slice18;
-  occa::memory& o_BdivW = platform->o_mempool.slice19;
-
-  nrs->BdivWKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_LMM,
-    mesh->o_D,
-    nrs->fieldOffset,
-    mesh->o_U,
-    o_BdivW
-  );
 
   // Solve for Each SubProblem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
@@ -548,7 +557,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        //printf("nEXT %d, extC %e %e %e\n", nEXT, extC[0], extC[1], extC[2]);
+        //printf("nEXT %d, extC %.15e %e %e\n", nEXT, extC[0], extC[1], extC[2]);
 
         nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
@@ -574,7 +583,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               nrs->fieldOffset,
               0,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -591,7 +600,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               nrs->fieldOffset,
               0,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -616,7 +625,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               nrs->fieldOffset,
               0,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -633,7 +642,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               nrs->fieldOffset,
               0,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -678,8 +687,6 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
 {
   mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = platform->linAlg;
-
-  occa::memory o_BdivW;
 
   // Solve for Each SubProblem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
@@ -758,7 +765,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -775,7 +782,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -806,7 +813,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -823,7 +830,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -866,19 +873,9 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
 
   occa::memory& o_p0 = platform->o_mempool.slice0;
   occa::memory& o_u1 = platform->o_mempool.slice6;
-  occa::memory& o_BdivW = platform->o_mempool.slice7;
 
   occa::memory& o_bmst = platform->o_mempool.slice1;
 
-  cds->BdivWKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_LMM,
-    mesh->o_D,
-    cds->vFieldOffset,
-    mesh->o_U,
-    o_BdivW
-  );
 
   // Solve for Each SubProblem
   for (int torder = (nEXT - 1); torder >= 0; torder--) {
@@ -952,7 +949,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -969,7 +966,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_vgeo,
               mesh->o_D,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -994,7 +991,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -1011,7 +1008,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_vgeo,
               mesh->o_D,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -1047,8 +1044,6 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
 {
   mesh_t* mesh = cds->meshV;
   linAlg_t* linAlg= platform->linAlg;
-
-  occa::memory o_BdivW;
 
   // Solve for Each SubProblem
   for (int torder = (nEXT - 1); torder >= 0; torder--) {
@@ -1125,7 +1120,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -1142,7 +1137,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
               mesh->o_vgeo,
               mesh->o_D,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -1173,7 +1168,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
@@ -1190,7 +1185,7 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
               mesh->o_vgeo,
               mesh->o_D,
               mesh->o_invLMM,
-              o_BdivW,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],

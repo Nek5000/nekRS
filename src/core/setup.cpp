@@ -192,6 +192,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
+    if(nrs->Nsubsteps){
+      mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
+    }
   }
 
 
@@ -440,11 +443,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
         prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
 	
-        fileName = oklpath + "nrs/bdivWHex3D.okl";
-        kernelName = "bdivWHex3D";
-        nrs->BdivWKernel =
-          device.buildKernel(fileName, kernelName, prop);
-
         fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
@@ -1070,10 +1068,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         fileName   = oklpath + "cds/sumMakef.okl";
         kernelName = "sumMakef";
         cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
-        fileName = oklpath + "cds/bdivWHex3D.okl";
-        kernelName = "bdivWHex3D";
-        cds->BdivWKernel =
-          device.buildKernel(fileName, kernelName, prop);
 
       }
 

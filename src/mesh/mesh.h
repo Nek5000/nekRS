@@ -171,7 +171,7 @@ struct mesh_t
   dfloat* intInterp; // interp from surface node to integration nodes
   dfloat* intx, * inty, * intz; // coordinates of suface integration nodes
 
-  occa::memory o_LMM, o_invLMM;
+  occa::memory o_LMM, o_invLMM, o_divU;
 
   // mesh velocity
   occa::memory o_U;
