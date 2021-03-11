@@ -473,6 +473,16 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
   occa::memory& o_bmst = platform->o_mempool.slice18;
   occa::memory& o_BdivW = platform->o_mempool.slice19;
 
+  nrs->BdivWKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_LMM,
+    mesh->o_D,
+    nrs->fieldOffset,
+    mesh->o_U,
+    o_BdivW
+  );
+
   // Solve for Each SubProblem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
@@ -852,6 +862,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
   cds->BdivWKernel(
     mesh->Nelements,
     mesh->o_vgeo,
+    mesh->o_LMM,
     mesh->o_D,
     cds->vFieldOffset,
     mesh->o_U,

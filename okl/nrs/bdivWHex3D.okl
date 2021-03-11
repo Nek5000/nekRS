@@ -24,6 +24,7 @@
  */
 @kernel void bdivWHex3D(const dlong Nelements,
                                     @restrict const dfloat*  vgeo,
+                                    @restrict const dfloat* massMatrix,
                                     @restrict const dfloat*  D,
                                     const dlong offset,
                                     @restrict const dfloat*  U,
@@ -73,6 +74,7 @@
         for(int j = 0; j < p_Nq; ++j; @inner(1)) {
           for(int i = 0; i < p_Nq; ++i; @inner(0)) {
             const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
             const dfloat drdx = vgeo[gid + p_RXID * p_Np];
             const dfloat drdy = vgeo[gid + p_RYID * p_Np];
             const dfloat drdz = vgeo[gid + p_RZID * p_Np];
@@ -82,7 +84,7 @@
             const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
             const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
             const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-            const dfloat JW   = vgeo[gid + p_JWID * p_Np];
+            const dfloat JW = massMatrix[id + s * offset];
 
             dfloat duxdr  = 0.f, duxds  = 0.f, duxdt  = 0.f;
             dfloat duydr  = 0.f, duyds  = 0.f, duydt  = 0.f;
@@ -107,7 +109,6 @@
               duzdt += Dt * r_Uz[n];
             }
 
-            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
             divU[id + s * offset]  = JW * ((drdx * duxdr + dsdx * duxds + dtdx * duxdt);
              + (drdy * duydr + dsdy * duyds + dtdy * duydt);
              + (drdz * duzdr + dsdz * duzds + dtdz * duzdt));
