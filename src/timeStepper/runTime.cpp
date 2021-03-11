@@ -186,6 +186,7 @@ void computeCoefficients(nrs_t* nrs, int tstep)
 
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
     mesh_t* mesh = nrs->meshV;
+    if(nrs->cht) mesh = nrs->cds->meshT[0];
     nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
     for(int i = 0 ; i < meshOrder; ++i) mesh->coeffAB[i] *= nrs->dt[0];
     for(int i = mesh->nAB; i < meshOrder; i--) mesh->coeffAB[i-1] = 0.0;
@@ -470,7 +471,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
   occa::memory& o_r4 = platform->o_mempool.slice15;
 
   occa::memory& o_bmst = platform->o_mempool.slice18;
-  occa::memory& o_BdivW = platform->o_mempool.slice7;
+  occa::memory& o_BdivW = platform->o_mempool.slice19;
 
   // Solve for Each SubProblem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
