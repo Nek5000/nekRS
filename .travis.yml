@@ -55,6 +55,12 @@ jobs:
    - stage: test
      name: "channelStress"
      script: cd $NEKRS_EXAMPLES/channel && nrsmpi channel 2 1
+   - stage: test
+     name: "eddy_mv default"
+     script: cd $NEKRS_EXAMPLES/eddy_mv && nrsmpi eddy_mv 2 1
+   - stage: test
+     name: "eddy_mv subcycling"
+     script: cd $NEKRS_EXAMPLES/eddy_mv && nrsmpi eddy_mv 2 2
 
 before_install:
   - sudo apt-get update -qq

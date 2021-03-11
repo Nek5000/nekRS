@@ -172,6 +172,12 @@ c
       common /exacd/ ud(lx1,ly1,lz1,lelt),vd(lx1,ly1,lz1,lelt)
       common /exacg/ xo(lx1,ly1,lz1,lelt),yo(lx1,ly1,lz1,lelt)
      $             , zo(lx1,ly1,lz1,lelt)
+      real err(2)
+      save err
+      COMMON /NRSSCPTR/ nrs_scptr(1)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(err)
 
 
       ifield = 1  ! for outpost
@@ -195,6 +201,9 @@ c      if (io.eq.1) call outpost(ud,vd,vx,pr,t,'   ')
       vex = glamax(ve,n)
       udx = glamax(ud,n)
       vdx = glamax(vd,n)
+      err(1) = udx
+      err(2) = vdx
+
 
       if (nio.eq.0) then
           nn=lx1-1

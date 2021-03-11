@@ -5,7 +5,7 @@
 #include "udf.hpp"
 #include "casedata.h"
 
-//#include "ci.inc"
+#include "ci.inc"
 
 static occa::kernel userMeshVelocityKernel;
 static occa::kernel exactVelocityKernel;
@@ -35,8 +35,8 @@ void UDF_LoadKernels(nrs_t *nrs)
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("MOVING MESH", "TRUE");
-  //options.getArgs("CI-MODE", ciMode);
-  //if (ciMode) ciSetup(comm, options);
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -44,10 +44,10 @@ void UDF_Setup(nrs_t *nrs)
   mesh_t* mesh = nrs->meshV;
 
   o_Uexact = platform->device.malloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  o_x0 = platform->device.malloc(nrs->fieldOffset, sizeof(dfloat));
-  o_y0 = platform->device.malloc(nrs->fieldOffset, sizeof(dfloat));
-  o_x0.copyFrom(mesh->o_x, mesh->Nlocal*sizeof(dfloat));
-  o_y0.copyFrom(mesh->o_y, mesh->Nlocal*sizeof(dfloat));
+  o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
+  o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
+  o_x0.copyFrom(mesh->o_x, mesh->Nlocal * sizeof(dfloat));
+  o_y0.copyFrom(mesh->o_y, mesh->Nlocal * sizeof(dfloat));
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -80,5 +80,5 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }
-  //if (ciMode) ciTestErrors(nrs, time, tstep);
+  if (ciMode) ciTestErrors(nrs, time, tstep);
 }
