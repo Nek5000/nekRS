@@ -35,6 +35,7 @@ class device_t : public occa::device{
                              MPI_Comm comm) const;
     occa::memory malloc(const dlong Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
     occa::memory malloc(const dlong Nbytes, const occa::properties& properties);
+    occa::memory malloc(const dlong Nwords, const dlong wordSize, occa::memory src);
     occa::memory malloc(const dlong Nwords, const dlong wordSize);
   private:
     dlong bufferSize;
