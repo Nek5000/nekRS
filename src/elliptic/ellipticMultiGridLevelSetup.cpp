@@ -59,8 +59,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
 
   this->setupSmoother(ellipticBase);
 
-  o_xPfloat = platform->device.calloc(Nrows ,  sizeof(pfloat));
-  o_rhsPfloat = platform->device.calloc(Nrows ,  sizeof(pfloat));
+  o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
+  o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
 }
 
 //build a level and connect it to the previous one
@@ -102,8 +102,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  o_xPfloat = platform->device.calloc(Nrows ,  sizeof(pfloat));
-  o_rhsPfloat = platform->device.calloc(Nrows ,  sizeof(pfloat));
+  o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
+  o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
@@ -317,8 +317,8 @@ dfloat MGLevel::maxEigSmoothAx()
 
   occa::memory o_Vx  = platform->device.malloc(M * sizeof(dfloat),Vx);
   occa::memory o_AVx = platform->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_AVxPfloat = platform->device.calloc(M ,  sizeof(pfloat));
-  occa::memory o_VxPfloat = platform->device.calloc(M ,  sizeof(pfloat));
+  occa::memory o_AVxPfloat = platform->device.malloc(M ,  sizeof(pfloat));
+  occa::memory o_VxPfloat = platform->device.malloc(M ,  sizeof(pfloat));
 
   for(int i = 0; i <= k; i++)
     o_V[i] = platform->device.malloc(M * sizeof(dfloat),Vx);

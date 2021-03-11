@@ -46,7 +46,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     ABORT(EXIT_FAILURE);;
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
-    precon->o_invDiagA = platform->device.calloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));
+    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));
     ellipticUpdateJacobi(elliptic);
   } else {
     printf("ERROR: Unknown preconditioner!\n");

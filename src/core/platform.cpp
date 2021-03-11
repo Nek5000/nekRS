@@ -137,12 +137,12 @@ occa::memory
 device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& properties)
 {
   if(!src){
-    return calloc(Nbytes, 1);
+    return malloc(Nbytes, 1);
   }
   return occa::device::malloc(Nbytes, src, properties);
 }
 occa::memory
-device_t::calloc(const dlong Nword , const dlong wordSize)
+device_t::malloc(const dlong Nword , const dlong wordSize)
 {
   const dlong Nbytes = Nword * wordSize;
   if(Nbytes > bufferSize)

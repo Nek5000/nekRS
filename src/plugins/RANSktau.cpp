@@ -195,10 +195,10 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
   o_k   = cds->o_S + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
   o_tau = cds->o_S + (kFieldIndex + 1) * cds->fieldOffset[0] * sizeof(dfloat);
 
-  o_mut = platform->device.calloc(cds->fieldOffset[0] ,  sizeof(dfloat));
+  o_mut = platform->device.malloc(cds->fieldOffset[0] ,  sizeof(dfloat));
 
   if(!cds->o_BFDiag.ptr()) {
-    cds->o_BFDiag = platform->device.calloc(cds->NSfields * cds->fieldOffset[0] ,  sizeof(dfloat));
+    cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset[0] ,  sizeof(dfloat));
     platform->linAlg->fill(cds->NSfields * cds->fieldOffset[0], 0.0, cds->o_BFDiag);
   }
 
