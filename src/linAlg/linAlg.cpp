@@ -563,8 +563,7 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
   dfloat dot = 0;
 
   if(serial){
-    o_scratch.copyTo(scratch, sizeof(dfloat));
-    dot = scratch[0];
+    dot = *((dfloat*) o_scratch.ptr());
   } else {
     o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
@@ -631,8 +630,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
   dfloat dot = 0;
 
   if(serial){
-    o_scratch.copyTo(scratch, sizeof(dfloat));
-    dot = scratch[0];
+    dot = *((dfloat*) o_scratch.ptr());
   } else {
     o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
@@ -666,8 +664,7 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
 
   dfloat norm = 0;
   if(serial){
-    o_scratch.copyTo(scratch, sizeof(dfloat));
-    norm = scratch[0];
+    norm = *((dfloat*) o_scratch.ptr());
   } else {
     o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
@@ -701,8 +698,7 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
 
   dfloat norm = 0;
   if(serial){
-    o_scratch.copyTo(scratch, sizeof(dfloat));
-    norm = scratch[0];
+    norm = *((dfloat*) o_scratch.ptr());
   } else {
     o_scratch.copyTo(scratch, Nbytes);
     for(dlong n=0;n<Nblock;++n){
