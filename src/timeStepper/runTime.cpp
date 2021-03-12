@@ -86,7 +86,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     );
 
     if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      nrs->subCycleMovingMeshComputeConvectionKernel(
+      nrs->UcubatureKernel(
         mesh->Nelements,
         mesh->o_cubvgeo,
         mesh->o_cubDiffInterpT,
@@ -99,7 +99,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         nrs->o_convection
       );
     else
-      nrs->subCycleMovingMeshComputeConvectionKernel(
+      nrs->UcubatureKernel(
         mesh->Nelements,
         mesh->o_vgeo,
         mesh->o_D,
@@ -596,7 +596,16 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           break;
         }
 
-        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_LMMe);
+        nrs->nStagesSum3Kernel(
+          mesh->Nlocal,
+          nrs->fieldOffset,
+          mesh->nAB,
+          extC[0],
+          extC[1],
+          extC[2],
+          mesh->o_LMM,
+          o_LMMe
+        );
         linAlg->aydxMany(
           mesh->Nlocal,
           nrs->NVfields,
@@ -954,7 +963,16 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
           extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, cds->fieldOffset[0], extC[0], extC[1], extC[2], mesh->o_LMM, o_LMMe);
+        cds->nStagesSum3Kernel(
+          mesh->Nlocal,
+          cds->vFieldOffset,
+          mesh->nAB,
+          extC[0],
+          extC[1],
+          extC[2],
+          mesh->o_LMM,
+          o_LMMe
+        );
         linAlg->aydx(mesh->Nlocal, 1.0, o_LMMe, o_u1);
 
         if(mesh->NglobalGatherElements) {

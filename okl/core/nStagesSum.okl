@@ -37,6 +37,25 @@
     }
   }
 }
+@kernel void nStagesSum3(const dlong N,
+                      const dlong fieldOffset,
+                      const dlong Nstates,
+                      const dfloat c0,
+                      const dfloat c1,
+                      const dfloat c2,
+                      @restrict const dfloat * field,
+                      @restrict dfloat*  result)
+{
+  for(dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
+    dfloat coeff = 0.0;
+    result[i]  = c0 * field[i + 0 * fieldOffset];
+    for(int s = 1; s < Nstates; ++s){
+      if(s == 1) coeff = c1;
+      if(s == 2) coeff = c2;
+      result[i]  += coeff * field[i + s * fieldOffset];
+    }
+  }
+}
 @kernel void nStagesSumVector(const dlong N,
                       const dlong fieldOffset,
                       const dlong Nstates,

@@ -344,6 +344,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
+      fileName = oklpath + "core/nStagesSum.okl";
+      kernelName = "nStagesSum3";
+      nrs->nStagesSum3Kernel =
+        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+
       {
         occa::properties prop = kernelInfo;
         prop["defines/" "p_cubNq"] = nrs->meshV->cubNq;
@@ -465,11 +470,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
           if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE")){
             kernelName = "subCycleMovingMeshComputeConvectionCubature" + suffix;
-            nrs->subCycleMovingMeshComputeConvectionKernel =
+            nrs->UcubatureKernel =
               device.buildKernel(fileName, kernelName, prop);
           } else {
             kernelName = "subCycleMovingMeshComputeConvection" + suffix;
-            nrs->subCycleMovingMeshComputeConvectionKernel =
+            nrs->UcubatureKernel =
               device.buildKernel(fileName, kernelName, prop);
           }
         }
@@ -491,9 +496,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
         kernelName = "subCycleExtrapolateField";
         nrs->subCycleExtrapolateFieldKernel =
-          platform->device.buildKernel(fileName, kernelName, kernelInfo);
-        kernelName = "subCycleExtrapolateScalar";
-        nrs->subCycleExtrapolateScalarKernel =
           platform->device.buildKernel(fileName, kernelName, kernelInfo);
       }
 
@@ -1117,6 +1119,11 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
       cds->filterRTKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
+      fileName = oklpath + "core/nStagesSum.okl";
+      kernelName = "nStagesSum3";
+      cds->nStagesSum3Kernel =
+        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+
       if(cds->Nsubsteps) {
         occa::properties prop = kernelInfo;
         const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
@@ -1152,8 +1159,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "subCycleExtrapolateField";
         cds->subCycleExtrapolateFieldKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
-        kernelName = "subCycleExtrapolateScalar";
-        cds->subCycleExtrapolateScalarKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
       }
   }
 

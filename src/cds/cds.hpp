@@ -82,7 +82,8 @@ struct cds_t
   occa::kernel subCycleStrongVolumeKernel;
   occa::kernel subCycleRKKernel;
   occa::kernel subCycleExtrapolateFieldKernel;
-  occa::kernel subCycleExtrapolateScalarKernel;
+
+  occa::kernel nStagesSum3Kernel;
 
   occa::kernel filterRTKernel; // Relaxation-Term based filtering
   // occa::kernel constrainKernel;

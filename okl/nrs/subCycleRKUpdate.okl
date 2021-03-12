@@ -23,28 +23,6 @@
    SOFTWARE.
 
  */
-
-@kernel void subCycleExtrapolateScalar(const dlong N,
-                            const int Nstages,
-                            const int offset,
-                            const dfloat c0,
-                            const dfloat c1,
-                            const dfloat c2,
-                            @restrict const dfloat*  S,
-                            @restrict dfloat*  Se)
-{
-  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    dfloat Sn = 0.0;
-    for(int s = 0 ; s < Nstages; ++s){
-      dfloat coeff = 0.0;
-      if(s == 0) coeff = c0;
-      if(s == 1) coeff = c1;
-      if(s == 2) coeff = c2;
-      Sn += S[n + s * offset] * coeff;
-    }
-    Se[n] = Sn;
-  }
-}
 @kernel void subCycleExtrapolateField(const dlong N,
                   const dlong Nfields,
                   const dlong fieldOffset,
