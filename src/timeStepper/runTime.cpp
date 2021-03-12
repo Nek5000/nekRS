@@ -116,14 +116,6 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     platform->linAlg->fillKernel(cds->fieldOffset[0] * cds->NSfields, 0.0, cds->o_FS);
     makeq(nrs, time, tstep, cds->o_FS, cds->o_BF);
     platform->timer.toc("makeq");
-    for (int s = cds->nBDF; s > 1; s--) {
-      const dlong Nbyte = cds->fieldOffset[0] * cds->NSfields * sizeof(dfloat);
-      cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    }
-    for (int s = cds->nEXT; s > 1; s--) {
-      const dlong Nbyte = cds->fieldOffset[0] * cds->NSfields * sizeof(dfloat);
-      cds->o_FS.copyFrom(cds->o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    }
   }
 
   if(nrs->flow) {
@@ -131,14 +123,6 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
     makef(nrs, time, tstep, nrs->o_FU, nrs->o_BF);
     platform->timer.toc("makef");
-    for (int s = nrs->nBDF; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-      nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    }
-    for (int s = nrs->nEXT; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
-      nrs->o_FU.copyFrom(nrs->o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-    }
   }
 
   if(movingMesh) {
@@ -359,6 +343,15 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       cds->o_rho,
       o_BF);
   }
+
+  for (int s = cds->nBDF; s > 1; s--) {
+    const dlong Nbyte = cds->fieldOffset[0] * cds->NSfields * sizeof(dfloat);
+    cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+  }
+  for (int s = cds->nEXT; s > 1; s--) {
+    const dlong Nbyte = cds->fieldOffset[0] * cds->NSfields * sizeof(dfloat);
+    o_FS.copyFrom(o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+  }
 }
 
 void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
@@ -432,13 +425,11 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
 
   occa::memory o_Usubcycling = platform->o_mempool.slice0;
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
-    if(nrs->Nsubsteps)
-      //platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Usubcycling);
+    if(nrs->Nsubsteps) {
       if(movingMesh)     
         o_Usubcycling = velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
       else 
         o_Usubcycling = velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
-      //printf("o_Usubcycling norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_Usubcycling, platform->comm.mpiComm));
     } else {
       if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
@@ -482,6 +473,15 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     o_Usubcycling,
     o_FU,
     o_BF);
+
+  for (int s = nrs->nBDF; s > 1; s--) {
+    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+    nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+  }
+  for (int s = nrs->nEXT; s > 1; s--) {
+    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+    o_FU.copyFrom(o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+  }
 }
 
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
