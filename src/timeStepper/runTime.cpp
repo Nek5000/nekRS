@@ -273,7 +273,6 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     mesh_t* mesh;
     (is) ? mesh = cds->meshV : mesh = cds->meshT[0];
     const dlong isOffset = is * cds->fieldOffset[0];
-    occa::memory o_adv = platform->o_mempool.slice0;
 
     if(cds->options[is].compareArgs("FILTER STABILIZATION", "RELAXATION"))
       cds->filterRTKernel(
@@ -299,11 +298,13 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       );
     }
 
+    occa::memory o_Usubcycling = platform->o_mempool.slice0;
     if(cds->options[is].compareArgs("ADVECTION", "TRUE")) {
       if(cds->Nsubsteps) {
-        o_adv = movingMesh ? 
-		scalarStrongSubCycleMovingMesh(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S) :
-                scalarStrongSubCycle(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
+        if(movingMesh)
+          o_Usubcycling = scalarStrongSubCycleMovingMesh(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
+        else
+          o_Usubcycling = scalarStrongSubCycle(cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
       } else {
         if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
           cds->advectionStrongCubatureVolumeKernel(
@@ -340,7 +341,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
         );
       }
     } else {
-      platform->linAlg->fill(cds->fieldOffset[0] * cds->NVfields, 0.0, o_adv);
+      platform->linAlg->fill(cds->fieldOffset[0] * cds->NVfields, 0.0, o_Usubcycling);
     } 
 
     cds->sumMakefKernel(
@@ -353,7 +354,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       cds->fieldOffset[0],
       isOffset,
       cds->o_S,
-      o_adv,
+      o_Usubcycling,
       o_FS,
       cds->o_rho,
       o_BF);
@@ -429,14 +430,15 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     );
   }
 
-  occa::memory o_adv = platform->o_mempool.slice0;
-  platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+  occa::memory o_Usubcycling = platform->o_mempool.slice0;
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
-    if(nrs->Nsubsteps) {
-      o_adv = movingMesh ? 
-	      velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U) :
-              velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
-      //printf("o_adv norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_adv, platform->comm.mpiComm));
+    if(nrs->Nsubsteps)
+      //platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Usubcycling);
+      if(movingMesh)     
+        o_Usubcycling = velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
+      else 
+        o_Usubcycling = velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
+      //printf("o_Usubcycling norm: %.15e\n", platform->linAlg->sum(nrs->fieldOffset * nrs->NVfields, o_Usubcycling, platform->comm.mpiComm));
     } else {
       if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
@@ -466,7 +468,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       );
     }
   } else {
-    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_adv);
+    if(nrs->Nsubsteps) platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Usubcycling);
   }
 
   nrs->sumMakefKernel(
@@ -477,7 +479,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     nrs->o_coeffBDF,
     nrs->fieldOffset,
     nrs->o_U,
-    o_adv,
+    o_Usubcycling,
     o_FU,
     o_BF);
 }
