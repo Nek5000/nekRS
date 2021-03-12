@@ -978,6 +978,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
     platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset[0] * sizeof(dfloat),
                         cds->FS);
 
+  cds->o_convection = nrs->o_convection;
+
   for (int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -1124,13 +1126,23 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         prop["defines/" "p_cubNq"] =  cds->meshT[0]->cubNq;
         prop["defines/" "p_cubNp"] =  cds->meshT[0]->cubNp;
  
-        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
-        kernelName = "subCycleStrongCubatureVolume" + suffix;
-        cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName, kernelName, prop);
 
-        kernelName = "subCycleStrongVolume" + suffix;
-        cds->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+        if(movingMesh){
+          fileName = oklpath + "cds/subCycleMovingMesh" + suffix + ".okl";
+          kernelName = "subCycleStrongCubatureMovingMeshVolume" + suffix;
+          cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName, kernelName, prop);
+          kernelName = "subCycleStrongMovingMeshVolume" + suffix;
+          cds->subCycleStrongVolumeKernel =
+            device.buildKernel(fileName, kernelName, prop);
+        } else {
+          fileName = oklpath + "cds/subCycle" + suffix + ".okl";
+          kernelName = "subCycleStrongCubatureVolume" + suffix;
+          cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName, kernelName, prop);
+          kernelName = "subCycleStrongVolume" + suffix;
+          cds->subCycleStrongVolumeKernel =
+            device.buildKernel(fileName, kernelName, prop);
+        }
+
 
         fileName = oklpath + "cds/subCycleRKUpdate.okl";
         kernelName = "subCycleLSERKUpdate";

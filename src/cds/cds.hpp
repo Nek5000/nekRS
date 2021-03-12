@@ -50,6 +50,8 @@ struct cds_t
   dfloat* coeffsfRK, * weightsRK, * nodesRK;
   occa::memory o_coeffsfRK, o_weightsRK;
 
+  occa::memory o_convection;
+
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
