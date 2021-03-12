@@ -131,15 +131,21 @@ device_t::buildKernel(const std::string &filename,
 occa::memory
 device_t::malloc(const dlong Nbytes, const occa::properties& properties)
 {
-  return occa::device::malloc(Nbytes, properties);
+  return occa::device::malloc(Nbytes, nullptr, properties);
 }
 occa::memory
 device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& properties)
 {
   if(!src){
-    return malloc(Nbytes, 1);
+    if(Nbytes > bufferSize)
+    {
+      if(bufferSize > 0) std::free(_buffer);
+      _buffer = std::calloc(Nbytes, 1);
+      bufferSize = Nbytes;
+    }
   }
-  return occa::device::malloc(Nbytes, src, properties);
+  const void* init_ptr = (src) ? src : _buffer;
+  return occa::device::malloc(Nbytes, init_ptr, properties);
 }
 occa::memory
 device_t::malloc(const dlong Nword , const dlong wordSize, occa::memory src)
