@@ -197,7 +197,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if(nrs->Nsubsteps){
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
 
-      const dlong cubatureOffset = std::max(mesh->Nelements * mesh->cubNp, nrs->fieldOffset);
+      dlong cubatureOffset;
+      if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+        cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+      else
+        cubatureOffset = nrs->fieldOffset;
       nrs->o_convection = platform->device.malloc(nBDF * nrs->NVfields * cubatureOffset, sizeof(dfloat));
     }
     
@@ -455,9 +459,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
           nrs->subCycleStrongCubatureVolumeKernel =
             device.buildKernel(fileName, kernelName, prop);
 
-          kernelName = "subCycleMovingMeshComputeConvection" + suffix;
-          nrs->subCycleMovingMeshComputeConvectionKernel =
+          kernelName = "subCycleStrongMovingMeshVolume" + suffix;
+          nrs->subCycleCubatureVolumeKernel =
             device.buildKernel(fileName, kernelName, prop);
+
+          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE")){
+            kernelName = "subCycleMovingMeshComputeConvectionCubature" + suffix;
+            nrs->subCycleMovingMeshComputeConvectionKernel =
+              device.buildKernel(fileName, kernelName, prop);
+          } else {
+            kernelName = "subCycleMovingMeshComputeConvection" + suffix;
+            nrs->subCycleMovingMeshComputeConvectionKernel =
+              device.buildKernel(fileName, kernelName, prop);
+          }
         }
         else {
           fileName = oklpath + "nrs/subCycle" + suffix + ".okl";

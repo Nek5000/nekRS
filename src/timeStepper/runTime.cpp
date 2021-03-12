@@ -63,7 +63,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   {
     mesh_t* mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
-    const dlong cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+    dlong cubatureOffset;
+    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+    else
+      cubatureOffset = nrs->fieldOffset;
     for (int s = nrs->nEXT; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
       mesh->o_divU.copyFrom(mesh->o_divU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
@@ -81,18 +85,30 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       mesh->o_divU
     );
 
-    nrs->subCycleMovingMeshComputeConvectionKernel(
-      mesh->Nelements,
-      mesh->o_cubvgeo,
-      mesh->o_cubDiffInterpT,
-      mesh->o_cubInterpT,
-      mesh->o_cubProjectT,
-      nrs->fieldOffset,
-      cubatureOffset,
-      nrs->o_U,
-      mesh->o_U,
-      nrs->o_convection
-    );
+    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      nrs->subCycleMovingMeshComputeConvectionKernel(
+        mesh->Nelements,
+        mesh->o_cubvgeo,
+        mesh->o_cubDiffInterpT,
+        mesh->o_cubInterpT,
+        mesh->o_cubProjectT,
+        nrs->fieldOffset,
+        cubatureOffset,
+        nrs->o_U,
+        mesh->o_U,
+        nrs->o_convection
+      );
+    else
+      nrs->subCycleMovingMeshComputeConvectionKernel(
+        mesh->Nelements,
+        mesh->o_vgeo,
+        mesh->o_D,
+        nrs->fieldOffset,
+        nrs->o_U,
+        mesh->o_U,
+        nrs->o_convection
+      );
+
   }
 
   if(nrs->Nscalar) {
@@ -577,7 +593,6 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        //printf("nEXT %d, extC %.15e %e %e\n", nEXT, extC[0], extC[1], extC[2]);
 
         nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_bmst);
         linAlg->aydxMany(
@@ -591,6 +606,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
         );
 
         if(mesh->NglobalGatherElements) {
+          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
@@ -607,11 +623,26 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               nrs->o_convection,
               o_u1,
               o_rhs);
+          else
+            nrs->subCycleStrongVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              mesh->o_D,
+              nrs->fieldOffset,
+              mesh->o_invLMM,
+              mesh->o_divU,
+              extC[0],
+              extC[1],
+              extC[2],
+              nrs->o_convection,
+              o_u1,
+              o_rhs);
         }
 
         oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
+          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
@@ -620,6 +651,20 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               mesh->o_cubProjectT,
               nrs->fieldOffset,
               cubatureOffset,
+              mesh->o_invLMM,
+              mesh->o_divU,
+              extC[0],
+              extC[1],
+              extC[2],
+              nrs->o_convection,
+              o_u1,
+              o_rhs);
+          else
+            nrs->subCycleStrongVolumeKernel(
+              mesh->NglobalGatherElements,
+              mesh->o_globalGatherElementList,
+              mesh->o_D,
+              nrs->fieldOffset,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
