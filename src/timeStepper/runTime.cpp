@@ -527,7 +527,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
   occa::memory& o_r3 = platform->o_mempool.slice12;
   occa::memory& o_r4 = platform->o_mempool.slice15;
 
-  occa::memory& o_bmst = platform->o_mempool.slice18;
+  occa::memory& o_LMMe = platform->o_mempool.slice18;
 
   const dlong cubatureOffset = std::max(nrs->fieldOffset, mesh->cubNp * mesh->Nelements);
 
@@ -596,14 +596,14 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           break;
         }
 
-        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_bmst);
+        nrs->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, nrs->fieldOffset, extC[0], extC[1], extC[2], mesh->o_LMM, o_LMMe);
         linAlg->aydxMany(
           mesh->Nlocal,
           nrs->NVfields,
           nrs->fieldOffset,
           0,
           1.0,
-          o_bmst,
+          o_LMMe,
           o_u1
         );
 
@@ -684,7 +684,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
           nrs->fieldOffset,
           0,
           1.0,
-          o_bmst,
+          o_LMMe,
           o_rhs
         );
 
@@ -889,7 +889,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
   occa::memory& o_p0 = platform->o_mempool.slice0;
   occa::memory& o_u1 = platform->o_mempool.slice6;
 
-  occa::memory& o_bmst = platform->o_mempool.slice1;
+  occa::memory& o_LMMe = platform->o_mempool.slice1;
   
   dlong cubatureOffset;
   if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -954,8 +954,8 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
           extC[2] = (t - tn0) * (t - tn1) / ((tn2 - tn0) * (tn2 - tn1));
           break;
         }
-        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, cds->fieldOffset[0], extC[0], extC[1], extC[2], mesh->o_LMM, o_bmst);
-        linAlg->aydx(mesh->Nlocal, 1.0, o_bmst, o_u1);
+        cds->subCycleExtrapolateScalarKernel(mesh->Nlocal, nEXT, cds->fieldOffset[0], extC[0], extC[1], extC[2], mesh->o_LMM, o_LMMe);
+        linAlg->aydx(mesh->Nlocal, 1.0, o_LMMe, o_u1);
 
         if(mesh->NglobalGatherElements) {
           if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
@@ -1029,7 +1029,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
 
         oogs::finish(o_rhs, 1, cds->fieldOffset[0], ogsDfloat, ogsAdd, cds->gsh);
 
-        linAlg->axmy(mesh->Nlocal, 1.0, o_bmst, o_rhs);
+        linAlg->axmy(mesh->Nlocal, 1.0, o_LMMe, o_rhs);
         if(rk != 3)
           linAlg->axpbyz(mesh->Nlocal, 1.0, o_p0, -sdt * cds->coeffsfRK[rk+1], o_rhs, o_u1);
         else
