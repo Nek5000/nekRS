@@ -39,25 +39,26 @@ int udfBuild(const char* udfFile, int buildOnly)
   char udfLib[BUFSIZ];
   sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
+  char cmd[BUFSIZ];
+  printf("building udf ... \n"); fflush(stdout);
   if(isFileNewer(udfFile, udfFileCache) || !fileExists(udfLib)) {
-    printf("building udf ... \n"); fflush(stdout);
     char udfFileResolved[BUFSIZ];
     realpath(udfFile, udfFileResolved);
-    char cmd[BUFSIZ];
     sprintf(cmd,
             "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
-             cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
-	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" . && \
-             make",
+             rm -rf *.so && cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
+	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
              cache_dir,
              cache_dir,
              udfFileResolved,
              udf_dir,
              udf_dir);
     if(system(cmd)) return EXIT_FAILURE; 
-    printf("done (%gs)\n", MPI_Wtime() - tStart);
-    fflush(stdout);
   }
+  sprintf(cmd, "cd %s/udf && make", cache_dir);
+  if(system(cmd)) return EXIT_FAILURE; 
+  printf("done (%gs)\n", MPI_Wtime() - tStart);
+  fflush(stdout);
 
   return 0;
 }

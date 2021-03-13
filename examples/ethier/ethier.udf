@@ -12,6 +12,8 @@
 
 occa::kernel dpdxKernel; 
 occa::kernel exactUVWPKernel; 
+occa::kernel userMeshVelocityKernel;
+occa::memory o_x0, o_y0, o_z0;
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
@@ -37,8 +39,13 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_W0"] = P_W0;
   kernelInfo["defines/p_A"]  = P_A0 * M_PI;
   kernelInfo["defines/p_D"]  = P_D0 * M_PI;
+  kernelInfo["defines/p_amp"] = P_AMP;
+  kernelInfo["defines/p_omega"] = P_OMEGA;
+  kernelInfo["defines/p_pi"] = M_PI;
+
   dpdxKernel = udfBuildKernel(nrs, "dpdx");
   exactUVWPKernel = udfBuildKernel(nrs, "exactUVWP"); 
+  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -49,7 +56,13 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  mesh_t *mesh = nrs->meshV;
   udf.sEqnSource = &userq;
+  if(nrs->options.compareArgs("MOVING MESH", string("TRUE"))) {
+    o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
+    o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
+    o_z0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_z);
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -63,6 +76,16 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->fieldOffset[0]*sizeof(dfloat));
     cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->fieldOffset[0]*sizeof(dfloat));
   }
+
+  if(nrs->options.compareArgs("MOVING MESH", string("TRUE")))
+    userMeshVelocityKernel(
+      mesh->Nlocal,
+      nrs->fieldOffset,
+      time,
+      o_x0,
+      o_y0,
+      o_z0,
+      mesh->o_U);
 
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);

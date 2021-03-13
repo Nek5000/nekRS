@@ -45,7 +45,7 @@ private:
   occa::memory o_scratch;
 
   void setup();
-  void reallocBuffers(const dlong Nbytes);
+  void reallocScratch(const dlong Nbytes);
 
   ~linAlg_t();
   linAlg_t();

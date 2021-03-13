@@ -14,7 +14,7 @@ extrapolation = subCycling
 subCyclingSteps = 2
 
 [MESH]
-motion = user
+solver = user
 
 [PRESSURE]
 residualTol = 1e-09

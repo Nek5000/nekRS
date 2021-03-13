@@ -30,55 +30,23 @@
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {
-  dfloat qmeanLocal;
-  dfloat qmeanGlobal;
-
   mesh_t* mesh = elliptic->mesh;
-  
-  const dlong Nlocal =  mesh->Np * mesh->Nelements;
+  const hlong Ntotal = elliptic->NelementsGlobal * mesh->Np; 
 
   if(elliptic->blockSolver) {
-    // check field by field
-    for(int fld = 0; fld < elliptic->Nfields; fld++)
-      // check this field for all Neumann
-      if(elliptic->allBlockNeumann[fld]) {
-#ifdef ELLIPTIC_ENABLE_TIMER
-        platform->timer.tic("dotp",1);
-#endif
-        dfloat qmeanGlobal =
-          platform->linAlg->innerProd(Nlocal,
-            o_q,
-            elliptic->o_invDegree,
-            platform->comm.mpiComm,
-            fld * elliptic->Ntotal);
-#ifdef ELLIPTIC_ENABLE_TIMER
-        platform->timer.toc("dotp");
-#endif
-
-        qmeanGlobal *= elliptic->nullProjectBlockWeightGlobal[fld];
-
-        // q[n] = q[n] - qmeanGlobal for field id :fld
-        //elliptic->addScalarBlockFieldKernel(Nlocal, fld, elliptic->Ntotal,  -qmeanGlobal, o_q);
-        platform->linAlg->add(Nlocal, -qmeanGlobal, o_q, fld * elliptic->Ntotal);
-      }
-  }else{
-
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: NULL space handling for Block solver current not supported!\n");
+    ABORT(EXIT_FAILURE);
+  } else {
 #ifdef ELLIPTIC_ENABLE_TIMER
     platform->timer.tic("dotp",1);
 #endif
-  dfloat qmeanGlobal = 0.0;
-#if USE_WEIGHTED == 1
-    qmeanGlobal = platform->linAlg->innerProd(mesh->Nlocal, elliptic->o_invDegree, o_q, platform->comm.mpiComm);
-#else
-    qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm.mpiComm);
-#endif
+    dfloat qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm.mpiComm);
 #ifdef ELLIPTIC_ENABLE_TIMER
     platform->timer.toc("dotp");
 #endif
-
-    // normalize
-    qmeanGlobal /= ((dfloat) elliptic->NelementsGlobal * (dfloat)mesh->Np);
-    // q[n] = q[n] - qmeanGlobal
-    platform->linAlg->add(Nlocal, -qmeanGlobal, o_q);
+    qmeanGlobal /= (dfloat) Ntotal;
+    platform->linAlg->add(mesh->Nlocal, -qmeanGlobal, o_q);
+    //printf("qmeanGlobal %.15e %d\n", qmeanGlobal, Ntotal);
   }
 }

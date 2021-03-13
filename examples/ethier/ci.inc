@@ -45,6 +45,19 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
     options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
   }
+  if (ciMode == 5) {
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    options.setArgs("SUBCYCLING STEPS", string("0"));
+    options.setArgs("MOVING MESH", string("TRUE"));
+  }
+  if (ciMode == 6) {
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("MOVING MESH", string("TRUE"));
+  }
+
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
@@ -145,8 +158,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   int NiterS01 = nrs->cds->solver[0]->Niter;
   int NiterS02 = nrs->cds->solver[1]->Niter;
-  int s01IterErr = abs(NiterS01 - 2);
-  int s02IterErr = abs(NiterS02 - 2);
+  int s01IterErr, s02IterErr;
 
   switch (ciMode) {
     case 1 : velIterErr = abs(NiterU - 10);
@@ -155,6 +167,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 4);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.17E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
     case 2 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 6.49E-12)/err[2]);
@@ -162,6 +176,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.38E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
     case 3 : velIterErr = abs(NiterU - 4);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
@@ -169,6 +185,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.34E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
     case 4 : velIterErr = abs(NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
@@ -176,8 +194,29 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 3.65E-10)/err[0]);
              prErr = abs((err[1] - 6.71E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
-  }
+    case 5 : velIterErr = abs(NiterU - 12);
+             s1Err = abs((err[2] - 1.53E-06)/err[2]);
+             s2Err = abs((err[3] - 1.73E-06)/err[3]);
+             pIterErr = abs(NiterP - 8);
+             vxErr = abs((err[0] - 2.57E-07)/err[0]);
+             prErr = abs((err[1] - 2.16E-06)/err[1]);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
+             break;
+    case 6 : velIterErr = abs(NiterU - 12);
+             s1Err = abs((err[2] - 1.27E-06)/err[2]);
+             s2Err = abs((err[3] - 1.41E-06)/err[3]);
+             pIterErr = abs(NiterP - 8);
+             vxErr = abs((err[0] - 2.43E-07)/err[0]);
+             prErr = abs((err[1] - 2.89E-06)/err[1]);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
+             break;
+
+     }
 
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 

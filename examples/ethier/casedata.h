@@ -4,3 +4,7 @@
 
 #define P_A0 (0.025)
 #define P_D0 (0.5)
+
+#define P_OMEGA (15.0)
+#define P_AMP (1.5)
+

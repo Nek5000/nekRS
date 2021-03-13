@@ -139,8 +139,6 @@ struct elliptic_t
   occa::kernel updatePCGKernel;
 
   hlong NelementsGlobal;
-  dfloat nullProjectWeightGlobal;
-  dfloat* nullProjectBlockWeightGlobal;
 
   occa::kernel updateDiagonalKernel;
   occa::memory o_lambda;

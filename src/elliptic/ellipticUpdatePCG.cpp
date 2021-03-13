@@ -39,38 +39,25 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   // x <= x + alpha*p
   // r <= r - alpha*A*p
   // dot(r,r)
-  //
-  if(serial == 1)
-    elliptic->updatePCGKernel(mesh->Nlocal,
-                              elliptic->Ntotal,
-                              elliptic->o_invDegree,
-                              o_p,
-                              o_Ap,
-                              alpha,
-                              o_x,
-                              o_r,
-                              elliptic->o_tmpNormr);
-  else
-    elliptic->updatePCGKernel(mesh->Nlocal,
-                              elliptic->Ntotal,
-                              elliptic->o_invDegree,
-                              o_p,
-                              o_Ap,
-                              alpha,
-                              o_x,
-                              o_r,
-                              elliptic->o_tmpNormr);
+  elliptic->updatePCGKernel(mesh->Nlocal,
+                            elliptic->Ntotal,
+                            elliptic->o_invDegree,
+                            o_p,
+                            o_Ap,
+                            alpha,
+                            o_x,
+                            o_r,
+                            elliptic->o_tmpNormr);
 
-  dfloat rdotr1;
-  const dlong Nblock = (mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
+  dfloat rdotr1 = 0;
 #ifdef ELLIPTIC_ENABLE_TIMER
     platform->timer.tic("dotp",1);
 #endif
   if(serial) {
-    elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
+    rdotr1 = *((dfloat *) elliptic->o_tmpNormr.ptr());
   } else {
+    const dlong Nblock = (mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
     elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, Nblock*sizeof(dfloat));
-    rdotr1 = 0;
     for(int n = 0; n < Nblock; ++n)
       rdotr1 += elliptic->tmpNormr[n];
   }

@@ -285,10 +285,10 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   if(par->extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
 
-  string meshMotion; 
-  if(par->extract("mesh", "motion", meshMotion)){
+  string meshSolver; 
+  if(par->extract("mesh", "solver", meshSolver)){
     options.setArgs("MOVING MESH", "TRUE");
-    options.setArgs("MESH MOTION", meshMotion);
+    options.setArgs("MESH SOLVER", meshSolver);
   }
 
   bool stressFormulation;

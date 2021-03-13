@@ -480,18 +480,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);
 
-  const dlong nullProjectWeightGlobal =
-    platform->linAlg->sum(Nlocal, elliptic->o_invDegree, platform->comm.mpiComm);
-  elliptic->nullProjectWeightGlobal = 1. / nullProjectWeightGlobal;
-
-  if(elliptic->blockSolver) {
-    elliptic->nullProjectBlockWeightGlobal = (dfloat*)calloc(elliptic->Nfields, sizeof(dfloat));
-
-    for(int fld = 0; fld < elliptic->Nfields; fld++) {
-      elliptic->nullProjectBlockWeightGlobal[fld] = elliptic->nullProjectWeightGlobal;
-    }
-  }
-
   oogs_mode oogsMode = OOGS_AUTO;
   if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;

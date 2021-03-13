@@ -425,6 +425,11 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < lelt) writeSize = 1;
       }
+      if(line.find( "lx1m=") != string::npos ) {
+	int oldval;      
+        sscanf(line.c_str(), "%*[^=]=%d", &oldval);
+        if(oldval < lx1m) writeSize = 1;
+      }
       if(line.find( "lx1=") != string::npos ) {
 	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);

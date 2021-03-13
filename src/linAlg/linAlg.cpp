@@ -41,7 +41,7 @@ linAlg_t::linAlg_t() {
   comm = platform->comm.mpiComm;
   setup();
 }
-void linAlg_t::reallocBuffers(const dlong Nbytes)
+void linAlg_t::reallocScratch(const dlong Nbytes)
 {
   device_t& device = platform->device;
   if(h_scratch.size()) h_scratch.free();
@@ -63,7 +63,7 @@ void linAlg_t::setup() {
 
   occa::properties kernelInfo = platform->kernelInfo;
 
-  reallocBuffers(blocksize * sizeof(dfloat));
+  reallocScratch(blocksize * sizeof(dfloat));
 
   string oklDir;
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -436,7 +436,7 @@ void linAlg_t::axdyz(const dlong N, const dfloat alpha,
 dfloat linAlg_t::sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlong offset) {
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   sumKernel(Nblock, N, offset, o_a, o_scratch);
 
@@ -457,7 +457,7 @@ dfloat linAlg_t::sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlo
 dfloat linAlg_t::min(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   minKernel(Nblock, N, o_a, o_scratch);
 
@@ -478,7 +478,7 @@ dfloat linAlg_t::min(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   maxKernel(Nblock, N, o_a, o_scratch);
 
@@ -525,7 +525,7 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   innerProdKernel(Nblock, N, offset, o_x, o_y, o_scratch);
 
@@ -555,7 +555,7 @@ dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   weightedInnerProdKernel(Nblock, N, o_w, o_x, o_y, o_scratch);
 
@@ -592,7 +592,7 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = NVec * Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   weightedInnerProdMultiKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
 
@@ -624,7 +624,7 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   weightedInnerProdManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_x, o_y, o_scratch);
 
@@ -658,7 +658,7 @@ dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   weightedNorm2Kernel(Nblock, N, o_w, o_a, o_scratch);
 
@@ -694,7 +694,7 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
 #endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
-  if(o_scratch.size() < Nbytes) reallocBuffers(Nbytes);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   weightedNorm2ManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_a, o_scratch);
 
