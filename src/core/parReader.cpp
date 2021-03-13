@@ -288,7 +288,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   string meshSolver; 
   if(par->extract("mesh", "solver", meshSolver)){
     options.setArgs("MOVING MESH", "TRUE");
-    options.setArgs("MESH SOLVER", meshSolver);
+    if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+    if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
   }
 
   bool stressFormulation;
