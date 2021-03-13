@@ -23,22 +23,22 @@
    SOFTWARE.
 
  */
-
 @kernel void subCycleStrongCubatureVolumeHex3D(const dlong Nelements,
-                                                  @restrict const dlong*  elementList,
-                                                  const dlong voffset,
-                                                  const dlong NSOffset,
-                                                  @restrict const dfloat*  cubvgeo,
-                                                  @restrict const dfloat*  cubDT,
+                                                  @restrict const dlong*   elementList,
+                                                  @restrict const dfloat*  cubD,
                                                   @restrict const dfloat*  cubInterpT,
                                                   @restrict const dfloat*  cubProjectT,
+                                                  const dlong offset,
+                                                  const dlong cubatureOffset,
+                                                  const dlong NSOffset,
                                                   @restrict const dfloat*  invLumpedMassMatrix,
+                                                  @restrict const dfloat*  BdivW,
                                                   const dfloat c0,
                                                   const dfloat c1,
                                                   const dfloat c2,
-                                                  @restrict const dfloat*  U,
+                                                  @restrict const dfloat*  conv,
                                                   @restrict const dfloat*  S,
-                                                  @restrict dfloat*  NS)
+                                                  @restrict dfloat*  NU)
 {
   // (phi, U.grad Ud)
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
@@ -49,17 +49,18 @@
     @shared dfloat s_U[p_cubNq][p_cubNq];
     @shared dfloat s_V[p_cubNq][p_cubNq];
     @shared dfloat s_W[p_cubNq][p_cubNq];
-    @shared dfloat s_S[p_cubNq][p_cubNq];
 
-#define s_Sd s_V
+    @shared dfloat s_Ud[p_cubNq][p_cubNq];
+    @shared dfloat s_Vd[p_cubNq][p_cubNq];
+    @shared dfloat s_Wd[p_cubNq][p_cubNq];
 
-    @shared dfloat s_U1[p_cubNq][p_cubNq];
-    @shared dfloat s_V1[p_cubNq][p_cubNq];
-    @shared dfloat s_W1[p_cubNq][p_cubNq];
-    @shared dfloat s_S1[p_cubNq][p_cubNq];
+    @shared dfloat s_Ud1[p_Nq][p_cubNq];
+    @shared dfloat s_Vd1[p_Nq][p_cubNq];
+    @shared dfloat s_Wd1[p_Nq][p_cubNq];
 
-    @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq], r_S[p_cubNq];
-    @exclusive dfloat r_Sd[p_cubNq];
+    @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
+    @exclusive dfloat r_U2[p_cubNq], r_V2[p_cubNq], r_W2[p_cubNq];
+    @exclusive dfloat r_Ud[p_cubNq], r_Vd[p_cubNq], r_Wd[p_cubNq];
 
     @exclusive dfloat r_c[p_nEXT];
 
@@ -70,7 +71,7 @@
         const int id = i + j * p_cubNq;
         element = elementList[e];
 
-#pragma unroll p_nEXT
+#pragma unroll p_nEXT 
         for (int s = 0; s < p_nEXT; s++) {
           dfloat coeff = 0;
           if(s == 0) coeff = c0;
@@ -84,15 +85,25 @@
           s_cubProjectT[0][id] = cubProjectT[id];
         }
 
-        s_cubD[0][id] = cubDT[id];
-
+        s_cubD[0][id] = cubD[id];
 #pragma unroll p_cubNq
         for(int k = 0; k < p_cubNq; ++k) {
-          r_U[k]  = 0;
-          r_V[k]  = 0;
-          r_W[k]  = 0;
-          r_S[k] = 0;
-          r_Sd[k] = 0;
+          dfloat Ue = 0.0;
+          dfloat Ve = 0.0;
+          dfloat We = 0.0;
+          const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          for(int s = 0 ; s < p_nEXT; ++s){
+            const int s_offset = s * p_NVfields * cubatureOffset;
+            Ue += r_c[s] * conv[id + 0 * cubatureOffset + s_offset];
+            Ve += r_c[s] * conv[id + 1 * cubatureOffset + s_offset];
+            We += r_c[s] * conv[id + 2 * cubatureOffset + s_offset];
+          }
+          r_U[k] = Ue;
+          r_V[k] = Ve;
+          r_W[k] = We;
+          r_Ud[k] = 0;
+          r_Vd[k] = 0;
+          r_Wd[k] = 0;
         }
       }
     }
@@ -106,22 +117,7 @@
             // this can be improved
             const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
 
-            dfloat Ue = 0, Ve = 0, We = 0;
-#pragma unroll p_nEXT
-            for (int s = 0; s < p_nEXT; s++) {
-              dfloat Um = U[id + 0 * voffset + s * p_NVfields * voffset];
-              dfloat Vm = U[id + 1 * voffset + s * p_NVfields * voffset];
-              dfloat Wm = U[id + 2 * voffset + s * p_NVfields * voffset];
-              Ue += r_c[s] * Um;
-              Ve += r_c[s] * Vm;
-              We += r_c[s] * Wm;
-            }
-
-            // U.grad Ud
-            s_U[b][a] = Ue;
-            s_V[b][a] = Ve;
-            s_W[b][a] = We;
-            s_S[b][a] = S[id];
+            s_Ud[b][a] = S[id];
           }
 
       @barrier("local");
@@ -130,21 +126,14 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat U1  = 0, V1 = 0,  W1 = 0, S1 = 0;
-            dfloat Sd1 = 0;
+            dfloat Ud1 = 0,Vd1 = 0, Wd1 = 0;
 
             for(int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
-              U1  += Iia * s_U[b][a];
-              V1  += Iia * s_V[b][a];
-              W1  += Iia * s_W[b][a];
-              S1  += Iia * s_S[b][a];
+              Ud1 += Iia * s_Ud[b][a];
             }
 
-            s_U1[b][i] = U1;
-            s_V1[b][i] = V1;
-            s_W1[b][i] = W1;
-            s_S1[b][i] = S1;
+            s_Ud1[b][i] = Ud1;
           }
 
       @barrier("local");
@@ -152,14 +141,12 @@
       // interpolate in 's'
       for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat U2 = 0, V2 = 0,  W2 = 0, S2 = 0;
+          dfloat Ud2 = 0,Vd2 = 0, Wd2 = 0;
+
           // interpolate in b
           for(int b = 0; b < p_Nq; ++b) {
             dfloat Ijb = s_cubInterpT[b][j];
-            U2 += Ijb * s_U1[b][i];
-            V2 += Ijb * s_V1[b][i];
-            W2 += Ijb * s_W1[b][i];
-            S2 += Ijb * s_S1[b][i];
+            Ud2 += Ijb * s_Ud1[b][i];
           }
 
           // interpolate in c progressively
@@ -167,11 +154,7 @@
           for(int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
 
-            r_U[k] += Ikc * U2;
-            r_V[k] += Ikc * V2;
-            r_W[k] += Ikc * W2;
-
-            r_S[k] += Ikc * S2;
+            r_Ud[k] += Ikc * Ud2;
           }
         }
       }
@@ -182,56 +165,40 @@
       @barrier("local");
 
       for(int j = 0; j < p_cubNq; ++j; @inner(1))
-        for(int i = 0; i < p_cubNq; ++i; @inner(0))
-
-          s_Sd[j][i] = r_S[k];
-
+        for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          s_Ud[j][i] = r_Ud[k];
+        }
 
       @barrier("local");
 
-      for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for(int j = 0; j < p_cubNq; ++j; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat dSdr = 0, dSds = 0, dSdt = 0;
+          dfloat Udr = 0, Uds = 0, Udt = 0;
 
           for(int n = 0; n < p_cubNq; ++n) {
             dfloat Din = s_cubD[i][n];
-            dSdr += Din * s_Sd[j][n];
+            Udr += Din * s_Ud[j][n];
           }
 
           for(int n = 0; n < p_cubNq; ++n) {
             dfloat Djn = s_cubD[j][n];
-            dSds += Djn * s_Sd[n][i];
+            Uds += Djn * s_Ud[n][i];
           }
 
-#pragma unroll p_cubNq
           for(int n = 0; n < p_cubNq; ++n) {
             dfloat Dkn = s_cubD[k][n];
-            dSdt += Dkn * r_S[n];
+            Udt += Dkn * r_Ud[n];
           }
 
-          const dlong gid = element * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          const dfloat drdx = cubvgeo[gid + p_RXID * p_cubNp];
-          const dfloat drdy = cubvgeo[gid + p_RYID * p_cubNp];
-          const dfloat drdz = cubvgeo[gid + p_RZID * p_cubNp];
-          const dfloat dsdx = cubvgeo[gid + p_SXID * p_cubNp];
-          const dfloat dsdy = cubvgeo[gid + p_SYID * p_cubNp];
-          const dfloat dsdz = cubvgeo[gid + p_SZID * p_cubNp];
-          const dfloat dtdx = cubvgeo[gid + p_TXID * p_cubNp];
-          const dfloat dtdy = cubvgeo[gid + p_TYID * p_cubNp];
-          const dfloat dtdz = cubvgeo[gid + p_TZID * p_cubNp];
-          const dfloat JW   = cubvgeo[gid + p_JWID * p_cubNp];
+          const dfloat Uhat = r_U[k];
+          const dfloat Vhat = r_V[k];
+          const dfloat What = r_W[k];
 
-          const dfloat Un = r_U[k];
-          const dfloat Vn = r_V[k];
-          const dfloat Wn = r_W[k];
+          // U*dUdx + V*dUdy + W*dUdz = (U*(drdx*dUdr+dsdx*dUds+dtdx*dUdt) + V*(drdy*dUdr ..))
 
-          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
-          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
-          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
-
-          r_U[k] = Uhat * dSdr + Vhat * dSds + What * dSdt;
+          // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
+          r_U2[k] = Uhat * Udr + Vhat * Uds + What * Udt;
         }
-      }
     }
 
     // now project back in t
@@ -240,12 +207,12 @@
 
       for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat rhsU = 0;
+          dfloat rhsU = 0, rhsV = 0, rhsW = 0;
 
 #pragma unroll p_cubNq
           for(int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
-            rhsU += Ikc * r_U[k];
+            rhsU += Ikc * r_U2[k];
           }
 
           s_U[j][i] = rhsU;
@@ -257,14 +224,14 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat rhsU = 0;
+            dfloat rhsU = 0, rhsV = 0, rhsW = 0;
 
             for(int j = 0; j < p_cubNq; ++j) {
               dfloat Ijb = s_cubInterpT[b][j];
               rhsU += Ijb * s_U[j][i];
             }
 
-            s_Sd[b][i] = rhsU;
+            s_Ud[b][i] = rhsU;
           }
 
       @barrier("local");
@@ -272,15 +239,25 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int a = 0; a < p_cubNq; ++a; @inner(0))
           if(a < p_Nq && b < p_Nq) {
-            dfloat rhsS = 0;
+            dfloat rhsU = 0, rhsV = 0, rhsW = 0;
 
             for(int i = 0; i < p_cubNq; ++i) {
               dfloat Iia = s_cubInterpT[a][i];
-              rhsS += Iia * s_Sd[b][i];
+              rhsU += Iia * s_Ud[b][i];
             }
+
             const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
-            const dfloat invLMM = invLumpedMassMatrix[id];
-            NS[id + NSOffset] = rhsS*invLMM;
+            dfloat invLMM = p_MovingMesh ? 0.0 : invLumpedMassMatrix[id];
+            dfloat bdivw = 0.0;
+            if(p_MovingMesh){
+              #pragma unroll
+              for (int s = 0; s < p_nEXT; s++) {
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
+                bdivw += r_c[s] * BdivW[id + s * offset];
+              }
+            }
+
+            NU[id + NSOffset] = (rhsU - bdivw * S[id]) * invLMM;
           }
     }
   }
@@ -288,21 +265,26 @@
 
 @kernel void subCycleStrongVolumeHex3D(const dlong Nelements,
                                           @restrict const dlong*  elementList,
-                                          const dlong voffset,
-                                          const dlong NSOffset,
-                                          @restrict const dfloat*  vgeo,
                                           @restrict const dfloat*  D,
+                                          const dlong offset,
+                                          const dlong NSOffset,
                                           @restrict const dfloat*  invLumpedMassMatrix,
+                                          @restrict const dfloat*  BdivW,
                                           const dfloat c0,
                                           const dfloat c1,
                                           const dfloat c2,
-                                          @restrict const dfloat*  U,
+                                          @restrict const dfloat*  conv,
                                           @restrict const dfloat*  S,
-                                          @restrict dfloat*  NS)
+                                          @restrict dfloat*  NU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_S[p_Nq][p_Nq];
-    @exclusive dfloat s_Sloc[p_Nq];
+    @shared dfloat s_Ud[p_Nq][p_Nq];
+    @shared dfloat s_Vd[p_Nq][p_Nq];
+    @shared dfloat s_Wd[p_Nq][p_Nq];
+    @exclusive dfloat s_Udloc[p_Nq];
+    @exclusive dfloat s_Vdloc[p_Nq];
+    @exclusive dfloat s_Wdloc[p_Nq];
+
     @shared dfloat s_D[p_Nq][p_Nq];
 
     @exclusive dfloat r_c[p_nEXT];
@@ -318,7 +300,7 @@
 
 #pragma unroll p_nEXT
           for (int s = 0; s < p_nEXT; s++) {
-            dfloat coeff = 0.0;
+            dfloat coeff = 0;
             if(s == 0) coeff = c0;
             if(s == 1) coeff = c1;
             if(s == 2) coeff = c2;
@@ -330,13 +312,15 @@
 
           id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
-          const dfloat Sn = S[id];
-          s_S[j][i] = Sn;
+          const dfloat Udn = S[id];
+
+          s_Ud[j][i] = Udn;
           if(k == 0){
             #pragma unroll p_Nq
             for(int l = 0 ; l < p_Nq; ++l){
               const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
-              s_Sloc[l] = S[other_id];
+              const dfloat locUdn = S[other_id];
+              s_Udloc[l] = locUdn;
             }
           }
         }
@@ -346,49 +330,38 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
-          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
-          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
-          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
-          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
-          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
-          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
-          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
-          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-          const dfloat JW   = vgeo[gid + p_JWID * p_Np];
 
-          dfloat dSdr = 0.f, dSds = 0.f, dSdt = 0.f;
+          dfloat duddr = 0, dudds = 0, duddt = 0;
 
 #pragma unroll p_Nq
           for (int n = 0; n < p_Nq; n++) {
             const dfloat Dr = s_D[i][n];
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
+            duddr += Dr * s_Ud[j][n];
+            dudds += Ds * s_Ud[n][i];
+            duddt += Dt * s_Udloc[n];
 
-            dSdr += Dr * s_S[j][n];
-            dSds += Ds * s_S[n][i];
-            dSdt += Dt * s_Sloc[n];
           }
 
-          dfloat dSdx = drdx * dSdr + dsdx * dSds + dtdx * dSdt;
-          dfloat dSdy = drdy * dSdr + dsdy * dSds + dtdy * dSdt;
-          dfloat dSdz = drdz * dSdr + dsdz * dSds + dtdz * dSdt;
-
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat invLMM = invLumpedMassMatrix[id];
+
+          dfloat invLMM = 0.0;
+          dfloat bdivw = 0.0;
           dfloat Ue = 0, Ve = 0, We = 0;
 #pragma unroll p_nEXT
           for (int s = 0; s < p_nEXT; s++) {
-            dfloat Um = U[id + 0 * voffset + s * p_NVfields * voffset];
-            dfloat Vm = U[id + 1 * voffset + s * p_NVfields * voffset];
-            dfloat Wm = U[id + 2 * voffset + s * p_NVfields * voffset];
-            Ue += r_c[s] * Um; 
-            Ve += r_c[s] * Vm; 
+            dfloat Um = conv[id + 0 * offset + s * p_NVfields * offset];
+            dfloat Vm = conv[id + 1 * offset + s * p_NVfields * offset];
+            dfloat Wm = conv[id + 2 * offset + s * p_NVfields * offset];
+            Ue += r_c[s] * Um;
+            Ve += r_c[s] * Vm;
             We += r_c[s] * Wm;
+            invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
+            bdivw += r_c[s] * BdivW[id + s * offset];
           }
 
-          NS[id + NSOffset] =  JW * (Ue * dSdx + Ve * dSdy + We * dSdz) * invLMM;
+          NU[id + NSOffset] = (Ue * duddr + Ve * dudds + We * duddt - bdivw * S[id]) * invLMM;
         }
       }
     }

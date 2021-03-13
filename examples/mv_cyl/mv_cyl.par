@@ -11,7 +11,7 @@ timeStepper = tombo3
 writeInterval = 50
 
 [MESH]
-motion = user
+solver = user
 
 [PROBLEMTYPE]
 stressFormulation = true

@@ -59,7 +59,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_S,
                            cds->o_Se);
 
-  if(movingMesh && nrs->Nsubsteps)
+  if(nrs->Nsubsteps)
   {
     mesh_t* mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
@@ -70,20 +70,21 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
       cubatureOffset = nrs->fieldOffset;
     for (int s = nrs->nEXT; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
-      mesh->o_divU.copyFrom(mesh->o_divU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
+      if(movingMesh) mesh->o_divU.copyFrom(mesh->o_divU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
 
       const dlong NbyteCubature = nrs->NVfields * cubatureOffset * sizeof(dfloat);
       nrs->o_convection.copyFrom(nrs->o_convection , NbyteCubature, (s - 1)*NbyteCubature, (s - 2)*NbyteCubature);
     }
 
-    nrs->divergenceVolumeKernel(
-      mesh->Nelements,
-      mesh->o_vgeo,
-      mesh->o_D,
-      nrs->fieldOffset,
-      mesh->o_U,
-      mesh->o_divU
-    );
+    if(movingMesh)
+      nrs->divergenceVolumeKernel(
+        mesh->Nelements,
+        mesh->o_vgeo,
+        mesh->o_D,
+        nrs->fieldOffset,
+        mesh->o_U,
+        mesh->o_divU
+      );
 
     if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
       nrs->UcubatureKernel(
@@ -620,6 +621,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               mesh->o_cubProjectT,
               nrs->fieldOffset,
               cubatureOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -634,6 +636,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               mesh->o_globalGatherElementList,
               mesh->o_D,
               nrs->fieldOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -656,6 +659,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               mesh->o_cubProjectT,
               nrs->fieldOffset,
               cubatureOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -670,6 +674,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
               mesh->o_localGatherElementList,
               mesh->o_D,
               nrs->fieldOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -715,6 +720,12 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
 {
   mesh_t* mesh = nrs->meshV;
   linAlg_t* linAlg = platform->linAlg;
+
+  dlong cubatureOffset;
+  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+    cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+  else
+    cubatureOffset = nrs->fieldOffset;
 
   // Solve for Each SubProblem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
@@ -775,32 +786,33 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
-              mesh->o_cubvgeo,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               nrs->fieldOffset,
+              cubatureOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              nrs->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice6);
           else
             nrs->subCycleStrongVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
-              mesh->o_vgeo,
               mesh->o_D,
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              nrs->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice6);
         }
@@ -818,32 +830,33 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
-              mesh->o_cubvgeo,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
               nrs->fieldOffset,
+              cubatureOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              nrs->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice6);
           else
             nrs->subCycleStrongVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
-              mesh->o_vgeo,
               mesh->o_D,
               nrs->fieldOffset,
               rk * nrs->NVfields * nrs->fieldOffset,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              nrs->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice6);
         }
@@ -972,6 +985,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_cubProjectT,
               cds->vFieldOffset,
               cubatureOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -986,6 +1000,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_globalGatherElementList,
               mesh->o_D,
               cds->vFieldOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -1008,6 +1023,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_cubProjectT,
               cds->vFieldOffset,
               cubatureOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -1022,6 +1038,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
               mesh->o_localGatherElementList,
               mesh->o_D,
               cds->vFieldOffset,
+              0,
               mesh->o_invLMM,
               mesh->o_divU,
               extC[0],
@@ -1058,6 +1075,11 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
 {
   mesh_t* mesh = cds->meshV;
   linAlg_t* linAlg= platform->linAlg;
+  dlong cubatureOffset;
+  if(cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
+    cubatureOffset = std::max(cds->vFieldOffset, mesh->Nelements * mesh->cubNp);
+  else
+    cubatureOffset = cds->vFieldOffset;
 
   // Solve for Each SubProblem
   for (int torder = (nEXT - 1); torder >= 0; torder--) {
@@ -1119,32 +1141,33 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
             cds->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
-              cds->vFieldOffset,
-              rk * cds->fieldOffset[0],
-              mesh->o_cubvgeo,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
+              cds->vFieldOffset,
+              cubatureOffset,
+              rk * cds->fieldOffset[0],
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              cds->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice2);
           else
             cds->subCycleStrongVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
+              mesh->o_D,
               cds->vFieldOffset,
               rk * cds->fieldOffset[0],
-              mesh->o_vgeo,
-              mesh->o_D,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              cds->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice2);
         }
@@ -1162,32 +1185,33 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
             cds->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
-              cds->vFieldOffset,
-              rk * cds->fieldOffset[0],
-              mesh->o_cubvgeo,
               mesh->o_cubDiffInterpT,
               mesh->o_cubInterpT,
               mesh->o_cubProjectT,
+              cds->vFieldOffset,
+              cubatureOffset,
+              rk * cds->fieldOffset[0],
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              cds->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice2);
           else
             cds->subCycleStrongVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
+              mesh->o_D,
               cds->vFieldOffset,
               rk * cds->fieldOffset[0],
-              mesh->o_vgeo,
-              mesh->o_D,
               mesh->o_invLMM,
+              mesh->o_divU,
               extC[0],
               extC[1],
               extC[2],
-              o_U,
+              cds->o_convection,
               platform->o_mempool.slice0,
               platform->o_mempool.slice2);
         }
