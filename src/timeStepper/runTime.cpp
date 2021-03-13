@@ -213,20 +213,20 @@ void computeCoefficients(nrs_t* nrs, int tstep)
 {
   const int bdfOrder = mymin(tstep, nrs->nBDF);
   const int extOrder = mymin(tstep, nrs->nEXT);
-  const int meshOrder = bdfOrder;
 
   nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, bdfOrder);
   nek::extCoeff(nrs->coeffEXT, nrs->dt, extOrder);
 
-  for(int i = nrs->nEXT; i < extOrder; i--) nrs->coeffEXT[i-1] = 0.0;
-  for(int i = nrs->nBDF; i < bdfOrder; i--) nrs->coeffBDF[i-1] = 0.0;
+  for(int i = nrs->nEXT; i > extOrder; i--) nrs->coeffEXT[i-1] = 0.0;
+  for(int i = nrs->nBDF; i > bdfOrder; i--) nrs->coeffBDF[i-1] = 0.0;
 
   if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
     mesh_t* mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
+    const int meshOrder = mymin(tstep, mesh->nAB);
     nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
     for(int i = 0 ; i < meshOrder; ++i) mesh->coeffAB[i] *= nrs->dt[0];
-    for(int i = mesh->nAB; i < meshOrder; i--) mesh->coeffAB[i-1] = 0.0;
+    for(int i = mesh->nAB; i > meshOrder; i--) mesh->coeffAB[i-1] = 0.0;
     mesh->o_coeffAB.copyFrom(mesh->coeffAB, mesh->nAB * sizeof(dfloat));
   }
 
