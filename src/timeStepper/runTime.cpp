@@ -536,25 +536,19 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
     const dlong offset = torder * nrs->fieldOffset;
-    const dfloat b = nrs->coeffBDF[torder];
-    if (torder == nEXT - 1){
-      linAlg->axpby(nrs->NVfields * nrs->fieldOffset, b, o_U, 0.0, o_p0, toffset, 0);
-      occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
-      linAlg->axmyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 0, 1.0, o_LMM_slice, o_p0);
-    }
-    else{
-      nrs->subCycleExtrapolateFieldKernel(
-        mesh->Nlocal,
-        nrs->NVfields,
-        nrs->fieldOffset,
-        toffset,
-        offset,
-        b,
-        mesh->o_LMM,
-        o_U,
-        o_p0
-      );
-    }
+    nrs->subCycleInitU0Kernel(
+      mesh->Nlocal,
+      nrs->NVfields,
+      nrs->fieldOffset,
+      torder,
+      nEXT,
+      toffset,
+      offset,
+      nrs->coeffBDF[torder],
+      mesh->o_LMM,
+      o_U,
+      o_p0
+    );
 
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
     dfloat tsub = time;
@@ -913,16 +907,19 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
     const dlong toffset = is * cds->fieldOffset[0] +
                           torder * cds->NSfields * cds->fieldOffset[0];
     const dlong offset = torder * cds->fieldOffset[0];
-    if (torder == nEXT - 1){
-      linAlg->axpby(cds->fieldOffset[0], cds->coeffBDF[torder],
-                           o_S, 0.0, o_p0, toffset, 0);
-      occa::memory o_LMM_slice = mesh->o_LMM + offset * sizeof(dfloat);
-      linAlg->axmy(mesh->Nlocal, 1.0, o_LMM_slice, o_p0);
-    }
-    else{
-      cds->subCycleExtrapolateFieldKernel(mesh->Nlocal, toffset, offset, cds->coeffBDF[torder], mesh->o_LMM,
-        o_S, o_p0);
-    }
+    cds->subCycleInitU0Kernel(
+      mesh->Nlocal,
+      1,
+      cds->fieldOffset[0],
+      torder,
+      nEXT,
+      toffset,
+      offset,
+      cds->coeffBDF[torder],
+      mesh->o_LMM,
+      o_S,
+      o_p0
+    );
 
     // Advance SubProblem to t^(n-torder+1)
     dfloat tsub = time;

@@ -81,7 +81,7 @@ struct cds_t
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
   occa::kernel subCycleRKKernel;
-  occa::kernel subCycleExtrapolateFieldKernel;
+  occa::kernel subCycleInitU0Kernel;
 
   occa::kernel nStagesSum3Kernel;
 

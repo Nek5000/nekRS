@@ -23,16 +23,28 @@
    SOFTWARE.
 
  */
-@kernel void subCycleExtrapolateField(const dlong N,
+@kernel void subCycleInitU0(const dlong N,
+                  const dlong Nfields,
+                  const dlong fieldOffset,
+                  const dlong torder,
+                  const dlong nEXT,
                   const dlong toffset,
                   const dlong offset,
                   const dfloat coef,
                   @restrict const dfloat* massMatrix,
                   @restrict const dfloat *S,
                   @restrict       dfloat *BS){
-
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    BS[n] += coef * massMatrix[n + offset] * S[n + toffset];
+    if(torder == (nEXT-1)){
+      for(int fld = 0; fld < Nfields; ++fld){
+        BS[n + fld * fieldOffset] = 
+          coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+      }
+    } else {
+      for(int fld = 0; fld < Nfields; ++fld){
+        BS[n + fld * fieldOffset] += coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+      }
+    }
   }
 }
 @kernel void subCycleRK(const dlong N,

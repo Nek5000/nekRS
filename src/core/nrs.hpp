@@ -112,7 +112,7 @@ struct nrs_t
   occa::kernel subCycleRKUpdateKernel;
   occa::kernel extrapolateKernel;
   occa::kernel subCycleRKKernel;
-  occa::kernel subCycleExtrapolateFieldKernel;
+  occa::kernel subCycleInitU0Kernel;
   occa::kernel nStagesSum3Kernel;
 
   occa::kernel wgradientVolumeKernel;

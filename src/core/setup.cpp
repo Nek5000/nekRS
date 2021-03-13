@@ -494,8 +494,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->subCycleRKKernel =
           platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
-        kernelName = "subCycleExtrapolateField";
-        nrs->subCycleExtrapolateFieldKernel =
+        kernelName = "subCycleInitU0";
+        nrs->subCycleInitU0Kernel =
           platform->device.buildKernel(fileName, kernelName, kernelInfo);
       }
 
@@ -1157,8 +1157,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
         kernelName = "subCycleRK";
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
-        kernelName = "subCycleExtrapolateField";
-        cds->subCycleExtrapolateFieldKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        kernelName = "subCycleInitU0";
+        cds->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
       }
   }
 
