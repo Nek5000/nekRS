@@ -720,29 +720,19 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
   for (int torder = nEXT - 1; torder >= 0; torder--) {
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     dlong toffset = torder * nrs->NVfields * nrs->fieldOffset;
-    const dfloat b = nrs->coeffBDF[torder];
-    if (torder == nEXT - 1){
-      platform->linAlg->axpby(
-        nrs->NVfields * nrs->fieldOffset,
-        b,
-        o_U,
-        0.0,
-        platform->o_mempool.slice0,
-        toffset,
-        0
-      );
-    }
-    else{
-      platform->linAlg->axpby(
-        nrs->NVfields * nrs->fieldOffset,
-        b,
-        o_U,
-        1.0,
-        platform->o_mempool.slice0,
-        toffset,
-        0
-      );
-    }
+    nrs->subCycleInitU0Kernel(
+      mesh->Nlocal,
+      nrs->NVfields,
+      nrs->fieldOffset,
+      torder,
+      nEXT,
+      toffset,
+      0,
+      nrs->coeffBDF[torder],
+      mesh->o_LMM,
+      o_U,
+      platform->o_mempool.slice0
+    );
 
     // Advance subproblem from here from t^(n-torder) to t^(n-torder+1)
     dfloat tsub = time;
@@ -1074,26 +1064,19 @@ occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
     // Initialize SubProblem Velocity i.e. Ud = U^(t-torder*dt)
     const dlong toffset = is * cds->fieldOffset[0] +
                           torder * cds->NSfields * cds->fieldOffset[0];
-    if (torder == nEXT - 1){
-      platform->linAlg->axpby(
-        cds->fieldOffset[0],
-        cds->coeffBDF[torder],
-        o_S,
-        0.0,
-        platform->o_mempool.slice0,
-        toffset, 0
-      );
-    }
-    else{
-      platform->linAlg->axpby(
-        cds->fieldOffset[0],
-        cds->coeffBDF[torder],
-        o_S,
-        1.0,
-        platform->o_mempool.slice0,
-        toffset, 0
-      );
-    }
+    cds->subCycleInitU0Kernel(
+      mesh->Nlocal,
+      1,
+      cds->fieldOffset[0],
+      torder,
+      nEXT,
+      toffset,
+      0,
+      cds->coeffBDF[torder],
+      mesh->o_LMM,
+      o_S,
+      platform->o_mempool.slice0
+    );
 
     // Advance SubProblem to t^(n-torder+1)
     dfloat tsub = time;

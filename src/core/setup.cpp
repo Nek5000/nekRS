@@ -489,14 +489,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         kernelName = "subCycleLSERKUpdate";
         if(nrs->nRK == 4) kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
-          platform->device.buildKernel(fileName, kernelName, kernelInfo);
+          platform->device.buildKernel(fileName, kernelName, prop);
         kernelName = "subCycleRK";
         nrs->subCycleRKKernel =
-          platform->device.buildKernel(fileName, kernelName, kernelInfo);
+          platform->device.buildKernel(fileName, kernelName, prop);
 
         kernelName = "subCycleInitU0";
-        nrs->subCycleInitU0Kernel =
-          platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        nrs->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
       }
 
       fileName = oklpath + "nrs/extrapolate" + ".okl";
@@ -1154,11 +1153,12 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
         fileName = oklpath + "cds/subCycleRKUpdate.okl";
         kernelName = "subCycleLSERKUpdate";
         if(cds->nRK == 4) kernelName = "subCycleERKUpdate";
-        cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, prop);
         kernelName = "subCycleRK";
-        cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, prop);
+
         kernelName = "subCycleInitU0";
-        cds->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        cds->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
       }
   }
 

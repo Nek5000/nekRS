@@ -37,12 +37,21 @@
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(torder == (nEXT-1)){
       for(int fld = 0; fld < Nfields; ++fld){
-        BS[n + fld * fieldOffset] = 
-          coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+        if(p_MovingMesh){
+          BS[n + fld * fieldOffset] = 
+            coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+        } else {
+          BS[n + fld * fieldOffset] = 
+            coef * S[n + toffset + fld * fieldOffset];
+        }
       }
     } else {
       for(int fld = 0; fld < Nfields; ++fld){
-        BS[n + fld * fieldOffset] += coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+        if(p_MovingMesh){
+          BS[n + fld * fieldOffset] += coef * massMatrix[n + offset] * S[n + toffset + fld * fieldOffset];
+        } else {
+          BS[n + fld * fieldOffset] += coef * S[n + toffset + fld * fieldOffset];
+        }
       }
     }
   }
