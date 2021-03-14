@@ -75,7 +75,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   parAlmond::multigridLevel** levels = precon->parAlmond->levels;
 
   oogs_mode oogsMode = OOGS_AUTO;
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
   if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
 
   //set up the finest level

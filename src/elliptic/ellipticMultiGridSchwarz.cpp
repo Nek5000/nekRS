@@ -812,7 +812,7 @@ void MGLevel::build(
   const dlong Nlocal_e = Nelements * Np_e;
 
   oogs_mode oogsMode = OOGS_AUTO;
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
                                     ogsPfloat, platform->comm.mpiComm, 1, platform->device,
