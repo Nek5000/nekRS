@@ -516,10 +516,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->filterRTKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
+      occa::properties cflProps = kernelInfo;
+      cflProps["defines/ " "p_MovingMesh"] = movingMesh;
       fileName = oklpath + "nrs/cfl" + suffix + ".okl";
       kernelName = "cfl" + suffix;
       nrs->cflKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        device.buildKernel(fileName, kernelName, cflProps);
 
       fileName = oklpath + "nrs/pressureAddQtl" + ".okl";
       kernelName = "pressureAddQtl";

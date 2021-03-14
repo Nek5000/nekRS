@@ -31,6 +31,7 @@
                          @restrict const dfloat*  idH,
                          const dlong offset,
                          @restrict const dfloat*  U,
+                         @restrict const dfloat*  W,
                          @restrict dfloat*  rhsU)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
@@ -70,9 +71,14 @@
           const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
           //
-          const dfloat un = U[id + 0 * offset];
-          const dfloat vn = U[id + 1 * offset];
-          const dfloat wn = U[id + 2 * offset];
+          dfloat un = U[id + 0 * offset];
+          dfloat vn = U[id + 1 * offset];
+          dfloat wn = U[id + 2 * offset];
+          if(p_MovingMesh){
+            un -= W[id + 0 * offset];
+            vn -= W[id + 1 * offset];
+            wn -= W[id + 2 * offset];
+          }
 
           dfloat ur  = fabs((un * drdx + vn * drdy + wn * drdz) * s_idH[i] * dt);
           dfloat us  = fabs((un * dsdx + vn * dsdy + wn * dsdz) * s_idH[j] * dt);
