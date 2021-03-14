@@ -201,16 +201,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     
   }
 
-  if(nrs->Nsubsteps){
-    const int nBDF = std::max(nrs->nBDF, nrs->nEXT);
-    dlong cubatureOffset;
-    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-    else
-      cubatureOffset = nrs->fieldOffset;
-    nrs->o_convection = platform->device.malloc(nBDF * nrs->NVfields * cubatureOffset, sizeof(dfloat));
-  }
+  dlong cubatureOffset;
+  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+    cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+  else
+    cubatureOffset = nrs->fieldOffset;
 
+  const dlong Nstates = nrs->Nsubsteps ?
+    std::max(nrs->nBDF, nrs->nEXT) :
+    1;
+  if(nrs->Nsubsteps && nrs->options.compareArgs("MOVING MESH", "TRUE"))
+    nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * cubatureOffset, sizeof(dfloat));
+  else
+    nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * cubatureOffset, sizeof(dfloat));
 
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
@@ -453,6 +456,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->velocityNeumannBCKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
+      occa::properties prop = kernelInfo;
+      const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+      prop["defines/" "p_relative"] = movingMesh && nrs->Nsubsteps;
+      prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
+      prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
+      fileName = oklpath + "nrs/Urst" + suffix + ".okl";
+      kernelName = "UrstCubature" + suffix;
+      nrs->UrstCubatureKernel =
+        device.buildKernel(fileName, kernelName, prop);
+
+      kernelName = "Urst" + suffix;
+      nrs->UrstKernel =
+        device.buildKernel(fileName, kernelName, prop);
+
+
       if(nrs->Nsubsteps){
         occa::properties prop = kernelInfo;
         const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
@@ -469,15 +487,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         kernelName = "subCycleStrongVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
-        if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE")){
-          kernelName = "convUCubature" + suffix;
-          nrs->UcubatureKernel =
-            device.buildKernel(fileName, kernelName, prop);
-        } else {
-          kernelName = "convU" + suffix;
-          nrs->UcubatureKernel =
-            device.buildKernel(fileName, kernelName, prop);
-        }
 
         fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
         kernelName = "subCycleLSERKUpdate";
@@ -973,7 +982,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
     platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset[0] * sizeof(dfloat),
                         cds->FS);
 
-  cds->o_convection = nrs->o_convection;
+  cds->o_relUrst = nrs->o_relUrst;
+  cds->o_Urst = nrs->o_Urst;
 
   for (int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;

@@ -122,8 +122,10 @@ struct nrs_t
 
   occa::memory o_U, o_P;
 
-  occa::memory o_convection;
-  occa::kernel UcubatureKernel;
+  occa::memory o_relUrst;
+  occa::memory o_Urst;
+  occa::kernel UrstCubatureKernel;
+  occa::kernel UrstKernel;
 
   occa::memory o_BF;
   occa::memory o_FU;
