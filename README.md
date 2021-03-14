@@ -16,6 +16,7 @@ Capabilities:
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 * Conjugate fluid-solid heat transfer
 * LES and RANS turbulence models
+* ALE formulation for moving mesh support
 * VisIt & Paraview support for data analysis and visualization
 
 Note, the code is an prototype so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
@@ -33,8 +34,8 @@ Requirements:
 Download the latest release tarball
 
 ```sh
-wget https://github.com/Nek5000/nekRS/releases/download/v20.1/nekRS-v20.1.tar.gz 
-tar -zxf nekRS-v20.1.tar.gz 
+wget https://github.com/Nek5000/nekRS/releases/download/v21.0/nekRS-v21.0.tar.gz 
+tar -zxf nekRS-v21.0.tar.gz 
 ```
 
 
@@ -67,7 +68,7 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 
 ```sh
 cd $NEKRS_HOME/examples/ethier
-nrspre ethier 2 # optional step to JIT precompile
+nrspre ethier 2 # precompile JIT components
 nrsmpi ethier 2 # run on two MPI ranks
 ```
 You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
@@ -79,7 +80,7 @@ Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody
 Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
 
 ## Reporting Bugs
-nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first send a message to the User's Group [mailing list](https://groups.google.com/forum/#!forum/nekRS).
+nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first vist our [dicussions](https://github.com/Nek5000/nekRS/discussions) forum on GitHub.
 
 ## License
 nekRS is released under the BSD 3-clause license (see LICENSE file). 
