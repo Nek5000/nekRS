@@ -59,15 +59,15 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_S,
                            cds->o_Se);
 
+  dlong cubatureOffset;
+  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+    cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+  else
+    cubatureOffset = nrs->fieldOffset;
   if(nrs->Nsubsteps)
   {
     mesh_t* mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
-    dlong cubatureOffset;
-    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-    else
-      cubatureOffset = nrs->fieldOffset;
     const dlong NbyteCubature = nrs->NVfields * cubatureOffset * sizeof(dfloat);
     for (int s = nrs->nEXT; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
@@ -78,7 +78,6 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         nrs->o_Urst.copyFrom(nrs->o_Urst , NbyteCubature, (s - 1)*NbyteCubature, (s - 2)*NbyteCubature);
       }
     }
-
     if(movingMesh)
       nrs->divergenceVolumeKernel(
         mesh->Nelements,
@@ -88,34 +87,34 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         mesh->o_U,
         mesh->o_divU
       );
-
-    const bool relative = movingMesh && nrs->Nsubsteps;
-    occa::memory& o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
-    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      nrs->UrstCubatureKernel(
-        mesh->Nelements,
-        mesh->o_cubvgeo,
-        mesh->o_cubDiffInterpT,
-        mesh->o_cubInterpT,
-        mesh->o_cubProjectT,
-        nrs->fieldOffset,
-        cubatureOffset,
-        nrs->o_U,
-        mesh->o_U,
-        o_Urst
-      );
-    else
-      nrs->UrstKernel(
-        mesh->Nelements,
-        mesh->o_vgeo,
-        mesh->o_D,
-        nrs->fieldOffset,
-        nrs->o_U,
-        mesh->o_U,
-        o_Urst
-      );
-
   }
+
+
+  const bool relative = movingMesh && nrs->Nsubsteps;
+  occa::memory& o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
+  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+    nrs->UrstCubatureKernel(
+      mesh->Nelements,
+      mesh->o_cubvgeo,
+      mesh->o_cubDiffInterpT,
+      mesh->o_cubInterpT,
+      mesh->o_cubProjectT,
+      nrs->fieldOffset,
+      cubatureOffset,
+      nrs->o_U,
+      mesh->o_U,
+      o_Urst
+    );
+  else
+    nrs->UrstKernel(
+      mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_D,
+      nrs->fieldOffset,
+      nrs->o_U,
+      mesh->o_U,
+      o_Urst
+    );
 
   if(nrs->Nscalar) {
     platform->timer.tic("makeq", 1);
@@ -256,6 +255,8 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     udf.sEqnSource(nrs, time, cds->o_S, o_FS);
     platform->timer.toc("udfSEqnSource");
   }
+  
+  const dlong cubatureOffset = std::max(cds->vFieldOffset, mesh->Nelements * mesh->cubNp);
 
   for(int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
@@ -300,25 +301,24 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
           cds->advectionStrongCubatureVolumeKernel(
             cds->meshV->Nelements,
             mesh->o_vgeo,
-            mesh->o_cubvgeo,
             mesh->o_cubDiffInterpT,
             mesh->o_cubInterpT,
             mesh->o_cubProjectT,
             cds->vFieldOffset,
             isOffset,
-            cds->o_U,
+            cubatureOffset,
             cds->o_S,
+            cds->o_Urst,
             cds->o_rho,
             platform->o_mempool.slice0);
         else
           cds->advectionStrongVolumeKernel(
             cds->meshV->Nelements,
-            mesh->o_vgeo,
             mesh->o_D,
             cds->vFieldOffset,
             isOffset,
-            cds->o_U,
             cds->o_S,
+            cds->o_Urst,
             cds->o_rho,
             platform->o_mempool.slice0);
         platform->linAlg->axpby(
@@ -428,6 +428,8 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       o_FU
     );
   }
+  
+  const dlong cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
 
   occa::memory o_Usubcycling = platform->o_mempool.slice0;
   if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
@@ -441,20 +443,21 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
         nrs->advectionStrongCubatureVolumeKernel(
           mesh->Nelements,
           mesh->o_vgeo,
-          mesh->o_cubvgeo,
           mesh->o_cubDiffInterpT,
           mesh->o_cubInterpT,
           mesh->o_cubProjectT,
           nrs->fieldOffset,
+          cubatureOffset,
           nrs->o_U,
+          nrs->o_Urst,
           platform->o_mempool.slice0);
       else
         nrs->advectionStrongVolumeKernel(
           mesh->Nelements,
-          mesh->o_vgeo,
           mesh->o_D,
           nrs->fieldOffset,
           nrs->o_U,
+          nrs->o_Urst,
           platform->o_mempool.slice0);
       platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,

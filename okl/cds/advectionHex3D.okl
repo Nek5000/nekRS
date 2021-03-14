@@ -25,12 +25,11 @@
  */
 
 @kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
-                                           @restrict const dfloat*  vgeo,
                                            @restrict const dfloat*  D,
                                            const dlong voffset,
                                            const dlong soffset,
-                                           @restrict const dfloat*  U,
                                            @restrict const dfloat*  S,
+                                           @restrict const dfloat* Urst,
                                            @restrict const dfloat*  RHO,
                                            @restrict dfloat*  NS)
 {
@@ -67,17 +66,6 @@
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-
-          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
-          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
-          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
-          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
-          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
-          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
-          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
-          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
-          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-
           dfloat dSdr = 0, dSds = 0, dSdt = 0;
 
 #pragma unroll p_Nq
@@ -90,16 +78,13 @@
             dSdt += Dt * s_Sloc[n];
           }
 
-          dfloat dSdx = drdx * dSdr + dsdx * dSds + dtdx * dSdt;
-          dfloat dSdy = drdy * dSdr + dsdy * dSds + dtdy * dSdt;
-          dfloat dSdz = drdz * dSdr + dsdz * dSds + dtdz * dSdt;
+          const dfloat Uhat = Urst[id + 0 * voffset];
+          const dfloat Vhat = Urst[id + 1 * voffset];
+          const dfloat What = Urst[id + 2 * voffset];
 
-          const dfloat u = U[id + 0 * voffset];
-          const dfloat v = U[id + 1 * voffset];
-          const dfloat w = U[id + 2 * voffset];
           const dfloat rhoM = RHO[id + soffset];
 
-          NS[id] =  rhoM * (u * dSdx + v * dSdy + w * dSdz);
+          NS[id] =  rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
         }
       }
     }
@@ -108,14 +93,14 @@
 
 @kernel void strongAdvectionCubatureVolumeHex3D(const dlong Nelements,
                                                    @restrict const dfloat*  vgeo,
-                                                   @restrict const dfloat*  cubvgeo,
                                                    @restrict const dfloat*  cubD,
                                                    @restrict const dfloat*  cubInterpT,
                                                    @restrict const dfloat*  cubProjectT,
                                                    const dlong voffset,
                                                    const dlong soffset,
-                                                   @restrict const dfloat*  U,
+                                                   const dlong cubatureOffset,
                                                    @restrict const dfloat*  S,
+                                                   @restrict const dfloat*  Urst,
                                                    @restrict const dfloat*  RHO,
                                                    @restrict dfloat*  NS)
 {
@@ -125,19 +110,10 @@
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
     @shared dfloat s_cubProjectT[p_cubNq][p_Nq];
 
-    @shared dfloat s_U[p_cubNq][p_cubNq];
-    @shared dfloat s_V[p_cubNq][p_cubNq];
-    @shared dfloat s_W[p_cubNq][p_cubNq];
-
-    @shared dfloat s_U1[p_cubNq][p_cubNq];
-    @shared dfloat s_V1[p_cubNq][p_cubNq];
-    @shared dfloat s_W1[p_cubNq][p_cubNq];
-
     @shared dfloat s_S[p_cubNq][p_cubNq];
 
     @shared dfloat s_S1[p_cubNq][p_cubNq];
 
-    @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
     @exclusive dfloat r_S[p_cubNq], r_Sd[p_cubNq];
 
     for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
@@ -152,9 +128,6 @@
 
 #pragma unroll p_cubNq
         for(int k = 0; k < p_cubNq; ++k) {
-          r_U[k]  = 0.f;
-          r_V[k]  = 0.f;
-          r_W[k]  = 0.f;
           r_S[k] = 0.f;
           r_Sd[k] = 0.f;
         }
@@ -170,9 +143,6 @@
             // this can be improved
             const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
             // U.grad U
-            s_U[b][a] = U[id + 0 * voffset];
-            s_V[b][a] = U[id + 1 * voffset];
-            s_W[b][a] = U[id + 2 * voffset];
             s_S[b][a] = S[id + soffset];
           }
 
@@ -185,15 +155,9 @@
             dfloat U1  = 0, V1 = 0,  W1 = 0, S1 = 0;
             for(int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
-              U1  += Iia * s_U[b][a];
-              V1  += Iia * s_V[b][a];
-              W1  += Iia * s_W[b][a];
               S1  += Iia * s_S[b][a];
             }
 
-            s_U1[b][i] = U1;
-            s_V1[b][i] = V1;
-            s_W1[b][i] = W1;
             s_S1[b][i] = S1;
           }
 
@@ -206,9 +170,6 @@
           // interpolate in b
           for(int b = 0; b < p_Nq; ++b) {
             dfloat Ijb = s_cubInterpT[b][j];
-            U2 += Ijb * s_U1[b][i];
-            V2 += Ijb * s_V1[b][i];
-            W2 += Ijb * s_W1[b][i];
             S2 += Ijb * s_S1[b][i];
           }
 
@@ -216,9 +177,6 @@
 #pragma unroll p_cubNq
           for(int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
-            r_U[k] += Ikc * U2;
-            r_V[k] += Ikc * V2;
-            r_W[k] += Ikc * W2;
             r_S[k] += Ikc * S2;
           }
 
@@ -254,25 +212,10 @@
             Sdt += Dkn * r_Sd[n];
           }
 
-          const dlong gid = e * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          const dfloat drdx = cubvgeo[gid + p_RXID * p_cubNp];
-          const dfloat drdy = cubvgeo[gid + p_RYID * p_cubNp];
-          const dfloat drdz = cubvgeo[gid + p_RZID * p_cubNp];
-          const dfloat dsdx = cubvgeo[gid + p_SXID * p_cubNp];
-          const dfloat dsdy = cubvgeo[gid + p_SYID * p_cubNp];
-          const dfloat dsdz = cubvgeo[gid + p_SZID * p_cubNp];
-          const dfloat dtdx = cubvgeo[gid + p_TXID * p_cubNp];
-          const dfloat dtdy = cubvgeo[gid + p_TYID * p_cubNp];
-          const dfloat dtdz = cubvgeo[gid + p_TZID * p_cubNp];
-          const dfloat JW   = cubvgeo[gid + p_JWID * p_cubNp];
-
-          const dfloat Un = r_U[k];
-          const dfloat Vn = r_V[k];
-          const dfloat Wn = r_W[k];
-
-          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
-          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
-          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+          const dlong id = e * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          const dfloat Uhat = Urst[id + 0 * cubatureOffset];
+          const dfloat Vhat = Urst[id + 1 * cubatureOffset];
+          const dfloat What = Urst[id + 2 * cubatureOffset];
 
           // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
           r_S[k] = Uhat * Sdr + Vhat * Sds + What * Sdt;
