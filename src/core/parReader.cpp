@@ -164,7 +164,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   int N;
   if(par->extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
-    if(N>9) exit("polynomialOrder > 11 is currently not supported!", EXIT_FAILURE);
+    if(N>10) exit("polynomialOrder > 10 is currently not supported!", EXIT_FAILURE);
   } else {
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
   }
