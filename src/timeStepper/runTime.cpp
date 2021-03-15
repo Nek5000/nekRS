@@ -595,7 +595,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
         nrs->nStagesSum3Kernel(
           mesh->Nlocal,
           nrs->fieldOffset,
-          mesh->nAB,
+          nEXT,
           extC[0],
           extC[1],
           extC[2],
@@ -967,7 +967,7 @@ occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, i
         cds->nStagesSum3Kernel(
           mesh->Nlocal,
           cds->vFieldOffset,
-          mesh->nAB,
+          nEXT,
           extC[0],
           extC[1],
           extC[2],
