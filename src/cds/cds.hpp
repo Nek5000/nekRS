@@ -18,6 +18,8 @@ struct cds_t
 
   mesh_t* meshT[NSCALAR_MAX];
   dlong fieldOffset[NSCALAR_MAX];
+  dlong fieldOffsetScan[NSCALAR_MAX];
+  dlong fieldOffsetSum;
   mesh_t* meshV;
   elliptic_t* solver[NSCALAR_MAX];
 

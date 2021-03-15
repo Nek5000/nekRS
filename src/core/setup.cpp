@@ -911,6 +911,14 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
 
   cds->vFieldOffset = nrs->fieldOffset;
   cds->fieldOffset[0]  = nrs->fieldOffset;
+  cds->fieldOffsetScan[0] = 0;
+  dlong sum = cds->fieldOffset[0];
+  for(int s = 1; s < cds->NSfields; ++s){
+    cds->fieldOffset[s] = cds->fieldOffset[0];
+    cds->fieldOffsetScan[s] = cds->fieldOffset[s-1] + cds->fieldOffsetScan[s-1];
+    sum += cds->fieldOffset[s];
+  }
+  cds->fieldOffsetSum = sum;
 
   cds->gsh = nrs->gsh;
   
@@ -926,10 +934,10 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset[0],sizeof(dfloat));
-  cds->BF    = (dfloat*) calloc(cds->NSfields * cds->fieldOffset[0],sizeof(dfloat));
+    (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
+  cds->BF    = (dfloat*) calloc(cds->fieldOffsetSum,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->NSfields * cds->nBDF * cds->fieldOffset[0],sizeof(dfloat));
+    (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
@@ -944,7 +952,7 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   cds->dt  = nrs->dt;
   cds->sdt = nrs->sdt;
 
-  cds->prop = (dfloat*) calloc(cds->NSfields * 2 * cds->fieldOffset[0],sizeof(dfloat));
+  cds->prop = (dfloat*) calloc(2 * cds->fieldOffsetSum,sizeof(dfloat));
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -957,17 +965,17 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
     options.getArgs("SCALAR" + sid + " DIFFUSIVITY", diff);
     options.getArgs("SCALAR" + sid + " DENSITY", rho);
 
-    const dlong off = cds->NSfields * cds->fieldOffset[0];
+    const dlong off = cds->fieldOffsetSum;
     for (int e = 0; e < mesh->Nelements; e++)
       for (int n = 0; n < mesh->Np; n++) {
-        cds->prop[0 * off + is * cds->fieldOffset[0] + e * mesh->Np + n] = diff;
-        cds->prop[1 * off + is * cds->fieldOffset[0] + e * mesh->Np + n] = rho;
+        cds->prop[0 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = diff;
+        cds->prop[1 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = rho;
       }
   }
   cds->o_prop =
-    device.malloc(cds->NSfields * 2 * cds->fieldOffset[0] * sizeof(dfloat), cds->prop);
-  cds->o_diff = cds->o_prop.slice(0 * cds->NSfields * cds->fieldOffset[0] * sizeof(dfloat));
-  cds->o_rho  = cds->o_prop.slice(1 * cds->NSfields * cds->fieldOffset[0] * sizeof(dfloat));
+    device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat), cds->prop);
+  cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
+  cds->o_rho  = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
   cds->var_coeff = 1; // use always var coeff elliptic
   cds->ellipticCoeff   = nrs->ellipticCoeff;
@@ -976,12 +984,12 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset[0] * sizeof(dfloat), cds->S);
+    platform->device.malloc(cds->nBDF * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
   cds->o_Se =
-    platform->device.malloc(cds->NSfields * cds->nBDF * cds->fieldOffset[0] ,  sizeof(dfloat));
-  cds->o_BF = platform->device.malloc(cds->NSfields * cds->fieldOffset[0] * sizeof(dfloat), cds->BF);
+    platform->device.malloc(cds->nBDF * cds->fieldOffsetSum ,  sizeof(dfloat));
+  cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
   cds->o_FS =
-    platform->device.malloc(cds->NSfields * cds->nEXT * cds->fieldOffset[0] * sizeof(dfloat),
+    platform->device.malloc(cds->nEXT * cds->fieldOffsetSum * sizeof(dfloat),
                         cds->FS);
 
   cds->o_relUrst = nrs->o_relUrst;

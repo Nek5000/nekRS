@@ -92,7 +92,7 @@ void RANSktau::updateProperties()
   cds_t* cds = nrs->cds;
 
   occa::memory o_mue  = nrs->o_mue;
-  occa::memory o_diff = cds->o_diff + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
+  occa::memory o_diff = cds->o_diff + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
 
   limitKernel(mesh->Nelements * mesh->Np, o_k, o_tau);
   mueKernel(mesh->Nelements * mesh->Np,
@@ -121,8 +121,8 @@ void RANSktau::updateSourceTerms()
   occa::memory o_SijMag2 = platform->o_mempool.slice1;
   occa::memory o_SijOij  = platform->o_mempool.slice2;
 
-  occa::memory o_FS      = cds->o_FS     + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
-  occa::memory o_BFDiag  = cds->o_BFDiag + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
+  occa::memory o_FS      = cds->o_FS     + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
+  occa::memory o_BFDiag  = cds->o_BFDiag + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
 
   const int NSOfields = 9;
   SijOijKernel(mesh->Nelements,
@@ -157,7 +157,7 @@ void RANSktau::updateSourceTerms()
   limitKernel(mesh->Nelements * mesh->Np, o_k, o_tau);
 
   computeKernel(mesh->Nelements,
-                nrs->cds->fieldOffset[0],
+                nrs->cds->fieldOffset[kFieldIndex],
                 rho,
                 mueLam,
                 mesh->o_vgeo,
@@ -192,14 +192,14 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 
   if(coeffIn) memcpy(coeff, coeffIn, sizeof(coeff));
 
-  o_k   = cds->o_S + kFieldIndex * cds->fieldOffset[0] * sizeof(dfloat);
-  o_tau = cds->o_S + (kFieldIndex + 1) * cds->fieldOffset[0] * sizeof(dfloat);
+  o_k   = cds->o_S + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
+  o_tau = cds->o_S + cds->fieldOffsetScan[kFieldIndex+1] * sizeof(dfloat);
 
-  o_mut = platform->device.malloc(cds->fieldOffset[0] ,  sizeof(dfloat));
+  o_mut = platform->device.malloc(cds->fieldOffset[kFieldIndex] ,  sizeof(dfloat));
 
   if(!cds->o_BFDiag.ptr()) {
-    cds->o_BFDiag = platform->device.malloc(cds->NSfields * cds->fieldOffset[0] ,  sizeof(dfloat));
-    platform->linAlg->fill(cds->NSfields * cds->fieldOffset[0], 0.0, cds->o_BFDiag);
+    cds->o_BFDiag = platform->device.malloc(cds->fieldOffsetSum,  sizeof(dfloat));
+    platform->linAlg->fill(cds->fieldOffsetSum, 0.0, cds->o_BFDiag);
   }
 
   setupCalled = 1;
