@@ -20,6 +20,10 @@
 * nek_copyFrom() was renamed to nek::copyToNek()
 * nek_copyTo() was renamed to nek::copyFromNek()
 * cds->fieldOffset was replaced by cds->fieldOffset[i] 
+* nrs->meshT is replaced by cds->mesh[0]
+* cds->mesh was replaced by cds->mesh[i] 
+* mesh->rank was replaced by platform->comm.mpiRank
+* mesh->comm was replaced by platform->comm.mpiComm
 
 ## Known Bugs 
 

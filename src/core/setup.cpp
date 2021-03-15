@@ -8,7 +8,7 @@
 #include <map>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoH);
+cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoBC);
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
@@ -249,12 +249,23 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
   kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
 
+  occa::properties kernelInfoBC = *(nrs->kernelInfo);
+
   // jit compile udf kernels
   if (udf.loadKernels) {
+    occa::properties* tmpKernelInfo = nrs->kernelInfo;
+    nrs->kernelInfo = &kernelInfoBC;
     if (platform->comm.mpiRank == 0) cout << "loading udf kernels ... ";
     udf.loadKernels(nrs);
     if (platform->comm.mpiRank == 0) cout << "done" << endl;
+    nrs->kernelInfo = tmpKernelInfo;
   }
+  const string bcDataFile = install_dir + "/include/core/bcData.h";
+  kernelInfoBC["includes"] += bcDataFile.c_str();
+  string boundaryHeaderFileName;
+  nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
+  kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
+
 
   meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -340,13 +351,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
 
   {
-      occa::properties kernelInfoBC = kernelInfo;
-      const string bcDataFile = install_dir + "/include/core/bcData.h";
-      kernelInfoBC["includes"] += bcDataFile.c_str();
-      string boundaryHeaderFileName;
-      nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
-      kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
       fileName = oklpath + "core/nStagesSum.okl";
       kernelName = "nStagesSum3";
       nrs->nStagesSum3Kernel =
@@ -409,7 +413,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       fileName = oklpath + "nrs/advectMeshVelocityHex3D.okl";
       kernelName = "advectMeshVelocityHex3D";
       nrs->advectMeshVelocityKernel =
-        platform->device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
       // nrsSurfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
       if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
@@ -542,7 +546,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    nrs->cds = cdsSetup(nrs, meshT, nrs->options, kernelInfoS);
+    nrs->cds = cdsSetup(nrs, meshT, nrs->options, kernelInfoBC);
   }
 
   if(!buildOnly) {
@@ -873,7 +877,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 }
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoH)
+cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& kernelInfoBC)
 {
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
@@ -1052,7 +1056,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
 
   // build kernels
   occa::properties kernelInfo = *nrs->kernelInfo;
-  occa::properties kernelInfoBC = kernelInfo;
   //kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
 
   string fileName, kernelName;
@@ -1064,12 +1067,6 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   if(platform->comm.mpiRank == 0)  printf("loading cds kernels ... "); fflush(stdout);
 
    {
-      const string bcDataFile = install_dir + "/include/core/bcData.h";
-      kernelInfoBC["includes"] += bcDataFile.c_str();
-      string boundaryHeaderFileName;
-      options.getArgs("DATA FILE", boundaryHeaderFileName);
-      kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
       {
         occa::properties prop = kernelInfo;
         prop["defines/" "p_cubNq"] = cds->meshT[0]->cubNq;
