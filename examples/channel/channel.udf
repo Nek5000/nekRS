@@ -21,7 +21,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     mesh_t* mesh = nrs->meshV;
     occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
     occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
-    nrs->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
     o_mue.copyFrom(o_nekMue, mesh->Nlocal*sizeof(dfloat));
 }
 

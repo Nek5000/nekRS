@@ -106,7 +106,7 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;
-  nrs->options.getArgs("DATA FILE", oudf);
+  platform->options.getArgs("DATA FILE", oudf);
 
   return platform->device.buildKernel(oudf.c_str(), function, kernelInfo);
 }

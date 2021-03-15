@@ -46,16 +46,16 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
 {
   the_nrs = nrs;
   gamma0 = gamma;
-  the_linAlg = nrs->linAlg;
+  the_linAlg = platform->linAlg;
   mesh_t* mesh = nrs->meshV;
   int err = 1;
-  if(nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
+  if(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
     if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   buildKernels(nrs);
-  nrs->options.setArgs("LOWMACH", "TRUE"); 
+  platform->options.setArgs("LOWMACH", "TRUE"); 
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
@@ -65,7 +65,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
   nrs_t* nrs = the_nrs;
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->meshV;
-  linAlg_t * linAlg = nrs->linAlg;
+  linAlg_t * linAlg = platform->linAlg;
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -163,5 +163,5 @@ void lowMach::dpdt(occa::memory o_FU)
   nrs_t* nrs = the_nrs;
   mesh_t* mesh = nrs->meshV;
   if(!qThermal)
-    nrs->linAlg->add(mesh->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
+    platform->linAlg->add(mesh->Nlocal, nrs->dp0thdt * (gamma0 - 1.0) / gamma0, o_FU);
 }

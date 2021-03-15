@@ -96,7 +96,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->o_div,
     platform->o_mempool.slice0);
 
-  if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
+  if(platform->options.compareArgs("STRESSFORMULATION", "TRUE"))
     nrs->pressureStressKernel(
          mesh->Nelements,
          mesh->o_vgeo,
@@ -166,7 +166,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
   mesh_t* mesh = nrs->meshV;
   
   dfloat scale = -1./3;
-  if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
+  if(platform->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
   nrs->mueDivKernel(
        mesh->Nelements*mesh->Np,
@@ -221,7 +221,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
     nrs->o_rho,
     platform->o_mempool.slice3);
 
-  if(nrs->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) { 
+  if(platform->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) { 
     platform->o_mempool.slice0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     if (nrs->uvwSolver) {
       if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,

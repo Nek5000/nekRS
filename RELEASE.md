@@ -17,6 +17,8 @@
 * boundary device functions and bc struct members in oudf were renamed
 * manually copying nek's IC in UDF_Setup() is no longer required 
 * nrs->Nlocal was replaced by mesh->Nlocal
+* nrs->options was replaced by platform->options
+* nrs->linAlg was replaced by platform->linAlg
 * nek_copyFrom() was renamed to nek::copyToNek()
 * nek_copyTo() was renamed to nek::copyFromNek()
 * cds->fieldOffset was replaced by cds->fieldOffset[i] 

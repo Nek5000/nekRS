@@ -40,7 +40,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
   computeCoefficients(nrs, tstep);
 
-  const bool movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
   if(nrs->flow) 
     nrs->extrapolateKernel(mesh->Nelements,
@@ -52,7 +52,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            nrs->o_Ue);
 
   if(nrs->Nscalar) 
-    nrs->extrapolateKernel(cds->meshT[0]->Nelements,
+    nrs->extrapolateKernel(cds->mesh[0]->Nelements,
                            cds->NSfields,
                            cds->nEXT,
                            cds->fieldOffset[0],
@@ -61,14 +61,14 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            cds->o_Se);
 
   dlong cubatureOffset;
-  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+  if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
   else
     cubatureOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     mesh_t* mesh = nrs->meshV;
-    if(nrs->cht) mesh = nrs->cds->meshT[0];
+    if(nrs->cht) mesh = nrs->cds->mesh[0];
     const dlong NbyteCubature = nrs->NVfields * cubatureOffset * sizeof(dfloat);
     for (int s = nrs->nEXT; s > 1; s--) {
       const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
@@ -91,7 +91,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   const bool relative = movingMesh && nrs->Nsubsteps;
   occa::memory& o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
-  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+  if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     nrs->UrstCubatureKernel(
       mesh->Nelements,
       mesh->o_cubvgeo,
@@ -131,7 +131,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   if(movingMesh) {
     mesh_t *mesh = nrs->meshV;
-    if(nrs->cht) mesh = nrs->cds->meshT[0];
+    if(nrs->cht) mesh = nrs->cds->mesh[0];
     for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
       const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
       mesh->o_LMM.copyFrom(mesh->o_LMM , NbyteScalar, (s - 1)*NbyteScalar, (s - 2)*NbyteScalar);
@@ -178,7 +178,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     }
 
     if(udf.div){
-      linAlg_t* linAlg = nrs->linAlg;
+      linAlg_t* linAlg = platform->linAlg;
       linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
       udf.div(nrs, timeNew, nrs->o_div);
     }
@@ -224,9 +224,9 @@ void computeCoefficients(nrs_t* nrs, int tstep)
   for(int i = nrs->nEXT; i > extOrder; i--) nrs->coeffEXT[i-1] = 0.0;
   for(int i = nrs->nBDF; i > bdfOrder; i--) nrs->coeffBDF[i-1] = 0.0;
 
-  if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")) {
     mesh_t* mesh = nrs->meshV;
-    if(nrs->cht) mesh = nrs->cds->meshT[0];
+    if(nrs->cht) mesh = nrs->cds->mesh[0];
     const int meshOrder = mymin(tstep, mesh->nAB);
     nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
     for(int i = 0 ; i < meshOrder; ++i) mesh->coeffAB[i] *= nrs->dt[0];
@@ -246,7 +246,7 @@ void computeCoefficients(nrs_t* nrs, int tstep)
 void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t* cds   = nrs->cds;
-  mesh_t* mesh = cds->meshT[0];
+  mesh_t* mesh = cds->mesh[0];
   
 
   if(udf.sEqnSource) {
@@ -261,7 +261,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT[0];
+    (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
     const dlong isOffset = cds->fieldOffsetScan[is];
 
     if(cds->options[is].compareArgs("FILTER STABILIZATION", "RELAXATION"))
@@ -365,7 +365,7 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
     if(!cds->compute[is]) continue;
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT[0];
+    (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
 
     cds->setEllipticCoeffKernel(
       mesh->Nlocal,
@@ -404,7 +404,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     platform->timer.toc("udfUEqnSource");
   }
 
-  if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(platform->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     nrs->filterRTKernel(
       mesh->Nelements,
       nrs->o_filterMT,
@@ -412,7 +412,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       nrs->fieldOffset,
       nrs->o_U,
       o_FU);
-  const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+  const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
   if(movingMesh && !nrs->Nsubsteps){
     nrs->advectMeshVelocityKernel(
       mesh->Nelements,
@@ -428,14 +428,14 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
   const dlong cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
 
   occa::memory o_Usubcycling = platform->o_mempool.slice0;
-  if(nrs->options.compareArgs("ADVECTION", "TRUE")) {
+  if(platform->options.compareArgs("ADVECTION", "TRUE")) {
     if(nrs->Nsubsteps) {
       if(movingMesh)     
         o_Usubcycling = velocityStrongSubCycleMovingMesh(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
       else 
         o_Usubcycling = velocityStrongSubCycle(nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
     } else {
-      if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->advectionStrongCubatureVolumeKernel(
           mesh->Nelements,
           mesh->o_vgeo,
@@ -489,7 +489,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
 void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
 {
   mesh_t* mesh = nrs->meshV;
-  linAlg_t* linAlg = nrs->linAlg;
+  linAlg_t* linAlg = platform->linAlg;
 
   platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(
@@ -613,7 +613,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
         );
 
         if(mesh->NglobalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
@@ -651,7 +651,7 @@ occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time,
         oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
@@ -723,7 +723,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
   linAlg_t* linAlg = platform->linAlg;
 
   dlong cubatureOffset;
-  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+  if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
   else
     cubatureOffset = nrs->fieldOffset;
@@ -783,7 +783,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
         }
 
         if(mesh->NglobalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NglobalGatherElements,
               mesh->o_globalGatherElementList,
@@ -827,7 +827,7 @@ occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::mem
         oogs::start(o_rhs, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);                     
 
         if(mesh->NlocalGatherElements) {
-          if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+          if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
             nrs->subCycleStrongCubatureVolumeKernel(
               mesh->NlocalGatherElements,
               mesh->o_localGatherElementList,
@@ -1243,7 +1243,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
   const int enforceVerbose = tstep < 101;
   const dfloat cfl = computeCFL(nrs);
   if(platform->comm.mpiRank == 0) {
-    if(nrs->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose) {
+    if(platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose) {
       if(nrs->flow) {
         elliptic_t *solver = nrs->pSolver;
         printf("  P  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", 

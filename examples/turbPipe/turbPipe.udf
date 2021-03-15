@@ -41,7 +41,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   if (nrs->isOutputStep) {
     occa::memory o_UZ = nrs->o_U + 2*nrs->fieldOffset * sizeof(dfloat);
-    const dfloat ubar = nrs->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_LMM, platform->comm.mpiComm)/mesh->volume;
+    const dfloat ubar = platform->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_LMM, platform->comm.mpiComm)/mesh->volume;
     if (platform->comm.mpiRank == 0) printf(" uBulk: %g\n", ubar);
 
     avg::outfld();

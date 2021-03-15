@@ -28,7 +28,7 @@ namespace nekrs
 double startTime(void)
 {
   double val = 0;
-  nrs->options.getArgs("START TIME", val);
+  platform->options.getArgs("START TIME", val);
   return val;
 }
 
@@ -89,7 +89,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform->timer.tic("setup", 1);
 
   platform->linAlg = linAlg_t::getInstance();
-  nrs->linAlg = platform->linAlg;
 
   // jit compile udf
   string udfFile;
@@ -186,13 +185,13 @@ double dt(void)
 double writeInterval(void)
 {
   double val = -1;
-  nrs->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
+  platform->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
   return val;
 }
 
 int writeControlRunTime(void)
 {
-  return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+  return platform->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
 int outputStep(double time, int tStep)
@@ -220,22 +219,22 @@ void outfld(double time)
 double endTime(void)
 {
   double endTime = -1;
-  nrs->options.getArgs("END TIME", endTime);
+  platform->options.getArgs("END TIME", endTime);
   return endTime;
 }
 
 int numSteps(void)
 {
   int numSteps = -1;
-  nrs->options.getArgs("NUMBER TIMESTEPS", numSteps);
+  platform->options.getArgs("NUMBER TIMESTEPS", numSteps);
   return numSteps;
 }
 
 int lastStep(double time, int tstep, double elapsedTime)
 {
-  if(!nrs->options.getArgs("STOP AT ELAPSED TIME").empty()) {
+  if(!platform->options.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
-    nrs->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
+    platform->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
     if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
   } else if (endTime() > 0) { 
      const double eps = 1e-12;
@@ -277,7 +276,6 @@ static void dryRun(setupAide &options, int npTarget)
   options.setArgs("BUILD ONLY", "TRUE");
 
   platform->linAlg = linAlg_t::getInstance();
-  nrs->linAlg = platform->linAlg;
 
   // jit compile udf
   string udfFile;

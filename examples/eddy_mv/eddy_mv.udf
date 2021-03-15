@@ -43,7 +43,7 @@ void UDF_Setup(nrs_t *nrs)
   mesh_t* mesh = nrs->meshV;
 
   o_Uexact = platform->device.malloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")) {
     o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
     o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
   }
@@ -53,7 +53,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->meshV;
 
-  if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
+  if(platform->options.compareArgs("MOVING MESH", "TRUE"))
     userMeshVelocityKernel(
       mesh->Nlocal,
       nrs->fieldOffset,

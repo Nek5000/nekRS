@@ -23,7 +23,6 @@ struct nrs_t
   int dim, elementType;
 
   mesh_t* meshV;
-  linAlg_t* linAlg;
 
   elliptic_t* uSolver;
   elliptic_t* vSolver;
@@ -41,7 +40,6 @@ struct nrs_t
 
   int Nscalar;
   dlong fieldOffset;
-  setupAide options;
   setupAide vOptions, pOptions;
 
   inipp::Ini<char> *par;

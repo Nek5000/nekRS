@@ -43,13 +43,13 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   dfloat expectedErr[Nfields];
   if(ciMode == 1)
   {
-    expectedErr[0] = 1.585353E-03;
-    expectedErr[1] = 1.806126E-03;
+    expectedErr[0] = 1.359218E-03;
+    expectedErr[1] = 1.628632E-03;
   }
   if(ciMode == 2)
   {
-    expectedErr[0] = 1.422491E-03;
-    expectedErr[1] = 1.734187E-03;
+    expectedErr[0] = 1.430041E-03;
+    expectedErr[1] = 1.736873E-03;
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored

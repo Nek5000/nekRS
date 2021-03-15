@@ -149,7 +149,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   int NiterU;
 
-  if(nrs->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+  if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
     NiterU = nrs->uvwSolver->Niter;
   else
     NiterU = nrs->uSolver->Niter;

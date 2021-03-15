@@ -15,7 +15,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  nrs->options = options;
   nrs->kernelInfo = new occa::properties();
   *(nrs->kernelInfo) = platform->kernelInfo;
   occa::properties& kernelInfo = *nrs->kernelInfo;
@@ -28,21 +27,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   int N, cubN;
   int buildOnly = 0;
   string install_dir;
-  if(nrs->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-  nrs->options.getArgs("POLYNOMIAL DEGREE", N);
-  nrs->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
-  nrs->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+  platform->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
+  platform->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  nrs->options.getArgs("MESH DIMENSION", nrs->dim);
-  nrs->options.getArgs("ELEMENT TYPE", nrs->elementType);
+  platform->options.getArgs("MESH DIMENSION", nrs->dim);
+  platform->options.getArgs("ELEMENT TYPE", nrs->elementType);
 
   nrs->flow = 1;
-  if(nrs->options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;
-  if(nrs->options.compareArgs("VELOCITY SOLVER", "NONE")) nrs->flow = 0;
+  if(platform->options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;
+  if(platform->options.compareArgs("VELOCITY SOLVER", "NONE")) nrs->flow = 0;
 
   if(nrs->flow) {
-    if(nrs->options.compareArgs("STRESSFORMULATION", "TRUE"))
-       nrs->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    if(platform->options.compareArgs("STRESSFORMULATION", "TRUE"))
+       platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
 
@@ -52,17 +51,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     string casename;
-    nrs->options.getArgs("CASENAME", casename);
+    platform->options.getArgs("CASENAME", casename);
 
     int err = 0;
     int npTarget = size;
-    if (buildOnly) nrs->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget, nrs->options);
+    if (buildOnly) platform->options.getArgs("NP TARGET", npTarget);
+    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget, platform->options);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if (err) ABORT(EXIT_FAILURE);; 
 
     if (!buildOnly) {
-      nek::setup(comm, nrs->options, nrs);
+      nek::setup(comm, platform->options, nrs);
       nek::setic();
       nek::userchk();
     }
@@ -75,20 +74,20 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   // create mesh
   if (buildOnly) {
-    createMeshDummy(meshT, comm, N, cubN, nrs->options,  kernelInfo);
+    createMeshDummy(meshT, comm, N, cubN, platform->options,  kernelInfo);
     nrs->meshV = meshT;
   } else {
-    createMesh(meshT, comm, N, cubN, nrs->cht, nrs->options,  kernelInfo);
+    createMesh(meshT, comm, N, cubN, nrs->cht, platform->options,  kernelInfo);
     nrs->meshV = meshT;
     if (nrs->cht) {
       mesh_t* meshV = new mesh_t();
-      createMeshV(meshV, comm, N, cubN, meshT, nrs->options, kernelInfo);
+      createMeshV(meshV, comm, N, cubN, meshT, platform->options, kernelInfo);
       nrs->meshV= meshV;
     }
   }
   mesh_t* mesh = nrs->meshV;
 
-  if (nrs->cht && !nrs->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
+  if (nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
@@ -107,14 +106,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
   mesh->Nfields = 1;
 
-  nrs->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
-  nrs->options.getArgs("DT", nrs->dt[0]);
+  platform->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
+  platform->options.getArgs("DT", nrs->dt[0]);
 
-  if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
+  if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
     nrs->nBDF = 1;
-  } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
+  } else if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
     nrs->nBDF = 2;
-  } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
+  } else if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
     nrs->nBDF = 3;
   }
   nrs->nEXT = 3;
@@ -127,8 +126,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   dfloat mue = 1;
   dfloat rho = 1;
-  nrs->options.getArgs("VISCOSITY", mue);
-  nrs->options.getArgs("DENSITY", rho);
+  platform->options.getArgs("VISCOSITY", mue);
+  platform->options.getArgs("DENSITY", rho);
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -152,7 +151,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(nrs->Nsubsteps) {
     int Sorder;
-    nrs->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
+    platform->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
     if(Sorder == 4 && nrs->nRK == 4) { // ERK(4,4)
       dfloat rka[4] = {0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0};
       dfloat rkb[4] = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
@@ -199,13 +198,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   {
     dlong offset;
-    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+    if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
       offset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
     else
       offset = nrs->fieldOffset;
  
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
-    if(nrs->Nsubsteps && nrs->options.compareArgs("MOVING MESH", "TRUE"))
+    if(nrs->Nsubsteps && platform->options.compareArgs("MOVING MESH", "TRUE"))
       nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
     else
       nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
@@ -263,7 +262,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const string bcDataFile = install_dir + "/include/core/bcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
   string boundaryHeaderFileName;
-  nrs->options.getArgs("DATA FILE", boundaryHeaderFileName);
+  platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
 
@@ -272,7 +271,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
 
-  linAlg_t * linAlg = nrs->linAlg;
+  linAlg_t * linAlg = platform->linAlg;
 
   if(!buildOnly) {
     int err = 0;
@@ -338,7 +337,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
   nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
 
-  if(nrs->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(platform->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
     filterSetup(nrs);
 
   // build kernels
@@ -384,7 +383,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       {
         occa::properties prop = kernelInfo;
-        const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+        const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
         prop["defines/" "p_nEXT"] =  nrs->nEXT;
         prop["defines/" "p_nBDF"] =  nrs->nBDF;
         prop["defines/" "p_MovingMesh"] = movingMesh;
@@ -457,7 +456,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
       occa::properties prop = kernelInfo;
-      const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+      const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
       prop["defines/" "p_relative"] = movingMesh && nrs->Nsubsteps;
       prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
       prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
@@ -473,7 +472,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       if(nrs->Nsubsteps){
         occa::properties prop = kernelInfo;
-        const int movingMesh = nrs->options.compareArgs("MOVING MESH", "TRUE");
+        const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
         prop["defines/" "p_MovingMesh"] = movingMesh;
         prop["defines/" "p_nEXT"] =  nrs->nEXT;
         prop["defines/" "p_nBDF"] =  nrs->nBDF;
@@ -546,14 +545,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    nrs->cds = cdsSetup(nrs, meshT, nrs->options, kernelInfoBC);
+    nrs->cds = cdsSetup(nrs, meshT, platform->options, kernelInfoBC);
   }
 
   if(!buildOnly) {
     // get IC + t0 from nek
     double startTime;
     nek::copyFromNek(startTime);
-    nrs->options.setArgs("START TIME", to_string_f(startTime));
+    platform->options.setArgs("START TIME", to_string_f(startTime));
 
     if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
     udf.setup(nrs);
@@ -576,7 +575,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if(!cds->compute[is]) continue;
  
       mesh_t* mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
+      (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
         cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
@@ -619,7 +618,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
     nrs->uvwSolver = NULL;
 
-    if(nrs->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();
 
     int* uvwBCType = (int*) calloc(3 * NBCType, sizeof(int));
@@ -882,8 +881,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& 
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->meshT[0] = meshT;
-  mesh_t* mesh = cds->meshT[0];
+  cds->mesh[0] = meshT;
+  mesh_t* mesh = cds->mesh[0];
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -1007,7 +1006,7 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& 
     }
 
     mesh_t* mesh;
-    (is) ? mesh = cds->meshV : mesh = cds->meshT[0]; // only first scalar can be a CHT mesh
+    (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 
@@ -1069,8 +1068,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& 
    {
       {
         occa::properties prop = kernelInfo;
-        prop["defines/" "p_cubNq"] = cds->meshT[0]->cubNq;
-        prop["defines/" "p_cubNp"] = cds->meshT[0]->cubNp;
+        prop["defines/" "p_cubNq"] = cds->mesh[0]->cubNq;
+        prop["defines/" "p_cubNp"] = cds->mesh[0]->cubNp;
         fileName = oklpath + "cds/advection" + suffix + ".okl";
 
 	kernelName = "strongAdvectionVolume" + suffix;
@@ -1136,8 +1135,8 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& 
         prop["defines/" "p_MovingMesh"] = movingMesh;
         prop["defines/" "p_nEXT"] =  cds->nEXT;
         prop["defines/" "p_nBDF"] =  cds->nBDF;
-        prop["defines/" "p_cubNq"] =  cds->meshT[0]->cubNq;
-        prop["defines/" "p_cubNp"] =  cds->meshT[0]->cubNp;
+        prop["defines/" "p_cubNq"] =  cds->mesh[0]->cubNq;
+        prop["defines/" "p_cubNp"] =  cds->mesh[0]->cubNp;
  
 
         fileName = oklpath + "cds/subCycle" + suffix + ".okl";

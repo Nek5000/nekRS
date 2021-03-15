@@ -9,7 +9,7 @@ static occa::kernel fillFUKernel;
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t* mesh = nrs->meshV;
-  nrs->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
+  platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
   fillFUKernel(Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 

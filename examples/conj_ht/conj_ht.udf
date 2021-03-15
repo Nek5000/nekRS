@@ -13,7 +13,7 @@ static int updateProperties = 1;
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = nrs->cds;
-  mesh_t *mesh = cds->meshT[0];
+  mesh_t *mesh = cds->mesh[0];
   const dfloat qvolFluid = 0.0;
   const dfloat qvolSolid = 1.0;
   cFillKernel(mesh->Nelements, qvolFluid, qvolSolid, mesh->o_elementInfo, o_FS);
@@ -41,8 +41,8 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     // temperature 
     const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset[0]*sizeof(dfloat));
     const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset[0]*sizeof(dfloat));
-    cFillKernel(cds->meshT[0]->Nelements, conFluid, conSolid, nrs->meshV->o_elementInfo, o_con);
-    cFillKernel(cds->meshT[0]->Nelements, rhoCpFluid, rhoCpSolid, nrs->meshV->o_elementInfo, o_rhoCp);
+    cFillKernel(cds->mesh[0]->Nelements, conFluid, conSolid, nrs->meshV->o_elementInfo, o_con);
+    cFillKernel(cds->mesh[0]->Nelements, rhoCpFluid, rhoCpSolid, nrs->meshV->o_elementInfo, o_rhoCp);
     updateProperties = 0;
   }
 }

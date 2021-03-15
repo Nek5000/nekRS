@@ -11,7 +11,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
     mesh = cds->meshV;
     gsh = cds->gsh;
   } else {
-    mesh = cds->meshT[0];
+    mesh = cds->mesh[0];
     gsh = cds->gshT;
   }
   elliptic_t* solver = cds->solver[is];

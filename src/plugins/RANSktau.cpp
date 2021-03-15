@@ -83,7 +83,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
     if(platform->comm.mpiRank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
     ABORT(1);
   }
-  nrs->options.setArgs("STRESSFORMULATION", "TRUE");
+  platform->options.setArgs("STRESSFORMULATION", "TRUE");
 }
 
 void RANSktau::updateProperties()

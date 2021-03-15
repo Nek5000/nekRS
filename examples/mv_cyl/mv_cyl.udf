@@ -60,7 +60,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
-  linAlg_t* linAlg = nrs->linAlg;
+  linAlg_t* linAlg = platform->linAlg;
   const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
   const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
   userMeshVelocityKernel(mesh->Nelements,

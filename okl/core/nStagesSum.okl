@@ -47,8 +47,8 @@
                       @restrict dfloat*  result)
 {
   for(dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
-    dfloat coeff = 0.0;
-    result[i]  = c0 * field[i + 0 * fieldOffset];
+    dfloat coeff = c0;
+    result[i]  = coeff * field[i + 0 * fieldOffset];
     for(int s = 1; s < Nstates; ++s){
       if(s == 1) coeff = c1;
       if(s == 2) coeff = c2;

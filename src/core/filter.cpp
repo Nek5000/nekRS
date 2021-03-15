@@ -16,8 +16,8 @@ void filterSetup(nrs_t* nrs)
 
   // First construct filter function
   nrs->filterS = 10.0; // filter Weight...
-  nrs->options.getArgs("HPFRT STRENGTH", nrs->filterS);
-  nrs->options.getArgs("HPFRT MODES", nrs->filterNc);
+  platform->options.getArgs("HPFRT STRENGTH", nrs->filterS);
+  platform->options.getArgs("HPFRT MODES", nrs->filterNc);
   nrs->filterS = -1.0 * fabs(nrs->filterS);
 
   // Construct Filter Function

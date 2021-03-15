@@ -37,7 +37,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   RANSktau::updateProperties();
 
   dfloat conductivity;
-  nrs->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
   const dfloat Pr_t = 0.7;
   occa::memory o_mue_t = RANSktau::o_mue_t();
   occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset[0]*sizeof(dfloat);
@@ -61,8 +61,8 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
 
   const int scalarFieldStart = 1;
-  nrs->options.getArgs("VISCOSITY", mueLam); 
-  nrs->options.getArgs("DENSITY", rho); 
+  platform->options.getArgs("VISCOSITY", mueLam); 
+  platform->options.getArgs("DENSITY", rho); 
   RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
 }
 

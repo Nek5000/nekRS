@@ -20,7 +20,7 @@ void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = nrs->cds;
-  mesh_t *mesh = cds->meshT[0];
+  mesh_t *mesh = cds->mesh[0];
   userQKernel(mesh->Nelements, mesh->o_x, o_FS);
 }
 

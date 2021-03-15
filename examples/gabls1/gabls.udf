@@ -28,7 +28,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 void UDF_LoadKernels(nrs_t *nrs)
 {
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  setupAide &options = nrs->options;
+  setupAide &options = platform->options;
 
   dfloat cond;
   options.getArgs("SCALAR00 DIFFUSIVITY", cond);
