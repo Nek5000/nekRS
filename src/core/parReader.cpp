@@ -164,9 +164,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   int N;
   if(par->extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
-
-    // MTP: N=12 generates a CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES
-    if(N>11) exit("polynomialOrder > 11 is currently not supported!", EXIT_FAILURE);
+    if(N>9) exit("polynomialOrder > 11 is currently not supported!", EXIT_FAILURE);
   } else {
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
   }

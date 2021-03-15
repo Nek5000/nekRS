@@ -211,13 +211,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
   }
 
-  nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
+  nrs->U  = (dfloat*) calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
   nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
 
-  nrs->o_U  = platform->device.malloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset * sizeof(dfloat), nrs->U);
+  nrs->o_U  = platform->device.malloc(nrs->NVfields * std::max(nrs->nBDF,nrs->nEXT) * nrs->fieldOffset * sizeof(dfloat), nrs->U);
   nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
   nrs->o_P  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
   nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
@@ -911,7 +911,7 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   dlong sum = cds->fieldOffset[0];
   for(int s = 1; s < cds->NSfields; ++s){
     cds->fieldOffset[s] = cds->fieldOffset[0];
-    cds->fieldOffsetScan[s] = cds->fieldOffset[s-1] + cds->fieldOffsetScan[s-1];
+    cds->fieldOffsetScan[s] = sum;
     sum += cds->fieldOffset[s];
   }
   cds->fieldOffsetSum = sum;
@@ -930,7 +930,7 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   // Solution storage at interpolation nodes
   cds->U     = nrs->U; // Point to INS side Velocity
   cds->S     =
-    (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
+    (dfloat*) calloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->fieldOffsetSum,sizeof(dfloat));
   cds->FS    =
     (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
@@ -980,9 +980,9 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    platform->device.malloc(cds->nBDF * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
+    platform->device.malloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
   cds->o_Se =
-    platform->device.malloc(cds->nBDF * cds->fieldOffsetSum ,  sizeof(dfloat));
+    platform->device.malloc(cds->fieldOffsetSum ,  sizeof(dfloat));
   cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
   cds->o_FS =
     platform->device.malloc(cds->nEXT * cds->fieldOffsetSum * sizeof(dfloat),

@@ -50,6 +50,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
                            nrs->o_coeffEXT,
                            nrs->o_U,
                            nrs->o_Ue);
+
   if(nrs->Nscalar) 
     nrs->extrapolateKernel(cds->meshT[0]->Nelements,
                            cds->NSfields,
@@ -64,8 +65,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
   else
     cubatureOffset = nrs->fieldOffset;
-  if(nrs->Nsubsteps)
-  {
+
+  if(nrs->Nsubsteps) {
     mesh_t* mesh = nrs->meshV;
     if(nrs->cht) mesh = nrs->cds->meshT[0];
     const dlong NbyteCubature = nrs->NVfields * cubatureOffset * sizeof(dfloat);
@@ -85,10 +86,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
         mesh->o_D,
         nrs->fieldOffset,
         mesh->o_U,
-        mesh->o_divU
-      );
+        mesh->o_divU);
   }
-
 
   const bool relative = movingMesh && nrs->Nsubsteps;
   occa::memory& o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
@@ -350,12 +349,9 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       o_BF);
   }
 
-  for (int s = cds->nBDF; s > 1; s--) {
+  for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
     const dlong Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
     cds->o_S.copyFrom (cds->o_S , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-  }
-  for (int s = cds->nEXT; s > 1; s--) {
-    const dlong Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
     o_FS.copyFrom(o_FS, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 }
@@ -483,12 +479,9 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     o_FU,
     o_BF);
 
-  for (int s = nrs->nBDF; s > 1; s--) {
+  for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
     nrs->o_U.copyFrom (nrs->o_U , Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
-  }
-  for (int s = nrs->nEXT; s > 1; s--) {
-    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
     o_FU.copyFrom(o_FU, Nbyte, (s - 1)*Nbyte, (s - 2)*Nbyte);
   }
 }
