@@ -34,7 +34,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("MOVING MESH", "TRUE");
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 }
@@ -44,21 +43,24 @@ void UDF_Setup(nrs_t *nrs)
   mesh_t* mesh = nrs->meshV;
 
   o_Uexact = platform->device.malloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
-  o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE")) {
+    o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
+    o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t* mesh = nrs->meshV;
 
-  userMeshVelocityKernel(
-    mesh->Nlocal,
-    nrs->fieldOffset,
-    time,
-    o_x0,
-    o_y0,
-    mesh->o_U);
+  if(nrs->options.compareArgs("MOVING MESH", "TRUE"))
+    userMeshVelocityKernel(
+      mesh->Nlocal,
+      nrs->fieldOffset,
+      time,
+      o_x0,
+      o_y0,
+      mesh->o_U);
 
   // reset velocity to eliminate start-up constributions
   // to temporal-accuracy behavior

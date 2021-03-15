@@ -864,9 +864,9 @@ void bdfCoeff(double *g0, double *coeff, double *dt, int order)
   memcpy(coeff, &nekCoeff[1], order*sizeof(double));
 }
 
-void extCoeff(double *coeff, double *dt, int order)
+void extCoeff(double *coeff, double *dt, int nAB, int nBDF)
 {
-  (*nek_setabbd_ptr)(coeff, dt, &order, &order);
+  (*nek_setabbd_ptr)(coeff, dt, &nAB, &nBDF);
 }
 void coeffAB(double *coeff, double *dt, int order)
 {

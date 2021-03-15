@@ -220,7 +220,7 @@ void computeCoefficients(nrs_t* nrs, int tstep)
   const int extOrder = mymin(tstep, nrs->nEXT);
 
   nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, bdfOrder);
-  nek::extCoeff(nrs->coeffEXT, nrs->dt, extOrder);
+  nek::extCoeff(nrs->coeffEXT, nrs->dt, extOrder, bdfOrder);
 
   for(int i = nrs->nEXT; i > extOrder; i--) nrs->coeffEXT[i-1] = 0.0;
   for(int i = nrs->nBDF; i > bdfOrder; i--) nrs->coeffBDF[i-1] = 0.0;

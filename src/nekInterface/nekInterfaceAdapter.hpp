@@ -130,7 +130,7 @@ void ocopyFromNek(dfloat &time);
 long long set_glo_num(int npts, int isTMesh);
 
 void bdfCoeff(double *g0, double *coeff, double *dt, int order);
-void extCoeff(double *coeff, double *dt, int order);
+void extCoeff(double *coeff, double *dt, int nAB, int nBDF);
 void coeffAB(double *coeff, double *dt, int order);
 void recomputeGeometry();
 }

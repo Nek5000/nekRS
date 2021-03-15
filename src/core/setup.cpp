@@ -107,16 +107,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->NTfields = nrs->NVfields + 1;   // Total Velocity + Pressure
   mesh->Nfields = 1;
 
+  nrs->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
+  nrs->options.getArgs("DT", nrs->dt[0]);
+
   if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
-    nrs->nEXT = 1;
     nrs->nBDF = 1;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
-    nrs->nEXT = 2;
     nrs->nBDF = 2;
   } else if (nrs->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
-    nrs->nEXT = 3;
     nrs->nBDF = 3;
   }
+  nrs->nEXT = 3;
+  if(nrs->Nsubsteps) nrs->nEXT = nrs->nBDF;
   nrs->coeffEXT = (dfloat*) calloc(nrs->nEXT, sizeof(dfloat));
   nrs->coeffBDF = (dfloat*) calloc(nrs->nBDF, sizeof(dfloat));
 
@@ -127,9 +129,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   dfloat rho = 1;
   nrs->options.getArgs("VISCOSITY", mue);
   nrs->options.getArgs("DENSITY", rho);
-
-  nrs->options.getArgs("SUBCYCLING STEPS",nrs->Nsubsteps);
-  nrs->options.getArgs("DT", nrs->dt[0]);
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
@@ -194,26 +193,23 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
-    if(nrs->Nsubsteps){
+    if(nrs->Nsubsteps)
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
-
-    }
-    
   }
 
-  dlong cubatureOffset;
-  if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-    cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-  else
-    cubatureOffset = nrs->fieldOffset;
-
-  const dlong Nstates = nrs->Nsubsteps ?
-    std::max(nrs->nBDF, nrs->nEXT) :
-    1;
-  if(nrs->Nsubsteps && nrs->options.compareArgs("MOVING MESH", "TRUE"))
-    nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * cubatureOffset, sizeof(dfloat));
-  else
-    nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * cubatureOffset, sizeof(dfloat));
+  {
+    dlong offset;
+    if(nrs->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      offset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+    else
+      offset = nrs->fieldOffset;
+ 
+    const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
+    if(nrs->Nsubsteps && nrs->options.compareArgs("MOVING MESH", "TRUE"))
+      nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+    else
+      nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+  }
 
   nrs->U  = (dfloat*) calloc(nrs->NVfields * nrs->nBDF * nrs->fieldOffset,sizeof(dfloat));
   nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
