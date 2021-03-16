@@ -882,6 +882,7 @@ cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& 
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
   cds->mesh[0] = meshT;
+  meshT->Nlocal = meshT->Np * meshT->Nelements;
   mesh_t* mesh = cds->mesh[0];
 
   string install_dir;

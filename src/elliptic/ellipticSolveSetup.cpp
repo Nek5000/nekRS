@@ -97,6 +97,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->type = strdup(dfloatString);
 
+#if 0
   //fill geometric factors in halo
   if(mesh->totalHaloPairs) {
     dlong Nlocal = mesh->Nelements;
@@ -126,6 +127,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     //  platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
     free(vgeoSendBuffer);
   }
+#endif
 
   // count total number of elements
   hlong NelementsLocal = mesh->Nelements;

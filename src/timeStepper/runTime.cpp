@@ -255,7 +255,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     platform->timer.toc("udfSEqnSource");
   }
   
-  const dlong cubatureOffset = std::max(cds->vFieldOffset, mesh->Nelements * mesh->cubNp);
+  const dlong cubatureOffset = std::max(cds->vFieldOffset, cds->meshV->Nelements * cds->meshV->cubNp);
 
   for(int is = 0; is < cds->NSfields; is++) {
     if(!cds->compute[is]) continue;
@@ -276,7 +276,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     const int movingMesh = cds->options[is].compareArgs("MOVING MESH", "TRUE");
     if(movingMesh && !cds->Nsubsteps){
       cds->advectMeshVelocityKernel(
-        mesh->Nelements,
+        cds->meshV->Nelements,
         mesh->o_vgeo,
         mesh->o_D,
         isOffset,
