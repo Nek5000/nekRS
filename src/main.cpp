@@ -122,7 +122,7 @@ int main(int argc, char** argv)
   if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
 
   MPI_Barrier(comm);
-  double time0 = MPI_Wtime();
+  const double time0 = MPI_Wtime();
 
   std::string cacheDir;
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
@@ -137,11 +137,12 @@ int main(int argc, char** argv)
   MPI_Barrier(comm);
   double elapsedTime = (MPI_Wtime() - time0);
 
-
   const int runTimeStatFreq = 500;
   int tStep = 0;
   double time = nekrs::startTime();
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
+
+  nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
 
   if (rank == 0 && !lastStep) {
     if (nekrs::endTime() > nekrs::startTime()) 
