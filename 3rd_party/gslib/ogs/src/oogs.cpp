@@ -245,6 +245,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     gs->mode = fastestMode;
     gs->earlyPrepostRecv = prepostRecv[gs->mode];
     o_q.free();
+    free(q);
     free(prepostRecv);
   } else {
     gs->mode = gsMode;

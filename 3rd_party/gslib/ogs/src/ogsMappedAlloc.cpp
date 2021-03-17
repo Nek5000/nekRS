@@ -39,7 +39,7 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 
   h_mem =  device.malloc(size, props);
   
-  void *ptr = h_mem.ptr(); // h_mem.ptr(props);
+  void *ptr = h_mem.ptr(props); // h_mem.ptr();
   
   
  return ptr;
