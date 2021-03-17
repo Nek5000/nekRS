@@ -38,12 +38,10 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       const dlong id = t + b*p_blockSize;
       s_wx2[t] = 0.0;
-      if (id<N) {
-        s_wx2[t] += w[id]*x[id]*x[id];
-      }
+      if (id<N) s_wx2[t] += w[id]*x[id]*x[id];
     }
-
     @barrier("local");
+
 #if p_blockSize>512
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<512) s_wx2[t] += s_wx2[t+512];
     @barrier("local");

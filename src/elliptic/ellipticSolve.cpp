@@ -46,9 +46,8 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   // compute initial residual r = rhs - Ax0
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_x, elliptic->o_Ap, dfloatString);
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
   platform->linAlg->axpbyMany(
-    Nlocal,
+    mesh->Nlocal,
     elliptic->Nfields,
     elliptic->Ntotal,
     -1.0,
@@ -85,7 +84,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->linAlg->weightedNorm2Many(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal,
+      elliptic->Ntotal /* offset */,
       elliptic->o_invDegree,
       o_r,
       platform->comm.mpiComm
@@ -105,9 +104,8 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   }
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
-    const dlong Nlocal = mesh->Np * mesh->Nelements;
     platform->linAlg->axpbyMany(
-      Nlocal,
+      mesh->Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
       -1.0,
@@ -119,7 +117,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     elliptic->residualProjection->post(o_x);
     platform->timer.toc("post");
     platform->linAlg->axpbyMany(
-      Nlocal,
+      mesh->Nlocal,
       elliptic->Nfields,
       elliptic->Ntotal,
       1.0,

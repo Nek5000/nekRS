@@ -72,10 +72,8 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
 
   /* note that we have volume geometric factors for each node */
-  mesh->vgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
-
+  mesh->vgeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
   mesh->cubvgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
-
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
 
   dfloat minJ = 1e9, maxJ = -1e9, maxSkew = 0;
@@ -102,8 +100,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
 
   mesh->volume = 0;
 
-  for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
-    /* find vertex indices and physical coordinates */
+  for(dlong e = 0; e < mesh->Nelements; ++e) {
     dlong id = e * mesh->Nverts;
 
     for(int n = 0; n < mesh->Np; ++n) {

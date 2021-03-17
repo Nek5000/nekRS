@@ -172,8 +172,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
   elliptic->mapB = (int*) calloc(mapSize,sizeof(int));
-  int largeNumber = 1 << 20;
-
+  const int largeNumber = 1 << 20;
   for(int fld = 0; fld < elliptic->Nfields; fld++)
     for (dlong e = 0; e < mesh->Nelements; e++) {
       for (int n = 0; n < mesh->Np; n++)
@@ -184,9 +183,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
           for (int n = 0; n < mesh->Nfp; n++) {
             int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = mymin(BCFlag,
-                                                                                elliptic->mapB[fid + e * mesh->Np +
-                                                                                               fld * elliptic->Ntotal]);
+            elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = 
+              mymin(BCFlag, elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal]);
           }
         }
       }
@@ -222,8 +220,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
   if(elliptic->blockSolver) {
-    elliptic->ogs = mesh->ogs; // cannot use maksed version as mixed BC's possible in each field
-    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
+    elliptic->ogs = mesh->ogs; // cannot use masked version as mixed BC's possible in each field
   } else {
     hlong* maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
     memcpy(maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
@@ -231,18 +228,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
     elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
-    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
     free(maskedGlobalIds);
   }
+  elliptic->o_invDegree = elliptic->ogs->o_invDegree;
 
   elliptic->precon = new precon_t();
 
   string suffix = "Hex3D";
-
   string filename, kernelName;
 
   kernelInfo["defines/pfloat"] = pfloatString;
-
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
 
   occa::properties pfloatKernelInfo = kernelInfo;
