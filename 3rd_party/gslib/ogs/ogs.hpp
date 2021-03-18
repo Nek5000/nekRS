@@ -189,9 +189,9 @@ void ogsScatter    (void  *sv, void  *v, const char *type, const char *op, ogs_t
 void ogsScatterVec (void  *sv, void  *v, const int k, const char *type, const char *op, ogs_t *ogs);
 void ogsScatterMany(void  *sv, void  *v, const int k, const int stride, const char *type, const char *op, ogs_t *ogs);
 
-void ogsTic(MPI_Comm comm, int ifSync);
-void ogsToc();
-double ogsTime();
+void ogsTic(occa::device& device, MPI_Comm comm, int ifSync);
+void ogsToc(occa::device& device);
+double ogsTime(bool reportHostTime);
 
 // Synchronous device buffer versions
 void ogsGatherScatter    (occa::memory  o_v, const char *type, const char *op, ogs_t *ogs); //wrapper for gslib call

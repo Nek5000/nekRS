@@ -254,7 +254,8 @@ void timer_t::printRunStat()
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
-  hEtime[1] = ogsTime();
+  const bool reportHostTime = true;
+  hEtime[1] = ogsTime(reportHostTime);
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );

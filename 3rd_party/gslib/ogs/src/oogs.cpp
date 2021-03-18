@@ -455,11 +455,11 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
 #ifdef OGS_ENABLE_TIMER
-    ogsTic(gs->comm, 1);
+    ogsTic(ogs->device, gs->comm, 1);
 #endif
     pairwiseExchange(Nbytes*k, gs);
 #ifdef OGS_ENABLE_TIMER
-    ogsToc();
+    ogsToc(ogs->device);
 #endif
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
