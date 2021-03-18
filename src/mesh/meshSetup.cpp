@@ -62,17 +62,8 @@ occa::properties populateMeshProperties(mesh_t* mesh)
   return meshProperties;
 }
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
-
-void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
-                        int N,
-                        int cubN,
-                        setupAide &options,
-                        occa::properties& kernelInfo)
+void meshDummyHex3D(int N, mesh_t* mesh)
 {
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-
   mesh->cht = 0;
   mesh->Nfields = 1;
   mesh->dim = 3;
@@ -86,12 +77,10 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   mesh->faceVertices =
     (int*) calloc(mesh->NfaceVertices * mesh->Nfaces, sizeof(int));
-
   memcpy(mesh->faceVertices, faceVertices[0], mesh->NfaceVertices * mesh->Nfaces * sizeof(int));
 
   // build an NX x NY x NZ box grid
-
-  hlong NX = 3, NY = 3, NZ = 3; // defaults
+  hlong NX = 3, NY = 3, NZ = 3;
   dfloat XMIN = -1, XMAX = +1;
   dfloat YMIN = -1, YMAX = +1;
   dfloat ZMIN = -1, ZMAX = +1;
@@ -182,56 +171,6 @@ void createMeshDummy(mesh_t* mesh, MPI_Comm comm,
 
   mesh->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
   mesh->boundaryInfo = NULL; // no boundaries
-
-  // connect elements using parallel sort (EToP, EToE, EToF)
-  meshParallelConnect(mesh);
-
-  // load reference (r,s,t) element nodes
-  meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (platform->comm.mpiRank == 0)
-    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
-
-  occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, meshKernelInfo);
-
-  // set up halo exchange info for MPI (do before connect face nodes)
-  meshHaloSetup(mesh);
-
-  // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh, 1);
-
-  meshHaloPhysicalNodes(mesh);
-
-  // compute geometric factors
-  meshGeometricFactorsHex3D(mesh);
-
-  // connect face nodes (find trace indices)
-  meshConnectPeriodicFaceNodes3D(mesh,XMAX - XMIN,YMAX - YMIN,ZMAX - ZMIN);
-
-  // compute surface geofacs (including halo)
-  meshSurfaceGeometricFactorsHex3D(mesh);
-
-  // global nodes
-  meshGlobalIds(mesh, 1);
-  meshOccaSetup3D(mesh, options, kernelInfo);
-
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
-  oogs_mode oogsMode = OOGS_AUTO; 
-  if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
-
-  // build mass + inverse mass matrix
-  for(dlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->computeInvLMM();
-
-  if(options.compareArgs("MOVING MESH", "TRUE")){
-    const int maxTemporalOrder = 3;
-    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
-  }
 }
 
 void createMesh(mesh_t* mesh, MPI_Comm comm,
@@ -241,6 +180,8 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
                    setupAide &options,
                    occa::properties& kernelInfo)
 {
+  int buildOnly = 0;
+  if(options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -249,7 +190,10 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   mesh->cht  = isMeshT;
 
   // get mesh from nek
-  meshNekReaderHex3D(N, mesh);
+  if(buildOnly)
+    meshDummyHex3D(N, mesh);
+  else
+    meshNekReaderHex3D(N, mesh);
 
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
@@ -257,7 +201,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshParallelConnect(mesh);
 
   // connect elements to boundary faces
-  meshConnectBoundary(mesh);
+  if(!buildOnly) meshConnectBoundary(mesh);
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
@@ -271,7 +215,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshHaloSetup(mesh);
 
   // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh, 0);
+  meshPhysicalNodesHex3D(mesh, buildOnly);
 
   meshHaloPhysicalNodes(mesh);
 
@@ -285,8 +229,8 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshGlobalIds(mesh, 0);
-  bcMap::check(mesh);
+  meshGlobalIds(mesh, buildOnly);
+  if(!buildOnly) bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, options, kernelInfo);
 

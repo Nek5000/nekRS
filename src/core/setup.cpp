@@ -72,18 +72,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   mesh_t* meshT = new mesh_t();
 
-  // create mesh
-  if (buildOnly) {
-    createMeshDummy(meshT, comm, N, cubN, platform->options,  kernelInfo);
-    nrs->meshV = meshT;
-  } else {
-    createMesh(meshT, comm, N, cubN, nrs->cht, platform->options,  kernelInfo);
-    nrs->meshV = meshT;
-    if (nrs->cht) {
-      mesh_t* meshV = new mesh_t();
-      createMeshV(meshV, comm, N, cubN, meshT, platform->options, kernelInfo);
-      nrs->meshV= meshV;
-    }
+  createMesh(meshT, comm, N, cubN, nrs->cht, platform->options,  kernelInfo);
+  nrs->meshV = meshT;
+  if (nrs->cht) {
+    mesh_t* meshV = new mesh_t();
+    createMeshV(meshV, comm, N, cubN, meshT, platform->options, kernelInfo);
+    nrs->meshV= meshV;
   }
   mesh_t* mesh = nrs->meshV;
 
