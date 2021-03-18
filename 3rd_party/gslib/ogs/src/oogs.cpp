@@ -269,14 +269,14 @@ static void packBuf(oogs_t *gs,
                     const  dlong Ngather,
                     const int k,
                     const dlong stride,
-                    occa::memory o_gstarts,
-                    occa::memory o_gids,
-                    occa::memory o_sstarts,
-                    occa::memory o_sids,
+                    occa::memory &o_gstarts,
+                    occa::memory &o_gids,
+                    occa::memory &o_sstarts,
+                    occa::memory &o_sids,
                     const char* type,
                     const char* op,
-                    occa::memory  o_v,
-                    occa::memory  o_gv)
+                    occa::memory  &o_v,
+                    occa::memory  &o_gv)
 {
   if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, ogsAdd))) {
     occa::dim outer, inner;
@@ -304,14 +304,14 @@ static void unpackBuf(oogs_t *gs,
                       const  dlong Ngather,
                       const int k,
                       const dlong stride,
-                      occa::memory o_gstarts,
-                      occa::memory o_gids,
-                      occa::memory o_sstarts,
-                      occa::memory o_sids,
+                      occa::memory &o_gstarts,
+                      occa::memory &o_gids,
+                      occa::memory &o_sstarts,
+                      occa::memory &o_sids,
                       const char* type,
                       const char* op,
-                      occa::memory  o_v,
-                      occa::memory  o_gv)
+                      occa::memory  &o_v,
+                      occa::memory  &o_gv)
 {
   if ((!strcmp(type, "floatCommHalf"))&&(!strcmp(op, ogsAdd))) {
     occa::dim outer, inner;
@@ -342,10 +342,6 @@ void reallocBuffers(int unit_size, oogs_t *gs)
   const void* execdata = hgs->r.data;
   const struct pw_data *pwd = (pw_data*) execdata;
 
-  if (ogs::o_haloBuf.size() < ogs->NhaloGather*unit_size) {
-    if (ogs::o_haloBuf.size()) ogs::o_haloBuf.free();
-    ogs::haloBuf = ogsHostMallocPinned(ogs->device, ogs->NhaloGather*unit_size, NULL, ogs::o_haloBuf, ogs::h_haloBuf);
-  }
   if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
     if(gs->o_bufSend.size()) gs->o_bufSend.free();
     if(gs->h_buffSend.size()) gs->h_buffSend.free();
@@ -358,7 +354,7 @@ void reallocBuffers(int unit_size, oogs_t *gs)
   }
 }
 
-void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
+void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
@@ -418,7 +414,7 @@ void oogs::start(occa::memory o_v, const int k, const dlong stride, const char *
   }
 }
 
-void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
+void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs) 
 {
   size_t Nbytes;
   ogs_t *ogs = gs->ogs; 
@@ -455,9 +451,9 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
     struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
     const void* execdata = hgs->r.data;
     const struct pw_data *pwd = (pw_data*) execdata;
+
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
-
 #ifdef OGS_ENABLE_TIMER
     ogsTic(gs->comm, 1);
 #endif
@@ -465,14 +461,13 @@ void oogs::finish(occa::memory o_v, const int k, const dlong stride, const char 
 #ifdef OGS_ENABLE_TIMER
     ogsToc();
 #endif
-
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
 
     unpackBuf(gs, ogs->NhaloGather, k, stride, gs->o_gatherOffsets, gs->o_gatherIds, 
               ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, _type, op, gs->o_bufRecv, o_v);
-    ogs->device.finish();
 
+    ogs->device.finish();
     ogs->device.setStream(ogs::defaultStream);
   }
 }
@@ -481,7 +476,7 @@ void oogs::startFinish(void *v, const int k, const dlong stride, const char *typ
 {
   ogsGatherScatterMany(v, k, stride, type, op, h->ogs);
 }
-void oogs::startFinish(occa::memory o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)
+void oogs::startFinish(occa::memory &o_v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)
 {
    start(o_v, k, stride, type, op, h);
    finish(o_v, k, stride, type, op, h);
