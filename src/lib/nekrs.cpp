@@ -130,7 +130,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
   }
 
-  if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
   nek::ocopyToNek(startTime(), 0);
 
   platform->timer.toc("setup");
