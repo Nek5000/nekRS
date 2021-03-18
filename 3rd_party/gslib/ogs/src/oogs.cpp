@@ -370,7 +370,7 @@ void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char 
   else if (!strcmp(type, "long long int"))
     Nbytes = sizeof(long long int);
 
-  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "Serial"){
     if(gs->rank == 0)
       std::cout << "ERROR: Current backend does not support floatCommHalf!\n";
     exit(-1);
@@ -426,7 +426,7 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
   else if (!strcmp(_type, "double"))
     Nbytes = sizeof(double);
 
-  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "SERIAL"){
+  if (!strcmp(_type, "floatCommHalf") && ogs->device.mode() == "Serial"){
     if(gs->rank == 0)
       std::cout << "ERROR: Current backend does not support floatCommHalf!\n";
     exit(-1);
