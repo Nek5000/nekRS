@@ -17,7 +17,7 @@ subCyclingSteps = 2
 solver = user
 
 [PRESSURE]
-residualTol = 1e-09
+residualTol = 1e-08
 #residualProj = false
 
 [VELOCITY]

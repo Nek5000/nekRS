@@ -17,7 +17,7 @@ solver = user
 stressFormulation = true
 
 [PRESSURE]
-residualTol = 1e-9
+residualTol = 1e-8
 residualProj = false
 
 [VELOCITY]
