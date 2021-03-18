@@ -204,8 +204,6 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     double elapsedMin = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
 
-    int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
-
     char* q = (char*) calloc(std::max(stride,ogs->N)*unit_size, sizeof(char));
     occa::memory o_q = device.malloc(std::max(stride,ogs->N)*unit_size, q);
     int* prepostRecv = (int*) calloc(oogs_mode_list.size(), sizeof(int));
