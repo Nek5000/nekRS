@@ -35,13 +35,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   double *err = (double *) nek::scPtr(1);
   double vxErr, sErr;
-
-  switch (ciMode) {
-    // cross compare solution to nek5000
-    case 1: vxErr = abs((err[0] - 2.06559)/err[0]);
-            sErr  = abs((err[1] - 28.3833)/err[1]);
-            break;
-  }
+  vxErr = abs((err[0] - 2.06559)/err[0]);
+  sErr  = abs((err[1] - 28.3833)/err[1]);
 
   if (rank == 0)
     printf("relative error to target: vx=%g s=%g\n", vxErr, sErr);
