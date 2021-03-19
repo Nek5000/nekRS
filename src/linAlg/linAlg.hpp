@@ -38,6 +38,7 @@ private:
   occa::properties kernelInfo;
   MPI_Comm comm;
   int blocksize;
+  bool serial;
 
   //scratch space for reductions
   dfloat* scratch;

@@ -38,6 +38,7 @@ linAlg_t::getInstance()
 }
 linAlg_t::linAlg_t() {
   blocksize = BLOCKSIZE;
+  serial = platform->device.mode() == "Serial";
   comm = platform->comm.mpiComm;
   setup();
 }
@@ -73,11 +74,8 @@ void linAlg_t::setup() {
   double tStartLoadKernel = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("loading linAlg kernels ... "); fflush(stdout);
 
-
-
   occa::properties kernelInfoNoOkl = platform->kernelInfo;
   kernelInfoNoOkl["okl/enabled"] = false;
-  const bool serial = platform->device.mode() == "Serial";
 
   {
       if (fillKernel.isInitialized()==false)
@@ -549,7 +547,6 @@ dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
 dfloat linAlg_t::weightedInnerProd(const dlong N, occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -617,7 +614,6 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
                                    occa::memory& o_w,
                                    occa::memory& o_x, occa::memory& o_y,
                                    MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -650,7 +646,6 @@ dfloat linAlg_t::weightedInnerProdMany(const dlong N,
 // ||o_a||_w2
 dfloat linAlg_t::weightedNorm2(const dlong N, occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
@@ -685,7 +680,6 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
                                    const dlong fieldOffset,
                                    occa::memory& o_w,
                                occa::memory& o_a, MPI_Comm _comm) {
-  const bool serial = platform->device.mode() == "Serial";
 #ifdef ENABLE_TIMER
   platform->timer.tic("dotp",1);
 #endif
