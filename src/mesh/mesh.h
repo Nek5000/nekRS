@@ -57,7 +57,7 @@ struct mesh_t
 
   int cht;
 
-  void* fluid;
+  mesh_t* fluid;
 
   hlong Nnodes;
   dfloat* EX; // coordinates of vertices for each element
