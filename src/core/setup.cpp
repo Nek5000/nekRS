@@ -117,14 +117,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.getArgs("DENSITY", rho);
 
   const dlong Nlocal = mesh->Nlocal;
-  const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-  nrs->fieldOffset = Ntotal;
 
   { // setup fieldOffset
-    mesh_t* mesh = nrs->_mesh; 
-    nrs->fieldOffset = Ntotal;
-    const dlong NtotalT = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-    nrs->fieldOffset = mymax(Ntotal, NtotalT);
+    nrs->fieldOffset = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
+    mesh_t* meshT = nrs->_mesh; 
+    nrs->fieldOffset = mymax(nrs->fieldOffset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
 
     int PAGESIZE = 4096; // default is 4kB
     char* tmp;
@@ -877,16 +874,13 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   cds->NVfields    = nrs->NVfields;
   cds->NSfields    = nrs->Nscalar;
 
-  cds->coeffEXT = nrs->coeffEXT;
-  cds->coeffBDF = nrs->coeffBDF;
+  cds->coeffEXT    = nrs->coeffEXT;
+  cds->coeffBDF    = nrs->coeffBDF;
   cds->coeffSubEXT = nrs->coeffSubEXT;
-
-  cds->nBDF       = nrs->nBDF;
-  cds->nEXT       = nrs->nEXT;
-
-  // time stepper
-  cds->o_coeffEXT = nrs->o_coeffEXT;
-  cds->o_coeffBDF = nrs->o_coeffBDF;
+  cds->nBDF        = nrs->nBDF;
+  cds->nEXT        = nrs->nEXT;
+  cds->o_coeffEXT  = nrs->o_coeffEXT;
+  cds->o_coeffBDF  = nrs->o_coeffBDF;
   cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
