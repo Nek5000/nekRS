@@ -8,7 +8,7 @@
 #include <map>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties &kernelInfoBC);
+cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoBC);
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
@@ -75,10 +75,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   } 
 
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
-  nrs->meshV = (mesh_t *) nrs->_mesh->fluid;
-
-  // local aliases 
-  mesh_t* meshT = nrs->_mesh; 
+  nrs->meshV = (mesh_t*) nrs->_mesh->fluid;
   mesh_t* mesh = nrs->meshV;
 
   { 
@@ -119,15 +116,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
 
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
+  const dlong Nlocal = mesh->Nlocal;
   const dlong Ntotal = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-
-  mesh->Nlocal = Nlocal;
   nrs->fieldOffset = Ntotal;
 
-  // ensure that offset is large enough for v and t mesh and is properly aligned
-  {
-    const dlong NtotalT = meshT->Np * (meshT->Nelements + meshT->totalHaloPairs);
+  { // setup fieldOffset
+    mesh_t* mesh = nrs->_mesh; 
+    nrs->fieldOffset = Ntotal;
+    const dlong NtotalT = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
     nrs->fieldOffset = mymax(Ntotal, NtotalT);
 
     int PAGESIZE = 4096; // default is 4kB
@@ -137,7 +133,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int pageW = PAGESIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
-  meshT->fieldOffset = nrs->fieldOffset;
 
   if(nrs->Nsubsteps) {
     int Sorder;
@@ -535,7 +530,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    nrs->cds = cdsSetup(nrs, meshT, platform->options, kernelInfoBC);
+    nrs->cds = cdsSetup(nrs, platform->options, kernelInfoBC);
   }
 
   if(!buildOnly) {
@@ -866,20 +861,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 }
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, mesh_t* meshT, setupAide options, occa::properties& kernelInfoBC)
+cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
 {
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  cds->mesh[0] = meshT;
-  meshT->Nlocal = meshT->Np * meshT->Nelements;
-  mesh_t* mesh = cds->mesh[0];
-
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
-  // set mesh, options
-  cds->meshV       = nrs->meshV;
+  cds->mesh[0]     = nrs->_mesh;
+  mesh_t* mesh     = cds->mesh[0];
+  cds->meshV       = (mesh_t*) nrs->_mesh->fluid;
   cds->elementType = nrs->elementType;
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;

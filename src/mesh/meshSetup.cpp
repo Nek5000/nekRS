@@ -216,6 +216,8 @@ mesh_t *createMesh(MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
+  mesh->Nlocal = mesh->Nelements * mesh->Np;
+
   occa::properties meshKernelInfo = populateMeshProperties(mesh);
   loadKernels(mesh, meshKernelInfo);
 
@@ -339,6 +341,8 @@ mesh_t *createMeshV(
   meshNekReaderHex3D(N, mesh);
   free(mesh->elementInfo);
   mesh->elementInfo = meshT->elementInfo;
+
+  mesh->Nlocal = mesh->Nelements * mesh->Np;
 
   mesh->Nfields = 1; // temporary patch (halo exchange depends on nfields)
 
