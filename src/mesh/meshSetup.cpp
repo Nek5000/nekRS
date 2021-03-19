@@ -3,7 +3,13 @@
 #include "meshNekReader.hpp"
 #include <string>
 
-void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo);
+void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo);
+mesh_t *createMeshV(MPI_Comm comm,
+                    int N,
+                    int cubN,
+                    mesh_t* meshT,
+                    occa::properties& kernelInfo);
+
 occa::properties populateMeshProperties(mesh_t* mesh)
 {
   occa::properties meshProperties = platform->kernelInfo;
@@ -62,6 +68,7 @@ occa::properties populateMeshProperties(mesh_t* mesh)
   return meshProperties;
 }
 void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
+
 void meshDummyHex3D(int N, mesh_t* mesh)
 {
   mesh->cht = 0;
@@ -173,21 +180,22 @@ void meshDummyHex3D(int N, mesh_t* mesh)
   mesh->boundaryInfo = NULL; // no boundaries
 }
 
-void createMesh(mesh_t* mesh, MPI_Comm comm,
+mesh_t *createMesh(MPI_Comm comm,
                    int N,
                    int cubN,
-                   int isMeshT,
-                   setupAide &options,
+                   bool cht,
                    occa::properties& kernelInfo)
 {
+  mesh_t *mesh = new mesh_t();
+
   int buildOnly = 0;
-  if(options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  mesh->cht  = isMeshT;
+  mesh->cht  = cht;
 
   // get mesh from nek
   if(buildOnly)
@@ -215,7 +223,7 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshHaloSetup(mesh);
 
   // compute physical (x,y) locations of the element nodes
-  meshPhysicalNodesHex3D(mesh, buildOnly);
+  meshPhysicalNodesHex3D(mesh);
 
   meshHaloPhysicalNodes(mesh);
 
@@ -229,11 +237,10 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   // global nodes
-  meshGlobalIds(mesh, buildOnly);
+  meshGlobalIds(mesh);
   if(!buildOnly) bcMap::check(mesh);
 
-  meshOccaSetup3D(mesh, options, kernelInfo);
-
+  meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -247,18 +254,23 @@ void createMesh(mesh_t* mesh, MPI_Comm comm,
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
-  if(options.compareArgs("MOVING MESH", "TRUE")){
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
   }
+
+  mesh->fluid = mesh;
+  if(mesh->cht) mesh->fluid = createMeshV(comm, N, cubN, mesh, kernelInfo); 
+
+  return mesh;
 }
 
+/*
 mesh_t* duplicateMesh(MPI_Comm comm,
                       int N,
                       int cubN,
                       mesh_t* meshT,
-                      setupAide &options,
                       occa::device device,
                       occa::properties& kernelInfo)
 {
@@ -278,16 +290,15 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   loadKernels(mesh, meshKernelInfo);
 
   meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh, 0);
+  meshPhysicalNodesHex3D(mesh);
   meshHaloPhysicalNodes(mesh);
   meshGeometricFactorsHex3D(mesh);
   meshConnectFaceNodes3D(mesh);
   meshSurfaceGeometricFactorsHex3D(mesh);
-  meshGlobalIds(mesh, 0);
+  meshGlobalIds(mesh);
 
   bcMap::check(mesh);
-  meshOccaSetup3D(mesh, options, kernelInfo);
-
+  meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -301,7 +312,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
-  if(options.compareArgs("MOVING MESH", "TRUE")){
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
@@ -309,15 +320,17 @@ mesh_t* duplicateMesh(MPI_Comm comm,
 
   return mesh;
 }
+*/
 
-void createMeshV(mesh_t* mesh,
+mesh_t *createMeshV(
                     MPI_Comm comm,
                     int N,
                     int cubN,
                     mesh_t* meshT,
-                    setupAide &options,
                     occa::properties& kernelInfo)
 {
+  mesh_t *mesh = new mesh_t();
+
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
   mesh->cht = 0;
@@ -338,7 +351,7 @@ void createMeshV(mesh_t* mesh,
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
-  //meshPhysicalNodesHex3D(mesh, 0);
+  //meshPhysicalNodesHex3D(mesh);
   mesh->x = meshT->x;
   mesh->y = meshT->y;
   mesh->z = meshT->z;
@@ -354,12 +367,12 @@ void createMeshV(mesh_t* mesh,
   // find vmapM, vmapP, mapP based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
-  // meshGlobalIds(mesh, 0); correct?
+  // meshGlobalIds(mesh);
   mesh->globalIds = meshT->globalIds;
 
   bcMap::check(mesh);
 
-  meshVOccaSetup3D(mesh, options, kernelInfo);
+  meshVOccaSetup3D(mesh, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
@@ -367,9 +380,11 @@ void createMeshV(mesh_t* mesh,
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
   mesh->computeInvLMM();
+
+  return mesh;
 }
 
-void meshVOccaSetup3D(mesh_t* mesh, setupAide &options, occa::properties &kernelInfo)
+void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 {
   
   // find elements that have all neighbors on this process

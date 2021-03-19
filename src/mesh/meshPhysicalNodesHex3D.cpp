@@ -105,13 +105,16 @@ void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
   }
 }
 
-void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
+void meshPhysicalNodesHex3D(mesh3D* mesh)
 {
+  int buildOnly = 0;
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+      
   mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->z = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
 
-  if (nrsBuildOnly) {
+  if (buildOnly) {
     meshPhysicalBoxNodesHex3D(mesh);
   } else {
     dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));

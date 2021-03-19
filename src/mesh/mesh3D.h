@@ -79,7 +79,7 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh);
 void meshPhysicalNodesTri3D(mesh3D* mesh);
 void meshPhysicalNodesQuad3D(mesh3D* mesh);
 void meshPhysicalNodesTet3D(mesh3D* mesh);
-void meshPhysicalNodesHex3D(mesh3D* mesh, int nrsBuildOnly);
+void meshPhysicalNodesHex3D(mesh3D* mesh);
 
 void meshLoadReferenceNodesTet3D(mesh3D* mesh, int N);
 void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN);

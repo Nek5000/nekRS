@@ -94,33 +94,35 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
   const struct pw_data *pwd = (pw_data*) execdata; 
   const struct comm *comm = &hgs->comm;
 
-  if(!gs->earlyPrepostRecv) { 
+  if(!gs->earlyPrepostRecv) {
+    unsigned char *buf = (unsigned char*)gs->o_bufRecv.ptr(); 
+    if(gs->mode != OOGS_DEVICEMPI) buf = (unsigned char *)gs->bufRecv;
+
     comm_req *req = pwd->req; 
     const struct pw_comm_data *c = &pwd->comm[recv];
     const uint *p, *pe, *size=c->size;
     uint bufOffset = 0;
     for(p=c->p,pe=p+c->n;p!=pe;++p) {
-      const size_t len = *(size++);
-      unsigned char *recvbuf = (unsigned char *)gs->bufRecv + bufOffset;
-      if(gs->mode == OOGS_DEVICEMPI) recvbuf = (unsigned char*)gs->o_bufRecv.ptr() + bufOffset;
-      MPI_Irecv((void*)recvbuf,len*unit_size,MPI_UNSIGNED_CHAR,*p,*p,comm->c,req++);
-      bufOffset += len*unit_size;
+      const int len = *(size++) * unit_size;
+      MPI_Irecv((void*)buf,len,MPI_UNSIGNED_CHAR,*p,*p,comm->c,req++);
+      buf += len;
     }
   }
 
-  { // pw exchange
-    if(gs->mode != OOGS_DEVICEMPI) ogs->device.finish(); // waiting for send buffers to be ready
+  {
+    unsigned char *buf = (unsigned char*)gs->o_bufSend.ptr();
+    if(gs->mode != OOGS_DEVICEMPI) {
+      ogs->device.finish(); // waiting for send buffers to be ready
+      buf = (unsigned char*)gs->bufSend;      
+    }
 
     comm_req *req = &pwd->req[pwd->comm[recv].n]; 
     const struct pw_comm_data *c = &pwd->comm[send];
     const uint *p, *pe, *size=c->size;
-    uint bufOffset = 0;
     for(p=c->p,pe=p+c->n;p!=pe;++p) {
-      const size_t len = *(size++);
-      unsigned char *sendbuf = (unsigned char*)gs->bufSend + bufOffset;
-      if(gs->mode == OOGS_DEVICEMPI) sendbuf = (unsigned char*)gs->o_bufSend.ptr() + bufOffset;
-      MPI_Isend((void*)sendbuf,len*unit_size,MPI_UNSIGNED_CHAR,*p,comm->id,comm->c,req++);
-      bufOffset += len*unit_size;
+      const int len = *(size++) * unit_size;
+      MPI_Isend((void*)buf,len,MPI_UNSIGNED_CHAR,*p,comm->id,comm->c,req++);
+      buf += len;
     }
     MPI_Waitall(pwd->comm[send].n + pwd->comm[recv].n,pwd->req,MPI_STATUSES_IGNORE);
   }
@@ -391,7 +393,10 @@ void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char 
     packBuf(gs, ogs->NhaloGather, k, stride, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds, 
             gs->o_scatterOffsets, gs->o_scatterIds, _type, op, o_v, gs->o_bufSend);
 
-    if(gs->earlyPrepostRecv) { 
+    if(gs->earlyPrepostRecv) {
+      unsigned char *buf = (unsigned char*)gs->o_bufRecv.ptr(); 
+      if(gs->mode != OOGS_DEVICEMPI) buf = (unsigned char *)gs->bufRecv;
+
       struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
       const void* execdata = hgs->r.data;
       const struct pw_data *pwd = (pw_data*) execdata;
@@ -402,11 +407,9 @@ void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char 
       const uint *p, *pe, *size=c->size;
       uint bufOffset = 0;
       for(p=c->p,pe=p+c->n;p!=pe;++p) {
-        const size_t len = *(size++);
-        unsigned char *recvbuf = (unsigned char *)gs->bufRecv + bufOffset;
-        if(gs->mode == OOGS_DEVICEMPI) recvbuf = (unsigned char*)gs->o_bufRecv.ptr() + bufOffset;
-        MPI_Irecv((void*)recvbuf,len*unit_size,MPI_UNSIGNED_CHAR,*p,*p,gs->comm,req++);
-        bufOffset += len*unit_size;
+        const size_t len = *(size++) * unit_size;
+        MPI_Irecv((void*)buf,len*unit_size,MPI_UNSIGNED_CHAR,*p,*p,gs->comm,req++);
+        buf += len;
       }
     }
 

@@ -26,10 +26,12 @@ void meshNekParallelConnectNodes(mesh_t* mesh)
     mesh->globalIds[id] = nekData.glo_num[id];
 }
 
-void meshGlobalIds(mesh_t* mesh, int nrsBuildOnly)
+void meshGlobalIds(mesh_t* mesh)
 {
-  
-  if(!nrsBuildOnly) {
+  int buildOnly = 0;
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+
+  if(!buildOnly) {
     // hotfix as libP version seems to be broken
     meshNekParallelConnectNodes(mesh);
     return;

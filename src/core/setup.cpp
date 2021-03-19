@@ -69,27 +69,23 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->cht = 0;
   if (nekData.nelv != nekData.nelt && nrs->Nscalar) nrs->cht = 1;
-
-  mesh_t* meshT = new mesh_t();
-
-  createMesh(meshT, comm, N, cubN, nrs->cht, platform->options,  kernelInfo);
-  nrs->meshV = meshT;
-  if (nrs->cht) {
-    mesh_t* meshV = new mesh_t();
-    createMeshV(meshV, comm, N, cubN, meshT, platform->options, kernelInfo);
-    nrs->meshV= meshV;
-  }
-  mesh_t* mesh = nrs->meshV;
-
   if (nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
 
+  nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
+  nrs->meshV = (mesh_t *) nrs->_mesh->fluid;
+
+  // local aliases 
+  mesh_t* meshT = nrs->_mesh; 
+  mesh_t* mesh = nrs->meshV;
+
   { 
-    dlong retVal; 
-    MPI_Allreduce(&mesh->NinternalElements,&retVal,1,MPI_DLONG,MPI_MIN,platform->comm.mpiComm);
-    if(platform->comm.mpiRank == 0) printf("min NinternalElements: %d (ratio: %4.2f)\n", retVal, (double)retVal/mesh->Nelements);
+    dlong minVal = mesh->NinternalElements; 
+    MPI_Allreduce(MPI_IN_PLACE,&minVal,1,MPI_DLONG,MPI_MIN,platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      printf("min NinternalElements: %d (ratio: %4.2f)\n", minVal, (double)minVal/mesh->Nelements);
   }
 
   occa::properties kernelInfoV  = kernelInfo;

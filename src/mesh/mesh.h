@@ -57,6 +57,8 @@ struct mesh_t
 
   int cht;
 
+  void* fluid;
+
   hlong Nnodes;
   dfloat* EX; // coordinates of vertices for each element
   dfloat* EY;
@@ -244,7 +246,7 @@ void meshConnect(mesh_t* mesh);
 void meshParallelConnect(mesh_t* mesh);
 
 /* build global connectivity in parallel */
-void meshGlobalIds(mesh_t* mesh, int nrsBuildOnly);
+void meshGlobalIds(mesh_t* mesh);
 
 void meshHaloSetup(mesh_t* mesh);
 void meshHaloPhysicalNodes(mesh_t* mesh);

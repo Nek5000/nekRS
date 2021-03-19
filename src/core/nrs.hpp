@@ -22,6 +22,7 @@ struct nrs_t
 {
   int dim, elementType;
 
+  mesh_t* _mesh;
   mesh_t* meshV;
 
   elliptic_t* uSolver;

@@ -611,9 +611,6 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   //platform_t* platform = platform_t::getInstance();
   mesh_t* meshRoot = elliptic->mesh;
 
-  int buildOnly  = 0;
-  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-
   mesh_t* mesh = new mesh_t();
   mesh->N = meshRoot->N + 2;
   mesh->Np = (mesh->N + 1) * (mesh->N + 1) * (mesh->N + 1);
@@ -640,10 +637,10 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   meshConnectBoundary(mesh);
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
   meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh, buildOnly);
+  meshPhysicalNodesHex3D(mesh);
   meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
-  meshGlobalIds(mesh, buildOnly);
+  meshGlobalIds(mesh);
 
   mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
 
