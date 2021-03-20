@@ -186,9 +186,6 @@ mesh_t *createMesh(MPI_Comm comm,
                    bool cht,
                    occa::properties& kernelInfo)
 {
-  if (platform->comm.mpiRank == 0)
-    printf("generating mesh ... ");
-      
   mesh_t *mesh = new mesh_t();
   int buildOnly = 0;
   if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
@@ -205,6 +202,9 @@ mesh_t *createMesh(MPI_Comm comm,
   else
     meshNekReaderHex3D(N, mesh);
 
+  if (platform->comm.mpiRank == 0)
+    printf("generating mesh ... ");
+      
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
   // connect elements using parallel sort

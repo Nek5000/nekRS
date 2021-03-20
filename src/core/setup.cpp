@@ -64,6 +64,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nek::setup(comm, platform->options, nrs);
       nek::setic();
       nek::userchk();
+      if (platform->comm.mpiRank == 0) cout << "\";
     }
   }
 
