@@ -54,7 +54,8 @@ int sendBack(Mesh mesh, struct comm *c, buffer *bfr) {
   sarray_transfer(struct Point_private, &mesh->elements, origin, 0, &cr);
   crystal_free(&cr);
 
-  sarray_sort(struct Point_private, mesh->elements.ptr, mesh->elements.n, sequenceId, 1, bfr);
+  sarray_sort(struct Point_private, mesh->elements.ptr, mesh->elements.n,
+              sequenceId, 1, bfr);
 
   return 0;
 }

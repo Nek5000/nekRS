@@ -1,124 +1,136 @@
 #include <genmap-impl.h>
 
-#define min(a,b) ((b)<(a)?(b):(a))
+#define min(a, b) ((b) < (a) ? (b) : (a))
 
-struct array *GenmapFindNeighbors(genmap_handle h,GenmapComm c)
-{
-  struct comm cc=c->gsc;
+static void GenmapFindNeighbors(struct array *nbrs, genmap_handle h,
+                                struct comm *cc) {
+  sint lelt = genmap_get_nel(h);
+  sint nv = genmap_get_nvertices(h);
 
-  sint lelt=GenmapGetNLocalElements(h);
-  sint nv  =GenmapGetNVertices(h);
+  genmap_comm_scan(h, cc);
+  ulong elem_id = genmap_get_local_start_index(h) + 1;
+  ulong sequenceId = elem_id * nv;
 
-  GenmapScan(h,c);
-  ulong elem_id   =GenmapGetLocalStartIndex(h)+1;
-  ulong sequenceId=elem_id*nv;
+  size_t size = lelt * nv;
+  struct array vertices;
+  array_init(vertex, &vertices, size);
 
-  size_t size=lelt*nv;
-  struct array vertices; array_init(vertex,&vertices,size);
-
-  GenmapElements elems=GenmapGetElements(h);
-  sint i,j;
-  for(i=0;i<lelt;i++){
-    for(j=0;j<nv;j++){
-      vertex t={
-        .elementId =elem_id,
-        .sequenceId=sequenceId,
-        .vertexId  =elems[i].vertices[j],
-        .workProc  =elems[i].vertices[j]%cc.np
-      };
-      array_cat(vertex,&vertices,&t,1);
+  struct rsb_element *elems = genmap_get_elements(h);
+  sint i, j;
+  for (i = 0; i < lelt; i++) {
+    for (j = 0; j < nv; j++) {
+      vertex vrt = {.sequenceId = sequenceId,
+                    .nNeighbors = 0,
+                    .elementId = elem_id,
+                    .vertexId = elems[i].vertices[j],
+                    .workProc = elems[i].vertices[j] % cc->np};
+      array_cat(vertex, &vertices, &vrt, 1);
       sequenceId++;
     }
     elem_id++;
   }
+  assert(vertices.n == lelt * nv);
 
-  struct crystal cr; crystal_init(&cr,&cc);
-  sarray_transfer(vertex,&vertices,workProc,1,&cr);
-  size=vertices.n; vertex* vPtr=vertices.ptr;
+  struct crystal cr;
+  crystal_init(&cr, cc);
 
-  buffer buf; buffer_init(&buf,1024);
-  sarray_sort(vertex,vPtr,size,vertexId,1,&buf);
+  sarray_transfer(vertex, &vertices, workProc, 1, &cr);
+  size = vertices.n;
+  vertex *vPtr = vertices.ptr;
 
-  struct array a; array_init(csr_entry,&a,10);
+  buffer buf;
+  buffer_init(&buf, 1024);
+  sarray_sort(vertex, vPtr, size, vertexId, 1, &buf);
 
-  //FIXME: Assumes quads or hexes
-  sint s=0,e; csr_entry t;
-  while(s<size){
-    for(e=s+1; e<size && vPtr[s].vertexId==vPtr[e].vertexId; e++);
-    int nNeighbors=min(e,size)-s;
-    for(i=s;i<min(e,size);i++){
-      t.r=vPtr[i].elementId; t.proc=vPtr[i].workProc;
-      for(j=0;j<nNeighbors;j++){
-        t.c=vPtr[s+j].elementId;
-        array_cat(csr_entry,&a,&t,1);
+  struct array a;
+  array_init(csr_entry, &a, 10);
+
+  // FIXME: Assumes quads or hexes
+  sint s = 0, e;
+  csr_entry t;
+  while (s < size) {
+    e = s + 1;
+    while (e < size && vPtr[s].vertexId == vPtr[e].vertexId)
+      e++;
+    int n_neighbors = min(e, size) - s;
+
+    for (i = s; i < min(e, size); i++) {
+      t.r = vPtr[i].elementId;
+      t.proc = vPtr[i].workProc;
+      for (j = 0; j < n_neighbors; j++) {
+        t.c = vPtr[s + j].elementId;
+        array_cat(csr_entry, &a, &t, 1);
       }
     }
-    s=e;
+    s = e;
   }
 
-  sarray_transfer(csr_entry,&a,proc,1,&cr);
-  sarray_sort_2(csr_entry,a.ptr,a.n,r,1,c,1,&buf);
+  sarray_transfer(csr_entry, &a, proc, 1, &cr);
+  // TODO: Check if the last line is redundant
+  sarray_sort_2(csr_entry, a.ptr, a.n, r, 1, c, 1, &buf);
+  sarray_sort(csr_entry, a.ptr, a.n, r, 1, &buf);
 
-  struct array *nbrs=tmalloc(struct array,1);
-  array_init(entry,nbrs,lelt);
+  array_init(entry, nbrs, lelt);
 
-  if(lelt==0){
+  if (a.n == 0) {
     crystal_free(&cr);
     buffer_free(&buf);
     array_free(&vertices);
     array_free(&a);
-    return nbrs;
   }
 
-  csr_entry *aptr=a.ptr; entry *nptr=nbrs->ptr;
-  entry ee,ep; ep.r=aptr->r; ep.c=aptr->c; array_cat(entry,nbrs,&ep,1);
-  for(i=1; i<a.n; i++){
-    ee.r=aptr[i].r,ee.c=aptr[i].c; ulong n=nbrs->n-1;
-    if(ee.r!=ep.r || ee.c!=ep.c){
-      array_cat(entry,nbrs,&ee,1);
-      ep=ee;
+  csr_entry *aptr = a.ptr;
+  entry *nptr = nbrs->ptr;
+
+  entry ee = {0, 0, 0, 0, 0, 0.0}, ep = {0, 0, 0, 0, 0.0};
+  ep.r = aptr[0].r;
+  ep.c = aptr[0].c;
+  array_cat(entry, nbrs, &ep, 1);
+
+  for (i = 1; i < a.n; i++) {
+    ee.r = aptr[i].r;
+    ee.c = aptr[i].c;
+    if (ee.r != ep.r || ee.c != ep.c) {
+      array_cat(entry, nbrs, &ee, 1);
+      ep = ee;
     }
   }
 
-  sarray_sort_2(entry,nbrs->ptr,nbrs->n,r,1,c,1,&buf);
+  sarray_sort_2(entry, nbrs->ptr, nbrs->n, r, 1, c, 1, &buf);
 
   crystal_free(&cr);
   buffer_free(&buf);
   array_free(&vertices);
   array_free(&a);
-
-  return nbrs;
 }
 
-int GenmapInitLaplacian(genmap_handle h,GenmapComm c)
-{
-  struct array *entries=GenmapFindNeighbors(h,c);
-  csr_mat_setup(entries,&c->gsc,&c->M);
-  array_free(entries); free(entries);
+int GenmapInitLaplacian(genmap_handle h, struct comm *c) {
+  struct array entries;
+  GenmapFindNeighbors(&entries, h, c);
+  csr_mat_setup(&entries, c, &h->M);
+  array_free(&entries);
 
-  c->gsh=get_csr_top(c->M,&c->gsc);
-  GenmapMalloc(c->M->row_off[c->M->rn],&c->b);
+  h->gsh = get_csr_top(h->M, c);
+  GenmapRealloc(h->M->row_off[h->M->rn], &h->b);
 
 #if defined(GENMAP_DEBUG)
-  int nnz = c->M->row_off[c->M->rn];
+  int nnz = h->M->row_off[h->M->rn];
   double fro[2] = {0.0, 0.0}, buf[2];
-  for(int i=0; i<nnz; i++){
-    fro[0] += c->M->v[i];
-    fro[1] += c->M->v[i]*c->M->v[i];
+  for (int i = 0; i < nnz; i++) {
+    fro[0] += h->M->v[i];
+    fro[1] += h->M->v[i] * h->M->v[i];
   }
-  comm_allreduce(&c->gsc, gs_double, gs_add, &fro, 2, &buf);
-  printf("nrom(G,'1')=%g\nnorm(G,'fro')=%g\n", fro[0], fro[1]);
-
-  csr_mat_print(c->M, &c->gsc);
+  comm_allreduce(c, gs_double, gs_add, &fro, 2, &buf);
+  if (c->gsc.id == 0)
+    printf("nrom(G,'1')=%g\nnorm(G,'fro')=%g\n", fro[0], fro[1]);
 #endif
 
   return 0;
 }
 
-int GenmapLaplacian(genmap_handle h,GenmapComm c,GenmapScalar *u, GenmapScalar *v)
-{
-  csr_mat_gather(c->M,c->gsh,u,c->b,&c->buf);
-  csr_mat_apply(v,c->M,c->b);
+int GenmapLaplacian(genmap_handle h, GenmapScalar *u, GenmapScalar *v) {
+  csr_mat_gather(h->M, h->gsh, u, h->b, &h->buf);
+  csr_mat_apply(v, h->M, h->b);
 
   return 0;
 }

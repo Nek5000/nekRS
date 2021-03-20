@@ -3,15 +3,8 @@ DEBUG ?= 0
 MPI ?= 1
 CC ?= mpicc
 CFLAGS ?= -g -O0
-BLAS ?= 0
-UNDERSCORE ?= 0
-
-## Genmap algorithmic parameters ##
-# ALGO = 0 (Lanczos),1 (RQI),2 (FMG)
-ALGO ?= 0
-RCB_PRE_STEP ?= 1
-PAUL ?= 1
-GRAMMIAN ?= 0
+BLAS ?= 1
+UNDERSCORE ?= 1
 
 ## Don't touch what follows ##
 MKFILEPATH =$(abspath $(lastword $(MAKEFILE_LIST)))
@@ -29,9 +22,8 @@ TESTDIR   =$(SRCROOT)/tests
 TARGET=parRSB
 LIB=$(BUILDDIR)/lib/lib$(TARGET).a
 
-INCFLAGS=-I$(SRCDIR) -I$(SORTDIR) -I$(PRECONDDIR) -I$(GENCONDIR) \
-	-I$(GSLIBPATH)/include
-LDFLAGS:=-L$(BUILDDIR)/lib -l$(TARGET) -L$(GSLIBPATH)/lib -lgs -lm
+INCFLAGS = -I$(SRCDIR) -I$(SORTDIR) -I$(PRECONDDIR) -I$(GENCONDIR) -I$(GSLIBPATH)/include
+LDFLAGS = -L$(BUILDDIR)/lib -l$(TARGET) -L$(GSLIBPATH)/lib -lgs -lm
 
 SRCS       =$(wildcard $(SRCDIR)/*.c)
 SORTSRCS   =$(wildcard $(SORTDIR)/*.c)
@@ -53,18 +45,13 @@ ifneq ($(DEBUG),0)
   PP += -g -DGENMAP_DEBUG
 endif
 
-ifeq ($(ALGO),0)
-  PP += -DGENMAP_LANCZOS
-else ifeq ($(ALGO),1)
-  PP += -DGENMAP_RQI
+ifneq ($(UNDERSCORE),0)
+  PP += -DGENMAP_UNDERSCORE
 endif
 
-ifneq ($(RCB_PRE_STEP),0)
-  PP += -DGENMAP_RCB_PRE_STEP
-endif
-
-ifneq ($(PAUL),0)
-  PP += -DGENMAP_PAUL
+ifneq ($(BLAS),0)
+  PP += -DGENMAP_BLAS
+  LDFLAGS += -L$(BLASLIBPATH) -lblasLapack -lgfortran
 endif
 
 ifneq ($(GRAMMIAN),0)
@@ -90,10 +77,16 @@ ifneq (,$(strip $(DESTDIR)))
 endif
 
 .PHONY: default
-default: check lib install
+default: check lib examples install
 
 .PHONY: all
 all: check lib tests examples install
+
+.PHONY: check
+check:
+ifeq ($(GSLIBPATH),)
+  $(error Specify GSLIBPATH=<path to gslib>/build)
+endif
 
 .PHONY: install
 install: lib
@@ -110,12 +103,6 @@ lib: $(SRCOBJS)
 	@mkdir -p $(BUILDDIR)/lib
 	@$(AR) cr $(LIB) $(SRCOBJS)
 	@ranlib $(LIB)
-
-.PHONY: check
-check: 
-ifeq ($(GSLIBPATH),)
-  $(error Specify GSLIBPATH=<path to gslib>/build)
-endif
 
 $(BUILDDIR)/src/%.o: $(SRCROOT)/src/%.c
 	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) -c $< -o $@
@@ -137,6 +124,10 @@ $(BUILDDIR)/tests/%: $(SRCROOT)/tests/%.c
 .PHONY: clean
 clean:
 	@rm -rf $(BUILDDIR) $(EXAMPLE) $(EXAMPLE).o
+
+.PHONY: format
+format:
+	find . -iname *.h -o -iname *.c | xargs clang-format -i
 
 print-%:
 	$(info [ variable name]: $*)
