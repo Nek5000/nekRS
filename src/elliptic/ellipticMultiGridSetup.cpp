@@ -76,7 +76,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 
   oogs_mode oogsMode = OOGS_AUTO;
   if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
-  if(options.compareArgs("THREAD MODEL", "OPENMP")) oogsMode = OOGS_DEFAULT;
+  if(platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
 
   //set up the finest level
   if (Nmax > Nmin) {

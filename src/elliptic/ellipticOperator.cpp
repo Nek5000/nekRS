@@ -40,7 +40,7 @@ void ellipticAx(elliptic_t* elliptic,
   setupAide &options = elliptic->options;
 
   const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  const int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  const int serial = platform->device.mode() == "Serial";
   const int mapType = (elliptic->elementType == HEXAHEDRA &&
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
   const int integrationType = (elliptic->elementType == HEXAHEDRA &&
@@ -225,7 +225,7 @@ void ellipticOperator(elliptic_t* elliptic,
                                                       "TRUE") ? ogsFloatCommHalf : ogsPfloat
     :
                                   ogsDfloat;
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  int serial = platform->device.mode() == "Serial";
   if(serial) {
     occa::memory o_dummy;
     ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);

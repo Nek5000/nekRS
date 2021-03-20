@@ -31,7 +31,7 @@
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
   
-  const int serial = baseElliptic->options.compareArgs("THREAD MODEL", "SERIAL");
+  const int serial = platform->device.mode() == "Serial";
 
   elliptic_t* elliptic = new elliptic_t();
 

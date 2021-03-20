@@ -33,7 +33,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 
-  const int serial = baseElliptic->options.compareArgs("THREAD MODEL", "SERIAL");
+  const int serial = platform->device.mode() == "Serial";
 
   elliptic->var_coeff = 0;
   elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0

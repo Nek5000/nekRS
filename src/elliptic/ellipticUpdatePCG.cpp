@@ -33,8 +33,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
 {
   mesh_t* mesh = elliptic->mesh;
 
-  setupAide &options = elliptic->options;
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
+  int serial = platform->device.mode() == "Serial";
 
   // x <= x + alpha*p
   // r <= r - alpha*A*p
