@@ -186,8 +186,10 @@ mesh_t *createMesh(MPI_Comm comm,
                    bool cht,
                    occa::properties& kernelInfo)
 {
+  if (platform->comm.mpiRank == 0)
+    printf("generating mesh ... ");
+      
   mesh_t *mesh = new mesh_t();
-
   int buildOnly = 0;
   if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
@@ -214,7 +216,7 @@ mesh_t *createMesh(MPI_Comm comm,
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (platform->comm.mpiRank == 0)
-    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
+    printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
 
   mesh->Nlocal = mesh->Nelements * mesh->Np;
 

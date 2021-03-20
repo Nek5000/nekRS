@@ -182,6 +182,7 @@ c-----------------------------------------------------------------------
       if(ndim.eq.2) call exitti('Mesh has to be 3D!$', ndim) 
 
       call setDefaultParam
+      loglevel   = 1
       cpfld(1,2) = rho
       cpfld(1,1) = mue
       cpfld(2,2) = rhoCp
