@@ -1,3 +1,5 @@
+#include <genmap-quality.h>
+
 void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   int i, j;
 
@@ -22,16 +24,18 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   np = comm.np;
   id = comm.id;
 
-  if(np == 1) return;
+  if (np == 1)
+    return;
 
   numPoints = nel * nv;
-  data = (long long*) malloc((numPoints+1) * sizeof(long long));
-  for(i = 0; i < numPoints; i++) data[i] = vtx[i];
+  data = (long long *)malloc((numPoints + 1) * sizeof(long long));
+  for (i = 0; i < numPoints; i++)
+    data[i] = vtx[i];
 
   gsh = gs_setup(data, numPoints, &comm, 0, gs_pairwise, 0);
 
   pw_data_nmsg(gsh, &Nmsg);
-  Ncomm = (int *) malloc((Nmsg+1) * sizeof(int));
+  Ncomm = (int *)malloc((Nmsg + 1) * sizeof(int));
   pw_data_size(gsh, Ncomm);
 
   gs_free(gsh);
@@ -47,7 +51,7 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   nsMax = Ncomm[0];
   nsMin = Ncomm[0];
   nsSum = Ncomm[0];
-  for(i = 1; i < Nmsg; ++i) {
+  for (i = 1; i < Nmsg; ++i) {
     nsMax = Ncomm[i] > Ncomm[i - 1] ? Ncomm[i] : Ncomm[i - 1];
     nsMin = Ncomm[i] < Ncomm[i - 1] ? Ncomm[i] : Ncomm[i - 1];
     nsSum += Ncomm[i];
@@ -62,8 +66,10 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   comm_allreduce(&comm, gs_int, gs_min, &nssMin, 1, &b);
   comm_allreduce(&comm, gs_int, gs_add, &nssSum, 1, &b);
 
-  if(Nmsg) nsSum = nsSum / Nmsg;
-  else nsSum=0;
+  if (Nmsg)
+    nsSum = nsSum / Nmsg;
+  else
+    nsSum = 0;
   comm_allreduce(&comm, gs_int, gs_add, &nsSum, 1, &b);
 
   nelMax = nel;
@@ -71,22 +77,17 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce) {
   comm_allreduce(&comm, gs_int, gs_max, &nelMax, 1, &b);
   comm_allreduce(&comm, gs_int, gs_min, &nelMin, 1, &b);
 
-  if(id == 0) {
-    printf(
-      " Max neighbors: %d | Min neighbors: %d | Avg neighbors: %lf\n",
-      ncMax, ncMin, (double)ncSum / np);
-    printf(
-      " Max nvolume: %d | Min nvolume: %d | Avg nvolume: %lf\n",
-      nsMax, nsMin, (double)nsSum / np);
-    printf(
-      " Max volume: %d | Min volume: %d | Avg volume: %lf\n",
-      nssMax, nssMin, (double)nssSum / np);
-    printf(
-      " Max elements: %d | Min elements: %d\n",
-      nelMax, nelMin);
+  if (id == 0) {
+    printf(" Max neighbors: %d | Min neighbors: %d | Avg neighbors: %lf\n",
+           ncMax, ncMin, (double)ncSum / np);
+    printf(" Max nvolume: %d | Min nvolume: %d | Avg nvolume: %lf\n", nsMax,
+           nsMin, (double)nsSum / np);
+    printf(" Max volume: %d | Min volume: %d | Avg volume: %lf\n", nssMax,
+           nssMin, (double)nssSum / np);
+    printf(" Max elements: %d | Min elements: %d\n", nelMax, nelMin);
     fflush(stdout);
   }
- 
+
   free(Ncomm);
   comm_free(&comm);
 }

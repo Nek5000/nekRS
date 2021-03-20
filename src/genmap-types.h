@@ -1,8 +1,8 @@
 #ifndef _GENMAP_TYPES_H_
 #define _GENMAP_TYPES_H_
 
-#include <genmap-gslib.h>
 #include <float.h>
+#include <genmap-gslib.h>
 
 typedef long long GenmapLong;
 typedef unsigned long long GenmapULong;
@@ -19,7 +19,7 @@ typedef unsigned int GenmapUInt;
 #define GENMAP_UNSIGNED_INT MPI_UNSIGNED_INT
 
 typedef double GenmapScalar;
-#define genmap_gs_scalar gs_double
+#define gs_scalar gs_double
 #define GenmapScalarFormat "%lf"
 #define GENMAP_SCALAR MPI_DOUBLE
 #define GENMAP_SCALAR_MAX DBL_MAX
