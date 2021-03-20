@@ -132,6 +132,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
 
+  nrs->_mesh->fieldOffset = nrs->fieldOffset;
+
   if(nrs->Nsubsteps) {
     int Sorder;
     platform->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
