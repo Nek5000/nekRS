@@ -465,10 +465,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
 	
         fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
+        occa::properties subCycleStrongCubatureProps = prop;
+#if 1
+        if(platform->device.mode() == "Serial"){
+          fileName = oklpath + "nrs/subCycle" + suffix + ".c";
+          subCycleStrongCubatureProps["okl/enabled"] = false;
+        }
+#endif
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
-        kernelName = "subCycleStrongVolume" + suffix;
+          device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
+        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
         nrs->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
 
