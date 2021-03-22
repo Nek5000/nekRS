@@ -122,9 +122,20 @@ void ciTestLinAlg(const int N)
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
+  const int rank = platform->comm.mpiRank;
+  if(tstep == 1){
+    int NiterP = nrs->pSolver->Niter;
+    const int expectedNiterP = 8;
+    const int pIterErr = abs(NiterP - expectedNiterP);
+    if(pIterErr >= 2) {
+      if(rank==0){
+        printf("Expected %d P iterations in first step, but got %d!\n", expectedNiterP, NiterP);
+      }
+      FAIL;
+    }
+  }
   if (!nrs->lastStep) return;
  
-  const int rank = platform->comm.mpiRank;
 
   ciTestLinAlg(BLOCKSIZE / 16);
   ciTestLinAlg(BLOCKSIZE / 8);
