@@ -197,15 +197,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       elliptic->maskIds);
 
   //make a masked version of the global id numbering
-  hlong* maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
-  memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
+  mesh->maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
+  memcpy(mesh->maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < elliptic->Nmasked; n++)
-    maskedGlobalIds[elliptic->maskIds[n]] = 0;
+    mesh->maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
   //use the masked ids to make another gs handle
-  elliptic->ogs = ogsSetup(Ntotal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
+  elliptic->ogs = ogsSetup(Ntotal, mesh->maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
-  free(maskedGlobalIds);
 
   occa::properties kernelInfo = ellipticKernelInfo(mesh);
 
