@@ -466,12 +466,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 	
         fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
         occa::properties subCycleStrongCubatureProps = prop;
-#if 1
         if(platform->device.mode() == "Serial"){
           fileName = oklpath + "nrs/subCycle" + suffix + ".c";
           subCycleStrongCubatureProps["okl/enabled"] = false;
         }
-#endif
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
           device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
@@ -1127,8 +1125,15 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
  
 
         fileName = oklpath + "cds/subCycle" + suffix + ".okl";
+        occa::properties subCycleStrongCubatureProps = prop;
+        if(platform->device.mode() == "Serial"){
+          fileName = oklpath + "cds/subCycle" + suffix + ".c";
+          subCycleStrongCubatureProps["okl/enabled"] = false;
+        }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
-        cds->subCycleStrongCubatureVolumeKernel =  device.buildKernel(fileName, kernelName, prop);
+        cds->subCycleStrongCubatureVolumeKernel =
+          device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
+        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
         kernelName = "subCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
