@@ -38,13 +38,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
       printf("ERROR: NULL space handling for Block solver current not supported!\n");
     ABORT(EXIT_FAILURE);
   } else {
-#ifdef ELLIPTIC_ENABLE_TIMER
-    platform->timer.tic("dotp",1);
-#endif
     dfloat qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm.mpiComm);
-#ifdef ELLIPTIC_ENABLE_TIMER
-    platform->timer.toc("dotp");
-#endif
     qmeanGlobal /= (dfloat) Ntotal;
     platform->linAlg->add(mesh->Nlocal, -qmeanGlobal, o_q);
     //printf("qmeanGlobal %.15e %d\n", qmeanGlobal, Ntotal);

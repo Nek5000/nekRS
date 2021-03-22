@@ -103,12 +103,12 @@ void ogsScatterFinish(occa::memory o_sv,
     ogs->device.finish();
 
 #ifdef OGS_ENABLE_TIMER
-  ogsTic(ogs->comm, 1);
+   ogsTic(ogs->device, ogs->comm, 1);
 #endif
     // MPI based scatter using gslib
     ogsHostScatter(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  ogsToc();
+   ogsToc(ogs->device);
 #endif
 
     // copy totally scattered halo data back from HOST to DEVICE

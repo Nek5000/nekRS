@@ -29,7 +29,7 @@ double tElapsed = 0;
 
 void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
-  double tStart = MPI_Wtime();
+  const double tStart = MPI_Wtime();
       
   mesh_t* mesh = nrs->meshV;
   
@@ -150,7 +150,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
   platform->device.finish();
   MPI_Barrier(platform->comm.mpiComm);
-  tElapsed += (MPI_Wtime() - tStart);
+  const double tPreStep = MPI_Wtime() - tStart;
 
   const int isOutputStep = nrs->isOutputStep;
   bool converged;
@@ -159,7 +159,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     stage++;
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
-    double tStart = MPI_Wtime();
+    const double tStartStep = MPI_Wtime();
      
     const dfloat timeNew = time + nrs->dt[0]; 
 
@@ -189,7 +189,8 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
-    const double tElapsedStep = MPI_Wtime() - tStart;
+    double tElapsedStep = MPI_Wtime() - tStartStep;
+    if(stage == 1) tElapsedStep += tPreStep;
     tElapsed += tElapsedStep;
 
     converged = true;

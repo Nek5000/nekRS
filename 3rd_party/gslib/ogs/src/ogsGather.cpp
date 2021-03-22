@@ -136,7 +136,7 @@ void ogsGatherFinish(occa::memory o_gv,
     // MPI based gather using libgs
     ogsHostGather(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  ogsToc(ogs->device,);
+  ogsToc(ogs->device);
 #endif
 
     // copy totally gather halo data back from HOST to DEVICE

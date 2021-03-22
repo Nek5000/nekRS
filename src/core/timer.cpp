@@ -237,7 +237,7 @@ void timer_t::printRunStat()
   dEtime[2] = query("pressureSolve", "DEVICE:MAX");
   dEtime[3] = query("makeq", "DEVICE:MAX");
   dEtime[4] = query("scalarSolve", "DEVICE:MAX");
-  dEtime[5] = query("preconditioner", "DEVICE:MAX");
+  dEtime[5] = query("mg preconditioner", "DEVICE:MAX");
   dEtime[6] = query("pre", "DEVICE:MAX");
   dEtime[6]+= query("post", "DEVICE:MAX");
 
@@ -254,8 +254,7 @@ void timer_t::printRunStat()
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
-  const bool reportHostTime = true;
-  hEtime[1] = ogsTime(reportHostTime);
+  hEtime[1] = ogsTime(/* reportHostTime */ true);
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );
@@ -279,13 +278,13 @@ void timer_t::printRunStat()
     std::cout << "    preconditioner      " << dEtime[5] << " s\n"
               << "      coarse grid       " << hEtime[0] << " s\n";
 
+    if(dEtime[14] > 0)
+    std::cout << "  scalarSolve           " << dEtime[4] << " s\n"
+              << std::endl;
     if(dEtime[4] > 0) {
     std::cout << "  makeq                 " << dEtime[3] << " s\n";
     std::cout << "    udfSEqnSource       " << dEtime[14] << " s\n";
     }
-    if(dEtime[14] > 0)
-    std::cout << "  scalarSolve           " << dEtime[4] << " s\n"
-              << std::endl;
 
     if(dEtime[15] > 0)
     std::cout << "  udfProperties         " << dEtime[15] << " s\n"

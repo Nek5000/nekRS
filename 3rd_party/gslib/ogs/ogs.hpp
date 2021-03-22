@@ -135,6 +135,8 @@ SOFTWARE.
 #define ogsMax "max"
 #define ogsMin "min"
 
+#define OGS_ENABLE_TIMER
+
 // OCCA+gslib gather scatter
 typedef struct {
   

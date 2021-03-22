@@ -7,8 +7,6 @@
 #include "ogsKernels.hpp"
 #include "ogsInterface.h"
 
-#define OGS_ENABLE_TIMER
-
 #ifdef __cplusplus
 extern "C" {
 #endif
