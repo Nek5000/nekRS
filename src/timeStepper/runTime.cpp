@@ -398,7 +398,8 @@ void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage)
 void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t* mesh = nrs->meshV;
-  
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE"); 
+  const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
   if(udf.uEqnSource) {
     platform->timer.tic("udfUEqnSource", 1);
@@ -414,7 +415,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       nrs->fieldOffset,
       nrs->o_U,
       o_FU);
-  const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+
   if(movingMesh && !nrs->Nsubsteps){
     nrs->advectMeshVelocityKernel(
       mesh->Nelements,
@@ -426,8 +427,6 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
       o_FU
     );
   }
-  
-  const dlong cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
 
   occa::memory o_Usubcycling = platform->o_mempool.slice0;
   if(platform->options.compareArgs("ADVECTION", "TRUE")) {
@@ -445,7 +444,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
           mesh->o_cubInterpT,
           mesh->o_cubProjectT,
           nrs->fieldOffset,
-          cubatureOffset,
+          std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
           nrs->o_U,
           nrs->o_Urst,
           platform->o_mempool.slice0);
@@ -457,6 +456,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
           nrs->o_U,
           nrs->o_Urst,
           platform->o_mempool.slice0);
+
       platform->linAlg->axpby(
         nrs->NVfields * nrs->fieldOffset,
         -1.0,
@@ -480,6 +480,19 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     o_Usubcycling,
     o_FU,
     o_BF);
+
+  if(verbose) {
+    const dfloat debugNorm =
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        nrs->NVfields,
+        nrs->fieldOffset,
+        mesh->ogs->o_invDegree,
+        o_BF,
+        platform->comm.mpiComm
+      );
+    if(platform->comm.mpiRank == 0) printf("BF norm: %.15e\n", sqrt(debugNorm));
+  }
 
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
     const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);

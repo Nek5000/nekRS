@@ -118,6 +118,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice0,
     platform->o_mempool.slice6);
 
+
   oogs::startFinish(platform->o_mempool.slice6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmyVector(
@@ -137,6 +138,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice6,
     platform->o_mempool.slice3);
 
+
   nrs->pressureAddQtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
@@ -155,7 +157,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->o_U,
     platform->o_mempool.slice3);
 
-  platform->o_mempool.slice1.copyFrom(nrs->o_P, nrs->fieldOffset * sizeof(dfloat));
+  platform->o_mempool.slice1.copyFrom(nrs->o_P, mesh->Nlocal * sizeof(dfloat));
   ellipticSolve(nrs->pSolver, platform->o_mempool.slice3, platform->o_mempool.slice1);
 
   return platform->o_mempool.slice1;

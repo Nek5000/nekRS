@@ -36,9 +36,24 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 
   int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
+  const int verbose = options.compareArgs("VERBOSE", "TRUE");
   dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
+
+  if(verbose) {
+    const dfloat rhsNorm = 
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_r,
+        platform->comm.mpiComm
+      )
+      * sqrt(elliptic->resNormFactor); 
+    if(platform->comm.mpiRank == 0) printf("RHS norm: %.15e\n", rhsNorm);
+  }
 
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
