@@ -1,11 +1,3 @@
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <stdint.h>
-#include <occa.hpp>
-
-using namespace std;
-using namespace occa;
 /*
 The MIT License (MIT)
 Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
@@ -50,10 +42,9 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
   dfloat s_U[p_cubNq][p_cubNq];
   dfloat s_Ud[p_cubNq][p_cubNq];
   dfloat s_Ud1[p_Nq][p_cubNq];
-  dfloat r_U2[256][p_cubNq];
-  dfloat r_Ud[256][p_cubNq];
+  dfloat r_U2[p_cubNq][p_cubNq][p_cubNq];
+  dfloat r_Ud[p_cubNq][p_cubNq][p_cubNq];
   for (int e = 0; e < Nelements; ++e) {
-    int _occa_exclusive_index = 0;
     const int element = elementList[e];
     #pragma unroll
     for (int j = 0; j < p_cubNq; ++j) {
@@ -67,9 +58,8 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
         s_cubD[j][i] = cubD[id];
         #pragma unroll
         for (int k = 0; k < p_cubNq; ++k) {
-          r_Ud[_occa_exclusive_index][k] = 0;
+          r_Ud[j][i][k] = 0;
         }
-        ++_occa_exclusive_index;
       }
     }
     #pragma unroll
@@ -100,7 +90,6 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
       }
 
       // interpolate in 's'
-      _occa_exclusive_index = 0;
       #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
         #pragma unroll
@@ -118,26 +107,22 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
           #pragma unroll
           for (int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
-            r_Ud[_occa_exclusive_index][k] += Ikc * Ud2;
+            r_Ud[j][i][k] += Ikc * Ud2;
           }
-          ++_occa_exclusive_index;
         }
       }
     }
     #pragma unroll p_cubNq
     for (int k = 0; k < p_cubNq; ++k) {
       ;
-      _occa_exclusive_index = 0;
       #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
         #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
-          s_Ud[j][i] = r_Ud[_occa_exclusive_index][k];
-          ++_occa_exclusive_index;
+          s_Ud[j][i] = r_Ud[j][i][k];
         }
       }
       ;
-      _occa_exclusive_index = 0;
       #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
         #pragma unroll
@@ -156,7 +141,7 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
           #pragma unroll
           for (int n = 0; n < p_cubNq; ++n) {
             dfloat Dkn = s_cubD[k][n];
-            Udt += Dkn * r_Ud[_occa_exclusive_index][n];
+            Udt += Dkn * r_Ud[j][i][n];
           }
           dfloat Uhat = 0.0;
           dfloat Vhat = 0.0;
@@ -174,8 +159,7 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
           // U*dUdx + V*dUdy + W*dUdz = (U*(drdx*dUdr+dsdx*dUds+dtdx*dUdt) + V*(drdy*dUdr ..))
 
           // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
-          r_U2[_occa_exclusive_index][k] = Uhat * Udr + Vhat * Uds + What * Udt;
-          ++_occa_exclusive_index;
+          r_U2[j][i][k] = Uhat * Udr + Vhat * Uds + What * Udt;
         }
       }
     }
@@ -183,8 +167,6 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
     // now project back in t
     #pragma unroll
     for (int c = 0; c < p_Nq; ++c) {
-      ;
-      _occa_exclusive_index = 0;
       #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
         #pragma unroll
@@ -193,10 +175,9 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
           #pragma unroll
           for (int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
-            rhsU += Ikc * r_U2[_occa_exclusive_index][k];
+            rhsU += Ikc * r_U2[j][i][k];
           }
           s_U[j][i] = rhsU;
-          ++_occa_exclusive_index;
         }
       }
       #pragma unroll
