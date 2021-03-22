@@ -221,6 +221,4 @@ occa::properties ellipticKernelInfo(mesh_t* mesh);
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 
-mesh_t* create_extended_mesh(elliptic_t*);
-
 #endif

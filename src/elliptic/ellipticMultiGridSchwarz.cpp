@@ -605,7 +605,7 @@ void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* ellipt
   free(Sz);
 }
 
-mesh_t* create_extended_mesh(elliptic_t* elliptic)
+mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
 {
 
   //platform_t* platform = platform_t::getInstance();
@@ -675,11 +675,9 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
   //make a masked version of the global id numbering
-  free(mesh->maskedGlobalIds);
-  mesh->maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
-  memcpy(mesh->maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
+  memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)
-    mesh->maskedGlobalIds[maskIds[n]] = 0;
+    maskedGlobalIds[maskIds[n]] = 0;
 
   free(mapB);
   free(maskIds);
@@ -801,7 +799,9 @@ void MGLevel::build(
   overlap = false;
   if(Nq >= 5) overlap = true;
 
-  mesh_t* extendedMesh = create_extended_mesh(elliptic);
+  hlong* maskedGlobalIds;
+  maskedGlobalIds = (hlong*) calloc(Nelements*(Nq+2)*(Nq+2)*(Nq+2),sizeof(hlong));
+  mesh_t* extendedMesh = create_extended_mesh(elliptic, maskedGlobalIds);
 
   const int Nq_e = extendedMesh->Nq;
   const int Np_e = extendedMesh->Np;
@@ -810,7 +810,7 @@ void MGLevel::build(
   oogs_mode oogsMode = OOGS_AUTO;
   if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
 
-  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0,
+  extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
                                     ogsPfloat, platform->comm.mpiComm, 1, platform->device,
                                     NULL, oogsMode);
   meshFree(extendedMesh);
