@@ -133,28 +133,25 @@ void ellipticAxVarHex3D(const dlong & Nelements,
   dfloat s_Gqs[p_Nq][p_Nq][p_Nq];
   dfloat s_Gqt[p_Nq][p_Nq][p_Nq];
 
-  dfloat s_D[p_Nq][p_Nq];
-  dfloat s_S[p_Nq][p_Nq];
-
-  for(int j = 0; j < p_Nq; ++j)
-    for(int i = 0; i < p_Nq; ++i) {
-      s_D[j][i] = D[j * p_Nq + i];
-      s_S[j][i] = S[j * p_Nq + i];
-    }
-
   for(dlong e = 0; e < Nelements; ++e) {
     const dlong element = e;
 
+#pragma unroll
     for(int k = 0; k < p_Nq; k++)
+#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
+#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong base = i + j * p_Nq + k * p_Nq * p_Nq + element * p_Np;
           const dfloat qbase = q[base];
           s_q[k][j][i] = qbase;
         }
 
+#pragma unroll
     for(int k = 0; k < p_Nq; ++k)
+#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
+#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat r_G00 = ggeo[gbase + p_G00ID * p_Np];
@@ -171,10 +168,11 @@ void ellipticAxVarHex3D(const dlong & Nelements,
           dfloat qs = 0.f;
           dfloat qt = 0.f;
 
-          for(int m = 0; m < p_Nq; m++) {
-            qr += s_S[m][i] * s_q[k][j][m];
-            qs += s_S[m][j] * s_q[k][m][i];
-            qt += s_S[m][k] * s_q[m][j][i];
+#pragma unroll
+          for(int m = 0; m < p_Nq; m++){
+            qr += S[m*p_Nq + i] * s_q[k][j][m];
+            qs += S[m*p_Nq + j] * s_q[k][m][i];
+            qt += S[m*p_Nq + k] * s_q[m][j][i];
           }
 
           dfloat Gqr = r_G00 * qr;
@@ -194,8 +192,11 @@ void ellipticAxVarHex3D(const dlong & Nelements,
           s_Gqt[k][j][i] = r_lam0 * Gqt;
         }
 
+#pragma unroll
     for(int k = 0; k < p_Nq; k++)
+#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
+#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat r_GwJ = ggeo[gbase + p_GWJID * p_Np];
@@ -206,12 +207,12 @@ void ellipticAxVarHex3D(const dlong & Nelements,
           dfloat r_Aq = r_GwJ * r_lam1 * s_q[k][j][i];
           dfloat r_Aqr = 0, r_Aqs = 0, r_Aqt = 0;
 
-          for(int m = 0; m < p_Nq; m++)
-            r_Aqr += s_D[m][i] * s_Gqr[k][j][m];
-          for(int m = 0; m < p_Nq; m++)
-            r_Aqs += s_D[m][j] * s_Gqs[k][m][i];
-          for(int m = 0; m < p_Nq; m++)
-            r_Aqt += s_D[m][k] * s_Gqt[m][j][i];
+#pragma unroll
+          for(int m = 0; m < p_Nq; m++){
+            r_Aqr += D[m*p_Nq+i] * s_Gqr[k][j][m];
+            r_Aqs += D[m*p_Nq+j] * s_Gqs[k][m][i];
+            r_Aqt += D[m*p_Nq+k] * s_Gqt[m][j][i];
+          }
 
           Aq[id] = r_Aqr + r_Aqs + r_Aqt + r_Aq;
         }

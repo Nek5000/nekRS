@@ -797,6 +797,7 @@ void MGLevel::build(
   const int Np = elliptic->mesh->Np;
 
   overlap = false;
+  const bool serial = (platform->device.mode() == "Serial");
   if(Nq >= 5) overlap = true;
 
   hlong* maskedGlobalIds;
@@ -887,6 +888,10 @@ void MGLevel::build(
         properties["defines/p_restrict"] = 1;
 
       filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
+      if(serial) {
+        filename = oklpath + "ellipticSchwarzSolverHex3D.c";
+        properties["okl/enabled"] = false;
+      }
       preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties);
       fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties);
       postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties);
@@ -907,17 +912,17 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
       if(!overlap){
         fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
       } else if(overlap && mesh->NglobalGatherElements){
         fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
       }
 
       oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
 
       if(overlap && mesh->NlocalGatherElements)
         fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
+                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
 
       oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
     } else {

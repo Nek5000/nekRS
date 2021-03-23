@@ -1,73 +1,70 @@
-@kernel void preFDM(const dlong Nelements,
-                    @restrict const pfloat* u,
-                    @restrict pfloat* work1)
+extern "C" void preFDM(const dlong& Nelements,
+                    const pfloat* __restrict__ u,
+                    pfloat* __restrict__ work1)
 {
-  for (dlong elem = 0; elem < Nelements; elem++; @outer) {
-    @shared pfloat sWork1[p_Nq_e][p_Nq_e][p_Nq_e];
-    for(int k = 0; k < p_Nq_e; ++k; @inner) {
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
-#pragma unroll
-        for(int i = 0; i < p_Nq_e; ++i)
-          sWork1[k][j][i] = 0.0;
-      }
+  pfloat sWork1[p_Nq_e][p_Nq_e][p_Nq_e];
+  #pragma unroll
+  for(int k = 0; k < p_Nq_e; ++k) {
+    #pragma unroll
+    for(int j = 0; j < p_Nq_e; ++j) {
+      #pragma unroll
+      for(int i = 0; i < p_Nq_e; ++i)
+        sWork1[k][j][i] = 0.0;
     }
-
-    @barrier("local");
-
+  }
+  for (dlong elem = 0; elem < Nelements; elem++) {
+    #pragma unroll
     for(int k = 0; k < p_Nq; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner){
-          if(i < p_Nq && j < p_Nq) {
+      #pragma unroll
+      for(int j = 0; j < p_Nq; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq; ++i){
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             sWork1[k + 1][j + 1][i + 1] = u[idx];
-          }
         }
       }
     }
 
-    @barrier("local");
 
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
           sWork1[l1][j][k] = sWork1[l2][j][k];
           sWork1[p_Nq_e - l1 - 1][j][k] = sWork1[p_Nq_e - l2 - 1][j][k];
-        }
       }
     }
 
-    @barrier("local");
 
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
           sWork1[i][l1][k] = sWork1[i][l2][k];
           sWork1[i][p_Nq_e - l1 - 1][k] = sWork1[i][p_Nq_e - l2 - 1][k];
-        }
       }
     }
-    @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 2;
           sWork1[i][j][l1] = sWork1[i][j][l2];
           sWork1[i][j][p_Nq_e - l1 - 1] = sWork1[i][j][p_Nq_e - l2 - 1];
-        }
       }
     }
-    @barrier("local");
+    #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+      #pragma unroll
+      for(int j = 0; j < p_Nq_e; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq_e; ++i) {
           const dlong elem_offset = p_Nq_e * p_Nq_e * p_Nq_e * elem;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[idx] = sWork1[k][j][i];
@@ -77,19 +74,21 @@
   }
 }
 
-@kernel void postFDM(const dlong Nelements,
-                     @restrict pfloat* my_work1,
-                     @restrict pfloat* my_work2,
-                     @restrict pfloat* Su,
-                     @restrict const pfloat* wts)
+extern "C" void postFDM(const dlong& Nelements,
+                     pfloat* __restrict__ my_work1,
+                     pfloat* __restrict__ my_work2,
+                     pfloat* __restrict__ Su,
+                     const pfloat* __restrict__ wts)
 {
-  for (dlong elem = 0; elem < Nelements; ++elem; @outer) {
-    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
-    @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
+  pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
+  pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
+  for (dlong elem = 0; elem < Nelements; ++elem) {
+    #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+      #pragma unroll
+      for(int j = 0; j < p_Nq_e; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq_e; ++i) {
           const dlong elem_offset = elem * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = my_work2[idx];
@@ -97,83 +96,78 @@
         }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 0;
           work1[l1][j][k] = work1[l1][j][k] - work2[l2][j][k];
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] -
                                          work2[p_Nq_e - l2 - 1][j][k];
-        }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 0;
           work1[i][l1][k] = work1[i][l1][k] - work2[i][l2][k];
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] -
                                          work2[i][p_Nq_e - l2 - 1][k];
-        }
       }
     }
-    @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 0;
           work1[i][j][l1] = work1[i][j][l1] - work2[i][j][l2];
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] -
                                          work2[i][j][p_Nq_e - l2 - 1];
-        }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 2;
           const int l2 = 0;
           work1[l1][j][k] = work1[l1][j][k] + work1[l2][j][k];
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] +
                                          work1[p_Nq_e - l2 - 1][j][k];
-        }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 2;
           const int l2 = 0;
           work1[i][l1][k] = work1[i][l1][k] + work1[i][l2][k];
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] +
                                          work1[i][p_Nq_e - l2 - 1][k];
-        }
       }
     }
-    @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 2;
           const int l2 = 0;
           work1[i][j][l1] = work1[i][j][l1] + work1[i][j][l2];
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] +
                                          work1[i][j][p_Nq_e - l2 - 1];
-        }
       }
     }
-    @barrier("local");
+    #pragma unroll
     for(int k = 0; k < p_Nq; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner){
+      #pragma unroll
+      for(int j = 0; j < p_Nq_e; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq_e; ++i){
           if(i < p_Nq && j < p_Nq) {
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
@@ -185,90 +179,90 @@
   }
 }
 
-@kernel void fusedFDM(
-  const dlong Nelements,
-  const dlong localNelements,
-  @restrict const dlong*  elementList,
-  @restrict pfloat* Su,
-  @restrict const pfloat* S_x,
-  @restrict const pfloat* S_y,
-  @restrict const pfloat* S_z,
-  @restrict const pfloat* inv_L,
+extern "C" void fusedFDM(
+  const dlong& Nelements,
+  const dlong& localNelements,
+  const dlong* __restrict__  elementList,
+  pfloat* __restrict__ Su,
+  const pfloat* __restrict__ S_x,
+  const pfloat* __restrict__ S_y,
+  const pfloat* __restrict__ S_z,
+  const pfloat* __restrict__ inv_L,
 #if p_restrict
-  @restrict const dfloat* wts,
+  const dfloat* __restrict__ wts,
 #endif
-  @restrict pfloat* u
+  pfloat* __restrict__ u
   )
 {
+  pfloat S_x_e[p_Nq_e][p_Nq_e];
+  pfloat S_y_e[p_Nq_e][p_Nq_e];
+  pfloat S_z_e[p_Nq_e][p_Nq_e];
+  pfloat S_x_eT[p_Nq_e][p_Nq_e];
+  pfloat S_y_eT[p_Nq_e][p_Nq_e];
+  pfloat S_z_eT[p_Nq_e][p_Nq_e];
+  pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
+  pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
 #if p_overlap
-  for (dlong my_elem = 0; my_elem < localNelements; ++my_elem; @outer) {
+  for (dlong my_elem = 0; my_elem < localNelements; ++my_elem) {
 #else
-  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem; @outer) {
+  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem) {
 #endif
-    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
-    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
-    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
-    @shared pfloat S_x_eT[p_Nq_e][p_Nq_e];
-    @shared pfloat S_y_eT[p_Nq_e][p_Nq_e];
-    @shared pfloat S_z_eT[p_Nq_e][p_Nq_e];
-    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
-    @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
-    @exclusive dlong element;
+#if p_overlap
+    const dlong element = elementList[my_elem];
+#else
+    const dlong element = my_elem;
+#endif
 
+    #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k) {
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner) {
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
-#if p_overlap
-          element = elementList[my_elem];
-#else
-          element = my_elem;
-#endif
+      #pragma unroll
+      for(int j = 0; j < p_Nq_e; ++j) {
+        #pragma unroll
+        for(int i = 0; i < p_Nq_e; ++i) {
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = u[idx];
         }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
           work1[l1][j][k] = work1[l1][j][k] - work1[l2][j][k];
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] -
                                          work1[p_Nq_e - l2 - 1][j][k];
-        }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
           work1[i][l1][k] = work1[i][l1][k] - work1[i][l2][k];
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] -
                                          work1[i][p_Nq_e - l2 - 1][k];
-        }
       }
     }
-    @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    // <- here
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 2;
           work1[i][j][l1] = work1[i][j][l1] - work1[i][j][l2];
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] -
                                          work1[i][j][p_Nq_e - l2 - 1];
-        }
       }
     }
-    @barrier("local");
-    for (int i = 0; i < p_Nq_e; i++; @inner){
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
+    #pragma unroll
+    for (int i = 0; i < p_Nq_e; i++){
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
         const int ij = j + i * p_Nq_e;
         S_x_e[i][j] = S_x[ij + element * p_Nq_e * p_Nq_e];
         S_y_e[i][j] = S_y[ij + element * p_Nq_e * p_Nq_e];
@@ -278,79 +272,88 @@
         S_z_eT[j][i] = S_z_e[i][j];
       }
     }
-    @barrier("local");
-    for (int k = 0; k < p_Nq_e; k++; @inner) {
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-#pragma unroll
+    #pragma unroll
+    for (int k = 0; k < p_Nq_e; k++) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_x_eT[j][l] * work1[k][i][l];
           work2[k][j][i] = value;
         }
       }
     }
-    @barrier("local");
-    for (int k = 0; k < p_Nq_e; k++; @inner) {
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-#pragma unroll
+    #pragma unroll
+    for (int k = 0; k < p_Nq_e; k++) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_y_eT[j][l] * work2[k][i][l];
           work1[j][i][k] = value;
         }
       }
     }
-    @barrier("local");
+
+    #pragma unroll
     for (int k = 0; k < p_Nq_e; k++) {
-      @barrier("local");
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-        for (int i = 0; i < p_Nq_e; i++; @inner) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
+        for (int i = 0; i < p_Nq_e; i++) {
           const int v = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_z_eT[k][l] * work1[j][i][l];
           work2[k][j][i] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
         }
       }
     }
-    @barrier("local");
-    for (int k = 0; k < p_Nq_e; k++; @inner) {
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-#pragma unroll
+
+    #pragma unroll
+    for (int k = 0; k < p_Nq_e; k++) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_x_e[i][l] * work2[k][j][l];
           work1[k][i][j] = value;
         }
       }
     }
-    @barrier("local");
-    for (int k = 0; k < p_Nq_e; k++; @inner) {
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-#pragma unroll
+
+    #pragma unroll
+    for (int k = 0; k < p_Nq_e; k++) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_y_e[j][l] * work1[k][i][l];
           work2[j][i][k] = value;
         }
       }
     }
-    @barrier("local");
+    #pragma unroll
     for (int k = 0; k < p_Nq_e; k++) {
-      @barrier("local");
-      for (int j = 0; j < p_Nq_e; j++; @inner) {
-        for (int i = 0; i < p_Nq_e; i++; @inner) {
+      #pragma unroll
+      for (int j = 0; j < p_Nq_e; j++) {
+        #pragma unroll
+        for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
-#pragma unroll
+          #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
             value += S_z_e[k][l] * work2[j][i][l];
 
@@ -364,44 +367,44 @@
       }
     }
 #if (!p_restrict)
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 0;
           work2[l1][j][k] = work1[l2][j][k];
           work2[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l2 - 1][j][k];
-        }
       }
     }
-    @barrier("local");
-    for(int k = 0; k < p_Nq_e; ++k; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(k >= 1 && k < p_Nq_e - 1 && i >= 1 && i < p_Nq_e - 1) {
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 0;
           work2[i][l1][k] = work1[i][l2][k];
           work2[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l2 - 1][k];
-        }
       }
     }
-    @barrier("local");
-    for(int j = 0; j < p_Nq_e; ++j; @inner){
-      for(int i = 0; i < p_Nq_e; ++i; @inner){
-        if(i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 0;
           work2[i][j][l1] = work1[i][j][l2];
           work2[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l2 - 1];
-        }
       }
     }
-    @barrier("local");
+
+    #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner) {
+      #pragma unroll
+      for(int j = 0; j < p_Nq_e; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq_e; ++i) {
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           u[idx] = work2[k][j][i];
@@ -410,16 +413,15 @@
     }
 
 #else  /* if (!p_restrict) */
-    @barrier("local");
+    #pragma unroll
     for(int k = 0; k < p_Nq; ++k){
-      @barrier("local");
-      for(int j = 0; j < p_Nq_e; ++j; @inner){
-        for(int i = 0; i < p_Nq_e; ++i; @inner){
-          if(i < p_Nq && j < p_Nq) {
+      #pragma unroll
+      for(int j = 0; j < p_Nq; ++j){
+        #pragma unroll
+        for(int i = 0; i < p_Nq; ++i){
             const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
-          }
         }
       }
     }
