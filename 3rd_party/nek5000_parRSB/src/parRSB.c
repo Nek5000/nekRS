@@ -115,19 +115,7 @@ int parRSB_partMesh(int *part, int *seq, long long *vtx, double *coord, int nel,
   comm_barrier(&c);
   double time4 = comm_time();
 
-  /* Restore original input */
-  sarray_transfer(struct rsb_element, &eList, origin, 1, &cr);
-  nel = eList.n;
-  sarray_sort(struct rsb_element, eList.ptr, nel, globalId, 1, &bfr);
-
-  struct rsb_element *e_ptr = eList.ptr;
-  int e;
-  for (e = 0; e < nel; e++)
-    part[e] = e_ptr[e].origin;
-
-  if (seq != NULL)
-    for (e = 0; e < nel; e++)
-      seq[e] = e_ptr[e].seq;
+  genmap_restore_original(part, seq, &cr, &eList, &bfr);
 
   double time5 = comm_time();
   comm_barrier(&c);

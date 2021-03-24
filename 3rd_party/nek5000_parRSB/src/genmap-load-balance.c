@@ -68,3 +68,34 @@ void genmap_load_balance(struct array *eList, uint nel, int nv, double *coord,
 
   free(element);
 }
+
+void genmap_restore_original(int *part, int *seq, struct crystal *cr,
+                             struct array *eList, buffer *bfr) {
+  struct rcb_element *element = eList->ptr;
+  size_t unit_size;
+  if (element->type == GENMAP_RSB_ELEMENT) // RSB
+    unit_size = sizeof(struct rsb_element);
+  else
+    unit_size = sizeof(struct rcb_element);
+
+  sarray_transfer_(eList, unit_size, offsetof(struct rcb_element, origin), 1,
+                   cr);
+
+  uint nel = eList->n;
+  if (element->type == GENMAP_RSB_ELEMENT) // RSB
+    sarray_sort(struct rsb_element, eList->ptr, nel, globalId, 1, bfr);
+  else
+    sarray_sort(struct rcb_element, eList->ptr, nel, globalId, 1, bfr);
+
+  int e;
+  for (e = 0; e < nel; e++) {
+    element = eList->ptr + e * unit_size;
+    part[e] = element->origin; // element[e].origin;
+  }
+
+  if (seq != NULL)
+    for (e = 0; e < nel; e++) {
+      element = eList->ptr + e * unit_size;
+      seq[e] = element->seq; // element[e].seq;
+    }
+}

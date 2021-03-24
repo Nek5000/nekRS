@@ -2,8 +2,8 @@
 
 #define min(a, b) ((b) < (a) ? (b) : (a))
 
-static void GenmapFindNeighbors(struct array *nbrs, genmap_handle h,
-                                struct comm *cc) {
+static void genmap_find_neighbors(struct array *nbrs, genmap_handle h,
+                                  struct comm *cc) {
   sint lelt = genmap_get_nel(h);
   sint nv = genmap_get_nvertices(h);
 
@@ -38,9 +38,7 @@ static void GenmapFindNeighbors(struct array *nbrs, genmap_handle h,
   size = vertices.n;
   vertex *vPtr = vertices.ptr;
 
-  buffer buf;
-  buffer_init(&buf, 1024);
-  sarray_sort(vertex, vPtr, size, vertexId, 1, &buf);
+  sarray_sort(vertex, vPtr, size, vertexId, 1, &h->buf);
 
   struct array a;
   array_init(csr_entry, &a, 10);
@@ -67,14 +65,13 @@ static void GenmapFindNeighbors(struct array *nbrs, genmap_handle h,
 
   sarray_transfer(csr_entry, &a, proc, 1, &cr);
   // TODO: Check if the last line is redundant
-  sarray_sort_2(csr_entry, a.ptr, a.n, r, 1, c, 1, &buf);
-  sarray_sort(csr_entry, a.ptr, a.n, r, 1, &buf);
+  sarray_sort_2(csr_entry, a.ptr, a.n, r, 1, c, 1, &h->buf);
+  // sarray_sort(csr_entry, a.ptr, a.n, r, 1, &h->buf);
 
   array_init(entry, nbrs, lelt);
 
   if (a.n == 0) {
     crystal_free(&cr);
-    buffer_free(&buf);
     array_free(&vertices);
     array_free(&a);
   }
@@ -96,21 +93,30 @@ static void GenmapFindNeighbors(struct array *nbrs, genmap_handle h,
     }
   }
 
-  sarray_sort_2(entry, nbrs->ptr, nbrs->n, r, 1, c, 1, &buf);
+  sarray_sort_2(entry, nbrs->ptr, nbrs->n, r, 1, c, 1, &h->buf);
 
   crystal_free(&cr);
-  buffer_free(&buf);
   array_free(&vertices);
   array_free(&a);
 }
 
 int GenmapInitLaplacian(genmap_handle h, struct comm *c) {
   struct array entries;
-  GenmapFindNeighbors(&entries, h, c);
+
+  metric_tic(c, FINDNBRS);
+  genmap_find_neighbors(&entries, h, c);
+  metric_toc(c, FINDNBRS);
+
+  metric_tic(c, CSRMATSETUP);
   csr_mat_setup(&entries, c, &h->M);
+  metric_toc(c, CSRMATSETUP);
+
   array_free(&entries);
 
+  metric_toc(c, CSRTOPSETUP);
   h->gsh = get_csr_top(h->M, c);
+  metric_toc(c, CSRTOPSETUP);
+
   GenmapRealloc(h->M->row_off[h->M->rn], &h->b);
 
 #if defined(GENMAP_DEBUG)
