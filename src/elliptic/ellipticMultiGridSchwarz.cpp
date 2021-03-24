@@ -798,7 +798,7 @@ void MGLevel::build(
 
   overlap = false;
   const bool serial = (platform->device.mode() == "Serial");
-  if(Nq >= 5) overlap = true;
+  if(Nq >= 5 && !serial) overlap = true;
 
   hlong* maskedGlobalIds;
   maskedGlobalIds = (hlong*) calloc(Nelements*(Nq+2)*(Nq+2)*(Nq+2),sizeof(hlong));

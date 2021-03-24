@@ -93,7 +93,8 @@ void Precon(solver_t *M, occa::memory o_x, occa::memory o_rhs) {
   } else if(M->ctype==KCYCLE) {
     M->device_kcycle(0);
   } else if(M->ctype==VCYCLE) {
-    if(M->additive){
+    //if(M->additive){
+    if(0){
       M->additiveVcycle();
     } else {
       M->device_vcycle(0);

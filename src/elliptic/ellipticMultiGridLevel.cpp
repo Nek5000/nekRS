@@ -73,6 +73,7 @@ void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
+  if(!x_is_zero && stype == SCHWARZ) return;
   if(!strstr(pfloatString,dfloatString)) {
     elliptic->copyDfloatToPfloatKernel(Nrows, o_xPfloat, o_x);
     elliptic->copyDfloatToPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
