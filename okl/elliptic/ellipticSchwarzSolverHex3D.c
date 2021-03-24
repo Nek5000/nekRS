@@ -2,76 +2,94 @@ extern "C" void preFDM(const dlong& Nelements,
                     const pfloat* __restrict__ u,
                     pfloat* __restrict__ work1)
 {
-  pfloat sWork1[p_Nq_e][p_Nq_e][p_Nq_e];
+  #define getIdx(k,j,i,e) ((k)*p_Nq_e*p_Nq_e+(j)*p_Nq_e+(i)+(e)*p_Nq_e*p_Nq_e*p_Nq_e)
+  #define getIdx2(k,j,i,e) ((k-1)*p_Nq*p_Nq+(j-1)*p_Nq+(i-1)+(e)*p_Nq*p_Nq*p_Nq)
+  #define sWork1(k,j,i,e) (work1[(getIdx(k,j,i,e))])
+  #define uArr(k,j,i,e) (u[(getIdx2(k,j,i,e))])
   #pragma unroll
-  for(int k = 0; k < p_Nq_e; ++k) {
-    #pragma unroll
-    for(int j = 0; j < p_Nq_e; ++j) {
-      #pragma unroll
-      for(int i = 0; i < p_Nq_e; ++i)
-        sWork1[k][j][i] = 0.0;
-    }
-  }
-  for (dlong elem = 0; elem < Nelements; elem++) {
-    #pragma unroll
-    for(int k = 0; k < p_Nq; ++k){
-      #pragma unroll
-      for(int j = 0; j < p_Nq; ++j){
-        #pragma unroll
-        for(int i = 0; i < p_Nq; ++i){
+  for (dlong elem = 0; elem < p_Nelements; elem++) {
+    #pragma unroll 
+    for(int k = 0; k < p_Nq_e; ++k){
+      #pragma unroll 
+      for(int j = 0; j < p_Nq_e; ++j){
+        #pragma unroll 
+        for(int i = 0; i < p_Nq_e; ++i){
+          const bool iBound = i>=1 && i <(p_Nq_e-1);
+          const bool jBound = j>=1 && j <(p_Nq_e-1);
+          const bool kBound = k>=1 && k <(p_Nq_e-1);
+          if(iBound && jBound && kBound){
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
-            sWork1[k + 1][j + 1][i + 1] = u[idx];
+            sWork1(k,j,i,elem) = uArr(k,j,i,elem);
+          } else {
+            sWork1(k,j,i,elem) = 0.0;
+          }
         }
       }
     }
 
 
-    #pragma unroll
+    #pragma unroll 
     for(int j = 1; j < p_Nq_e-1; ++j){
-      #pragma unroll
+      #pragma unroll 
       for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
-          sWork1[l1][j][k] = sWork1[l2][j][k];
-          sWork1[p_Nq_e - l1 - 1][j][k] = sWork1[p_Nq_e - l2 - 1][j][k];
+          sWork1(l1,j,k,elem) = uArr(l2,j,k,elem);
+      }
+    }
+    #pragma unroll 
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll 
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 2;
+          sWork1(p_Nq_e - l1 - 1,j,k,elem) = uArr(p_Nq_e - l2 - 1,j,k,elem);
       }
     }
 
 
-    #pragma unroll
+    #pragma unroll 
     for(int i = 1; i < p_Nq_e-1; ++i){
-      #pragma unroll
+      #pragma unroll 
       for(int k = 1; k < p_Nq_e-1; ++k){
           const int l1 = 0;
           const int l2 = 2;
-          sWork1[i][l1][k] = sWork1[i][l2][k];
-          sWork1[i][p_Nq_e - l1 - 1][k] = sWork1[i][p_Nq_e - l2 - 1][k];
+          sWork1(i,l1,k,elem) = uArr(i,l2,k,elem);
       }
     }
-    #pragma unroll
+    #pragma unroll 
     for(int i = 1; i < p_Nq_e-1; ++i){
-      #pragma unroll
+      #pragma unroll 
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 2;
+          sWork1(i,p_Nq_e - l1 - 1,k,elem) = uArr(i,p_Nq_e - l2 - 1,k,elem);
+      }
+    }
+    #pragma unroll 
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll 
       for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 2;
-          sWork1[i][j][l1] = sWork1[i][j][l2];
-          sWork1[i][j][p_Nq_e - l1 - 1] = sWork1[i][j][p_Nq_e - l2 - 1];
+          sWork1(i,j,l1,elem) = uArr(i,j,l2,elem);
       }
     }
-    #pragma unroll
-    for(int k = 0; k < p_Nq_e; ++k){
-      #pragma unroll
-      for(int j = 0; j < p_Nq_e; ++j){
-        #pragma unroll
-        for(int i = 0; i < p_Nq_e; ++i) {
-          const dlong elem_offset = p_Nq_e * p_Nq_e * p_Nq_e * elem;
-          const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
-          work1[idx] = sWork1[k][j][i];
-        }
+    #pragma unroll 
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll 
+      for(int j = 1; j < p_Nq_e-1; ++j){
+          const int l1 = 0;
+          const int l2 = 2;
+          sWork1(i,j,p_Nq_e - l1 - 1,elem) = uArr(i,j,p_Nq_e - l2 - 1,elem);
       }
     }
   }
+  #undef getIdx
+  #undef getIdx2
+  #undef sWork1
+  #undef uArr
 }
 
 extern "C" void postFDM(const dlong& Nelements,
@@ -82,7 +100,8 @@ extern "C" void postFDM(const dlong& Nelements,
 {
   pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
   pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
-  for (dlong elem = 0; elem < Nelements; ++elem) {
+  #pragma unroll
+  for (dlong elem = 0; elem < p_Nelements; ++elem) {
     #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k){
       #pragma unroll
@@ -103,6 +122,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 0;
           const int l2 = 0;
           work1[l1][j][k] = work1[l1][j][k] - work2[l2][j][k];
+      }
+    }
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 0;
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] -
                                          work2[p_Nq_e - l2 - 1][j][k];
       }
@@ -114,6 +141,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 0;
           const int l2 = 0;
           work1[i][l1][k] = work1[i][l1][k] - work2[i][l2][k];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 0;
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] -
                                          work2[i][p_Nq_e - l2 - 1][k];
       }
@@ -125,6 +160,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 0;
           const int l2 = 0;
           work1[i][j][l1] = work1[i][j][l1] - work2[i][j][l2];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
+          const int l1 = 0;
+          const int l2 = 0;
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] -
                                          work2[i][j][p_Nq_e - l2 - 1];
       }
@@ -136,6 +179,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 2;
           const int l2 = 0;
           work1[l1][j][k] = work1[l1][j][k] + work1[l2][j][k];
+      }
+    }
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 2;
+          const int l2 = 0;
           work1[p_Nq_e - l1 - 1][j][k] = work1[p_Nq_e - l1 - 1][j][k] +
                                          work1[p_Nq_e - l2 - 1][j][k];
       }
@@ -147,6 +198,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 2;
           const int l2 = 0;
           work1[i][l1][k] = work1[i][l1][k] + work1[i][l2][k];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 2;
+          const int l2 = 0;
           work1[i][p_Nq_e - l1 - 1][k] = work1[i][p_Nq_e - l1 - 1][k] +
                                          work1[i][p_Nq_e - l2 - 1][k];
       }
@@ -158,6 +217,14 @@ extern "C" void postFDM(const dlong& Nelements,
           const int l1 = 2;
           const int l2 = 0;
           work1[i][j][l1] = work1[i][j][l1] + work1[i][j][l2];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
+          const int l1 = 2;
+          const int l2 = 0;
           work1[i][j][p_Nq_e - l1 - 1] = work1[i][j][p_Nq_e - l1 - 1] +
                                          work1[i][j][p_Nq_e - l2 - 1];
       }
@@ -165,14 +232,12 @@ extern "C" void postFDM(const dlong& Nelements,
     #pragma unroll
     for(int k = 0; k < p_Nq; ++k){
       #pragma unroll
-      for(int j = 0; j < p_Nq_e; ++j){
+      for(int j = 0; j < p_Nq; ++j){
         #pragma unroll
-        for(int i = 0; i < p_Nq_e; ++i){
-          if(i < p_Nq && j < p_Nq) {
+        for(int i = 0; i < p_Nq; ++i){
             const dlong elem_offset = elem * p_Nq * p_Nq * p_Nq;
             const dlong idx = i + j * p_Nq + k * p_Nq * p_Nq + elem_offset;
             Su[idx] = work1[k + 1][j + 1][i + 1] * wts[idx];
-          }
         }
       }
     }
@@ -181,7 +246,7 @@ extern "C" void postFDM(const dlong& Nelements,
 
 extern "C" void fusedFDM(
   const dlong& Nelements,
-  const dlong& localNelements,
+  const dlong& localp_Nelements,
   const dlong* __restrict__  elementList,
   pfloat* __restrict__ Su,
   const pfloat* __restrict__ S_x,
@@ -202,11 +267,11 @@ extern "C" void fusedFDM(
   pfloat S_x_eT[p_Nq_e][p_Nq_e];
   pfloat S_y_eT[p_Nq_e][p_Nq_e];
   pfloat S_z_eT[p_Nq_e][p_Nq_e];
-  //pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
   pfloat tmp[p_Nq_e][p_Nq_e][p_Nq_e];
   pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
 
-  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem) {
+  #pragma unroll
+  for (dlong my_elem = 0; my_elem < p_Nelements; ++my_elem) {
     const dlong element = my_elem;
     const dlong elem = element;
     #pragma unroll
@@ -216,6 +281,14 @@ extern "C" void fusedFDM(
           const int l1 = 0;
           const int l2 = 2;
           work1(l1,j,k,elem) = work1(l1,j,k,elem) - work1(l2,j,k,elem);
+      }
+    }
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 2;
           work1(p_Nq_e - l1 - 1,j,k,elem) = work1(p_Nq_e - l1 - 1,j,k,elem) -
                                          work1(p_Nq_e - l2 - 1,j,k,elem);
       }
@@ -227,11 +300,18 @@ extern "C" void fusedFDM(
           const int l1 = 0;
           const int l2 = 2;
           work1(i,l1,k,elem) = work1(i,l1,k,elem) - work1(i,l2,k,elem);
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 2;
           work1(i,p_Nq_e - l1 - 1,k,elem) = work1(i,p_Nq_e - l1 - 1,k,elem) -
                                          work1(i,p_Nq_e - l2 - 1,k,elem);
       }
     }
-    // <- here
     #pragma unroll
     for(int i = 1; i < p_Nq_e-1; ++i){
       #pragma unroll
@@ -239,6 +319,14 @@ extern "C" void fusedFDM(
           const int l1 = 0;
           const int l2 = 2;
           work1(i,j,l1,elem) = work1(i,j,l1,elem) - work1(i,j,l2,elem);
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
+          const int l1 = 0;
+          const int l2 = 2;
           work1(i,j,p_Nq_e - l1 - 1,elem) = work1(i,j,p_Nq_e - l1 - 1,elem) -
                                          work1(i,j,p_Nq_e - l2 - 1,elem);
       }
@@ -265,8 +353,8 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_x_eT[j][l] * work1(k,i,l,elem);
-          work2[k][j][i] = value;
+            value += S_x_e[l][j] * work1(k,i,l,elem);
+          work2[k][i][j] = value;
         }
       }
     }
@@ -279,9 +367,9 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_y_eT[j][l] * work2[k][i][l];
+            value += S_y_e[l][j] * work2[k][l][i];
           //work1(j,i,k,elem) = value;
-          tmp[j][i][k] = value;
+          tmp[j][k][i] = value;
         }
       }
     }
@@ -296,8 +384,8 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_z_eT[k][l] * tmp[j][i][l];
-          work2[k][j][i] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
+            value += S_z_e[l][k] * tmp[j][l][i];
+          work2[k][i][j] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
         }
       }
     }
@@ -311,8 +399,8 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_x_e[i][l] * work2[k][j][l];
-          tmp[k][i][j] = value;
+            value += S_x_eT[l][i] * work2[k][l][j];
+          tmp[k][j][i] = value;
         }
       }
     }
@@ -326,8 +414,8 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_y_e[j][l] * tmp[k][i][l];
-          work2[j][i][k] = value;
+            value += S_y_eT[l][j] * tmp[k][l][i];
+          work2[j][k][i] = value;
         }
       }
     }
@@ -340,7 +428,7 @@ extern "C" void fusedFDM(
           pfloat value = 0.0;
           #pragma unroll
           for (int l = 0; l < p_Nq_e; l++)
-            value += S_z_e[k][l] * work2[j][i][l];
+            value += S_z_eT[l][k] * work2[j][l][i];
 
 #if (!p_restrict)
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
@@ -352,10 +440,10 @@ extern "C" void fusedFDM(
       }
     }
 #if (!p_restrict)
-    #pragma unroll
-    for(int j = 1; j < p_Nq_e-1; ++j){
       #pragma unroll
       for(int k = 1; k < p_Nq_e-1; ++k){
+    #pragma unroll
+    for(int j = 1; j < p_Nq_e-1; ++j){
           const int l1 = 0;
           const int l2 = 0;
           work2[l1][j][k] = tmp[l2][j][k];
@@ -369,6 +457,14 @@ extern "C" void fusedFDM(
           const int l1 = 0;
           const int l2 = 0;
           work2[i][l1][k] = tmp[i][l2][k];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int k = 1; k < p_Nq_e-1; ++k){
+          const int l1 = 0;
+          const int l2 = 0;
           work2[i][p_Nq_e - l1 - 1][k] = tmp[i][p_Nq_e - l2 - 1][k];
       }
     }
@@ -380,6 +476,14 @@ extern "C" void fusedFDM(
           const int l1 = 0;
           const int l2 = 0;
           work2[i][j][l1] = tmp[i][j][l2];
+      }
+    }
+    #pragma unroll
+    for(int i = 1; i < p_Nq_e-1; ++i){
+      #pragma unroll
+      for(int j = 1; j < p_Nq_e-1; ++j){
+          const int l1 = 0;
+          const int l2 = 0;
           work2[i][j][p_Nq_e - l1 - 1] = tmp[i][j][p_Nq_e - l2 - 1];
       }
     }
@@ -396,7 +500,6 @@ extern "C" void fusedFDM(
         }
       }
     }
-
 #else  /* if (!p_restrict) */
     #pragma unroll
     for(int k = 0; k < p_Nq; ++k){
@@ -413,4 +516,6 @@ extern "C" void fusedFDM(
 
 #endif
   }
+#undef getIdx
+#undef work1
 }
