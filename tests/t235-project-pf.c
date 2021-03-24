@@ -5,7 +5,6 @@
 #include <gencon-impl.h>
 #include <genmap-impl.h>
 #include <genmap-multigrid-precon.h>
-#include <parRSB.h>
 
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
@@ -143,7 +142,7 @@ int main(int argc, char *argv[]) {
 
   /* Setup CSR on fine level */
   genmap_comm c = genmap_global_comm(gh);
-  struct array *entries = GenmapFindNeighbors(gh, c);
+  struct array *entries = genmap_find_neighbors(gh, c);
   csr_mat M;
   csr_mat_setup(entries, &c->gsc, &M);
   array_free(entries);

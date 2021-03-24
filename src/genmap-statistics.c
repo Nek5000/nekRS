@@ -94,6 +94,9 @@ void metric_print(struct comm *c) {
       printf("  NFIEDLER               : %g/%g/%g\n", SUMMARY(i, NFIEDLER));
       printf("    LAPLACIANSETUP       : %g/%g/%g\n",
              SUMMARY(i, LAPLACIANSETUP));
+      printf("      FINDNBRS           : %g/%g/%g\n", SUMMARY(i, FINDNBRS));
+      printf("      CSRMATSETUP        : %g/%g/%g\n", SUMMARY(i, CSRMATSETUP));
+      printf("      CSRTOPSETUP        : %g/%g/%g\n", SUMMARY(i, CSRTOPSETUP));
       printf("    PRECONDSETUP         : %g/%g/%g\n", SUMMARY(i, PRECONDSETUP));
       printf("    RQI                  : %g/%g/%g\n", SUMMARY(i, RQI));
       printf("    NRQI                 : %g/%g/%g\n", SUMMARY(i, NRQI));
@@ -106,7 +109,9 @@ void metric_print(struct comm *c) {
       printf("        LAPLACIAN        : %g/%g/%g\n", SUMMARY(i, LAPLACIAN));
       printf("        PROJECT          : %g/%g/%g\n", SUMMARY(i, PROJECT));
       printf("      GRAMMIAN           : %g/%g/%g\n", SUMMARY(i, GRAMMIAN));
-      printf("  BISECT                 : %g/%g/%g\n", SUMMARY(i, BISECT));
+      printf("  FIEDLERSORT            : %g/%g/%g\n", SUMMARY(i, FIEDLERSORT));
+      printf("  BISECTANDREPAIR        : %g/%g/%g\n",
+             SUMMARY(i, BISECTANDREPAIR));
     }
   }
 

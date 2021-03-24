@@ -22,7 +22,6 @@ genmap_comm genmap_global_comm(genmap_handle h);
 
 void genmap_set_nvertices(genmap_handle h, int nv);
 int genmap_get_nvertices(genmap_handle h);
-
 GenmapULong genmap_get_partition_nel(genmap_handle h);
 void genmap_set_partition_nel(genmap_handle h, GenmapULong globalElements);
 
@@ -89,6 +88,9 @@ void genmap_load_balance(struct array *eList, uint nel, int nv, double *coord,
 int genmap_rsb(genmap_handle h);
 int genmap_rcb(genmap_handle h);
 int genmap_rib(genmap_handle h);
+
+void genmap_restore_original(int *part, int *seq, struct crystal *cr,
+                             struct array *eList, buffer *bfr);
 
 /* Misc */
 double GenmapGetMaxRss();
