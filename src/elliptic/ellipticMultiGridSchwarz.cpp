@@ -903,48 +903,46 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
   const char* ogsDataTypeString =
     (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
     ogsFloatCommHalf : ogsPfloat;
-  if(xIsZero) {
-    const dlong Nelements = elliptic->mesh->Nelements;
-    preFDMKernel(Nelements, o_u, o_work1);
+  const dlong Nelements = elliptic->mesh->Nelements;
+  preFDMKernel(Nelements, o_u, o_work1);
 
-    oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+  oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
-    if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-      if(!overlap){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
-      } else if(overlap && mesh->NglobalGatherElements){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
-      }
-
-      oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
-
-      if(overlap && mesh->NlocalGatherElements)
-        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
-
-      oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
-    } else {
-      if(!overlap){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      } else if(overlap && mesh->NglobalGatherElements){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      }
-
-      oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
-
-      if(overlap && mesh->NlocalGatherElements)
-        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-
-      oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
-
-      postFDMKernel(Nelements,o_work1,o_work2,o_Su, o_wts);
-
-      oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+  if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
+    if(!overlap){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+    } else if(overlap && mesh->NglobalGatherElements){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
+
+    oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+
+    if(overlap && mesh->NlocalGatherElements)
+      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+
+    oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+  } else {
+    if(!overlap){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    } else if(overlap && mesh->NglobalGatherElements){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    }
+
+    oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+
+    if(overlap && mesh->NlocalGatherElements)
+      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+
+    oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+
+    postFDMKernel(Nelements,o_work1,o_work2,o_Su, o_wts);
+
+    oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   }
 }
