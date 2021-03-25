@@ -284,13 +284,24 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       coarsenProlongateKernelInfo["defines/" "p_NpFine"] = NpFine;
       coarsenProlongateKernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
 
-      filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
-      kernelName = "ellipticPreconCoarsen" + suffix;
-      elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
+      if(serial){
+        filename = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
+        kernelName = "ellipticPreconCoarsen" + suffix;
+        occa::properties coarsenProlongateKernelInfoNoOKL = coarsenProlongateKernelInfo;
+        coarsenProlongateKernelInfoNoOKL["okl/enabled"] = false;
+        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfoNoOKL);
+        filename = oklpath + "ellipticPreconProlongate" + suffix + ".c";
+        kernelName = "ellipticPreconProlongate" + suffix;
+        elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfoNoOKL);
+      } else {
+        filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
+        kernelName = "ellipticPreconCoarsen" + suffix;
+        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
+        filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
+        kernelName = "ellipticPreconProlongate" + suffix;
+        elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
+      }
 
-      filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
-      kernelName = "ellipticPreconProlongate" + suffix;
-      elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
   }
 
   if(elliptic->elementType == HEXAHEDRA) {

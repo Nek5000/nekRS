@@ -430,14 +430,26 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
 
       if(!elliptic->blockSolver) {
-        filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
-        kernelName = "ellipticPreconCoarsen" + suffix;
-        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,kernelInfo);
+        if(serial){
+          filename = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
+          kernelName = "ellipticPreconCoarsen" + suffix;
+          occa::properties serialPreconKernelInfo = kernelInfo;
+          serialPreconKernelInfo["okl/enabled"] = false;
+          elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,serialPreconKernelInfo);
+          filename = oklpath + "ellipticPreconProlongate" + suffix + ".c";
+          kernelName = "ellipticPreconProlongate" + suffix;
+          elliptic->precon->prolongateKernel =
+            platform->device.buildKernel(filename,kernelName,serialPreconKernelInfo);
+        } else {
+          filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
+          kernelName = "ellipticPreconCoarsen" + suffix;
+          elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,kernelInfo);
+          filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
+          kernelName = "ellipticPreconProlongate" + suffix;
+          elliptic->precon->prolongateKernel =
+            platform->device.buildKernel(filename,kernelName,kernelInfo);
+        }
 
-        filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
-        kernelName = "ellipticPreconProlongate" + suffix;
-        elliptic->precon->prolongateKernel =
-          platform->device.buildKernel(filename,kernelName,kernelInfo);
       }
   }
 
