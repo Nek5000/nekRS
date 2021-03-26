@@ -59,6 +59,7 @@ void timer_t::set(const std::string tag, double time)
 void timer_t::reset()
 {
   m_.clear();
+  ogsResetTime();
 }
 
 void timer_t::reset(const std::string tag)
@@ -255,6 +256,7 @@ void timer_t::printRunStat()
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
   hEtime[1] = ogsTime(/* reportHostTime */ true);
+  MPI_Allreduce(MPI_IN_PLACE, &hEtime[1], 1, MPI_DOUBLE, MPI_MAX, comm_);
 
   if (rank == 0) {
     std::cout.setf ( std::ios::scientific );

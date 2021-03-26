@@ -107,8 +107,6 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_opencl_compiler_flags", buf);
   if(!getenv("OCCA_OPENCL_COMPILER_FLAGS")) setenv("OCCA_OPENCL_COMPILER_FLAGS", buf.c_str(), 1);
 
-  setenv("OCCA_MEM_BYTE_ALIGN", "64", 1);
-
   ini.extract("general", "ogs_mpi_support", buf);
   if(!getenv("OGS_MPI_SUPPORT")) setenv("OGS_MPI_SUPPORT", buf.c_str(), 1);
 

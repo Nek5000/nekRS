@@ -458,8 +458,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   fflush(stdout);
 
   oogs_mode oogsMode = OOGS_AUTO;
-  if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
-  if(platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
+  //if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
                   {
                     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,

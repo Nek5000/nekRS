@@ -491,7 +491,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
         o_BF,
         platform->comm.mpiComm
       );
-    if(platform->comm.mpiRank == 0) printf("BF norm: %.15e\n", sqrt(debugNorm));
+    if(platform->comm.mpiRank == 0) printf("BF norm: %.15e\n", debugNorm);
   }
 
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {

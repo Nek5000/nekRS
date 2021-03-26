@@ -217,9 +217,7 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   if(rank == 0)
     std::cout << "active occa mode: " << this->mode() << "\n\n";
 
-#ifdef USE_OCCA_MEM_BYTE_ALIGN
-  occa::env::OCCA_MEM_BYTE_ALIGN = USE_OCCA_MEM_BYTE_ALIGN;
-#endif
+  occa::env::OCCA_MEM_BYTE_ALIGN = 64;
 
   int Nthreads = 1;
   omp_set_num_threads(Nthreads);

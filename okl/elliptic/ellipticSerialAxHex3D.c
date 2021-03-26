@@ -74,9 +74,9 @@ void ellipticAxHex3D(const dlong & Nelements,
           dfloat qt = 0.f;
 
           for(int m = 0; m < p_Nq; m++) {
-            qr += s_S[m][i] * s_q[k][j][m];
-            qs += s_S[m][j] * s_q[k][m][i];
-            qt += s_S[m][k] * s_q[m][j][i];
+            qr += s_D[i][m] * s_q[k][j][m];
+            qs += s_D[j][m] * s_q[k][m][i];
+            qt += s_D[k][m] * s_q[m][j][i];
           }
 
           dfloat Gqr = r_G00 * qr;
@@ -106,11 +106,11 @@ void ellipticAxHex3D(const dlong & Nelements,
           dfloat r_Aqr = 0, r_Aqs = 0, r_Aqt = 0;
 
           for(int m = 0; m < p_Nq; m++)
-            r_Aqr += s_D[m][i] * s_Gqr[k][j][m];
+            r_Aqr += s_S[i][m] * s_Gqr[k][j][m];
           for(int m = 0; m < p_Nq; m++)
-            r_Aqs += s_D[m][j] * s_Gqs[k][m][i];
+            r_Aqs += s_S[j][m] * s_Gqs[k][m][i];
           for(int m = 0; m < p_Nq; m++)
-            r_Aqt += s_D[m][k] * s_Gqt[m][j][i];
+            r_Aqt += s_S[k][m] * s_Gqt[m][j][i];
 
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           Aq[id] = r_Aqr + r_Aqs + r_Aqt + r_Aq;

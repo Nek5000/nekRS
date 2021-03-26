@@ -189,7 +189,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   oogs_mode_list.push_back(OOGS_DEFAULT);
   oogs_mode_list.push_back(OOGS_HOSTMPI);
   const char* env_val = std::getenv ("OGS_MPI_SUPPORT");
-  if(env_val != NULL) { 
+  if(env_val != NULL && ogs->device.mode() != "Serial") { 
     if(std::stoi(env_val)) oogs_mode_list.push_back(OOGS_DEVICEMPI);; 
   }
 
@@ -450,13 +450,11 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
 
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total*Nbytes*k, 0, "async: true");
-#ifdef OGS_ENABLE_TIMER
-    ogsTic(ogs->device, gs->comm, 1);
-#endif
+
+    ogsHostTic(gs->comm, 1);
     pairwiseExchange(Nbytes*k, gs);
-#ifdef OGS_ENABLE_TIMER
-    ogsToc(ogs->device);
-#endif
+    ogsHostToc();
+
     if(gs->mode == OOGS_HOSTMPI)
       gs->o_bufRecv.copyFrom(gs->bufRecv,pwd->comm[recv].total*Nbytes*k, 0, "async: true");
 
