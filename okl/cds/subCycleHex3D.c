@@ -56,6 +56,7 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
       s_cubD[j][i] = cubD[id];
     }
   }
+  #pragma omp parallel for private(s_U, s_Ud, s_Ud1, r_U2, r_Ud)
   for (int e = 0; e < Nelements; ++e) {
     const int element = elementList[e];
     #pragma unroll

@@ -26,6 +26,7 @@ void weightedNorm2(const dlong & Nblocks, const dlong & N,
   
   dfloat wa2 = 0;
 
+  #pragma omp parallel for
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat wi = cpu_w[i];
@@ -46,6 +47,7 @@ void weightedNorm2Many(const dlong & Nblocks, const dlong & N,
   
   dfloat wa2 = 0;
 
+  #pragma omp parallel for collapse(2)
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;

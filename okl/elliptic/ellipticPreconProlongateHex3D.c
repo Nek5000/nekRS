@@ -42,6 +42,7 @@ extern "C" void ellipticPreconProlongateHex3D(const dlong& Nelements,
       s_R[j][i] = r;
     }
   }
+  #pragma omp parallel for private(s_Pq, r_q, s_q)
   for(dlong e = 0; e < Nelements; ++e) {
 
 

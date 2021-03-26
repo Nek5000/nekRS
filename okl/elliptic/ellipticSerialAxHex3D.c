@@ -47,6 +47,7 @@ void ellipticAxHex3D(const dlong & Nelements,
       s_S[j][i] = S[j * p_Nq + i];
     }
 
+  #pragma omp parallel for private(s_q, s_Gqr, s_Gqs, s_Gqt)
   for(dlong e = 0; e < Nelements; ++e) {
     const dlong element = e;
 
@@ -133,6 +134,7 @@ void ellipticAxVarHex3D(const dlong & Nelements,
   dfloat s_Gqs[p_Nq][p_Nq][p_Nq];
   dfloat s_Gqt[p_Nq][p_Nq][p_Nq];
 
+  #pragma omp parallel for private(s_q, s_Gqr, s_Gqs, s_Gqt)
   for(dlong e = 0; e < Nelements; ++e) {
     const dlong element = e;
 
@@ -244,6 +246,7 @@ void ellipticBlockAxVarHex3D_N3(const dlong & Nelements,
       s_S[j][i] = S[j * p_Nq + i];
     }
 
+  #pragma omp parallel for private(s_q, s_Gqr, s_Gqs, s_Gqt)
   for(dlong e = 0; e < Nelements; ++e) {
     const dlong element = e;
 
@@ -395,6 +398,7 @@ void ellipticStressAxVarHex3D(const dlong &Nelements,
     for(int i = 0; i < p_Nq; ++i)
       s_D[j][i] = D[j * p_Nq + i];
 
+  #pragma omp parallel for private(s_U, s_V, s_W, s_SUr, s_SUs, s_SUt, s_SVr, s_SVs, s_SVt, s_SWr, s_SWs, s_SWt)
   for(dlong e = 0; e < Nelements; ++e) {
     for(int k = 0; k < p_Nq; ++k)
       for(int j = 0; j < p_Nq; ++j)

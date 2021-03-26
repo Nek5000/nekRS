@@ -37,6 +37,7 @@ void ellipticUpdatePCG(const dlong & N,
 {
   dfloat rdotr = 0;
 
+  #pragma omp parallel for collapse(2)
   for(int fld = 0; fld < p_eNfields; fld++)
     for(int i = 0; i < N; ++i) {
       const dlong n = i + fld * offset;
