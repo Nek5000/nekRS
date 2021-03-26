@@ -38,7 +38,7 @@ linAlg_t::getInstance()
 }
 linAlg_t::linAlg_t() {
   blocksize = BLOCKSIZE;
-  serial = platform->device.mode() == "Serial";
+  serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
   comm = platform->comm.mpiComm;
   setup();
 }

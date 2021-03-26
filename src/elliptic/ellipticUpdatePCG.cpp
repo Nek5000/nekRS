@@ -33,7 +33,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
 {
   mesh_t* mesh = elliptic->mesh;
 
-  int serial = platform->device.mode() == "Serial";
+  int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
   // x <= x + alpha*p
   // r <= r - alpha*A*p

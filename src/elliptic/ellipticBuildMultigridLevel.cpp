@@ -31,7 +31,7 @@
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
   
-  const int serial = platform->device.mode() == "Serial";
+  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
   elliptic_t* elliptic = new elliptic_t();
 

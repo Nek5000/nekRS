@@ -42,7 +42,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
-  const int serial = platform->device.mode() == "Serial";
+  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
   if (elliptic->blockSolver &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION",
@@ -458,7 +458,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   fflush(stdout);
 
   oogs_mode oogsMode = OOGS_AUTO;
-  //if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
+  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
                   {
                     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,

@@ -65,7 +65,7 @@ solver_t::solver_t(occa::device device_, MPI_Comm comm_,
       additive = true;
       overlapCrsGridSolve = false;
       if(options.compareArgs("PARALMOND CYCLE", "OVERLAPCRS")){
-        if(platform->device.mode() == "Serial"){
+        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           overlapCrsGridSolve = false;
         } else {
           overlapCrsGridSolve = true;

@@ -797,7 +797,7 @@ void MGLevel::build(
   const int Np = elliptic->mesh->Np;
 
   overlap = false;
-  const bool serial = (platform->device.mode() == "Serial");
+  const bool serial = (platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP");
   if(Nq >= 5 && !serial) overlap = true;
 
   hlong* maskedGlobalIds;
@@ -809,7 +809,7 @@ void MGLevel::build(
   const dlong Nlocal_e = Nelements * Np_e;
 
   oogs_mode oogsMode = OOGS_AUTO;
-  //if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
+  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
                                     ogsPfloat, platform->comm.mpiComm, 1, platform->device,

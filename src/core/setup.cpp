@@ -253,7 +253,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
-  //if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
+  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
 
   linAlg_t * linAlg = platform->linAlg;
@@ -466,7 +466,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 	
         fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
         occa::properties subCycleStrongCubatureProps = prop;
-        if(platform->device.mode() == "Serial"){
+        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           fileName = oklpath + "nrs/subCycle" + suffix + ".c";
           subCycleStrongCubatureProps["okl/enabled"] = false;
         }
@@ -909,7 +909,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   if(nrs->cht) {
     meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
     oogs_mode oogsMode = OOGS_AUTO; 
-    //if(platform->device.mode() == "Serial") oogsMode = OOGS_DEFAULT;
+    //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
     cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset[0], ogsDfloat, NULL, oogsMode);
   } else {
     cds->gshT = cds->gsh;
@@ -1126,7 +1126,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
 
         fileName = oklpath + "cds/subCycle" + suffix + ".okl";
         occa::properties subCycleStrongCubatureProps = prop;
-        if(platform->device.mode() == "Serial"){
+        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           fileName = oklpath + "cds/subCycle" + suffix + ".c";
           subCycleStrongCubatureProps["okl/enabled"] = false;
         }
