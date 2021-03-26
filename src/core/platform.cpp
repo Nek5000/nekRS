@@ -220,7 +220,7 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   occa::env::OCCA_MEM_BYTE_ALIGN = 64;
 
   int Nthreads = 1;
-  omp_set_num_threads(Nthreads);
+  if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);
 
   bufferSize = 0;
 }
