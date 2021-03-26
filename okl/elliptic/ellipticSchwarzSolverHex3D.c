@@ -6,8 +6,7 @@ extern "C" void preFDM(const dlong& Nelements,
   #define getIdx2(k,j,i,e) ((k-1)*p_Nq*p_Nq+(j-1)*p_Nq+(i-1)+(e)*p_Nq*p_Nq*p_Nq)
   #define sWork1(k,j,i,e) (work1[(getIdx(k,j,i,e))])
   #define uArr(k,j,i,e) (u[(getIdx2(k,j,i,e))])
-  #pragma unroll
-  for (dlong elem = 0; elem < p_Nelements; elem++) {
+  for (dlong elem = 0; elem < Nelements; elem++) {
     #pragma unroll 
     for(int k = 0; k < p_Nq_e; ++k){
       #pragma unroll 
@@ -100,8 +99,7 @@ extern "C" void postFDM(const dlong& Nelements,
 {
   pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e];
   pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
-  #pragma unroll
-  for (dlong elem = 0; elem < p_Nelements; ++elem) {
+  for (dlong elem = 0; elem < Nelements; ++elem) {
     #pragma unroll
     for(int k = 0; k < p_Nq_e; ++k){
       #pragma unroll
@@ -246,7 +244,7 @@ extern "C" void postFDM(const dlong& Nelements,
 
 extern "C" void fusedFDM(
   const dlong& Nelements,
-  const dlong& localp_Nelements,
+  const dlong& localNelements,
   const dlong* __restrict__  elementList,
   pfloat* __restrict__ Su,
   const pfloat* __restrict__ S_x,
@@ -270,8 +268,7 @@ extern "C" void fusedFDM(
   pfloat tmp[p_Nq_e][p_Nq_e][p_Nq_e];
   pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e];
 
-  #pragma unroll
-  for (dlong my_elem = 0; my_elem < p_Nelements; ++my_elem) {
+  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem) {
     const dlong element = my_elem;
     const dlong elem = element;
     #pragma unroll
