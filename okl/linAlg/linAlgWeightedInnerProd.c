@@ -29,7 +29,7 @@ void weightedInnerProd(
 
   dfloat wab = 0;
 
-  #pragma omp parallel for
+  #pragma omp parallel for reduction(+:wab)
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat bi = cpu_b[i];
@@ -54,7 +54,7 @@ void weightedInnerProdMany(
 
   dfloat wab = 0;
 
-  #pragma omp parallel for collapse(2)
+  #pragma omp parallel for collapse(2) reduction(+:wab)
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;

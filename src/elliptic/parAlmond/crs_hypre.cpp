@@ -129,7 +129,12 @@ struct hypre_crs_data *hypre_setup(int nrows, const long long int rowStart,
   HYPRE_ParCSRMatrix par_A;
   HYPRE_IJMatrixGetObject(hypre_data->A,(void**) &par_A);
 
-  int _Nthreads = omp_get_thread_num();
+  int _Nthreads = 1;
+  #pragma omp parallel
+  {
+    int tid = omp_get_thread_num();
+    if(tid==0) _Nthreads = omp_get_num_threads();
+  }
   omp_set_num_threads(hypre_data->Nthreads);
   HYPRE_BoomerAMGSetup(solver,par_A,par_b,par_x);
   omp_set_num_threads(_Nthreads);
@@ -168,7 +173,12 @@ void hypre_solve(double *x, struct hypre_crs_data *data, double *b)
 
   HYPRE_IJMatrixGetObject(ij_A,(void**) &par_A);
 
-  int _Nthreads = omp_get_thread_num();
+  int _Nthreads = 1;
+  #pragma omp parallel
+  {
+    int tid = omp_get_thread_num();
+    if(tid==0) _Nthreads = omp_get_num_threads();
+  }
   omp_set_num_threads(data->Nthreads);
   HYPRE_BoomerAMGSolve(solver,par_A,par_b,par_x);
   omp_set_num_threads(_Nthreads);
