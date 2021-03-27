@@ -3,20 +3,23 @@
 
 #include <gencon.h>
 
-#define sqrDiff(x,y) (((x)-(y))*((x)-(y)))
-#define distance2D(a,b) (sqrDiff((a).x[0],(b).x[0])+sqrDiff((a).x[1],(b).x[1]))
-#define distance3D(a,b) (distance2D(a,b)+sqrDiff((a).x[2],(b).x[2]))
+#define sqrDiff(x, y) (((x) - (y)) * ((x) - (y)))
+#define distance2D(a, b)                                                       \
+  (sqrDiff((a).x[0], (b).x[0]) + sqrDiff((a).x[1], (b).x[1]))
+#define distance3D(a, b) (distance2D(a, b) + sqrDiff((a).x[2], (b).x[2]))
 
-#define min(a,b) ((a)<(b) ? (a) : (b))
-#define max(a,b) ((a)>(b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
-#define READ_T(coords,buf,T,nVertex) do {\
-  memcpy((coords),buf,sizeof(T)*nVertex);\
-} while(0)
+#define READ_T(coords, buf, T, nVertex)                                        \
+  do {                                                                         \
+    memcpy((coords), buf, sizeof(T) * nVertex);                                \
+  } while (0)
 
-#define WRITE_INT(dest,val) do {\
-  memcpy(dest,&(val),sizeof(int));\
-} while(0)
+#define WRITE_INT(dest, val)                                                   \
+  do {                                                                         \
+    memcpy(dest, &(val), sizeof(int));                                         \
+  } while (0)
 
 // TODO: Use rsb_element here
 struct Point_private {
@@ -33,15 +36,15 @@ struct Point_private {
 extern int faces3D[GC_MAX_FACES][GC_MAX_FACE_VERTICES];
 extern int faces2D[GC_MAX_FACES][GC_MAX_FACE_VERTICES];
 
-struct Face_private{
+struct Face_private {
   struct Point_private vertex[GC_MAX_FACE_VERTICES];
 };
 
-struct Element_private{
+struct Element_private {
   struct Point_private vertex[GC_MAX_VERTICES];
 };
 
-struct Boundary_private{
+struct Boundary_private {
   ulong elementId;
   ulong faceId;
   struct Face_private face;
@@ -49,7 +52,7 @@ struct Boundary_private{
   long bc[2];
 };
 
-struct Mesh_private{
+struct Mesh_private {
   ulong nelgt;
   ulong nelgv;
   uint nelt;
@@ -60,7 +63,7 @@ struct Mesh_private{
   struct array boundary;
 };
 
-int transferBoundaryFaces(Mesh mesh,struct comm *c);
+int transferBoundaryFaces(Mesh mesh, struct comm *c);
 
 /*
  Preprocessor Corner notation:      Symmetric Corner notation:

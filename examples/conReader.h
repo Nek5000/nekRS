@@ -23,8 +23,9 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
 
   MPI_File fh;
   ierr = MPI_File_open(comm, fname, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-  if(ierr != 0) {
-    if(myid == 0) printf("ERROR: cannot open con file %s!\n", fname);
+  if (ierr != 0) {
+    if (myid == 0)
+      printf("ERROR: cannot open con file %s!\n", fname);
     return 1;
   }
 
@@ -36,13 +37,16 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
 
   float byte_test;
   MPI_File_read_all(fh, &byte_test, 4, MPI_BYTE, MPI_STATUS_IGNORE);
-  if(fabs(byte_test - 6.543210) > 1e-7) {
-    if(myid == 0) printf("ERROR byte_test failed! %f\n", byte_test);
+  if (fabs(byte_test - 6.543210) > 1e-7) {
+    if (myid == 0)
+      printf("ERROR byte_test failed! %f\n", byte_test);
     return 1;
   }
 
   int nelr = nelgt / np;
-  for(i = 0; i < nelgt % np; ++i) if(np-i == myid) nelr++;
+  for (i = 0; i < nelgt % np; ++i)
+    if (np - i == myid)
+      nelr++;
 
   int nelr_;
   MPI_Scan(&nelr, &nelr_, 1, MPI_INT, MPI_SUM, comm);
@@ -50,21 +54,23 @@ int conRead(const char *fname, struct con *c, MPI_Comm comm) {
   off += (long long)(nelr_ - nelr) * (nv + 1) * sizeof(int);
   MPI_File_set_view(fh, off, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
 
-  int *buf = (int*) malloc(nelr * (nv + 1) * sizeof(int));
-  ierr = MPI_File_read_all(fh, buf, (nv + 1) * nelr, MPI_INT,
-                           MPI_STATUS_IGNORE);
-  if(ierr != 0) {
-    if(myid == 0) printf("ERROR: failure while reading!\n");
+  int *buf = (int *)malloc(nelr * (nv + 1) * sizeof(int));
+  ierr =
+      MPI_File_read_all(fh, buf, (nv + 1) * nelr, MPI_INT, MPI_STATUS_IGNORE);
+  if (ierr != 0) {
+    if (myid == 0)
+      printf("ERROR: failure while reading!\n");
     return 1;
   }
 
   MPI_File_close(&fh);
 
-  c->el = (long long*) malloc(nelr * sizeof(long long));
-  c->vl = (long long*) malloc(nv * nelr * sizeof(long long));
-  for(i = 0; i < nelr; ++i) {
+  c->el = (long long *)malloc(nelr * sizeof(long long));
+  c->vl = (long long *)malloc(nv * nelr * sizeof(long long));
+  for (i = 0; i < nelr; ++i) {
     c->el[i] = buf[i * (nv + 1)];
-    for(j = 0; j < nv; ++j) c->vl[i * nv + j] = buf[i * (nv + 1) + 1 + j];
+    for (j = 0; j < nv; ++j)
+      c->vl[i * nv + j] = buf[i * (nv + 1) + 1 + j];
   }
 
   c->nv = nv;
