@@ -11,19 +11,20 @@ void setup(MPI_Comm comm, int buildOnly, int targetSize,
            std::string backend, std::string deviceID);
 
 void runStep(double time, double dt, int tstep);
-void copyToNek(double time, int tstep);
+void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);
 void outfld(double time);
-const int isOutputStep(double time, int tStep);
+int outputStep(double time, int tStep);
+void outputStep(int val);
 void nekUserchk(void);
 void printRuntimeStatistics(void);
-const double writeInterval(void);
-const double dt(void);
-const double startTime(void);
-const double endTime(void);
-const int numSteps(void);
-const int lastStep(double time, int tstep, double elapsedTime);
-const int writeControlRunTime(void);
+double writeInterval(void);
+double dt(void);
+double startTime(void);
+double endTime(void);
+int numSteps(void);
+int lastStep(double time, int tstep, double elapsedTime);
+int writeControlRunTime(void);
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);

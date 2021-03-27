@@ -11,12 +11,13 @@ dfloat filterFactorial(int n);
 
 void filterSetup(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
 
   // First construct filter function
   nrs->filterS = 10.0; // filter Weight...
-  nrs->options.getArgs("HPFRT STRENGTH", nrs->filterS);
-  nrs->options.getArgs("HPFRT MODES", nrs->filterNc);
+  platform->options.getArgs("HPFRT STRENGTH", nrs->filterS);
+  platform->options.getArgs("HPFRT MODES", nrs->filterNc);
   nrs->filterS = -1.0 * fabs(nrs->filterS);
 
   // Construct Filter Function
@@ -78,9 +79,9 @@ void filterSetup(nrs_t* nrs)
     for(int r = 0; r < Nmodes; r++)
       nrs->filterM[c + r * Nmodes] = A[r + c * Nmodes];
 
-  nrs->o_filterMT =  mesh->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
+  nrs->o_filterMT =  platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A); // copy Tranpose
 
-  if(mesh->rank == 0)
+  if(platform->comm.mpiRank == 0)
     printf("High pass filter relaxation: chi = %.4f using %d mode(s)\n",
            fabs(nrs->filterS), nrs->filterNc);
 

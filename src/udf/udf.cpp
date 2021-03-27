@@ -5,6 +5,7 @@
 
 #include "udf.hpp"
 #include "io.hpp"
+#include "platform.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
@@ -22,43 +23,42 @@ uint32_t fchecksum(std::ifstream& file)
     return checksum;
 }
 
-int udfBuild(const char* udfFile)
+int udfBuild(const char* udfFile, int buildOnly)
 {
-  char cmd[BUFSIZ];
-  char abs_path[BUFSIZ];
-
   double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
 
-  if(! realpath(udfFile, abs_path)) {
+  if(!fileExists(udfFile)) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
     return EXIT_FAILURE;
   }
 
   char udfFileCache[BUFSIZ];
   sprintf(udfFileCache,"%s/udf/udf.cpp",cache_dir);
+  char udfLib[BUFSIZ];
+  sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
-  if(isFileNewer(udfFile, udfFileCache)) {
-    printf("building udf ... "); fflush(stdout);
+  char cmd[BUFSIZ];
+  printf("building udf ... \n"); fflush(stdout);
+  if(isFileNewer(udfFile, udfFileCache) || !fileExists(udfLib)) {
+    char udfFileResolved[BUFSIZ];
+    realpath(udfFile, udfFileResolved);
     sprintf(cmd,
-            "mkdir -p %s/udf && cd %s/udf && cp %s/CMakeLists.txt . && \
-             CXX=\"${NEKRS_CXX}\" CXXFLAGS=\"${NEKRS_CXXFLAGS}\" \
-             cmake -DUDF_DIR=\"%s\" -DFILENAME=\"%s\" . >build.log 2>&1 && \
-             make >>build.log 2>&1",
-            cache_dir,
-            cache_dir,
-            udf_dir,
-            udf_dir,
-            abs_path);
-
-    if(system(cmd)) { 
-      printf("\nAn ERROR occured, see %s/udf/build.log for details!\n", cache_dir);
-      return EXIT_FAILURE;
-    }
-    printf("done (%gs)\n", MPI_Wtime() - tStart);
-    fflush(stdout);
+            "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
+             rm -rf *.so && cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
+	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
+             cache_dir,
+             cache_dir,
+             udfFileResolved,
+             udf_dir,
+             udf_dir);
+    if(system(cmd)) return EXIT_FAILURE; 
   }
+  sprintf(cmd, "cd %s/udf && make", cache_dir);
+  if(system(cmd)) return EXIT_FAILURE; 
+  printf("done (%gs)\n", MPI_Wtime() - tStart);
+  fflush(stdout);
 
   return 0;
 }
@@ -95,8 +95,9 @@ void udfLoad(void)
 occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
 {
   int rank;
-  mesh_t* mesh = nrs->mesh;
-  MPI_Comm_rank(mesh->comm, &rank);
+  mesh_t* mesh = nrs->meshV;
+  
+  MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
   string install_dir;
   occa::properties kernelInfo = *nrs->kernelInfo;
@@ -105,13 +106,7 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   kernelInfo["includes"] += bcDataFile.c_str();
 
   string oudf;
-  nrs->options.getArgs("DATA FILE", oudf);
+  platform->options.getArgs("DATA FILE", oudf);
 
-  occa::kernel k;
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0))
-      k = mesh->device.buildKernel(oudf.c_str(), function, kernelInfo);
-    MPI_Barrier(mesh->comm);
-  }
-  return k;
+  return platform->device.buildKernel(oudf.c_str(), function, kernelInfo);
 }

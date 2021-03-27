@@ -6,10 +6,15 @@
 #include "parReader.hpp"
 #include "configReader.hpp"
 #include "runTime.hpp"
+#include "platform.hpp"
+#include "nrssys.hpp"
+#include "linAlg.hpp"
+
+// extern variable from nrssys.hpp
+platform_t* platform;
 
 static int rank, size;
 static MPI_Comm comm;
-static occa::device device;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
@@ -20,14 +25,14 @@ static void dryRun(setupAide &options, int npTarget);
 
 namespace nekrs
 {
-const double startTime(void)
+double startTime(void)
 {
   double val = 0;
-  nrs->options.getArgs("START TIME", val);
+  platform->options.getArgs("START TIME", val);
   return val;
 }
 
-void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
+void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
            int ciMode, string cacheDir, string _setupFile,
            string _backend, string _deviceID)
 {
@@ -54,7 +59,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   if (rank == 0) {
 #include "printHeader.inc"
     cout << "MPI tasks: " << size << endl << endl;
-    cout << "using OCCA_DIR: " << occa::env::OCCA_DIR << endl;
+    string install_dir;
+    install_dir.assign(getenv("NEKRS_HOME"));
+    cout << "using NEKRS_HOME: " << install_dir << endl;
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
@@ -71,22 +78,24 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   setOUDF(options);
 
   // configure device
-  device = occaDeviceConfig(options, comm);
-  timer::init(comm, device, 0);
+  platform_t* _platform = platform_t::getInstance(options, comm);
+  platform = _platform;
 
   if (buildOnly) {
-    dryRun(options, sizeTarget);
+    dryRun(options, commSizeTarget);
     return;
   }
 
-  timer::tic("setup", 1);
+  platform->timer.tic("setup", 1);
+
+  platform->linAlg = linAlg_t::getInstance();
 
   // jit compile udf
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str());
+    if(rank == 0) err = udfBuild(udfFile.c_str(), 0);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);;
     udfLoad();
@@ -98,7 +107,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrsSetup(comm, device, options, nrs);
+  nrsSetup(comm, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
@@ -109,8 +118,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
   }
 
   if(udf.properties) {
-    occa::memory o_S = nrs->o_wrk0;
-    occa::memory o_SProp = nrs->o_wrk0;
+    occa::memory o_S = platform->o_mempool.slice0;
+    occa::memory o_SProp = platform->o_mempool.slice0;
     if(nrs->Nscalar) {
       o_S = nrs->cds->o_S;
       o_SProp = nrs->cds->o_prop;
@@ -121,20 +130,19 @@ void setup(MPI_Comm comm_in, int buildOnly, int sizeTarget,
     if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
   }
 
-  if(udf.executeStep) udf.executeStep(nrs, startTime(), 0);
-  nek_ocopyFrom(startTime(), 0);
+  nek::ocopyToNek(startTime(), 0);
 
-  timer::toc("setup");
-  const double setupTime = timer::query("setup", "DEVICE:MAX");
+  platform->timer.toc("setup");
+  const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    cout << "device memory usage: " << nrs->mesh->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "device memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
     cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);
 
-  timer::reset();
-  timer::set("setup", setupTime);
+  platform->timer.reset();
+  platform->timer.set("setup", setupTime);
 }
 
 void runStep(double time, double dt, int tstep)
@@ -142,50 +150,50 @@ void runStep(double time, double dt, int tstep)
   runStep(nrs, time, dt, tstep);
 }
 
-void copyToNek(double time, int tstep)
+void copyFromNek(double time, int tstep)
 {
-  nek_ocopyFrom(time, tstep);
+  nek::ocopyToNek(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isOutputStep)
 {
-  timer::tic("udfExecuteStep", 1);
+  platform->timer.tic("udfExecuteStep", 1);
   if (isOutputStep) {
-    nek_ifoutfld(1);
+    nek::ifoutfld(1);
     nrs->isOutputStep = 1;
   }
 
   if (udf.executeStep) udf.executeStep(nrs, time, tstep);
 
-  nek_ifoutfld(0);
+  nek::ifoutfld(0);
   nrs->isOutputStep = 0;
-  timer::toc("udfExecuteStep");
+  platform->timer.toc("udfExecuteStep");
 }
 
 void nekUserchk(void)
 {
-  nek_userchk();
+  nek::userchk();
 }
 
-const double dt(void)
+double dt(void)
 {
   // TODO: adjust dt for target CFL
   return nrs->dt[0];
 }
 
-const double writeInterval(void)
+double writeInterval(void)
 {
   double val = -1;
-  nrs->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
+  platform->options.getArgs("SOLUTION OUTPUT INTERVAL", val);
   return val;
 }
 
-const int writeControlRunTime(void) 
+int writeControlRunTime(void)
 {
-  return nrs->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+  return platform->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
 }
 
-const int isOutputStep(double time, int tStep)
+int outputStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
@@ -196,31 +204,36 @@ const int isOutputStep(double time, int tStep)
   return outputStep;
 }
 
+void outputStep(int val)
+{
+  nrs->isOutputStep = val;
+}
+
 void outfld(double time)
 {
   writeFld(nrs, time, 0);
   lastOutputTime = time;
 }
 
-const double endTime(void)
+double endTime(void)
 {
   double endTime = -1;
-  nrs->options.getArgs("END TIME", endTime);
+  platform->options.getArgs("END TIME", endTime);
   return endTime;
 }
 
-const int numSteps(void)
+int numSteps(void)
 {
   int numSteps = -1;
-  nrs->options.getArgs("NUMBER TIMESTEPS", numSteps);
+  platform->options.getArgs("NUMBER TIMESTEPS", numSteps);
   return numSteps;
 }
 
-const int lastStep(double time, int tstep, double elapsedTime)
+int lastStep(double time, int tstep, double elapsedTime)
 {
-  if(!nrs->options.getArgs("STOP AT ELAPSED TIME").empty()) {
+  if(!platform->options.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
-    nrs->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
+    platform->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
     if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
   } else if (endTime() > 0) { 
      const double eps = 1e-12;
@@ -234,7 +247,7 @@ const int lastStep(double time, int tstep, double elapsedTime)
 
 void* nekPtr(const char* id)
 {
-  return nek_ptr(id);
+  return nek::ptr(id);
 }
 
 void* nrsPtr(void)
@@ -246,27 +259,31 @@ void* nrsPtr(void)
 
 void printRuntimeStatistics()
 {
-  timer::printRunStat();
+  platform_t* platform = platform_t::getInstance(options, comm);
+  platform->timer.printRunStat();
 }
 } // namespace
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  cout << "performing dry-run to jit-compile for >"
-       << npTarget
+  cout << "performing dry-run to jit-compile for >="
+       << npTarget 
        << " MPI tasks ...\n" << endl;
+  fflush(stdout);	
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
+
+  platform->linAlg = linAlg_t::getInstance();
 
   // jit compile udf
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str());
+    if(rank == 0) err = udfBuild(udfFile.c_str(), 1);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) ABORT(EXIT_FAILURE);;
+    if(err) ABORT(EXIT_FAILURE);
     MPI_Barrier(comm);
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
@@ -275,7 +292,8 @@ static void dryRun(setupAide &options, int npTarget)
   if(udf.setup0) udf.setup0(comm, options);
 
   // init solver
-  nrsSetup(comm, device, options, nrs);
+  platform_t* platform = platform_t::getInstance();
+  nrsSetup(comm, options, nrs);
 
   cout << "\nBuild successful." << endl;
 }
@@ -285,7 +303,7 @@ static void setOUDF(setupAide &options)
   std::string oklFile;
   options.getArgs("UDF OKL FILE",oklFile);
 
-  char buf[FILENAME_MAX];
+  // char buf[FILENAME_MAX];
 
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
@@ -358,12 +376,10 @@ static void setOUDF(setupAide &options)
 static void setOccaVars(string dir)
 {
   char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
+  char * ret = getcwd(buf, sizeof(buf));
+  if(!ret) ABORT(EXIT_FAILURE);;
   string cwd;
   cwd.assign(buf);
-
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_HOME"));
 
   if (dir.empty())
     sprintf(buf,"%s/.cache", cwd.c_str());
@@ -378,6 +394,9 @@ static void setOccaVars(string dir)
 
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
+
+  string install_dir;
+  install_dir.assign(getenv("NEKRS_HOME"));
 
   if (!getenv("OCCA_DIR"))
     occa::env::OCCA_DIR = install_dir + "/";

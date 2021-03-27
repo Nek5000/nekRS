@@ -7,6 +7,7 @@
 #include <map>
 
 #include "nrs.hpp"
+#include "platform.hpp"
 
 #define NOTBOUNDARY 0
 #define DIRICHLET 1
@@ -218,28 +219,11 @@ int size(int isTmesh)
 
 void check(mesh_t* mesh)
 {
+  
   int nid = nbid[0];
   if(mesh->cht) nid = nbid[1];
 
   int retval = 0;
-
-/*
-  // cross check number of boundary faces (doesn't work for a periodic case) 
-  hlong bcnt = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e)
-    for(int f = 0; f < mesh->Nfaces; ++f)
-      if(mesh->EToE[e * mesh->Nfaces + f] == -1) ++bcnt;
-
-   etval = 0;
-   MPI_Allreduce(MPI_IN_PLACE, &bcnt, 1, MPI_HLONG, MPI_SUM, mesh->comm);
-   if (mesh->NboundaryFaces != bcnt) retval++;
-   MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
-   if (retval) {
-     if (mesh->rank == 0) cout << "NboundaryFaces different from EToE! "
-                               << bcnt << "\n";
-     ABORT(1);
-  }
-*/
 
   retval = 0;
   for (int id = 1; id <= nid; id++) {
@@ -247,9 +231,9 @@ void check(mesh_t* mesh)
     for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
       if (mesh->EToB[f] == id) retval = 1;
     }
-    MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
+    MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
     if (retval == 0) {
-      if (mesh->rank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);
+      if (platform->comm.mpiRank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);
       ABORT(1);
     }
   }
@@ -257,9 +241,9 @@ void check(mesh_t* mesh)
   retval = 0;
   for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++)
     if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) retval = 1;
-  MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, mesh->comm);
+  MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
   if (retval > 0) {
-    if (mesh->rank == 0) printf("Mesh has unmapped boundary IDs!\n");
+    if (platform->comm.mpiRank == 0) printf("Mesh has unmapped boundary IDs!\n");
     ABORT(1);
   }
 }

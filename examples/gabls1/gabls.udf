@@ -12,10 +12,11 @@ occa::kernel coriolisKernel;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
+  mesh_t* mesh = nrs->meshV;
   coriolisKernel(
-    nrs->Nlocal, 
+    mesh->Nlocal, 
     nrs->fieldOffset, 
-    nrs->mesh->o_y,
+    nrs->meshV->o_y,
     nrs->cds->o_S,
     nrs->o_U,
     o_FU);
@@ -27,7 +28,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 void UDF_LoadKernels(nrs_t *nrs)
 {
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  setupAide &options = nrs->options;
+  setupAide &options = platform->options;
 
   dfloat cond;
   options.getArgs("SCALAR00 DIFFUSIVITY", cond);
@@ -54,8 +55,8 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
-    nek_ocopyTo(time);
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+    nek::ocopyFromNek(time);
   }
 }

@@ -26,7 +26,6 @@ export OCCA_CXX="$XL_HOME/bin/xlc"
 export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
 export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 
-#export OCCA_VERBOSE=1
 #export OMPI_LD_PRELOAD_POSTPEND=$OLCF_SPECTRUM_MPI_ROOT/lib/libmpitrace.so
 
 #export PAMI_ENABLE_STRIPING=1
@@ -102,7 +101,7 @@ while true; do
   case $yn in
     [Yy]* )
       echo $NEKRS_HOME
-      mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend;
+      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend;
       if [ $? -ne 0 ]; then
         exit 1
       fi

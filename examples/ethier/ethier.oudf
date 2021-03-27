@@ -5,7 +5,7 @@
                      @restrict const  dfloat *  z,                      
                      const dlong offset,
                      @restrict dfloat * FS) {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       const dfloat xn = x[n]; 
       const dfloat yn = y[n]; 
@@ -125,7 +125,7 @@ void grad_u(dfloat *grad_u_x, dfloat *grad_u_y, dfloat *grad_u_z,
                        const dlong offset,
                        @restrict dfloat * P,
                        @restrict dfloat * U) {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       dfloat u, v, w, p;
       const dfloat x = X[n];
@@ -163,4 +163,25 @@ void scalarNeumannConditions(bcData *bc)
   dfloat grad_u_x, grad_u_y, grad_u_z;
   grad_u(&grad_u_x, &grad_u_y, &grad_u_z, bc->x, bc->y, bc->z, bc->time, p_nu);
   bc->flux = p_nu * (grad_u_x * bc->nx + grad_u_y * bc->ny + grad_u_z * bc->nz);
+}
+
+@kernel void userMeshVelocity(const dlong Ntotal,
+                    const dlong offset,
+                    const dfloat time,
+                    @restrict const dfloat * x,
+                    @restrict const dfloat * y,
+                    @restrict const dfloat * z,
+                    @restrict dfloat * W)
+{
+  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+      const dfloat ampx = p_amp*cos(p_omega*time);
+      const dfloat ampy = p_amp*cos(0.5*p_omega*time);
+      const dfloat ampz = p_amp*cos(0.5*0.5*p_omega*time);
+      const dfloat xx = 0.5*(x[n] + 1); // in [0 1]
+      const dfloat yy = 0.5*(y[n] + 1); // in [0 1]
+      const dfloat zz = 0.5*(z[n] + 1); // in [0 1]
+      W[n + 0 * offset] = ampx*sin(p_pi*xx);
+      W[n + 1 * offset] = ampy*sin(p_pi*yy);
+      W[n + 2 * offset] = ampz*sin(p_pi*zz);
+  }
 }

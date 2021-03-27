@@ -29,6 +29,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("NUMBER OF SCALARS", "0");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
+  options.setArgs("MESH INTEGRATION ORDER", "3");
   options.setArgs("SUBCYCLING STEPS", "0");
   options.setArgs("SUBCYCLING TIME ORDER", "4");
   options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
@@ -96,6 +97,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   //options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
+  options.setArgs("MOVING MESH", "FALSE");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
@@ -162,7 +164,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   int N;
   if(par->extract("general", "polynomialorder", N)) {
     options.setArgs("POLYNOMIAL DEGREE", std::to_string(N));
-    if(N>9) exit("polynomialOrder > 9 is currently not supported!", EXIT_FAILURE);
+    if(N>10) exit("polynomialOrder > 10 is currently not supported!", EXIT_FAILURE);
   } else {
     exit("Cannot find mandatory parameter GENERAL::polynomialOrder!", EXIT_FAILURE);
   }
@@ -182,10 +184,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   if(timeStepper == "bdf3" || timeStepper == "tombo3") {
     options.setArgs("TIME INTEGRATOR", "TOMBO3");
   }
-  if(timeStepper == "bdf2" || timeStepper == "tombo2")
+  if(timeStepper == "bdf2" || timeStepper == "tombo2"){
     options.setArgs("TIME INTEGRATOR", "TOMBO2");
-  if(timeStepper == "bdf1" || timeStepper == "tombo1")
+  }
+  if(timeStepper == "bdf1" || timeStepper == "tombo1"){
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
+  }
 
   bool variableDt = false;
   par->extract("general", "variabledt", variableDt);
@@ -275,6 +279,13 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   string meshPartitioner; 
   if(par->extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
+
+  string meshSolver; 
+  if(par->extract("mesh", "solver", meshSolver)){
+    options.setArgs("MOVING MESH", "TRUE");
+    if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+    if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
+  }
 
   bool stressFormulation;
   if(par->extract("problemtype", "stressformulation", stressFormulation))

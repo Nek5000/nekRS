@@ -11,9 +11,9 @@
 #error "gslib needs to be compiled with GLOBAL_LONG_LONG"
 #endif
 
-#define TYPE_INT    0
-#define TYPE_LONG   1
-#define TYPE_FLOAT  2
+#define TYPE_INT 0
+#define TYPE_LONG 1
+#define TYPE_FLOAT 2
 #define TYPE_DOUBLE 3
 
 #endif

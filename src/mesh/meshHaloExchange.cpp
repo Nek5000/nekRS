@@ -27,6 +27,8 @@
 #include <stdio.h>
 
 #include "mesh.h"
+#include "platform.hpp"
+#include <cstring>
 
 // send data from partition boundary elements
 // and receive data to ghost elements
@@ -36,10 +38,11 @@ void meshHaloExchange(mesh_t* mesh,
                       void* sendBuffer, // temporary buffer
                       void* recvBuffer)
 {
+  
   // MPI info
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  rank = platform->comm.mpiRank;
+  size = platform->comm.mpiCommSize;
 
   // count outgoing and incoming meshes
   int tag = 999;
@@ -60,10 +63,10 @@ void meshHaloExchange(mesh_t* mesh,
       if(count) {
         //	printf("rank %d sending %d bytes to rank %d\n", rank, count, r);
         MPI_Irecv(((char*)recvBuffer) + offset, count, MPI_CHAR, r, tag,
-                  mesh->comm, (MPI_Request*)mesh->haloRecvRequests + message);
+                  platform->comm.mpiComm, (MPI_Request*)mesh->haloRecvRequests + message);
 
         MPI_Isend(((char*)sendBuffer) + offset, count, MPI_CHAR, r, tag,
-                  mesh->comm, (MPI_Request*)mesh->haloSendRequests + message);
+                  platform->comm.mpiComm, (MPI_Request*)mesh->haloSendRequests + message);
         offset += count;
         ++message;
       }
@@ -88,14 +91,15 @@ void meshHaloExchangeStart(mesh_t* mesh,
                            void* sendBuffer, // temporary buffer
                            void* recvBuffer)
 {
+  
   if(mesh->totalHaloPairs > 0) {
     // MPI info
     //    int rank, size;
-    //    MPI_Comm_rank(mesh->comm, &rank);
-    //    MPI_Comm_size(mesh->comm, &size);
+    //    MPI_Comm_rank(platform->comm.mpiComm, &rank);
+    //    MPI_Comm_size(platform->comm.mpiComm, &size);
 
-    int rank = mesh->rank;
-    int size = mesh->size;
+    int rank = platform->comm.mpiRank;
+    int size = platform->comm.mpiCommSize;
 
     // count outgoing and incoming meshes
     int tag = 999;
@@ -107,10 +111,10 @@ void meshHaloExchangeStart(mesh_t* mesh,
         size_t count = mesh->NhaloPairs[r] * Nbytes;
         if(count) {
           MPI_Irecv(((char*)recvBuffer) + offset, count, MPI_CHAR, r, tag,
-                    mesh->comm, ((MPI_Request*)mesh->haloRecvRequests) + message);
+                    platform->comm.mpiComm, ((MPI_Request*)mesh->haloRecvRequests) + message);
 
           MPI_Isend(((char*)sendBuffer) + offset, count, MPI_CHAR, r, tag,
-                    mesh->comm, ((MPI_Request*)mesh->haloSendRequests) + message);
+                    platform->comm.mpiComm, ((MPI_Request*)mesh->haloSendRequests) + message);
           offset += count;
           ++message;
         }
@@ -139,9 +143,10 @@ void meshHaloExchange(mesh_t* mesh,
                       void* sendBuffer, // temporary buffer
                       void* recvBuffer)
 {
+  
   if(mesh->totalHaloPairs > 0) {
-    int rank = mesh->rank;
-    int size = mesh->size;
+    int rank = platform->comm.mpiRank;
+    int size = platform->comm.mpiCommSize;
 
     // count outgoing and incoming meshes
     int tag = 999;
@@ -170,14 +175,14 @@ void meshHaloExchange(mesh_t* mesh,
                     MPI_CHAR,
                     r,
                     tag,
-                    mesh->comm,
+                    platform->comm.mpiComm,
                     (recvRequests) + Nmessages);
           MPI_Isend(((char*)sendBuffer) + offset,
                     count,
                     MPI_CHAR,
                     r,
                     tag,
-                    mesh->comm,
+                    platform->comm.mpiComm,
                     (sendRequests) + Nmessages);
           offset += count;
           ++Nmessages;

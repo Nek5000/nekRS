@@ -3,12 +3,22 @@
                     const dfloat CONST,
                     @restrict dfloat * NU) 
 {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Ntotal){
       const dlong id = n + offset;
       NU[id] = CONST;
     }
   }
+}
+@kernel void scalarScaledAdd(const dlong N,
+                             const dfloat a,
+                             const dfloat b,
+                             @restrict const dfloat* X,
+                             @restrict dfloat* Y)
+{
+  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+    if(n < N)
+      Y[n] = a + b * X[n];
 }
 
 void scalarDirichletConditions(bcData *bc)

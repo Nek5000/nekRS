@@ -105,13 +105,16 @@ void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
   }
 }
 
-void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
+void meshPhysicalNodesHex3D(mesh3D* mesh)
 {
+  int buildOnly = 0;
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
+      
   mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->z = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
 
-  if (nrsBuildOnly) {
+  if (buildOnly) {
     meshPhysicalBoxNodesHex3D(mesh);
   } else {
     dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
@@ -122,9 +125,9 @@ void meshPhysicalNodesHex3D(mesh3D* mesh,  int nrsBuildOnly)
     dlong cnt = 0;
     for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
       hlong offset = e * nx1 * nx1 * nx1;
-      nek_map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
-      nek_map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
-      nek_map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
+      nek::map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
+      nek::map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
+      nek::map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
  
       for(int n = 0; n < mesh->Np; ++n) { /* for each node */
         /* physical coordinate of interpolation node */

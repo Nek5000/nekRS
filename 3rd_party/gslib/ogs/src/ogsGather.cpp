@@ -31,6 +31,38 @@ SOFTWARE.
 
 #include "gather.tpp"
 
+static double startTime = 0.0;
+static double stopTime = 0.0;
+static double hostTime = 0.0;
+static double deviceTime = 0.0;
+occa::streamTag startTag;
+
+void ogsHostTic(MPI_Comm comm, int ifSync){
+#ifdef OGS_ENABLE_TIMER
+  if(ifSync) MPI_Barrier(comm);
+  startTime = MPI_Wtime();
+#endif
+}
+
+void ogsHostToc(){
+#ifdef OGS_ENABLE_TIMER
+  stopTime = MPI_Wtime();
+  hostTime += (stopTime - startTime);
+#endif
+}
+
+double ogsTime(bool reportHostTime){
+  if(reportHostTime)
+    return hostTime;
+  else
+    return deviceTime;
+}
+
+void ogsResetTime(){
+  deviceTime = 0.0;
+  hostTime = 0.0;
+}
+
 void ogsGather_add(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
 void ogsGather_mul(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
 void ogsGather_min(void *gv, void *v, const size_t Nbytes, const char *type, ogs_t *ogs);
@@ -106,12 +138,12 @@ void ogsGatherFinish(occa::memory o_gv,
     ogs->device.finish();
 
 #ifdef OGS_ENABLE_TIMER
-  timer::tic("gsMPI",1);
+  ogsHostTic(ogs->comm, 1);
 #endif
     // MPI based gather using libgs
     ogsHostGather(ogs::haloBuf, type, op, ogs->haloGshNonSym);
 #ifdef OGS_ENABLE_TIMER
-  timer::toc("gsMPI");
+  ogsHostToc();
 #endif
 
     // copy totally gather halo data back from HOST to DEVICE

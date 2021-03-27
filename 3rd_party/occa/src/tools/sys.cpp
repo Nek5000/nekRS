@@ -13,7 +13,6 @@
 #  include <sys/types.h>
 #  include <sys/stat.h>
 #  include <sys/syscall.h>
-#  include <sys/sysctl.h>
 #  include <sys/time.h>
 #  include <unistd.h>
 #  if (OCCA_OS & OCCA_LINUX_OS)
@@ -450,9 +449,11 @@ namespace occa {
       size_t bufferSize = 100;
       char buffer[100];
 
+#if 0
       sysctlbyname("machdep.cpu.brand_string",
                    &buffer, &bufferSize,
                    NULL, 0);
+#endif
 
       return std::string(buffer);
 #elif (OCCA_OS == OCCA_WINDOWS_OS)
@@ -488,7 +489,12 @@ namespace occa {
       uint64_t frequency = 0;
       size_t size = sizeof(frequency);
 
+#if 0
       int error = sysctlbyname("hw.cpufrequency", &frequency, &size, NULL, 0);
+#else 
+      int error = 0;
+#endif
+
 #if OCCA_UNSAFE
     ignoreResult(error);
 #endif
@@ -530,8 +536,12 @@ namespace occa {
 
       uint64_t cache = 0;
       size_t size = sizeof(cache);
-
+#if 0 
       int error = sysctlbyname(field.c_str(), &cache, &size, NULL, 0);
+#else
+      int error = 0;
+#endif
+
 #if OCCA_UNSAFE
     ignoreResult(error);
 #endif
@@ -595,10 +605,12 @@ namespace occa {
 #elif (OCCA_OS == OCCA_MACOS_OS)
       int64_t ram;
 
+#if 0
       int mib[2]   = {CTL_HW, HW_MEMSIZE};
       size_t bytes = sizeof(ram);
 
       sysctl(mib, 2, &ram, &bytes, NULL, 0);
+#endif
 
       return ram;
 #elif (OCCA_OS == OCCA_WINDOWS_OS)

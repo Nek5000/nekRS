@@ -6,13 +6,26 @@
 ###############################################################################
 
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+# MPI wrapper compilers
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
 
-# compiler settings for CPU backend
+# GPU backends
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=1}
+: ${OCCA_OPENCL_ENABLED:=1}
+
+# GPU aware MPI
+: ${OGS_MPI_SUPPORT:=0}
+
+# OCCA backend
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
+: ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
+: ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
@@ -68,54 +81,15 @@ if [[ "$#" -eq 1 ]]; then
     set -e
     exit 0
   elif [[ "$1" = *"tar"* ]]; then
-    nekrs_info "Downloading sources and creating distribution tarball ..."
+    nekrs_info "Creating distribution tarball ..."
   else
     nekrs_info "Usage: makenrs [clean|tar]"
     ${NEKRS_EXIT_CMD} 1
   fi
 fi
 
-
-if [ $SHELL != "/bin/bash" ]  && [ $SHELL != "/bin/zsh" ]; then 
-  echo "Error: user's login shell needs to be bash or zsh!"
-  ${NEKRS_EXIT_CMD} 1
-fi
-
-if [[ "$#" -lt 1 ]]; then
-  if [ -z ${OCCA_CUDA_ENABLED} ]; then
-      read -p "enable CUDA backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_CUDA_ENABLED=1
-          ;;
-      esac
-  fi
-  if [ -z ${OCCA_HIP_ENABLED} ]; then
-      read -p "enable HIP backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_HIP_ENABLED=1
-          ;;
-      esac
-  fi
-  if [ -z ${OCCA_OPENCL_ENABLED} ]; then
-      read -p "enable OPENCL backend? [N]" yn
-      case $yn in
-        [Yy]* )
-          OCCA_OPENCL_ENABLED=1
-          ;;
-      esac
-  fi
-fi
-
-: ${OCCA_CUDA_ENABLED:=0}
-: ${OCCA_HIP_ENABLED:=0}
-: ${OCCA_OPENCL_ENABLED:=0}
 : ${OCCA_METAL_ENABLED:=0}
-
 : ${NEKRS_CXXFLAGS:=""}
-
-USE_OCCA_MEM_BYTE_ALIGN="64" 
 
 if uname -a | grep 'ppc64'; then
   NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
@@ -143,7 +117,6 @@ export NEKRS_DEBUG
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 export NEKRS_INSTALL_DIR
-export NEKRS_LIBP_DEFINES
 export NEKRS_NEK5000_PPLIST
 
 export NEKRS_DIR=`pwd`
@@ -161,6 +134,31 @@ fi
 if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   nekrs_error "Install directory and source directory are the same."
   ${NEKRS_EXIT_CMD} 1
+fi
+
+if [ "$#" -eq 0 ]; then
+  echo ""
+  echo "Configuration"
+  echo "-------------"
+  echo "Installation directory:" $NEKRS_INSTALL_DIR 
+  echo "C compiler:" `which $NEKRS_CC` 
+  echo "C++ compiler:" `which $NEKRS_CXX`
+  echo "Fortran compiler:" `which $NEKRS_FC`
+  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
+  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
+  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
+  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
+  echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
+  echo ""
+
+  if [ "$TRAVIS" != "true" ]; then
+    read -p "Press ENTER to continue ..." yn
+    case $yn in
+      [Nn]* )
+      ${NEKRS_EXIT_CMD} 1
+      ;;
+    esac
+  fi  
 fi
 
 # =======================
@@ -183,10 +181,12 @@ cmake -Wno-dev \
       -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
-      -DLIBP_DEFINES="${NEKRS_LIBP_DEFINES}" \
-      -DUSE_OCCA_MEM_BYTE_ALIGN="${USE_OCCA_MEM_BYTE_ALIGN}" \
       -DOCCA_CXX="${OCCA_CXX}" \
       -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
+      -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
+      -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
+      -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
+      -DOGS_MPI_SUPPORT="${OGS_MPI_SUPPORT}" \
       -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \

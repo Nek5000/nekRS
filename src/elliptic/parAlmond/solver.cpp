@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "parAlmond.hpp"
+#include "platform.hpp"
 
 namespace parAlmond {
 
@@ -64,7 +65,7 @@ solver_t::solver_t(occa::device device_, MPI_Comm comm_,
       additive = true;
       overlapCrsGridSolve = false;
       if(options.compareArgs("PARALMOND CYCLE", "OVERLAPCRS")){
-        if(options.compareArgs("THREAD MODEL", "SERIAL")){
+        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           overlapCrsGridSolve = false;
         } else {
           overlapCrsGridSolve = true;

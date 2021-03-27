@@ -1,0 +1,255 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+@kernel void surfaceGeometricFactorsHex3D(const dlong Nelements,
+               @restrict const dfloat * D,
+               @restrict const dfloat * gllw,
+               @restrict const dlong * faceNodes,
+               @restrict const  dfloat *x,
+               @restrict const  dfloat *y,
+               @restrict const  dfloat *z,
+               @restrict dfloat *sgeo){
+  for(dlong e=0;e<Nelements;++e;@outer(0)){  // for all elements
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_x[p_Nq][p_Nq];
+    @shared dfloat s_y[p_Nq][p_Nq];
+    @shared dfloat s_z[p_Nq][p_Nq];
+    @exclusive dfloat r_x[p_Nq];
+    @exclusive dfloat r_y[p_Nq];
+    @exclusive dfloat r_z[p_Nq];
+    @shared dfloat s_gllw[p_Nq];
+
+    // 3D shmem array for communicating values between threads
+    @shared dfloat arr[p_Nq*p_Nq*p_Nq];
+
+#if p_Nq > p_Nfaces
+    @exclusive dfloat r_xre[p_Nq];
+    @exclusive dfloat r_xse[p_Nq];
+    @exclusive dfloat r_xte[p_Nq];
+    @exclusive dfloat r_yre[p_Nq];
+    @exclusive dfloat r_yse[p_Nq];
+    @exclusive dfloat r_yte[p_Nq];
+    @exclusive dfloat r_zre[p_Nq];
+    @exclusive dfloat r_zse[p_Nq];
+    @exclusive dfloat r_zte[p_Nq];
+#else
+    @exclusive dfloat r_xre[p_Nfaces];
+    @exclusive dfloat r_xse[p_Nfaces];
+    @exclusive dfloat r_xte[p_Nfaces];
+    @exclusive dfloat r_yre[p_Nfaces];
+    @exclusive dfloat r_yse[p_Nfaces];
+    @exclusive dfloat r_yte[p_Nfaces];
+    @exclusive dfloat r_zre[p_Nfaces];
+    @exclusive dfloat r_zse[p_Nfaces];
+    @exclusive dfloat r_zte[p_Nfaces];
+#endif
+
+#define r_f_xr r_xre
+#define r_f_xs r_xse
+#define r_f_xt r_xte
+#define r_f_yr r_yre
+#define r_f_ys r_yse
+#define r_f_yt r_yte
+#define r_f_zr r_zre
+#define r_f_zs r_zse
+#define r_f_zt r_zte
+
+    #pragma unroll p_Nq
+    for(int k = 0 ; k < p_Nq; ++k){
+      @barrier("local");
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          if(k==0) s_D[j][i]  = D[j*p_Nq+i];
+          const dlong id = e*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
+          s_x[j][i] = x[id];
+          s_y[j][i] = y[id];
+          s_z[j][i] = z[id];
+          if(j==0 && k == 0)
+            s_gllw[i] = gllw[i];
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e*p_Np + l*p_Nq*p_Nq + j*p_Nq + i;
+              r_x[l] = x[other_id];
+              r_y[l] = y[other_id];
+              r_z[l] = z[other_id];
+            }
+          }
+
+          //const dlong shmem_id = k * p_Nq * p_Nq + j * p_Nq + i;
+          r_xre[k] = 0.0;
+          r_xse[k] = 0.0;
+          r_xte[k] = 0.0;
+          r_yre[k] = 0.0;
+          r_yse[k] = 0.0;
+          r_yte[k] = 0.0;
+          r_zre[k] = 0.0;
+          r_zse[k] = 0.0;
+          r_zte[k] = 0.0;
+          
+        }
+      }
+      @barrier("local");
+      for(int j=0;j<p_Nq;++j;@inner(1)){
+        for(int i=0;i<p_Nq;++i;@inner(0)){
+          const dlong id = k * p_Nq * p_Nq + j * p_Nq + i;
+          #pragma unroll p_Nq
+          for(int m=0;m<p_Nq;++m){
+            const dfloat Dim = s_D[i][m];
+            const dfloat Djm = s_D[j][m];
+            const dfloat Dkm = s_D[k][m];
+            r_xre[k] += Dim*s_x[j][m];
+            r_xse[k] += Djm*s_x[m][i];
+            r_xte[k] += Dkm*r_x[m];
+            r_yre[k] += Dim*s_y[j][m];
+            r_yse[k] += Djm*s_y[m][i];
+            r_yte[k] += Dkm*r_y[m];
+            r_zre[k] += Dim*s_z[j][m];
+            r_zse[k] += Djm*s_z[m][i];
+            r_zte[k] += Dkm*r_z[m];
+          }
+        }
+      }
+    }
+    // Communicate results into face local arrays
+    #pragma unroll 9
+    for(int pass = 0 ; pass < 9; ++pass){
+      #pragma unroll p_Nq
+      for(int k = 0 ; k < p_Nq; ++k){
+        @barrier("local");
+        for(int j=0;j<p_Nq;++j;@inner(1)){
+          for(int i=0;i<p_Nq;++i;@inner(0)){
+            const dlong id = k * p_Nq * p_Nq + j * p_Nq + i;
+            if(pass == 0) arr[id] = r_xre[k];
+            if(pass == 1) arr[id] = r_xse[k];
+            if(pass == 2) arr[id] = r_xte[k];
+            if(pass == 3) arr[id] = r_yre[k];
+            if(pass == 4) arr[id] = r_yse[k];
+            if(pass == 5) arr[id] = r_yte[k];
+            if(pass == 6) arr[id] = r_zre[k];
+            if(pass == 7) arr[id] = r_zse[k];
+            if(pass == 8) arr[id] = r_zte[k];
+          }
+        }
+      }
+      #pragma unroll p_Nfaces
+      for(int f = 0 ; f < p_Nfaces; ++f){
+        @barrier("local");
+        for(int j=0;j<p_Nq;++j;@inner(1)){
+          for(int i=0;i<p_Nq;++i;@inner(0)){
+            int n = faceNodes[f * p_Nfp + j*p_Nq + i];
+            if(pass == 0) r_f_xr[f] = arr[n];
+            if(pass == 1) r_f_xs[f] = arr[n];
+            if(pass == 2) r_f_xt[f] = arr[n];
+            if(pass == 3) r_f_yr[f] = arr[n];
+            if(pass == 4) r_f_ys[f] = arr[n];
+            if(pass == 5) r_f_yt[f] = arr[n];
+            if(pass == 6) r_f_zr[f] = arr[n];
+            if(pass == 7) r_f_zs[f] = arr[n];
+            if(pass == 8) r_f_zt[f] = arr[n];
+          }
+        }
+      }
+    }
+
+    @barrier("local");
+    for(int j=0;j<p_Nq;++j;@inner(1)){
+      for(int i=0;i<p_Nq;++i;@inner(0)){
+        #pragma unroll p_Nfaces
+        for(int f = 0 ; f < p_Nfaces; ++f){
+          const dfloat xr = r_f_xr[f];
+          const dfloat xs = r_f_xs[f];
+          const dfloat xt = r_f_xt[f];
+          const dfloat yr = r_f_yr[f];
+          const dfloat ys = r_f_ys[f];
+          const dfloat yt = r_f_yt[f];
+          const dfloat zr = r_f_zr[f];
+          const dfloat zs = r_f_zs[f];
+          const dfloat zt = r_f_zt[f];
+          /* determinant of Jacobian matrix */
+          dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
+
+          dfloat rx =  (ys * zt - zs * yt) / J, ry = -(xs * zt - zs * xt) / J,
+                 rz =  (xs * yt - ys * xt) / J;
+          dfloat sx = -(yr * zt - zr * yt) / J, sy =  (xr * zt - zr * xt) / J,
+                 sz = -(xr * yt - yr * xt) / J;
+          dfloat tx =  (yr * zs - zr * ys) / J, ty = -(xr * zs - zr * xs) / J,
+                 tz =  (xr * ys - yr * xs) / J;
+
+          /* face f normal and length */
+          dfloat nx, ny, nz, d;
+          switch(f) {
+          case 0: nx = -tx;
+            ny = -ty;
+            nz = -tz;
+            break;
+          case 1: nx = -sx;
+            ny = -sy;
+            nz = -sz;
+            break;
+          case 2: nx = +rx;
+            ny = +ry;
+            nz = +rz;
+            break;
+          case 3: nx = +sx;
+            ny = +sy;
+            nz = +sz;
+            break;
+          case 4: nx = -rx;
+            ny = -ry;
+            nz = -rz;
+            break;
+          case 5: nx = +tx;
+            ny = +ty;
+            nz = +tz;
+            break;
+          }
+
+          dfloat sJ = sqrt(nx * nx + ny * ny + nz * nz);
+          nx /= sJ;
+          ny /= sJ;
+          nz /= sJ;
+          sJ *= J;
+
+          /* output index */
+          const dlong base = p_Nsgeo * (p_Nfaces * p_Nfp * e + p_Nfp * f + j*p_Nq + i);
+
+          /* store normal, surface Jacobian, and reciprocal of volume Jacobian */
+          sgeo[base + p_NXID] = nx;
+          sgeo[base + p_NYID] = ny;
+          sgeo[base + p_NZID] = nz;
+          sgeo[base + p_SJID] = sJ;
+          sgeo[base + p_IJID] = 1. / J;
+
+          sgeo[base + p_WIJID] = 1. / (J * s_gllw[0]);
+          sgeo[base + p_WSJID] = sJ * s_gllw[i] * s_gllw[j];
+        }
+      }
+    }
+  }
+}

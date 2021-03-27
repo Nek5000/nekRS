@@ -79,7 +79,7 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh);
 void meshPhysicalNodesTri3D(mesh3D* mesh);
 void meshPhysicalNodesQuad3D(mesh3D* mesh);
 void meshPhysicalNodesTet3D(mesh3D* mesh);
-void meshPhysicalNodesHex3D(mesh3D* mesh, int nrsBuildOnly);
+void meshPhysicalNodesHex3D(mesh3D* mesh);
 
 void meshLoadReferenceNodesTet3D(mesh3D* mesh, int N);
 void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN);
@@ -95,7 +95,7 @@ void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kern
 void meshOccaSetupQuad3D(mesh_t* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 void meshOccaSetupTri3D(mesh_t* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 
-void meshOccaPopulateDevice3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo);
+void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo);
 void meshOccaCloneDevice(mesh_t* donorMesh, mesh_t* mesh);
 
 // functions that call OCCA kernels

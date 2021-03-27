@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mesh3D.h"
+#include "platform.hpp"
+#include "linAlg.hpp"
 
 void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 {
@@ -66,19 +68,13 @@ void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 
 void meshGeometricFactorsHex3D(mesh3D* mesh)
 {
-  /* unified storage array for geometric factors */
-  mesh->Nvgeo = 12;
+  double tStart = MPI_Wtime();
+  if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
 
   /* note that we have volume geometric factors for each node */
-  mesh->vgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
-
+  mesh->vgeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
   mesh->cubvgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
-
-  /* number of second order geometric factors */
-  mesh->Nggeo = 7;
-
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
-  mesh->cubggeo = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->cubNp, sizeof(dfloat));
 
   dfloat minJ = 1e9, maxJ = -1e9, maxSkew = 0;
 
@@ -104,8 +100,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
 
   mesh->volume = 0;
 
-  for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
-    /* find vertex indices and physical coordinates */
+  for(dlong e = 0; e < mesh->Nelements; ++e) {
     dlong id = e * mesh->Nverts;
 
     for(int n = 0; n < mesh->Np; ++n) {
@@ -273,32 +268,30 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->cubvgeo[base + mesh->cubNp * JID]  = J;
           mesh->cubvgeo[base + mesh->cubNp * JWID] = JW;
           mesh->cubvgeo[base + mesh->cubNp * IJWID] = 1. / JW;
-
-          /* store second order geometric factors */
-          base = mesh->Nggeo * mesh->cubNp * e + n;
-          mesh->cubggeo[base + mesh->cubNp * G00ID] = JW * (rx * rx + ry * ry + rz * rz);
-          mesh->cubggeo[base + mesh->cubNp * G01ID] = JW * (rx * sx + ry * sy + rz * sz);
-          mesh->cubggeo[base + mesh->cubNp * G02ID] = JW * (rx * tx + ry * ty + rz * tz);
-          mesh->cubggeo[base + mesh->cubNp * G11ID] = JW * (sx * sx + sy * sy + sz * sz);
-          mesh->cubggeo[base + mesh->cubNp * G12ID] = JW * (sx * tx + sy * ty + sz * tz);
-          mesh->cubggeo[base + mesh->cubNp * G22ID] = JW * (tx * tx + ty * ty + tz * tz);
-          mesh->cubggeo[base + mesh->cubNp * GWJID] = JW;
         }
   }
 
   {
     dfloat globalMinJ, globalMaxJ, globalMaxSkew;
 
-    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, mesh->comm);
-    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, mesh->comm);
-    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, mesh->comm);
+    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, platform->comm.mpiComm);
+    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
+    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
 
-    if(mesh->rank == 0)
-      printf("J in range [%g,%g]\n", globalMinJ, globalMaxJ);
-      //printf("J in range [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
+    if(platform->comm.mpiRank == 0)
+      printf("J [%g,%g] ", globalMinJ, globalMaxJ);
+      //printf("J [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
+
+    if(globalMinJ < 0 || globalMaxJ < 0) {
+      if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
+	(platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
+        if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
+        ABORT(EXIT_FAILURE);
+      }
+    }  
 
     dfloat globalVolume;
-    MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
+    MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     mesh->volume = globalVolume;
   }
 
@@ -321,4 +314,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   free(cubzre);
   free(cubzse);
   free(cubzte);
+
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }

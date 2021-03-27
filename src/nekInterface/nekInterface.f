@@ -105,6 +105,24 @@ c-----------------------------------------------------------------------
          ptr = loc(vmult)
       elseif (id .eq. 'cb_scnrs') then
          ptr = loc(sc_nrs(1))
+      elseif (id .eq. 'p0th') then
+         ptr = loc(p0th)
+      elseif (id .eq. 'dp0thdt') then
+         ptr = loc(dp0thdt)
+      elseif (id .eq. 'wx') then
+         ptr = loc(wx(1,1,1,1))
+      elseif (id .eq. 'wy') then
+         ptr = loc(wy(1,1,1,1))
+      elseif (id .eq. 'wz') then
+         ptr = loc(wz(1,1,1,1))
+      elseif (id .eq. 'bfx') then
+         ptr = loc(bfx(1,1,1,1))
+      elseif (id .eq. 'bfy') then
+         ptr = loc(bfy(1,1,1,1))
+      elseif (id .eq. 'bfz') then
+         ptr = loc(bfz(1,1,1,1))
+      elseif (id .eq. 'bq') then
+         ptr = loc(bq(1,1,1,1,1))
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -161,7 +179,10 @@ c-----------------------------------------------------------------------
 
       call read_re2_hdr(ifbswap, .true.)
 
+      if(ndim.eq.2) call exitti('Mesh has to be 3D!$', ndim) 
+
       call setDefaultParam
+      loglevel   = 1
       cpfld(1,2) = rho
       cpfld(1,1) = mue
       cpfld(2,2) = rhoCp
@@ -824,5 +845,35 @@ c-----------------------------------------------------------------------
 
       return
       end
-c-----------------------------------------------------------------------
+C----------------------------------------------------------------------
+C
+C     Generate geometric factors without updating coords
+C
+C----------------------------------------------------------------------
+      subroutine nekf_updggeom()
+      include 'SIZE'
+      include 'INPUT'
+      include 'TSTEP'
+      include 'GEOM'
+      include 'WZ'
 
+      COMMON /SCRUZ/ XM3 (LX3,LY3,LZ3,LELT)
+     $ ,             YM3 (LX3,LY3,LZ3,LELT)
+     $ ,             ZM3 (LX3,LY3,LZ3,LELT)
+
+      ifld_save = ifield
+      ifield = 1
+
+      CALL LAGMASS
+      CALL GEOM1 (XM3,YM3,ZM3)
+      CALL GEOM2
+      CALL UPDMSYS (1)
+      CALL VOLUME
+      CALL SETINVM
+      CALL SETDEF
+      CALL SFASTAX
+
+      ifield = ifld_save
+
+      return
+      end

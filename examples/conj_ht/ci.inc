@@ -11,7 +11,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("7"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("END TIME", string("10"));
   options.setArgs("DT", string("2e-2"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
@@ -28,20 +28,15 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
 
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyToNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(1);
+  double *err = (double *) nek::scPtr(1);
   double vxErr, sErr;
-
-  switch (ciMode) {
-    // cross compare solution to nek5000
-    case 1: vxErr = abs((err[0] - 2.06559)/err[0]);
-            sErr  = abs((err[1] - 28.3833)/err[1]);
-            break;
-  }
+  vxErr = abs((err[0] - 2.06559)/err[0]);
+  sErr  = abs((err[1] - 28.3833)/err[1]);
 
   if (rank == 0)
     printf("relative error to target: vx=%g s=%g\n", vxErr, sErr);

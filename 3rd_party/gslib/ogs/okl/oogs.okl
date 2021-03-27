@@ -8,7 +8,7 @@
                                    @restrict float *  q, 
                                    @restrict float *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -44,7 +44,7 @@
                                      @restrict const float *  q, 
                                      @restrict float *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -76,7 +76,7 @@
                                     @restrict double *  q, 
                                     @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -112,7 +112,7 @@
                                     @restrict double *  q, 
                                     @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -148,7 +148,7 @@
                                     @restrict double *  q, 
                                     @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -184,7 +184,7 @@
                                       @restrict const double *  q, 
                                       @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -216,7 +216,7 @@
                                       @restrict const double *  q, 
                                       @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;
@@ -248,7 +248,7 @@
                                       @restrict const double *  q, 
                                       @restrict double *  qout)
 {
-  for(dlong g=0;g<N*Nentries;++g;@tile(256,@outer,@inner)){
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){
     
     const dlong gid = g%N;
     const int k = g/N;

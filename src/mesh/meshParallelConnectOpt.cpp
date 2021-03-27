@@ -28,15 +28,16 @@
 #include <stdlib.h>
 
 #include "mesh.h"
+#include "platform.hpp"
 
-typedef struct
+struct parallelFace_t
 {
   hlong v[4]; // vertices on face
   dlong element, elementN;
   int NfaceVertices;
   int face, rank;    // face info
   int faceN, rankN; // N for neighbor face info
-}parallelFace_t;
+};
 
 // comparison function that orders vertices
 // based on their combined vertex indices
@@ -77,13 +78,14 @@ int parallelCompareFaces(const void* a,
 // mesh is the local partition
 void meshParallelConnect(mesh_t* mesh)
 {
+  
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  rank = platform->comm.mpiRank;
+  size = platform->comm.mpiCommSize;
 
-  MPI_Barrier(mesh->comm);
-  const double tStart = MPI_Wtime();
-  if(mesh->rank == 0) printf("Building parallel face connectivity ... ");
+  //MPI_Barrier(platform->comm.mpiComm);
+  //const double tStart = MPI_Wtime();
+  //if(platform->comm.mpiRank == 0) printf("Building parallel face connectivity ... ");
 
   // serial connectivity on each process
   meshConnect(mesh);
@@ -188,7 +190,7 @@ void meshParallelConnect(mesh_t* mesh)
   // exchange byte counts
   MPI_Alltoall(Nsend, 1, MPI_INT,
                Nrecv, 1, MPI_INT,
-               mesh->comm);
+               platform->comm.mpiComm);
 
   // count incoming faces
   int allNrecv = 0;
@@ -205,7 +207,7 @@ void meshParallelConnect(mesh_t* mesh)
   // exchange parallel faces
   MPI_Alltoallv(sendFaces, Nsend, sendOffsets, MPI_PARALLELFACE_T,
                 recvFaces, Nrecv, recvOffsets, MPI_PARALLELFACE_T,
-                mesh->comm);
+                platform->comm.mpiComm);
 
   // local sort allNrecv received faces
   qsort(recvFaces, allNrecv, sizeof(parallelFace_t), parallelCompareVertices);
@@ -229,7 +231,7 @@ void meshParallelConnect(mesh_t* mesh)
   // send faces back from whence they came
   MPI_Alltoallv(recvFaces, Nrecv, recvOffsets, MPI_PARALLELFACE_T,
                 sendFaces, Nsend, sendOffsets, MPI_PARALLELFACE_T,
-                mesh->comm);
+                platform->comm.mpiComm);
 
   // extract connectivity info
   mesh->EToP = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
@@ -250,11 +252,11 @@ void meshParallelConnect(mesh_t* mesh)
     }
   }
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   MPI_Type_free(&MPI_PARALLELFACE_T);
   free(sendFaces);
   free(recvFaces);
 
-  MPI_Barrier(mesh->comm);
-  if(mesh->rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+  //MPI_Barrier(platform->comm.mpiComm);
+  //if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 }

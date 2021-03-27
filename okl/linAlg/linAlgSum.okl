@@ -26,6 +26,7 @@ SOFTWARE.
 
 @kernel void sum(const dlong Nblocks,
                  const dlong N,
+                 const dlong offset,
                  @restrict const  dfloat *x,
                  @restrict        dfloat *sum){
 
@@ -37,9 +38,8 @@ SOFTWARE.
     for(int t=0;t<p_blockSize;++t;@inner(0)){
       dlong id = t + b*p_blockSize;
       s_sum[t] = 0.0;
-      while (id<N) {
-        s_sum[t] += x[id];
-        id += p_blockSize*Nblocks;
+      if (id<N) {
+        s_sum[t] += x[id+offset];
       }
     }
 

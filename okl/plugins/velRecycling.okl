@@ -63,7 +63,7 @@
                             const dfloat scale,
                             @restrict dfloat*  W)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N)
       W[n] *= scale;
 }

@@ -59,7 +59,7 @@ occa::memory o_reductionScratch;
   
   
   occa::properties props;
-  props["mapped"] = true;
+  props["host"] = true;
   
   if(source!=NULL)
     mem =  device.malloc(size, source);
@@ -68,7 +68,7 @@ occa::memory o_reductionScratch;
 
   h_mem =  device.malloc(size, props);
   
-  void *ptr = h_mem.ptr(props);
+  void *ptr = h_mem.ptr();
 
   return ptr;
 

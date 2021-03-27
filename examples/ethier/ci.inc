@@ -12,7 +12,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("9"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("VISCOSITY", string("0.01"));
   options.setArgs("DENSITY", string("1"));
   options.setArgs("NUMBER OF SCALARS", string("2"));
@@ -45,6 +45,19 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
     options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
   }
+  if (ciMode == 5) {
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    options.setArgs("SUBCYCLING STEPS", string("0"));
+    options.setArgs("MOVING MESH", string("TRUE"));
+  }
+  if (ciMode == 6) {
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("MOVING MESH", string("TRUE"));
+  }
+
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
@@ -78,15 +91,15 @@ dfloat min(dfloat const * const array, const int size, MPI_Comm comm)
   MPI_Allreduce(MPI_IN_PLACE, &minr, 1, MPI_DFLOAT, MPI_MIN, comm);
   return minr;
 }
-void ciTestLinAlg(nrs_t *nrs, const int N)
+void ciTestLinAlg(const int N)
 {
-  linAlg_t* linAlg = nrs->linAlg;
-  MPI_Comm comm = nrs->mesh->comm;
-  int rank = nrs->mesh->rank;
+  linAlg_t* linAlg = platform->linAlg;
+  MPI_Comm comm = platform->comm.mpiComm;
+  int rank = platform->comm.mpiRank;
   dfloat* x = (dfloat*) calloc(N, sizeof(dfloat));
   for(int i = 0 ; i < N; ++i)
     x[i] = drand48();
-  occa::memory o_x = nrs->mesh->device.malloc(N*sizeof(dfloat), x);
+  occa::memory o_x = platform->device.malloc(N*sizeof(dfloat), x);
   const dfloat referenceSum = sum(x,N,comm);
   const dfloat referenceMax = max(x,N,comm);
   const dfloat referenceMin = min(x,N,comm);
@@ -109,14 +122,35 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
+  const int rank = platform->comm.mpiRank;
+  if(tstep == 1){
+    int NiterP = nrs->pSolver->Niter;
+    const int expectedNiterP = 8;
+    const int pIterErr = abs(NiterP - expectedNiterP);
+    if(pIterErr >= 2) {
+      if(rank==0){
+        printf("Expected %d P iterations in first step, but got %d!\n", expectedNiterP, NiterP);
+      }
+      FAIL;
+    }
+  }
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
- 
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
 
-  double *err = (double *) nek_scPtr(1);
+  ciTestLinAlg(BLOCKSIZE / 16);
+  ciTestLinAlg(BLOCKSIZE / 8);
+  ciTestLinAlg(BLOCKSIZE / 4);
+  ciTestLinAlg(BLOCKSIZE / 2);
+  ciTestLinAlg(BLOCKSIZE);
+  ciTestLinAlg(2 * BLOCKSIZE);
+  ciTestLinAlg(4 * BLOCKSIZE);
+  ciTestLinAlg(8 * BLOCKSIZE);
+  ciTestLinAlg(16 * BLOCKSIZE);
+
+  nek::ocopyToNek(time, tstep);
+  nek::userchk();
+
+  double *err = (double *) nek::scPtr(1);
 
   double vxErr, prErr;
   double s1Err, s2Err;
@@ -124,52 +158,81 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   int pIterErr;
   int velIterErr;
 
-  ciTestLinAlg(nrs, BLOCKSIZE / 16);
-  ciTestLinAlg(nrs, BLOCKSIZE / 8);
-  ciTestLinAlg(nrs, BLOCKSIZE / 4);
-  ciTestLinAlg(nrs, BLOCKSIZE / 2);
-  ciTestLinAlg(nrs, BLOCKSIZE);
-  ciTestLinAlg(nrs, 2 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 4 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 8 * BLOCKSIZE);
-  ciTestLinAlg(nrs, 16 * BLOCKSIZE);
+  int NiterU;
+
+  if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    NiterU = nrs->uvwSolver->Niter;
+  else
+    NiterU = nrs->uSolver->Niter;
+
+  int NiterP = nrs->pSolver->Niter;
+
+  int NiterS01 = nrs->cds->solver[0]->Niter;
+  int NiterS02 = nrs->cds->solver[1]->Niter;
+  int s01IterErr, s02IterErr;
 
   switch (ciMode) {
-    case 1 : velIterErr = abs(nrs->NiterU - 10);
+    case 1 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
              s2Err = abs((err[3] - 6.09E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 4);
+             pIterErr = abs(NiterP - 4);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.17E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
-    case 2 : velIterErr = abs(nrs->NiterU - 10);
+    case 2 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 6.49E-12)/err[2]);
              s2Err = abs((err[3] - 7.28E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.38E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
-    case 3 : velIterErr = abs(nrs->NiterU - 4);
+    case 3 : velIterErr = abs(NiterU - 4);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
              s2Err = abs((err[3] - 6.09E-12)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 8.34E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
-    case 4 : velIterErr = abs(nrs->NiterU - 1);
+    case 4 : velIterErr = abs(NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
              s2Err = abs((err[3] - 2.00E-11)/err[3]);
-             pIterErr = abs(nrs->NiterP - 1);
+             pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 3.65E-10)/err[0]);
              prErr = abs((err[1] - 6.71E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
-  }
+    case 5 : velIterErr = abs(NiterU - 12);
+             s1Err = abs((err[2] - 1.53E-06)/err[2]);
+             s2Err = abs((err[3] - 1.73E-06)/err[3]);
+             pIterErr = abs(NiterP - 8);
+             vxErr = abs((err[0] - 2.57E-07)/err[0]);
+             prErr = abs((err[1] - 2.16E-06)/err[1]);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
+             break;
+    case 6 : velIterErr = abs(NiterU - 12);
+             s1Err = abs((err[2] - 1.27E-06)/err[2]);
+             s2Err = abs((err[3] - 1.41E-06)/err[3]);
+             pIterErr = abs(NiterP - 8);
+             vxErr = abs((err[0] - 2.43E-07)/err[0]);
+             prErr = abs((err[1] - 2.89E-06)/err[1]);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
+             break;
+
+     }
 
   if (rank == 0)
-    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d\n", 
-           vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr);
-
+    printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
+           vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr, s01IterErr, s02IterErr);
 
   (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
-  velIterErr <= 1 && pIterErr <= 2) ? (PASS) : (FAIL); 
+   velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
 }

@@ -26,29 +26,38 @@
 
 #include "elliptic.h"
 #include "timer.hpp"
+#include "platform.hpp"
+#include "linAlg.hpp"
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
+  
+  
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
   setupAide options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-  timer::tic("preconditioner", 1);
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
-    if(elliptic->blockSolver)
-      elliptic->dotMultiplyKernel(Nlocal, elliptic->Ntotal, o_r, precon->o_invDiagA, o_z);
-    else
-      elliptic->dotMultiplyKernel(Nlocal, o_r, precon->o_invDiagA, o_z);
+    platform->linAlg->axmyzMany(
+      Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1,
+      o_r,
+      precon->o_invDiagA,
+      o_z
+    );
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
+    platform->timer.tic("mg preconditioner", 1);
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
+    platform->timer.toc("mg preconditioner");
   }else {
-    if(mesh->rank == 0) printf("ERRROR: Unknown preconditioner\n");
-    MPI_Abort(mesh->comm, 1);
+    if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
+    MPI_Abort(platform->comm.mpiComm, 1);
     //o_z.copyFrom(o_r);
   }
-  timer::toc("preconditioner");
 
   if(elliptic->allNeumann) // zero mean of RHS
     ellipticZeroMean(elliptic, o_z);

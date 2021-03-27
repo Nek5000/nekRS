@@ -11,7 +11,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("7"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("VISCOSITY", string("0.1"));
   options.setArgs("DENSITY", string("1"));
   options.setArgs("END TIME", string("0.1"));
@@ -29,12 +29,12 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
  
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyToNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(5);
+  double *err = (double *) nek::scPtr(5);
 
   double vxErr = abs((err[0] - 9.5942E-09)/err[0]);
   double vyErr = abs((err[1] - 2.3012E-07)/err[1]);

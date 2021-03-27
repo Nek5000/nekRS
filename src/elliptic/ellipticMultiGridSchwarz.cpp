@@ -32,6 +32,7 @@
 #include <string>
 #include <sstream>
 #include <exception>
+#include "platform.hpp"
 
 struct ElementLengths
 {
@@ -604,18 +605,13 @@ void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* ellipt
   free(Sz);
 }
 
-mesh_t* create_extended_mesh(elliptic_t* elliptic)
+mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
 {
+
+  //platform_t* platform = platform_t::getInstance();
   mesh_t* meshRoot = elliptic->mesh;
 
-  int buildOnly  = 0;
-  if(elliptic->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-
   mesh_t* mesh = new mesh_t();
-  mesh->rank = meshRoot->rank;
-  mesh->size = meshRoot->size;
-  mesh->comm = meshRoot->comm;
-  mesh->device = meshRoot->device;
   mesh->N = meshRoot->N + 2;
   mesh->Np = (mesh->N + 1) * (mesh->N + 1) * (mesh->N + 1);
   mesh->Nelements = meshRoot->Nelements;
@@ -641,12 +637,12 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   meshConnectBoundary(mesh);
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
   meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh, buildOnly);
+  meshPhysicalNodesHex3D(mesh);
   meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
-  meshParallelConnectNodes(mesh, buildOnly);
+  meshGlobalIds(mesh);
 
-  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, mesh->comm, 1, mesh->device);
+  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
@@ -679,11 +675,9 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic)
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
   //make a masked version of the global id numbering
-  free(mesh->maskedGlobalIds);
-  mesh->maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
-  memcpy(mesh->maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
+  memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)
-    mesh->maskedGlobalIds[maskIds[n]] = 0;
+    maskedGlobalIds[maskIds[n]] = 0;
 
   free(mapB);
   free(maskIds);
@@ -754,6 +748,7 @@ void extrude(pfloat* arr1,
 
 void MGLevel::generate_weights()
 {
+  //platform_t* platform = platform_t::getInstance();
   const pfloat one = 1.0;
   const pfloat zero = 0.0;
   const pfloat onem = -1.0;
@@ -781,8 +776,7 @@ void MGLevel::generate_weights()
 
   for(dlong i = 0; i < weightSize; ++i)
     wts[i] = 1.0 / wts[i];
-  o_wts = mesh->device.malloc  (weightSize * sizeof(pfloat));
-  o_wts.copyFrom(wts, weightSize * sizeof(pfloat));
+  o_wts = platform->device.malloc(weightSize * sizeof(pfloat), wts);
   free(work1);
   free(work2);
   free(wts);
@@ -791,6 +785,7 @@ void MGLevel::generate_weights()
 void MGLevel::build(
   elliptic_t* pSolver)
 {
+  //platform_t* platform = platform_t::getInstance();
   if(elliptic->elementType != HEXAHEDRA) {
     printf("ERROR: Unsupported element type!");
     ABORT(EXIT_FAILURE);
@@ -802,27 +797,24 @@ void MGLevel::build(
   const int Np = elliptic->mesh->Np;
 
   overlap = false;
-  if(Nq >= 5) overlap = true;
+  const bool serial = (platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP");
+  if(Nq >= 5 && !serial) overlap = true;
 
-  mesh_t* extendedMesh = create_extended_mesh(elliptic);
+  hlong* maskedGlobalIds;
+  maskedGlobalIds = (hlong*) calloc(Nelements*(Nq+2)*(Nq+2)*(Nq+2),sizeof(hlong));
+  mesh_t* extendedMesh = create_extended_mesh(elliptic, maskedGlobalIds);
 
   const int Nq_e = extendedMesh->Nq;
   const int Np_e = extendedMesh->Np;
   const dlong Nlocal_e = Nelements * Np_e;
 
   oogs_mode oogsMode = OOGS_AUTO;
-  if(options.compareArgs("THREAD MODEL", "SERIAL")) oogsMode = OOGS_DEFAULT;
+  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
 
-  extendedOgs = (void*) oogs::setup(Nelements * Np_e, extendedMesh->maskedGlobalIds, 1, 0,
-                                    ogsPfloat, extendedMesh->comm, 1, extendedMesh->device,
+  extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
+                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device,
                                     NULL, oogsMode);
   meshFree(extendedMesh);
-
-/*
-   ogs = (void*) oogs::setup(Nelements * Np, elliptic->mesh->maskedGlobalIds, 1, 0,
-                            ogsPfloat, elliptic->mesh->comm, 1, elliptic->mesh->device,
-                            NULL, oogsMode);
- */
 
   ogs = (void*) elliptic->oogs;
 
@@ -862,13 +854,13 @@ void MGLevel::build(
   free(lengths);
 
   const dlong weightSize = Np * Nelements;
-  o_Sx = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sy = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sz = mesh->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_invL = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
-  o_work1 = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
+  o_Sx = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_Sy = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_Sz = platform->device.malloc  (Nq_e * Nq_e * Nelements * sizeof(pfloat));
+  o_invL = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
+  o_work1 = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
   if(!options.compareArgs("MULTIGRID SMOOTHER","RAS"))
-    o_work2 = mesh->device.malloc  (Nlocal_e * sizeof(pfloat));
+    o_work2 = platform->device.malloc  (Nlocal_e * sizeof(pfloat));
   o_Sx.copyFrom(casted_Sx, Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sy.copyFrom(casted_Sy, Nq_e * Nq_e * Nelements * sizeof(pfloat));
   o_Sz.copyFrom(casted_Sz, Nq_e * Nq_e * Nelements * sizeof(pfloat));
@@ -886,28 +878,23 @@ void MGLevel::build(
   const string oklpath = install_dir + "/okl/elliptic/";
   string filename, kernelName;
 
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && mesh->rank == 0) || (r == 1 && mesh->rank > 0)) {
-      occa::properties properties;
-      properties += mesh->device.properties();
-      properties["defines/p_Nq_e"] = Nq_e;
-      properties["defines/p_threadBlockSize"] = BLOCKSIZE;
+  {
+      occa::properties properties = platform->kernelInfo;
       properties["defines/p_Nq"] = Nq;
-      properties["defines/pfloat"] = pfloatString;
-      properties["defines/dfloat"] = dfloatString;
-      properties["defines/dlong"] = dlongString;
+      properties["defines/p_Nq_e"] = Nq_e;
       properties["defines/p_restrict"] = 0;
       properties["defines/p_overlap"] = (int) overlap;
       if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
         properties["defines/p_restrict"] = 1;
 
       filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
-      preFDMKernel = mesh->device.buildKernel(filename.c_str(), "preFDM", properties);
-      fusedFDMKernel = mesh->device.buildKernel(filename.c_str(), "fusedFDM", properties);
-      postFDMKernel = mesh->device.buildKernel(filename.c_str(), "postFDM", properties);
-      collocateKernel = mesh->device.buildKernel(filename.c_str(), "collocate", properties);
-    }
-    MPI_Barrier(mesh->comm);
+      if(serial) {
+        filename = oklpath + "ellipticSchwarzSolverHex3D.c";
+        properties["okl/enabled"] = false;
+      }
+      preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties);
+      fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties);
+      postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties);
   }
 }
 
@@ -916,48 +903,46 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
   const char* ogsDataTypeString =
     (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
     ogsFloatCommHalf : ogsPfloat;
-  if(xIsZero) {
-    const dlong Nelements = elliptic->mesh->Nelements;
-    preFDMKernel(Nelements, o_u, o_work1);
+  const dlong Nelements = elliptic->mesh->Nelements;
+  preFDMKernel(Nelements, o_u, o_work1);
 
-    oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+  oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
-    if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-      if(!overlap){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
-      } else if(overlap && mesh->NglobalGatherElements){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
-      }
-
-      oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
-
-      if(overlap && mesh->NlocalGatherElements)
-        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,o_work1, elliptic->ogs->o_invDegree);
-
-      oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
-    } else {
-      if(!overlap){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      } else if(overlap && mesh->NglobalGatherElements){
-        fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-      }
-
-      oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
-
-      if(overlap && mesh->NlocalGatherElements)
-        fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-
-      oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
-
-      postFDMKernel(Nelements,o_work1,o_work2,o_Su, o_wts);
-
-      oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+  if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
+    if(!overlap){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+    } else if(overlap && mesh->NglobalGatherElements){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
+
+    oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+
+    if(overlap && mesh->NlocalGatherElements)
+      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+
+    oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
+  } else {
+    if(!overlap){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    } else if(overlap && mesh->NglobalGatherElements){
+      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    }
+
+    oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+
+    if(overlap && mesh->NlocalGatherElements)
+      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+
+    oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
+
+    postFDMKernel(Nelements,o_work1,o_work2,o_Su, o_wts);
+
+    oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   }
 }

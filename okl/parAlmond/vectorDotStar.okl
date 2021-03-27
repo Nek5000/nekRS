@@ -29,7 +29,7 @@ SOFTWARE.
                             @restrict const dfloat * a,
                             @restrict       dfloat * b){
 
-  for(dlong i=0;i<N;++i;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong i=0;i<N;++i;@tile(p_blockSize,@outer,@inner)){
     b[i] *= a[i];
   }
 }
@@ -42,7 +42,7 @@ SOFTWARE.
                             @restrict const dfloat * b,
                             @restrict       dfloat * c){
 
-  for(dlong i=0;i<N;++i;@tile(p_BLOCKSIZE,@outer,@inner)){
+  for(dlong i=0;i<N;++i;@tile(p_blockSize,@outer,@inner)){
     dfloat ci = 0.0;
     if (beta)
       ci = beta*c[i];

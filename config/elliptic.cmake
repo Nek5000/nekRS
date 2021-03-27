@@ -1,10 +1,10 @@
 set(ELLIPTIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic)
 
 set(ELLIPTIC_SOURCES
-        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
+        ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
+	      ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildIpdg.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildJacobi.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
@@ -16,15 +16,9 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditioner.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditionerSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticResidualProjection.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticScaledAdd.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateNBFPCG.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateNBPCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticVectors.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedInnerProduct.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticWeightedNorm2.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp)
 
 set(PARALMOND_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic/parAlmond)

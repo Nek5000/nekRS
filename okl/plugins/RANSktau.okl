@@ -12,14 +12,18 @@
                           @restrict dfloat* SRC)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_k[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_tau[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_tauSqrt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_k[p_Nq][p_Nq];
+    @shared dfloat s_tau[p_Nq][p_Nq];
+    @shared dfloat s_tauSqrt[p_Nq][p_Nq];
+    @exclusive dfloat s_kloc[p_Nq];
+    @exclusive dfloat s_tauloc[p_Nq];
+    @exclusive dfloat s_tauSqrtloc[p_Nq];
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
           if(k == 0) s_D[0][id] = D[id];
@@ -29,14 +33,25 @@
           const dfloat kn   = K[id];
           const dfloat taun = TAU[id];
 
-          s_k[k][j][i]       = kn;
-          s_tau[k][j][i]     = taun;
-          s_tauSqrt[k][j][i] = sqrt(taun);
+          s_k[j][i]       = kn;
+          s_tau[j][i]     = taun;
+          s_tauSqrt[j][i] = sqrt(taun);
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat lockn   = K[other_id];
+              const dfloat loctaun = TAU[other_id];
+              s_kloc[l]       = lockn;
+              s_tauloc[l]     = loctaun;
+              s_tauSqrtloc[l] = sqrt(loctaun);
+            }
+          }
         }
+      }
 
     @barrier("local");
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -61,17 +76,17 @@
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
 
-            dkdr += Dr * s_k[k][j][n];
-            dkds += Ds * s_k[k][n][i];
-            dkdt += Dt * s_k[n][j][i];
+            dkdr += Dr * s_k[j][n];
+            dkds += Ds * s_k[n][i];
+            dkdt += Dt * s_kloc[n];
 
-            dtaudr += Dr * s_tau[k][j][n];
-            dtauds += Ds * s_tau[k][n][i];
-            dtaudt += Dt * s_tau[n][j][i];
+            dtaudr += Dr * s_tau[j][n];
+            dtauds += Ds * s_tau[n][i];
+            dtaudt += Dt * s_tauloc[n];
 
-            dtauSqrtdr += Dr * s_tauSqrt[k][j][n];
-            dtauSqrtds += Ds * s_tauSqrt[k][n][i];
-            dtauSqrtdt += Dt * s_tauSqrt[n][j][i];
+            dtauSqrtdr += Dr * s_tauSqrt[j][n];
+            dtauSqrtds += Ds * s_tauSqrt[n][i];
+            dtauSqrtdt += Dt * s_tauSqrtloc[n];
           }
 
           const dfloat dkdx = drdx * dkdr + dsdx * dkds + dtdx * dkdt;
@@ -136,6 +151,7 @@
           SRCDIAG[id + 1 * offset] = tauDiag;
         }
       }
+    @barrier("local");
     }
   }
 }
@@ -148,14 +164,18 @@
                          @restrict dfloat* SO)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_V[p_Nq][p_Nq][p_Nq];
-    @shared dfloat s_W[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq];
+    @exclusive dfloat s_Uloc[p_Nq];
+    @exclusive dfloat s_Vloc[p_Nq];
+    @exclusive dfloat s_Wloc[p_Nq];
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    for(int k = 0; k < p_Nq; ++k; @inner(2))
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
           if(k == 0) s_D[0][id] = D[id];
@@ -166,14 +186,24 @@
           const dfloat Vn = U[id + 1 * offset];
           const dfloat Wn = U[id + 2 * offset];
 
-          s_U[k][j][i] = Un;
-          s_V[k][j][i] = Vn;
-          s_W[k][j][i] = Wn;
+          s_U[j][i] = Un;
+          s_V[j][i] = Vn;
+          s_W[j][i] = Wn;
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat locUn = U[other_id + 0 * offset];
+              const dfloat locVn = U[other_id + 1 * offset];
+              const dfloat locWn = U[other_id + 2 * offset];
+              s_Uloc[l] = locUn;
+              s_Vloc[l] = locVn;
+              s_Wloc[l] = locWn;
+            }
+          }
         }
-
-    @barrier("local");
-
-    for(int k = 0; k < p_Nq; ++k; @inner(2)) {
+      }
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -197,17 +227,17 @@
             const dfloat Dr = s_D[i][n];
             const dfloat Ds = s_D[j][n];
             const dfloat Dt = s_D[k][n];
-            dudr += Dr * s_U[k][j][n];
-            duds += Ds * s_U[k][n][i];
-            dudt += Dt * s_U[n][j][i];
+            dudr += Dr * s_U[j][n];
+            duds += Ds * s_U[n][i];
+            dudt += Dt * s_Uloc[n];
 
-            dvdr += Dr * s_V[k][j][n];
-            dvds += Ds * s_V[k][n][i];
-            dvdt += Dt * s_V[n][j][i];
+            dvdr += Dr * s_V[j][n];
+            dvds += Ds * s_V[n][i];
+            dvdt += Dt * s_Vloc[n];
 
-            dwdr += Dr * s_W[k][j][n];
-            dwds += Ds * s_W[k][n][i];
-            dwdt += Dt * s_W[n][j][i];
+            dwdr += Dr * s_W[j][n];
+            dwds += Ds * s_W[n][i];
+            dwdt += Dt * s_Wloc[n];
           }
 
           const dfloat dudx = drdx * dudr + dsdx * duds + dtdx * dudt;
@@ -246,7 +276,7 @@
                         @restrict dfloat* OIOJSK,
                         @restrict dfloat* MAGSIJ)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       const dfloat s1 = SOIJ[n + 0 * offset];
       const dfloat s2 = SOIJ[n + 1 * offset];
@@ -273,7 +303,7 @@
                    @restrict dfloat* K,
                    @restrict dfloat* TAU)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       dfloat k   = K[n];
       dfloat tau = TAU[n];
@@ -295,7 +325,7 @@
                  @restrict dfloat* MUE,
                  @restrict dfloat* DIFF)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       const dfloat k   = K[n];
       const dfloat tau = TAU[n];

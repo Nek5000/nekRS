@@ -26,10 +26,11 @@ SOFTWARE.
 
 //add constant scalar value to every entry of a vector
 @kernel void add(const dlong N,
+                 const dlong offset,
                  const dfloat alpha,
                  @restrict dfloat *a){
 
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    a[n] += alpha;
+    a[n + offset] += alpha;
   }
 }

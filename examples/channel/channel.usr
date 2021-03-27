@@ -60,10 +60,10 @@ c-----------------------------------------------------------------------
 
       do i=1,n
         diffx(i,1,1,1) = abs(vx(i,1,1,1)-uxex(i,1,1,1))
-        if (uxex(i,1,1,1).gt.1e-15) diffx(i,1,1,1) = 
+        if (uxex(i,1,1,1).gt.1e-14) diffx(i,1,1,1) = 
      $    diffx(i,1,1,1)/uxex(i,1,1,1)
         diffy(i,1,1,1) = abs(vy(i,1,1,1)-uyex(i,1,1,1))
-        if (uyex(i,1,1,1).gt.1e-15) diffy(i,1,1,1) = 
+        if (uyex(i,1,1,1).gt.1e-14) diffy(i,1,1,1) = 
      $    diffy(i,1,1,1)/uyex(i,1,1,1)
       enddo
 

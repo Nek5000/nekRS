@@ -1,0 +1,29 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+polynomialOrder = 7
+stopAt = numSteps
+numSteps = 100
+dt = 1e-3
+timeStepper = tombo3
+writeInterval = 50
+
+[MESH]
+solver = user
+
+[PROBLEMTYPE]
+stressFormulation = true
+
+[PRESSURE]
+residualTol = 1e-8
+residualProj = false
+
+[VELOCITY]
+residualTol = 1e-12
+residualProj = false
+
+[TEMPERATURE]
+residualTol = 1e-12
+residualProj = false

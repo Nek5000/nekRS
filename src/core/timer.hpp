@@ -5,8 +5,10 @@
 
 #include "nrssys.hpp"
 
-namespace timer
+namespace timer{
+struct timer_t
 {
+timer_t(MPI_Comm comm,occa::device device,int ifsync = 0);
 void init(MPI_Comm comm,occa::device device,int ifsync = 0);
 void reset();
 void reset(const std::string tag);
@@ -29,6 +31,7 @@ double deviceElapsed(const std::string tag);
 int count(const std::string tag);
 double query(const std::string tag,std::string metric);
 void printRunStat();
+};
 }
 
 #endif

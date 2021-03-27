@@ -113,6 +113,7 @@ SOFTWARE.
 #define OGS_HPP 1
 
 #include <functional>
+#include <cstring>
 #include <math.h>
 #include <stdlib.h>
 #include <occa.hpp>
@@ -133,6 +134,8 @@ SOFTWARE.
 #define ogsMul "mul"
 #define ogsMax "max"
 #define ogsMin "min"
+
+#define OGS_ENABLE_TIMER
 
 // OCCA+gslib gather scatter
 typedef struct {
@@ -188,6 +191,10 @@ void ogsScatter    (void  *sv, void  *v, const char *type, const char *op, ogs_t
 void ogsScatterVec (void  *sv, void  *v, const int k, const char *type, const char *op, ogs_t *ogs);
 void ogsScatterMany(void  *sv, void  *v, const int k, const int stride, const char *type, const char *op, ogs_t *ogs);
 
+void ogsHostTic(MPI_Comm comm, int ifSync);
+void ogsHostToc();
+double ogsTime(bool reportHostTime);
+void ogsResetTime();
 
 // Synchronous device buffer versions
 void ogsGatherScatter    (occa::memory  o_v, const char *type, const char *op, ogs_t *ogs); //wrapper for gslib call
@@ -259,10 +266,10 @@ typedef struct {
 
 namespace oogs{
 
-void start(occa::memory o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
-void finish(occa::memory o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
+void start(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
+void finish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 void startFinish(void *v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
-void startFinish(occa::memory o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
+void startFinish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 oogs_t *setup(ogs_t *ogs, int nVec, int stride, const char *type, std::function<void()> callback, oogs_mode gsMode);
 oogs_t *setup(int N, long long int *ids, const int k, const int stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);

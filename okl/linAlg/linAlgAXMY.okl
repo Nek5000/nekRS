@@ -49,6 +49,22 @@ SOFTWARE.
     }
   }
 }
+@kernel void axmyVector(const dlong N,
+                  const dlong offset,
+                  const dlong mode,
+                  const dfloat alpha,
+                  @restrict const dfloat *x,
+                  @restrict       dfloat *y){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    #pragma unroll
+    for(int fld = 0; fld < p_NVec; ++fld){
+      const dlong xOffset = mode * fld * offset;
+      const dlong yOffset = fld * offset;
+      y[n + yOffset] = alpha*x[n + xOffset]*y[n + yOffset];
+    }
+  }
+}
 
 @kernel void axmyz(const dlong N,
                    const dfloat alpha,
@@ -58,5 +74,21 @@ SOFTWARE.
 
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     z[n] = alpha*x[n]*y[n];
+  }
+}
+
+@kernel void axmyzMany(const dlong N,
+                   const dlong Nfields,
+                   const dlong offset,
+                   const dfloat alpha,
+                   @restrict const dfloat *x,
+                   @restrict const dfloat *y,
+                   @restrict  dfloat *z){
+
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    for(int fld = 0; fld < Nfields; ++fld){
+      const int id = n + fld *offset;
+      z[id] = alpha*x[id]*y[id];
+    }
   }
 }

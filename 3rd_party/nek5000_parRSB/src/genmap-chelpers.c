@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/resource.h>
 #include <string.h>
+#include <sys/resource.h>
 
 #include <genmap.h>
 
@@ -17,11 +17,12 @@ void GenmapPrintStack(void) {
   char **symbols = backtrace_symbols(bt, bt_size);
 
   printf("backtrace(): obtained %d stack frames.\n", bt_size);
-  for(i = 0; i < bt_size; i++) printf("%s\n", symbols[i]);
+  for (i = 0; i < bt_size; i++)
+    printf("%s\n", symbols[i]);
   free(symbols);
 }
 #else
-void GenmapPrintStack() {};
+void GenmapPrintStack(){};
 #endif // defined __GLIBC__
 
 double GenmapGetMaxRss() {

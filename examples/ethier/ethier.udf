@@ -12,21 +12,23 @@
 
 occa::kernel dpdxKernel; 
 occa::kernel exactUVWPKernel; 
+occa::kernel userMeshVelocityKernel;
+occa::memory o_x0, o_y0, o_z0;
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  mesh_t *mesh = nrs->mesh; 
+  mesh_t *mesh = nrs->meshV; 
   cds_t *cds   = nrs->cds; 
-  const dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
+  const dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
 
-  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->fieldOffset, o_FS);
-  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset, o_FS);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0*cds->fieldOffset[0], o_FS);
+  dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset[0], o_FS);
 }                                                   
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  setupAide &options = nrs->options;
+  setupAide &options = platform->options;
 
   dfloat mue, rho;
   options.getArgs("VISCOSITY", mue);
@@ -37,8 +39,13 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_W0"] = P_W0;
   kernelInfo["defines/p_A"]  = P_A0 * M_PI;
   kernelInfo["defines/p_D"]  = P_D0 * M_PI;
+  kernelInfo["defines/p_amp"] = P_AMP;
+  kernelInfo["defines/p_omega"] = P_OMEGA;
+  kernelInfo["defines/p_pi"] = M_PI;
+
   dpdxKernel = udfBuildKernel(nrs, "dpdx");
   exactUVWPKernel = udfBuildKernel(nrs, "exactUVWP"); 
+  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -49,24 +56,40 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  mesh_t *mesh = nrs->meshV;
   udf.sEqnSource = &userq;
+  if(platform->options.compareArgs("MOVING MESH", string("TRUE"))) {
+    o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
+    o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
+    o_z0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_z);
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   if (tstep <= 5) {
-    exactUVWPKernel(nrs->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
+    exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
     ellipticZeroMean(nrs->pSolver, nrs->o_P);
-    cds->o_S.copyFrom(nrs->o_U, nrs->Nlocal*sizeof(dfloat), 0*cds->fieldOffset*sizeof(dfloat));
-    cds->o_S.copyFrom(nrs->o_U, nrs->Nlocal*sizeof(dfloat), 1*cds->fieldOffset*sizeof(dfloat));
+    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->fieldOffset[0]*sizeof(dfloat));
+    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->fieldOffset[0]*sizeof(dfloat));
   }
 
+  if(platform->options.compareArgs("MOVING MESH", string("TRUE")))
+    userMeshVelocityKernel(
+      mesh->Nlocal,
+      nrs->fieldOffset,
+      time,
+      o_x0,
+      o_y0,
+      o_z0,
+      mesh->o_U);
+
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
   }
   if (ciMode) ciTestErrors(nrs, time, tstep);
 }

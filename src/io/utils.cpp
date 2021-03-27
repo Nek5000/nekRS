@@ -22,3 +22,16 @@ void copyFile(const char *srcFile, const char* dstFile)
   src.close();
   dst.close();
 }
+
+bool fileExists(const char *file)
+{
+  return realpath(file, NULL);
+}
+
+bool isFileEmpty(const char *file)
+{
+  std::ifstream f(file);
+  const bool isEmpty = f.peek() == std::ifstream::traits_type::eof();
+  f.close();
+  return isEmpty;
+}

@@ -23,95 +23,8 @@
    SOFTWARE.
 
  */
-
-// WARNING: p_NthreadsUpdatePCG must be a power of 2
-
-@kernel void ellipticUpdatePCG(const dlong N,
-                               const dlong Nblocks,
-                               @restrict const dfloat* invDegree,
-                               @restrict const dfloat* p,
-                               @restrict const dfloat* Ap,
-                               const dfloat alpha,
-                               @restrict dfloat* x,
-                               @restrict dfloat* r,
-                               @restrict dfloat* redr)
-{
-  for(dlong b = 0; b < Nblocks; ++b; @outer(0)) {
-    @shared volatile dfloat s_sum[p_NthreadsUpdatePCG];
-    @shared volatile dfloat s_warpSum[p_NwarpsUpdatePCG]; // good  to 256
-
-    @exclusive int r_n; // limited to 256 in Serial mode
-
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-      r_n = t % 32;
-
-      dfloat sum = 0;
-
-      for(int n = t + b * p_NthreadsUpdatePCG; n < N; n += Nblocks * p_NthreadsUpdatePCG) {
-        dfloat xn = x[n];
-        dfloat rn = r[n];
-
-        const dfloat pn = p[n];
-        const dfloat Apn = Ap[n];
-
-        xn += alpha * pn;
-        rn -= alpha * Apn;
-        sum += invDegree[n] * rn * rn;
-
-        x[n] = xn;
-        r[n] = rn;
-      }
-
-      s_sum[t] = sum;
-    }
-
-    // reduce by factor of 32
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 16) s_sum[t] += s_sum[t + 16];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 8) s_sum[t] += s_sum[t + 8];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 4) s_sum[t] += s_sum[t + 4];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 2) s_sum[t] += s_sum[t + 2];
-
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-      const int w = t / 32;
-      if(r_n < 1) s_warpSum[w] = s_sum[t] + s_sum[t + 1];
-    }
-
-    @barrier("local");
-
-    // 4 => 1
-#if (p_NwarpsUpdatePCG >= 32)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 16) s_warpSum[t] += s_warpSum[t + 16];
-#endif
-#if (p_NwarpsUpdatePCG >= 16)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 8) s_warpSum[t] += s_warpSum[t + 8];
-#endif
-
-#if (p_NwarpsUpdatePCG >= 8)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 4) s_warpSum[t] += s_warpSum[t + 4];
-#endif
-
-#if (p_NwarpsUpdatePCG >= 4)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 2) s_warpSum[t] += s_warpSum[t + 2];
-#endif
-
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-#if (p_NwarpsUpdatePCG >= 2)
-      if(t < 1) redr[b] = s_warpSum[0] + s_warpSum[1];
-#else
-      if(t < 1) redr[b] = s_warpSum[0];
-#endif
-    }
-  }
-}
-
-// AK: Need to make it more efficient for block solver.....
 @kernel void ellipticBlockUpdatePCG(const dlong N,
                                     const dlong offset,
-                                    const dlong Nblocks,
                                     @restrict const dfloat* invDegree,
                                     @restrict const dfloat* p,
                                     @restrict const dfloat* Ap,
@@ -120,75 +33,65 @@
                                     @restrict dfloat* r,
                                     @restrict dfloat* redr)
 {
-  for(dlong b = 0; b < Nblocks; ++b; @outer(0)) {
-    @shared volatile dfloat s_sum[p_NthreadsUpdatePCG];
-    @shared volatile dfloat s_warpSum[p_NwarpsUpdatePCG]; // good  to 256
+  for(dlong b = 0; b < (N+p_blockSize-1)/p_blockSize; ++b; @outer(0)) {
+    @shared volatile dfloat s_sum[p_blockSize];
 
-    @exclusive int r_n; // limited to 256 in Serial mode
-
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-      r_n = t % 32;
-
-      dfloat sum = 0;
-
-      for(int n = t + b * p_NthreadsUpdatePCG; n < N; n += Nblocks * p_NthreadsUpdatePCG)
-
-        for(int fld = 0; fld < p_eNfields; fld++) {
-          dfloat xn = x[n + fld * offset];
-          dfloat rn = r[n + fld * offset];
-
-          const dfloat pn = p[n + fld * offset];
-          const dfloat Apn = Ap[n + fld * offset];
-
-          xn  += alpha * pn;
-          rn  -= alpha * Apn;
-          sum += invDegree[n + fld * offset] * rn * rn;
-
-          x[n + fld * offset] = xn;
-          r[n + fld * offset] = rn;
+    for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        int n = t + b * p_blockSize;
+        s_sum[t] = 0;
+        if(n < N) {
+          dfloat sum = 0.0;
+          #pragma unroll
+          for(int fld = 0; fld < p_eNfields; fld++) {
+            dfloat xn = x[n + fld * offset];
+            dfloat rn = r[n + fld * offset];
+ 
+            const dfloat pn = p[n + fld * offset];
+            const dfloat Apn = Ap[n + fld * offset];
+ 
+            xn  += alpha * pn;
+            rn  -= alpha * Apn;
+            sum += rn * rn;
+ 
+            x[n + fld * offset] = xn;
+            r[n + fld * offset] = rn;
+          }
+          s_sum[t] = sum*invDegree[n];
         }
-      s_sum[t] = sum;
-    }
-
-    // reduce by factor of 32
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 16) s_sum[t] += s_sum[t + 16];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 8) s_sum[t] += s_sum[t + 8];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 4) s_sum[t] += s_sum[t + 4];
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) if(r_n < 2) s_sum[t] += s_sum[t + 2];
-
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-      const int w = t / 32;
-      if(r_n < 1) s_warpSum[w] = s_sum[t] + s_sum[t + 1];
     }
 
     @barrier("local");
-
-    // 4 => 1
-#if (p_NwarpsUpdatePCG >= 32)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 16) s_warpSum[t] += s_warpSum[t + 16];
-#endif
-#if (p_NwarpsUpdatePCG >= 16)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 8) s_warpSum[t] += s_warpSum[t + 8];
+#if p_blockSize>512
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<512) s_sum[t] += s_sum[t+512];
+    @barrier("local");
 #endif
 
-#if (p_NwarpsUpdatePCG >= 8)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 4) s_warpSum[t] += s_warpSum[t + 4];
+#if p_blockSize>256
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<256) s_sum[t] += s_sum[t+256];
+    @barrier("local");
 #endif
 
-#if (p_NwarpsUpdatePCG >= 4)
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0))
-      if(t < 2) s_warpSum[t] += s_warpSum[t + 2];
-#endif
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<128) s_sum[t] += s_sum[t+128];
+    @barrier("local");
 
-    for(int t = 0; t < p_NthreadsUpdatePCG; ++t; @inner(0)) {
-#if (p_NwarpsUpdatePCG >= 2)
-      if(t < 1) redr[b] = s_warpSum[0] + s_warpSum[1];
-#else
-      if(t < 1) redr[b] = s_warpSum[0];
-#endif
-    }
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 64) s_sum[t] += s_sum[t+ 64];
+    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 32) s_sum[t] += s_sum[t+ 32];
+    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_sum[t] += s_sum[t+ 16];
+    //    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_sum[t] += s_sum[t+  8];
+    //    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_sum[t] += s_sum[t+  4];
+    //    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_sum[t] += s_sum[t+  2];
+    //    @barrier("local");
+
+    for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) redr[b] = s_sum[0] + s_sum[1];
   }
 }

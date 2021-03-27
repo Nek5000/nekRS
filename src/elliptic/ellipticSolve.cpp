@@ -25,63 +25,125 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 #include "timer.hpp"
+#include "linAlg.hpp"
 
-int ellipticSolve(elliptic_t* elliptic,
-                  occa::memory &o_r, occa::memory &o_x)
+void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
-  int maxIter = 1000;
+  int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
+  const int verbose = options.compareArgs("VERBOSE", "TRUE");
   dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
-
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
+
+  if(verbose) {
+    const dfloat rhsNorm = 
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_r,
+        platform->comm.mpiComm
+      )
+      * sqrt(elliptic->resNormFactor); 
+    if(platform->comm.mpiRank == 0) printf("RHS norm: %.15e\n", rhsNorm);
+  }
 
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
-  // compute initial residual r = rhs - x0
+  // compute initial residual r = rhs - Ax0
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
   ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_x, elliptic->o_Ap, dfloatString);
-  ellipticScaledAdd(elliptic, -1.f, elliptic->o_Ap, 1.f, o_r);
+  platform->linAlg->axpbyMany(
+    mesh->Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    -1.0,
+    elliptic->o_Ap,
+    1.0,
+    o_r
+  );
   if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
   oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
   if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    timer::tic("pre",1);
+    platform->timer.tic("pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
+    elliptic->res00Norm = 
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_r,
+        platform->comm.mpiComm
+      )
+      * sqrt(elliptic->resNormFactor); 
+    if(std::isnan(elliptic->res00Norm)) {
+      if(platform->comm.mpiRank == 0) printf("Unreasonable res00Norm!\n");
+      ABORT(EXIT_FAILURE);
+    }
     elliptic->residualProjection->pre(o_r);
-    timer::toc("pre");
+    platform->timer.toc("pre");
   }
 
-  dlong Niter;
-  if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
-    Niter = pcg (elliptic, o_r, o_x, tol, maxIter);
-  }else{
-    printf("NONBLOCKING Krylov solvers currently not supported!");
+  elliptic->res0Norm = 
+    platform->linAlg->weightedNorm2Many(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal /* offset */,
+      elliptic->o_invDegree,
+      o_r,
+      platform->comm.mpiComm
+    )
+    * sqrt(elliptic->resNormFactor); 
+  if(std::isnan(elliptic->res0Norm)) {
+    if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);
-/*
-    if(!options.compareArgs("KRYLOV SOLVER", "FLEXIBLE"))
-      Niter = nbpcg (elliptic, o_r, o_x, tol, maxIter);
-    else
-      Niter = nbfpcg (elliptic, o_r, o_x, tol, maxIter);
- */
   }
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    ellipticScaledAdd(elliptic, -1.f, elliptic->o_x0, 1.f, o_x);
-    timer::tic("post",1);
+  if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
+    elliptic->resNorm = elliptic->res0Norm;
+    elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
+  }else{
+    if(platform->comm.mpiRank == 0) printf("NONBLOCKING Krylov solvers currently not supported!");
+    ABORT(EXIT_FAILURE);
+  }
+
+  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
+    platform->linAlg->axpbyMany(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      -1.0,
+      elliptic->o_x0,
+      1.0,
+      o_x
+    );
+    platform->timer.tic("post",1);
     elliptic->residualProjection->post(o_x);
-    timer::toc("post");
-    ellipticScaledAdd(elliptic, 1.f, elliptic->o_x0, 1.f, o_x);
+    platform->timer.toc("post");
+    platform->linAlg->axpbyMany(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      elliptic->o_x0,
+      1.0,
+      o_x
+    );
+  } else {
+    elliptic->res00Norm = elliptic->res0Norm;
   }
 
   if(elliptic->allNeumann)
     ellipticZeroMean(elliptic, o_x);
-
-  return Niter;
 }

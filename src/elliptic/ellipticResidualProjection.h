@@ -44,10 +44,6 @@ private:
   void computePostProjection(occa::memory& o_x);
   void updateProjectionSpace();
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
-  void multiWeightedInnerProduct(
-    occa::memory& o_a,
-    occa::memory& o_b,
-    const dlong offset);
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
   dlong timestep;
@@ -61,35 +57,18 @@ private:
   occa::memory& o_invDegree;
   occa::memory& o_rtmp;
   occa::memory& o_Ap;
-  occa::memory& o_tmp;
-  occa::memory& o_tmp2;
-  occa::memory& o_wrk;
 
   occa::kernel scalarMultiplyKernel;
   occa::kernel multiScaledAddwOffsetKernel;
-  occa::kernel multiWeightedInnerProduct2Kernel;
   occa::kernel accumulateKernel;
-  occa::kernel scaledAddKernel;
-  occa::kernel sumKernel;
 
   dfloat* alpha;
-  dfloat* work;
-  dfloat* multiwork;
-  dfloat* tmp;
 
   dlong numVecsProjection;
   const dlong Nlocal; // vector size
   const dlong fieldOffset; // offset
   const dlong Nfields;
-  const dlong Nblock;
-  const dlong Nblock2;
-  const dfloat resNormFactor;
-  const int rank;
-  const int size;
-  const int blockSolver;
-  MPI_Comm comm;
 
   std::function<void(occa::memory&,occa::memory&)> matvecOperator;
-  std::function<dfloat(occa::memory&)> weightedNorm;
 };
 #endif

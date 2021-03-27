@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include "parAlmond.hpp"
+#include "platform.hpp"
 
 namespace parAlmond {
 
@@ -63,134 +64,38 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
   double seed = (double) rank;
   srand48(seed);
 
-  occa::properties kernelInfo;
+  
+  occa::properties kernelInfo = platform->kernelInfo;
   kernelInfo["defines"].asObject();
   kernelInfo["includes"].asArray();
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
 
-  if(sizeof(dlong)==4){
-    kernelInfo["defines/" "dlong"]="int";
-  }
-  if(sizeof(dlong)==8){
-    kernelInfo["defines/" "dlong"]="long long int";
-  }
-
-  if(sizeof(dfloat) == sizeof(double)){
-    kernelInfo["defines/" "dfloat"]= "double";
-    kernelInfo["defines/" "dfloat4"]= "double4";
-  }
-  else if(sizeof(dfloat) == sizeof(float)){
-    kernelInfo["defines/" "dfloat"]= "float";
-    kernelInfo["defines/" "dfloat4"]= "float4";
-  }
-
-  kernelInfo["defines/" "p_BLOCKSIZE"]= BLOCKSIZE;
-
-  if(device.mode()=="OpenCL"){
-    kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-    kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-    kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-    kernelInfo["compiler_flags"] += " -cl-no-signed-zeros ";
-    kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
-    kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
-    //kernelInfo["compiler_flags"] += "-cl-opt-disable";
-  }
-
-  if(device.mode()=="CUDA"){ // add backend compiler optimization for CUDA
-    kernelInfo["compiler_flags"] += " --ftz=true ";
-    kernelInfo["compiler_flags"] += " --prec-div=false ";
-    kernelInfo["compiler_flags"] += " --prec-sqrt=false ";
-    kernelInfo["compiler_flags"] += " --use_fast_math ";
-    kernelInfo["compiler_flags"] += " --fmad=true "; // compiler option for cuda
-  }
-
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
-  if (rank==0) printf("Compiling parALMOND Kernels...");fflush(stdout);
+  MPI_Barrier(comm);
+  const double tStart = MPI_Wtime();
+  if (rank==0) printf("loading parALMOND kernels ... ");fflush(stdout);
 
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
       const string oklpath = install_dir + "/okl/parAlmond/";
       string filename;
 
-      filename = oklpath + "SpMVcsr.okl";
-      SpMVcsrKernel1  = device.buildKernel(filename.c_str(),  "SpMVcsr1",  kernelInfo);
-      SpMVcsrKernel2  = device.buildKernel(filename.c_str(),  "SpMVcsr2",  kernelInfo);
-
-      filename = oklpath + "SpMVell.okl";
-      SpMVellKernel1  = device.buildKernel(filename.c_str(),  "SpMVell1",  kernelInfo);
-      SpMVellKernel2  = device.buildKernel(filename.c_str(),  "SpMVell2",  kernelInfo);
-
-      filename = oklpath + "SpMVmcsr.okl";
-      SpMVmcsrKernel1 = device.buildKernel(filename.c_str(), "SpMVmcsr1", kernelInfo);
-      SpMVmcsrKernel2 = device.buildKernel(filename.c_str(), "SpMVmcsr2", kernelInfo);
-
-      filename = oklpath + "vectorSet.okl";
-      vectorSetKernel = device.buildKernel(filename.c_str(), "vectorSet", kernelInfo);
-
-      filename = oklpath + "vectorScale.okl";
-      vectorScaleKernel = device.buildKernel(filename.c_str(), "vectorScale", kernelInfo);
-
-      filename = oklpath + "vectorAddScalar.okl";
-      vectorAddScalarKernel = device.buildKernel(filename.c_str(), "vectorAddScalar", kernelInfo);
-
-      filename = oklpath + "vectorAdd.okl";
-      vectorAddKernel1 = device.buildKernel(filename.c_str(), "vectorAdd1", kernelInfo);
-      vectorAddKernel2 = device.buildKernel(filename.c_str(), "vectorAdd2", kernelInfo);
-
       filename = oklpath + "vectorDotStar.okl";
-      vectorDotStarKernel1 = device.buildKernel(filename.c_str(), "vectorDotStar1", kernelInfo);
-      vectorDotStarKernel2 = device.buildKernel(filename.c_str(), "vectorDotStar2", kernelInfo);
-
-      filename = oklpath + "vectorInnerProd.okl";
-      vectorInnerProdKernel = device.buildKernel(filename.c_str(), "vectorInnerProd", kernelInfo);
-
-      filename = oklpath + "vectorAddInnerProd.okl";
-      vectorAddInnerProdKernel = device.buildKernel(filename.c_str(), "vectorAddInnerProd", kernelInfo);
-      vectorAddWeightedInnerProdKernel = device.buildKernel(filename.c_str(), "vectorAddWeightedInnerProd", kernelInfo);
-
-      filename = oklpath + "kcycleCombinedOp.okl";
-      kcycleCombinedOp1Kernel = device.buildKernel(filename.c_str(), "kcycleCombinedOp1", kernelInfo);
-      kcycleCombinedOp2Kernel = device.buildKernel(filename.c_str(), "kcycleCombinedOp2", kernelInfo);
-      kcycleWeightedCombinedOp1Kernel = device.buildKernel(filename.c_str(), "kcycleWeightedCombinedOp1", kernelInfo);
-      kcycleWeightedCombinedOp2Kernel = device.buildKernel(filename.c_str(), "kcycleWeightedCombinedOp2", kernelInfo);
-
-      filename = oklpath + "haloExtract.okl";
-      haloExtractKernel = device.buildKernel(filename.c_str(), "haloExtract", kernelInfo);
+      vectorDotStarKernel1 = device.buildKernel(filename, "vectorDotStar1", kernelInfo);
+      vectorDotStarKernel2 = device.buildKernel(filename, "vectorDotStar2", kernelInfo);
     }
     MPI_Barrier(comm);
   }
-  if(rank==0) printf("done.\n");
+  MPI_Barrier(comm);
+  if(rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
 
 void freeParAlmondKernels() {
-
-  haloExtractKernel.free();
-
-  SpMVcsrKernel1.free();
-  SpMVcsrKernel2.free();
-  SpMVellKernel1.free();
-  SpMVellKernel2.free();
-  SpMVmcsrKernel1.free();
-  SpMVmcsrKernel2.free();
-
-  vectorSetKernel.free();
-  vectorScaleKernel.free();
-  vectorAddScalarKernel.free();
-  vectorAddKernel1.free();
-  vectorAddKernel2.free();
   vectorDotStarKernel1.free();
   vectorDotStarKernel2.free();
-  vectorInnerProdKernel.free();
-  kcycleCombinedOp1Kernel.free();
-  kcycleCombinedOp2Kernel.free();
-  kcycleWeightedCombinedOp1Kernel.free();
-  kcycleWeightedCombinedOp2Kernel.free();
-  vectorAddInnerProdKernel.free();
-  vectorAddWeightedInnerProdKernel.free();
-
 }
 
 

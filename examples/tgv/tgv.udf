@@ -14,7 +14,7 @@ void UDF_LoadKernels(nrs_t *nrs)
 void UDF_Setup(nrs_t *nrs)
 {
  // set IC
- mesh_t *mesh = nrs->mesh;
+ mesh_t *mesh = nrs->meshV;
  for (int n=0; n<mesh->Np*mesh->Nelements; n++) {
    dfloat x = mesh->x[n];
    dfloat y = mesh->y[n];
@@ -28,7 +28,7 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
   }
 }

@@ -7,4 +7,4 @@ if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
   exit 0
 fi
 
-mpirun -np 1 $NEKRS_HOME/bin/nekrs --setup $1 --build-only $2
+OCCA_VERBOSE=1 mpirun -np 1 $NEKRS_HOME/bin/nekrs --setup $1 --build-only $2

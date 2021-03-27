@@ -19,7 +19,8 @@ void UDF_LoadKernels(nrs_t *nrs)
 void UDF_Setup(nrs_t *nrs)
 {
   // setup scratch space
-  nrs->o_usrwrk = nrs->mesh->device.malloc(nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
+  platform_t* platform = platform_t::getInstance();
+  nrs->o_usrwrk = platform->device.malloc(nrs->NVfields*nrs->fieldOffset,  sizeof(dfloat));
 
   // recycling
   const dfloat wbar  = 1.0;
@@ -33,15 +34,15 @@ void UDF_Setup(nrs_t *nrs)
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
 
   velRecycling::copy();
   avg::run(time);
 
   if (nrs->isOutputStep) {
     occa::memory o_UZ = nrs->o_U + 2*nrs->fieldOffset * sizeof(dfloat);
-    const dfloat ubar = nrs->linAlg->innerProd(nrs->Nlocal, o_UZ, mesh->o_LMM, mesh->comm)/mesh->volume;
-    if (mesh->rank == 0) printf(" uBulk: %g\n", ubar);
+    const dfloat ubar = platform->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_LMM, platform->comm.mpiComm)/mesh->volume;
+    if (platform->comm.mpiRank == 0) printf(" uBulk: %g\n", ubar);
 
     avg::outfld();
   }

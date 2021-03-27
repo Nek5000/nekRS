@@ -1,0 +1,215 @@
+@kernel void UrstCubatureHex3D(const dlong Nelements,
+                                                  @restrict const dfloat*  cubvgeo,
+                                                  @restrict const dfloat*  cubD,
+                                                  @restrict const dfloat*  cubInterpT,
+                                                  @restrict const dfloat*  cubProjectT,
+                                                  const dlong offset,
+                                                  const dlong cubatureOffset,
+                                                  @restrict const dfloat*  U,
+                                                  @restrict const dfloat*  W,
+                                                  @restrict dfloat*  result)
+{
+  // (phi, U.grad Ud)
+  for(dlong element = 0; element < Nelements; ++element; @outer(0)) {
+    @shared dfloat s_cubD[p_cubNq][p_cubNq];
+    @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
+
+    @shared dfloat s_U[p_cubNq][p_cubNq];
+    @shared dfloat s_V[p_cubNq][p_cubNq];
+    @shared dfloat s_W[p_cubNq][p_cubNq];
+
+    @shared dfloat s_U1[p_Nq][p_cubNq];
+    @shared dfloat s_V1[p_Nq][p_cubNq];
+    @shared dfloat s_W1[p_Nq][p_cubNq];
+
+    @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
+
+    for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        const int id = i + j * p_cubNq;
+
+        if (id < p_Nq * p_cubNq) {
+          s_cubInterpT[0][id] = cubInterpT[id];
+        }
+
+        s_cubD[0][id] = cubD[id];
+#pragma unroll p_cubNq
+        for(int k = 0; k < p_cubNq; ++k) {
+          r_U[k]  = 0;
+          r_V[k]  = 0;
+          r_W[k]  = 0;
+        }
+      }
+    }
+
+    for(int c = 0; c < p_Nq; ++c) {
+      @barrier("local");
+
+      for(int b = 0; b < p_cubNq; ++b; @inner(1))
+        for(int a = 0; a < p_cubNq; ++a; @inner(0))
+          if(a < p_Nq && b < p_Nq) {
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+
+            dfloat Ue = U[id + 0 * offset];
+            dfloat Ve = U[id + 1 * offset];
+            dfloat We = U[id + 2 * offset];
+            if(p_relative){
+              Ue -= W[id + 0 * offset];
+              Ve -= W[id + 1 * offset];
+              We -= W[id + 2 * offset];
+            }
+
+            s_U[b][a] = Ue;
+            s_V[b][a] = Ve;
+            s_W[b][a] = We;
+          }
+
+      @barrier("local");
+
+      // interpolate in 'r'
+      for(int b = 0; b < p_cubNq; ++b; @inner(1))
+        for(int i = 0; i < p_cubNq; ++i; @inner(0))
+          if(b < p_Nq) {
+            dfloat U1  = 0, V1 = 0,  W1 = 0;
+
+            for(int a = 0; a < p_Nq; ++a) {
+              dfloat Iia = s_cubInterpT[a][i];
+              U1  += Iia * s_U[b][a];
+              V1  += Iia * s_V[b][a];
+              W1  += Iia * s_W[b][a];
+            }
+
+            s_U1[b][i] = U1;
+            s_V1[b][i] = V1;
+            s_W1[b][i] = W1;
+          }
+
+      @barrier("local");
+
+      // interpolate in 's'
+      for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
+        for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          dfloat U2 = 0, V2 = 0,  W2 = 0;
+
+          // interpolate in b
+          for(int b = 0; b < p_Nq; ++b) {
+            dfloat Ijb = s_cubInterpT[b][j];
+            U2 += Ijb * s_U1[b][i];
+            V2 += Ijb * s_V1[b][i];
+            W2 += Ijb * s_W1[b][i];
+          }
+
+          // interpolate in c progressively
+#pragma unroll p_cubNq
+          for(int k = 0; k < p_cubNq; ++k) {
+            dfloat Ikc = s_cubInterpT[c][k];
+
+            r_U[k] += Ikc * U2;
+            r_V[k] += Ikc * V2;
+            r_W[k] += Ikc * W2;
+          }
+        }
+      }
+    }
+
+#pragma unroll p_cubNq
+    for(int k = 0; k < p_cubNq; ++k) {
+
+      @barrier("local");
+
+      for(int j = 0; j < p_cubNq; ++j; @inner(1))
+        for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
+
+          const dlong gid = element * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          const dfloat drdx = cubvgeo[gid + p_RXID * p_cubNp];
+          const dfloat drdy = cubvgeo[gid + p_RYID * p_cubNp];
+          const dfloat drdz = cubvgeo[gid + p_RZID * p_cubNp];
+          const dfloat dsdx = cubvgeo[gid + p_SXID * p_cubNp];
+          const dfloat dsdy = cubvgeo[gid + p_SYID * p_cubNp];
+          const dfloat dsdz = cubvgeo[gid + p_SZID * p_cubNp];
+          const dfloat dtdx = cubvgeo[gid + p_TXID * p_cubNp];
+          const dfloat dtdy = cubvgeo[gid + p_TYID * p_cubNp];
+          const dfloat dtdz = cubvgeo[gid + p_TZID * p_cubNp];
+          const dfloat JW   = cubvgeo[gid + p_JWID * p_cubNp];
+
+          const dfloat Un = r_U[k];
+          const dfloat Vn = r_V[k];
+          const dfloat Wn = r_W[k];
+
+          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
+          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+
+          const dlong id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          result[id + 0 * cubatureOffset] = Uhat;
+          result[id + 1 * cubatureOffset] = Vhat;
+          result[id + 2 * cubatureOffset] = What;
+        }
+    }
+  }
+}
+@kernel void UrstHex3D(const dlong Nelements,
+                                          @restrict const dfloat*  vgeo,
+                                          @restrict const dfloat*  D,
+                                          const dlong offset,
+                                          @restrict const dfloat*  U,
+                                          @restrict const dfloat*  W,
+                                          @restrict dfloat*  result)
+{
+  for(dlong element = 0; element < Nelements; ++element; @outer(0)) {
+    @shared dfloat s_Ud[p_Nq][p_Nq];
+    @shared dfloat s_Vd[p_Nq][p_Nq];
+    @shared dfloat s_Wd[p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dlong id = i + j * p_Nq;
+
+          if(k == 0)
+            s_D[0][id] = D[id];
+        }
+      }
+
+    @barrier("local");
+
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW   = vgeo[gid + p_JWID * p_Np];
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          dfloat Un = U[id + 0 * offset];
+          dfloat Vn = U[id + 1 * offset];
+          dfloat Wn = U[id + 2 * offset];
+          if(p_relative){
+            Un -= W[id + 0 * offset];
+            Vn -= W[id + 1 * offset];
+            Wn -= W[id + 2 * offset];
+          }
+
+          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
+          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+
+          result[id + 0 * offset] =  Uhat;
+          result[id + 1 * offset] =  Vhat;
+          result[id + 2 * offset] =  What;
+        }
+      }
+    }
+  }
+}

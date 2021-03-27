@@ -11,7 +11,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", string("7"));
   options.setArgs("RESTART FROM FILE", string("0"));
-  options.setArgs("TSTEPS FOR SOLUTION OUTPUT", "0");
+  options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("END TIME", string("0.3"));
   options.setArgs("DT", string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
@@ -27,16 +27,16 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   if (!nrs->lastStep) return;
  
-  const int rank = nrs->mesh->rank;
+  const int rank = platform->comm.mpiRank;
 
   nrs->o_div.copyTo(nrs->div);
-  dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
+  dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
   memcpy(nekData.qtl, nrs->div, sizeof(dfloat)*Nlocal);
  
-  nek_ocopyFrom(time, tstep);
-  nek_userchk();
+  nek::ocopyToNek(time, tstep);
+  nek::userchk();
 
-  double *err = (double *) nek_scPtr(1);
+  double *err = (double *) nek::scPtr(1);
   double vxErr, prErr, sErr;
 
   switch (ciMode) {

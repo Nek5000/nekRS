@@ -44,8 +44,17 @@ jobs:
      name: "ethier (block) velocity and pressure projection with subcycling"
      script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 4 
    - stage: test
+     name: "ethier default + moving mesh"
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 5 
+   - stage: test
+     name: "ethier subcycle + moving mesh"
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 6 
+   - stage: test
      name: "lowMach default"
      script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
+   - stage: test
+     name: "mv_cyl"
+     script: cd $NEKRS_EXAMPLES/mv_cyl && nrsmpi mv_cyl 2 1 
    - stage: test
      name: "conj_ht"
      script: cd $NEKRS_EXAMPLES/conj_ht && nrsmpi conj_ht 2 1

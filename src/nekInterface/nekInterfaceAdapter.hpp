@@ -12,7 +12,9 @@
 #define DECLARE_USER_FUNC(a) void nek_ ## a(void);
 #define DEFINE_USER_FUNC(a) void nek_ ## a(void) { (*a ## _ptr)(); }
 
-typedef struct
+struct setupAide;
+
+struct nekdata_private
 {
   double* param;
 
@@ -69,7 +71,14 @@ typedef struct
   /* multigrid levels */
   int* mg_nx;
   int mg_lmax;
-} nekdata_private;
+
+  /* thermodynamic pressure */
+  double* p0th;
+  double* dp0thdt;
+
+  /* mesh velocities */
+  double *wx, *wy, *wz;
+};
 
 extern nekdata_private nekData;
 
@@ -92,33 +101,37 @@ DECLARE_USER_FUNC(userqtl)
 }
 #endif
 
-void*  nek_ptr(const char* id);
-void*  nek_scPtr(int id);
-void   nek_outSolutionFld(double time, double outputTime);
-void   nek_outfld(const char* suffix, dfloat t, int coords, int FP64,
+int buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
+namespace nek{
+void*  ptr(const char* id);
+void*  scPtr(int id);
+void   outSolutionFld(double time, double outputTime);
+void   outfld(const char* suffix, dfloat t, int coords, int FP64,
                   void* o_u, void* o_p, void* o_s,
                   int NSfields);
-void   nek_uic(int ifield);
-void   nek_end(void);
-void   nek_map_m_to_n(double* a, int na, double* b, int nb);
-void   nek_outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char* name);
-int    nek_lglel(int e);
-void   nek_uf(double* u, double* v, double* w);
-int    nek_setup(MPI_Comm c, setupAide &options, nrs_t* nrs);
-void   nek_ifoutfld(int i);
-void   nek_setic(void);
-void   nek_userchk(void);
-int    nek_bcmap(int bid, int ifld);
+void   uic(int ifield);
+void   end(void);
+void   map_m_to_n(double* a, int na, double* b, int nb);
+void   outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char* name);
+int    lglel(int e);
+void   uf(double* u, double* v, double* w);
+int    setup(MPI_Comm c, setupAide &options, nrs_t* nrs);
+void   ifoutfld(int i);
+void   setic(void);
+void   userchk(void);
+int    bcmap(int bid, int ifld);
 
-int buildNekInterface(const char* casename, int nFields, int N, int np);
-void nek_copyFrom(dfloat time, int tstep);
-void nek_ocopyFrom(void);
-void nek_ocopyFrom(dfloat time, int tstep);
-void nek_copyFrom(dfloat time);
-void nek_copyTo(dfloat &time);
-void nek_ocopyTo(dfloat &time);
-long long nek_set_glo_num(int npts, int isTMesh);
+void copyToNek(dfloat time, int tstep);
+void ocopyToNek(void);
+void ocopyToNek(dfloat time, int tstep);
+void copyToNek(dfloat time);
+void copyFromNek(dfloat &time);
+void ocopyFromNek(dfloat &time);
+long long set_glo_num(int npts, int isTMesh);
 
-void nek_bdfCoeff(double *g0, double *coeff, double *dt, int order);
-void nek_extCoeff(double *coeff, double *dt, int order);
+void bdfCoeff(double *g0, double *coeff, double *dt, int order);
+void extCoeff(double *coeff, double *dt, int nAB, int nBDF);
+void coeffAB(double *coeff, double *dt, int order);
+void recomputeGeometry();
+}
 #endif

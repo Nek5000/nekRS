@@ -159,6 +159,10 @@ namespace ogs {
 
 void ogs::initKernels(MPI_Comm comm, occa::device device) {
 
+  ogs::kernelInfo["defines/ " "p_blockSize"] = BLOCKSIZE;
+  ogs::kernelInfo["defines/ " "dlong"] = dlongString;
+  ogs::kernelInfo["defines/ " "hlong"] = hlongString;
+
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -170,38 +174,6 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
   ogs::kernelInfo["includes"].asArray();
   ogs::kernelInfo["header"].asArray();
   ogs::kernelInfo["flags"].asObject();
-
-  if(sizeof(dlong)==4){
-   ogs::kernelInfo["defines/" "dlong"]="int";
-  }
-  if(sizeof(hlong)==8){
-   ogs::kernelInfo["defines/" "hlong"]="long long int";
-  }
-
-  if(sizeof(dfloat) == sizeof(double)){
-   ogs::kernelInfo["defines/" "dfloat"]= "double";
-   ogs::kernelInfo["defines/" "dfloat4"]= "double4";
-  }
-  else if(sizeof(dfloat) == sizeof(float)){
-   ogs::kernelInfo["defines/" "dfloat"]= "float";
-   ogs::kernelInfo["defines/" "dfloat4"]= "float4";
-  }
-
-  if(device.mode()=="OpenCL"){
-   //ogs::kernelInfo["compiler_flags"] += "-cl-opt-disable";
-   ogs::kernelInfo["compiler_flags"] += " -cl-std=CL2.0 ";
-   ogs::kernelInfo["compiler_flags"] += " -cl-strict-aliasing ";
-   ogs::kernelInfo["compiler_flags"] += " -cl-mad-enable ";
-   ogs::kernelInfo["defines/" "hlong"]="long";
-  }
-
-  if(device.mode()=="CUDA"){ // add backend compiler optimization for CUDA
-   ogs::kernelInfo["compiler_flags"] += " --ftz=true ";
-   ogs::kernelInfo["compiler_flags"] += " --prec-div=false ";
-   ogs::kernelInfo["compiler_flags"] += " --prec-sqrt=false ";
-   ogs::kernelInfo["compiler_flags"] += " --use_fast_math ";
-   ogs::kernelInfo["compiler_flags"] += " --fmad=true "; // compiler option for cuda
-  }
 
   MPI_Barrier(comm);
   double tStartLoadKernel = MPI_Wtime();

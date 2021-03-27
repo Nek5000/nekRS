@@ -17,8 +17,8 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk(); // compute lambda2
-    nek_ocopyTo(time);
+    nek::ocopyToNek(time, tstep);
+    nek::userchk(); // compute lambda2
+    nek::ocopyFromNek(time);
   }
 }

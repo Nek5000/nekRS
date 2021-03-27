@@ -6,7 +6,7 @@
                 @restrict const dfloat* X,
                 @restrict dfloat* OUT)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       for(dlong fld = 0; fld < Nfields; ++fld) {
         const dlong id = n + fld * offset;
@@ -24,7 +24,7 @@
                  @restrict const dfloat* X,
                  @restrict dfloat* OUT)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       for(dlong fld = 0; fld < Nfields; ++fld) {
         const dlong id = n + fld * offset;
@@ -43,7 +43,7 @@
                  @restrict const dfloat* Y,
                  @restrict dfloat* OUT)
 {
-  for(dlong n = 0; n < N; ++n; @tile(256,@outer,@inner))
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
     if(n < N) {
       for(dlong fld = 0; fld < Nfields; ++fld) {
         const dlong id = n + fld * offset;

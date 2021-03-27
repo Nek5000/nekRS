@@ -25,14 +25,14 @@
  */
 
 #include <stdio.h>
-
+#include "platform.hpp"
 #include "mesh.h"
 
-typedef struct
+struct facePair_t
 {
   dlong element, elementN;
   int face, faceN, rankN;
-}facePair_t;
+};
 
 /* comparison function that orders halo element/face
    based on their indexes */
@@ -60,8 +60,8 @@ void meshHaloSetup(mesh_t* mesh)
 {
   // MPI info
   int rank, size;
-  rank = mesh->rank;
-  size = mesh->size;
+  rank = platform->comm.mpiRank;
+  size = platform->comm.mpiCommSize;
 
   // non-blocking MPI isend/irecv requests (used in meshHaloExchange)
   mesh->haloSendRequests = calloc(size, sizeof(MPI_Request));

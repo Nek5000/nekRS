@@ -29,9 +29,22 @@ SOFTWARE.
                  @restrict const  dlong    *  maskIds,
                        @restrict dfloat *  q){
 
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Nmasked;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<Nmasked){
       q[maskIds[n]] = 0.;
+    }
+  }
+}
+@kernel void maskCopy(const dlong Nmasked,
+                      const dlong offset,
+                      @restrict const  dlong* maskIds,
+                      @restrict const dfloat* in,
+                      @restrict dfloat* out){
+
+  for(dlong n=0;n<Nmasked;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<Nmasked){
+      const dlong id = maskIds[n];
+      out[id + offset] = in[id + offset];
     }
   }
 }

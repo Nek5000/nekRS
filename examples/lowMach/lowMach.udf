@@ -13,23 +13,23 @@ static occa::kernel userVpKernel;
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  lowMach::qThermalPerfectGasSingleComponent(nrs, time, P_GAMMA, o_div);
+  lowMach::qThermalIdealGasSingleComponent(time, o_div);
 }
 
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds   = nrs->cds;
-  mesh_t *mesh = cds->mesh;
+  mesh_t *mesh = cds->mesh[0];
   userQKernel(mesh->Nelements, mesh->o_x, o_FS);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset, 
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], 
                o_S, o_UProp, o_SProp);
 }
 
@@ -54,15 +54,15 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
 
-  lowMach::setup(nrs);
+  lowMach::setup(nrs, P_GAMMA);
   udf.div = &qtl;
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
   }
   if (ciMode) ciTestErrors(nrs, time, tstep);
 }

@@ -29,8 +29,9 @@
 #include <stddef.h>
 
 #include "mesh.h"
+#include "platform.hpp"
 
-typedef struct
+struct parallelNode2_t
 {
   dlong localId;
   hlong globalId;
@@ -38,7 +39,7 @@ typedef struct
   hlong newGlobalId;
   int originalRank;
   int ownerRank;
-}parallelNode2_t;
+};
 
 // compare on global indices
 int parallelCompareGlobalIndices(const void* a, const void* b)
@@ -86,8 +87,9 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
                                             int* globalOwners,
                                             hlong* globalStarts)
 {
-  int rank = mesh->rank;
-  int size = mesh->size;
+  
+  int rank = platform->comm.mpiRank;
+  int size = platform->comm.mpiCommSize;
 
   // count how many nodes to send to each process
   dlong* allCounts   = (dlong*) calloc(size, sizeof(dlong));
@@ -107,7 +109,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
   dlong Nlocal = cnt; //number of unmasked nodes
 
   // find how many nodes to expect (should use sparse version)
-  MPI_Alltoall(sendCounts, 1, MPI_INT, recvCounts, 1, MPI_INT, mesh->comm);
+  MPI_Alltoall(sendCounts, 1, MPI_INT, recvCounts, 1, MPI_INT, platform->comm.mpiComm);
 
   // find send and recv offsets for gather
   dlong recvNtotal = 0;
@@ -164,7 +166,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
   // load up node data to send (NEED TO SCALE sendCounts, sendOffsets etc by sizeof(parallelNode2_t)
   MPI_Alltoallv(sendNodes, sendCounts, sendOffsets, MPI_PARALLELFACE_T,
                 recvNodes, recvCounts, recvOffsets, MPI_PARALLELFACE_T,
-                mesh->comm);
+                platform->comm.mpiComm);
 
   for (dlong n = 0; n < recvNtotal; n++) recvNodes[n].recvId = n;
 
@@ -182,7 +184,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
   if (recvNtotal) ++cnt; // increment to actual number of unique nodes on this rank
 
   // collect unique node counts from all processes
-  MPI_Allgather(&cnt, 1, MPI_DLONG, allCounts, 1, MPI_DLONG, mesh->comm);
+  MPI_Allgather(&cnt, 1, MPI_DLONG, allCounts, 1, MPI_DLONG, platform->comm.mpiComm);
 
   // cumulative sum of unique node counts => starting node index for each process
   for(int r = 0; r < size; ++r)
@@ -198,7 +200,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
   // reverse all to all to reclaim nodes
   MPI_Alltoallv(recvNodes, recvCounts, recvOffsets, MPI_PARALLELFACE_T,
                 sendNodes, sendCounts, sendOffsets, MPI_PARALLELFACE_T,
-                mesh->comm);
+                platform->comm.mpiComm);
 
   // extract new global indices and push back to original numbering array
   for(dlong n = 0; n < Nlocal; ++n) {
@@ -207,7 +209,7 @@ void meshParallelConsecutiveGlobalNumbering(mesh_t* mesh,
     globalNumbering[id] = sendNodes[n].newGlobalId;
   }
 
-  MPI_Barrier(mesh->comm);
+  MPI_Barrier(platform->comm.mpiComm);
   MPI_Type_free(&MPI_PARALLELFACE_T);
 
   free(sendNodes);

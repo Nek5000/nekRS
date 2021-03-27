@@ -8,7 +8,8 @@ static occa::kernel fillFUKernel;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  nrs->linAlg->fill(nrs->Nlocal, DPDZ, o_FUz);
+  mesh_t* mesh = nrs->meshV;
+  platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
   fillFUKernel(Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 
@@ -26,7 +27,7 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
-    nek_ocopyFrom(time, tstep);
-    nek_userchk();
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
   }
 }

@@ -9,18 +9,20 @@
 
 static dfloat rho, mueLam;
 occa::kernel userfKernel; 
+static occa::kernel scalarScaledAddKernel;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
+  mesh_t* mesh = nrs->meshV;
   const dfloat Re_tau = 2000.0; 
   const dfloat Re_b   = rho/mueLam; 
   const dfloat DPDX   = (Re_tau/Re_b)*(Re_tau/Re_b);
-  userfKernel(nrs->Nlocal, 0*nrs->fieldOffset, DPDX, o_FU);
+  userfKernel(mesh->Nlocal, 0*nrs->fieldOffset, DPDX, o_FU);
 }
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds   = nrs->cds;
 
   RANSktau::updateSourceTerms();
@@ -29,28 +31,29 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
             occa::memory o_UProp, occa::memory o_SProp)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds   = nrs->cds;
 
   RANSktau::updateProperties();
 
   dfloat conductivity;
-  nrs->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
   const dfloat Pr_t = 0.7;
   occa::memory o_mue_t = RANSktau::o_mue_t();
-  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset*sizeof(dfloat);
-  nrs->scalarScaledAddKernel(nrs->Nlocal, conductivity, 1/Pr_t, o_mue_t, o_temp_mue); 
+  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset[0]*sizeof(dfloat);
+  scalarScaledAddKernel(mesh->Nlocal, conductivity, 1/Pr_t, o_mue_t, o_temp_mue); 
 }
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
   userfKernel = udfBuildKernel(nrs, "cfill");
+  scalarScaledAddKernel = udfBuildKernel(nrs, "scalarScaledAdd");
   RANSktau::buildKernel(nrs);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->mesh;
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   udf.properties = &uservp;
@@ -58,8 +61,8 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
 
   const int scalarFieldStart = 1;
-  nrs->options.getArgs("VISCOSITY", mueLam); 
-  nrs->options.getArgs("DENSITY", rho); 
+  platform->options.getArgs("VISCOSITY", mueLam); 
+  platform->options.getArgs("DENSITY", rho); 
   RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
 }
 

@@ -25,105 +25,45 @@
  */
 
 #include "elliptic.h"
+#include "platform.hpp"
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                          occa::memory &o_p, occa::memory &o_Ap, const dfloat alpha,
                          occa::memory &o_x, occa::memory &o_r)
 {
-  setupAide &options = elliptic->options;
-
-  int fixedIterationCountFlag = 0;
-  int enableGatherScatters = 1;
-  int enableReductions = 1;
-  int flexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
-  int verbose = options.compareArgs("VERBOSE", "TRUE");
-  int serial = options.compareArgs("THREAD MODEL", "SERIAL");
-  int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  int ipdg = options.compareArgs("DISCRETIZATION", "IPDG");
-
   mesh_t* mesh = elliptic->mesh;
-  const dlong Nlocal = mesh->Np * mesh->Nelements;
+
+  int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
+
+  // x <= x + alpha*p
+  // r <= r - alpha*A*p
+  // dot(r,r)
+  elliptic->updatePCGKernel(mesh->Nlocal,
+                            elliptic->Ntotal,
+                            elliptic->o_invDegree,
+                            o_p,
+                            o_Ap,
+                            alpha,
+                            o_x,
+                            o_r,
+                            elliptic->o_tmpNormr);
 
   dfloat rdotr1 = 0;
-
-  if(serial == 1 && continuous == 1) {
-    elliptic->updatePCGKernel(Nlocal,
-                              elliptic->Ntotal,
-                              elliptic->o_invDegree,
-                              o_p,
-                              o_Ap,
-                              alpha,
-                              o_x,
-                              o_r,
-                              elliptic->o_tmpNormr);
-
 #ifdef ELLIPTIC_ENABLE_TIMER
-    timer::tic("dotp",1);
+    platform->timer.tic("dotp",1);
 #endif
-    elliptic->o_tmpNormr.copyTo(&rdotr1, sizeof(dfloat));
-    dfloat globalrdotr1 = 0;
-    if(enableReductions)
-      MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-    else
-      globalrdotr1 = 1;
-#ifdef ELLIPTIC_ENABLE_TIMER
-    timer::toc("dotp");
-#endif
-
-    return globalrdotr1;
-  }
-
-  if(!continuous) {
-    // x <= x + alpha*p
-    ellipticScaledAdd(elliptic,  alpha, o_p,  1.f, o_x);
-
-    // [
-    // r <= r - alpha*A*p
-    ellipticScaledAdd(elliptic, -alpha, o_Ap, 1.f, o_r);
-
-    // dot(r,r)
-    if(enableReductions)
-      rdotr1 = ellipticWeightedNorm2(elliptic, elliptic->o_invDegree, o_r);
-    else
-      rdotr1 = 1;
-  }else{
-    // x <= x + alpha*p
-    // r <= r - alpha*A*p
-    // dot(r,r)
-    if(elliptic->blockSolver)
-      elliptic->updatePCGKernel(Nlocal,
-                                elliptic->Ntotal,
-                                elliptic->NblocksUpdatePCG,
-                                elliptic->o_invDegree,
-                                o_p,
-                                o_Ap,
-                                alpha,
-                                o_x,
-                                o_r,
-                                elliptic->o_tmpNormr);
-
-    else
-      elliptic->updatePCGKernel(Nlocal,
-                                elliptic->NblocksUpdatePCG,
-                                elliptic->o_invDegree,
-                                o_p,
-                                o_Ap,
-                                alpha,
-                                o_x,
-                                o_r,
-                                elliptic->o_tmpNormr);
-
-    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr);
-
-    rdotr1 = 0;
-    for(int n = 0; n < elliptic->NblocksUpdatePCG; ++n)
+  if(serial) {
+    rdotr1 = *((dfloat *) elliptic->o_tmpNormr.ptr());
+  } else {
+    const dlong Nblock = (mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
+    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, Nblock*sizeof(dfloat));
+    for(int n = 0; n < Nblock; ++n)
       rdotr1 += elliptic->tmpNormr[n];
-
-    dfloat globalrdotr1 = 0;
-    MPI_Allreduce(&rdotr1, &globalrdotr1, 1, MPI_DFLOAT, MPI_SUM, mesh->comm);
-
-    rdotr1 = globalrdotr1;
   }
+  MPI_Allreduce(MPI_IN_PLACE, &rdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+#ifdef ELLIPTIC_ENABLE_TIMER
+    platform->timer.toc("dotp");
+#endif
 
   return rdotr1;
 }

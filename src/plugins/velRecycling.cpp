@@ -7,6 +7,7 @@
  */
 
 #include "nrs.hpp"
+#include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "velRecycling.hpp"
 
@@ -40,33 +41,32 @@ static int Nblock;
 
 void velRecycling::buildKernel(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
 
   string fileName;
-  int rank = mesh->rank;
+  int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/velRecycling.okl";
   occa::properties& kernelInfo = *nrs->kernelInfo;
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      setBCVectorValueKernel =  mesh->device.buildKernel(fileName.c_str(),
+  {
+      setBCVectorValueKernel =  platform->device.buildKernel(fileName,
                                                          "setBCVectorValue",
                                                          kernelInfo);
-      getBCFluxKernel        =  mesh->device.buildKernel(fileName.c_str(), "getBCFlux", kernelInfo);
-      sumReductionKernel     =  mesh->device.buildKernel(fileName.c_str(),
+      getBCFluxKernel        =  platform->device.buildKernel(fileName, "getBCFlux", kernelInfo);
+      sumReductionKernel     =  platform->device.buildKernel(fileName,
                                                          "sumReduction",
                                                          kernelInfo);
-      scalarMultiplyKernel   =  mesh->device.buildKernel(fileName.c_str(),
+      scalarMultiplyKernel   =  platform->device.buildKernel(fileName,
                                                          "scalarMultiply",
                                                          kernelInfo);
-    }
-    MPI_Barrier(mesh->comm);
   }
 }
 
 void velRecycling::copy()
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
   const dfloat zero = 0.0;
 
   // copy recycling plane in interior to inlet
@@ -97,7 +97,7 @@ void velRecycling::copy()
     sbuf[0] += tmp1[n];
     sbuf[1] += tmp2[n];
   }
-  MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, mesh->comm);
+  MPI_Allreduce(MPI_IN_PLACE, sbuf, 2, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
   const dfloat scale = -wbar * sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
@@ -112,14 +112,15 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
   bID = bID_;
   wbar = wbar_;
 
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
 
   const dlong Ntotal = mesh->Np * mesh->Nelements;
   hlong* ids = (hlong*) calloc(Ntotal, sizeof(hlong));
 
   for (int e = 0; e < mesh->Nelements; e++) {
     // establish a unique numbering
-    const hlong eg = nek_lglel(e); // 0-based
+    const hlong eg = nek::lglel(e); // 0-based
 
     for (int n = 0; n < mesh->Np; n++)
       ids[e * mesh->Np + n] = eg * mesh->Np + (n + 1);
@@ -132,7 +133,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
     }
   }
 
-  ogs = ogsSetup(Ntotal, ids, mesh->comm, 1, mesh->device);
+  ogs = ogsSetup(Ntotal, ids, platform->comm.mpiComm, 1, platform->device);
   free(ids);
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;
@@ -141,11 +142,11 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
   tmp1   = (dfloat*) calloc(Nblock, sizeof(dfloat));
   tmp2   = (dfloat*) calloc(Nblock, sizeof(dfloat));
 
-  o_tmp1 = mesh->device.malloc(Nblock * sizeof(dfloat), tmp1);
-  o_tmp2 = mesh->device.malloc(Nblock * sizeof(dfloat), tmp2);
+  o_tmp1 = platform->device.malloc(Nblock * sizeof(dfloat), tmp1);
+  o_tmp2 = platform->device.malloc(Nblock * sizeof(dfloat), tmp2);
 
   flux   = (dfloat*)calloc(NfpTotal, sizeof(dfloat));
   area   = (dfloat*)calloc(NfpTotal, sizeof(dfloat));
-  o_flux = mesh->device.malloc(NfpTotal * sizeof(dfloat), flux);
-  o_area = mesh->device.malloc(NfpTotal * sizeof(dfloat), area);
+  o_flux = platform->device.malloc(NfpTotal * sizeof(dfloat), flux);
+  o_area = platform->device.malloc(NfpTotal * sizeof(dfloat), area);
 }

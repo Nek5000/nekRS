@@ -5,8 +5,8 @@
 
 namespace tombo
 {
-occa::memory pressureSolve(nrs_t* nrs, dfloat time);
-occa::memory velocitySolve(nrs_t* nrs, dfloat time);
+occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage);
+occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage);
 }
 
 #endif

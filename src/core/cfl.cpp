@@ -1,12 +1,13 @@
 #include "nrs.hpp"
+#include "platform.hpp"
+#include "linAlg.hpp"
 
 static int firstTime = 1;
-static dfloat* tmp;
-static occa::memory o_tmp;
 
 void setup(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
 
   dfloat* dH;
   if(nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
@@ -23,19 +24,16 @@ void setup(nrs_t* nrs)
     for(int n = 0; n < (mesh->N + 1); n++)
       dH[n] = 1.0 / dH[n];
 
-    nrs->o_idH = mesh->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
+    nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
     free(dH);
   }
-
-  tmp = (dfloat*) calloc(nrs->Nblock, sizeof(dfloat));
-  o_tmp = mesh->device.malloc(nrs->Nblock * sizeof(dfloat), tmp);
-
   firstTime = 0;
 }
 
 dfloat computeCFL(nrs_t* nrs)
 {
-  mesh_t* mesh = nrs->mesh;
+  mesh_t* mesh = nrs->meshV;
+  
   if(firstTime) setup(nrs);
 
   // Compute cfl factors i.e. dt* U / h
@@ -45,19 +43,8 @@ dfloat computeCFL(nrs_t* nrs)
                  nrs->o_idH,
                  nrs->fieldOffset,
                  nrs->o_U,
-                 nrs->o_wrk0);
+                 mesh->o_U,
+                 platform->o_mempool.slice0);
 
-  // find the local maximum of CFL number
-  nrs->maxKernel(nrs->Nlocal, nrs->o_wrk0, o_tmp);
-  o_tmp.copyTo(tmp);
-
-  // finish reduction
-  dfloat cfl = 0.f;
-  for(dlong n = 0; n < nrs->Nblock; ++n)
-    cfl  = mymax(cfl, tmp[n]);
-
-  dfloat gcfl = 0.f;
-  MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, mesh->comm);
-
-  return gcfl;
+  return platform->linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
 }
