@@ -78,7 +78,7 @@ Please check the examples in `bin`.
 For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/).
 
 ## Discussion Group
-Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
+Please visit [Discussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
 
 ## Reporting Bugs
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first vist our [dicussions](https://github.com/Nek5000/nekRS/discussions) forum on GitHub.
