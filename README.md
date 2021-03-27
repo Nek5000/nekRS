@@ -67,20 +67,24 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 ## Run Example
 
 ```sh
-cd $NEKRS_HOME/examples/ethier
-nrspre ethier 2 # precompile JIT components
-nrsmpi ethier 2 # run on two MPI ranks
+cd $NEKRS_HOME/examples/turbPipePeriodic
+nrspre turbPipe 2 # precompile JIT code
+nrsmpi turbPipe 2 # run on two MPI ranks
 ```
-You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment. 
+You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment.
+Please check the examples in `bin`.
 
-## Contributing
-Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
+## Documentation
+For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/).
 
-## Support
+## Discussion Group
 Please visit [Dicussions](https://github.com/Nek5000/nekRS/discussions) on [GitHub](https://github.com/Nek5000/nekRS). Here we help, find solutions, share ideas, and follow discussions.
 
 ## Reporting Bugs
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first vist our [dicussions](https://github.com/Nek5000/nekRS/discussions) forum on GitHub.
+
+## Contributing
+Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
 
 ## License
 nekRS is released under the BSD 3-clause license (see LICENSE file). 
