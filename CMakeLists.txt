@@ -136,6 +136,11 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/nrssys.hpp
   @ONLY)
 
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/src/core/nrssys.hpp.in
+  ${CMAKE_INSTALL_PREFIX}/include/core/nrssys.hpp
+  @ONLY)
+
 ###############################################################################
 # Generate nekrs.conf                                                       #
 ###############################################################################

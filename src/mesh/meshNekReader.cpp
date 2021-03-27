@@ -61,7 +61,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if(platform->comm.mpiRank == 0) {
     int n = nekData.NboundaryIDt;
     if(!mesh->cht) n = nekData.NboundaryID;
-    printf("NboundaryIDs: %d, NboundaryFaces: %d ", n, mesh->NboundaryFaces);
+    printf("NboundaryIDs: %d, NboundaryFaces: %ld ", n, mesh->NboundaryFaces);
   }
 
   int cnt = 0;

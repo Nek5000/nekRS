@@ -381,7 +381,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     else if(strstr(line, "parameter (lelt=") != NULL)
       sprintf(line, "      parameter (lelt=%d)\n", lelt);
     else if(strstr(line, "parameter (lelg=") != NULL)
-      sprintf(line, "      parameter (lelg=%ld)\n", (int)lelg);
+      sprintf(line, "      parameter (lelg=%d)\n", (int)lelg);
     else if(strstr(line, "parameter (ldim=") != NULL)
       sprintf(line, "      parameter (ldim=%d)\n", ldim);
     else if(strstr(line, "parameter (lpmin=") != NULL)
