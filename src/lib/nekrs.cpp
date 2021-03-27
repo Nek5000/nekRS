@@ -197,7 +197,7 @@ int outputStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
-    outputStep = (time >= lastOutputTime + nekrs::writeInterval());
+    outputStep = ((time - lastOutputTime) + 1e-10) > nekrs::writeInterval();
   } else {
     if (writeInterval() > 0) outputStep = (tStep%(int)writeInterval() == 0);
   }
