@@ -10,15 +10,9 @@ c-----------------------------------------------------------------------
 c
       logical ifverbm
 c
-      if (nio.eq.0) then
-         write(6,12) 'nelgt/nelgv/lelt:',nelgt,nelgv,lelt
-         write(6,12) 'lx1/lx2/lx3/lxd: ',lx1,lx2,lx3,lxd
- 12      format(1X,A,4I12)
-         write(6,*)
-      endif
-
       etime0 = dnekclock_sync()
-      if(nio.eq.0) write(6,'(A)') ' partioning elements to MPI ranks'
+      if(nio.eq.0 .and. loglevel.gt.1) write(6,'(A)') 
+     $  ' partioning elements to MPI ranks'
 
       MFIELD=2
       IF (IFFLOW) MFIELD=1
@@ -84,8 +78,7 @@ C     Output the processor-element map:
       endif
 
       dtmp = dnekclock_sync() - etime0
-      if(nio.eq.0) then
-        write(6,*) ' '
+      if(nio.eq.0 .and. loglevel .gt. 1) then
         write(6,'(A,g13.5,A,/)')  ' done :: partioning ',dtmp,' sec'
       endif
 
@@ -230,7 +223,7 @@ c fluid elements
 
       nel = neliv
       call fpartMesh(eid8,vtx8,xyz,lelt,nel,nlv,nekcomm,
-     $  meshPartitioner,ierr)
+     $  meshPartitioner,loglevel,ierr)
       call err_chk(ierr,'partMesh fluid failed!$')
 
       nelv = nel
@@ -283,7 +276,7 @@ c solid elements
 
          nel = nelit
          call fpartMesh(eid8,vtx8,xyz,lelt,nel,nlv,nekcomm,
-     $                  meshPartitioner,ierr)
+     $                  meshPartitioner,loglevel,ierr)
          call err_chk(ierr,'partMesh solid failed!$')
 
          nelt = nelv + nel
@@ -502,7 +495,7 @@ c-----------------------------------------------------------------------
       enddo
 
       call fparrsb_findConnectivity(vtx8,xyz,nelt,ndim,
-     $  eid8,npf,tol,nekcomm,1,ierr)
+     $  eid8,npf,tol,nekcomm,0,ierr)
 
       k=1
       l=1
