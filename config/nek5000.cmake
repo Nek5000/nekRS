@@ -87,11 +87,18 @@ set(PARRSB_LIB_DIR ${PARRSB_DIR}/../lib)
 # variables based on the command-line arguments
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-  CHECK_C_COMPILER_FLAG("-mcmodel=medium" COMPILER_C_SUPPORTS_MCMODEL_MEDIUM)
-  if(COMPILER_C_SUPPORTS_MCMODEL_MEDIUM) 
-    set(MCMODEL_FLAG "-mcmodel=medium")
-  endif()
   set(FPIC_FLAG "-fPIC")
+
+  set(MCMODEL_FLAG "-mcmodel=medium")
+  CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_MEDIUM)
+  if(NOT COMPILER_C_SUPPORTS_MCMODEL_MEDIUM) 
+    set(MCMODEL_FLAG "")
+  endif()
+
+  CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG} ${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_MEDIUM_FPIC)
+  if(NOT COMPILER_C_SUPPORTS_MCMODEL_MEDIUM_FPIC) 
+    set(MCMODEL_FLAG "")
+  endif()
 endif()
 
 include(CheckFortranCompilerFlag)

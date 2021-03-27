@@ -5,7 +5,7 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
-#set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 #set(CMAKE_VERBOSE_MAKEFILE on)
 set(FETCHCONTENT_QUIET on)
@@ -131,6 +131,11 @@ set_external_flags("C")
 set_external_flags("CXX")
 set_external_flags("Fortran")
 
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/src/core/nrssys.hpp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/nrssys.hpp
+  @ONLY)
+
 ###############################################################################
 # Generate nekrs.conf                                                       #
 ###############################################################################
@@ -220,6 +225,7 @@ target_compile_definitions(nekrs-lib PUBLIC
 
 target_include_directories(nekrs-lib 
   PUBLIC 
+  ${CMAKE_CURRENT_BINARY_DIR}
   src/core
   src/core/utils
   src/lib
