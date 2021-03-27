@@ -200,9 +200,11 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
   }else if(options.compareArgs("THREAD MODEL", "OPENMP"))  {
+    if(rank == 0) printf("OpenMP backend currently not supported!\n");
+    ABORT(EXIT_FAILURE);
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
   }else  {
-    //sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
+    sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
     sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
   }
