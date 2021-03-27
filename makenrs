@@ -150,12 +150,15 @@ if [ "$#" -eq 0 ]; then
   echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
   echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
   echo ""
-  read -p "Press ENTER to continue ..." yn
-  case $yn in
-    [Nn]* )
-    ${NEKRS_EXIT_CMD} 1
-    ;;
-  esac
+
+  if [ "$TRAVIS" != "true" ]; then
+    read -p "Press ENTER to continue ..." yn
+    case $yn in
+      [Nn]* )
+      ${NEKRS_EXIT_CMD} 1
+      ;;
+    esac
+  fi  
 fi
 
 # =======================
