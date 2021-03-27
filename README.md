@@ -35,7 +35,7 @@ Download the latest release tarball
 
 ```sh
 wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.0.tar.gz 
-tar -zxf v20.0.tar.gz 
+tar -zxf v21.0.tar.gz 
 ```
 
 
