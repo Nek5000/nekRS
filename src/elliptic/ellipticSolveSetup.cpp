@@ -73,6 +73,21 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     }
   }
 
+  if(options.compareArgs("KRYLOV SOLVER", "PGMRES")){
+    initializeGmresData(elliptic);
+    string install_dir;
+    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+    const string oklpath = install_dir + "/okl/elliptic/";
+    string filename;
+
+    filename = oklpath + "ellipticUpdatePGMRES.okl";
+    kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
+    elliptic->updatePGMRESSolutionKernel =
+      platform->device.buildKernel(filename,
+                               "updatePGMRESSolution",
+                               kernelInfo);
+  }
+
   elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
   elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
   elliptic->Ap   = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));

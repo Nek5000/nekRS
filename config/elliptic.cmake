@@ -2,6 +2,7 @@ set(ELLIPTIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic)
 
 set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
+        ${ELLIPTIC_SOURCE_DIR}/linearSolver/PGMRES.cpp
 	      ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
