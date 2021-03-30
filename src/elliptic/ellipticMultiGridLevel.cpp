@@ -84,7 +84,6 @@ void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
     else if (stype == SCHWARZ)
       this->smoothSchwarz(o_rhsPfloat, o_xPfloat, x_is_zero);
     elliptic->copyPfloatToDPfloatKernel(Nrows, o_xPfloat, o_x);
-    elliptic->copyPfloatToDPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
   } else {
     if (stype == RICHARDSON)
       this->smoothRichardson(o_rhs, o_x, x_is_zero);
