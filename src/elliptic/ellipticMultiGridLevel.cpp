@@ -34,7 +34,7 @@ void MGLevel::Ax(occa::memory o_x, occa::memory o_Ax)
 
 void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 {
-  if(stype != SCHWARZ) {
+  if(stype != SmootherType::SCHWARZ) {
     ellipticOperator(elliptic,o_x,o_res, dfloatString);
     // subtract r = b - A*x
     const dlong Nlocal = mesh->Np * mesh->Nelements;
@@ -73,23 +73,19 @@ void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
-  if(!x_is_zero && stype == SCHWARZ) return;
+  if(!x_is_zero && stype == SmootherType::SCHWARZ) return;
   if(!strstr(pfloatString,dfloatString)) {
     elliptic->copyDfloatToPfloatKernel(Nrows, o_xPfloat, o_x);
     elliptic->copyDfloatToPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
-    if (stype == RICHARDSON)
-      this->smoothRichardson(o_rhsPfloat, o_xPfloat, x_is_zero);
-    else if (stype == CHEBYSHEV)
+    if (stype == SmootherType::CHEBYSHEV)
       this->smoothChebyshev(o_rhsPfloat, o_xPfloat, x_is_zero);
-    else if (stype == SCHWARZ)
+    else
       this->smoothSchwarz(o_rhsPfloat, o_xPfloat, x_is_zero);
     elliptic->copyPfloatToDPfloatKernel(Nrows, o_xPfloat, o_x);
   } else {
-    if (stype == RICHARDSON)
-      this->smoothRichardson(o_rhs, o_x, x_is_zero);
-    else if (stype == CHEBYSHEV)
+    if (stype == SmootherType::CHEBYSHEV)
       this->smoothChebyshev(o_rhs, o_x, x_is_zero);
-    else if (stype == SCHWARZ)
+    else
       this->smoothSchwarz(o_rhs, o_x, x_is_zero);
   }
 }
@@ -98,39 +94,16 @@ void MGLevel::smoother(occa::memory o_x, occa::memory o_Sx, bool x_is_zero)
 {
   // x_is_zero = true <-> downward leg
   if(x_is_zero) {
-    if (smtypeDown == JACOBI)
+    if (smtypeDown == SecondarySmootherType::JACOBI)
       this->smootherJacobi(o_x, o_Sx);
-    else if (smtypeDown == SCHWARZ_SMOOTH)
-      //this->smootherSchwarz(o_x, o_Sx);
+    else
       this->smoothSchwarz(o_x, o_Sx, true); // no-op if false
   } else {
-    if (smtypeUp == JACOBI)
+    if (smtypeUp == SecondarySmootherType::JACOBI)
       this->smootherJacobi(o_x, o_Sx);
-    else if (smtypeUp == SCHWARZ_SMOOTH)
-      //this->smootherSchwarz(o_x, o_Sx);
+    else
       this->smoothSchwarz(o_x, o_Sx, true); // no-op if false
   }
-}
-
-void MGLevel::smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero)
-{
-  occa::memory o_res = o_smootherResidual;
-
-  if (xIsZero) {
-    this->smoother(o_r, o_x, xIsZero);
-    return;
-  }
-
-  pfloat one = 1.;
-  pfloat mone = -1.;
-
-  //res = r-Ax
-  this->Ax(o_x,o_res);
-  elliptic->scaledAddPfloatKernel(Nrows, one, o_r, mone, o_res);
-
-  //smooth the fine problem x = x + S(r-Ax)
-  this->smoother(o_res, o_res, xIsZero);
-  elliptic->scaledAddPfloatKernel(Nrows, one, o_res, one, o_x);
 }
 
 void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
