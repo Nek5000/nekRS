@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 20.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 21.1)
 
 include(FortranCInterface)
 include(ExternalProject)
@@ -7,7 +7,7 @@ include(FetchContent)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-#set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
@@ -131,15 +131,15 @@ set_external_flags("C")
 set_external_flags("CXX")
 set_external_flags("Fortran")
 
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/src/core/nrssys.hpp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/nrssys.hpp
-  @ONLY)
-
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/src/core/nrssys.hpp.in
-  ${CMAKE_INSTALL_PREFIX}/include/core/nrssys.hpp
-  @ONLY)
+execute_process(
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if ("${GIT_COMMIT_HASH}" STREQUAL "")
+  set(GIT_COMMIT_HASH "no sha")
+endif()
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
@@ -218,6 +218,14 @@ set(SRC
     ${ELLIPTIC_SOURCES}
     ${BLASLAPACK_SOURCES}
     ${OGS_SOURCES}
+)
+
+set_property(
+   SOURCE src/lib/nekrs.cpp 
+   APPEND PROPERTY COMPILE_DEFINITIONS
+   GITCOMMITHASH="${GIT_COMMIT_HASH}"
+   NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
+   NEKRS_SUBVERSION=${PROJECT_VERSION_MINOR}
 )
 
 add_library(nekrs-lib SHARED ${SRC})

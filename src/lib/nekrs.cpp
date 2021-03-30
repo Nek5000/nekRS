@@ -23,6 +23,20 @@ static void setOccaVars(string dir);
 static void setOUDF(setupAide &options);
 static void dryRun(setupAide &options, int npTarget);
 
+void printHeader()
+{
+  cout << R"(                 __    ____  _____)" << endl
+       << R"(   ____   ___   / /__ / __ \/ ___/)" << endl
+       << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
+       << R"( / / / //  __// ,<  / _, _/___/ / )" << endl
+       << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
+       << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
+       << " (" << GITCOMMITHASH << ")" << endl
+       << endl
+       << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
+       << endl;
+}
+
 namespace nekrs
 {
 double startTime(void)
@@ -57,7 +71,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   setOccaVars(cacheDir);
 
   if (rank == 0) {
-#include "printHeader.inc"
+    printHeader();
     cout << "MPI tasks: " << size << endl << endl;
     string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
