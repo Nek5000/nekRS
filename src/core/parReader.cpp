@@ -175,7 +175,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
 
   double dt;
   if(par->extract("general", "dt", dt))
-    options.setArgs("DT", to_string_f(dt));
+    options.setArgs("DT", to_string_f(abs(dt)));
   else
     exit("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE);
 
