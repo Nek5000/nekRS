@@ -133,7 +133,6 @@ public:
 
   void smoother(occa::memory o_x, occa::memory o_Sx, bool xIsZero);
 
-  void smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothSchwarz (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 
@@ -144,7 +143,6 @@ public:
   void setupSmoother(elliptic_t* base);
   dfloat maxEigSmoothAx();
 
-  void buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc);
   void buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc);
 private:
   void smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
