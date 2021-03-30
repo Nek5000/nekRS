@@ -75,8 +75,7 @@ void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
   if(!x_is_zero && stype == SmootherType::SCHWARZ) return;
   if(!strstr(pfloatString,dfloatString)) {
-    elliptic->copyDfloatToPfloatKernel(Nrows, o_xPfloat, o_x);
-    elliptic->copyDfloatToPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
+    elliptic->fusedCopyDfloatToPfloatKernel(Nrows, o_x, o_rhs, o_xPfloat, o_rhsPfloat);
     if (stype == SmootherType::CHEBYSHEV)
       this->smoothChebyshev(o_rhsPfloat, o_xPfloat, x_is_zero);
     else

@@ -127,6 +127,7 @@ struct elliptic_t
   occa::kernel scaledAddPfloatKernel;
   occa::kernel dotMultiplyPfloatKernel;
   occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel fusedCopyDfloatToPfloatKernel;
   occa::kernel copyPfloatToDPfloatKernel;
   occa::kernel updateSmoothedSolutionVecKernel;
   occa::kernel updateChebyshevSolutionVecKernel;
