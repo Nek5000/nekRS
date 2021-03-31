@@ -78,7 +78,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("BOOMERAMG ITERATIONS", "1");
   options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
-  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
   options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 #else
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
@@ -370,7 +370,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.0));
         if(p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
@@ -386,7 +385,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
         if(p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!",
                EXIT_FAILURE);
@@ -402,7 +400,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
         options.setArgs("BOOMERAMG ITERATIONS", "1");
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
         if(p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev smoother!",
                EXIT_FAILURE);

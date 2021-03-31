@@ -285,6 +285,7 @@ void timer_t::printRunStat()
               << std::endl;
     if(dEtime[4] > 0) {
     std::cout << "  makeq                 " << dEtime[3] << " s\n";
+     if(dEtime[14] > 0)
     std::cout << "    udfSEqnSource       " << dEtime[14] << " s\n";
     }
 
