@@ -509,6 +509,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cflProps["defines/ " "p_MovingMesh"] = movingMesh;
       fileName = oklpath + "nrs/cfl" + suffix + ".okl";
       kernelName = "cfl" + suffix;
+      if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
+        if(platform->comm.mpiRank == 0)
+          printf("ERROR: cfl kernel requires BLOCKSIZE >= Nq * Nq."
+            "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
+        ABORT(EXIT_FAILURE);
+      }
       nrs->cflKernel =
         device.buildKernel(fileName, kernelName, cflProps);
 
