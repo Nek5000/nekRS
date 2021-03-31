@@ -27,11 +27,16 @@
 #ifndef ELLIPTIC_MGLEVEL_HPP
 #define ELLIPTIC_MGLEVEL_HPP
 
-typedef enum {RICHARDSON = 1,
-              CHEBYSHEV = 2,
-              SCHWARZ = 3} SmoothType;
-typedef enum {JACOBI = 1,
-              SCHWARZ_SMOOTH = 3} SmootherType;
+enum class SmootherType
+{
+  CHEBYSHEV,
+  SCHWARZ,
+};
+enum class SecondarySmootherType
+{  
+  JACOBI,
+  SCHWARZ,
+};
 
 class MGLevel : public parAlmond::multigridLevel
 {
@@ -50,9 +55,9 @@ public:
   occa::memory o_invDegree;
 
   //smoothing params
-  SmoothType stype;
-  SmootherType smtypeUp;
-  SmootherType smtypeDown;
+  SmootherType stype;
+  SecondarySmootherType smtypeUp;
+  SecondarySmootherType smtypeDown;
 
   dfloat lambda1, lambda0;
   int ChebyshevIterations;
@@ -128,7 +133,6 @@ public:
 
   void smoother(occa::memory o_x, occa::memory o_Sx, bool xIsZero);
 
-  void smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothSchwarz (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 
@@ -139,7 +143,6 @@ public:
   void setupSmoother(elliptic_t* base);
   dfloat maxEigSmoothAx();
 
-  void buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc);
   void buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc);
 private:
   void smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);

@@ -271,6 +271,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "mask",
                                  pfloatKernelInfo);
         filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
+        elliptic->fusedCopyDfloatToPfloatKernel =
+          platform->device.buildKernel(filename,
+                                   "fusedCopyDfloatToPfloat",
+                                   kernelInfo);
         elliptic->copyDfloatToPfloatKernel =
           platform->device.buildKernel(filename,
                                    "copyDfloatToPfloat",

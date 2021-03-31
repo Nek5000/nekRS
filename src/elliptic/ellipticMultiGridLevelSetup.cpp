@@ -113,15 +113,15 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
       options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-    stype = SCHWARZ;
-    smtypeUp = JACOBI;
-    smtypeDown = JACOBI;
+    stype = SmootherType::SCHWARZ;
+    smtypeUp = SecondarySmootherType::JACOBI;
+    smtypeDown = SecondarySmootherType::JACOBI;
     build(ellipticBase);
 
     if(options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
-      smtypeUp = SCHWARZ_SMOOTH;
-      smtypeDown = SCHWARZ_SMOOTH;
-      stype = CHEBYSHEV;
+      smtypeUp = SecondarySmootherType::SCHWARZ;
+      smtypeDown = SecondarySmootherType::SCHWARZ;
+      stype = SmootherType::CHEBYSHEV;
       if (!options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations))
         ChebyshevIterations = 2;   //default to degree 2
       //estimate the max eigenvalue of S*A
@@ -138,13 +138,13 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
         casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
       o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
       if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
-        smtypeUp = JACOBI;
+        smtypeUp = SecondarySmootherType::JACOBI;
       if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI"))
-        smtypeDown = JACOBI;
+        smtypeDown = SecondarySmootherType::JACOBI;
     }
   } else if (options.compareArgs("MULTIGRID SMOOTHER","DAMPEDJACOBI")) { //default to damped jacobi
-    smtypeUp = JACOBI;
-    smtypeDown = JACOBI;
+    smtypeUp = SecondarySmootherType::JACOBI;
+    smtypeDown = SecondarySmootherType::JACOBI;
     dfloat* invDiagA;
     ellipticBuildJacobi(elliptic,&invDiagA);
     std::vector<pfloat> casted_invDiagA(mesh->Np * mesh->Nelements, 0.0);
@@ -154,7 +154,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
 
     if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
-      stype = CHEBYSHEV;
+      stype = SmootherType::CHEBYSHEV;
 
       if (!options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations))
         ChebyshevIterations = 2; //default to degree 2
@@ -165,19 +165,11 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       lambda1 = 1.1 * rho;
       lambda0 = rho / 10.;
     }else {
-      stype = RICHARDSON;
 
-      //estimate the max eigenvalue of S*A
-      dfloat rho = this->maxEigSmoothAx();
-
-      //set the stabilty weight (jacobi-type interation)
-      lambda0 = (4. / 3.) / rho;
-
-      for (dlong n = 0; n < mesh->Np * mesh->Nelements; n++)
-        casted_invDiagA[n] *= static_cast<pfloat>(lambda0);
-
-      //update diagonal with weight
-      o_invDiagA.copyFrom(casted_invDiagA.data());
+      std::string invalidSmootherName;
+      options.getArgs("MULTIGRID SMOOTHER", invalidSmootherName);
+      if(platform->comm.mpiRank == 0) printf("Smoother %s is not supported!\n", invalidSmootherName.c_str());
+      ABORT(EXIT_FAILURE);
     }
     free(invDiagA);
   }
@@ -201,13 +193,11 @@ void MGLevel::Report()
 
   char smootherString[BUFSIZ];
   if (degree != 1) {
-    if (stype == RICHARDSON && smtypeDown == JACOBI)
-      strcpy(smootherString, "Damped Jacobi    ");
-    else if (stype == CHEBYSHEV && smtypeDown == JACOBI)
+    if (stype == SmootherType::CHEBYSHEV && smtypeDown == SecondarySmootherType::JACOBI)
       strcpy(smootherString, "Chebyshev+Jacobi ");
-    else if (stype == SCHWARZ)
+    else if (stype == SmootherType::SCHWARZ)
       strcpy(smootherString, "Schwarz          ");
-    else if (stype == CHEBYSHEV && smtypeDown == SCHWARZ_SMOOTH)
+    else if (stype == SmootherType::CHEBYSHEV && smtypeDown == SecondarySmootherType::SCHWARZ)
       strcpy(smootherString, "Chebyshev+Schwarz");
   }
 
