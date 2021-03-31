@@ -139,11 +139,62 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
   pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
   elliptic->updateChebyshevSolutionVecKernel(Nrows, rhoDivDelta, rho_np1, rho_n, o_Ad, o_res, o_d, o_x);
 }
+void MGLevel::smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+{
+  const pfloat theta = 0.5 * (lambda1 + lambda0);
+  const pfloat delta = 0.5 * (lambda1 - lambda0);
+  const pfloat invTheta = 1.0 / theta;
+  const pfloat sigma = theta / delta;
+  pfloat rho_n = 1. / sigma;
+  pfloat rho_np1;
+
+  pfloat one = 1., mone = -1., zero = 0.0;
+
+  occa::memory o_res = o_smootherResidual;
+  occa::memory o_Ad  = o_smootherResidual2;
+  occa::memory o_d   = o_smootherUpdate;
+
+  if(xIsZero) { //skip the Ax if x is zero
+    //res = Sr
+    this->smoother(o_r, o_res, xIsZero);
+
+    elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, zero, o_x);
+  } else {
+    //res = S(r-Ax)
+    this->Ax(o_x,o_res);
+    elliptic->scaledAddPfloatKernel(Nrows, one, o_r, mone, o_res);
+    this->smoother(o_res, o_res, xIsZero);
+
+    elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, one, o_x);
+  }
+
+
+  //r_k+1 = r_k - SAd_k
+  this->Ax(o_d,o_Ad);
+  this->smoother(o_Ad, o_Ad, xIsZero);
+  rho_np1 = 1.0 / (2. * sigma - rho_n);
+  pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
+
+  elliptic->updateIntermediateSolutionVecKernel(Nrows, rhoDivDelta, rho_n, rho_np1, o_Ad, o_res, o_d, o_x);
+
+  rho_n = rho_np1;
+  //r_k+1 = r_k - SAd_k
+  this->Ax(o_d,o_Ad);
+  this->smoother(o_Ad, o_Ad, xIsZero);
+  rho_np1 = 1.0 / (2. * sigma - rho_n);
+  rhoDivDelta = 2.0 * rho_np1 / delta;
+
+  elliptic->updateIntermediateSolutionVecKernel(Nrows, rhoDivDelta, rho_n, rho_np1, o_Ad, o_res, o_d, o_x);
+
+}
 
 void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   if(ChebyshevIterations == 1) {
     smoothChebyshevOneIteration(o_r,o_x,xIsZero);
+    return;
+  } else if (ChebyshevIterations == 2) {
+    smoothChebyshevTwoIteration(o_r,o_x,xIsZero);
     return;
   }
   const pfloat theta = 0.5 * (lambda1 + lambda0);

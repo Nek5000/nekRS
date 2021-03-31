@@ -56,3 +56,26 @@ SOFTWARE.
     }
   }
 }
+@kernel void updateIntermediateSolutionVec(const dlong N,
+                      const pfloat rhoDivDelta,
+                      const pfloat rho_n,
+                      const pfloat rho_np1,
+                      @restrict const pfloat * SAd,
+                      @restrict pfloat *  r,
+                      @restrict pfloat *  d,
+                      @restrict pfloat * x){
+  
+  //r_k+1 = r_k - SAd_k
+  //d_k+1 = rho_k+1*rho_k*d_k  + 2*rho_k+1*r_k+1/delta
+  //x_k+1 = x_k + d_k
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<N){
+      const pfloat rkp1 = r[n] - SAd[n];
+      const pfloat dk = d[n];
+      r[n] = rkp1;
+      const pfloat dkp1 = rho_np1 * rho_n * dk + rhoDivDelta * rkp1;
+      d[n] = dkp1;
+      x[n] = x[n] + dkp1;
+    }
+  }
+}

@@ -146,6 +146,7 @@ public:
   void buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc);
 private:
   void smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
+  void smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 };
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype);

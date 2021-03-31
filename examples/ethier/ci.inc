@@ -125,7 +125,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   const int rank = platform->comm.mpiRank;
   if(tstep == 1){
     int NiterP = nrs->pSolver->Niter;
-    const int expectedNiterP = 8;
+    const int expectedNiterP = 6;
     const int pIterErr = abs(NiterP - expectedNiterP);
     if(pIterErr >= 2) {
       if(rank==0){
