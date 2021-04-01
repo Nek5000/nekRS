@@ -303,6 +303,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                    "updateChebyshevSolutionVec",
                                    kernelInfo);
 
+        elliptic->updateIntermediateSolutionVecKernel =
+          platform->device.buildKernel(filename,
+                                   "updateIntermediateSolutionVec",
+                                   kernelInfo);
+
   }
 
   // add custom defines
