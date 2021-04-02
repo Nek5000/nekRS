@@ -51,6 +51,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
   if(platform->comm.mpiRank == 0) {
     const double throughput = (double)Ntotal/solveTime;
+    printf("iterations: %d\n", nrs->pSolver->Niter);
     printf("avg solve time: %g s\n", solveTime);
     printf("avg throughput: %g DOF/s\n", throughput);
     printf("avg throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
