@@ -1,11 +1,12 @@
 #include "nrs.hpp"
+#include <stdlib.h>
 #include "meshSetup.hpp"
 #include "setup.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
 #include "parReader.hpp"
 #include "configReader.hpp"
-#include "runTime.hpp"
+#include "timeStepper.hpp"
 #include "platform.hpp"
 #include "nrssys.hpp"
 #include "linAlg.hpp"
@@ -64,6 +65,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+  srand48((long int) rank);
 
   configRead(comm);
 
@@ -161,7 +164,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
 void runStep(double time, double dt, int tstep)
 {
-  runStep(nrs, time, dt, tstep);
+  timeStepper::step(nrs, time, dt, tstep);
 }
 
 void copyFromNek(double time, int tstep)

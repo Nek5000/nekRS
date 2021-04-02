@@ -9,25 +9,13 @@
 #include "cfl.hpp"
 #include "linAlg.hpp"
 
-void computeCoefficients(nrs_t* nrs, int tstep);
+#include "timeStepper.hpp"
 
-void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o_BF);
-occa::memory velocityStrongSubCycle(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U);
-occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U);
-void fluidSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
-
-void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF);
-occa::memory scalarStrongSubCycleMovingMesh(cds_t* cds, int nEXT, dfloat time, int is,
-                                  occa::memory o_U, occa::memory o_S);
-occa::memory scalarStrongSubCycle(cds_t* cds, int nEXT, dfloat time, int is,
-                                  occa::memory o_U, occa::memory o_S);
-void scalarSolve(nrs_t* nrs, dfloat time, occa::memory o_S, int stage);
-
-void printInfo(nrs_t* nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed);
+namespace timeStepper {
 
 double tElapsed = 0;
 
-void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
+void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 {
   const double tStart = MPI_Wtime();
       
@@ -35,10 +23,7 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   
   cds_t* cds = nrs->cds;
 
-  nrs->dt[0] = dt;
-  nrs->idt = 1/nrs->dt[0];
-  if(nrs->Nscalar) cds->idt = 1/cds->dt[0]; 
-  computeCoefficients(nrs, tstep);
+  coeffs(nrs, dt, tstep);
 
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
@@ -215,8 +200,11 @@ void runStep(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
   platform->timer.set("solve", tElapsed);
 }
 
-void computeCoefficients(nrs_t* nrs, int tstep)
+void coeffs(nrs_t* nrs, double dt, int tstep)
 {
+  nrs->dt[0] = dt;
+  nrs->idt = 1/nrs->dt[0];
+
   const int bdfOrder = mymin(tstep, nrs->nBDF);
   const int extOrder = mymin(tstep, nrs->nEXT);
 
@@ -241,6 +229,7 @@ void computeCoefficients(nrs_t* nrs, int tstep)
   nrs->o_coeffEXT.copyFrom(nrs->coeffEXT);
 
   if (nrs->Nscalar) {
+    nrs->cds->idt = 1/nrs->cds->dt[0];
     nrs->cds->g0 = nrs->g0;
     nrs->cds->ig0 = nrs->ig0;
   }
@@ -1299,3 +1288,5 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
 
   if(tstep % 10 == 0) fflush(stdout);
 }
+
+} // namespace

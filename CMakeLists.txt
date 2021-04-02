@@ -194,7 +194,7 @@ set(SRC
     src/core/filter.cpp
     src/core/bcMap.cpp
     src/core/setup.cpp
-    src/timeStepper/runTime.cpp
+    src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp
     src/cds/cds.cpp
     src/core/parReader.cpp

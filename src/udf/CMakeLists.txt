@@ -29,6 +29,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/core/utils
   ${NEKRS_INSTALL_DIR}/include/timeStepper
   ${NEKRS_INSTALL_DIR}/include/udf
+  ${NEKRS_INSTALL_DIR}/include/lns
   ${NEKRS_INSTALL_DIR}/include/elliptic
   ${NEKRS_INSTALL_DIR}/include/elliptic/parAlmond
   ${NEKRS_INSTALL_DIR}/include/nekInterface
