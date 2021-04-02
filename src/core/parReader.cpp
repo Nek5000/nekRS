@@ -175,7 +175,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
 
   double dt = 0;
   if(par->extract("general", "dt", dt))
-    options.setArgs("DT", to_string_f(abs(dt)));
+    options.setArgs("DT", to_string_f(fabs(dt)));
 
   string timeStepper;
   par->extract("general", "timestepper", timeStepper);
