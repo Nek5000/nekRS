@@ -12,18 +12,50 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  platform->options.setArgs("MAXIMUM ITERATIONS", "100");
+  platform->options.setArgs("FIXED ITERATION COUNT", "FALSE");
+  //platform->options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (nrs->isOutputStep) {
-    nek::ocopyToNek(time, tstep);
-    nek::userchk(); // compute lambda2
-    nek::ocopyFromNek(time);
-  }
-}
+  mesh_t* mesh = nrs->meshV;
 
-void UDF_Setup0(MPI_Comm comm, setupAide &options)
-{
-  options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+  for (int i = 0; i < mesh->Nlocal; i++) {
+    const dfloat lambda = 0; 
+    platform->mempool.slice0[i] = drand48(); 
+      //(3*M_PI*M_PI+lambda)*sin(M_PI*mesh->x[i])*sin(M_PI*mesh->y[i])*sin(M_PI*mesh->z[i]);
+  }
+  platform->linAlg->fillKernel(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
+
+  const int Nrep = 10; 
+  if(platform->comm.mpiRank == 0) printf("solving "); 
+  for (int i = 0; i < Nrep; i++) { 
+    platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);
+    platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+    ellipticZeroMean(nrs->pSolver, platform->o_mempool.slice0);
+
+    platform->timer.tic("pressureSolve", 1);
+    ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
+    platform->timer.toc("pressureSolve");
+    
+    if(platform->comm.mpiRank == 0) {
+      printf(".");
+      fflush(stdout); 
+    }
+  }
+  if(platform->comm.mpiRank == 0) printf("\n"); 
+
+  hlong Ntotal = mesh->Nelements * (mesh->N * mesh->N * mesh->N);
+  MPI_Allreduce(MPI_IN_PLACE, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+  const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
+  if(platform->comm.mpiRank == 0) {
+    const double throughput = (double)Ntotal/solveTime;
+    printf("avg solve time: %g s\n", solveTime);
+    printf("avg throughput: %g DOF/s\n", throughput);
+    printf("avg throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
+  }
+
+  MPI_Finalize();
+  exit(EXIT_SUCCESS);
 }

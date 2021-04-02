@@ -173,11 +173,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
-  double dt;
+  double dt = 0;
   if(par->extract("general", "dt", dt))
     options.setArgs("DT", to_string_f(abs(dt)));
-  else
-    exit("Cannot find mandatory parameter GENERAL::dt!", EXIT_FAILURE);
 
   string timeStepper;
   par->extract("general", "timestepper", timeStepper);
@@ -199,13 +197,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   string stopAt = "numsteps";
   par->extract("general", "stopat", stopAt);
   if(stopAt == "numsteps") {
-    int numSteps;
+    int numSteps = 0;
     if(par->extract("general", "numsteps", numSteps)) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = -1;
-    } else {
-      exit("Cannot find mandatory parameter GENERAL::numSteps!", EXIT_FAILURE);
     }
+    options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
   } else if(stopAt == "endtime") {
     if(!par->extract("general", "endtime", endTime))
       exit("Cannot find mandatory parameter GENERAL::endTime!", EXIT_FAILURE);
@@ -503,8 +500,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(par->extract("velocity", "residualtol", v_residualTol) ||
        par->extract("velocity", "residualtoltolerance", v_residualTol))
       options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
-    else
-    if(flow) exit("Cannot find mandatory parameter VELOCITY::residualTol!", EXIT_FAILURE);
 
     string v_bcMap;
     if(par->extract("velocity", "boundarytypemap", v_bcMap)) {

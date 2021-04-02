@@ -1,23 +1,27 @@
 [OCCA]
-backend = SERIAL
+backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL] 
+#verbose = true
 polynomialOrder = 7
-stopAt = numsteps
-numSteps = 1
-dt = 2e-4
-filtering = hpfrt 
-filterWeight = 8
-filterModes = 1
-verbose = true
 
 [PRESSURE]
 residualTol = 1e-8
+#preconditioner = Jacobi 
+#smootherType = Chebyshev+JAC #+ASM
+#pMultigridCoarsening = 7,3,1
+#galerkinCoarseOperator = true
+residualProj = false
 
 [VELOCITY]
-solver = true
-boundaryTypeMap = o
-residualTol = 1e-06
 density = 1.0
-viscosity = -1400
+viscosity = 1.0
+
+#[BOOMERAMG]
+#coarsenType = 8 
+#interpolationType = 6
+#smootherType = 16
+#iterations = 1
+#strongThreshold = 0.25
+#nonGalerkinTol = 0.0
