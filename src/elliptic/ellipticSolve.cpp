@@ -37,8 +37,6 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
   const int verbose = options.compareArgs("VERBOSE", "TRUE");
-  dfloat tol = 1e-6;
-  options.getArgs("SOLVER TOLERANCE", tol);
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
   if(verbose) {
@@ -109,6 +107,11 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     if(platform->comm.mpiRank == 0) printf("Unreasonable res0Norm!\n");
     ABORT(EXIT_FAILURE);
   }
+
+  dfloat tol = 1e-6;
+  options.getArgs("SOLVER TOLERANCE", tol);
+  if(options.compareArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE")) 
+    tol *= elliptic->res0Norm;
 
   if(!options.compareArgs("KRYLOV SOLVER", "NONBLOCKING")) {
     elliptic->resNorm = elliptic->res0Norm;
