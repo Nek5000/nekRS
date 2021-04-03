@@ -12,7 +12,7 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  platform->options.setArgs("MAXIMUM ITERATIONS", "100");
+  platform->options.setArgs("MAXIMUM ITERATIONS", "500");
   platform->options.setArgs("FIXED ITERATION COUNT", "FALSE");
   platform->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
   //platform->options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
