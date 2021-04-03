@@ -34,6 +34,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   platform->options.getArgs("MESH DIMENSION", nrs->dim);
   platform->options.getArgs("ELEMENT TYPE", nrs->elementType);
+  if(platform->device.mode() == "Serial")
+    platform->options.setArgs("ENABLE OVERLAP", "FALSE");
 
   nrs->flow = 1;
   if(platform->options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;

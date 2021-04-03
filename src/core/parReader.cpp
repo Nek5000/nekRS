@@ -98,6 +98,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
+  options.setArgs("ENABLE OVERLAP", "TRUE");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
