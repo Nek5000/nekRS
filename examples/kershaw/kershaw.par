@@ -10,7 +10,7 @@ polynomialOrder = 7
 residualTol = 1e-8
 #preconditioner = Jacobi 
 #smootherType = Chebyshev+JAC #+ASM
-#pMultigridCoarsening = 7,3,1
+#pMultigridCoarsening = 7,5,3,1
 #galerkinCoarseOperator = true
 residualProj = false
 

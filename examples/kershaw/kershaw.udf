@@ -1,6 +1,3 @@
-//
-// nekRS User Defined File
-//
 #include <math.h>
 #include "udf.hpp"
 
@@ -12,8 +9,8 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  platform->options.setArgs("MAXIMUM ITERATIONS", "500");
-  platform->options.setArgs("FIXED ITERATION COUNT", "FALSE");
+  //platform->options.setArgs("MAXIMUM ITERATIONS", "500");
+  //platform->options.setArgs("FIXED ITERATION COUNT", "TRUE");
   platform->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
   //platform->options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "1");
 }

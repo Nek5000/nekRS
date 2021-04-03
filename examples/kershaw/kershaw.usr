@@ -1,4 +1,5 @@
-#include <casedata.h>
+#define P_EPS (0.3)
+
 c-----------------------------------------------------------------------
       subroutine userbc(i,j,k,f,eg) ! set up boundary conditions
 c     NOTE ::: This routine MAY NOT be called by every process
@@ -200,7 +201,7 @@ c-----------------------------------------------------------------------
         epsy = P_EPS
         epsz = P_EPS
         if (nid.eq.0) then
-c          write(6, *) 'epsy=',epsy,'epsz=',epsz
+          write(6, *) 'epsy=',epsy,'epsz=',epsz
         endif
 
         n = nelt*(2**ldim)
