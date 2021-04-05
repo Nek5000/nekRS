@@ -17,6 +17,7 @@ deviceVector_t::deviceVector_t(const dlong _vectorSize, const dlong _nVectors, c
   wordSize(_wordSize),
   vectorName(_vectorName)
 {
+  if(vectorSize <= 0 || nVectors <= 0 || wordSize <= 0) return; // bail
   o_vector = platform->device.malloc(vectorSize * nVectors, wordSize);
   // set slices
   for(int s = 0 ; s < nVectors; ++s){

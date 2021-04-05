@@ -657,6 +657,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     }
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
+    options.setArgs("SCALAR" + sid + " PGMRES RESTART", "20");
     string t_linSolver;
     if(par->extract("scalar" + sidPar, "linearsolver", t_linSolver)){
       UPPER(t_linSolver);

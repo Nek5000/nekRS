@@ -36,8 +36,15 @@ GmresData::GmresData(elliptic_t* elliptic)
       return _restart;
     }()
   ),
+  flexible(
+    [&](){
+      if(elliptic->options.compareArgs("KRYLOV SOLVER", "FLEXIBLE"))
+        return 1;
+      return 0;
+    }()
+  ),
   o_V(elliptic->Nfields * elliptic->Ntotal, restart, sizeof(dfloat)),
-  o_Z(elliptic->Nfields * elliptic->Ntotal, restart, sizeof(dfloat)),
+  o_Z(flexible * elliptic->Nfields * elliptic->Ntotal, flexible * restart, sizeof(dfloat)),
   o_y(platform->device.malloc(restart, sizeof(dfloat))),
   H((dfloat *) calloc((restart+1)*(restart+1), sizeof(dfloat))),
   sn((dfloat *) calloc(restart, sizeof(dfloat))),
@@ -66,6 +73,7 @@ void gmresUpdate(elliptic_t* elliptic,
   deviceVector_t& o_Z = elliptic->gmresData->o_Z;
   occa::memory& o_y = elliptic->gmresData->o_y;
   occa::memory& o_z = elliptic->o_z;
+  occa::memory& o_tmp = elliptic->o_p;
 
   for(int k=I-1; k>=0; --k){
     y[k] = s[k];
@@ -78,14 +86,37 @@ void gmresUpdate(elliptic_t* elliptic,
 
   o_y.copyFrom(y, I * sizeof(dfloat));
 
-  elliptic->updatePGMRESSolutionKernel(
-    mesh->Nlocal,
-    elliptic->Ntotal,
-    I,
-    o_y,
-    o_Z,
-    o_x
-  );
+  if(elliptic->options.compareArgs("KRYLOV SOLVER", "FLEXIBLE")){
+    elliptic->updatePGMRESSolutionKernel(
+      mesh->Nlocal,
+      elliptic->Ntotal,
+      I,
+      o_y,
+      o_Z,
+      o_x
+    );
+  } else {
+    platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_z);
+    elliptic->updatePGMRESSolutionKernel(
+      mesh->Nlocal,
+      elliptic->Ntotal,
+      I,
+      o_y,
+      o_V,
+      o_z
+    );
+  
+    ellipticPreconditioner(elliptic, o_z, o_tmp);
+    platform->linAlg->axpbyMany(
+      mesh->Nlocal,
+      elliptic->Nfields,
+      elliptic->Ntotal,
+      1.0,
+      o_tmp,
+      1.0,
+      o_x
+    );
+  }
 }
 }
 
@@ -112,6 +143,8 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   dfloat* s = elliptic->gmresData->s;
 
   const int restart = elliptic->gmresData->restart;
+
+  const int flexible = elliptic->options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
 
   const bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
 
@@ -140,11 +173,13 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
     //Construct orthonormal basis via Gram-Schmidt
     for(int i=0;i<restart;++i){
+
+      occa::memory& o_Mv = flexible ? o_Z.at(i) : o_z;
       // z := M^{-1} V(:,i)
-      ellipticPreconditioner(elliptic, o_V.at(i), o_Z.at(i));
+      ellipticPreconditioner(elliptic, o_V.at(i), o_Mv);
 
       // w := A z
-      ellipticOperator(elliptic, o_Z.at(i), o_w, dfloatString);
+      ellipticOperator(elliptic, o_Mv, o_w, dfloatString);
 
       for(int k=0; k<=i; ++k){
         dfloat hki = linAlg.weightedInnerProdMany(
