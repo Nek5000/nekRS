@@ -28,8 +28,6 @@
 #include "timer.hpp"
 #include "linAlg.hpp"
 
-#include <vector>
-
 GmresData::GmresData(elliptic_t* elliptic)
 : restart(
     [&](){
