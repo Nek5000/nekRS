@@ -52,6 +52,16 @@ GmresData::GmresData(elliptic_t* elliptic)
   s((dfloat *) calloc(restart+1, sizeof(dfloat))),
   y((dfloat *) calloc(restart, sizeof(dfloat)))
 {
+  int Nblock = (elliptic->mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  //pinned scratch buffer
+  {
+    occa::properties props = platform->kernelInfo;
+    props["mapped"] = true; // props["host"] = true;
+    h_scratch = platform->device.malloc(Nbytes, props);
+    scratch = (dfloat*) h_scratch.ptr(props); // h_scratch.ptr()
+  }
+  o_scratch = platform->device.malloc(Nbytes);
 }
 
 void initializeGmresData(elliptic_t* elliptic)
@@ -181,24 +191,51 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       // w := A z
       ellipticOperator(elliptic, o_Mv, o_w, dfloatString);
 
-      for(int k=0; k<=i; ++k){
-        dfloat hki = linAlg.weightedInnerProdMany(
-          mesh->Nlocal,
-          elliptic->Nfields,
-          elliptic->Ntotal,
-          elliptic->o_invDegree,
-          o_w, o_V.at(k), platform->comm.mpiComm);
+      dfloat hki = linAlg.weightedInnerProdMany(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_w, o_V.at(0), platform->comm.mpiComm);
 
+      // H(k,i) = hki
+      H[0 + i*(restart+1)] = hki;
+
+      for(int k=0; k<=i-1; ++k){
+
+        int Nblock = (mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
+        const dlong Nbytes = Nblock * sizeof(dfloat);
         // w = w - hki*V[k]
-        linAlg.axpbyMany(
+        elliptic->fusedGramSchmidtKernel(
+          Nblock,
           mesh->Nlocal,
-          elliptic->Nfields,
           elliptic->Ntotal,
-          -hki, o_V.at(k), 1.0, o_w);
+          hki,
+          elliptic->o_invDegree,
+          o_V.at(k),
+          o_V.at(k+1),
+          o_w,
+          elliptic->gmresData->o_scratch
+        );
 
+        hki = 0;
+        elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+        for(dlong n=0;n<Nblock;++n)
+          hki += elliptic->gmresData->scratch[n];
+
+        MPI_Allreduce(MPI_IN_PLACE, &hki, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+        
         // H(k,i) = hki
-        H[k + i*(restart+1)] = hki;
+        H[(k+1) + i*(restart+1)] = hki;
+
       }
+
+      // w = w - hki*V[k]
+      linAlg.axpbyMany(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        -hki, o_V.at(i), 1.0, o_w);
 
       dfloat nw = linAlg.weightedNorm2Many(
         mesh->Nlocal,

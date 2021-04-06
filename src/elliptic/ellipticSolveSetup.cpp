@@ -81,11 +81,17 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     string filename;
 
     filename = oklpath + "ellipticUpdatePGMRES.okl";
-    kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
+    occa::properties gmresKernelInfo = kernelInfo;
+    gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
     elliptic->updatePGMRESSolutionKernel =
       platform->device.buildKernel(filename,
                                "updatePGMRESSolution",
-                               kernelInfo);
+                               gmresKernelInfo);
+    filename = oklpath + "ellipticFusedGramSchmidt.okl";
+    elliptic->fusedGramSchmidtKernel =
+      platform->device.buildKernel(filename,
+                               "fusedGramSchmidt",
+                               gmresKernelInfo);
   }
 
   elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));

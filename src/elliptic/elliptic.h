@@ -51,11 +51,14 @@ struct GmresData{
   deviceVector_t o_V;
   deviceVector_t o_Z;
   occa::memory o_y;
+  occa::memory o_scratch;
+  occa::memory h_scratch;
   dfloat* y;
   dfloat* H;
   dfloat* sn;
   dfloat* cs;
   dfloat* s;
+  dfloat* scratch;
 };
 
 struct elliptic_t
@@ -153,6 +156,7 @@ struct elliptic_t
   occa::kernel updateIntermediateSolutionVecKernel;
 
   occa::kernel updatePGMRESSolutionKernel;
+  occa::kernel fusedGramSchmidtKernel;
 
   dfloat resNormFactor;
 
