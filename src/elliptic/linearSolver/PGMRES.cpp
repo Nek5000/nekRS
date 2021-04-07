@@ -158,6 +158,9 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
   const bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
 
+  int Nblock = (mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+
   dfloat nr = rdotr / sqrt(elliptic->resNormFactor);
   dfloat error = rdotr;
   const dfloat TOL = tol;
@@ -202,9 +205,6 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       H[0 + i*(restart+1)] = hki;
 
       for(int k=0; k<=i-1; ++k){
-
-        int Nblock = (mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
-        const dlong Nbytes = Nblock * sizeof(dfloat);
         // w = w - hki*V[k]
         elliptic->fusedGramSchmidtKernel(
           Nblock,
@@ -230,18 +230,25 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
       }
 
-      // w = w - hki*V[k]
-      linAlg.axpbyMany(
+      elliptic->fusedGramSchmidtLastIterKernel(
+        Nblock,
         mesh->Nlocal,
-        elliptic->Nfields,
         elliptic->Ntotal,
-        -hki, o_V.at(i), 1.0, o_w);
+        hki,
+        elliptic->o_invDegree,
+        o_V.at(i),
+        o_z, // dummy arg
+        o_w,
+        elliptic->gmresData->o_scratch
+      );
 
-      dfloat nw = linAlg.weightedNorm2Many(
-        mesh->Nlocal,
-        elliptic->Nfields,
-        elliptic->Ntotal,
-        elliptic->o_invDegree, o_w, platform->comm.mpiComm);
+      dfloat nw = 0.0;
+      elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+      for(dlong n=0;n<Nblock;++n)
+        nw += elliptic->gmresData->scratch[n];
+
+      MPI_Allreduce(MPI_IN_PLACE, &nw, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+      nw = sqrt(nw);
 
       // H(i+1,i) = ||w||_2
       H[i+1 + i*(restart+1)] = nw;
@@ -302,18 +309,24 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     // compute A*x
     ellipticOperator(elliptic, o_x, o_Ax, dfloatString);
 
-    // subtract r = b - A*x
-    linAlg.axpbyzMany(
+    elliptic->fusedResidualAndNormKernel(
+      Nblock,
       mesh->Nlocal,
-      elliptic->Nfields,
       elliptic->Ntotal,
-      -1.0, o_Ax, 1.0, o_b, o_r);
+      elliptic->o_invDegree,
+      o_b,
+      o_Ax,
+      o_r,
+      elliptic->gmresData->o_scratch
+    );
 
-    nr = linAlg.weightedNorm2Many(
-      mesh->Nlocal,
-      elliptic->Nfields,
-      elliptic->Ntotal,
-      elliptic->o_invDegree, o_r, platform->comm.mpiComm);
+    nr = 0.0;
+    elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n)
+      nr += elliptic->gmresData->scratch[n];
+
+    MPI_Allreduce(MPI_IN_PLACE, &nr, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+    nr = sqrt(nr);
 
     error = nr * sqrt(elliptic->resNormFactor);
     rdotr = nr * sqrt(elliptic->resNormFactor);

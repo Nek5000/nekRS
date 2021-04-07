@@ -24,13 +24,14 @@
 
  */
 
-@kernel void fusedGramSchmidt(const dlong Nblocks, const dlong N,
+// r = b - Ax
+// (r,r)
+@kernel void fusedResidualAndNorm(const dlong Nblocks, const dlong N,
                                     const dlong offset,
-                                    const dfloat h,
                                     @restrict const dfloat* weights,
-                                    @restrict const dfloat* vk,
-                                    @restrict const dfloat* vkp1,
-                                    @restrict dfloat* w,
+                                    @restrict const dfloat* b_vec,
+                                    @restrict const dfloat* Ax,
+                                    @restrict dfloat* r,
                                     @restrict dfloat* reduction)
 {
   for(dlong b = 0; b < Nblocks; ++b; @outer(0)) {
@@ -44,15 +45,9 @@
         double sum = 0.0;
         #pragma unroll
         for(int fld = 0 ; fld < p_eNfields; ++fld){
-          const dfloat w_curr = w[id + fld * offset];
-          const dfloat v_curr = vk[id + fld * offset];
-          const dfloat w_new = w_curr - h * v_curr;
-          if(!p_lastIter){
-            sum += w_new * vkp1[id + fld * offset];
-          } else {
-            sum += w_new * w_new;
-          }
-          w[id + fld * offset] = w_new;
+          const dfloat rnew = b_vec[id + fld * offset] - Ax[id + fld * offset];
+          r[id + fld * offset] = rnew;
+          sum += rnew * rnew;
         }
         s_wxy[t] = weights[id]*sum;
       }

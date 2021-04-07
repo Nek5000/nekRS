@@ -87,8 +87,19 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       platform->device.buildKernel(filename,
                                "updatePGMRESSolution",
                                gmresKernelInfo);
+    filename = oklpath + "ellipticFusedResidualAndNorm.okl";
+    elliptic->fusedResidualAndNormKernel =
+      platform->device.buildKernel(filename,
+                               "fusedResidualAndNorm",
+                               gmresKernelInfo);
     filename = oklpath + "ellipticFusedGramSchmidt.okl";
+    gmresKernelInfo["defines/" "p_lastIter"] = 0;
     elliptic->fusedGramSchmidtKernel =
+      platform->device.buildKernel(filename,
+                               "fusedGramSchmidt",
+                               gmresKernelInfo);
+    gmresKernelInfo["defines/" "p_lastIter"] = 1;
+    elliptic->fusedGramSchmidtLastIterKernel =
       platform->device.buildKernel(filename,
                                "fusedGramSchmidt",
                                gmresKernelInfo);

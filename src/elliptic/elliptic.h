@@ -157,6 +157,8 @@ struct elliptic_t
 
   occa::kernel updatePGMRESSolutionKernel;
   occa::kernel fusedGramSchmidtKernel;
+  occa::kernel fusedGramSchmidtLastIterKernel;
+  occa::kernel fusedResidualAndNormKernel;
 
   dfloat resNormFactor;
 
