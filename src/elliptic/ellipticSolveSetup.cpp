@@ -80,19 +80,20 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     const string oklpath = install_dir + "/okl/elliptic/";
     string filename;
 
-    filename = oklpath + "ellipticUpdatePGMRES.okl";
+    filename = serial ? oklpath + "ellipticUpdatePGMRES.c" : oklpath + "ellipticUpdatePGMRES.okl";
     occa::properties gmresKernelInfo = kernelInfo;
+    if(serial) gmresKernelInfo["okl/enabled"] = false;
     gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
     elliptic->updatePGMRESSolutionKernel =
       platform->device.buildKernel(filename,
                                "updatePGMRESSolution",
                                gmresKernelInfo);
-    filename = oklpath + "ellipticFusedResidualAndNorm.okl";
+    filename = serial ? oklpath + "ellipticFusedResidualAndNorm.c" : oklpath + "ellipticFusedResidualAndNorm.okl";
     elliptic->fusedResidualAndNormKernel =
       platform->device.buildKernel(filename,
                                "fusedResidualAndNorm",
                                gmresKernelInfo);
-    filename = oklpath + "ellipticFusedGramSchmidt.okl";
+    filename = serial? oklpath + "ellipticFusedGramSchmidt.c" : oklpath + "ellipticFusedGramSchmidt.okl";
     gmresKernelInfo["defines/" "p_lastIter"] = 0;
     elliptic->fusedGramSchmidtKernel =
       platform->device.buildKernel(filename,

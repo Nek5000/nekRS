@@ -157,6 +157,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   const int flexible = elliptic->options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
 
   const bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+  const bool serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
   int Nblock = (mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
   const dlong Nbytes = Nblock * sizeof(dfloat);
@@ -218,10 +219,14 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
           elliptic->gmresData->o_scratch
         );
 
-        hki = 0;
-        elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
-        for(dlong n=0;n<Nblock;++n)
-          hki += elliptic->gmresData->scratch[n];
+        if(serial){
+          hki = *((dfloat*) elliptic->gmresData->o_scratch.ptr());
+        } else{
+          hki = 0;
+          elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+          for(dlong n=0;n<Nblock;++n)
+            hki += elliptic->gmresData->scratch[n];
+        }
 
         MPI_Allreduce(MPI_IN_PLACE, &hki, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
         
@@ -243,9 +248,13 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       );
 
       dfloat nw = 0.0;
-      elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
-      for(dlong n=0;n<Nblock;++n)
-        nw += elliptic->gmresData->scratch[n];
+      if(serial){
+        nw = *((dfloat*) elliptic->gmresData->o_scratch.ptr());
+      } else{
+        elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+        for(dlong n=0;n<Nblock;++n)
+          nw += elliptic->gmresData->scratch[n];
+      }
 
       MPI_Allreduce(MPI_IN_PLACE, &nw, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
       nw = sqrt(nw);
@@ -320,10 +329,14 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       elliptic->gmresData->o_scratch
     );
 
-    nr = 0.0;
-    elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
-    for(dlong n=0;n<Nblock;++n)
-      nr += elliptic->gmresData->scratch[n];
+    if(serial){
+      nr = *((dfloat*) elliptic->gmresData->o_scratch.ptr());
+    } else {
+      nr = 0.0;
+      elliptic->gmresData->o_scratch.copyTo(elliptic->gmresData->scratch, Nbytes);
+      for(dlong n=0;n<Nblock;++n)
+        nr += elliptic->gmresData->scratch[n];
+    }
 
     MPI_Allreduce(MPI_IN_PLACE, &nr, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     nr = sqrt(nr);
