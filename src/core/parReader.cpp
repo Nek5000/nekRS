@@ -86,8 +86,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
 #endif
 
-  options.setArgs("PRESSURE PGMRES RESTART", "20");
-  options.setArgs("VELOCITY PGMRES RESTART", "20");
+  options.setArgs("PRESSURE PGMRES RESTART", "15");
+  options.setArgs("VELOCITY PGMRES RESTART", "15");
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
@@ -345,17 +345,18 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(par->extract("pressure", "pmultigridcoarsening", p_mglevels))
       options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
     
-    string p_linSolver;
-    if(par->extract("pressure", "linearsolver", p_linSolver)){
-      UPPER(p_linSolver);
-      if(p_linSolver == "GMRES"){
-        p_linSolver = "PGMRES";
-      }
+    string p_solver;
+    if(par->extract("pressure", "solver", p_solver)){
+      UPPER(p_solver);
+      
+      if (p_solver.find("GMRES") != string::npos) {
+        p_solver = "PGMRES";
+      } 
 
       // flexible variant is required for pressure
-      options.setArgs("PRESSURE KRYLOV SOLVER", p_linSolver);
+      options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
       if(!options.compareArgs("PRESSURE KRYLOV SOLVER", "FLEXIBLE")){
-        options.setArgs("PRESSURE KRYLOV SOLVER", p_linSolver + "+FLEXIBLE");
+        options.setArgs("PRESSURE KRYLOV SOLVER", p_solver + "+FLEXIBLE");
       }
     }
 
