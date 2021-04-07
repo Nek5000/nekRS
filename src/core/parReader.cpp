@@ -348,7 +348,15 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     string p_linSolver;
     if(par->extract("pressure", "linearsolver", p_linSolver)){
       UPPER(p_linSolver);
+      if(p_linSolver == "GMRES"){
+        p_linSolver = "PGMRES";
+      }
+
+      // flexible variant is required for pressure
       options.setArgs("PRESSURE KRYLOV SOLVER", p_linSolver);
+      if(!options.compareArgs("PRESSURE KRYLOV SOLVER", "FLEXIBLE")){
+        options.setArgs("PRESSURE KRYLOV SOLVER", p_linSolver + "+FLEXIBLE");
+      }
     }
 
     int p_gmresRestart;
@@ -479,6 +487,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
     }
 
+#if 0
     string v_linSolver;
     if(par->extract("velocity", "linearsolver", v_linSolver)){
       UPPER(v_linSolver);
@@ -488,6 +497,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(par->extract("velocity", "gmresrestart", v_gmresRestart)){
       options.setArgs("VELOCITY PGMRES RESTART", std::to_string(v_gmresRestart));
     }
+#endif
 
     options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
     string vsolver;
@@ -566,6 +576,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     } else {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
+#if 0
       options.setArgs("SCALAR00 PGMRES RESTART", "20");
       string t_linSolver;
       if(par->extract("temperature", "linearsolver", t_linSolver)){
@@ -577,6 +588,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       if(par->extract("temperature", "gmresrestart", t_gmresRestart)){
         options.setArgs("SCALAR00 PGMRES RESTART", std::to_string(t_gmresRestart));
       }
+#endif
       options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;
@@ -657,6 +669,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     }
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
+#if 0
     options.setArgs("SCALAR" + sid + " PGMRES RESTART", "20");
     string t_linSolver;
     if(par->extract("scalar" + sidPar, "linearsolver", t_linSolver)){
@@ -667,6 +680,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(par->extract("scalar" + sidPar, "gmresrestart", t_gmresRestart)){
       options.setArgs("SCALAR" + sid + " PGMRES RESTART", std::to_string(t_gmresRestart));
     }
+#endif
 
     options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
     bool t_rproj;

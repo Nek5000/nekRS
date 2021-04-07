@@ -124,8 +124,12 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     elliptic->resNorm = elliptic->res0Norm;
     if(options.compareArgs("KRYLOV SOLVER", "PCG"))
       elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
-    else
+    else if(options.compareArgs("KRYLOV SOLVER", "PGMRES"))
       elliptic->Niter = pgmres (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
+    else{
+      if(platform->comm.mpiRank == 0) printf("Linear solver %s is not supported!\n", options.getArgs("KRYLOV SOLVER"));
+      ABORT(EXIT_FAILURE);
+    }
   }else{
     if(platform->comm.mpiRank == 0) printf("NONBLOCKING Krylov solvers currently not supported!");
     ABORT(EXIT_FAILURE);
