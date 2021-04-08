@@ -301,14 +301,15 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
       else
         options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
-
-      int p_nProjVec;
-      if(par->extract("pressure", "residualprojectionvectors", p_nProjVec))
-        options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", std::to_string(p_nProjVec));
-      int p_nProjStep;
-      if(par->extract("pressure", "residualprojectionstart", p_nProjStep))
-        options.setArgs("PRESSURE RESIDUAL PROJECTION START", std::to_string(p_nProjStep));
     }
+
+    int p_nProjVec;
+    if(par->extract("pressure", "residualprojectionvectors", p_nProjVec))
+      options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", std::to_string(p_nProjVec));
+
+    int p_nProjStep;
+    if(par->extract("pressure", "residualprojectionstart", p_nProjStep))
+      options.setArgs("PRESSURE RESIDUAL PROJECTION START", std::to_string(p_nProjStep));
 
     bool p_gproj;
     if(par->extract("pressure", "galerkincoarseoperator", p_gproj))
@@ -499,14 +500,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       } else {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
       }
-
-      int v_nProjVec;
-      if(par->extract("velocity", "residualprojectionvectors", v_nProjVec))
-        options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", std::to_string(v_nProjVec));
-      int v_nProjStep;
-      if(par->extract("velocity", "residualprojectionstart", v_nProjStep))
-        options.setArgs("VELOCITY RESIDUAL PROJECTION START", std::to_string(v_nProjStep));
     }
+    int v_nProjVec;
+    if(par->extract("velocity", "residualprojectionvectors", v_nProjVec))
+      options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", std::to_string(v_nProjVec));
+    int v_nProjStep;
+    if(par->extract("velocity", "residualprojectionstart", v_nProjStep))
+      options.setArgs("VELOCITY RESIDUAL PROJECTION START", std::to_string(v_nProjStep));
+
     par->extract("velocity", "solver", vsolver);
     if(vsolver == "none") {
       options.setArgs("VELOCITY SOLVER", "NONE");
@@ -577,14 +578,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         } else {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
         }
-
-        int t_nProjVec;
-        if(par->extract("temperature", "residualprojectionvectors", t_nProjVec))
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
-        int t_nProjStep;
-        if(par->extract("temperature", "residualprojectionstart", t_nProjStep))
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
       }
+
+      int t_nProjVec;
+      if(par->extract("temperature", "residualprojectionvectors", t_nProjVec))
+        options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+      int t_nProjStep;
+      if(par->extract("temperature", "residualprojectionstart", t_nProjStep))
+        options.setArgs("SCALAR00 RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
 
       double s_residualTol;
       if(par->extract("temperature", "residualtol", s_residualTol) ||
@@ -656,13 +657,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
       }
 
-      int t_nProjVec;
-      if(par->extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
-      int t_nProjStep;
-      if(par->extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
     }
+    int t_nProjVec;
+    if(par->extract("scalar" + sidPar, "residualprojectionvectors", t_nProjVec))
+      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", std::to_string(t_nProjVec));
+    int t_nProjStep;
+    if(par->extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
+      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", std::to_string(t_nProjStep));
+
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
     double s_residualTol;
