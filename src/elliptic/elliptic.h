@@ -42,6 +42,24 @@
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
+class elliptic_t;
+
+struct GmresData{
+  GmresData(elliptic_t*);
+  int restart;
+  int flexible;
+  deviceVector_t o_V;
+  deviceVector_t o_Z;
+  occa::memory o_y;
+  occa::memory o_scratch;
+  occa::memory h_scratch;
+  dfloat* y;
+  dfloat* H;
+  dfloat* sn;
+  dfloat* cs;
+  dfloat* s;
+  dfloat* scratch;
+};
 
 struct elliptic_t
 {
@@ -137,6 +155,11 @@ struct elliptic_t
   // special kernel for two Chebyshev iterations
   occa::kernel updateIntermediateSolutionVecKernel;
 
+  occa::kernel updatePGMRESSolutionKernel;
+  occa::kernel fusedGramSchmidtKernel;
+  occa::kernel fusedGramSchmidtLastIterKernel;
+  occa::kernel fusedResidualAndNormKernel;
+
   dfloat resNormFactor;
 
   // combined PCG update step
@@ -154,6 +177,7 @@ struct elliptic_t
   int* levels;
 
   ResidualProjection* residualProjection;
+  GmresData* gmresData;
 };
 
 #include "ellipticMultiGrid.h"
@@ -186,6 +210,9 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
 
 //Linear solvers
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
+        const dfloat tol, const int MAXIT, dfloat &res);
+void initializeGmresData(elliptic_t*);
+int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT, dfloat &res);
 
 void ellipticOperator(elliptic_t* elliptic,

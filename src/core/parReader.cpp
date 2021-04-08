@@ -72,7 +72,6 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("AMG SOLVER", "BOOMERAMG");
 
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
-#if 1
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
@@ -80,21 +79,11 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
   options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
-#else
-  options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
-  options.setArgs("BOOMERAMG ITERATIONS", "2");
-  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-#endif
 
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
-  //options.setArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE", "2");
-  //options.setArgs("PRESSURE PARALMOND SMOOTHER", "CHEBYSHEV");
-  //options.setArgs("PRESSURE PARALMOND PARTITION", "STRONGNODES");
-  //options.setArgs("PRESSURE PARALMOND AGGREGATION STRATEGY", "DEFAULT");
-  //options.setArgs("PRESSURE PARALMOND LPSCN ORDERING", "MAX");
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
@@ -342,10 +331,34 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     string p_mglevels;
     if(par->extract("pressure", "pmultigridcoarsening", p_mglevels))
       options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
+    
+    string p_solver;
+    if(par->extract("pressure", "solver", p_solver)){
+      if (p_solver.find("gmres") != string::npos) {
+        std::vector<std::string> list;
+        list = serializeString(p_solver, '+');
+	string n = "15"; 
+	if(list.size() == 2) n = list[1];
+	options.setArgs("PRESSURE PGMRES RESTART", n);
+        p_solver = "PGMRES";
+      } 
+
+      if (p_solver.find("CG") != string::npos) {
+        p_solver = "PCG";
+      } 
+
+      // flexible variant is required for pressure
+      options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
+      if(!options.compareArgs("PRESSURE KRYLOV SOLVER", "FLEXIBLE")){
+        options.setArgs("PRESSURE KRYLOV SOLVER", p_solver + "+FLEXIBLE");
+      }
+    }
 
     string p_smoother;
     if(par->extract("pressure", "smoothertype", p_smoother)) {
-      if(p_smoother == "asm") {
+      std::vector<std::string> list;
+      list = serializeString(p_smoother, '+');
+      if(p_smoother.find("asm") == 0) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
         if(p_preconditioner.find("multigrid") != std::string::npos) {
           if(p_preconditioner.find("additive") == std::string::npos)
@@ -353,7 +366,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         } else {
           options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
         }
-      } else if (p_smoother == "ras") {
+        if(list.size() == 2) 
+          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
+      } else if (p_smoother.find("ras") == 0) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
         if(p_preconditioner.find("multigrid") != std::string::npos) {
           if(p_preconditioner.find("additive") == std::string::npos)
@@ -361,14 +376,15 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         } else {
           options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE+ADDITIVE+OVERLAPCRS");
         }
-      } else if (p_smoother == "chebyshev" ||
-                 p_smoother.find("chebyshev+jac") != std::string::npos) {
+        if(list.size() == 2) 
+          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
+      } else if (p_smoother.find("chebyshev+jac") == 0) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
+	options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
         options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
-        options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.0));
         if(p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for Chebyshev smoother!", EXIT_FAILURE);
         } else {
@@ -378,7 +394,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
             options.setArgs("PRESSURE PARALMOND CYCLE", entry);
           }
         }
-      } else if (p_smoother == "chebyshev+asm") {
+        if(list.size() == 3) 
+          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
+      } else if (p_smoother.find("chebyshev+asm") == 0) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
@@ -393,7 +411,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
             options.setArgs("PRESSURE PARALMOND CYCLE", entry);
           }
         }
-      } else if (p_smoother == "chebyshev+ras") {
+        if(list.size() == 3) 
+          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
+      } else if (p_smoother.find("chebyshev+ras") == 0) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
@@ -408,12 +428,13 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
             options.setArgs("PRESSURE PARALMOND CYCLE", entry);
           }
         }
+        if(list.size() == 3) 
+          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
       } else {
         exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
       }
-    } else
-//      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
-//      options.setArgs("BOOMERAMG ITERATIONS", "2");
+    } 
+
     if(p_preconditioner.find("additive") != std::string::npos) {
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
       options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
@@ -505,7 +526,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     string v_bcMap;
     if(par->extract("velocity", "boundarytypemap", v_bcMap)) {
       std::vector<std::string> sList;
-      sList = serializeString(v_bcMap);
+      sList = serializeString(v_bcMap,',');
       bcMap::setup(sList, "velocity");
       bcInPar = 1;
     } else {
@@ -541,6 +562,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(solver == "none") {
       options.setArgs("SCALAR00 SOLVER", "NONE");
     } else {
+
+      options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
       options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
       bool t_rproj;
@@ -587,7 +610,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       if(par->extract("temperature", "boundarytypemap", s_bcMap)) {
         if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
         std::vector<std::string> sList;
-        sList = serializeString(s_bcMap);
+        sList = serializeString(s_bcMap,',');
         bcMap::setup(sList, "scalar00");
       } else {
         if(bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
@@ -596,7 +619,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     }
   }
 
-  //
   for (auto & sec : par->sections) {
     string key = sec.first;
     if(key.compare(0, 6, "scalar") == 0) nscal++;
@@ -620,6 +642,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       continue;
     }
 
+    options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
     options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
     bool t_rproj;
     if(par->extract("scalar" + sidPar, "residualproj", t_rproj) || 
@@ -666,7 +689,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(par->extract("scalar" + sidPar, "boundarytypemap", s_bcMap)) {
       if(!bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
       std::vector<std::string> sList;
-      sList = serializeString(s_bcMap);
+      sList = serializeString(s_bcMap,',');
       bcMap::setup(sList, "scalar" + sid);
     } else {
       if(bcInPar) exit("ERROR: boundaryTypeMap has to be defined for all fields!", EXIT_FAILURE);
@@ -674,7 +697,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     }
   }
   if(nscal) {
-    options.setArgs("SCALAR SOLVER", "PCG");
     options.setArgs("SCALAR BASIS", "NODAL");
     options.setArgs("SCALAR DISCRETIZATION", "CONTINUOUS");
   }

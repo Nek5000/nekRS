@@ -184,7 +184,7 @@ static string to_string_f(double a)
   return s.str();
 }
 
-static std::vector<std::string> serializeString(const std::string sin)
+static std::vector<std::string> serializeString(const std::string sin, char dlim)
 {
   std::vector<std::string> slist;
   string s(sin);
@@ -193,7 +193,7 @@ static std::vector<std::string> serializeString(const std::string sin)
   ss.str(s);
   while( ss.good() ) {
     std::string substr;
-    std::getline(ss, substr, ',');
+    std::getline(ss, substr, dlim);
     slist.push_back(substr);
   }
   return slist;

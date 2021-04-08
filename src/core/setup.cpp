@@ -633,6 +633,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     }
 
     nrs->vOptions = options;
+    nrs->vOptions.setArgs("PGMRES RESTART",        options.getArgs("VELOCITY PGMRES RESTART"));
     nrs->vOptions.setArgs("KRYLOV SOLVER",        options.getArgs("VELOCITY KRYLOV SOLVER"));
     nrs->vOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("VELOCITY SOLVER TOLERANCE"));
     nrs->vOptions.setArgs("DISCRETIZATION",       options.getArgs("VELOCITY DISCRETIZATION"));
@@ -751,6 +752,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       pBCType[bID] = bcMap::type(bID, "pressure");
 
     nrs->pOptions = options;
+    nrs->pOptions.setArgs("PGMRES RESTART",       options.getArgs("PRESSURE PGMRES RESTART"));
     nrs->pOptions.setArgs("KRYLOV SOLVER",        options.getArgs("PRESSURE KRYLOV SOLVER"));
     nrs->pOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("PRESSURE SOLVER TOLERANCE"));
     nrs->pOptions.setArgs("DISCRETIZATION",       options.getArgs("PRESSURE DISCRETIZATION"));
@@ -800,7 +802,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     string p_mglevels;
     if(nrs->pOptions.getArgs("MULTIGRID COARSENING", p_mglevels)) {
       std::vector<std::string> mgLevelList;
-      mgLevelList = serializeString(p_mglevels);
+      mgLevelList = serializeString(p_mglevels,',');
       nrs->pSolver->nLevels = mgLevelList.size();
       nrs->pSolver->levels = (int*) calloc(nrs->pSolver->nLevels,sizeof(int));
       for(int i = 0; i < nrs->pSolver->nLevels; ++i)
@@ -1003,7 +1005,8 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
  
     cds->options[is] = options;
 
-    cds->options[is].setArgs("KRYLOV SOLVER", options.getArgs("SCALAR SOLVER"));
+    cds->options[is].setArgs("KRYLOV SOLVER", options.getArgs("SCALAR" + sid + " KRYLOV SOLVER"));
+    cds->options[is].setArgs("PGMRES RESTART", options.getArgs("SCALAR" + sid + " PGMRES RESTART"));
     cds->options[is].setArgs("DISCRETIZATION", options.getArgs("SCALAR DISCRETIZATION"));
     cds->options[is].setArgs("BASIS", options.getArgs("SCALAR BASIS"));
     cds->options[is].setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));

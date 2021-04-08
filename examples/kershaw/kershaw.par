@@ -7,10 +7,11 @@ deviceNumber = LOCAL-RANK
 polynomialOrder = 7
 
 [PRESSURE]
+solver = gmres+20
 residualTol = 1e-8
 #preconditioner = Jacobi 
-#smootherType = Chebyshev+JAC #+ASM
-#pMultigridCoarsening = 7,5,3,1
+smootherType = Chebyshev+ASM+1
+pMultigridCoarsening = 7,5,3,1
 #galerkinCoarseOperator = true
 residualProj = false
 
