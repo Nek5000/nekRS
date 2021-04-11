@@ -65,7 +65,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("MAXIMUM ITERATIONS", "200");
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
   options.setArgs("GALERKIN COARSE MATRIX","FALSE");
-  options.setArgs("PRESSURE KRYLOV SOLVER", "PCG+FLEXIBLE");
+  options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");
   options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
@@ -81,7 +81,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-  options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "8");
+  options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "12");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
@@ -344,7 +344,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         p_solver = "PGMRES";
       } 
 
-      if (p_solver.find("CG") != string::npos) {
+      if (p_solver.find("cg") != string::npos) {
         p_solver = "PCG";
       } 
 
