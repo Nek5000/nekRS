@@ -665,15 +665,29 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   //use the bc flags to find masked ids
   dlong Nmasked = 0;
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-    if (mapB[n] == bigNum)
+    const dlong node = n % mesh->Np;
+    bool isVertexNode = false;
+    assert(mesh->Nverts == 8);
+    for(int vertex = 0 ; vertex < mesh->Nverts; ++vertex)
+      if(mesh->vertexNodes[vertex] == node) isVertexNode = true;
+    if (isVertexNode)
+      Nmasked++;
+    else if (mapB[n] == bigNum)
       mapB[n] = 0.;
     else if (mapB[n] == 1)     //Dirichlet boundary
       Nmasked++;
   }
   dlong* maskIds = (dlong*) calloc(Nmasked, sizeof(dlong));
   Nmasked = 0;
-  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
+  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++){
+    const dlong node = n % mesh->Np;
+    bool isVertexNode = false;
+    assert(mesh->Nverts == 8);
+    for(int vertex = 0 ; vertex < mesh->Nverts; ++vertex)
+      if(mesh->vertexNodes[vertex] == node) isVertexNode = true;
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
+    else if (isVertexNode) maskIds[Nmasked++] = n;
+  }
   //make a masked version of the global id numbering
   memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)
