@@ -666,11 +666,10 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   dlong Nmasked = 0;
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
     const dlong node = n % mesh->Np;
-    bool isVertexNode = false;
-    assert(mesh->Nverts == 8);
-    for(int vertex = 0 ; vertex < mesh->Nverts; ++vertex)
-      if(mesh->vertexNodes[vertex] == node) isVertexNode = true;
-    if (isVertexNode)
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
+    if (isEdgeNode)
       Nmasked++;
     else if (mapB[n] == bigNum)
       mapB[n] = 0.;
@@ -681,12 +680,11 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   Nmasked = 0;
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++){
     const dlong node = n % mesh->Np;
-    bool isVertexNode = false;
-    assert(mesh->Nverts == 8);
-    for(int vertex = 0 ; vertex < mesh->Nverts; ++vertex)
-      if(mesh->vertexNodes[vertex] == node) isVertexNode = true;
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
-    else if (isVertexNode) maskIds[Nmasked++] = n;
+    else if (isEdgeNode) maskIds[Nmasked++] = n;
   }
   //make a masked version of the global id numbering
   memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
