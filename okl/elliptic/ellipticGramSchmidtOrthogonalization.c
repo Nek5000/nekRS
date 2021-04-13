@@ -24,30 +24,35 @@
 
  */
 
-extern "C" void fusedGramSchmidt(const dlong & Nblocks, const dlong & N,
+// w = w - \sum_i^k (w^T v_i) v_i
+// w = w - \sum_i^k y_i v_i
+extern "C" void gramSchmidtOrthogonalization(const dlong & Nblock, const dlong & N,
                                     const dlong & offset,
-                                    const dfloat & h,
-                                    const dfloat* __restrict__ weights,
-                                    const dfloat* __restrict__ vk,
-                                    const dfloat* __restrict__ vkp1,
-                                    dfloat* __restrict__ w,
-                                    dfloat* __restrict__ reduction)
+                                    const dlong & gmresSize,
+                                    const dfloat * __restrict__ weights,
+                                    const dfloat*  __restrict__ y,
+                                    const dfloat*  __restrict__ V,
+                                    dfloat*  __restrict__ w,
+                                    dfloat*  __restrict__ reduction)
 {
-  dfloat rdotr = 0.0;
-  #pragma omp parallel for collapse(2)
-  for(int fld = 0 ; fld < p_eNfields; fld++){
-    for(int id = 0 ; id < N; ++id){
-      const dfloat w_curr = w[id + fld * offset];
-      const dfloat v_curr = vk[id + fld * offset];
-      const dfloat w_new = w_curr - h * v_curr;
-      if(!p_lastIter){
-        rdotr += w_new * vkp1[id + fld * offset] * weights[id];
-      } else {
-        rdotr += w_new * w_new * weights[id];
+  for(int j = 0; j < gmresSize; ++j){
+    const dfloat yj = y[j];
+    #pragma unroll
+    for(int fld = 0; fld < p_eNfields; fld++){
+      for(dlong n = 0; n < N; ++n) {
+        const dfloat Vnj = V[n + fld * offset + j * offset * p_eNfields];
+        w[n + fld * offset] -= yj * Vnj;
       }
-      w[id + fld * offset] = w_new;
     }
   }
-
-  reduction[0] = rdotr;
+  dfloat sum = 0.0;
+  #pragma unroll
+  for(int fld = 0; fld < p_eNfields; fld++){
+    for(dlong n = 0 ; n < N; ++n){
+      const dfloat weight = weights[n];
+      const dfloat w_curr = w[n + fld * offset];
+      sum += w_curr * w_curr * weight;
+    }
+  }
+  reduction[0] = sum;
 }
