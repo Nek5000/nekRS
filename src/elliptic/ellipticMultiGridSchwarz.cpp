@@ -665,15 +665,27 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   //use the bc flags to find masked ids
   dlong Nmasked = 0;
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-    if (mapB[n] == bigNum)
+    const dlong node = n % mesh->Np;
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
+    if (isEdgeNode)
+      Nmasked++;
+    else if (mapB[n] == bigNum)
       mapB[n] = 0.;
     else if (mapB[n] == 1)     //Dirichlet boundary
       Nmasked++;
   }
   dlong* maskIds = (dlong*) calloc(Nmasked, sizeof(dlong));
   Nmasked = 0;
-  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
+  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++){
+    const dlong node = n % mesh->Np;
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
+    else if (isEdgeNode) maskIds[Nmasked++] = n;
+  }
   //make a masked version of the global id numbering
   memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)

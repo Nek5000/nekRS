@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mesh3D.h"
+#include <vector>
 #define NODE_GEN
 
 void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
@@ -126,4 +127,29 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
         (mesh->t[n] - 1) * (mesh->t[n] - 1) < NODETOL)
       mesh->vertexNodes[7] = n;
   }
+
+  std::vector<int> _edgeNodes;
+  for(int n = 0; n < mesh->Np; ++n) {
+    const dfloat r = mesh->r[n];
+    const dfloat s = mesh->s[n];
+    const dfloat t = mesh->t[n];
+    if( (r+1)*(r+1) + (s+1)*(s+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r+1)*(r+1) + (s-1)*(s-1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r-1)*(r-1) + (s+1)*(s+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r-1)*(r-1) + (s-1)*(s-1) < NODETOL) _edgeNodes.push_back(n);
+
+    if( (r+1)*(r+1) + (t+1)*(t+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r+1)*(r+1) + (t-1)*(t-1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r-1)*(r-1) + (t+1)*(t+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (r-1)*(r-1) + (t-1)*(t-1) < NODETOL) _edgeNodes.push_back(n);
+
+    if( (s+1)*(s+1) + (t+1)*(t+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (s+1)*(s+1) + (t-1)*(t-1) < NODETOL) _edgeNodes.push_back(n);
+    if( (s-1)*(s-1) + (t+1)*(t+1) < NODETOL) _edgeNodes.push_back(n);
+    if( (s-1)*(s-1) + (t-1)*(t-1) < NODETOL) _edgeNodes.push_back(n);
+  }
+
+  mesh->edgeNodes = (int*) calloc(_edgeNodes.size(), sizeof(int));
+  memcpy(mesh->edgeNodes, _edgeNodes.data(), _edgeNodes.size() * sizeof(int));
+  mesh->NedgeNodes = _edgeNodes.size();
 }
