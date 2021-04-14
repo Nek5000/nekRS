@@ -80,10 +80,16 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     const string oklpath = install_dir + "/okl/elliptic/";
     string filename;
 
-    filename = serial ? oklpath + "ellipticUpdatePGMRES.c" : oklpath + "ellipticUpdatePGMRES.okl";
-    occa::properties gmresKernelInfo = kernelInfo;
-    if(serial) gmresKernelInfo["okl/enabled"] = false;
+    occa::properties gmresKernelInfo = platform->kernelInfo;
     gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
+    gmresKernelInfo["defines/" "p_Nfields"] = elliptic->Nfields;
+    if(serial) gmresKernelInfo["okl/enabled"] = false;
+    filename = serial ? oklpath + "ellipticGramSchmidtOrthogonalization.c" : oklpath + "ellipticGramSchmidtOrthogonalization.okl";
+    elliptic->gramSchmidtOrthogonalizationKernel =
+      platform->device.buildKernel(filename,
+                               "gramSchmidtOrthogonalization",
+                               gmresKernelInfo);
+    filename = serial ? oklpath + "ellipticUpdatePGMRES.c" : oklpath + "ellipticUpdatePGMRES.okl";
     elliptic->updatePGMRESSolutionKernel =
       platform->device.buildKernel(filename,
                                "updatePGMRESSolution",
@@ -92,17 +98,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     elliptic->fusedResidualAndNormKernel =
       platform->device.buildKernel(filename,
                                "fusedResidualAndNorm",
-                               gmresKernelInfo);
-    filename = serial? oklpath + "ellipticFusedGramSchmidt.c" : oklpath + "ellipticFusedGramSchmidt.okl";
-    gmresKernelInfo["defines/" "p_lastIter"] = 0;
-    elliptic->fusedGramSchmidtKernel =
-      platform->device.buildKernel(filename,
-                               "fusedGramSchmidt",
-                               gmresKernelInfo);
-    gmresKernelInfo["defines/" "p_lastIter"] = 1;
-    elliptic->fusedGramSchmidtLastIterKernel =
-      platform->device.buildKernel(filename,
-                               "fusedGramSchmidt",
                                gmresKernelInfo);
   }
 
