@@ -167,11 +167,7 @@
     @shared dfloat s_flux[p_blockSize];
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-        //for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq) s_flux[k] = 0.0;
-        if(i == 0 && j == 0){
-          for(int k = 0; k < p_blockSize; ++k)
-            s_flux[k] = 0.0;
-        }
+        for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq) s_flux[k] = 0.0;
       }
     }
     @barrier("local");

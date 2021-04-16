@@ -255,6 +255,7 @@ void timer_t::printRunStat()
   dEtime[13] = query("udfUEqnSource", "DEVICE:MAX");
   dEtime[14] = query("udfSEqnSource", "DEVICE:MAX");
   dEtime[15] = query("udfProperties", "DEVICE:MAX");
+  dEtime[16] = query("avm", "DEVICE:MAX");
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
@@ -301,6 +302,9 @@ void timer_t::printRunStat()
 
     if(dEtime[15] > 0)
     std::cout << "    udfProperties       " << dEtime[15] << " s\n"
+              << std::endl;
+    if(dEtime[16] > 0)
+    std::cout << "  avm                   " << dEtime[16] << " s\n"
               << std::endl;
 
     if(hEtime[1] > 0)

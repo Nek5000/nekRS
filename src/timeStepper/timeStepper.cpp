@@ -8,8 +8,39 @@
 #include "tombo.hpp"
 #include "cfl.hpp"
 #include "linAlg.hpp"
-
 #include "timeStepper.hpp"
+#include "avm.hpp"
+
+void evaluateProperties(nrs_t* nrs, const double timeNew, const bool copyToHost)
+{
+  cds_t* cds = nrs->cds;
+  if(udf.properties) {
+    platform->timer.tic("udfProperties", 1);
+    occa::memory o_S = platform->o_mempool.slice0;
+    occa::memory o_SProp = platform->o_mempool.slice0;
+    if(nrs->Nscalar) {
+      o_S = cds->o_S;
+      o_SProp = cds->o_prop;
+    }
+    udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
+    platform->timer.toc("udfProperties");
+  }
+  if(nrs->Nscalar){
+    cds_t* cds = nrs->cds;
+    for(int is = 0 ; is < cds->NSfields; ++is){
+      if(cds->options[is].compareArgs("FILTER STABILIZATION", "AVM")){
+        platform->timer.tic("avm",1);
+        avm::apply(cds, timeNew, is, cds->o_S);
+        platform->timer.toc("avm");
+      }
+    }
+  }
+
+  if(copyToHost){
+    nrs->o_prop.copyTo(nrs->prop);
+    if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
+  }
+}
 
 namespace timeStepper {
 
@@ -151,17 +182,7 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     if(nrs->Nscalar)
       scalarSolve(nrs, timeNew, cds->o_S, stage); 
 
-    if(udf.properties) {
-      platform->timer.tic("udfProperties", 1);
-      occa::memory o_S = platform->o_mempool.slice0;
-      occa::memory o_SProp = platform->o_mempool.slice0;
-      if(nrs->Nscalar) {
-        o_S = cds->o_S;
-        o_SProp = cds->o_prop;
-      }
-      udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
-      platform->timer.toc("udfProperties");
-    }
+    evaluateProperties(nrs, timeNew, false);
 
     if(udf.div){
       linAlg_t* linAlg = platform->linAlg;
@@ -255,15 +276,17 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
     const dlong isOffset = cds->fieldOffsetScan[is];
 
-    if(cds->options[is].compareArgs("FILTER STABILIZATION", "RELAXATION"))
+    if(cds->options[is].compareArgs("FILTER STABILIZATION", "RELAXATION")){
       cds->filterRTKernel(
         cds->meshV->Nelements,
-        nrs->o_filterMT,
-        nrs->filterS,
+        is,
+        cds->o_filterMT,
+        cds->filterS[is],
         isOffset,
         cds->o_rho,
         cds->o_S,
         o_FS);
+    }
     const int movingMesh = cds->options[is].compareArgs("MOVING MESH", "TRUE");
     if(movingMesh && !cds->Nsubsteps){
       cds->advectMeshVelocityKernel(

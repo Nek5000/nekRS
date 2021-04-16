@@ -134,18 +134,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     nrs->cds->o_prop.copyFrom(nrs->cds->prop);
   }
 
-  if(udf.properties) {
-    occa::memory o_S = platform->o_mempool.slice0;
-    occa::memory o_SProp = platform->o_mempool.slice0;
-    if(nrs->Nscalar) {
-      o_S = nrs->cds->o_S;
-      o_SProp = nrs->cds->o_prop;
-    }
-    udf.properties(nrs, startTime(), nrs->o_U, o_S,
-                   nrs->o_prop, o_SProp);
-    nrs->o_prop.copyTo(nrs->prop);
-    if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
-  }
+  evaluateProperties(nrs, startTime(), true);
 
   nek::ocopyToNek(startTime(), 0);
 
