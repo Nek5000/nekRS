@@ -192,7 +192,8 @@ set(SRC
     src/core/utils/tinyexpr.c
     src/core/setupAide.cpp
     src/core/cfl.cpp
-    src/core/filter.cpp
+    src/regularization/filter.cpp
+    src/regularization/avm.cpp
     src/core/bcMap.cpp
     src/core/setup.cpp
     src/timeStepper/timeStepper.cpp
@@ -245,6 +246,7 @@ target_include_directories(nekrs-lib
   src/lib
   src/io
   src/udf
+  src/regularization
   src/linAlg
   src/timeStepper
   src/lns

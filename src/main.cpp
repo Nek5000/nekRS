@@ -115,6 +115,15 @@ int main(int argc, char** argv)
   if (cmdOpt->debug) {
     if (rank == 0) {
       std::cout << "Attach debugger, then press enter to continue\n";
+    }
+    printf("\tRank\tpid\n");
+    for(int currRank = 0; currRank < size; ++currRank)
+    {
+      if(rank == currRank){
+        printf("\t%d\t%d\n", rank, ::getpid());
+      }
+    }
+    if (rank == 0) {
       std::cin.get();
     }
     MPI_Barrier(comm);

@@ -61,6 +61,9 @@ public:
   // o_a[n] = alpha
   void fill(const dlong N, const dfloat alpha, occa::memory& o_a);
 
+  // o_a[n] = abs(o_a[n])
+  void abs(const dlong N, occa::memory& o_a);
+
   // o_a[n] *= alpha
   void scale(const dlong N, const dfloat alpha, occa::memory& o_a);
   void scaleMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const dfloat alpha, occa::memory& o_a, const dlong offset = 0);
@@ -164,6 +167,7 @@ public:
                             occa::memory& o_y, MPI_Comm _comm);
 
   occa::kernel fillKernel;
+  occa::kernel absKernel;
   occa::kernel addKernel;
   occa::kernel scaleKernel;
   occa::kernel scaleManyKernel;
