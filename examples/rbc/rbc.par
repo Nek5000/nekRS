@@ -4,7 +4,7 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL] 
 polynomialOrder = 9
-#startFrom = restart.fld
+#startFrom = "restart.fld"
 stopAt = endTime
 endTime = 100 
 

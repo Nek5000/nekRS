@@ -5,7 +5,7 @@ deviceNumber = LOCAL-RANK
 [GENERAL]
 #verbose = true 
 polynomialOrder = 9
-#startFrom = restart.fld
+#startFrom = "restart.fld"
 stopAt = numSteps
 numSteps = 100 
 dt = 2e-03
