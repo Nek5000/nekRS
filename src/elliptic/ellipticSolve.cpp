@@ -80,7 +80,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
 
   if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    platform->timer.tic("pre",1);
+    platform->timer.tic(elliptic->name + " proj pre",1);
     elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
     elliptic->res00Norm = 
       platform->linAlg->weightedNorm2Many(
@@ -97,7 +97,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       ABORT(EXIT_FAILURE);
     }
     elliptic->residualProjection->pre(o_r);
-    platform->timer.toc("pre");
+    platform->timer.toc(elliptic->name + " proj pre");
   }
 
   elliptic->res0Norm = 
@@ -146,9 +146,9 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       1.0,
       o_x
     );
-    platform->timer.tic("post",1);
+    platform->timer.tic(elliptic->name + " proj post",1);
     elliptic->residualProjection->post(o_x);
-    platform->timer.toc("post");
+    platform->timer.toc(elliptic->name + " proj post");
     platform->linAlg->axpbyMany(
       mesh->Nlocal,
       elliptic->Nfields,

@@ -392,35 +392,6 @@ mesh_t *createMeshV(
 
 void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 {
-  
-  // find elements that have all neighbors on this process
-  dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
-  dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
-
-  dlong Ninterior = 0, NnotInterior = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e) {
-    int flag = 0;
-    for(int f = 0; f < mesh->Nfaces; ++f)
-      if(mesh->EToP[e * mesh->Nfaces + f] != -1)
-        flag = 1;
-    if(!flag)
-      internalElementIds[Ninterior++] = e;
-    else
-      notInternalElementIds[NnotInterior++] = e;
-  }
-
-  mesh->NinternalElements = Ninterior;
-  mesh->NnotInternalElements = NnotInterior;
-  if(Ninterior)
-    mesh->o_internalElementIds    = platform->device.malloc(Ninterior * sizeof(dlong),
-                                                        internalElementIds);
-  if(NnotInterior > 0)
-    mesh->o_notInternalElementIds = platform->device.malloc(NnotInterior * sizeof(dlong),
-                                                        notInternalElementIds);
-
-  free(internalElementIds);
-  free(notInternalElementIds);
-
   if(mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE
     mesh->o_haloElementList =

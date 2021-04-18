@@ -82,10 +82,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   mesh_t* mesh = nrs->meshV;
 
   { 
-    dlong minVal = mesh->NinternalElements; 
-    MPI_Allreduce(MPI_IN_PLACE,&minVal,1,MPI_DLONG,MPI_MIN,platform->comm.mpiComm);
+    double val = (double)mesh->NlocalGatherElements/mesh->Nelements; 
+    MPI_Allreduce(MPI_IN_PLACE,&val,1,MPI_DOUBLE,MPI_MIN,platform->comm.mpiComm);
     if(platform->comm.mpiRank == 0) 
-      printf("min NinternalElements: %d (ratio: %4.2f)\n", minVal, (double)minVal/mesh->Nelements);
+      printf("min %2.0f%% of the local elements are internal\n", 100*val);
   }
 
   occa::properties kernelInfoV  = kernelInfo;
@@ -589,6 +589,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       }
  
       cds->solver[is] = new elliptic_t();
+      cds->solver[is]->name = "scalar" + sid;
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
       cds->solver[is]->Ntotal = nrs->fieldOffset;
@@ -742,6 +743,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         ellipticSolveSetup(nrs->wSolver, kernelInfoV);
       }
     }
+
+    if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE")) {
+      nrs->uvwSolver->name = "velocity";
+    } else {
+      nrs->uSolver->name = "velocity";
+      nrs->vSolver->name = "velocity";
+      nrs->wSolver->name = "velocity";
+    }
   } // flow
 
   if (nrs->flow) {
@@ -781,6 +790,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
 
     nrs->pSolver = new elliptic_t();
+    nrs->pSolver->name = "pressure";
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
     nrs->pSolver->Ntotal = nrs->fieldOffset;

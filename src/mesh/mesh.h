@@ -92,9 +92,6 @@ struct mesh_t
   void* haloSendRequests;
   void* haloRecvRequests;
 
-  dlong NinternalElements; // number of elements that can update without halo exchange
-  dlong NnotInternalElements; // number of elements that cannot update without halo exchange
-
   // CG gather-scatter info
   hlong* globalIds;
   void* gsh, * hostGsh; // gslib struct pointer
@@ -209,9 +206,6 @@ struct mesh_t
   occa::memory o_haloBuffer;
   occa::memory o_haloGetNodeIds;
   occa::memory o_haloPutNodeIds;
-
-  occa::memory o_internalElementIds;
-  occa::memory o_notInternalElementIds;
 
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors

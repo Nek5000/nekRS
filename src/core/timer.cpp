@@ -235,12 +235,15 @@ void timer_t::printRunStat()
   double dEtime[20];
   dEtime[0] = query("makef", "DEVICE:MAX");
   dEtime[1] = query("velocitySolve", "DEVICE:MAX");
+  dEtime[17] = query("velocity proj pre", "DEVICE:MAX");
+  dEtime[17]+= query("velocity proj post", "DEVICE:MAX");
   dEtime[2] = query("pressureSolve", "DEVICE:MAX");
   dEtime[3] = query("makeq", "DEVICE:MAX");
   dEtime[4] = query("scalarSolve", "DEVICE:MAX");
-  dEtime[5] = query("mg preconditioner", "DEVICE:MAX");
-  dEtime[6] = query("pre", "DEVICE:MAX");
-  dEtime[6]+= query("post", "DEVICE:MAX");
+  dEtime[5] = query("pressure preconditioner", "DEVICE:MAX");
+  dEtime[16] = query("pressure preconditioner smoother", "DEVICE:MAX");
+  dEtime[6] = query("pressure proj pre", "DEVICE:MAX");
+  dEtime[6]+= query("pressure proj post", "DEVICE:MAX");
 
   dEtime[8] = query("dotp", "DEVICE:MAX");
 
@@ -270,36 +273,40 @@ void timer_t::printRunStat()
     if(dEtime[12] > 0)
     std::cout << "  udfExecuteStep        " << dEtime[12] << " s\n";
 
-    std::cout << "  computation           " << dEtime[9]+dEtime[12] << " s\n"
-  	      << "  makef                 " << dEtime[0] << " s\n";
+    std::cout << "  total solve           " << dEtime[9] << " s\n"
+  	      << "    makef               " << dEtime[0] << " s\n";
     if(dEtime[13] > 0)
-    std::cout << "    udfUEqnSource       " << dEtime[13] << " s\n";
-    std::cout << "  velocitySolve         " << dEtime[1] << " s\n"
-              << "  pressureSolve         " << dEtime[2] << " s\n";
+    std::cout << "      udfUEqnSource     " << dEtime[13] << " s\n";
+    std::cout << "    velocitySolve       " << dEtime[1] << " s\n";
+    if(dEtime[17] > 0)
+    std::cout << "      projection        " << dEtime[17] << " s\n";
 
-    std::cout << "    preconditioner      " << dEtime[5] << " s\n"
-              << "      coarse grid       " << hEtime[0] << " s\n";
+    std::cout << "    pressureSolve       " << dEtime[2] << " s\n"
+              << "      preconditioner    " << dEtime[5] << " s\n";
+    if(dEtime[16] > 0)
+    std::cout << "        pMG smoother    " << dEtime[16] << " s\n";
+    if(hEtime[0] > 0)
+    std::cout << "        coarse grid     " << hEtime[0] << " s\n";
+    if(dEtime[6] > 0)
+    std::cout << "      projection        " << dEtime[6] << " s\n";
 
     if(dEtime[14] > 0)
-    std::cout << "  scalarSolve           " << dEtime[4] << " s\n"
+    std::cout << "    scalarSolve         " << dEtime[4] << " s\n"
               << std::endl;
     if(dEtime[4] > 0) {
-    std::cout << "  makeq                 " << dEtime[3] << " s\n";
+    std::cout << "    makeq               " << dEtime[3] << " s\n";
      if(dEtime[14] > 0)
-    std::cout << "    udfSEqnSource       " << dEtime[14] << " s\n";
+    std::cout << "      udfSEqnSource     " << dEtime[14] << " s\n";
     }
 
     if(dEtime[15] > 0)
-    std::cout << "  udfProperties         " << dEtime[15] << " s\n"
+    std::cout << "    udfProperties       " << dEtime[15] << " s\n"
               << std::endl;
 
-    if(dEtime[6] > 0)
-    std::cout << "  residual projection   " << dEtime[6] << " s\n";
-
     if(hEtime[1] > 0)
-    std::cout << "  gsMPI                 " << hEtime[1] << " s (without overlap)\n";
+    std::cout << "    gsMPI               " << hEtime[1] << " s\n";
     if(dEtime[8] > 0)
-    std::cout << "  dotp                  " << dEtime[8] << " s\n";
+    std::cout << "    dotp                " << dEtime[8] << " s\n";
 
     std::cout << std::endl;
 

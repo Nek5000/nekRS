@@ -54,15 +54,14 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
 {
-  
-  if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
+  if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) 
     platform->linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
 
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     oogs::startFinish(o_Rx, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
-    if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
+    //if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
   }
 }
 
@@ -73,6 +72,7 @@ void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
+  platform->timer.tic(elliptic->name + " preconditioner smoother", 1);
   if(!x_is_zero && stype == SmootherType::SCHWARZ) return;
   if(!strstr(pfloatString,dfloatString)) {
     elliptic->fusedCopyDfloatToPfloatKernel(Nrows, o_x, o_rhs, o_xPfloat, o_rhsPfloat);
@@ -87,6 +87,7 @@ void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
     else
       this->smoothSchwarz(o_rhs, o_x, x_is_zero);
   }
+  platform->timer.toc(elliptic->name + " preconditioner smoother");
 }
 
 void MGLevel::smoother(occa::memory o_x, occa::memory o_Sx, bool x_is_zero)

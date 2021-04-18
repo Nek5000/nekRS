@@ -39,6 +39,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
+  platform->timer.tic(elliptic->name + " preconditioner", 1);
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     platform->linAlg->axmyzMany(
       Nlocal,
@@ -50,14 +51,13 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
       o_z
     );
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    platform->timer.tic("mg preconditioner", 1);
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
-    platform->timer.toc("mg preconditioner");
   }else {
     if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(platform->comm.mpiComm, 1);
     //o_z.copyFrom(o_r);
   }
+  platform->timer.toc(elliptic->name + " preconditioner");
 
   if(elliptic->allNeumann) // zero mean of RHS
     ellipticZeroMean(elliptic, o_z);

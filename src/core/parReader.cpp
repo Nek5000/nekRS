@@ -208,17 +208,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   par->extract("general", "extrapolation", extrapolation);
   if(extrapolation == "oifs" || extrapolation == "subcycling") {
     double targetCFL;
-    int NSubCycles = 0;
+    int NSubCycles = 1;
 
     if(par->extract("general", "targetcfl", targetCFL))
       NSubCycles = round(targetCFL / 2);
     if(par->extract("general", "subcyclingsteps", NSubCycles));
-    if(!NSubCycles) NSubCycles = 1;
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
-
-    int Sorder;
-    if(par->extract("general", "subcyclingorder", Sorder))
-      options.setArgs("SUBCYCLING TIME ORDER", std::to_string(Sorder));
   }
 
   double writeInterval = 0;

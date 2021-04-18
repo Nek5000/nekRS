@@ -68,6 +68,8 @@ struct elliptic_t
   int var_coeff;   // flag for variable coefficient
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
 
+  string name;
+
   int Niter;
   dfloat res00Norm, res0Norm, resNorm;
 
