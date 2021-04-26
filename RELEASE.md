@@ -59,7 +59,31 @@ asked and answered questions, and were part of inspiring discussions.
 
 ## Thanks to our Contributors
 
+@RonRahaman, @aprilnovak, @roystgnr, @yslan, @pwang234
+
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.
 
 A special thanks goes to the CAPS Lab at ETHZ who helped to develop the moving mesh support. 
+
+# Release v20.0
+
+## What is new? 
+
+* Initial release
+
+## What you may have to change to be compatible 
+
+* n/a 
+
+## Known Bugs 
+
+[80](https://github.com/Nek5000/nekRS/issues/80)
+
+## Thanks to our Contributors
+
+@AliKarakus, @thilinarmtb, @noelchalmers and @tcew for helping 
+
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.
+
