@@ -41,6 +41,7 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_DELTA"] = P_DELTA;
   userQKernel = udfBuildKernel(nrs, "userQ");
   userVpKernel = udfBuildKernel(nrs, "userVp");
+  lowMach::buildKernel(nrs);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

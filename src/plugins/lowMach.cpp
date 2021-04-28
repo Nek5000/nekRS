@@ -19,7 +19,9 @@ static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
 static occa::kernel surfaceFluxKernel;
 
-void buildKernels(nrs_t* nrs)
+}
+
+void lowMach::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->meshV;
   occa::properties kernelInfo = *(nrs->kernelInfo);
@@ -40,8 +42,6 @@ void buildKernels(nrs_t* nrs)
   }
 }
 
-}
-
 void lowMach::setup(nrs_t* nrs, dfloat gamma)
 {
   the_nrs = nrs;
@@ -54,7 +54,6 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
     if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
-  buildKernels(nrs);
   platform->options.setArgs("LOWMACH", "TRUE"); 
 }
 
