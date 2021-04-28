@@ -84,7 +84,8 @@ Please visit [Discussions](https://github.com/Nek5000/nekRS/discussions) on [Git
 nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature on GitHub. If you are having trouble installing the code or getting your model to run properly, you should first vist our [dicussions](https://github.com/Nek5000/nekRS/discussions) forum on GitHub.
 
 ## Contributing
-Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it. If you are planning a large contribution, we encourage you to discuss the concept here on GitHub and interact with us frequently to ensure that your effort is well-directed.
+Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it.
+For more details see CONTRIBUTING.md.
 
 ## License
 nekRS is released under the BSD 3-clause license (see LICENSE file). 
