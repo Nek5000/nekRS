@@ -5,7 +5,7 @@
 [![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.com/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code started as a fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming across different backends [OCCA](https://github.com/libocca/occa) is used.  
+**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code started as an early fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For portable programming [OCCA](https://github.com/libocca/occa) is used.  
 
 Capabilities:
 
@@ -60,7 +60,7 @@ add the following line to your $HOME/.bash_profile:
 
 ```sh
 export NEKRS_HOME=$HOME/.local/nekrs
-PATH=${NEKRS_HOME}/bin:${PATH}
+export PATH=$NEKRS_HOME/bin:$PATH
 ```
 then type `source $HOME/.bash_profile` in the current terminal window. 
 
