@@ -19,7 +19,7 @@ writeInterval = 1
 
 filtering = hpfrt
 filterWeight = 8
-filterModes = 20
+filterModes = 2
 
 [PRESSURE]
 residualTol = 1e-04
