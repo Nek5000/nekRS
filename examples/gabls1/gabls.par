@@ -18,7 +18,7 @@ writeControl = runTime
 writeInterval = 100
 
 filtering = hpfrt
-filterWeight = 5
+filterWeight = 0.05/${dt}
 filterModes = 1
 
 [PRESSURE]
