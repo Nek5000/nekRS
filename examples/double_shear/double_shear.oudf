@@ -1,0 +1,28 @@
+@kernel void userQ(
+  const dlong N,
+  const dlong offset,
+  @restrict const dfloat* U,
+  @restrict dfloat* FS)
+{
+  for(dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+  {
+    const dfloat ux = U[n + 0 * offset];
+    const dfloat uy = U[n + 1 * offset];
+    const dfloat uz = U[n + 2 * offset];
+    const dfloat Umag = sqrt(ux*ux + uy*uy + uz*uz);
+    FS[n] = Umag;
+  }
+}
+
+// Boundary conditions
+void velocityDirichletConditions(bcData *bc)
+{                                                                        
+  bc->u = 0.0;
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+
+void scalarDirichletConditions(bcData *bc)
+{                                                                        
+  bc->s = 0.0;
+}

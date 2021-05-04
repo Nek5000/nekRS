@@ -1,0 +1,26 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL] 
+numSteps = 2000
+polynomialOrder = 5
+cubaturePolynomialOrder = 5
+dt = 1e-03
+
+# without this regularization, the simulation will crash
+#regularization=hpfrt+nmodes=1+strength=0.05
+
+[PRESSURE]
+residualTol = 1e-08
+
+[VELOCITY]
+residualTol = 1e-8
+density = 1.
+viscosity = -100000
+
+[TEMPERATURE]
+residualTol = 1e-8
+rhocp = 1.
+conductivity = -100000
+regularization=avm+vismaxcoeff=0.25
