@@ -4,12 +4,11 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL] 
 numSteps = 2000
-polynomialOrder = 5
-cubaturePolynomialOrder = 5
+#numSteps = 1
+polynomialOrder = 9
 dt = 1e-03
-
-# without this regularization, the simulation will crash
-#regularization=hpfrt+nmodes=1+strength=0.05
+timestepper = bdf3
+regularization=hpfrt+nmodes=2+strength=0.05/${dt}
 
 [PRESSURE]
 residualTol = 1e-08
@@ -20,7 +19,45 @@ density = 1.
 viscosity = -100000
 
 [TEMPERATURE]
+residualProj = true
 residualTol = 1e-8
-rhocp = 1.
+rhocp = 1
 conductivity = -100000
-regularization=avm+vismaxcoeff=0.25
+regularization=none
+
+[SCALAR01]
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=none
+
+[SCALAR02]
+dt = 1e-03 # duplication required for below
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=hpfrt+nmodes=2+strength=0.05/${dt}
+
+[SCALAR03]
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+nmodes=2+vismaxcoeff=0.1
+
+# Demonstrate how different AVM strengths smooth the contours
+[SCALAR04]
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+nmodes=2+vismaxcoeff=0.25
+
+[SCALAR05]
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+nmodes=2+vismaxcoeff=0.5

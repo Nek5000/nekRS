@@ -5,22 +5,8 @@
 #include <math.h>
 #include "udf.hpp"
 
-/* UDF Functions */   
-static occa::kernel userQKernel;
-
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
-{
-  mesh_t *mesh = nrs->meshV;
-  platform->linAlg->fill(mesh->Nlocal, 1.0, o_FS);
-  userQKernel(mesh->Nlocal,
-    nrs->fieldOffset,
-    nrs->o_U,
-    o_FS);
-}
-
 void UDF_LoadKernels(nrs_t *nrs)
 {
-  userQKernel = udfBuildKernel(nrs, "userQ");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -29,7 +15,6 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  udf.sEqnSource = &userq;
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
