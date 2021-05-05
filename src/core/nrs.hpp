@@ -30,6 +30,7 @@ struct nrs_t
   elliptic_t* wSolver;
   elliptic_t* uvwSolver;
   elliptic_t* pSolver;
+  elliptic_t* meshSolver;
 
   cds_t* cds;
 
@@ -41,7 +42,7 @@ struct nrs_t
 
   int Nscalar;
   dlong fieldOffset;
-  setupAide vOptions, pOptions;
+  setupAide vOptions, pOptions, mOptions;
 
   inipp::Ini<char> *par;
 
@@ -78,7 +79,9 @@ struct nrs_t
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
   int* VmapB;
+  int* VmapBMesh;
   occa::memory o_VmapB;
+  occa::memory o_VmapBMesh;
 
   int Nsubsteps;
   dfloat* Ue, sdt;
@@ -89,6 +92,7 @@ struct nrs_t
 
   dfloat rho, mue;
   occa::memory o_rho, o_mue;
+  occa::memory o_meshRho, o_meshMue;
 
   dfloat* usrwrk;
   occa::memory o_usrwrk;
@@ -168,7 +172,9 @@ struct nrs_t
   occa::kernel maskCopyKernel;
 
   int* EToB;
+  int* EToBMesh;
   occa::memory o_EToB;
+  occa::memory o_EToBMesh;
 
   occa::properties* kernelInfo;
 };

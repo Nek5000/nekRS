@@ -59,6 +59,11 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
+  options.setArgs("MESH KRYLOV SOLVER", "PCG");
+  options.setArgs("MESH BASIS", "NODAL");
+  options.setArgs("MESH PRECONDITIONER", "JACOBI");
+  options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
+
   options.setArgs("STRESSFORMULATION", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
@@ -266,8 +271,43 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   if(par->extract("mesh", "solver", meshSolver)){
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+    if(meshSolver == "elasticity") options.setArgs("MESH SOLVER", "ELASTICITY");
     if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
   }
+
+  bool m_rproj;
+  if(par->extract("mesh", "residualproj", m_rproj) ||
+     par->extract("mesh", "residualprojection", m_rproj)) {
+    if(m_rproj) {
+      options.setArgs("MESH RESIDUAL PROJECTION", "TRUE");
+      options.setArgs("MESH INITIAL GUESS DEFAULT","PREVIOUS STEP");
+    } else {
+      options.setArgs("MESH RESIDUAL PROJECTION", "FALSE");
+    }
+  }
+  int m_nProjVec;
+  if(par->extract("mesh", "residualprojectionvectors", m_nProjVec))
+    options.setArgs("MESH RESIDUAL PROJECTION VECTORS", std::to_string(m_nProjVec));
+  int m_nProjStep;
+  if(par->extract("mesh", "residualprojectionstart", m_nProjStep))
+    options.setArgs("MESH RESIDUAL PROJECTION START", std::to_string(m_nProjStep));
+
+  double m_residualTol;
+  if(par->extract("mesh", "residualtol", m_residualTol) ||
+     par->extract("mesh", "residualtoltolerance", m_residualTol))
+    options.setArgs("MESH SOLVER TOLERANCE", to_string_f(m_residualTol));
+
+  int bcInPar = 1;
+  string m_bcMap;
+  if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
+    std::vector<std::string> sList;
+    sList = serializeString(m_bcMap,',');
+    bcMap::setup(sList, "mesh");
+    bcInPar = 1;
+  } else {
+    bcInPar = 0;
+  }
+
 
   bool stressFormulation;
   if(par->extract("problemtype", "stressformulation", stressFormulation))
@@ -279,7 +319,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     if(eqn == "stokes" ) options.setArgs("ADVECTION", "FALSE");
   }
 
-  int bcInPar = 1;
   if(par->sections.count("velocity")) {
     // PRESSURE
     double p_residualTol;

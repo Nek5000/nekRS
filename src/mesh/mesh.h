@@ -47,7 +47,6 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
-  void solve();
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration

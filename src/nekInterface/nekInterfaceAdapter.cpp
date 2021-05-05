@@ -39,7 +39,7 @@ static int (* nek_lglel_ptr)(int*);
 static void (* nek_setup_ptr)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int, int);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
-static int (* nek_bcmap_ptr)(int*, int*);
+static int (* nek_bcmap_ptr)(int*, int*,int*);
 static void (* nek_gen_bcmap_ptr)(void);
 static int (* nek_nbid_ptr)(int*);
 static long long (* nek_set_vert_ptr)(int*, int*);
@@ -290,7 +290,7 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_setics_ptr = (void (*)(void))dlsym(handle,fname("nekf_setics"));
   check_error(dlerror());
-  nek_bcmap_ptr = (int (*)(int*, int*))dlsym(handle,fname("nekf_bcmap"));
+  nek_bcmap_ptr = (int (*)(int*, int*,int*))dlsym(handle,fname("nekf_bcmap"));
   check_error(dlerror());
   nek_gen_bcmap_ptr = (void (*)(void))dlsym(handle,fname("nekf_gen_bcmap"));
   check_error(dlerror());
@@ -523,9 +523,9 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
 }
 
 namespace nek{
-int bcmap(int bid, int ifld)
+int bcmap(int bid, int ifld, int isMesh)
 {
-  return (*nek_bcmap_ptr)(&bid, &ifld);
+  return (*nek_bcmap_ptr)(&bid, &ifld, &isMesh);
 }
 
 void gen_bcmap()
@@ -655,8 +655,12 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
       int isTMesh = 0;
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
       int* map = (int*) calloc(nIDs, sizeof(int));
-      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1);
+      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 0);
       bcMap::setBcMap("velocity", map, nIDs);
+
+      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 1);
+      bcMap::setBcMap("mesh", map, nIDs);
+
       free(map);
     }
     for(int is = 0; is < nscal; is++) {
@@ -669,7 +673,7 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
 
       int* map = (int*) calloc(nIDs, sizeof(int));
-      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, is + 2);
+      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, is + 2, 0);
       bcMap::setBcMap("scalar" + sid, map, nIDs);
       free(map);
     }

@@ -515,13 +515,13 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer function nekf_bcmap(bID, ifld)
+      integer function nekf_bcmap(bID, ifld, ismesh)
 
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
 
-      integer bID, ifld
+      integer bID, ifld, ismesh
       character*3 c
 
       if (bID < 1) then ! not a boundary
@@ -535,8 +535,13 @@ c-----------------------------------------------------------------------
       if (ifld.eq.1) then
         if (c.eq.'W  ') then 
           ibc = 1
+        else if (c.eq.'mv ') then 
+          ibc = 2
         else if (c.eq.'v  ') then 
           ibc = 2
+          !if(ismesh.gt.0) then
+          ! ibc = 1 ! fixed value for mesh
+          !endif
         else if (c.eq.'o  ' .or. c.eq.'O  ') then 
           ibc = 3
         else if (c.eq.'SYX') then 
@@ -679,6 +684,7 @@ c
            cb = cbc(ifc,iel,1) 
            if(cb.eq.'W  ') map(1) = 1
            if(cb.eq.'v  ') map(2) = 1
+           if(cb.eq.'mv ') map(2) = 1
            if(cb.eq.'o  ' .or. cb.eq.'O  ') map(3) = 1
            if(cb.eq.'SYM') then
              call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
@@ -716,6 +722,8 @@ c
          if(cb.eq.'W  ') then
            boundaryID(ifc,iel) = map(1) 
          else if(cb.eq.'v  ') then
+           boundaryID(ifc,iel) = map(2) 
+         else if(cb.eq.'mv ') then
            boundaryID(ifc,iel) = map(2) 
          else if(cb.eq.'o  ' .or. cb.eq.'O  ') then
            boundaryID(ifc,iel) = map(3) 

@@ -240,6 +240,7 @@ void timer_t::printRunStat()
   dEtime[2] = query("pressureSolve", "DEVICE:MAX");
   dEtime[3] = query("makeq", "DEVICE:MAX");
   dEtime[4] = query("scalarSolve", "DEVICE:MAX");
+  dEtime[18] = query("meshSolve", "DEVICE:MAX");
   dEtime[5] = query("pressure preconditioner", "DEVICE:MAX");
   dEtime[16] = query("pressure preconditioner smoother", "DEVICE:MAX");
   dEtime[6] = query("pressure proj pre", "DEVICE:MAX");
@@ -292,6 +293,9 @@ void timer_t::printRunStat()
 
     if(dEtime[14] > 0)
     std::cout << "    scalarSolve         " << dEtime[4] << " s\n"
+              << std::endl;
+    if(dEtime[18] > 0)
+    std::cout << "    meshSolve           " << dEtime[18] << " s\n"
               << std::endl;
     if(dEtime[4] > 0) {
     std::cout << "    makeq               " << dEtime[3] << " s\n";
