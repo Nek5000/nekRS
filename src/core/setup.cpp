@@ -327,8 +327,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if(platform->options.compareArgs("FILTER STABILIZATION", "RELAXATION")){
 
+    nrs->filterNc = -1;
     dfloat filterS;
     platform->options.getArgs("HPFRT STRENGTH", filterS);
+    platform->options.getArgs("HPFRT MODES", nrs->filterNc);
     filterS = -1.0 * fabs(filterS);
     nrs->filterS = filterS;
 
@@ -1102,7 +1104,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     for(int is = 0; is < cds->NSfields; is++)
     {
       if(cds->options[is].compareArgs("FILTER STABILIZATION", "NONE")) continue;
-      int filterNc;
+      int filterNc = -1;
       cds->options[is].getArgs("HPFRT MODES", filterNc);
       dfloat filterS;
       cds->options[is].getArgs("HPFRT STRENGTH", filterS);

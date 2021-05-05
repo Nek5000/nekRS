@@ -30,14 +30,14 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
-void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *par, bool isScalar = false, string sidPar = "")
+void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *par, bool isScalar = false, bool isTemperature = false, string sidPar = "")
 {
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
   string sbuf;
   string parSection;
   if (isScalar) {
-    parSection = (sidPar == "00") ? "temperature" : "scalar" + sidPar;
+    parSection = isTemperature ? "temperature" : "scalar" + sidPar;
   } else {
     parSection = "general";
   }
@@ -79,7 +79,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
       options.setArgs(parPrefix + "AVM C0", "FALSE");
     }
     if(usesHPFRT){
-      options.setArgs(parPrefix + "FILTER STABILIZATION", "HPFRT");
+      options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
     }
 
     // common parameters
@@ -161,8 +161,11 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           setsStrength = true;
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
-          const dfloat value = std::stod(items[1]);
-          options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(value));
+          int err = 0;
+          double weight = te_interp(items[1].c_str(), &err);
+          if (err)
+            exit("Invalid expression for filterWeight!", EXIT_FAILURE);
+          options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(weight));
         }
       }
       if(!setsStrength){
@@ -176,9 +179,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     string filtering;
     par->extract(parSection, "filtering", filtering);
     if (filtering == "hpfrt") {
-      string upperFilterString = filtering;
-      UPPER(upperFilterString);
-      options.setArgs(parPrefix + "FILTER STABILIZATION", upperFilterString);
+      options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
       if (par->extract(parSection, "filterweight", sbuf)) {
         int err = 0;
         double weight = te_interp(sbuf.c_str(), &err);
@@ -766,12 +767,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     isStart++;
 
     {
-      options.setArgs("SCALAR00 FILTER STABILIZATION",
-                      options.getArgs("FILTER STABILITZATION"));
-      options.setArgs("SCALAR00 HPFRT STRENGTH",
-                      options.getArgs("HPFRT STRENGTH"));
-      options.setArgs("SCALAR00 HPFRT MODES", options.getArgs("HPFRT MODES"));
-      parseRegularization(rank, options, par, true, "00");
+      parseRegularization(rank, options, par, true, true, "00");
     }
 
     options.setArgs("SCALAR00 IS TEMPERATURE", "TRUE");
@@ -866,12 +862,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     {
-      options.setArgs("SCALAR" + sidPar + " FILTER STABILIZATION",
-                      options.getArgs("FILTER STABILITZATION"));
-      options.setArgs("SCALAR" + sidPar + " HPFRT STRENGTH",
-                      options.getArgs("HPFRT STRENGTH"));
-      options.setArgs("SCALAR" + sidPar + " HPFRT MODES", options.getArgs("HPFRT MODES"));
-      parseRegularization(rank, options, par, true, sidPar);
+      parseRegularization(rank, options, par, true, false, sidPar);
     }
 
     string solver;
