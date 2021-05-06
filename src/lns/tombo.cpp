@@ -260,18 +260,11 @@ occa::memory meshSolve(nrs_t* nrs, dfloat time, int stage)
   platform->o_mempool.slice0.copyFrom(mesh->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, 0.0, platform->o_mempool.slice3);
   for (int sweep = 0; sweep < 2; sweep++) {
-    nrs->velocityDirichletBCKernel(mesh->Nelements,
+    nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                    nrs->fieldOffset,
-                                   time,
-                                   mesh->o_sgeo,
-                                   mesh->o_x,
-                                   mesh->o_y,
-                                   mesh->o_z,
                                    mesh->o_vmapM,
-                                   mesh->o_EToB,
-                                   nrs->o_EToBMesh, // EToB for mesh solver
-                                   nrs->o_VmapB,
-                                   nrs->o_usrwrk,
+                                   nrs->o_EToBMesh,
+                                   nrs->o_VmapBMesh,
                                    nrs->o_U,
                                    platform->o_mempool.slice3);
 

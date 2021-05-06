@@ -170,7 +170,7 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
 
 
     if(nrs->flow)
-      fluidSolve(nrs, timeNew, nrs->o_U, stage); 
+      fluidSolve(nrs, timeNew, nrs->o_U, stage);
 
     if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);

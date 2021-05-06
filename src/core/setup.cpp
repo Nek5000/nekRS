@@ -351,7 +351,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         if (bc > 0) {
           for (int n = 0; n < mesh->Nfp; n++) {
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            nrs->VmapBMesh[fid + e * mesh->Np] = mymin(bc,nrs->VmapB[fid + e * mesh->Np]); // Dirichlet wins
+            nrs->VmapBMesh[fid + e * mesh->Np] = mymin(bc,nrs->VmapBMesh[fid + e * mesh->Np]); // Dirichlet wins
           }
         }
         cnt++;

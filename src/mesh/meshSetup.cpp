@@ -429,11 +429,16 @@ void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
     std::string oklpath = install_dir + "/okl/";
     {
+        std::string filename = oklpath + "mesh/velocityBCHex3D.okl";
+        mesh->velocityDirichletKernel =
+          platform->device.buildKernel(filename,
+                                   "velocityDirichletBCHex3D",
+                                   kernelInfo);
         occa::properties meshKernelInfo = kernelInfo;
         meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
         meshKernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
 
-        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
+        filename = oklpath + "mesh/geometricFactorsHex3D.okl";
         mesh->geometricFactorsKernel =
           platform->device.buildKernel(filename,
                                    "geometricFactorsHex3D",

@@ -1,0 +1,6 @@
+For moving mesh solver:
+
+- need to implement new bc type for mv and propagate those changes
+  through all of the relevant kernels
+- unfortunately, there is no way of avoiding this when the sideset ids come from nek5000
+- Therefore, it will be easier to test this problem once that is working correctly

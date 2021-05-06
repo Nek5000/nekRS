@@ -221,6 +221,7 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
+  occa::kernel velocityDirichletKernel;
 };
 
 occa::properties populateMeshProperties(mesh_t*);
