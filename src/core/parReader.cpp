@@ -492,6 +492,10 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       if(v_rproj) {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
         options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS STEP");
+
+        // default parameters
+        options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "5");
+        options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
       } else {
         options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
       }
@@ -568,7 +572,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         if(t_rproj) {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
           options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "PREVIOUS STEP");
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "8");
+          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "5");
           options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
         } else {
           options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
@@ -646,7 +650,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       if(t_rproj) {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
         options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT","PREVIOUS STEP");
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "8");
+        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "5");
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
       } else {
         options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
