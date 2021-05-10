@@ -162,7 +162,7 @@ dfloat computeMinGLLGridSpacing(
           const dfloat Uz = U[id + 2 * fieldOffset];
           const dfloat he = computeMinGLLGridSpacing(i,j,k,e,x,y,z);
           const dfloat Umag = sqrt(Ux*Ux + Uy*Uy + Uz*Uz);
-          dfloat visc_max = coeff * he * Umag;
+          dfloat visc_max = 0.5 * coeff * he * Umag;
 
           // s_maxdFdS = max(s_maxdFdS, visc_max)
           s_maxdFdS[tid] = (s_maxdFdS[tid] > visc_max) ? 

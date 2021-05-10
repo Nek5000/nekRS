@@ -4,7 +4,6 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL] 
 numSteps = 2000
-#numSteps = 1
 polynomialOrder = 9
 dt = 1e-03
 timestepper = bdf3
@@ -25,6 +24,7 @@ rhocp = 1
 conductivity = -100000
 regularization=none
 
+# unfiltered field, 140% over/under shoot (unstable)
 [SCALAR01]
 residualProj = true
 residualTol = 1e-8
@@ -32,32 +32,20 @@ rho = 1
 diffusivity = -100000
 regularization=none
 
+# 'optimal' AVM formulation, 2% over/under shoot
 [SCALAR02]
-dt = 1e-03 # duplication required for below
 residualProj = true
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=hpfrt+nmodes=2+strength=0.05/${dt}
+regularization=avm+nmodes=2+vismaxcoeff=2.36+sensitivity=1+c0=true+lambda=10.0
 
-[SCALAR03]
-residualProj = true
-residualTol = 1e-8
+# hpfrt, 33% over/under shoot
+# This will clober a lot of the fine-scale details around the vortices
+[scalar03]
+dt = 1e-03 # duplication needed for below
+residualproj = true
+residualtol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=0.1
-
-# Demonstrate how different AVM strengths smooth the contours
-[SCALAR04]
-residualProj = true
-residualTol = 1e-8
-rho = 1
-diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=0.25
-
-[SCALAR05]
-residualProj = true
-residualTol = 1e-8
-rho = 1
-diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=0.5
+regularization=hpfrt+nmodes=5+strength=0.1/${dt}
