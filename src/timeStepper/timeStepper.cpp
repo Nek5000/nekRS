@@ -11,11 +11,11 @@
 #include "timeStepper.hpp"
 #include "avm.hpp"
 
-void evaluateProperties(nrs_t* nrs, const double timeNew, const bool copyToHost)
+void evaluateProperties(nrs_t* nrs, const double timeNew)
 {
+  platform->timer.tic("udfProperties", 1);
   cds_t* cds = nrs->cds;
   if(udf.properties) {
-    platform->timer.tic("udfProperties", 1);
     occa::memory o_S = platform->o_mempool.slice0;
     occa::memory o_SProp = platform->o_mempool.slice0;
     if(nrs->Nscalar) {
@@ -23,23 +23,17 @@ void evaluateProperties(nrs_t* nrs, const double timeNew, const bool copyToHost)
       o_SProp = cds->o_prop;
     }
     udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
-    platform->timer.toc("udfProperties");
   }
   if(nrs->Nscalar){
     cds_t* cds = nrs->cds;
     for(int is = 0 ; is < cds->NSfields; ++is){
       if(cds->options[is].compareArgs("FILTER STABILIZATION", "AVM")){
-        platform->timer.tic("avm",1);
         avm::apply(cds, timeNew, is, cds->o_S);
-        platform->timer.toc("avm");
       }
     }
   }
 
-  if(copyToHost){
-    nrs->o_prop.copyTo(nrs->prop);
-    if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
-  }
+  platform->timer.toc("udfProperties");
 }
 
 namespace timeStepper {
@@ -182,7 +176,7 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     if(nrs->Nscalar)
       scalarSolve(nrs, timeNew, cds->o_S, stage); 
 
-    evaluateProperties(nrs, timeNew, false);
+    evaluateProperties(nrs, timeNew);
 
     if(udf.div){
       linAlg_t* linAlg = platform->linAlg;

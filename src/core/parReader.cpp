@@ -71,12 +71,12 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     options.setArgs(parPrefix + "HPFRT MODES", "1");
     if(usesAVM){
       options.setArgs(parPrefix + "VISMAX COEFF", "9.0");
-      options.setArgs(parPrefix + "AVM LAMBDA", "1.0");
+      options.setArgs(parPrefix + "AVM LAMBDA", "10.0");
       options.setArgs(parPrefix + "FILTER STABILIZATION", "AVM");
       options.setArgs(parPrefix + "SENSITIVITY", to_string_f(1.0));
       options.setArgs(parPrefix + "RAMP CONSTANT", to_string_f(1.0));
       options.setArgs(parPrefix + "SENSOR ORDER", to_string_f(4.0));
-      options.setArgs(parPrefix + "AVM C0", "FALSE");
+      options.setArgs(parPrefix + "AVM C0", "TRUE");
     }
     if(usesHPFRT){
       options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");

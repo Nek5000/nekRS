@@ -199,6 +199,6 @@ static std::vector<std::string> serializeString(const std::string sin, char dlim
   return slist;
 }
 
-void evaluateProperties(nrs_t* nrs, const double timeNew, const bool copyToHost);
+void evaluateProperties(nrs_t* nrs, const double timeNew);
 
 #endif

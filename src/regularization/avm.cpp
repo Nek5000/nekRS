@@ -8,7 +8,9 @@
  * Artificial viscosity method (https://arxiv.org/pdf/1810.02152.pdf), [0,1] viscosity weighting currently deemed as not useful
  **/
 
+
 namespace avm {
+
 
 static occa::kernel filterScalarNormKernel;
 static occa::kernel applyAVMKernel;
@@ -16,6 +18,8 @@ static occa::kernel computeMaxViscKernel;
 
 static occa::memory o_artVisc;
 static occa::memory o_diffOld; // diffusion from initial state
+namespace
+{
 
 void allocateMemory(cds_t* cds)
 {
@@ -52,6 +56,7 @@ void compileKernels(cds_t* cds)
                              info);
 }
 
+}
 void setup(cds_t* cds)
 {
   allocateMemory(cds);
