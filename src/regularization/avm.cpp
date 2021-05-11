@@ -107,6 +107,12 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
   occa::memory& o_logShockSensor = platform->o_mempool.slice0;
   occa::memory& o_elemLengths = platform->o_mempool.slice1;
 
+  occa::memory& o_filteredField = platform->o_mempool.slice3;
+  occa::memory& o_advectedFilteredField = platform->o_mempool.slice4;
+  occa::memory& o_ones = platform->o_mempool.slice5;
+  occa::memory& o_wrk = platform->o_mempool.slice6;
+  platform->linAlg->fill(cds->fieldOffset[scalarIndex], 1.0, o_ones);
+
   // artificial viscosity magnitude
   occa::memory o_epsilon = platform->o_mempool.slice2;
   platform->linAlg->fill(cds->fieldOffset[scalarIndex], 0.0, o_epsilon);
@@ -125,8 +131,61 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     sensorOrder,
     p,
     o_S,
-    o_logShockSensor
+    o_logShockSensor,
+    o_filteredField
   );
+
+  // convect filtered field
+  const dlong cubatureOffset = std::max(cds->vFieldOffset, cds->meshV->Nelements * cds->meshV->cubNp);
+  if(cds->options[scalarIndex].compareArgs("ADVECTION TYPE", "CUBATURE"))
+    cds->advectionStrongCubatureVolumeKernel(
+      cds->meshV->Nelements,
+      mesh->o_vgeo,
+      mesh->o_cubDiffInterpT,
+      mesh->o_cubInterpT,
+      mesh->o_cubProjectT,
+      cds->vFieldOffset,
+      0,
+      cubatureOffset,
+      o_filteredField,
+      cds->o_Urst,
+      o_ones,
+      o_advectedFilteredField);
+  else
+    cds->advectionStrongVolumeKernel(
+      cds->meshV->Nelements,
+      mesh->o_D,
+      cds->vFieldOffset,
+      0,
+      o_filteredField,
+      cds->o_Urst,
+      o_ones,
+      o_advectedFilteredField);
+  
+  occa::memory o_S_slice = o_S + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
+  const dfloat Savg = 
+    platform->linAlg->weightedNorm2(
+      mesh->Nlocal,
+      mesh->o_LMM,
+      o_S_slice,
+      platform->comm.mpiComm
+    ) / sqrt(mesh->volume);
+
+  dfloat Sinf = 1.0;
+  if(Savg > 0.0){
+    platform->linAlg->fill(cds->fieldOffset[scalarIndex], Savg, o_wrk);
+    platform->linAlg->axpby(
+      mesh->Nlocal,
+      -1.0,
+      o_S_slice,
+      1.0,
+      o_wrk
+    );
+    platform->linAlg->abs(mesh->Nlocal, o_wrk);
+    Sinf = platform->linAlg->max(mesh->Nlocal, o_wrk, platform->comm.mpiComm);
+  }
+
+  Sinf = 1.0 / Sinf;
 
   computeElementLengthScaleKernel(
     mesh->Nelements,
@@ -142,6 +201,9 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
   dfloat coeff = 0.5;
   cds->options[scalarIndex].getArgs("VISMAX COEFF", coeff);
 
+  dfloat errCoeff = 1.0;
+  cds->options[scalarIndex].getArgs("ERROR COEFF", errCoeff);
+
   dfloat rampParameter = 1.0;
   cds->options[scalarIndex].getArgs("RAMP CONSTANT", rampParameter);
 
@@ -151,12 +213,15 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     logReferenceSensor,
     rampParameter,
     coeff,
+    errCoeff,
+    Sinf,
     mesh->o_x,
     mesh->o_y,
     mesh->o_z,
     cds->o_U,
     o_logShockSensor,
     o_elemLengths,
+    o_advectedFilteredField,
     o_epsilon // max(|df/du|) <- max visc
   );
 

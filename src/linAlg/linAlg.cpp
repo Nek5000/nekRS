@@ -83,6 +83,11 @@ void linAlg_t::setup() {
                                         "linAlgFill.okl",
                                         "fill",
                                         kernelInfo);
+      if (absKernel.isInitialized()==false)
+        absKernel = device.buildKernel(oklDir + 
+                                        "linAlgAbs.okl",
+                                        "vabs",
+                                        kernelInfo);
       if (addKernel.isInitialized()==false)
         addKernel = device.buildKernel(oklDir + 
                                         "linAlgAdd.okl",
@@ -302,6 +307,7 @@ void linAlg_t::setup() {
 
 linAlg_t::~linAlg_t() {
   fillKernel.free();
+  absKernel.free();
   addKernel.free();
   scaleKernel.free();
   scaleManyKernel.free();
@@ -339,6 +345,11 @@ linAlg_t::~linAlg_t() {
 // o_a[n] = alpha
 void linAlg_t::fill(const dlong N, const dfloat alpha, occa::memory& o_a) {
   fillKernel(N, alpha, o_a);
+}
+
+// o_a[n] = abs(o_a[n])
+void linAlg_t::abs(const dlong N,  occa::memory& o_a) {
+  absKernel(N, o_a);
 }
 
 // o_a[n] += alpha

@@ -71,6 +71,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     options.setArgs(parPrefix + "HPFRT MODES", "1");
     if(usesAVM){
       options.setArgs(parPrefix + "VISMAX COEFF", "9.0");
+      options.setArgs(parPrefix + "ERROR COEFF", "1.0");
       options.setArgs(parPrefix + "AVM LAMBDA", "10.0");
       options.setArgs(parPrefix + "FILTER STABILIZATION", "AVM");
       options.setArgs(parPrefix + "SENSITIVITY", to_string_f(1.0));
@@ -120,6 +121,13 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           assert(items.size() == 2);
           const dfloat value = std::stod(items[1]);
           options.setArgs(parPrefix + "VISMAX COEFF", to_string_f(value*value));
+        }
+        if(s.find("errorcoeff") == 0)
+        {
+          std::vector<string> items = serializeString(s, '=');
+          assert(items.size() == 2);
+          const dfloat value = std::stod(items[1]);
+          options.setArgs(parPrefix + "ERROR COEFF", to_string_f(value));
         }
         if(s.find("c0") == 0)
         {

@@ -130,12 +130,15 @@ dfloat computeMinGLLGridSpacing(
                             const dfloat logReferenceSensor,
                             const dfloat rampParameter,
                             const dfloat coeff,
+                            const dfloat errCoeff,
+                            const dfloat Sinf,
                             @restrict const dfloat* x,
                             @restrict const dfloat* y,
                             @restrict const dfloat* z,
                             @restrict const dfloat* U,
                             @restrict const dfloat* logShockSensor,
                             @restrict const dfloat* elemLengths,
+                            @restrict const dfloat* advFU,
                             @restrict dfloat* epsilons)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
@@ -166,7 +169,11 @@ dfloat computeMinGLLGridSpacing(
           const dfloat Uy = U[id + 1 * fieldOffset];
           const dfloat Uz = U[id + 2 * fieldOffset];
           const dfloat Umag = sqrt(Ux*Ux + Uy*Uy + Uz*Uz);
+          const dfloat r = advFU[id];
           dfloat visc_max = 0.5 * coeff * he * Umag;
+
+          dfloat errInd = errCoeff * Sinf * he * he * fabs(r);
+          visc_max = (visc_max < errInd) ? visc_max : errInd;
 
           // s_maxdFdS = max(s_maxdFdS, visc_max)
           s_maxdFdS[tid] = (s_maxdFdS[tid] > visc_max) ? 
@@ -280,6 +287,10 @@ dfloat computeMinGLLGridSpacing(
         if(t < 1){
           const dfloat maxVisc = (s_maxdFdS[0] > s_maxdFdS[1]) ?
             s_maxdFdS[0] : s_maxdFdS[1];
+          // old: n5k
+          //epsilons[e] =  maxVisc;
+
+          // new scheme
           if(logSensor < (logReferenceSensor - rampParameter)){
             epsilons[e] = 0.0;
           } if(logSensor > (logReferenceSensor + rampParameter)) {

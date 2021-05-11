@@ -32,7 +32,8 @@
                               const dfloat sensorOrder,
                               const dfloat p,
                               @restrict const dfloat* U,
-                              @restrict dfloat* logShockSensor)
+                              @restrict dfloat* logShockSensor,
+                              @restrict dfloat* filteredResults)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -136,6 +137,8 @@
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat unfilteredVal = r_U[k];
           const dfloat filteredDiff = unfilteredVal - r_Un[k];
+
+          filteredResults[id] = filteredDiff;
 
           s_filtered[tid] += filteredDiff * filteredDiff;
           s_unfiltered[tid] += unfilteredVal*unfilteredVal;
