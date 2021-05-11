@@ -24,6 +24,7 @@
 
  */
 
+#if 0
 dfloat computeMinGLLGridSpacing(
   const dlong i,
   const dlong j,
@@ -122,6 +123,7 @@ dfloat computeMinGLLGridSpacing(
   }
   return sqrt(he);
 }
+#endif
 
 @kernel void computeMaxVisc(const dlong Nelements,
                             const dlong fieldOffset,
@@ -133,17 +135,20 @@ dfloat computeMinGLLGridSpacing(
                             @restrict const dfloat* z,
                             @restrict const dfloat* U,
                             @restrict const dfloat* logShockSensor,
+                            @restrict const dfloat* elemLengths,
                             @restrict dfloat* epsilons)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
     
     @exclusive dfloat logSensor;
+    @exclusive dfloat he;
     
     @shared dfloat s_maxdFdS[p_blockSize];
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         logSensor = logShockSensor[e];
+        he = elemLengths[e];
         const int id = i + j * p_Nq;
         for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq){
           s_maxdFdS[k] = -1e8;
@@ -160,7 +165,6 @@ dfloat computeMinGLLGridSpacing(
           const dfloat Ux = U[id + 0 * fieldOffset];
           const dfloat Uy = U[id + 1 * fieldOffset];
           const dfloat Uz = U[id + 2 * fieldOffset];
-          const dfloat he = computeMinGLLGridSpacing(i,j,k,e,x,y,z);
           const dfloat Umag = sqrt(Ux*Ux + Uy*Uy + Uz*Uz);
           dfloat visc_max = 0.5 * coeff * he * Umag;
 

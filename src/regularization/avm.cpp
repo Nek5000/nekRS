@@ -15,6 +15,7 @@ namespace avm {
 static occa::kernel filterScalarNormKernel;
 static occa::kernel applyAVMKernel;
 static occa::kernel computeMaxViscKernel;
+static occa::kernel computeElementLengthScaleKernel;
 
 static occa::memory o_artVisc;
 static occa::memory o_diffOld; // diffusion from initial state
@@ -53,6 +54,11 @@ void compileKernels(cds_t* cds)
   computeMaxViscKernel =
     platform->device.buildKernel(filename,
                              "computeMaxVisc",
+                             info);
+  filename = oklpath + "computeElementLengthScale.okl";
+  computeElementLengthScaleKernel =
+    platform->device.buildKernel(filename,
+                             "computeElementLengthScale",
                              info);
 }
 
@@ -99,6 +105,7 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
   int Nblock = (cds->mesh[scalarIndex]->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
 
   occa::memory& o_logShockSensor = platform->o_mempool.slice0;
+  occa::memory& o_elemLengths = platform->o_mempool.slice1;
 
   // artificial viscosity magnitude
   occa::memory o_epsilon = platform->o_mempool.slice2;
@@ -121,6 +128,14 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     o_logShockSensor
   );
 
+  computeElementLengthScaleKernel(
+    mesh->Nelements,
+    mesh->o_x,
+    mesh->o_y,
+    mesh->o_z,
+    o_elemLengths
+  );
+
   // see footnote after eq 63
   const dfloat logReferenceSensor = -2.0;
 
@@ -141,6 +156,7 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     mesh->o_z,
     cds->o_U,
     o_logShockSensor,
+    o_elemLengths,
     o_epsilon // max(|df/du|) <- max visc
   );
 

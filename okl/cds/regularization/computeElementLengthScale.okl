@@ -1,0 +1,192 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+@kernel void computeElementLengthScale(const dlong Nelements,
+                            @restrict const dfloat* x,
+                            @restrict const dfloat* y,
+                            @restrict const dfloat* z,
+                            @restrict dfloat* elemLengths)
+{
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
+    
+    @shared dfloat s_minLength[p_blockSize];
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq){
+          s_minLength[k] = 1e8;
+        }
+      }
+    }
+
+    @barrier("local");
+    for(int k = 0 ; k < p_Nq-1; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if(i < p_Nq - 1 && j < p_Nq - 1)
+          {
+            const int tid = j * p_Nq + i;
+            const int ip1 = i + 1;
+            const int jp1 = j + 1;
+            const int kp1 = k + 1;
+            const int id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+            const int iid = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + ip1;
+            const int jid = e * p_Np + k * p_Nq * p_Nq + jp1 * p_Nq + i;
+            const int kid = e * p_Np + kp1 * p_Nq * p_Nq + j * p_Nq + i;
+
+            dfloat dx = x[iid] - x[id];
+            dfloat dy = y[iid] - y[id];
+            dfloat dz = z[iid] - z[id];
+            dfloat d2 = dx * dx + dy * dy + dz * dz;
+
+            dx = x[jid] - x[id];
+            dy = y[jid] - y[id];
+            dz = z[jid] - z[id];
+            dfloat t = dx * dx + dy * dy + dz * dz;
+            d2 = (d2 < t) ? d2 : t;
+
+            dx = x[kid] - x[id];
+            dy = y[kid] - y[id];
+            dz = z[kid] - z[id];
+            t = dx * dx + dy * dy + dz * dz;
+            d2 = (d2 < t) ? d2 : t;
+
+            s_minLength[tid] = (s_minLength[tid] < d2) ? s_minLength[tid] : d2;
+          }
+        }
+      }
+      @barrier("local");
+    }
+
+    // max reduction
+    @barrier("local");
+
+    // reduce p_Nq * p_Nq to single value
+    #if p_blockSize > 512
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 512){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+512]) ?
+            s_minLength[t] : s_minLength[t+512];
+        }
+      }
+    }
+    @barrier("local");
+    #endif
+    #if p_blockSize > 256
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 256){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+256]) ?
+            s_minLength[t] : s_minLength[t+256];
+        }
+      }
+    }
+    @barrier("local");
+    #endif
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 128){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+128]) ?
+            s_minLength[t] : s_minLength[t+128];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 64){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+64]) ?
+            s_minLength[t] : s_minLength[t+64];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 32){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+32]) ?
+            s_minLength[t] : s_minLength[t+32];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 16){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+16]) ?
+            s_minLength[t] : s_minLength[t+16];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 8){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+8]) ?
+            s_minLength[t] : s_minLength[t+8];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 4){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+4]) ?
+            s_minLength[t] : s_minLength[t+4];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 2){
+          s_minLength[t] = (s_minLength[t] < s_minLength[t+2]) ?
+            s_minLength[t] : s_minLength[t+2];
+        }
+      }
+    }
+    @barrier("local");
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if(t < 1){
+          dfloat minLe = (s_minLength[0] < s_minLength[1]) ?
+            s_minLength[0] : s_minLength[1];
+          elemLengths[e] = sqrt(minLe);
+        }
+      }
+    }
+  }
+}
