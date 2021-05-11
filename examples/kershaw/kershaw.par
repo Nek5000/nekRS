@@ -7,7 +7,7 @@ deviceNumber = LOCAL-RANK
 polynomialOrder = 7
 
 [PRESSURE]
-solver = gmres+20
+solver = pfgmres+20
 residualTol = 1e-8
 #preconditioner = Jacobi 
 smootherType = Chebyshev+ASM+1
