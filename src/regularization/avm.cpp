@@ -5,7 +5,7 @@
 #include <string>
 
 /**
- * Artificial viscosity method (https://arxiv.org/pdf/1810.02152.pdf), [0,1] viscosity weighting currently deemed as not useful
+ * Artificial viscosity method (https://arxiv.org/pdf/1810.02152.pdf)
  **/
 
 
@@ -99,6 +99,8 @@ void setup(cds_t* cds)
 
 occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory o_S)
 {
+  int useErrorIndicator = 1;
+  useErrorIndicator = cds->options[scalarIndex].compareArgs("AVM ERROR INDICATOR", "TRUE");
   dfloat sensorSensitivity = 1.0;
   cds->options[scalarIndex].getArgs("SENSITIVITY", sensorSensitivity);
   mesh_t* mesh = cds->mesh[scalarIndex];
@@ -135,54 +137,57 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     o_filteredField
   );
 
-  // convect filtered field
-  const dlong cubatureOffset = std::max(cds->vFieldOffset, cds->meshV->Nelements * cds->meshV->cubNp);
-  if(cds->options[scalarIndex].compareArgs("ADVECTION TYPE", "CUBATURE"))
-    cds->advectionStrongCubatureVolumeKernel(
-      cds->meshV->Nelements,
-      mesh->o_vgeo,
-      mesh->o_cubDiffInterpT,
-      mesh->o_cubInterpT,
-      mesh->o_cubProjectT,
-      cds->vFieldOffset,
-      0,
-      cubatureOffset,
-      o_filteredField,
-      cds->o_Urst,
-      o_ones,
-      o_advectedFilteredField);
-  else
-    cds->advectionStrongVolumeKernel(
-      cds->meshV->Nelements,
-      mesh->o_D,
-      cds->vFieldOffset,
-      0,
-      o_filteredField,
-      cds->o_Urst,
-      o_ones,
-      o_advectedFilteredField);
-  
-  occa::memory o_S_slice = o_S + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
-  const dfloat Savg = 
-    platform->linAlg->weightedNorm2(
-      mesh->Nlocal,
-      mesh->o_LMM,
-      o_S_slice,
-      platform->comm.mpiComm
-    ) / sqrt(mesh->volume);
-
   dfloat Sinf = 1.0;
-  if(Savg > 0.0){
-    platform->linAlg->fill(cds->fieldOffset[scalarIndex], Savg, o_wrk);
-    platform->linAlg->axpby(
-      mesh->Nlocal,
-      -1.0,
-      o_S_slice,
-      1.0,
-      o_wrk
-    );
-    platform->linAlg->abs(mesh->Nlocal, o_wrk);
-    Sinf = platform->linAlg->max(mesh->Nlocal, o_wrk, platform->comm.mpiComm);
+
+  if(useErrorIndicator){
+    // convect filtered field
+    const dlong cubatureOffset = std::max(cds->vFieldOffset, cds->meshV->Nelements * cds->meshV->cubNp);
+    if(cds->options[scalarIndex].compareArgs("ADVECTION TYPE", "CUBATURE"))
+      cds->advectionStrongCubatureVolumeKernel(
+        cds->meshV->Nelements,
+        mesh->o_vgeo,
+        mesh->o_cubDiffInterpT,
+        mesh->o_cubInterpT,
+        mesh->o_cubProjectT,
+        cds->vFieldOffset,
+        0,
+        cubatureOffset,
+        o_filteredField,
+        cds->o_Urst,
+        o_ones,
+        o_advectedFilteredField);
+    else
+      cds->advectionStrongVolumeKernel(
+        cds->meshV->Nelements,
+        mesh->o_D,
+        cds->vFieldOffset,
+        0,
+        o_filteredField,
+        cds->o_Urst,
+        o_ones,
+        o_advectedFilteredField);
+  
+    occa::memory o_S_slice = o_S + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
+    const dfloat Savg = 
+      platform->linAlg->weightedNorm2(
+        mesh->Nlocal,
+        mesh->o_LMM,
+        o_S_slice,
+        platform->comm.mpiComm
+      ) / sqrt(mesh->volume);
+
+    if(Savg > 0.0){
+      platform->linAlg->fill(cds->fieldOffset[scalarIndex], Savg, o_wrk);
+      platform->linAlg->axpby(
+        mesh->Nlocal,
+        -1.0,
+        o_S_slice,
+        1.0,
+        o_wrk
+      );
+      platform->linAlg->abs(mesh->Nlocal, o_wrk);
+      Sinf = platform->linAlg->max(mesh->Nlocal, o_wrk, platform->comm.mpiComm);
+    }
   }
 
   Sinf = 1.0 / Sinf;
@@ -215,6 +220,7 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     coeff,
     errCoeff,
     Sinf,
+    useErrorIndicator,
     mesh->o_x,
     mesh->o_y,
     mesh->o_z,
@@ -249,13 +255,24 @@ void apply(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory 
       o_eps,
       platform->comm.mpiComm
     );
+    const dfloat minEps = platform->linAlg->min(
+      mesh->Nlocal,
+      o_eps,
+      platform->comm.mpiComm
+    );
     occa::memory o_S_slice = cds->o_diff + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
     const dfloat maxDiff = platform->linAlg->max(
       mesh->Nlocal,
       o_S_slice,
       platform->comm.mpiComm
     );
-    printf("Applying a max artificial viscosity of: %f to a field with max visc: %f\n", maxEps, maxDiff);
+    const dfloat minDiff = platform->linAlg->min(
+      mesh->Nlocal,
+      o_S_slice,
+      platform->comm.mpiComm
+    );
+    printf("Applying a min/max artificial viscosity of (%f,%f) to a field with min/max visc (%f,%f) (field = %d)\n",
+      minEps, maxEps, minDiff, maxDiff, scalarIndex);
   }
 
   applyAVMKernel(
@@ -273,7 +290,12 @@ void apply(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory 
       o_S_slice,
       platform->comm.mpiComm
     );
-    printf("Field now has a max visc: %f\n", maxDiff);
+    const dfloat minDiff = platform->linAlg->min(
+      mesh->Nlocal,
+      o_S_slice,
+      platform->comm.mpiComm
+    );
+    printf("Field (%d) now has a min/max visc: (%f,%f)\n", scalarIndex, minDiff, maxDiff);
   }
 
 }

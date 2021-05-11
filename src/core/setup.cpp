@@ -1043,6 +1043,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("FILTER STABILIZATION", options.getArgs("SCALAR" + sid + " FILTER STABILIZATION"));
     cds->options[is].setArgs("VISMAX COEFF", options.getArgs("SCALAR" + sid + " VISMAX COEFF"));
     cds->options[is].setArgs("ERROR COEFF", options.getArgs("SCALAR" + sid + " ERROR COEFF"));
+    cds->options[is].setArgs("AVM ERROR INDICATOR", options.getArgs("SCALAR" + sid + " AVM ERROR INDICATOR"));
     cds->options[is].setArgs("HPFRT STRENGTH", options.getArgs("SCALAR" + sid + " HPFRT STRENGTH"));
     cds->options[is].setArgs("HPFRT MODES", options.getArgs("SCALAR" + sid + " HPFRT MODES"));
     cds->options[is].setArgs("KRYLOV SOLVER", options.getArgs("SCALAR" + sid + " KRYLOV SOLVER"));

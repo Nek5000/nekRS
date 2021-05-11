@@ -24,114 +24,14 @@
 
  */
 
-#if 0
-dfloat computeMinGLLGridSpacing(
-  const dlong i,
-  const dlong j,
-  const dlong k,
-  const dlong e,
-  @restrict const dfloat* x,
-  @restrict const dfloat* y,
-  @restrict const dfloat* z
-)
-{
-  const dlong index = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-  const dfloat x_curr = x[index];
-  const dfloat y_curr = y[index];
-  const dfloat z_curr = z[index];
-  dfloat he = 1e8;
-
-  // (i+1, j, k)
-  if(i < p_Nq-1)
-  {
-    const dlong iid = i+1;
-    const dlong jid = j;
-    const dlong kid = k;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-  // (i-1, j, k)
-  if(i > 0)
-  {
-    const dlong iid = i-1;
-    const dlong jid = j;
-    const dlong kid = k;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-
-  // (i, j+1, k)
-  if(j < p_Nq-1)
-  {
-    const dlong iid = i;
-    const dlong jid = j+1;
-    const dlong kid = k;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-  // (i, j-1, k)
-  if(j > 0)
-  {
-    const dlong iid = i;
-    const dlong jid = j-1;
-    const dlong kid = k;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-
-  // (i, j, k+1)
-  if(k < p_Nq-1)
-  {
-    const dlong iid = i;
-    const dlong jid = j;
-    const dlong kid = k+1;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-  // (i, j, k-1)
-  if(k > 0)
-  {
-    const dlong iid = i;
-    const dlong jid = j;
-    const dlong kid = k-1;
-    const dlong id = e * p_Np + kid * p_Nq * p_Nq + jid * p_Nq + iid;
-    const dfloat dx = x[id] - x_curr;
-    const dfloat dy = y[id] - y_curr;
-    const dfloat dz = z[id] - z_curr;
-    const dfloat dist = dx*dx + dy*dy + dz*dz;
-    he = (he < dist) ? he : dist;
-  }
-  return sqrt(he);
-}
-#endif
-
 @kernel void computeMaxVisc(const dlong Nelements,
                             const dlong fieldOffset,
                             const dfloat logReferenceSensor,
                             const dfloat rampParameter,
-                            const dfloat coeff,
+                            const dfloat visCoeff,
                             const dfloat errCoeff,
                             const dfloat Sinf,
+                            const dlong useErrorIndicator,
                             @restrict const dfloat* x,
                             @restrict const dfloat* y,
                             @restrict const dfloat* z,
@@ -169,11 +69,13 @@ dfloat computeMinGLLGridSpacing(
           const dfloat Uy = U[id + 1 * fieldOffset];
           const dfloat Uz = U[id + 2 * fieldOffset];
           const dfloat Umag = sqrt(Ux*Ux + Uy*Uy + Uz*Uz);
-          const dfloat r = advFU[id];
-          dfloat visc_max = 0.5 * coeff * he * Umag;
+          dfloat visc_max = visCoeff * he * Umag;
 
-          dfloat errInd = errCoeff * Sinf * he * he * fabs(r);
-          visc_max = (visc_max < errInd) ? visc_max : errInd;
+          if(useErrorIndicator){
+            const dfloat r = advFU[id];
+            dfloat errInd = errCoeff * Sinf * he * he * fabs(r);
+            visc_max = (visc_max < errInd) ? visc_max : errInd;
+          }
 
           // s_maxdFdS = max(s_maxdFdS, visc_max)
           s_maxdFdS[tid] = (s_maxdFdS[tid] > visc_max) ? 
@@ -287,10 +189,6 @@ dfloat computeMinGLLGridSpacing(
         if(t < 1){
           const dfloat maxVisc = (s_maxdFdS[0] > s_maxdFdS[1]) ?
             s_maxdFdS[0] : s_maxdFdS[1];
-          // old: n5k
-          //epsilons[e] =  maxVisc;
-
-          // new scheme
           if(logSensor < (logReferenceSensor - rampParameter)){
             epsilons[e] = 0.0;
           } if(logSensor > (logReferenceSensor + rampParameter)) {

@@ -70,14 +70,15 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
 
     options.setArgs(parPrefix + "HPFRT MODES", "1");
     if(usesAVM){
-      options.setArgs(parPrefix + "VISMAX COEFF", "9.0");
+      options.setArgs(parPrefix + "AVM ERROR INDICATOR", "TRUE"); // n5k style error indicator
+      options.setArgs(parPrefix + "VISMAX COEFF", "0.5");
       options.setArgs(parPrefix + "ERROR COEFF", "1.0");
-      options.setArgs(parPrefix + "AVM LAMBDA", "10.0");
+      options.setArgs(parPrefix + "AVM LAMBDA", "1.0");
       options.setArgs(parPrefix + "FILTER STABILIZATION", "AVM");
       options.setArgs(parPrefix + "SENSITIVITY", to_string_f(1.0));
       options.setArgs(parPrefix + "RAMP CONSTANT", to_string_f(1.0));
       options.setArgs(parPrefix + "SENSOR ORDER", to_string_f(4.0));
-      options.setArgs(parPrefix + "AVM C0", "TRUE");
+      options.setArgs(parPrefix + "AVM C0", "FALSE");
     }
     if(usesHPFRT){
       options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
@@ -120,7 +121,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
           const dfloat value = std::stod(items[1]);
-          options.setArgs(parPrefix + "VISMAX COEFF", to_string_f(value*value));
+          options.setArgs(parPrefix + "VISMAX COEFF", to_string_f(value));
         }
         if(s.find("errorcoeff") == 0)
         {
@@ -136,6 +137,14 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           string c0String = items[1];
           UPPER(c0String);
           options.setArgs(parPrefix + "AVM C0", c0String);
+        }
+        if(s.find("errorindicator") == 0)
+        {
+          std::vector<string> items = serializeString(s, '=');
+          assert(items.size() == 2);
+          string errString = items[1];
+          UPPER(errString);
+          options.setArgs(parPrefix + "AVM ERROR INDICATOR", errString);
         }
         if(s.find("sensitivity") == 0)
         {
