@@ -56,6 +56,9 @@ jobs:
      name: "mv_cyl"
      script: cd $NEKRS_EXAMPLES/mv_cyl && nrsmpi mv_cyl 2 1 
    - stage: test
+     name: "mv_cyl + subcycling"
+     script: cd $NEKRS_EXAMPLES/mv_cyl && nrsmpi mv_cyl 2 2
+   - stage: test
      name: "conj_ht"
      script: cd $NEKRS_EXAMPLES/conj_ht && nrsmpi conj_ht 2 1
    - stage: test

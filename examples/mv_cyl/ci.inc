@@ -51,7 +51,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.1080412E-05;
-    expectedPIter = 10;
+    expectedPIter = 6;
   }
   if(ciMode == 2)
   {
@@ -61,7 +61,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
-    expectedPIter = 11;
+    expectedPIter = 6;
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
