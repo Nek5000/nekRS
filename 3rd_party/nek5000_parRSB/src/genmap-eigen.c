@@ -97,30 +97,18 @@ int GenmapTQLI(genmap_handle h, genmap_vector diagonal, genmap_vector upper,
           GenmapScalar f = s * e->data[i];
           GenmapScalar b = c * e->data[i];
 
-          if (options->rsb_paul == 1) {
-            if (fabs(f) >= fabs(g)) {
-              c = g / f;
-              r = sqrt(c * c + 1.0);
-              e->data[i + 1] = f * r;
-              s = 1.0 / r;
-              c = c * s;
-            } else {
-              s = f / g;
-              r = sqrt(s * s + 1.0);
-              e->data[i + 1] = g * r;
-              c = 1.0 / r;
-              s = s * c;
-            }
+          if (fabs(f) >= fabs(g)) {
+            c = g / f;
+            r = sqrt(c * c + 1.0);
+            e->data[i + 1] = f * r;
+            s = 1.0 / r;
+            c = c * s;
           } else {
-            e->data[i + 1] = r = sqrt(f * f + g * g);
-
-            if (r < GENMAP_DP_TOL) {
-              d->data[i + 1] -= p;
-              e->data[m] = 0.0;
-              break;
-            }
-            s = f / r;
-            c = g / r;
+            s = f / g;
+            r = sqrt(s * s + 1.0);
+            e->data[i + 1] = g * r;
+            c = 1.0 / r;
+            s = s * c;
           }
 
           g = d->data[i + 1] - p;

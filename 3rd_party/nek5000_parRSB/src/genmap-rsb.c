@@ -6,43 +6,32 @@
 #include <genmap-impl.h>
 #include <sort.h>
 
-static int dump_fiedler_if_discon(genmap_handle h, int level, int max_levels) {
-  struct comm *lc = h->local;
-  struct comm *gc = h->global;
+static int check_convergence(struct comm *gc, int max_pass, int max_iter) {
+  int max_levels = log2(gc->np);
 
-  int nv = h->nv;
-  int ndim = (nv == 8) ? 3 : 2;
+  int i;
+  for (i = 0; i < max_levels; i++) {
+    sint converged = 1;
+    int val = (int)metric_get_value(i, NFIEDLER);
+    if (val >= max_pass * max_iter) {
+      converged = 0;
+      break;
+    }
 
-  sint bfr[2];
+    sint ibfr;
+    comm_allreduce(gc, gs_int, gs_min, &converged, 1, &ibfr);
 
-  struct rsb_element *elements = genmap_get_elements(h);
+    double dbfr;
+    double final = (double)metric_get_value(i, LANCZOSTOLFINAL);
+    comm_allreduce(gc, gs_double, gs_min, &final, 1, &dbfr);
 
-  /* Dump current partition status */
-  if (level > 0 && level < max_levels) {
-    slong nelt = genmap_get_nel(h);
-    slong out[2][1], buf[2][1];
-    comm_scan(out, gc, gs_long, gs_add, &nelt, 1, buf); // max
-    slong start = out[0][0];
+    double target = (double)metric_get_value(i, LANCZOSTOLTARGET);
 
-    sint components = get_components(NULL, elements, lc, &h->buf, nelt, nv);
-    comm_allreduce(lc, gs_int, gs_max, &components, 1, bfr); // max
-
-    sint g_id = (components > 1) * gc->id;
-    comm_allreduce(gc, gs_int, gs_max, &g_id, 1, bfr); // max
-
-    sint l_id = gc->id;
-    comm_allreduce(lc, gs_int, gs_max, &l_id, 1, bfr); // max
-
-    if (g_id == l_id && components > 1) {
-      if (lc->id == 0)
-        printf("\tLevel %02d PRERCB: There are disconnected components!\n",
-               level);
-      if (components > 1) {
-        // Dump the current partition
-        char fname[BUFSIZ];
-        sprintf(fname, "fiedler_%02d.dump", level);
-        GenmapFiedlerDump(fname, h, start, lc);
-      }
+    if (converged == 0 && gc->id == 0) {
+      printf("\tWarning: Partitioner only reached a tolerance of %lf given %lf "
+             "after %d x %d iterations in Level=%d!\n",
+             final, target, max_pass, max_iter, i);
+      fflush(stdout);
     }
   }
 }
@@ -67,16 +56,10 @@ int genmap_rsb(genmap_handle h) {
   int ndim = (nv == 8) ? 3 : 2;
 
   int np = gc->np;
-  int level = 0, max_levels = log2(np);
-
-  sint bfr[2];
+  int level = 0;
 
   while ((np = lc->np) > 1) {
-    int global;
-    if (h->options->rsb_paul == 1)
-      global = 1;
-    else
-      global = (np == gc->np);
+    int global = 1;
 
     /* Run RCB, RIB pre-step or just sort by global id */
     if (h->options->rsb_prepartition == 1) { // RCB
@@ -118,7 +101,7 @@ int genmap_rsb(genmap_handle h) {
 
     /* Bisect */
     double t = comm_time();
-    split_and_repair_partitions(h, lc, level);
+    split_and_repair_partitions(h, lc, level, gc);
     t = comm_time() - t;
     metric_acc(BISECTANDREPAIR, t);
 
@@ -127,20 +110,7 @@ int genmap_rsb(genmap_handle h) {
     level++;
   }
 
-  /* Check if Fidler converged */
-  sint converged = 1;
-  for (i = 0; i < metric_get_levels(); i++) {
-    int val = (int)metric_get_value(i, NFIEDLER);
-    if (val >= max_pass * max_iter) {
-      converged = 0;
-      level = i;
-      break;
-    }
-  }
-  comm_allreduce(gc, gs_int, gs_min, &converged, 1, bfr); // min
-  if (converged == 0 && gc->id == 0)
-    printf("\tWARNING: Failed to converge while partitioning, Level=%d!\n",
-           level);
+  check_convergence(gc, max_pass, max_iter);
 
   return 0;
 }

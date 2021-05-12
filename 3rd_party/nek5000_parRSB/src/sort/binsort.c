@@ -11,12 +11,12 @@ int set_bin(uint **proc_, struct sort *s, uint field, struct comm *c) {
   GenmapCalloc(size, proc_);
   uint *proc = *proc_;
 
-  if (size == 0)
-    return 0;
-
   double extrema[2];
   get_extrema((void *)extrema, s, field, c);
   double range = extrema[1] - extrema[0];
+
+  if (size == 0)
+    return 0;
 
   sint np = c->np;
   uint id = 0;

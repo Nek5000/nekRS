@@ -211,4 +211,46 @@ int GenmapElementIdDump(const char *fname, genmap_handle h, struct comm *c) {
 
   return err;
 }
+
+int dump_fiedler_if_discon(genmap_handle h, int level, int max_levels) {
+  struct comm *lc = h->local;
+  struct comm *gc = h->global;
+
+  int nv = h->nv;
+  int ndim = (nv == 8) ? 3 : 2;
+
+  sint bfr[2];
+
+  struct rsb_element *elements = genmap_get_elements(h);
+
+  /* Dump current partition status */
+  if (level > 0 && level < max_levels) {
+    slong nelt = genmap_get_nel(h);
+    slong out[2][1], buf[2][1];
+    comm_scan(out, gc, gs_long, gs_add, &nelt, 1, buf); // max
+    slong start = out[0][0];
+
+    sint components = get_components(NULL, elements, lc, &h->buf, nelt, nv);
+    comm_allreduce(lc, gs_int, gs_max, &components, 1, bfr); // max
+
+    sint g_id = (components > 1) * gc->id;
+    comm_allreduce(gc, gs_int, gs_max, &g_id, 1, bfr); // max
+
+    sint l_id = gc->id;
+    comm_allreduce(lc, gs_int, gs_max, &l_id, 1, bfr); // max
+
+    if (g_id == l_id && components > 1) {
+      if (lc->id == 0)
+        printf("\tLevel %02d PRERCB: There are disconnected components!\n",
+               level);
+      if (components > 1) {
+        // Dump the current partition
+        char fname[BUFSIZ];
+        sprintf(fname, "fiedler_%02d.dump", level);
+        GenmapFiedlerDump(fname, h, start, lc);
+      }
+    }
+  }
+}
+
 #undef write_T
