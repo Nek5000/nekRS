@@ -184,7 +184,6 @@
         if(t < 1){
           dfloat minLe = (s_minLength[0] < s_minLength[1]) ?
             s_minLength[0] : s_minLength[1];
-          //printf("e = %d, minLe = %f\n", e, sqrt(minLe));
           elemLengths[e] = sqrt(minLe);
         }
       }

@@ -4,10 +4,13 @@ deviceNumber = LOCAL-RANK
 
 [GENERAL] 
 numSteps = 2000
-polynomialOrder = 9
+#numSteps = 1
+#numSteps = 100
+#polynomialOrder = 9
+polynomialOrder = 5
 dt = 1e-03
 timestepper = bdf3
-regularization=hpfrt+nmodes=2+strength=0.05/${dt}
+#regularization=hpfrt+nmodes=2+strength=0.05/${dt}
 
 [PRESSURE]
 residualTol = 1e-08
@@ -32,20 +35,12 @@ rho = 1
 diffusivity = -100000
 regularization=none
 
-# 'optimal' AVM formulation, 2% over/under shoot
+# 2% over/under shoot using hybrid approach
 [SCALAR02]
+dt = 1e-03
 residualProj = true
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=2.36+sensitivity=1+c0=true+lambda=10.0
-
-# hpfrt, 33% over/under shoot
-# This will clober a lot of the fine-scale details around the vortices
-[scalar03]
-dt = 1e-03 # duplication needed for below
-residualproj = true
-residualtol = 1e-8
-rho = 1
-diffusivity = -100000
-regularization=hpfrt+nmodes=5+strength=0.1/${dt}
+regularization=avm+nmodes=2+errorcoeff=1.25
+#regularization=hpfrt+nmodes=2+strength=0.05/${dt}
