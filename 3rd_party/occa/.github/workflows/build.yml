@@ -11,18 +11,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: (Ubuntu) gcc-8
-            os: ubuntu-18.04
-            CC: gcc-8
-            CXX: g++-8
-            CXXFLAGS: -Wno-maybe-uninitialized
-            FC: gfortran-8
-            GCOV: gcov-8
-            OCCA_COVERAGE: 1
-            OCCA_FORTRAN_ENABLED: 1
-
-          - name: (Ubuntu) gcc-9
-            os: ubuntu-18.04
+          - name: "[Ubuntu] gcc-9"
+            os: ubuntu-latest
             CC: gcc-9
             CXX: g++-9
             CXXFLAGS: -Wno-maybe-uninitialized
@@ -31,30 +21,39 @@ jobs:
             OCCA_COVERAGE: 1
             OCCA_FORTRAN_ENABLED: 1
 
-          - name: (Ubuntu) clang-6
-            os: ubuntu-18.04
-            CC: clang-6.0
-            CXX: clang++-6.0
+          - name: "[Ubuntu] CMake + gcc-9"
+            os: ubuntu-latest
+            CC: gcc-9
+            CXX: g++-9
+            CXXFLAGS: -Wno-maybe-uninitialized -Wno-cpp
+            GCOV: gcov-9
+            OCCA_COVERAGE: 1
+            useCMake: true
+
+          - name: "[Ubuntu] clang-10"
+            os: ubuntu-latest
+            CC: clang-10
+            CXX: clang++-10
             CXXFLAGS: -Wno-uninitialized
             OCCA_COVERAGE: 0
 
-          - name: (Ubuntu) clang-9
-            os: ubuntu-18.04
+          - name: "[Ubuntu] clang-9"
+            os: ubuntu-latest
             CC: clang-9
             CXX: clang++-9
             CXXFLAGS: -Wno-uninitialized
             OCCA_COVERAGE: 0
 
-          - name: (MacOS) gcc-9
-            os: macos-10.15
+          - name: "[MacOS] gcc-9"
+            os: macos-latest
             CC: gcc-9
             CXX: g++-9
             CXXFLAGS: -Wno-maybe-uninitialized
             GCOV: gcov-9
             OCCA_COVERAGE: 1
 
-          - name: (MacOS) clang
-            os: macos-10.15
+          - name: "[MacOS] clang"
+            os: macos-latest
             CC: clang
             CXX: clang++
             CXXFLAGS: -Wno-uninitialized
@@ -78,20 +77,39 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Compiler info
+      if: ${{ !matrix.useCMake }}
       run: make -j 16 info
 
+    - name: CMake build
+      if: ${{ matrix.useCMake }}
+      run: |
+        mkdir -p ${{runner.workspace}}/occa/build
+        cd ${{runner.workspace}}/occa/build
+        cmake -DENABLE_TESTS=ON -DENABLE_EXAMPLES=ON ${{runner.workspace}}/occa
+        make -j 16
+
     - name: Compile library
+      if: ${{ !matrix.useCMake }}
       run: make -j 16
 
     - name: Compile tests
+      if: ${{ !matrix.useCMake }}
       run: make -j 16 tests
 
     - name: Run unit tests
+      if: ${{ !matrix.useCMake }}
       run: ./tests/run_tests
 
     - name: Run examples
+      if: ${{ !matrix.useCMake }}
       run: ./tests/run_examples
 
+    - name: Run CTests
+      if: ${{ matrix.useCMake }}
+      run: |
+        cd ${{runner.workspace}}/occa/build
+        CTEST_OUTPUT_ON_FAILURE=1 make test
+
     - name: Upload code coverage
-      run: bash <(curl --no-buffer -s https://codecov.io/bash) -x "${GCOV}"
       if: ${{ matrix.OCCA_COVERAGE }}
+      run: bash <(curl --no-buffer -s https://codecov.io/bash) -x "${GCOV}"
