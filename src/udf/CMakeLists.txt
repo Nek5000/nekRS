@@ -1,5 +1,5 @@
 project(libUDF)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.11)
 enable_language(CXX)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
@@ -10,7 +10,8 @@ set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 #set(CMAKE_VERBOSE_MAKEFILE on)
 
-set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_C_COMPILER_FORCED TRUE)
+set(CMAKE_CXX_STANDARD 14)
 
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
@@ -39,9 +40,11 @@ set(INCLUDE_DIRS
 )
 
 add_library(UDF SHARED udf.cpp)
-target_include_directories(UDF PRIVATE ${INCLUDE_DIRS} ${UDF_DIR})
+target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${UDF_DIR})
 
 if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
+target_link_libraries(UDF "$ENV{NEKRS_UDF_LDFLAGS}")
+
 set_target_properties(UDF PROPERTIES LINKER_LANGUAGE CXX)
