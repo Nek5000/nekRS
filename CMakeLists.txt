@@ -230,7 +230,7 @@ set_property(
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE gs ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
@@ -264,8 +264,6 @@ target_include_directories(nekrs-lib
   ${HYPRE_SOURCE_DIR}/src/multivector
   ${HYPRE_SOURCE_DIR}/src/krylov
   ${HYPRE_BINARY_DIR})
-
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)

@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <strings.h>
 #include "platform.hpp"
 #include "nrs.hpp"
 #include "linAlg.hpp"
@@ -83,6 +84,7 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
   }
 
   if(device.mode() == "HIP" && !getenv("OCCA_HIP_COMPILER_FLAGS")) {
+    warpSize = 64;
     kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
     kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
@@ -225,34 +227,41 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   }
 
   occa::properties deviceProps;
+  string selectedOccaMode; 
+  options.getArgs("THREAD MODEL", selectedOccaMode);
 
-  if(options.compareArgs("THREAD MODEL", "CUDA")) {
+  if(strcasecmp(selectedOccaMode.c_str(), "CUDA") == 0) {
     sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
-  }else if(options.compareArgs("THREAD MODEL", "HIP"))  {
+  }else if(strcasecmp(selectedOccaMode.c_str(), "HIP") == 0) {
     sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
-  }else if(options.compareArgs("THREAD MODEL", "OPENCL"))  {
+  }else if(strcasecmp(selectedOccaMode.c_str(), "OPENCL") == 0) {
     int plat;
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
-  }else if(options.compareArgs("THREAD MODEL", "OPENMP"))  {
+  }else if(strcasecmp(selectedOccaMode.c_str(), "OPENMP") == 0) {
     if(rank == 0) printf("OpenMP backend currently not supported!\n");
     ABORT(EXIT_FAILURE);
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
-  }else  {
+  }else {
     sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
     sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
+    options.getArgs("THREAD MODEL", selectedOccaMode);
   }
 
-  if(rank == 0) printf("Initializing device\n");
+  if(rank == 0) printf("Initializing device \n");
   this->setup((std::string)deviceConfig);
   this->comm = comm;
-
-  if (this->mode() == "Serial")
-    options.setArgs("THREAD MODEL", "SERIAL");
-
+ 
   if(rank == 0)
     std::cout << "active occa mode: " << this->mode() << "\n\n";
+
+  if(strcasecmp(selectedOccaMode.c_str(), this->mode().c_str()) != 0) {
+    if(rank == 0) printf("cctive occa mode does not match selected backend!\n");
+    ABORT(EXIT_FAILURE);
+  } 
+
+
 
   int Nthreads = 1;
   if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);

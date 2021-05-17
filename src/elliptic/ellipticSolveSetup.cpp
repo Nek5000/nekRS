@@ -368,14 +368,11 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       const string oklpath = install_dir + "/okl/elliptic/";
       string filename;
 
-      if(elliptic->var_coeff) {
-        filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
-        kernelName = "ellipticBlockBuildDiagonal" + suffix;
-        elliptic->updateDiagonalKernel = platform->device.buildKernel(filename,
-                                                                  kernelName,
-                                                                  dfloatKernelInfo);
-      }
-
+      filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
+      kernelName = "ellipticBlockBuildDiagonal" + suffix;
+      elliptic->updateDiagonalKernel = platform->device.buildKernel(filename,
+                                                                    kernelName,
+                                                                    dfloatKernelInfo);
       if(elliptic->blockSolver) {
         filename =  oklpath + "ellipticBlockAx" + suffix + ".okl";
         if(serial) filename = oklpath + "ellipticSerialAx" +  suffix + ".c";
