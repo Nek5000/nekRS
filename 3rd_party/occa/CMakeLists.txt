@@ -137,7 +137,7 @@ if(ENABLE_CUDA)
     message("-- CUDA driver library: ${CUDA_LIB}")
 
     target_include_directories(libocca PRIVATE ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(libocca PUBLIC ${CUDA_LIB} cuda)
+    target_link_libraries(libocca PUBLIC ${CUDA_LIB})
   else (CUDA_FOUND)
     set(OCCA_CUDA_ENABLED 0)
   endif(CUDA_FOUND)
