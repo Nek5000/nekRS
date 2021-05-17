@@ -1,7 +1,3 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL] 
 polynomialOrder = 9
 #startFrom = "restart.fld"

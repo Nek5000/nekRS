@@ -1,7 +1,3 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL] 
 polynomialOrder = 7 
 stopAt = numSteps

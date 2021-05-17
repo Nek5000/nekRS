@@ -227,26 +227,30 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   }
 
   occa::properties deviceProps;
-  string selectedOccaMode; 
-  options.getArgs("THREAD MODEL", selectedOccaMode);
+  string requestedOccaMode; 
+  options.getArgs("THREAD MODEL", requestedOccaMode);
 
-  if(strcasecmp(selectedOccaMode.c_str(), "CUDA") == 0) {
+  if(strcasecmp(requestedOccaMode.c_str(), "CUDA") == 0) {
     sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
-  }else if(strcasecmp(selectedOccaMode.c_str(), "HIP") == 0) {
+  }else if(strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
     sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
-  }else if(strcasecmp(selectedOccaMode.c_str(), "OPENCL") == 0) {
+  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENCL") == 0) {
     int plat;
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
-  }else if(strcasecmp(selectedOccaMode.c_str(), "OPENMP") == 0) {
+  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
     if(rank == 0) printf("OpenMP backend currently not supported!\n");
     ABORT(EXIT_FAILURE);
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
-  }else {
+  }else if(strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
+           strcasecmp(requestedOccaMode.c_str(), "SERIAL") == 0) {
     sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
     sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
-    options.getArgs("THREAD MODEL", selectedOccaMode);
+    options.getArgs("THREAD MODEL", requestedOccaMode);
+  } else {
+    if(rank == 0) printf("Invalid requested backend!\n");
+    ABORT(EXIT_FAILURE);
   }
 
   if(rank == 0) printf("Initializing device \n");
@@ -256,8 +260,8 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   if(rank == 0)
     std::cout << "active occa mode: " << this->mode() << "\n\n";
 
-  if(strcasecmp(selectedOccaMode.c_str(), this->mode().c_str()) != 0) {
-    if(rank == 0) printf("cctive occa mode does not match selected backend!\n");
+  if(strcasecmp(requestedOccaMode.c_str(), this->mode().c_str()) != 0) {
+    if(rank == 0) printf("active occa mode does not match selected backend!\n");
     ABORT(EXIT_FAILURE);
   } 
 

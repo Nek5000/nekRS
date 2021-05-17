@@ -38,7 +38,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("UDF OKL FILE", casename + ".oudf");
   options.setArgs("UDF FILE", casename + ".udf");
 
-  options.setArgs("THREAD MODEL", "SERIAL");
+  //options.setArgs("THREAD MODEL", "SERIAL");
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
   options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");

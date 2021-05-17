@@ -1,6 +1,6 @@
 [OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
+#backend = CUDA
+#deviceNumber = LOCAL-RANK
 
 [GENERAL]
 #verbose = true
