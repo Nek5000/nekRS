@@ -43,19 +43,20 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     platform->linAlg->axmyzMany(
       Nlocal,
-      elliptic->Nfields,
+     elliptic->Nfields,
       elliptic->Ntotal,
       1,
       o_r,
       precon->o_invDiagA,
       o_z
-    );
+      );
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
+  }else if (options.compareArgs("PRECONDITIONER", "NONE")) {
+    o_z.copyFrom(o_r);
   }else {
     if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(platform->comm.mpiComm, 1);
-    //o_z.copyFrom(o_r);
   }
   platform->timer.toc(elliptic->name + " preconditioner");
 

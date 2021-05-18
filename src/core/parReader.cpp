@@ -38,7 +38,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("UDF OKL FILE", casename + ".oudf");
   options.setArgs("UDF FILE", casename + ".udf");
 
-  options.setArgs("THREAD MODEL", "SERIAL");
+  //options.setArgs("THREAD MODEL", "SERIAL");
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
   options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
@@ -282,6 +282,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   int bcInPar = 1;
   if(par->sections.count("velocity")) {
     // PRESSURE
+    {
+      string keyValue;
+      if(par->extract("pressure", "maxiterations", keyValue))
+        options.setArgs("PRESSURE MAXIMUM ITERATIONS", keyValue);
+    }  
+    //
     double p_residualTol;
     if(par->extract("pressure", "residualtol", p_residualTol) ||
        par->extract("pressure", "residualtoltolerance", p_residualTol))
@@ -312,7 +318,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
 
     string p_preconditioner;
     par->extract("pressure", "preconditioner", p_preconditioner);
-    if(p_preconditioner == "jacobi") {
+    if(p_preconditioner == "none") {
+      options.setArgs("PRESSURE PRECONDITIONER", "NONE");
+    } else if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
     } else if(p_preconditioner.find("semg") != std::string::npos  ||
               p_preconditioner.find("multigrid") != std::string::npos) {
@@ -330,24 +338,25 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     
     string p_solver;
     if(par->extract("pressure", "solver", p_solver)){
-      if (p_solver.find("gmres") != string::npos) {
+      if(p_solver.find("gmres") != string::npos) {
         std::vector<std::string> list;
         list = serializeString(p_solver, '+');
 	string n = "15"; 
 	if(list.size() == 2) n = list[1];
 	options.setArgs("PRESSURE PGMRES RESTART", n);
-        p_solver = "PGMRES";
-      } 
-
-      if (p_solver.find("cg") != string::npos) {
-        p_solver = "PCG";
-      } 
-
-      // flexible variant is required for pressure
-      options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
-      if(!options.compareArgs("PRESSURE KRYLOV SOLVER", "FLEXIBLE")){
-        options.setArgs("PRESSURE KRYLOV SOLVER", p_solver + "+FLEXIBLE");
+        if(p_solver.find("fgmres") != string::npos || p_solver.find("flexible") != string::npos)
+	  p_solver = "PGMRES+FLEXIBLE";
+	else
+          p_solver = "PGMRES";
+      } else if(p_solver.find("cg") != string::npos) {
+        if(p_solver.find("fcg") != string::npos || p_solver.find("flexible") != string::npos) 
+  	  p_solver = "PCG+FLEXIBLE";
+	else
+          p_solver = "PCG";
+      } else {
+        exit("Invalid solver for pressure!",  EXIT_FAILURE);
       }
+      options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
     }
 
     string p_smoother;
@@ -482,6 +491,13 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       if(par->extract("boomeramg", "nongalerkintol", nonGalerkinTol))
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
     }
+
+    // VELOCITY 
+    {
+      string keyValue;
+      if(par->extract("velocity", "maxiterations", keyValue))
+        options.setArgs("VELOCITY MAXIMUM ITERATIONS", keyValue);
+    }  
 
     options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
     string vsolver;

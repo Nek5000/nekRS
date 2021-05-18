@@ -16,6 +16,7 @@
 : ${OCCA_CUDA_ENABLED:=1}
 : ${OCCA_HIP_ENABLED:=1}
 : ${OCCA_OPENCL_ENABLED:=1}
+: ${NEKRS_BACKEND_DEFAULT:=CUDA}
 
 # GPU aware MPI
 : ${OGS_MPI_SUPPORT:=0}
@@ -138,27 +139,23 @@ fi
 
 if [ "$#" -eq 0 ]; then
   echo ""
-  echo "Configuration"
-  echo "-------------"
-  echo "Installation directory:" $NEKRS_INSTALL_DIR 
+  echo "Installation Settings"
+  echo "---------------------"
+  echo "Directory:" $NEKRS_INSTALL_DIR 
   echo "C compiler:" `which $NEKRS_CC` 
   echo "C++ compiler:" `which $NEKRS_CXX`
   echo "Fortran compiler:" `which $NEKRS_FC`
+  echo ""
+  echo "Configured Runtime Settings" 
+  echo "---------------------------"
+  echo "File :" $NEKRS_INSTALL_DIR/nekrs.conf
+  echo "Default backend :" $NEKRS_BACKEND_DEFAULT
   echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
   echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
   echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
   echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
-  echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
+  echo "GPU aware MPI support:" $OGS_MPI_SUPPORT
   echo ""
-
-  if [ "$TRAVIS" != "true" ]; then
-    read -p "Press ENTER to continue ..." yn
-    case $yn in
-      [Nn]* )
-      ${NEKRS_EXIT_CMD} 1
-      ;;
-    esac
-  fi  
 fi
 
 # =======================
@@ -191,6 +188,7 @@ cmake -Wno-dev \
       -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
       -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
+      -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
       ${NEKRS_DIR}
 
 # =========================

@@ -30,7 +30,7 @@ SOFTWARE.
 void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem){
 
   occa::properties props;
-  props["mapped"] = true; // props["host"] = true;
+  props["host"] = true;
   
   if(source!=NULL)
     mem =  device.malloc(size, source);
@@ -39,7 +39,7 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 
   h_mem =  device.malloc(size, props);
   
-  void *ptr = h_mem.ptr(props); // h_mem.ptr();
+  void *ptr = h_mem.ptr();
   
   
  return ptr;
