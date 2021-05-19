@@ -71,11 +71,9 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     options.setArgs(parPrefix + "HPFRT MODES", "1");
     if(usesAVM){
       options.setArgs(parPrefix + "VISMAX COEFF", "0.5");
-      options.setArgs(parPrefix + "AVM LAMBDA", "1.0");
       options.setArgs(parPrefix + "FILTER STABILIZATION", "AVM");
       options.setArgs(parPrefix + "RAMP CONSTANT", to_string_f(1.0));
       options.setArgs(parPrefix + "AVM C0", "FALSE");
-      options.setArgs(parPrefix + "AVM P1", "FALSE");
     }
     if(usesHPFRT){
       options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
@@ -106,13 +104,6 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
 
     if(usesAVM){
       for(std::string s : list){
-        if(s.find("lambda") == 0)
-        {
-          std::vector<string> items = serializeString(s, '=');
-          assert(items.size() == 2);
-          const dfloat value = std::stod(items[1]);
-          options.setArgs(parPrefix + "AVM LAMBDA", to_string_f(value));
-        }
         if(s.find("vismaxcoeff") == 0)
         {
           std::vector<string> items = serializeString(s, '=');
@@ -122,19 +113,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
         }
         if(s.find("c0") == 0)
         {
-          std::vector<string> items = serializeString(s, '=');
-          assert(items.size() == 2);
-          string c0String = items[1];
-          UPPER(c0String);
-          options.setArgs(parPrefix + "AVM C0", c0String);
-        }
-        if(s.find("p1") == 0)
-        {
-          std::vector<string> items = serializeString(s, '=');
-          assert(items.size() == 2);
-          string p1String = items[1];
-          UPPER(p1String);
-          options.setArgs(parPrefix + "AVM P1", p1String);
+          options.setArgs(parPrefix + "AVM C0", "TRUE");
         }
         if(s.find("rampconstant") == 0)
         {

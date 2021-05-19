@@ -2,45 +2,7 @@
 // nekRS User Defined File
 //
 
-#include <math.h>
-#include <tuple>
 #include "udf.hpp"
-#include <fstream>
-#include <string>
-
-// uncomment to dump AVM applied at last timestep
-//#define VIZ_AVM
-
-void viz_avm(nrs_t* nrs, const dfloat time)
-{
-  auto cds = nrs->cds;
-  const int avmIndex = 2;
-  const dfloat expectedDiff = 1e-5;
-  const int nField = 2;
-  auto o_S_slice = cds->o_S + cds->fieldOffsetScan[avmIndex] * sizeof(dfloat);
-  auto& o_avm = platform->o_mempool.slice0;
-  auto o_diff_slice = cds->o_diff + cds->fieldOffsetScan[avmIndex] * sizeof(dfloat);
-
-  auto mesh = nrs->meshV;
-
-  platform->linAlg->fill(nField * nrs->fieldOffset, expectedDiff, o_avm);
-  // o_avm = o_diff - expected
-  
-  for(int fld = 0; fld < nField; ++fld){
-    auto o_avm_slice = o_avm + fld * nrs->fieldOffset * sizeof(dfloat);
-    auto o_diff_slice_slice = o_diff_slice + fld * nrs->fieldOffset * sizeof(dfloat);
-    platform->linAlg->axpby(
-      mesh->Nlocal,
-      1.0,
-      o_diff_slice_slice,
-      -1.0,
-      o_avm_slice
-    );
-  }
-
-  writeFld("avm", time, 1, 1, &nrs->o_U, &nrs->o_P, &o_avm, nField);
-}
-
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
@@ -54,65 +16,10 @@ void UDF_Setup(nrs_t *nrs)
 {
 }
 
-std::tuple<dfloat,dfloat,dfloat> evalMethod(nrs_t * nrs, occa::memory & o_field)
-{
-  auto mesh= nrs->meshV;
-  const dfloat L2Norm = platform->linAlg->weightedNorm2(
-    mesh->Nlocal,
-    mesh->o_LMM,
-    o_field,
-    platform->comm.mpiComm
-  );
-  const dfloat fieldMin = platform->linAlg->min(
-     mesh->Nlocal,
-     o_field,
-     platform->comm.mpiComm
-  );
-  const dfloat fieldMax = platform->linAlg->max(
-     mesh->Nlocal,
-     o_field,
-     platform->comm.mpiComm
-  );
-  return {L2Norm, fieldMin, fieldMax};
-}
-
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
     nek::userchk();
-
-#ifdef VIZ_AVM
-    viz_avm(nrs, time);
-#endif
-
-    auto cds = nrs->cds;
-    {
-      const unsigned noFiltering = 1;
-      auto o_S_nofilter = cds->o_S + cds->fieldOffsetScan[noFiltering] * sizeof(dfloat);
-      dfloat L2norm, min, max;
-      std::tie(L2norm, min, max) = evalMethod(nrs, o_S_nofilter);
-      printf("Unfiltered scalar field\n");
-      printf("L2norm = %f, min = %f, max = %f\n", L2norm, min, max);
-    }
-
-    {
-      const unsigned perssonDiscont = 2;
-      auto o_S_perssonDiscont = cds->o_S + cds->fieldOffsetScan[perssonDiscont] * sizeof(dfloat);
-      dfloat L2norm, min, max;
-      std::tie(L2norm, min, max) = evalMethod(nrs, o_S_perssonDiscont);
-      printf("Persson AVM, discontinuous field\n");
-      printf("L2norm = %f, min = %f, max = %f\n", L2norm, min, max);
-    }
-
-    {
-      const unsigned perssonCont = 3;
-      auto o_S_perssonCont = cds->o_S + cds->fieldOffsetScan[perssonCont] * sizeof(dfloat);
-      dfloat L2norm, min, max;
-      std::tie(L2norm, min, max) = evalMethod(nrs, o_S_perssonCont);
-      printf("Persson AVM, continuous field\n");
-      printf("L2norm = %f, min = %f, max = %f\n", L2norm, min, max);
-    }
-
   }
 }

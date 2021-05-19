@@ -13,11 +13,9 @@ namespace avm {
 
 
 static occa::kernel evaluateShockSensorKernel;
-static occa::kernel applyAVMKernel;
 static occa::kernel computeMaxViscKernel;
 static occa::kernel interpolateP1Kernel;
 
-static occa::memory o_artVisc;
 static occa::memory o_vertexIds;
 static occa::memory o_r;
 static occa::memory o_s;
@@ -34,9 +32,6 @@ void allocateMemory(cds_t* cds)
   o_r = platform->device.malloc(mesh->Np * sizeof(dfloat), mesh->r);
   o_s = platform->device.malloc(mesh->Np * sizeof(dfloat), mesh->s);
   o_t = platform->device.malloc(mesh->Np * sizeof(dfloat), mesh->t);
-
-  o_artVisc = platform->device.malloc(cds->NSfields * cds->mesh[0]->Np, sizeof(dfloat));
-  platform->linAlg->fill(cds->NSfields * cds->mesh[0]->Np, 1.0, o_artVisc);
 }
 
 void compileKernels(cds_t* cds)
@@ -52,12 +47,6 @@ void compileKernels(cds_t* cds)
   evaluateShockSensorKernel =
     platform->device.buildKernel(filename,
                              "evaluateShockSensor",
-                             info);
-
-  filename = oklpath + "applyAVM.okl";
-  applyAVMKernel =
-    platform->device.buildKernel(filename,
-                             "applyAVM",
                              info);
 
   filename = oklpath + "computeMaxVisc.okl";
@@ -77,34 +66,6 @@ void setup(cds_t* cds)
 {
   allocateMemory(cds);
   compileKernels(cds);
-
-  const dfloat alpha = -std::log(std::numeric_limits<dfloat>::epsilon());
-  auto superGaussian = [alpha](const dfloat x, const dfloat lambda)
-  {
-    return std::exp(-alpha * std::pow(x, 2.0 * lambda));
-  };
-
-  dfloat* artVisc = (dfloat*) calloc(cds->mesh[0]->Np, sizeof(dfloat));
-  for(dlong is = 0 ; is < cds->NSfields; ++is){
-    if(cds->options[is].compareArgs("AVM C0", "TRUE")){
-      dfloat lambda = 1.0;
-      cds->options[is].getArgs("AVM LAMBDA", lambda);
-      for(dlong point = 0; point < cds->mesh[is]->Np; ++point){
-        const dfloat r = cds->mesh[is]->r[point];
-        const dfloat s = cds->mesh[is]->s[point];
-        const dfloat t = cds->mesh[is]->t[point];
-        dfloat visc = superGaussian(r, lambda);
-        visc *= superGaussian(s, lambda);
-        visc *= superGaussian(t, lambda);
-        visc = cbrt(visc);
-        artVisc[point] = visc;
-      }
-      o_artVisc.copyFrom(artVisc, cds->mesh[is]->Np * sizeof(dfloat), is * cds->mesh[is]->Np * sizeof(dfloat));
-    }
-  }
-
-  free(artVisc);
-
 }
 
 occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory o_S)
@@ -152,8 +113,8 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     o_epsilon // max(|df/du|) <- max visc
   );
 
-  int makeP1Cont = cds->options[scalarIndex].compareArgs("AVM P1", "TRUE");
-  if(makeP1Cont){
+  const bool makeCont = cds->options[scalarIndex].compareArgs("AVM C0", "TRUE");
+  if(makeCont){
     oogs_t* gsh;
     if(scalarIndex){
       gsh = cds->gsh;
@@ -215,14 +176,16 @@ void apply(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory 
       minEps, maxEps, minDiff, maxDiff, scalarIndex);
   }
 
-  applyAVMKernel(
-    mesh->Nelements,
-    scalarOffset,
-    scalarIndex,
-    o_artVisc,
+  platform->linAlg->axpby(
+    mesh->Nlocal,
+    1.0,
     o_eps,
-    cds->o_diff
+    1.0,
+    cds->o_diff,
+    0,
+    scalarOffset
   );
+
   if(verbose && platform->comm.mpiRank == 0){
     occa::memory o_S_slice = cds->o_diff + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
     const dfloat maxDiff = platform->linAlg->max(

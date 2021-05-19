@@ -23,7 +23,6 @@ rhocp = 1
 conductivity = -100000
 regularization=none
 
-# unfiltered field, 140% over/under shoot (unstable)
 [SCALAR01]
 residualProj = true
 residualTol = 1e-8
@@ -31,20 +30,10 @@ rho = 1
 diffusivity = -100000
 regularization=none
 
-# 5% over/under shoot, discontinuous
 [SCALAR02]
 dt = 1e-03
 residualProj = true
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=0.09668339491293612+rampconstant=1.83
-
-# 5% over/under shoot, P1 continuous
-[SCALAR03]
-dt = 1e-03
-residualProj = true
-residualTol = 1e-8
-rho = 1
-diffusivity = -100000
-regularization=avm+nmodes=2+vismaxcoeff=0.12559301483266713+rampconstant=0.5625+p1=true
+regularization=avm+c0

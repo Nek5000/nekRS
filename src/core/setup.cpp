@@ -1041,8 +1041,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is] = options;
 
     cds->options[is].setArgs("RAMP CONSTANT", options.getArgs("SCALAR" + sid + " RAMP CONSTANT"));
-    cds->options[is].setArgs("AVM LAMBDA", options.getArgs("SCALAR" + sid + " AVM LAMBDA"));
-    cds->options[is].setArgs("AVM P1", options.getArgs("SCALAR" + sid + " AVM P1"));
     cds->options[is].setArgs("AVM C0", options.getArgs("SCALAR" + sid + " AVM C0"));
     cds->options[is].setArgs("FILTER STABILIZATION", options.getArgs("SCALAR" + sid + " FILTER STABILIZATION"));
     cds->options[is].setArgs("VISMAX COEFF", options.getArgs("SCALAR" + sid + " VISMAX COEFF"));
