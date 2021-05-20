@@ -189,6 +189,8 @@ cmake -Wno-dev \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
       -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
       -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
+      -DUSE_LONG_LONG=1 \
+      -DHYPRE_BIGINT=1 \
       ${NEKRS_DIR}
 
 # =========================

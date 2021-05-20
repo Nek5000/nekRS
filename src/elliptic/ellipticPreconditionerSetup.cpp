@@ -26,6 +26,15 @@
 
 #include "elliptic.h"
 #include "platform.hpp"
+#include "gslib.h"
+extern "C" void fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_, 
+                   const sint *n_elem_, const sint *n_dim_, 
+                   double *x_m_, double *y_m_, double *z_m_, 
+                   double *pmask_, const sint *nullspace,
+                   double *param,
+                   MPI_Comm comm,
+                   long long int* gatherGlobalNodes
+                   );
 
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo)
 {
@@ -41,9 +50,34 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     if(platform->comm.mpiRank == 0) printf("building MG preconditioner ... \n"); fflush(stdout);
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
-    //ellipticSEMFEMSetup(elliptic,precon);
-    printf("ERROR: SEMFEM not supported!\n");
-    ABORT(EXIT_FAILURE);;
+    // initialize solver here
+    const int N = mesh->Nq;
+    const int Nelements = mesh->Nelements;
+    const int Ndim = 3;
+    const int nullspace = (int) elliptic->allNeumann;
+    double nullParams[] = {0}; // use default parameters
+    double* mask = (double*) malloc(N*N*N*Nelements*sizeof(double));
+    for(int i = 0; i < N*N*N*Nelements; ++i) mask[i] = 1.0;
+    for(dlong n = 0; n < elliptic->Nmasked; n++){
+      mask[elliptic->maskIds[n]] = 0.0;
+    }
+    
+    fem_amg_setup(
+      &N,
+      &N,
+      &N,
+      &Nelements,
+      &Ndim,
+      mesh->x,
+      mesh->y,
+      mesh->z,
+      mask,
+      &nullspace,
+      &nullParams[0],
+      platform->comm.mpiComm,
+      mesh->globalIds
+    );
+
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
     precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));

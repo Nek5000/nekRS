@@ -66,7 +66,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
   options.setArgs("GALERKIN COARSE MATRIX","FALSE");
   options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");
-  options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
+  //options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
+  options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM"); // try it out!
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("AMG SOLVER", "BOOMERAMG");
