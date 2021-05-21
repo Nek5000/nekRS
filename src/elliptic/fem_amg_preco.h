@@ -2,6 +2,9 @@
 #define fem_amg_preco_hpp_
 #include "gslib.h"
 
+long long * get_row_start();
+long long * get_row_end();
+long long * get_dof_map();
 void fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_, 
                    const sint *n_elem_, const sint *n_dim_, 
                    double *x_m_, double *y_m_, double *z_m_, 

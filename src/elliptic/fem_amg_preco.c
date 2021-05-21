@@ -55,6 +55,16 @@ struct gs_data *gsh;
 #define NPARAM 10
 double HYPREsettings[NPARAM]; 
 
+long long* get_dof_map(){
+    return dof_map;
+}
+long long* get_row_start(){
+    return &row_start;
+}
+long long* get_row_end(){
+    return &row_end;
+}
+
 /* Interface definition */
 void fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_, 
                    const sint *n_elem_, const sint *n_dim_, 
@@ -183,6 +193,13 @@ void fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_,
     amg_ready = 1;
 }
 
+double compute_sum(double* fld, int length)
+{
+    double sum = 0.0;
+    for(int i = 0; i < length; ++i)
+      sum += fld[i];
+    return sum;
+}
 void fem_amg_solve(double *z, double *w)
 {
     long long row;
@@ -198,24 +215,14 @@ void fem_amg_solve(double *z, double *w)
     /* Choose preconditioner type */
     HYPRE_IJVectorInitialize(f_bc);
 
-    int cnt = 0;
-    for(row = row_start; row <= row_end; row++){
-        z_buffer[cnt] = w[dof_map[row - row_start]]; // TODO: this won't be device capable...
-        cnt++;
-    }
-    HYPRE_IJVectorSetValues(f_bc, row_end - row_start + 1, &row_indices[0], z_buffer);
+    HYPRE_IJVectorSetValues(f_bc, row_end - row_start + 1, &row_indices[0], w);
 
     HYPRE_IJVectorAssemble(f_bc);
 
     /* Solve preconditioned system */
     HYPRE_BoomerAMGSolve(amg_preconditioner, A_fem, f_fem, u_fem);
 
-    HYPRE_IJVectorGetValues(u_bc, row_end - row_start + 1, &row_indices[0], z_buffer);
-    cnt = 0;
-    for(row = row_start; row <= row_end; row++){
-        z[dof_map[row-row_start]] = z_buffer[cnt]; // TODO: this won't be device capable...
-        cnt++;
-    }
+    HYPRE_IJVectorGetValues(u_bc, row_end - row_start + 1, &row_indices[0], z);
 }
 
 /* FEM Assembly definition */

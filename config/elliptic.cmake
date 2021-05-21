@@ -8,6 +8,8 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEMSetup.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridLevel.cpp
