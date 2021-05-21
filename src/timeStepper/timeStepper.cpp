@@ -1260,9 +1260,11 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
       }
  
       for(int is = 0; is < nrs->Nscalar; is++) {
-        elliptic_t * solver = cds->solver[is];
-        printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
-               solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+        if (cds->compute[is]) {
+          elliptic_t * solver = cds->solver[is];
+          printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n", is,
+                 solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+        }
       }	
     }
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f",
