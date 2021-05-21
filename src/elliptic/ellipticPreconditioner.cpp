@@ -57,6 +57,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   }else if (options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     // TODO: *NOT* device compatible
     fem_amg_solve((dfloat*)o_z.ptr(), (dfloat*)o_r.ptr());
+    oogs::startFinish(o_z, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
   }else if (options.compareArgs("PRECONDITIONER", "NONE")) {
     o_z.copyFrom(o_r);
   }else {

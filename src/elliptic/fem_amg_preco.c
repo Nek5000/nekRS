@@ -212,8 +212,6 @@ void fem_amg_solve(double *z, double *w)
     // TODO: fix
     for (row = row_start; row <= row_end; row++)
         HYPRE_IJVectorGetValues(u_bc, 1, &row, &(z[dof_map[row - row_start]]));
-
-    gs(z, gs_double, gs_add, 0, gsh, 0);
 }
 
 /* FEM Assembly definition */
