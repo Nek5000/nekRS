@@ -25,10 +25,12 @@
 int n_x, n_y, n_z, n_elem, n_dim;
 int n_xyz, n_xyze;
 double *x_m, *y_m, *z_m;
+double* z_buffer;
 long long *glo_num;
 double *pmask;
 int num_loc_dofs;
 long long *dof_map;
+long long *row_indices;
 int amg_ready = 0;
 long long row_start;
 long long row_end;
@@ -75,6 +77,7 @@ void fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_,
 
     n_xyz = n_x * n_y * n_z;
     n_xyze = n_x * n_y * n_z * n_elem;
+    z_buffer = (double*) calloc(n_xyze, sizeof(double));
     int NuniqueBases = n_xyze;
 
     {
@@ -195,23 +198,24 @@ void fem_amg_solve(double *z, double *w)
     /* Choose preconditioner type */
     HYPRE_IJVectorInitialize(f_bc);
 
-    // TODO: fix
-    for (row = row_start; row <= row_end; row++)
-        HYPRE_IJVectorSetValues(f_bc, 1, &row, &(w[dof_map[row - row_start]]));
+    int cnt = 0;
+    for(row = row_start; row <= row_end; row++){
+        z_buffer[cnt] = w[dof_map[row - row_start]]; // TODO: this won't be device capable...
+        cnt++;
+    }
+    HYPRE_IJVectorSetValues(f_bc, row_end - row_start + 1, &row_indices[0], z_buffer);
 
     HYPRE_IJVectorAssemble(f_bc);
 
     /* Solve preconditioned system */
     HYPRE_BoomerAMGSolve(amg_preconditioner, A_fem, f_fem, u_fem);
 
-    // TODO: this isn't needed
-    /* Map data back to SEM mesh */
-    for (idx = 0; idx < n_xyze; idx++)
-        z[idx] = 0.0;
-
-    // TODO: fix
-    for (row = row_start; row <= row_end; row++)
-        HYPRE_IJVectorGetValues(u_bc, 1, &row, &(z[dof_map[row - row_start]]));
+    HYPRE_IJVectorGetValues(u_bc, row_end - row_start + 1, &row_indices[0], z_buffer);
+    cnt = 0;
+    for(row = row_start; row <= row_end; row++){
+        z[dof_map[row-row_start]] = z_buffer[cnt]; // TODO: this won't be device capable...
+        cnt++;
+    }
 }
 
 /* FEM Assembly definition */
@@ -360,6 +364,14 @@ void fem_assembly()
     num_loc_dofs = row_end - row_start + 1;
 
     dof_map = mem_alloc_1D_long(num_loc_dofs);
+    row_indices = mem_alloc_1D_long(num_loc_dofs);
+
+    long long int cnt = 0;
+    for(long long int row = row_start; row <= row_end; ++row)
+    {
+        row_indices[cnt] = row;
+        cnt++;
+    }
 
     for (idx = 0; idx < n_xyze; idx++)
     {

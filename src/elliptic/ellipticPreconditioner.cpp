@@ -55,6 +55,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
   }else if (options.compareArgs("PRECONDITIONER", "SEMFEM")) {
+    platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_z);
     // TODO: *NOT* device compatible
     fem_amg_solve((dfloat*)o_z.ptr(), (dfloat*)o_r.ptr());
     oogs::startFinish(o_z, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
