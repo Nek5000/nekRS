@@ -66,8 +66,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank)
   options.setArgs("FIXED ITERATION COUNT", "FALSE");
   options.setArgs("GALERKIN COARSE MATRIX","FALSE");
   options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");
-  //options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-  options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM"); // try it out!
+  options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("AMG SOLVER", "BOOMERAMG");
@@ -323,6 +322,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE PRECONDITIONER", "NONE");
     } else if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
+    } else if(p_preconditioner == "semfem") {
+      options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
     } else if(p_preconditioner.find("semg") != std::string::npos  ||
               p_preconditioner.find("multigrid") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
