@@ -5,16 +5,28 @@
 
 #define MPI 1
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "c99.h"
 #include "name.h"
 #include "fail.h"
 #include "types.h"
-#include "comm.h"
 #include "mem.h"
 #include "gs_defs.h"
+#include "comm.h"
 #include "gs.h"
-#include "crs.h"
+#include "crystal.h"
+#include "sort.h"
+#include "sarray_sort.h"
+#include "sarray_transfer.h"
+#include "tensor.h"
+#include "poly.h"
+#include "lob_bnd.h"
+#include "obbox.h"
+#include "findpts.h"
+#include "findpts_el.h"
+#include "findpts_local.h"
+#ifdef __cplusplus
+}
+#endif
