@@ -13,6 +13,9 @@
 #if !defined(C99_H) || !defined(FAIL_H)
 #error "mem.h" requires "c99.h" and "fail.h"
 #endif
+#ifdef __cplusplus
+#include <string.h>
+#endif
 
 /* 
    All memory management goes through the wrappers defined in this
