@@ -3,7 +3,11 @@
 #include <string>
 #include "gslib.h"
 #include "fem_amg_preco.hpp"
-#include "crs_hypre.h"
+#include "boomerAMG.h"
+#if 0
+#include "amgx.h"
+#endif
+
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
   mesh_t* mesh = elliptic->mesh;
@@ -54,10 +58,9 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     platform->kernelInfo
   );
 
-  elliptic->hypreData =
-    hypre_setup(
+  if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
+    boomerAMGSetup(
       numRows,
-      data->rowStart,
       data->nnz,
       data->Ai,
       data->Aj,
@@ -65,8 +68,38 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       nullspace,
       platform->comm.mpiComm,
       1,
+      platform->device.device_id(),
       &nullParams[0]
     );
+  }
+  else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){
+#if 1
+    if(platform->comm.mpiRank == 0){
+      printf("AMGX solver is not yet supported!\n");
+    }
+    ABORT(EXIT_FAILURE);
+#else
+    AMGXsetup(
+      numRows,
+      data->nnz,
+      data->Ai,
+      data->Aj,
+      data->Av,
+      nullspace,
+      platform->comm.mpiComm,
+      platform->device.device_id(),
+      0, // do not use FP32
+      nullptr // use default parameters
+    );
+#endif
+  } else {
+    if(platform->comm.mpiRank == 0){
+      std::string amgSolver;
+      elliptic->options.getArgs("SEMFEM SOLVER", amgSolver);
+      printf("SEMFEM SOLVER %s is not supported!\n", amgSolver.c_str());
+    }
+    ABORT(EXIT_FAILURE);
+  }
 
   delete data;
 }

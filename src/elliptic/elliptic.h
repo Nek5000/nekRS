@@ -40,7 +40,6 @@
 
 #include "timer.hpp"
 
-#include "crs_hypre.h"
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
@@ -171,7 +170,6 @@ struct elliptic_t
   occa::memory o_SEMFEMBuffer1;
   occa::memory o_SEMFEMBuffer2;
   dlong numRowsSEMFEM;
-  hypre_crs_data* hypreData;
 
   dfloat resNormFactor;
 

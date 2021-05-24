@@ -322,8 +322,17 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
       options.setArgs("PRESSURE PRECONDITIONER", "NONE");
     } else if(p_preconditioner == "jacobi") {
       options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    } else if(p_preconditioner == "semfem") {
+    } else if(p_preconditioner.find("semfem") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
+      options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
+      std::vector<std::string> list;
+      list = serializeString(p_preconditioner, '+');
+      if(list.size() == 2){
+        std::string solver = list[1];
+        UPPER(solver);
+        options.setArgs("PRESSURE SEMFEM SOLVER", solver);
+      }
+      
     } else if(p_preconditioner.find("semg") != std::string::npos  ||
               p_preconditioner.find("multigrid") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");

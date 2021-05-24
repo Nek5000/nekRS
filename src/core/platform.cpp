@@ -271,4 +271,6 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);
 
   bufferSize = 0;
+
+  _device_id = device_id;
 }

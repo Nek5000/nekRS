@@ -2,7 +2,10 @@
 #include "platform.hpp"
 #include <string>
 #include "gslib.h"
-#include "fem_amg_preco.hpp"
+#include "boomerAMG.h"
+#if 0
+#include "amgx.h"
+#endif
 void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& o_z)
 {
   mesh_t* mesh = elliptic->mesh;
@@ -19,8 +22,12 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
 
   platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_z);
 
-  // TODO: *NOT* device compatible
-  hypre_solve((dfloat*)o_buffer2.ptr(), elliptic->hypreData, (dfloat*)o_buffer.ptr());
+  if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
+    // TODO: *NOT* device compatible
+    boomerAMGSolve(o_buffer2.ptr(), o_buffer.ptr());
+  } else {
+    //AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
+  }
 
   elliptic->postSEMFEMKernel(
     elliptic->numRowsSEMFEM,
