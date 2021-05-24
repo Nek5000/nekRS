@@ -110,6 +110,16 @@ int main(int argc, char** argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+#if defined(ENABLE_AMGX)
+  AMGX_SAFE_CALL(AMGX_initialize());
+    if (rank == 0) {
+        int major, minor;
+        AMGX_get_api_version(&major, &minor);
+        std::cout << "Using AMGX api version << " << major << "." << minor << std::endl;
+    }
+#endif
+
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) {
@@ -128,6 +138,10 @@ int main(int argc, char** argv)
   nekrs::setup(comm, cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cacheDir, cmdOpt->setupFile,
                cmdOpt->backend, cmdOpt->deviceID);
+
+#if defined(ENABLE_AMGX)
+    AMGX_SAFE_CALL(AMGX_finalize())
+#endif
 
   if (cmdOpt->buildOnly) {
     MPI_Finalize();

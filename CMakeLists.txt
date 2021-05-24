@@ -49,6 +49,8 @@ set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
 #   - ENABLE_METAL
 #   - ENABLE_MPI
 
+set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
+
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
 ###############################################################################
@@ -181,6 +183,14 @@ include(config/gslib.cmake)
 include(config/blaslapack.cmake)
 
 ###############################################################################
+# Build with AMGX
+###############################################################################
+
+if(ENABLE_AMGX AND ENABLE_CUDA)
+  add_subdirectory(3rd_party/AMGX)
+endif()
+
+###############################################################################
 # Build NekRS
 ###############################################################################
 
@@ -267,6 +277,16 @@ target_include_directories(nekrs-lib
   ${HYPRE_SOURCE_DIR}/src/multivector
   ${HYPRE_SOURCE_DIR}/src/krylov
   ${HYPRE_BINARY_DIR})
+
+if(ENABLE_AMGX AND ENABLE_CUDA)
+  # This is used in nekRS itself to conditionaly enable AMGX
+  target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
+  # TODO: Link to the libs you need
+  target_link_libraries(nekrs-lib PUBLIC amgx_base)
+  # AMGX doesn't add incude paths to to its targets, so we have to be specific
+  # about the directories we need
+  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
+endif()
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)

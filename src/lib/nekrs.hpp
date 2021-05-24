@@ -4,6 +4,11 @@
 #include <string>
 #include <mpi.h>
 
+// TODO: Include the headers you need
+#if defined(ENABLE_AMGX)
+#include "amgx_c.h"
+#endif
+
 namespace nekrs
 {
 void setup(MPI_Comm comm, int buildOnly, int targetSize,

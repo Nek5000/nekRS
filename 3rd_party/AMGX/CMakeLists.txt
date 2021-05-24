@@ -31,12 +31,12 @@ project (AMG)
 
 
 #disable in-place builds
-if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
-endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 
 # set the path to extra modules.
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/cuda" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cuda" ${CMAKE_MODULE_PATH})
 
 # declare the supported configurations
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Profile;RelWithTraces" CACHE STRING "Avaialble Configuration Types" FORCE)
@@ -139,7 +139,7 @@ set(AMGX_INCLUDE_EXTERNAL True CACHE BOOL "Include external 3rd party libraries"
 if (${AMGX_INCLUDE_EXTERNAL})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRAPIDJSON_DEFINED")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DRAPIDJSON_DEFINED")
-  include_directories("${CMAKE_SOURCE_DIR}/external/rapidjson/include")
+  include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/rapidjson/include")
 endif (${AMGX_INCLUDE_EXTERNAL})
 
 set(CMAKE_NO_MPI false CACHE BOOL "Force non-MPI build")
@@ -339,7 +339,7 @@ foreach( lib ${libList} )
   get_target_property(src amgx_${lib} SOURCES)
   set(src_all ${src_all} ${src})
   set(target_all ${target_all} amgx_${lib})
-  FILE(GLOB_RECURSE TESTS "${CMAKE_SOURCE_DIR}/${lib}/tests/*.cu")
+  FILE(GLOB_RECURSE TESTS "${CMAKE_CURRENT_SOURCE_DIR}/${lib}/tests/*.cu")
   set(tests_all ${tests_all} ${TESTS})
 endforeach(lib)
 
@@ -395,15 +395,15 @@ endif(MKL_ROOT_DIR)
 install(TARGETS amgx   DESTINATION "lib")
 install(TARGETS amgxsh DESTINATION "lib")
 
-export(TARGETS amgxsh FILE ${CMAKE_SOURCE_DIR}/amgxsh.cmake)
+export(TARGETS amgxsh FILE ${CMAKE_CURRENT_SOURCE_DIR}/amgxsh.cmake)
 
 # build examples
 add_subdirectory(examples)
-if(EXISTS ${CMAKE_SOURCE_DIR}/eigen_examples)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
   add_subdirectory(eigen_examples)
-endif(EXISTS ${CMAKE_SOURCE_DIR}/eigen_examples)
+endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
 
 # build unit tests
-if(EXISTS ${CMAKE_SOURCE_DIR}/tests)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
    add_subdirectory(tests)
-endif(EXISTS ${CMAKE_SOURCE_DIR}/tests)
+endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
