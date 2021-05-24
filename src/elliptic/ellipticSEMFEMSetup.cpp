@@ -68,7 +68,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       nullspace,
       platform->comm.mpiComm,
       1,
-      platform->device.device_id(),
+      platform->device.id(),
       &nullParams[0]
     );
   }
@@ -87,7 +87,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       data->Av,
       nullspace,
       platform->comm.mpiComm,
-      platform->device.device_id(),
+      platform->device.id(),
       0, // do not use FP32
       nullptr // use default parameters
     );
