@@ -18,7 +18,7 @@ set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/occa/lib")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/elliptic")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/parAlmond")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/amgSolver/parAlmond")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/libparanumal")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherScatter")
 
@@ -92,6 +92,7 @@ if (NOT FortranCInterface_VERIFIED_CXX)
 endif()
 
 ## Use c++14
+set (CMAKE_C_STANDARD 99)
 set (CMAKE_CXX_STANDARD 14)
 
 ###############################################################################
@@ -254,6 +255,7 @@ target_include_directories(nekrs-lib
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}
   ${ELLIPTIC_SOURCE_DIR}
+  ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
   ${PARALMOND_SOURCE_DIR}
   PRIVATE
   ${HYPRE_SOURCE_DIR}/src

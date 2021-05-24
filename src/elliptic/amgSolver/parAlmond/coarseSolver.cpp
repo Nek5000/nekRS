@@ -32,9 +32,8 @@ SOFTWARE.
 
 #include "omp.h"
 #include "limits.h"
-#include "crs_hypre.h"
+#include "boomerAMG.h"
 #include "platform.hpp"
-struct hypre_crs_data *crsh;
 
 namespace parAlmond {
 
@@ -76,7 +75,7 @@ void coarseSolver::setup(
   if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
     int Nthreads = 1;
  
-    double settings[HYPRE_NPARAM+1];
+    double settings[BOOMERAMG_NPARAM+1];
     settings[0]  = 1;    /* custom settings             */
     settings[1]  = 8;    /* coarsening                  */
     settings[2]  = 6;    /* interpolation               */
@@ -96,16 +95,16 @@ void coarseSolver::setup(
     options.getArgs("BOOMERAMG STRONG THRESHOLD", settings[8]);
     options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
 
-    crsh = hypre_setup(Nrows,
-                       globalRowStarts[rank],
-                       nnz,
-                       Ai,
-                       Aj,
-                       Avals,
-                       (int) nullSpace,
-                       comm,
-                       Nthreads,
-                       settings);
+    boomerAMGSetup(Nrows,
+                   nnz,
+                   Ai,
+                   Aj,
+                   Avals,
+                   (int) nullSpace,
+                   comm,
+                   Nthreads,
+                   -1, /* device ID, if negative run on host */
+                   settings);
  
     N = (int) Nrows;
     xLocal   = (dfloat*) calloc(N,sizeof(dfloat));
@@ -332,7 +331,7 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
 }
 void coarseSolver::BoomerAMGSolve() {
   platform->timer.hostTic("BoomerAMGSolve", 1);
-  hypre_solve(xLocal, crsh, rhsLocal);
+  boomerAMGSolve(xLocal, rhsLocal);
   platform->timer.hostToc("BoomerAMGSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {

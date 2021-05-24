@@ -1,6 +1,7 @@
 #ifndef MEM_H
 #define MEM_H
 
+#include <stddef.h>
 /* requires:
      <stddef.h> for size_t, offsetof
      <stdlib.h> for malloc, calloc, realloc, free
