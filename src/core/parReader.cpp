@@ -325,12 +325,29 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     } else if(p_preconditioner.find("semfem") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
       options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
+      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
       std::vector<std::string> list;
       list = serializeString(p_preconditioner, '+');
-      if(list.size() == 2){
-        std::string solver = list[1];
-        UPPER(solver);
-        options.setArgs("PRESSURE SEMFEM SOLVER", solver);
+      for(std::string s : list){
+        if(s.find("semfem") != std::string::npos){}
+        else if(s.find("boomeramg") != std::string::npos){
+          options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
+        }
+        else if(s.find("amgx") != std::string::npos){
+          options.setArgs("PRESSURE SEMFEM SOLVER", "AMGX");
+        }
+        else if(s.find("fp32") != std::string::npos){
+          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
+        }
+        else if(s.find("fp64") != std::string::npos){
+          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
+        }
+        else {
+          if(rank == 0){
+            printf("SEMFEM preconditioner flag %s is not recognized!\n", s.c_str());
+          }
+          ABORT(EXIT_FAILURE);
+        }
       }
       
     } else if(p_preconditioner.find("semg") != std::string::npos  ||

@@ -13,7 +13,7 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
   occa::memory& o_buffer = elliptic->o_SEMFEMBuffer1;
   occa::memory& o_buffer2 = elliptic->o_SEMFEMBuffer2;
 
-  elliptic->preSEMFEMKernel(
+  elliptic->gatherKernel(
     elliptic->numRowsSEMFEM,
     elliptic->o_dofMap,
     o_r,
@@ -29,7 +29,7 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
     //AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
   }
 
-  elliptic->postSEMFEMKernel(
+  elliptic->scatterKernel(
     elliptic->numRowsSEMFEM,
     elliptic->o_dofMap,
     o_buffer2,
