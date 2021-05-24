@@ -1,0 +1,13 @@
+@kernel void postSEMFEM(
+  const dlong numRows,
+  @restrict const long long* dof_map,
+  @restrict const dfloat* z,
+  @restrict dfloat* buffer
+)
+{
+  for(dlong localRow = 0; localRow < numRows; ++localRow; @tile(p_blockSize, @outer, @inner))
+  {
+    if(localRow < numRows)
+      buffer[dof_map[localRow]] = z[localRow];
+  }
+}

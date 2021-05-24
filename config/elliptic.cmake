@@ -3,10 +3,13 @@ set(ELLIPTIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic)
 set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PGMRES.cpp
+	      ${ELLIPTIC_SOURCE_DIR}/fem_amg_preco.c
 	      ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEMSetup.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridLevel.cpp
