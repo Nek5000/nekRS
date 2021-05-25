@@ -39,6 +39,7 @@
 #include "platform.hpp"
 
 #include "timer.hpp"
+
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
@@ -163,11 +164,12 @@ struct elliptic_t
   occa::kernel gramSchmidtOrthogonalizationKernel;
 
   // SEMFEM kernels
-  occa::kernel preSEMFEMKernel;
-  occa::kernel postSEMFEMKernel;
+  occa::kernel gatherKernel;
+  occa::kernel scatterKernel;
   occa::memory o_dofMap;
   occa::memory o_SEMFEMBuffer1;
   occa::memory o_SEMFEMBuffer2;
+  dlong numRowsSEMFEM;
 
   dfloat resNormFactor;
 
