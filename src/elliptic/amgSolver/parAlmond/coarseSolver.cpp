@@ -76,16 +76,17 @@ void coarseSolver::setup(
     int Nthreads = 1;
  
     double settings[BOOMERAMG_NPARAM+1];
-    settings[0]  = 1;    /* custom settings             */
-    settings[1]  = 8;    /* coarsening                  */
-    settings[2]  = 6;    /* interpolation               */
-    settings[3]  = 2;    /* number of cycles            */
-    settings[4]  = 16;   /* smoother for crs level      */
-    settings[5]  = 3;    /* number of coarse sweeps     */
-    settings[6]  = 16;   /* smoother                    */
-    settings[7]  = 1;    /* number of sweeps            */
-    settings[8]  = 0.25; /* strong threshold            */
-    settings[9]  = 0;    /* non galerkin tol            */
+    settings[0]  = 1;    /* custom settings              */
+    settings[1]  = 8;    /* coarsening                   */
+    settings[2]  = 6;    /* interpolation                */
+    settings[3]  = 2;    /* number of cycles             */
+    settings[4]  = 16;   /* smoother for crs level       */
+    settings[5]  = 3;    /* number of coarse sweeps      */
+    settings[6]  = 16;   /* smoother                     */
+    settings[7]  = 1;    /* number of sweeps             */
+    settings[8]  = 0.25; /* strong threshold             */
+    settings[9]  = 0;    /* non galerkin tol             */
+    settings[10] = 1;    /* aggressive coarsening levels */
 
     options.getArgs("BOOMERAMG COARSEN TYPE", settings[1]);
     options.getArgs("BOOMERAMG INTERPOLATION TYPE", settings[2]);

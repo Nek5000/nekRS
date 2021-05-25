@@ -1,7 +1,7 @@
 #ifndef BOOMERAMG_H
 #define BOOMERAMG_H
 
-#define BOOMERAMG_NPARAM 9
+#define BOOMERAMG_NPARAM 10
 
 #ifdef __cplusplus
 extern "C" {

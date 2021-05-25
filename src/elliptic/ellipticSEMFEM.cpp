@@ -8,8 +8,11 @@
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
+  MPI_Barrier(platform->comm.mpiComm);
+  double tStart = MPI_Wtime();
+  if(platform->comm.mpiRank == 0)  printf("setup SEMFEM preconditioner ... "); fflush(stdout);
+
   mesh_t* mesh = elliptic->mesh;
-  double nullParams[] = {0}; // use default parameters
   double* mask = (double*) malloc(mesh->Np*mesh->Nelements*sizeof(double));
   for(int i = 0; i < mesh->Np*mesh->Nelements; ++i) mask[i] = 1.0;
   for(dlong n = 0; n < elliptic->Nmasked; n++){
@@ -59,29 +62,37 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     SEMFEMKernelProps
   );
 
+  int setupRetVal;
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
-    boomerAMGSetup(
-      numRows,
-      data->nnz,
-      data->Ai,
-      data->Aj,
-      data->Av,
-      (int) elliptic->allNeumann,
-      platform->comm.mpiComm,
-      1, /* Nthreads */
-      platform->device.id(),
-      0, /* use FP32 */
-      &nullParams[0]
-    );
+      double settings[BOOMERAMG_NPARAM+1];
+      settings[0]  = 1;    /* custom settings              */
+      settings[1]  = 8;    /* coarsening                   */
+      settings[2]  = 6;    /* interpolation                */
+      settings[3]  = 1;    /* number of cycles             */
+      settings[4]  = 18;   /* smoother for crs level       */
+      settings[5]  = 3;    /* number of coarse sweeps      */
+      settings[6]  = 18;   /* smoother                     */
+      settings[7]  = 1;    /* number of sweeps             */
+      settings[8]  = 0.25; /* strong threshold             */
+      settings[9]  = 0.1;  /* non galerkin tol             */
+      settings[10] = 0;    /* aggressive coarsening levels */
+
+      setupRetVal = boomerAMGSetup(
+        numRows,
+        data->nnz,
+        data->Ai,
+        data->Aj,
+        data->Av,
+        (int) elliptic->allNeumann,
+        platform->comm.mpiComm,
+        1, /* Nthreads */
+        platform->device.id(),
+        0, /* use FP32 */
+        settings 
+      );
   }
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){
-#if 1
-    if(platform->comm.mpiRank == 0){
-      printf("AMGX solver is not yet supported!\n");
-    }
-    ABORT(EXIT_FAILURE);
-#else
-    AMGXsetup(
+    setupRetVal = AMGXsetup(
       numRows,
       data->nnz,
       data->Ai,
@@ -93,7 +104,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       useFP32,
       nullptr // use default parameters
     );
-#endif
   } else {
     if(platform->comm.mpiRank == 0){
       std::string amgSolver;
@@ -102,8 +112,10 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     }
     ABORT(EXIT_FAILURE);
   }
+  if(setupRetVal) MPI_Abort(platform->comm.mpiComm, 1);
 
   delete data;
+  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
 
 void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& o_z)
@@ -123,10 +135,9 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
   platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_z);
 
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
-    // TODO: *NOT* device compatible
     boomerAMGSolve(o_buffer2.ptr(), o_buffer.ptr());
   } else {
-    //AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
+    AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
   }
 
   elliptic->scatterKernel(

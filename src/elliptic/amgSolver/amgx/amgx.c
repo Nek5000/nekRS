@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <mpi.h>
-#include <amgx_c.h>
 
+#ifdef ENABLE_AMGX
+
+#include <amgx_c.h>
 
 typedef struct amgx_data {
   MPI_Comm comm;
@@ -144,3 +146,24 @@ int AMGXsolve(void *x, void *rhs)
 
   return 0;
 }
+
+#else
+int AMGXsetup(const int nLocalRows, const int nnz,
+              const long long *rows, const long long *cols, const double *values, /* COO */ 
+              const int null_space, const MPI_Comm comm, int deviceID,
+              int useFP32, const char* cfgFile)
+{
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);  
+  if(rank == 0) printf("ERROR: Recompile with AMGX support!\n");
+  return 1;
+}
+
+int AMGXsolve(void *x, void *rhs)
+{
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);  
+  if(rank == 0) printf("ERROR: Recompile with AMGX support!\n");
+  return 1;
+}
+#endif

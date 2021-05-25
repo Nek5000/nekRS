@@ -93,11 +93,6 @@ SEMFEMData* fem_amg_setup(const int N_, const int n_elem_,
                    /* mode */ 0);
   }
 
-  if (comm.id == 0)
-    printf("fem_amg_setup ...\n");
-
-  double time0 = comm_time();
-
   matrix_distribution();
   fem_assembly();
 
@@ -155,11 +150,6 @@ SEMFEMData* fem_amg_setup(const int N_, const int n_elem_,
   data->rowStart = row_start;
   data->rowEnd = row_end;
   data->dofMap = dof_map;
-
-  double time1 = comm_time();
-  if (comm.id == 0)
-    printf("fem_amg_setup: done %fs\n", time1 - time0);
-  fflush(stdout);
 
   return data;
 }
