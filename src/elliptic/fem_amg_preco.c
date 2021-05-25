@@ -3,14 +3,14 @@
 */
 
 #include <math.h>
-#include "gslib.h"
 #include "_hypre_utilities.h"
 #include "HYPRE_parcsr_ls.h"
 #include "_hypre_parcsr_ls.h"
 #include "HYPRE.h"
-#include "fem_amg_preco.hpp"
 
-namespace{
+#include "gslib.h"
+#include "fem_amg_preco.h"
+
 typedef double (*Basis)(double*);
 typedef void (*DBasis)(double**, double*);
 
@@ -20,7 +20,6 @@ void quadrature_rule(double***, double**, int, int);
 void mesh_connectivity(int***, int***, int, int);
 void x_map(double**, double*, double**, int, Basis*);
 void J_xr_map(double***, double*, double**, int, DBasis*);
-
 
 double phi_3D_1(double*);
 double phi_3D_2(double*);
@@ -46,7 +45,7 @@ void mem_free_1D_double(double**, int);
 void mem_free_2D_int(int***, int, int);
 void mem_free_2D_double(double***, int, int);
 
-static constexpr int n_dim = 3;
+static const int n_dim = 3;
 static int n_x, n_y, n_z, n_elem;
 static int n_xyz, n_xyze;
 static double *x_m, *y_m, *z_m;
@@ -58,7 +57,7 @@ static long long *dof_map;
 static long long row_start;
 static long long row_end;
 static HYPRE_IJMatrix A_bc;
-}
+
 static struct comm comm;
 struct gs_data {
   struct comm comm;
@@ -67,14 +66,15 @@ static struct gs_data *gsh;
 
 
 /* Interface definition */
-SEMFEMData* fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_,
-                   const sint *n_elem_, double *x_m_, double *y_m_,
-                   double *z_m_, double *pmask_, MPI_Comm mpiComm,
-                   long long int *gatherGlobalNodes) {
-  n_x = *n_x_;
-  n_y = *n_y_;
-  n_z = *n_z_;
-  n_elem = *n_elem_;
+SEMFEMData* fem_amg_setup(const int N_, const int n_elem_,
+                          double *x_m_, double *y_m_, double *z_m_,
+                          double *pmask_, MPI_Comm mpiComm,
+                          long long int *gatherGlobalNodes) 
+{
+  n_x = N_;
+  n_y = N_;
+  n_z = N_;
+  n_elem = n_elem_;
   x_m = x_m_;
   y_m = y_m_;
   z_m = z_m_;
@@ -86,70 +86,75 @@ SEMFEMData* fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_,
   int NuniqueBases = n_xyze;
 
   {
-    /* gslib stuff */
     comm_ext world;
-    /*  MPI_Comm_dup(MPI_COMM_WORLD, (MPI_Comm*) &world); */
     world = (comm_ext)mpiComm; // MPI_COMM_WORLD;
     comm_init(&comm, world);
     gsh = gs_setup(gatherGlobalNodes, NuniqueBases, &comm, 0, gs_pairwise,
-                   0); // gs_auto, gs_crystal_router, gs_pw
+                   /* mode */ 0);
   }
 
   if (comm.id == 0)
     printf("fem_amg_setup ...\n");
-  static_assert(sizeof(HYPRE_Int) == sizeof(long long),
-                "HYPRE_Int must be long long!\n");
 
   double time0 = comm_time();
+
   matrix_distribution();
   fem_assembly();
 
-  const long long numRows = row_end - row_start + 1;
-  long long* ownedRows = (long long*) calloc(numRows, sizeof(long long));
-  long long ctr = 0;
+  const int numRows = row_end - row_start + 1;
+  HYPRE_BigInt *ownedRows = (HYPRE_BigInt*) calloc(numRows, sizeof(HYPRE_BigInt));
+  int ctr = 0;
   for(long long row = row_start; row <= row_end; ++row)
     ownedRows[ctr++] = row;
   
-  long long * ncols = (long long*) calloc(numRows, sizeof(long long));
+  HYPRE_Int *ncols = (HYPRE_Int*) calloc(numRows, sizeof(HYPRE_Int));
   HYPRE_IJMatrixGetRowCounts(A_bc,
     numRows,
     ownedRows,
     ncols);
 
-  long long nnz = 0;
-  for(long long i = 0; i < numRows; ++i)
+  int nnz = 0;
+  for(int i = 0; i < numRows; ++i)
     nnz += ncols[i];
   
   // construct COO matrix from Hypre matrix
-  long long *Ai = (long long*) calloc(nnz, sizeof(long long));
-  long long *Aj = (long long*) calloc(nnz, sizeof(long long));
-  double *Av = (double*) calloc(nnz, sizeof(double));
+  HYPRE_BigInt *hAj = (HYPRE_BigInt*) calloc(nnz, sizeof(HYPRE_BigInt));
+  HYPRE_Real   *hAv = (HYPRE_Real*) calloc(nnz, sizeof(HYPRE_Real));
   HYPRE_IJMatrixGetValues(A_bc,
     -numRows,
     ncols,
     ownedRows,
-    &Aj[0],
-    &Av[0]);
-  
+    &hAj[0],
+    &hAv[0]);
+
+  long long *Ai = (long long*) calloc(nnz, sizeof(long long));
+  long long *Aj = (long long*) calloc(nnz, sizeof(long long));
+  double    *Av = (double*) calloc(nnz, sizeof(double));
+  for(int n = 0; n < nnz; ++n) {
+     Aj[n] = hAj[n];
+     Av[n] = hAv[n];
+  } 
   ctr = 0;
-  for(long long i = 0; i < numRows; ++i){
+  for(int i = 0; i < numRows; ++i){
     long long row = ownedRows[i];
-    for(long long col = 0; col < ncols[i]; ++col)
+    for(int col = 0; col < ncols[i]; ++col)
       Ai[ctr++] = row;
   }
 
+  free(hAj);
+  free(hAv);
+  free(ownedRows);
+  free(ncols);
   HYPRE_IJMatrixDestroy(A_bc);
 
-  SEMFEMData* data = new SEMFEMData();
-  {
-    data->Ai = Ai;
-    data->Aj = Aj;
-    data->Av = Av;
-    data->nnz = nnz;
-    data->rowStart = row_start;
-    data->rowEnd = row_end;
-    data->dofMap = dof_map;
-  }
+  SEMFEMData* data = (SEMFEMData*) malloc(sizeof(SEMFEMData));
+  data->Ai = Ai;
+  data->Aj = Aj;
+  data->Av = Av;
+  data->nnz = nnz;
+  data->rowStart = row_start;
+  data->rowEnd = row_end;
+  data->dofMap = dof_map;
 
   double time1 = comm_time();
   if (comm.id == 0)
@@ -158,8 +163,6 @@ SEMFEMData* fem_amg_setup(const sint *n_x_, const sint *n_y_, const sint *n_z_,
 
   return data;
 }
-
-namespace{
 
 /* FEM Assembly definition */
 void matrix_distribution() {
@@ -201,11 +204,11 @@ void matrix_distribution() {
                  &maximum_value);
   const long long nstar = maximum_value / comm.np + 1;
 
-  struct ranking_tuple {
+  typedef struct ranking_tuple {
     long long rank;
     unsigned int proc;
     unsigned int idx;
-  };
+  } ranking_tuple;
 
   struct array ranking_transfer;
   array_init(ranking_tuple, &ranking_transfer, n_xyze);
@@ -444,22 +447,19 @@ void fem_assembly() {
               for (j = 0; j < n_dim + 1; j++) {
                 if ((pmask[idx[t_map[t][i]] + e * n_xyz] > 0.0) &&
                     (pmask[idx[t_map[t][j]] + e * n_xyz] > 0.0)) {
-                  long long row = ranking[idx[t_map[t][i]] + e * n_xyz];
-                  long long col = ranking[idx[t_map[t][j]] + e * n_xyz];
+                  HYPRE_BigInt row = ranking[idx[t_map[t][i]] + e * n_xyz];
+                  HYPRE_BigInt col = ranking[idx[t_map[t][j]] + e * n_xyz];
+                  HYPRE_Real A_val = A_loc[i][j];
+                  HYPRE_Int ncols = 1;
+                  double tol = 1e-7;
+                  int err = 0;
 
-                  double A_val = A_loc[i][j];
-                  long long ncols = 1;
-                  int insert_error = 0;
-
-                  if (fabs(A_val) > 1.0e-14) {
-                    insert_error = HYPRE_IJMatrixAddToValues(
-                        A_bc, 1, &ncols, &row, &col, &A_val);
-                  }
-                  if (insert_error != 0) {
+                  if (fabs(A_val) > tol) 
+                    err = HYPRE_IJMatrixAddToValues(A_bc, 1, &ncols, &row, &col, &A_val);
+                  if (err != 0) {
                     if (comm.id == 0)
-                      printf(
-                          "There was an error with entry A(%lld, %lld) = %f\n",
-                          row, col, A_val);
+                      printf("There was an error with entry A(%lld, %lld) = %f\n",
+                             row, col, A_val);
                     exit(EXIT_FAILURE);
                   }
                 }
@@ -732,5 +732,4 @@ void mem_free_2D_double(double ***array, int n, int m) {
     free((*array)[i]);
 
   free((*array));
-}
 }

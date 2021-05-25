@@ -104,6 +104,7 @@ void coarseSolver::setup(
                    comm,
                    Nthreads,
                    -1, /* device ID, if negative run on host */
+                   0,  /* useFP32 */
                    settings);
  
     N = (int) Nrows;
