@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <cassert>
+#include <cstdlib>
 #include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsInterface.h"
@@ -76,7 +77,7 @@ void ogsFindpts(    dlong  *const  code_base  , const dlong  code_stride,
                     dfloat *const     r_base  , const dlong     r_stride,
                     dfloat *const dist2_base  , const dlong dist2_stride,
               const dfloat *const     x_base[], const dlong     x_stride[],
-              const dfloat npt, ogs_findpts_t *const fd) {
+              const dlong npt, ogs_findpts_t *const fd) {
   // x_base, x_stride have length D
 
   assert(sizeof(dfloat) == sizeof(double));
@@ -126,5 +127,34 @@ void ogsFindptsEval(
                            el_base,   el_stride,
                             r_base,    r_stride,
                          npt, in, (findpts_data_3*)fd->findpts_data);
+  }
+}
+
+
+void ogsFindptsEval(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const code_base, const dlong code_stride,
+  const dlong  *const proc_base, const dlong proc_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, occa::memory d_in, ogs_findpts_t *const fd) {
+
+  assert(sizeof(dfloat) == sizeof(double));
+  assert(sizeof(dlong) == sizeof(uint));
+
+  if (fd->D == 2) {
+    ogsDevFindptsEval_2( out_base,  out_stride,
+                        code_base, code_stride,
+                        proc_base, proc_stride,
+                          el_base,   el_stride,
+                           r_base,    r_stride,
+                        npt, &d_in, (findpts_data_2*)fd->findpts_data);
+  } else {
+    ogsDevFindptsEval_3( out_base,  out_stride,
+                        code_base, code_stride,
+                        proc_base, proc_stride,
+                          el_base,   el_stride,
+                           r_base,    r_stride,
+                        npt, &d_in, (findpts_data_3*)fd->findpts_data);
   }
 }

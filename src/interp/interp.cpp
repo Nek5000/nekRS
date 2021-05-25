@@ -35,8 +35,8 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
 
   MPI_Comm comm = platform_t::getInstance()->comm.mpiComm;
 
-  void *findpts_handle = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
-                                         hash_size, hash_size, npt_max, newton_tol);
+  ogs_findpts_t *findpts_handle = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
+                                                  hash_size, hash_size, npt_max, newton_tol);
 
   struct interp_data *handle = new interp_data();
   handle->nrs = nrs;
@@ -50,17 +50,19 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
 
 void interp_free(struct interp_data *handle)
 {
-  ogsFindptsFree((ogs_findpts_t*)handle->findpts);
+  ogsFindptsFree(handle->findpts);
   delete handle;
 }
 
-void interp_nfld(dfloat *fld, dlong nfld,
+// Accepts any pointer-like type supported by ogsFindptsEval
+// I.E. dfloat*, occa::memory (w/ a dtype of dfloat)
+template<typename fld_ptr>
+void interp_nfld(fld_ptr fld, dlong nfld,
                  dfloat *x[], dlong x_stride[], dlong n,
                  dlong *iwk, dfloat *rwk, dlong nmax,
                  bool if_need_pts, struct interp_data *handle,
                  dfloat *out[], dlong out_stride[])
 {
-
   assert(n <= nmax);
 
   dlong  *code  = iwk;
@@ -69,10 +71,11 @@ void interp_nfld(dfloat *fld, dlong nfld,
   dfloat *r     = rwk+nmax;
   dfloat *dist2 = rwk;
 
-  dlong D = handle->nrs->dim;
+  dlong D = handle->D;
 
-  unsigned nfail = 0;
+  // if the location of the points need to be computed
   if (if_need_pts) {
+    unsigned nfail = 0;
     // findpts takes strides in terms of bytes, but interp_nfld takes strides in terms of elements
     dlong *x_stride_bytes = (dlong*)malloc(D*sizeof(dlong));
     for (int i = 0; i < D; ++i) x_stride_bytes[i] = x_stride[i]*sizeof(dfloat);
@@ -82,7 +85,7 @@ void interp_nfld(dfloat *fld, dlong nfld,
                r,     D*sizeof(dfloat),
                dist2, 1*sizeof(dfloat),
                x,     x_stride_bytes,
-               n, (ogs_findpts_t*)handle->findpts);
+               n, handle->findpts);
     free(x_stride_bytes);
 
     for (int in = 0; in < n; ++in) {
@@ -104,38 +107,47 @@ void interp_nfld(dfloat *fld, dlong nfld,
         }
       }
     }
+
+    //  nn(1) = iglsum(n,1)
+    //  nn(2) = iglsum(nfail,1)
+    //  if(nio.eq.0) then
+    //    if(nn(2).gt.0 .or. loglevel.gt.2) write(6,1) nn(1),nn(2)
+    //1     format('   total number of points = ',i12,/,'   failed = '
+    // &         ,i12,/,' done :: intp_nfld')
+    //  endif
   }
 
   for (int ifld = 0; ifld < nfld; ++ifld) {
-     dlong in_offset  = ifld*handle->nrs->fieldOffset;
+    dlong in_offset  = ifld*handle->nrs->fieldOffset;
 
-     ogsFindptsEval(out[ifld], out_stride[ifld]*sizeof(dfloat),
-                    code,      1               *sizeof(dlong),
-                    proc,      1               *sizeof(dlong),
-                    el,        1               *sizeof(dlong),
-                    r,         D               *sizeof(dfloat),
-                    n, fld+in_offset, (ogs_findpts_t*)handle->findpts);
+    ogsFindptsEval(out     [ifld], out_stride[ifld]*sizeof(dfloat),
+                   code,      1               *sizeof(dlong),
+                   proc,      1               *sizeof(dlong),
+                   el,        1               *sizeof(dlong),
+                   r,         D               *sizeof(dfloat),
+                   n, fld+in_offset, handle->findpts);
   }
-
-//  nn(1) = iglsum(n,1)
-//  nn(2) = iglsum(nfail,1)
-//  if(nio.eq.0) then
-//    if(nn(2).gt.0 .or. loglevel.gt.2) write(6,1) nn(1),nn(2)
-//1     format('   total number of points = ',i12,/,'   failed = '
-// &         ,i12,/,' done :: intp_nfld')
-//  endif
 }
+
+// instantiations for host and occa memory
+template
+void interp_nfld(const dfloat *fld, dlong nfld,
+                 dfloat *x[], dlong x_stride[], dlong n,
+                 dlong *iwk, dfloat *rwk, dlong nmax,
+                 bool if_need_pts, struct interp_data *handle,
+                 dfloat *out[], dlong out_stride[]);
+template
+void interp_nfld(occa::memory fld, dlong nfld,
+                 dfloat *x[], dlong x_stride[], dlong n,
+                 dlong *iwk, dfloat *rwk, dlong nmax,
+                 bool if_need_pts, struct interp_data *handle,
+                 dfloat *out[], dlong out_stride[]);
 
 
 void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
                      dfloat *xyz_base[], dlong xyz_stride[],
                      int n, nrs_t *nrs)
 {
-  dlong D = nrs->dim;
-  char *workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
-  dfloat *rwork = (dfloat*)workspace;
-  int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
-
   // the interp handle is cached to avoid repeated setups and frees
   static interp_data *interp_handle;
   static bool called = false;
@@ -147,10 +159,54 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
     interp_handle = interp_setup(nrs, 0);
   }
 
-  interp_nfld(nrs->U, nrs->dim,
+  dlong D = interp_handle->D;
+  char *workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
+  dfloat *rwork = (dfloat*)workspace;
+  int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
+
+// uncomment the following line and ensure nek::ocopyToNek is called before hand
+// to check the accuracy of the OCCA implementation
+//#define check_dev_accuracy
+
+#ifdef check_dev_accuracy
+  dfloat *uvw_copy[] = (dfloat*)malloc(D*sizeof(dfloat*));
+  for (int i = 0; i < D; ++i) {
+    uvw_copy[i] = (dfloat*)malloc(out_stride[i]*n*sizeof(dfloat));
+    memcpy(uvw_copy[i], uvw_base[i], out_stride[i]*n*sizeof(dfloat));
+  }
+#endif //check_dev_accuracy
+
+  occa::memory o_U_dfloat = nrs->o_U.cast(occa::dtype::get<dfloat>());
+  interp_nfld(o_U_dfloat, nrs->dim,
               xyz_base, xyz_stride, n,
               iwork, rwork, n, true, interp_handle,
               uvw_base, uvw_stride);
+
+#ifdef check_dev_accuracy
+  interp_nfld(nrs->U, nrs->dim,
+              xyz_base, xyz_stride, n,
+              iwork, rwork, n, true, interp_handle,
+              uvw_copy, uvw_stride);
+
+  // controls the tolerences for printing warnings
+  const dfloat abs_tol = 2e-15;
+  const dfloat rel_tol = 0;
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < D; ++j) {
+      dfloat out_dev = uvw_base[j][i*uvw_stride[i]];
+      dfloat out_ref = uvw_copy[j][i*uvw_stride[i]];
+      if (std::abs(out_ref - out_dev) > abs_tol
+          || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
+        printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
+      }
+    }
+  }
+  for (int i = 0; i < D; ++i) {
+    free(uvw_copy[i]);
+  }
+  free(uvw_copy);
+#endif // check_dev_accuracy
 
   free(workspace);
 }

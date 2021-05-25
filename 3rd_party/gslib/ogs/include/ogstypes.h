@@ -1,7 +1,8 @@
 #if !defined(ogstypes_h)
-#define ogstypes_h 
+#define ogstypes_h
 
 #define BLOCKSIZE 256
+#define MAX_GLL_N 32
 
 //float data type
 #if 0

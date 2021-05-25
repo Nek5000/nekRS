@@ -44,6 +44,9 @@ add_dependencies(gs gs_build)
 
 set(OGS_SOURCES
         ${OGS_SOURCE_DIR}/src/ogsFindpts.cpp
+        ${OGS_SOURCE_DIR}/src/ogs_findpts_local.cpp
+        ${OGS_SOURCE_DIR}/src/ogs_findpts.c
+        ${OGS_SOURCE_DIR}/src/ogsDevFindpts.c
         ${OGS_SOURCE_DIR}/src/ogsGather.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherMany.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherScatter.cpp

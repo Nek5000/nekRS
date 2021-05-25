@@ -8,7 +8,7 @@ struct interp_data {
   nrs_t *nrs;
   double newton_tol;
   unsigned D;
-  void *findpts;
+  ogs_findpts_t *findpts;
 };
 
 // Does the setup to interpolate fields on the given mesh
@@ -21,7 +21,7 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol);
 void interp_free(struct interp_data *handle);
 
 // Interpolates the field at the given points
-//   fld            ... source field(s) (dfloat[nrs->fieldOffset*nfld])
+//   fld            ... source field(s), may be host pointer or occa::memory (dfloat[nrs->fieldOffset*nfld])
 //   nfld           ... number of fields
 //   x              ... array of pointers to the interpolation points (dfloat[D][n])
 //   x_stride       ... array of the strides to the interpolation points (dlong[D])
@@ -33,7 +33,8 @@ void interp_free(struct interp_data *handle);
 //   handle         ... handle
 //   out            ... array of pointers to the output arrays (dfloat[D][n])
 //   out_stride     ... array of the strides of the output arrays (dlong[D])
-void interp_nfld(dfloat *fld, dlong nfld,
+template<typename fld_ptr>
+void interp_nfld(fld_ptr fld, dlong nfld,
                  dfloat *x[], dlong x_stride[], dlong n,
                  dlong *iwk, dfloat *rwk, dlong nmax,
                  bool if_need_pts, struct interp_data *handle,
