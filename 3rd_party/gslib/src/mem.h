@@ -1,6 +1,7 @@
 #ifndef MEM_H
 #define MEM_H
 
+#include <stddef.h>
 /* requires:
      <stddef.h> for size_t, offsetof
      <stdlib.h> for malloc, calloc, realloc, free
@@ -11,6 +12,9 @@
 
 #if !defined(C99_H) || !defined(FAIL_H)
 #error "mem.h" requires "c99.h" and "fail.h"
+#endif
+#ifdef __cplusplus
+#include <string.h>
 #endif
 
 /* 

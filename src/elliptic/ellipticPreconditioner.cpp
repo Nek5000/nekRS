@@ -29,6 +29,7 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
+
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z)
 {
   
@@ -52,6 +53,8 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
       );
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
+  }else if (options.compareArgs("PRECONDITIONER", "SEMFEM")) {
+    ellipticSEMFEMSolve(elliptic, o_r, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "NONE")) {
     o_z.copyFrom(o_r);
   }else {

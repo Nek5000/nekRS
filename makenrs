@@ -101,10 +101,15 @@ NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
+if [[ ${OCCA_CUDA_ENABLED} -eq 1 ]]; then
+  AMGX_ENABLED=1
+fi
+
 export OCCA_CUDA_ENABLED
 export OCCA_HIP_ENABLED
 export OCCA_OPENCL_ENABLED
 export OCCA_METAL_ENABLED
+export AMGX_ENABLED
 
 export NEKRS_CC
 export NEKRS_CXX
@@ -152,6 +157,7 @@ if [ "$#" -eq 0 ]; then
   echo "Default backend :" $NEKRS_BACKEND_DEFAULT
   echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
   echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
+  echo "NVIDIA AMGX support:" $AMGX_ENABLED
   echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
   echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
   echo "GPU aware MPI support:" $OGS_MPI_SUPPORT
@@ -189,6 +195,10 @@ cmake -Wno-dev \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
       -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
       -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
+      -DUSE_LONG_LONG=1 \
+      -DHYPRE_BIGINT=1 \
+      -DENABLE_AMGX="${AMGX_ENABLED}" \
+      -DCUDA_ARCH="70 80" \
       ${NEKRS_DIR}
 
 # =========================

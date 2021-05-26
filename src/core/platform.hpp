@@ -56,8 +56,10 @@ class device_t : public occa::device{
     occa::memory malloc(const dlong Nbytes, const occa::properties& properties);
     occa::memory malloc(const dlong Nwords, const dlong wordSize, occa::memory src);
     occa::memory malloc(const dlong Nwords, const dlong wordSize);
+    int id() const { return _device_id; }
   private:
     dlong bufferSize;
+    int _device_id;
     void* _buffer;
 };
 struct comm_t{
