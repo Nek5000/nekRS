@@ -55,7 +55,7 @@ int AMGXsetup(const int nLocalRows, const int nnz,
    		    "solver=AMG,"
           	    // "min_rows_latency_hiding=10000," /* number of rows at which to disable latency hiding */
                     "algorithm=CLASSICAL,"
-                    "selector=AGGRESSIVE,"
+                //    "selector=AGGRESSIVE," // for CLASSICAL, only PMIS is allowed
                     "strength_threshold=0.25,"
           	    "max_row_sum=0.9,"
                     "interpolator=D2,"
