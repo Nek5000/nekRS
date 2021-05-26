@@ -77,8 +77,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
       FATAL_ERROR
       "AmgX requires GCC >= 4.8.2 but GCC version is \"${CMAKE_CXX_COMPILER_VERSION}\""
     )
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc")
+  #else()
+  #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc")
   endif()
 endif()
 
@@ -398,12 +398,12 @@ install(TARGETS amgxsh DESTINATION "lib")
 export(TARGETS amgxsh FILE ${CMAKE_CURRENT_SOURCE_DIR}/amgxsh.cmake)
 
 # build examples
-add_subdirectory(examples)
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
-  add_subdirectory(eigen_examples)
-endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
+#add_subdirectory(examples)
+#if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
+#  add_subdirectory(eigen_examples)
+#endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/eigen_examples)
 
 # build unit tests
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
-   add_subdirectory(tests)
-endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+#if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+#   add_subdirectory(tests)
+#endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)

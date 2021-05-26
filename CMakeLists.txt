@@ -5,7 +5,6 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
-set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(FETCHCONTENT_QUIET on)
@@ -155,6 +154,18 @@ configure_file(
   @ONLY)
 
 ###############################################################################
+# Build with AMGX.
+# - AMGX's CMakeLists must be used before OCCA's, since AMGX explicitly
+#   sets the cache variable CUDA_NVCC_FLAGS before calling find_package(CUDA).
+#   If find_package(CUDA) is called first, then AMGX's explicit CUDA_NVCC_FLAGS
+#   will not be set, since cache variables are not overridden by default.
+###############################################################################
+
+if(ENABLE_AMGX)
+  add_subdirectory(3rd_party/AMGX)
+endif()
+
+###############################################################################
 # Build OCCA                                                                  #
 ###############################################################################
 
@@ -181,14 +192,6 @@ include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/gslib.cmake)
 include(config/blaslapack.cmake)
-
-###############################################################################
-# Build with AMGX
-###############################################################################
-
-if(ENABLE_AMGX AND ENABLE_CUDA)
-  add_subdirectory(3rd_party/AMGX)
-endif()
 
 ###############################################################################
 # Build NekRS
@@ -283,7 +286,7 @@ if(ENABLE_AMGX AND ENABLE_CUDA)
   # This is used in nekRS itself to conditionaly enable AMGX
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
   # TODO: Link to the libs you need
-  target_link_libraries(nekrs-lib PUBLIC amgx_base)
+  target_link_libraries(nekrs-lib PUBLIC amgxsh)
   # AMGX doesn't add incude paths to to its targets, so we have to be specific
   # about the directories we need
   target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
