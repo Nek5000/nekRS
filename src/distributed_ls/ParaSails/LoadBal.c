@@ -11,7 +11,6 @@
  *
  *****************************************************************************/
 
-#include <assert.h>
 #include <stdlib.h>
 #include "Common.h"
 #include "Matrix.h"
@@ -19,8 +18,8 @@
 #include "LoadBal.h"
 
 /*--------------------------------------------------------------------------
- * LoadBalInit - determine the amount of work to be donated and received by 
- * each processor, given the amount of work that each processor has 
+ * LoadBalInit - determine the amount of work to be donated and received by
+ * each processor, given the amount of work that each processor has
  * ("local_cost").  The number of processors that this processor will donate
  * to is "num_given" and the number of processors from which this processor
  * will receive is "num_taken".  Additional donor information is stored in
@@ -30,7 +29,7 @@
  * beta - target load balance factor
  *--------------------------------------------------------------------------*/
 
-void LoadBalInit(MPI_Comm comm, HYPRE_Real local_cost, HYPRE_Real beta, 
+void LoadBalInit(MPI_Comm comm, HYPRE_Real local_cost, HYPRE_Real beta,
   HYPRE_Int *num_given, HYPRE_Int *donor_data_pe, HYPRE_Real *donor_data_cost,
   HYPRE_Int *num_taken)
 {
@@ -118,7 +117,7 @@ void LoadBalInit(MPI_Comm comm, HYPRE_Real local_cost, HYPRE_Real beta,
         }
     }
 
-    free(cost);
+    hypre_TFree(cost,HYPRE_MEMORY_HOST);
 }
 
 /*--------------------------------------------------------------------------
@@ -128,7 +127,7 @@ void LoadBalInit(MPI_Comm comm, HYPRE_Real local_cost, HYPRE_Real beta,
  *--------------------------------------------------------------------------*/
 
 void LoadBalDonorSend(MPI_Comm comm, Matrix *mat, Numbering *numb,
-  HYPRE_Int num_given, const HYPRE_Int *donor_data_pe, const HYPRE_Real *donor_data_cost, 
+  HYPRE_Int num_given, const HYPRE_Int *donor_data_pe, const HYPRE_Real *donor_data_cost,
   DonorData *donor_data, HYPRE_Int *local_beg_row, hypre_MPI_Request *request)
 {
     HYPRE_Int send_beg_row, send_end_row;
@@ -155,7 +154,7 @@ void LoadBalDonorSend(MPI_Comm comm, Matrix *mat, Numbering *numb,
         do
         {
             send_end_row++;
-            assert(send_end_row <= mat->end_row);
+            hypre_assert(send_end_row <= mat->end_row);
             MatrixGetRow(mat, send_end_row - mat->beg_row, &len, &ind, &val);
             accum += (HYPRE_Real) len*len*len;
             buflen += (len+1); /* additional one for row length */
@@ -213,7 +212,7 @@ void LoadBalRecipRecv(MPI_Comm comm, Numbering *numb,
         hypre_MPI_Get_count(&status, HYPRE_MPI_INT, &count);
 
         buffer = hypre_TAlloc(HYPRE_Int, count , HYPRE_MEMORY_HOST);
-        hypre_MPI_Recv(buffer, count, HYPRE_MPI_INT, recip_data[i].pe, LOADBAL_REQ_TAG, 
+        hypre_MPI_Recv(buffer, count, HYPRE_MPI_INT, recip_data[i].pe, LOADBAL_REQ_TAG,
            comm, &status);
 
 	bufferp =  buffer;
@@ -232,7 +231,7 @@ void LoadBalRecipRecv(MPI_Comm comm, Numbering *numb,
             bufferp += len;
         }
 
-	free(buffer);
+	hypre_TFree(buffer,HYPRE_MEMORY_HOST);
     }
 }
 
@@ -243,7 +242,7 @@ void LoadBalRecipRecv(MPI_Comm comm, Numbering *numb,
  * Caller must free the allocated buffers.
  *--------------------------------------------------------------------------*/
 
-void LoadBalRecipSend(MPI_Comm comm, HYPRE_Int num_taken, 
+void LoadBalRecipSend(MPI_Comm comm, HYPRE_Int num_taken,
   RecipData *recip_data, hypre_MPI_Request *request)
 {
     HYPRE_Int i, row, buflen;
@@ -289,7 +288,7 @@ void LoadBalRecipSend(MPI_Comm comm, HYPRE_Int num_taken,
  * Assume indices are in the same order.
  *--------------------------------------------------------------------------*/
 
-void LoadBalDonorRecv(MPI_Comm comm, Matrix *mat, 
+void LoadBalDonorRecv(MPI_Comm comm, Matrix *mat,
   HYPRE_Int num_given, DonorData *donor_data)
 {
     HYPRE_Int i, j, row;
@@ -306,7 +305,7 @@ void LoadBalDonorRecv(MPI_Comm comm, Matrix *mat,
         hypre_MPI_Get_count(&status, hypre_MPI_REAL, &count);
 
         buffer = hypre_TAlloc(HYPRE_Real, count , HYPRE_MEMORY_HOST);
-        hypre_MPI_Recv(buffer, count, hypre_MPI_REAL, source, LOADBAL_REP_TAG, 
+        hypre_MPI_Recv(buffer, count, hypre_MPI_REAL, source, LOADBAL_REP_TAG,
            comm, &status);
 
 	/* search for which entry in donor_data this message corresponds to */
@@ -315,7 +314,7 @@ void LoadBalDonorRecv(MPI_Comm comm, Matrix *mat,
 	    if (donor_data[j].pe == source)
 		break;
 	}
-	assert(j < num_given);
+	hypre_assert(j < num_given);
 
         /* Parse the message and put row values into local matrix */
 	bufferp = buffer;
@@ -326,7 +325,7 @@ void LoadBalDonorRecv(MPI_Comm comm, Matrix *mat,
             bufferp += len;
         }
 
-	free(buffer);
+	hypre_TFree(buffer,HYPRE_MEMORY_HOST);
     }
 }
 
@@ -351,7 +350,7 @@ LoadBal *LoadBalDonate(MPI_Comm comm, Matrix *mat, Numbering *numb,
     donor_data_pe   = hypre_TAlloc(HYPRE_Int, npes , HYPRE_MEMORY_HOST);
     donor_data_cost = hypre_TAlloc(HYPRE_Real, npes , HYPRE_MEMORY_HOST);
 
-    LoadBalInit(comm, local_cost, beta, &p->num_given, 
+    LoadBalInit(comm, local_cost, beta, &p->num_given,
         donor_data_pe, donor_data_cost, &p->num_taken);
 
     p->recip_data = NULL;
@@ -370,19 +369,19 @@ LoadBal *LoadBalDonate(MPI_Comm comm, Matrix *mat, Numbering *numb,
     LoadBalDonorSend(comm, mat, numb, p->num_given,
         donor_data_pe, donor_data_cost, p->donor_data, &p->beg_row, requests);
 
-    free(donor_data_pe);
-    free(donor_data_cost);
+    hypre_TFree(donor_data_pe,HYPRE_MEMORY_HOST);
+    hypre_TFree(donor_data_cost,HYPRE_MEMORY_HOST);
 
     LoadBalRecipRecv(comm, numb, p->num_taken, p->recip_data);
 
     hypre_MPI_Waitall(p->num_given, requests, statuses);
 
-    free(requests);
-    free(statuses);
+    hypre_TFree(requests,HYPRE_MEMORY_HOST);
+    hypre_TFree(statuses,HYPRE_MEMORY_HOST);
 
     /* Free the send buffers which were allocated by LoadBalDonorSend */
     for (i=0; i<p->num_given; i++)
-	free(p->donor_data[i].buffer);
+	hypre_TFree(p->donor_data[i].buffer,HYPRE_MEMORY_HOST);
 
     return p;
 }
@@ -410,16 +409,16 @@ void LoadBalReturn(LoadBal *p, MPI_Comm comm, Matrix *mat)
 
     hypre_MPI_Waitall(p->num_taken, requests, statuses);
 
-    free(requests);
-    free(statuses);
+    hypre_TFree(requests,HYPRE_MEMORY_HOST);
+    hypre_TFree(statuses,HYPRE_MEMORY_HOST);
 
     /* Free the send buffers which were allocated by LoadBalRecipSend */
     for (i=0; i<p->num_taken; i++)
-	free(p->recip_data[i].buffer);
+	hypre_TFree(p->recip_data[i].buffer,HYPRE_MEMORY_HOST);
 
-    free(p->donor_data);
-    free(p->recip_data);
+    hypre_TFree(p->donor_data,HYPRE_MEMORY_HOST);
+    hypre_TFree(p->recip_data,HYPRE_MEMORY_HOST);
 
-    free(p);
+    hypre_TFree(p,HYPRE_MEMORY_HOST);
 }
 

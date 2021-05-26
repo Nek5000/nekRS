@@ -20,8 +20,10 @@
 */
 
 #include <complex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
-#include "_hypre_utilities.h"
 #include "HYPRE_sstruct_ls.h"
 
 #define NDIM   4
@@ -54,6 +56,12 @@ int main (int argc, char *argv[])
    MPI_Init(&argc, &argv);
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+   /* Initialize HYPRE */
+   HYPRE_Init();
+
+   /* Print GPU info */
+   /* HYPRE_PrintDeviceInfo(); */
 
    /* Set defaults */
    n = 4;
@@ -263,7 +271,7 @@ int main (int argc, char *argv[])
       {
          for (j = 0; j < nentries; j++)
          {
-			 values[i+j] =(-0.1 +  (HYPRE_Complex)I*0.1);
+            values[i+j] =(-0.1 +  (HYPRE_Complex)I*0.1);
          }
       }
       HYPRE_SStructMatrixSetBoxValues(A, part, ilower, iupper, var0,
@@ -273,7 +281,7 @@ int main (int argc, char *argv[])
       {
          for (j = 0; j < nentries; j++)
          {
-			 values[i+j] =(HYPRE_Complex)(-0.1 - I*0.1);
+            values[i+j] =(HYPRE_Complex)(-0.1 - I*0.1);
          }
       }
       HYPRE_SStructMatrixSetBoxValues(A, part, ilower, iupper, var1,
@@ -443,6 +451,9 @@ int main (int argc, char *argv[])
    HYPRE_SStructMatrixDestroy(A);
    HYPRE_SStructVectorDestroy(b);
    HYPRE_SStructVectorDestroy(x);
+
+   /* Finalize HYPRE */
+   HYPRE_Finalize();
 
    /* Finalize MPI */
    MPI_Finalize();

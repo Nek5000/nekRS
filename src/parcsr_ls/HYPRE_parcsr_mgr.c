@@ -27,7 +27,7 @@ HYPRE_MGRCreate( HYPRE_Solver *solver )
  * HYPRE_MGRDestroy
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_MGRDestroy( HYPRE_Solver solver )
 {
    return( hypre_MGRDestroy( (void *) solver ) );
@@ -37,7 +37,7 @@ HYPRE_MGRDestroy( HYPRE_Solver solver )
  * HYPRE_MGRSetup
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_MGRSetup( HYPRE_Solver solver,
                          HYPRE_ParCSRMatrix A,
                          HYPRE_ParVector b,
@@ -53,7 +53,7 @@ HYPRE_MGRSetup( HYPRE_Solver solver,
  * HYPRE_MGRSolve
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_MGRSolve( HYPRE_Solver solver,
                          HYPRE_ParCSRMatrix A,
                          HYPRE_ParVector b,
@@ -65,24 +65,141 @@ HYPRE_MGRSolve( HYPRE_Solver solver,
                                  (hypre_ParVector *) x ) );
 }
 
+#ifdef HYPRE_USING_DSUPERLU
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRDirectSolverCreate
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRDirectSolverCreate( HYPRE_Solver *solver )
+{
+   if (!solver)
+   {
+      hypre_error_in_arg(2);
+      return hypre_error_flag;
+   }
+   *solver = ( (HYPRE_Solver) hypre_MGRDirectSolverCreate( ) );
+   return hypre_error_flag;
+}
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRDirectSolverDestroy
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRDirectSolverDestroy( HYPRE_Solver solver )
+{
+   return( hypre_MGRDirectSolverDestroy( (void *) solver ) );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRDirectSolverSetup
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRDirectSolverSetup( HYPRE_Solver solver,
+                         HYPRE_ParCSRMatrix A,
+                         HYPRE_ParVector b,
+                         HYPRE_ParVector x      )
+{
+   return( hypre_MGRDirectSolverSetup( (void *) solver,
+                                 (hypre_ParCSRMatrix *) A,
+                                 (hypre_ParVector *) b,
+                                 (hypre_ParVector *) x ) );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSolve
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRDirectSolverSolve( HYPRE_Solver solver,
+                         HYPRE_ParCSRMatrix A,
+                         HYPRE_ParVector b,
+                         HYPRE_ParVector x      )
+{
+   return( hypre_MGRDirectSolverSolve( (void *) solver,
+                                 (hypre_ParCSRMatrix *) A,
+                                 (hypre_ParVector *) b,
+                                 (hypre_ParVector *) x ) );
+}
+#endif
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetCpointsByContiguousBlock
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRSetCpointsByContiguousBlock( HYPRE_Solver solver,
+      HYPRE_Int  block_size,
+      HYPRE_Int  max_num_levels,
+      HYPRE_BigInt  *idx_array,
+      HYPRE_Int  *block_num_coarse_points,
+      HYPRE_Int  **block_coarse_indexes)
+{
+   return( hypre_MGRSetCpointsByContiguousBlock( (void *) solver, block_size, max_num_levels, idx_array, block_num_coarse_points, block_coarse_indexes));
+}
+
 /*--------------------------------------------------------------------------
  * HYPRE_MGRSetCpointsByBlock
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
-HYPRE_MGRSetCpointsByBlock( HYPRE_Solver solver, 
-			HYPRE_Int  block_size, 
-			HYPRE_Int  max_num_levels, 
-			HYPRE_Int *block_num_coarse_points, 
+HYPRE_Int
+HYPRE_MGRSetCpointsByBlock( HYPRE_Solver solver,
+			HYPRE_Int  block_size,
+			HYPRE_Int  max_num_levels,
+			HYPRE_Int *block_num_coarse_points,
 			HYPRE_Int  **block_coarse_indexes)
 {
    return( hypre_MGRSetCpointsByBlock( (void *) solver, block_size, max_num_levels, block_num_coarse_points, block_coarse_indexes));
 }
 
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetCpointsByPointMarkerArray
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRSetCpointsByPointMarkerArray( HYPRE_Solver solver,
+      HYPRE_Int  block_size,
+      HYPRE_Int  max_num_levels,
+      HYPRE_Int  *num_block_coarse_points,
+      HYPRE_Int  **lvl_block_coarse_indexes,
+      HYPRE_Int  *point_marker_array)
+{
+   return( hypre_MGRSetCpointsByPointMarkerArray( (void *) solver, block_size, max_num_levels, num_block_coarse_points, lvl_block_coarse_indexes, point_marker_array));
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetNonCpointsToFpoints
+ *--------------------------------------------------------------------------*/
+
 HYPRE_Int
 HYPRE_MGRSetNonCpointsToFpoints( HYPRE_Solver solver, HYPRE_Int nonCptToFptFlag)
-{   
+{
    return hypre_MGRSetNonCpointsToFpoints((void *) solver, nonCptToFptFlag);
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetFSolver
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_MGRSetFSolver(HYPRE_Solver          solver,
+                    HYPRE_PtrToParSolverFcn  fine_grid_solver_solve,
+                    HYPRE_PtrToParSolverFcn  fine_grid_solver_setup,
+                    HYPRE_Solver          fsolver )
+{
+   return( hypre_MGRSetFSolver( (void *) solver,
+                     (HYPRE_Int (*)(void*, void*, void*, void*)) fine_grid_solver_solve,
+                     (HYPRE_Int (*)(void*, void*, void*, void*)) fine_grid_solver_setup,
+                     (void *) fsolver ) );
+}
+
+HYPRE_Int HYPRE_MGRBuildAff(HYPRE_ParCSRMatrix A,
+                               HYPRE_Int *CF_marker,
+                               HYPRE_Int debug_flag,
+                               HYPRE_ParCSRMatrix *A_ff)
+{
+   return (hypre_MGRBuildAff(A, CF_marker, debug_flag, A_ff));
 }
 
 /*--------------------------------------------------------------------------
@@ -121,9 +238,18 @@ HYPRE_MGRSetBlockSize( HYPRE_Solver solver, HYPRE_Int bsize )
  * HYPRE_MGRSetReservedCoarseNodes
  *--------------------------------------------------------------------------*/
 HYPRE_Int
-HYPRE_MGRSetReservedCoarseNodes( HYPRE_Solver solver, HYPRE_Int reserved_coarse_size, HYPRE_Int *reserved_coarse_indexes )
+HYPRE_MGRSetReservedCoarseNodes( HYPRE_Solver solver, HYPRE_Int reserved_coarse_size, HYPRE_BigInt *reserved_coarse_indexes )
 {
    return hypre_MGRSetReservedCoarseNodes(solver, reserved_coarse_size, reserved_coarse_indexes );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetReservedCpointsLevelToKeep
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetReservedCpointsLevelToKeep( HYPRE_Solver solver, HYPRE_Int level)
+{
+   return hypre_MGRSetReservedCpointsLevelToKeep((void *) solver, level);
 }
 
 /*--------------------------------------------------------------------------
@@ -135,6 +261,12 @@ HYPRE_MGRSetRestrictType(HYPRE_Solver solver, HYPRE_Int restrict_type )
    return hypre_MGRSetRestrictType(solver, restrict_type );
 }
 
+HYPRE_Int
+HYPRE_MGRSetLevelRestrictType( HYPRE_Solver solver, HYPRE_Int *restrict_type )
+{
+   return hypre_MGRSetLevelRestrictType( solver, restrict_type );
+}
+
 /*--------------------------------------------------------------------------
  * HYPRE_MGRSetRelaxMethod
  *--------------------------------------------------------------------------*/
@@ -142,6 +274,30 @@ HYPRE_Int
 HYPRE_MGRSetFRelaxMethod(HYPRE_Solver solver, HYPRE_Int relax_method )
 {
    return hypre_MGRSetFRelaxMethod(solver, relax_method );
+}
+
+HYPRE_Int
+HYPRE_MGRSetLevelFRelaxMethod( HYPRE_Solver solver, HYPRE_Int *relax_method )
+{
+   return hypre_MGRSetLevelFRelaxMethod( solver, relax_method );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetCoarseGridMethod
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetCoarseGridMethod( HYPRE_Solver solver, HYPRE_Int *cg_method )
+{
+   return hypre_MGRSetCoarseGridMethod( solver, cg_method );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetRelaxNumFunctions
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetLevelFRelaxNumFunctions( HYPRE_Solver solver, HYPRE_Int *num_functions )
+{
+   return hypre_MGRSetLevelFRelaxNumFunctions( solver, num_functions );
 }
 
 /*--------------------------------------------------------------------------
@@ -169,6 +325,12 @@ HYPRE_MGRSetInterpType( HYPRE_Solver solver, HYPRE_Int interpType )
    return hypre_MGRSetInterpType(solver, interpType);
 }
 
+HYPRE_Int
+HYPRE_MGRSetLevelInterpType( HYPRE_Solver solver, HYPRE_Int *interpType )
+{
+   return hypre_MGRSetLevelInterpType(solver, interpType);
+}
+
 /*--------------------------------------------------------------------------
  * HYPRE_MGRSetNumInterpSweeps
  *--------------------------------------------------------------------------*/
@@ -188,6 +350,33 @@ HYPRE_MGRSetNumRestrictSweeps( HYPRE_Solver solver, HYPRE_Int nsweeps )
 }
 
 /*--------------------------------------------------------------------------
+ * HYPRE_MGRSetTruncateCoarseGridThreshold
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetTruncateCoarseGridThreshold( HYPRE_Solver solver, HYPRE_Real threshold)
+{
+   return hypre_MGRSetTruncateCoarseGridThreshold( solver, threshold );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetFrelaxPrintLevel
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetFrelaxPrintLevel( HYPRE_Solver solver, HYPRE_Int print_level )
+{
+   return hypre_MGRSetFrelaxPrintLevel( solver, print_level );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetCoarseGridPrintLevel
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetCoarseGridPrintLevel( HYPRE_Solver solver, HYPRE_Int print_level )
+{
+   return hypre_MGRSetCoarseGridPrintLevel( solver, print_level );
+}
+
+/*--------------------------------------------------------------------------
  * HYPRE_MGRSetPrintLevel
  *--------------------------------------------------------------------------*/
 HYPRE_Int
@@ -195,6 +384,7 @@ HYPRE_MGRSetPrintLevel( HYPRE_Solver solver, HYPRE_Int print_level )
 {
    return hypre_MGRSetPrintLevel( solver, print_level );
 }
+
 /*--------------------------------------------------------------------------
  * HYPRE_MGRSetLogging
  *--------------------------------------------------------------------------*/
@@ -236,6 +426,26 @@ HYPRE_MGRSetGlobalsmoothType( HYPRE_Solver solver, HYPRE_Int iter_type )
 {
 	return hypre_MGRSetGlobalsmoothType(solver, iter_type);
 }
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRSetMaxPElmts
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRSetPMaxElmts( HYPRE_Solver solver, HYPRE_Int P_max_elmts )
+{
+  return hypre_MGRSetPMaxElmts(solver, P_max_elmts);
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_MGRGetCoarseGridConvergenceFactor
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_MGRGetCoarseGridConvergenceFactor( HYPRE_Solver solver, HYPRE_Real *conv_factor )
+{
+   return hypre_MGRGetCoarseGridConvergenceFactor( solver, conv_factor );
+}
+
+
 /*--------------------------------------------------------------------------
  * HYPRE_MGRGetNumIterations
  *--------------------------------------------------------------------------*/

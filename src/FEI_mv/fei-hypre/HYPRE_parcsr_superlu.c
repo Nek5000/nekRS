@@ -59,7 +59,7 @@ HYPRE_SuperLU;
 #endif
 
 /***************************************************************************
- * HYPRE_ParCSR_SuperLUCreate - Return a SuperLU object "solver".  
+ * HYPRE_ParCSR_SuperLUCreate - Return a SuperLU object "solver".
  *--------------------------------------------------------------------------*/
 
 int HYPRE_ParCSR_SuperLUCreate( MPI_Comm comm, HYPRE_Solver *solver )
@@ -67,7 +67,7 @@ int HYPRE_ParCSR_SuperLUCreate( MPI_Comm comm, HYPRE_Solver *solver )
 #ifdef HAVE_SUPERLU
    int           nprocs;
    HYPRE_SuperLU *sluPtr;
-   
+
    MPI_Comm_size(comm, &nprocs);
    if ( nprocs > 1 )
    {
@@ -75,7 +75,7 @@ int HYPRE_ParCSR_SuperLUCreate( MPI_Comm comm, HYPRE_Solver *solver )
       return -1;
    }
    sluPtr = hypre_TAlloc(HYPRE_SuperLU, 1, HYPRE_MEMORY_HOST);
-   assert ( sluPtr != NULL );
+   hypre_assert ( sluPtr != NULL );
    sluPtr->factorized_  = 0;
    sluPtr->permR_       = NULL;
    sluPtr->permC_       = NULL;
@@ -97,10 +97,10 @@ int HYPRE_ParCSR_SuperLUDestroy( HYPRE_Solver solver )
 {
 #ifdef HAVE_SUPERLU
    HYPRE_SuperLU *sluPtr = (HYPRE_SuperLU *) solver;
-   assert ( sluPtr != NULL );
-   if ( sluPtr->permR_ != NULL ) free(sluPtr->permR_);
-   if ( sluPtr->permC_ != NULL ) free(sluPtr->permC_);
-   free(sluPtr);
+   hypre_assert ( sluPtr != NULL );
+   hypre_TFree(sluPtr->permR_, HYPRE_MEMORY_HOST);
+   hypre_TFree(sluPtr->permC_, HYPRE_MEMORY_HOST);
+   hypre_TFree(sluPtr, HYPRE_MEMORY_HOST);
    return 0;
 #else
    printf("HYPRE_ParCSR_SuperLUDestroy ERROR - SuperLU not enabled.\n");
@@ -110,14 +110,14 @@ int HYPRE_ParCSR_SuperLUDestroy( HYPRE_Solver solver )
 }
 
 /***************************************************************************
- * HYPRE_ParCSR_SuperLUSetOutputLevel - Set debug level 
+ * HYPRE_ParCSR_SuperLUSetOutputLevel - Set debug level
  *--------------------------------------------------------------------------*/
 
 int HYPRE_ParCSR_SuperLUSetOutputLevel(HYPRE_Solver solver, int level)
 {
 #ifdef HAVE_SUPERLU
    HYPRE_SuperLU *sluPtr = (HYPRE_SuperLU *) solver;
-   assert ( sluPtr != NULL );
+   hypre_assert ( sluPtr != NULL );
    sluPtr->outputLevel_ = level;
    return 0;
 #else
@@ -151,12 +151,12 @@ int HYPRE_ParCSR_SuperLUSetup(HYPRE_Solver solver, HYPRE_ParCSRMatrix A_csr,
    /* ---------------------------------------------------------------- */
 
    sluPtr = (HYPRE_SuperLU *) solver;
-   assert ( sluPtr != NULL );
+   hypre_assert ( sluPtr != NULL );
    HYPRE_ParCSRMatrixGetRowPartitioning( A_csr, &partition );
    startRow = partition[0];
    endRow   = partition[1] - 1;
    nrows    = endRow - startRow + 1;
-   free( partition );
+   hypre_TFree(partition, HYPRE_MEMORY_HOST);
    if ( startRow != 0 )
    {
       printf("HYPRE_ParCSR_SuperLUSetup ERROR - start row != 0.\n");
@@ -209,12 +209,12 @@ int HYPRE_ParCSR_SuperLUSetup(HYPRE_Solver solver, HYPRE_ParCSRMatrix A_csr,
       nnz += colLengs[jcol-1];
       cscJ[jcol] = nnz;
    }
-   free(colLengs);
+   hypre_TFree(colLengs, HYPRE_MEMORY_HOST);
 
    /* ---------------------------------------------------------------- */
    /* create SuperMatrix                                                */
    /* ---------------------------------------------------------------- */
-                                                                                
+
    dCreate_CompCol_Matrix(&sluAmat,nrows,nrows,cscJ[nrows],cscA,cscI,
                           cscJ, SLU_NC, SLU_D, SLU_GE);
    etree   = hypre_TAlloc(int, nrows , HYPRE_MEMORY_HOST);
@@ -239,7 +239,7 @@ int HYPRE_ParCSR_SuperLUSetup(HYPRE_Solver solver, HYPRE_ParCSRMatrix A_csr,
           &(sluPtr->SLU_Lmat), &(sluPtr->SLU_Umat), &slu_stat, &info);
    Destroy_CompCol_Permuted(&auxAmat);
    Destroy_CompCol_Matrix(&sluAmat);
-   free(etree);
+   hypre_TFree(etree, HYPRE_MEMORY_HOST);
    sluPtr->factorized_ = 1;
    StatFree(&slu_stat);
    return 0;
@@ -269,7 +269,7 @@ int HYPRE_ParCSR_SuperLUSolve(HYPRE_Solver solver, HYPRE_ParCSRMatrix A,
    /* make sure setup has been called                                  */
    /* ---------------------------------------------------------------- */
 
-   assert ( sluPtr != NULL );
+   hypre_assert ( sluPtr != NULL );
    if ( ! (sluPtr->factorized_) )
    {
       printf("HYPRE_ParCSR_SuperLUSolve ERROR - not factorized yet.\n");
@@ -282,7 +282,7 @@ int HYPRE_ParCSR_SuperLUSolve(HYPRE_Solver solver, HYPRE_ParCSRMatrix A,
 
    xData = hypre_VectorData(hypre_ParVectorLocalVector((hypre_ParVector *)x));
    bData = hypre_VectorData(hypre_ParVectorLocalVector((hypre_ParVector *)b));
-   nrows = hypre_ParVectorGlobalSize((hypre_ParVector *)x); 
+   nrows = hypre_ParVectorGlobalSize((hypre_ParVector *)x);
    for (i = 0; i < nrows; i++) xData[i] = bData[i];
 
    /* ---------------------------------------------------------------- */
@@ -297,7 +297,7 @@ int HYPRE_ParCSR_SuperLUSolve(HYPRE_Solver solver, HYPRE_ParCSRMatrix A,
 
    trans = NOTRANS;
    StatInit(&slu_stat);
-   dgstrs (trans, &(sluPtr->SLU_Lmat), &(sluPtr->SLU_Umat), 
+   dgstrs (trans, &(sluPtr->SLU_Lmat), &(sluPtr->SLU_Umat),
            sluPtr->permC_, sluPtr->permR_, &B, &slu_stat, &info);
    Destroy_SuperMatrix_Store(&B);
    StatFree(&slu_stat);

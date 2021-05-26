@@ -10,6 +10,7 @@
 
 #include "HYPRE_utilities.h"
 #include "HYPRE_struct_mv.h"
+#include "HYPRE_lobpcg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,22 +20,24 @@ extern "C" {
  *--------------------------------------------------------------------------*/
 
 /**
- * @name Struct Solvers
+ * @defgroup StructSolvers Struct Solvers
  *
  * These solvers use matrix/vector storage schemes that are tailored
  * to structured grid problems.
  *
  * @memo Linear solvers for structured grids
+ *
+ * @{
  **/
-/*@{*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
 /**
  * @name Struct Solvers
+ *
+ * @{
  **/
-/*@{*/
 
 struct hypre_StructSolver_struct;
 /**
@@ -62,15 +65,16 @@ typedef HYPRE_Int (*HYPRE_PtrToModifyPCFcn)(HYPRE_Solver,
                                       HYPRE_Real);
 #endif
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
 /**
  * @name Struct Jacobi Solver
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -90,7 +94,7 @@ HYPRE_Int HYPRE_StructJacobiCreate(MPI_Comm            comm,
 HYPRE_Int HYPRE_StructJacobiDestroy(HYPRE_StructSolver solver);
 
 /**
- * Prepare to solve the system.  The coefficient data in {\tt b} and {\tt x} is
+ * Prepare to solve the system.  The coefficient data in \e b and \e x is
  * ignored here, but information about the layout of the data may be used.
  **/
 HYPRE_Int HYPRE_StructJacobiSetup(HYPRE_StructSolver solver,
@@ -112,11 +116,18 @@ HYPRE_Int HYPRE_StructJacobiSolve(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructJacobiSetTol(HYPRE_StructSolver solver,
                              HYPRE_Real         tol);
 
+
+HYPRE_Int HYPRE_StructJacobiGetTol(HYPRE_StructSolver solver,
+                                   HYPRE_Real *tol );
+
 /**
  * (Optional) Set maximum number of iterations.
  **/
 HYPRE_Int HYPRE_StructJacobiSetMaxIter(HYPRE_StructSolver solver,
                                  HYPRE_Int          max_iter);
+
+HYPRE_Int HYPRE_StructJacobiGetMaxIter(HYPRE_StructSolver solver,
+                                       HYPRE_Int *max_iter );
 
 /**
  * (Optional) Use a zero initial guess.  This allows the solver to cut corners
@@ -125,9 +136,12 @@ HYPRE_Int HYPRE_StructJacobiSetMaxIter(HYPRE_StructSolver solver,
  **/
 HYPRE_Int HYPRE_StructJacobiSetZeroGuess(HYPRE_StructSolver solver);
 
+HYPRE_Int HYPRE_StructJacobiGetZeroGuess(HYPRE_StructSolver solver,
+                                         HYPRE_Int *zeroguess );
+
 /**
  * (Optional) Use a nonzero initial guess.  This is the default behavior, but
- * this routine allows the user to switch back after using {\tt SetZeroGuess}.
+ * this routine allows the user to switch back after using \e SetZeroGuess.
  **/
 HYPRE_Int HYPRE_StructJacobiSetNonZeroGuess(HYPRE_StructSolver solver);
 
@@ -143,7 +157,7 @@ HYPRE_Int HYPRE_StructJacobiGetNumIterations(HYPRE_StructSolver  solver,
 HYPRE_Int HYPRE_StructJacobiGetFinalRelativeResidualNorm(HYPRE_StructSolver  solver,
                                                    HYPRE_Real         *norm);
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -154,11 +168,12 @@ HYPRE_Int HYPRE_StructJacobiGetFinalRelativeResidualNorm(HYPRE_StructSolver  sol
  * PFMG is a semicoarsening multigrid solver that uses pointwise relaxation.
  * For periodic problems, users should try to set the grid size in periodic
  * dimensions to be as close to a power-of-two as possible.  That is, if the
- * grid size in a periodic dimension is given by $N = 2^m * M$ where $M$ is not
- * a power-of-two, then $M$ should be as small as possible.  Large values of $M$
- * will generally result in slower convergence rates.
+ * grid size in a periodic dimension is given by \f$N = 2^m * M\f$ where \f$M\f$
+ * is not a power-of-two, then \f$M\f$ should be as small as possible.  Large
+ * values of \f$M\f$ will generally result in slower convergence rates.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -172,7 +187,7 @@ HYPRE_Int HYPRE_StructPFMGCreate(MPI_Comm            comm,
 HYPRE_Int HYPRE_StructPFMGDestroy(HYPRE_StructSolver solver);
 
 /**
- * Prepare to solve the system.  The coefficient data in {\tt b} and {\tt x} is
+ * Prepare to solve the system.  The coefficient data in \e b and \e x is
  * ignored here, but information about the layout of the data may be used.
  **/
 HYPRE_Int HYPRE_StructPFMGSetup(HYPRE_StructSolver solver,
@@ -194,17 +209,26 @@ HYPRE_Int HYPRE_StructPFMGSolve(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructPFMGSetTol(HYPRE_StructSolver solver,
                            HYPRE_Real         tol);
 
+HYPRE_Int HYPRE_StructPFMGGetTol (HYPRE_StructSolver solver,
+                                  HYPRE_Real *tol);
+
 /**
  * (Optional) Set maximum number of iterations.
  **/
 HYPRE_Int HYPRE_StructPFMGSetMaxIter(HYPRE_StructSolver solver,
                                HYPRE_Int          max_iter);
 
+HYPRE_Int HYPRE_StructPFMGGetMaxIter(HYPRE_StructSolver solver,
+                                     HYPRE_Int *max_iter);
+
 /**
  * (Optional) Set maximum number of multigrid grid levels.
  **/
-HYPRE_Int HYPRE_StructPFMGSetMaxLevels(HYPRE_StructSolver solver, 
+HYPRE_Int HYPRE_StructPFMGSetMaxLevels(HYPRE_StructSolver solver,
                                  HYPRE_Int          max_levels);
+
+HYPRE_Int HYPRE_StructPFMGGetMaxLevels (HYPRE_StructSolver solver,
+                                        HYPRE_Int *max_levels );
 
 /**
  * (Optional) Additionally require that the relative difference in
@@ -213,6 +237,9 @@ HYPRE_Int HYPRE_StructPFMGSetMaxLevels(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructPFMGSetRelChange(HYPRE_StructSolver solver,
                                  HYPRE_Int          rel_change);
 
+HYPRE_Int HYPRE_StructPFMGGetRelChange (HYPRE_StructSolver solver,
+                                        HYPRE_Int *rel_change);
+
 /**
  * (Optional) Use a zero initial guess.  This allows the solver to cut corners
  * in the case where a zero initial guess is needed (e.g., for preconditioning)
@@ -220,26 +247,30 @@ HYPRE_Int HYPRE_StructPFMGSetRelChange(HYPRE_StructSolver solver,
  **/
 HYPRE_Int HYPRE_StructPFMGSetZeroGuess(HYPRE_StructSolver solver);
 
+HYPRE_Int HYPRE_StructPFMGGetZeroGuess(HYPRE_StructSolver solver,
+                                       HYPRE_Int *zeroguess);
+
 /**
  * (Optional) Use a nonzero initial guess.  This is the default behavior, but
- * this routine allows the user to switch back after using {\tt SetZeroGuess}.
+ * this routine allows the user to switch back after using \e SetZeroGuess.
  **/
 HYPRE_Int HYPRE_StructPFMGSetNonZeroGuess(HYPRE_StructSolver solver);
 
 /**
  * (Optional) Set relaxation type.
  *
- * Current relaxation methods set by {\tt relax\_type} are:
+ * Current relaxation methods set by \e relax_type are:
  *
- * \begin{tabular}{l@{ -- }l}
- * 0 & Jacobi \\
- * 1 & Weighted Jacobi (default) \\
- * 2 & Red/Black Gauss-Seidel (symmetric: RB pre-relaxation, BR post-relaxation) \\
- * 3 & Red/Black Gauss-Seidel (nonsymmetric: RB pre- and post-relaxation) \\
- * \end{tabular}
+ *    - 0 : Jacobi
+ *    - 1 : Weighted Jacobi (default)
+ *    - 2 : Red/Black Gauss-Seidel (symmetric: RB pre-relaxation, BR post-relaxation)
+ *    - 3 : Red/Black Gauss-Seidel (nonsymmetric: RB pre- and post-relaxation)
  **/
 HYPRE_Int HYPRE_StructPFMGSetRelaxType(HYPRE_StructSolver solver,
                                  HYPRE_Int          relax_type);
+
+HYPRE_Int HYPRE_StructPFMGGetRelaxType(HYPRE_StructSolver solver,
+                                       HYPRE_Int *relax_type);
 
 /*
  * (Optional) Set Jacobi weight (this is purposely not documented)
@@ -253,12 +284,10 @@ HYPRE_Int HYPRE_StructPFMGGetJacobiWeight(HYPRE_StructSolver solver,
 /**
  * (Optional) Set type of coarse-grid operator to use.
  *
- * Current operators set by {\tt rap\_type} are:
+ * Current operators set by \e rap_type are:
  *
- * \begin{tabular}{l@{ -- }l}
- * 0 & Galerkin (default) \\
- * 1 & non-Galerkin 5-pt or 7-pt stencils \\
- * \end{tabular}
+ *    - 0 : Galerkin (default)
+ *    - 1 : non-Galerkin 5-pt or 7-pt stencils
  *
  * Both operators are constructed algebraically.  The non-Galerkin option
  * maintains a 5-pt stencil in 2D and a 7-pt stencil in 3D on all grid levels.
@@ -267,17 +296,26 @@ HYPRE_Int HYPRE_StructPFMGGetJacobiWeight(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructPFMGSetRAPType(HYPRE_StructSolver solver,
                                HYPRE_Int          rap_type);
 
+HYPRE_Int HYPRE_StructPFMGGetRAPType(HYPRE_StructSolver solver,
+                                     HYPRE_Int *rap_type );
+
 /**
  * (Optional) Set number of relaxation sweeps before coarse-grid correction.
  **/
 HYPRE_Int HYPRE_StructPFMGSetNumPreRelax(HYPRE_StructSolver solver,
                                    HYPRE_Int          num_pre_relax);
 
+HYPRE_Int HYPRE_StructPFMGGetNumPreRelax(HYPRE_StructSolver solver,
+                                         HYPRE_Int *num_pre_relax);
+
 /**
  * (Optional) Set number of relaxation sweeps after coarse-grid correction.
  **/
 HYPRE_Int HYPRE_StructPFMGSetNumPostRelax(HYPRE_StructSolver solver,
                                     HYPRE_Int          num_post_relax);
+
+HYPRE_Int HYPRE_StructPFMGGetNumPostRelax(HYPRE_StructSolver solver,
+                                          HYPRE_Int *num_post_relax);
 
 /**
  * (Optional) Skip relaxation on certain grids for isotropic problems.  This can
@@ -286,6 +324,9 @@ HYPRE_Int HYPRE_StructPFMGSetNumPostRelax(HYPRE_StructSolver solver,
  **/
 HYPRE_Int HYPRE_StructPFMGSetSkipRelax(HYPRE_StructSolver solver,
                                  HYPRE_Int          skip_relax);
+
+HYPRE_Int HYPRE_StructPFMGGetSkipRelax(HYPRE_StructSolver solver,
+                                       HYPRE_Int *skip_relax);
 
 /*
  * RE-VISIT
@@ -299,11 +340,17 @@ HYPRE_Int HYPRE_StructPFMGSetDxyz(HYPRE_StructSolver  solver,
 HYPRE_Int HYPRE_StructPFMGSetLogging(HYPRE_StructSolver solver,
                                HYPRE_Int          logging);
 
+HYPRE_Int HYPRE_StructPFMGGetLogging(HYPRE_StructSolver solver,
+                                     HYPRE_Int *logging);
+
 /**
  * (Optional) Set the amount of printing to do to the screen.
  **/
 HYPRE_Int HYPRE_StructPFMGSetPrintLevel(HYPRE_StructSolver solver,
                                   HYPRE_Int          print_level);
+
+HYPRE_Int HYPRE_StructPFMGGetPrintLevel(HYPRE_StructSolver solver,
+                                        HYPRE_Int *print_level);
 
 /**
  * Return the number of iterations taken.
@@ -317,12 +364,12 @@ HYPRE_Int HYPRE_StructPFMGGetNumIterations(HYPRE_StructSolver  solver,
 HYPRE_Int HYPRE_StructPFMGGetFinalRelativeResidualNorm(HYPRE_StructSolver  solver,
                                                  HYPRE_Real         *norm);
 
-#if defined(HYPRE_USING_CUDA)
+#if 0 //defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int
 HYPRE_StructPFMGSetDeviceLevel( HYPRE_StructSolver  solver,
-				HYPRE_Int   device_level  );
-#endif  
-/*@}*/
+                                HYPRE_Int   device_level  );
+#endif
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -334,8 +381,9 @@ HYPRE_StructPFMGSetDeviceLevel( HYPRE_StructSolver  solver,
  * The plane smoother calls a 2D SMG algorithm with line smoothing, and the line
  * smoother is cyclic reduction (1D SMG).  For periodic problems, the grid size
  * in periodic dimensions currently must be a power-of-two.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -349,7 +397,7 @@ HYPRE_Int HYPRE_StructSMGCreate(MPI_Comm            comm,
 HYPRE_Int HYPRE_StructSMGDestroy(HYPRE_StructSolver solver);
 
 /**
- * Prepare to solve the system.  The coefficient data in {\tt b} and {\tt x} is
+ * Prepare to solve the system.  The coefficient data in \e b and \e x is
  * ignored here, but information about the layout of the data may be used.
  **/
 HYPRE_Int HYPRE_StructSMGSetup(HYPRE_StructSolver solver,
@@ -371,17 +419,26 @@ HYPRE_Int HYPRE_StructSMGSolve(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructSMGSetMemoryUse(HYPRE_StructSolver solver,
                                 HYPRE_Int          memory_use);
 
+HYPRE_Int HYPRE_StructSMGGetMemoryUse(HYPRE_StructSolver solver,
+                                      HYPRE_Int *memory_use);
+
 /**
  * (Optional) Set the convergence tolerance.
  **/
 HYPRE_Int HYPRE_StructSMGSetTol(HYPRE_StructSolver solver,
                           HYPRE_Real         tol);
 
+HYPRE_Int HYPRE_StructSMGGetTol(HYPRE_StructSolver solver,
+                                HYPRE_Real *tol);
+
 /**
  * (Optional) Set maximum number of iterations.
  **/
 HYPRE_Int HYPRE_StructSMGSetMaxIter(HYPRE_StructSolver solver,
                               HYPRE_Int          max_iter);
+
+HYPRE_Int HYPRE_StructSMGGetMaxIter(HYPRE_StructSolver solver,
+                                    HYPRE_Int *max_iter);
 
 /**
  * (Optional) Additionally require that the relative difference in
@@ -390,6 +447,9 @@ HYPRE_Int HYPRE_StructSMGSetMaxIter(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructSMGSetRelChange(HYPRE_StructSolver solver,
                                 HYPRE_Int          rel_change);
 
+HYPRE_Int HYPRE_StructSMGGetRelChange(HYPRE_StructSolver solver,
+                                      HYPRE_Int *rel_change);
+
 /**
  * (Optional) Use a zero initial guess.  This allows the solver to cut corners
  * in the case where a zero initial guess is needed (e.g., for preconditioning)
@@ -397,9 +457,12 @@ HYPRE_Int HYPRE_StructSMGSetRelChange(HYPRE_StructSolver solver,
  **/
 HYPRE_Int HYPRE_StructSMGSetZeroGuess(HYPRE_StructSolver solver);
 
+HYPRE_Int HYPRE_StructSMGGetZeroGuess(HYPRE_StructSolver solver,
+                                      HYPRE_Int *zeroguess);
+
 /**
  * (Optional) Use a nonzero initial guess.  This is the default behavior, but
- * this routine allows the user to switch back after using {\tt SetZeroGuess}.
+ * this routine allows the user to switch back after using \e SetZeroGuess.
  **/
 HYPRE_Int HYPRE_StructSMGSetNonZeroGuess(HYPRE_StructSolver solver);
 
@@ -409,11 +472,17 @@ HYPRE_Int HYPRE_StructSMGSetNonZeroGuess(HYPRE_StructSolver solver);
 HYPRE_Int HYPRE_StructSMGSetNumPreRelax(HYPRE_StructSolver solver,
                                   HYPRE_Int          num_pre_relax);
 
+HYPRE_Int HYPRE_StructSMGGetNumPreRelax(HYPRE_StructSolver solver,
+                                        HYPRE_Int *num_pre_relax);
+
 /**
  * (Optional) Set number of relaxation sweeps after coarse-grid correction.
  **/
 HYPRE_Int HYPRE_StructSMGSetNumPostRelax(HYPRE_StructSolver solver,
                                    HYPRE_Int          num_post_relax);
+
+HYPRE_Int HYPRE_StructSMGGetNumPostRelax(HYPRE_StructSolver solver,
+                                         HYPRE_Int *num_post_relax);
 
 /**
  * (Optional) Set the amount of logging to do.
@@ -421,11 +490,17 @@ HYPRE_Int HYPRE_StructSMGSetNumPostRelax(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructSMGSetLogging(HYPRE_StructSolver solver,
                               HYPRE_Int          logging);
 
+HYPRE_Int HYPRE_StructSMGGetLogging(HYPRE_StructSolver solver,
+                                    HYPRE_Int *logging);
+
 /**
  * (Optional) Set the amount of printing to do to the screen.
  **/
 HYPRE_Int HYPRE_StructSMGSetPrintLevel(HYPRE_StructSolver solver,
                                   HYPRE_Int          print_level);
+
+HYPRE_Int HYPRE_StructSMGGetPrintLevel(HYPRE_StructSolver solver,
+                                       HYPRE_Int *print_level);
 
 /**
  * Return the number of iterations taken.
@@ -439,13 +514,13 @@ HYPRE_Int HYPRE_StructSMGGetNumIterations(HYPRE_StructSolver  solver,
 HYPRE_Int HYPRE_StructSMGGetFinalRelativeResidualNorm(HYPRE_StructSolver  solver,
                                                 HYPRE_Real         *norm);
 
-#if defined(HYPRE_USING_CUDA)
+#if 0 //defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int
 HYPRE_StructSMGSetDeviceLevel( HYPRE_StructSolver  solver,
-			       HYPRE_Int   device_level  );
+                               HYPRE_Int   device_level  );
 #endif
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -455,8 +530,9 @@ HYPRE_StructSMGSetDeviceLevel( HYPRE_StructSolver  solver,
  *
  * CycRed is a cyclic reduction solver that simultaneously solves a collection
  * of 1D tridiagonal systems embedded in a d-dimensional grid.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -470,7 +546,7 @@ HYPRE_Int HYPRE_StructCycRedCreate(MPI_Comm            comm,
 HYPRE_Int HYPRE_StructCycRedDestroy(HYPRE_StructSolver solver);
 
 /**
- * Prepare to solve the system.  The coefficient data in {\tt b} and {\tt x} is
+ * Prepare to solve the system.  The coefficient data in \e b and \e x is
  * ignored here, but information about the layout of the data may be used.
  **/
 HYPRE_Int HYPRE_StructCycRedSetup(HYPRE_StructSolver solver,
@@ -489,7 +565,7 @@ HYPRE_Int HYPRE_StructCycRedSolve(HYPRE_StructSolver solver,
 /**
  *
  * (Optional) Set the dimension number for the embedded 1D tridiagonal systems.
- * The default is {\tt tdim} = 0.
+ * The default is \e tdim = 0.
  **/
 HYPRE_Int HYPRE_StructCycRedSetTDim(HYPRE_StructSolver solver,
                                     HYPRE_Int          tdim);
@@ -497,14 +573,14 @@ HYPRE_Int HYPRE_StructCycRedSetTDim(HYPRE_StructSolver solver,
 /**
  * (Optional) Set the base index and stride for the embedded 1D systems.  The
  * stride must be equal one in the dimension corresponding to the 1D systems
- * (see \Ref{HYPRE_StructCycRedSetTDim}).
+ * (see \ref HYPRE_StructCycRedSetTDim).
  **/
 HYPRE_Int HYPRE_StructCycRedSetBase(HYPRE_StructSolver solver,
                                     HYPRE_Int          ndim,
                                     HYPRE_Int         *base_index,
                                     HYPRE_Int         *base_stride);
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -513,9 +589,10 @@ HYPRE_Int HYPRE_StructCycRedSetBase(HYPRE_StructSolver solver,
  * @name Struct PCG Solver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{PCG Solver}.
+ * \ref KrylovSolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -589,7 +666,7 @@ HYPRE_Int HYPRE_StructDiagScale(HYPRE_StructSolver solver,
                           HYPRE_StructVector Hy,
                           HYPRE_StructVector Hx);
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -598,9 +675,10 @@ HYPRE_Int HYPRE_StructDiagScale(HYPRE_StructSolver solver,
  * @name Struct GMRES Solver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{GMRES Solver}.
+ * \ref KrylovSolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -655,7 +733,7 @@ HYPRE_Int HYPRE_StructGMRESGetFinalRelativeResidualNorm(HYPRE_StructSolver  solv
 
 HYPRE_Int HYPRE_StructGMRESGetResidual(HYPRE_StructSolver   solver,
                                  void               **residual);
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -664,9 +742,10 @@ HYPRE_Int HYPRE_StructGMRESGetResidual(HYPRE_StructSolver   solver,
  * @name Struct FlexGMRES Solver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{FlexGMRES Solver}.
+ * \ref KrylovSolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -724,7 +803,7 @@ HYPRE_Int HYPRE_StructFlexGMRESGetResidual(HYPRE_StructSolver   solver,
 HYPRE_Int HYPRE_StructFlexGMRESSetModifyPC(HYPRE_StructSolver     solver,
                                      HYPRE_PtrToModifyPCFcn modify_pc);
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -733,9 +812,10 @@ HYPRE_Int HYPRE_StructFlexGMRESSetModifyPC(HYPRE_StructSolver     solver,
  * @name Struct LGMRES Solver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{LGMRES Solver}.
+ * \ref KrylovSolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -763,7 +843,7 @@ HYPRE_Int HYPRE_StructLGMRESSetTol(HYPRE_StructSolver solver,
 
 HYPRE_Int HYPRE_StructLGMRESSetAbsoluteTol(HYPRE_StructSolver solver,
                                      HYPRE_Real         tol);
-   
+
 HYPRE_Int HYPRE_StructLGMRESSetMaxIter(HYPRE_StructSolver solver,
                                  HYPRE_Int          max_iter);
 
@@ -792,7 +872,7 @@ HYPRE_Int HYPRE_StructLGMRESGetFinalRelativeResidualNorm(HYPRE_StructSolver  sol
 
 HYPRE_Int HYPRE_StructLGMRESGetResidual(HYPRE_StructSolver   solver,
                                   void               **residual);
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -801,9 +881,10 @@ HYPRE_Int HYPRE_StructLGMRESGetResidual(HYPRE_StructSolver   solver,
  * @name Struct BiCGSTAB Solver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{BiCGSTAB Solver}.
+ * \ref KrylovSolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -854,15 +935,16 @@ HYPRE_Int HYPRE_StructBiCGSTABGetFinalRelativeResidualNorm(HYPRE_StructSolver  s
 
 HYPRE_Int HYPRE_StructBiCGSTABGetResidual( HYPRE_StructSolver   solver,
                                      void               **residual);
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
 /**
  * @name Struct Hybrid Solver
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Create a solver object.
@@ -876,7 +958,7 @@ HYPRE_Int HYPRE_StructHybridCreate(MPI_Comm            comm,
 HYPRE_Int HYPRE_StructHybridDestroy(HYPRE_StructSolver solver);
 
 /**
- * Prepare to solve the system.  The coefficient data in {\tt b} and {\tt x} is
+ * Prepare to solve the system.  The coefficient data in \e b and \e x is
  * ignored here, but information about the layout of the data may be used.
  **/
 HYPRE_Int HYPRE_StructHybridSetup(HYPRE_StructSolver solver,
@@ -901,21 +983,21 @@ HYPRE_Int HYPRE_StructHybridSetTol(HYPRE_StructSolver solver,
 /**
  * (Optional) Set an accepted convergence tolerance for diagonal scaling (DS).
  * The solver will switch preconditioners if the convergence of DS is slower
- * than {\tt cf\_tol}.
+ * than \e cf_tol.
  **/
 HYPRE_Int HYPRE_StructHybridSetConvergenceTol(HYPRE_StructSolver solver,
                                         HYPRE_Real         cf_tol);
 
 /**
  * (Optional) Set maximum number of iterations for diagonal scaling (DS).  The
- * solver will switch preconditioners if DS reaches {\tt ds\_max\_its}.
+ * solver will switch preconditioners if DS reaches \e ds_max_its.
  **/
 HYPRE_Int HYPRE_StructHybridSetDSCGMaxIter(HYPRE_StructSolver solver,
                                      HYPRE_Int          ds_max_its);
 
 /**
  * (Optional) Set maximum number of iterations for general preconditioner (PRE).
- * The solver will stop if PRE reaches {\tt pre\_max\_its}.
+ * The solver will stop if PRE reaches \e pre_max_its.
  **/
 HYPRE_Int HYPRE_StructHybridSetPCGMaxIter(HYPRE_StructSolver solver,
                                     HYPRE_Int          pre_max_its);
@@ -939,13 +1021,11 @@ HYPRE_Int HYPRE_StructHybridSetRelChange(HYPRE_StructSolver solver,
 /**
  * (Optional) Set the type of Krylov solver to use.
  *
- * Current krylov methods set by {\tt solver\_type} are:
+ * Current krylov methods set by \e solver_type are:
  *
- * \begin{tabular}{l@{ -- }l}
- * 0 & PCG (default) \\
- * 1 & GMRES \\
- * 2 & BiCGSTAB \\
- * \end{tabular}
+ *    - 0 : PCG (default)
+ *    - 1 : GMRES
+ *    - 2 : BiCGSTAB
  **/
 HYPRE_Int HYPRE_StructHybridSetSolverType(HYPRE_StructSolver solver,
                                           HYPRE_Int          solver_type);
@@ -1030,7 +1110,10 @@ HYPRE_Int HYPRE_StructHybridGetPCGNumIterations(HYPRE_StructSolver  solver,
 HYPRE_Int HYPRE_StructHybridGetFinalRelativeResidualNorm(HYPRE_StructSolver  solver,
                                                    HYPRE_Real         *norm);
 
-/*@}*/
+HYPRE_Int HYPRE_StructHybridSetPCGAbsoluteTolFactor(HYPRE_StructSolver solver,
+                                                    HYPRE_Real pcg_atolf );
+
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
@@ -1101,18 +1184,14 @@ HYPRE_Int HYPRE_StructSparseMSGGetFinalRelativeResidualNorm(HYPRE_StructSolver  
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
-/* These includes shouldn't be here. (RDF) */
-#include "interpreter.h"
-#include "HYPRE_MatvecFunctions.h"
-#include "_hypre_struct_mv.h"
-
 /**
  * @name Struct LOBPCG Eigensolver
  *
  * These routines should be used in conjunction with the generic interface in
- * \Ref{LOBPCG Eigensolver}.
+ * \ref Eigensolvers.
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * Load interface interpreter. Vector part loaded with hypre_StructKrylov
@@ -1127,26 +1206,12 @@ HYPRE_StructSetupInterpreter(mv_InterfaceInterpreter *i);
 HYPRE_Int
 HYPRE_StructSetupMatvec(HYPRE_MatvecFunctions *mv);
 
-/* The next routines should not be here (lower-case prefix). (RDF) */
-
-/*
- * Set hypre_StructPVector to random values.
- **/
-HYPRE_Int
-hypre_StructVectorSetRandomValues(hypre_StructVector *vector, HYPRE_Int seed);
-
-/*
- * Same as hypre_StructVectorSetRandomValues except uses void pointer.
- **/
-HYPRE_Int
-hypre_StructSetRandomValues(void *v, HYPRE_Int seed);
-
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
-/*@}*/
+/**@}*/
 
 #ifdef __cplusplus
 }

@@ -14,6 +14,7 @@ set(SRCS
   F90_HYPRE_parcsr_vector.c
   F90_parcsr_matrix.c
   F90_par_vector.c
+  gen_fffc.c
   HYPRE_parcsr_matrix.c
   HYPRE_parcsr_vector.c
   new_commpkg.c
@@ -28,14 +29,31 @@ set(SRCS
   par_csr_matop_marked.c
   par_csr_matvec.c
   par_vector.c
+  par_vector_batched.c
   par_make_system.c
   par_csr_triplemat.c
+  par_csr_fffc_device.c
+  par_csr_matop_device.c
+  par_csr_triplemat_device.c
+  par_vector_device.c
 )
-  
+
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+          ${HDRS}
+)
+
+if (HYPRE_USING_CUDA)
+  set(CUDA_SRCS
+    par_csr_matvec.c
+    par_csr_fffc_device.c
+    par_csr_matop_device.c
+    par_csr_triplemat_device.c
+    par_vector_device.c
+  )
+  convert_filenames_to_full_paths(CUDA_SRCS)
+  set(HYPRE_CUDA_SOURCES ${HYPRE_CUDA_SOURCES} ${CUDA_SRCS} PARENT_SCOPE)
+endif ()
+
 convert_filenames_to_full_paths(HDRS)
-convert_filenames_to_full_paths(SRCS)
-
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
-set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)
-
-

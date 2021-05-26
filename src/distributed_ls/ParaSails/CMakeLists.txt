@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-set(PARASAILS_SRCS
+set(SRCS
   ConjGrad.c
   DiagScale.c
   FGmres.c
@@ -19,9 +19,7 @@ set(PARASAILS_SRCS
   RowPatt.c
   StoredRows.c
 )
-  
-convert_filenames_to_full_paths(PARASAILS_SRCS)
 
-set(SRCS ${SRCS} ${PARASAILS_SRCS} PARENT_SCOPE)
-
-
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+)

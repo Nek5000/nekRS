@@ -571,6 +571,17 @@ HYPRE_ParCSRHybridSetAggNumLevels( HYPRE_Solver solver,
 }
 
 /*--------------------------------------------------------------------------
+ * HYPRE_ParCSRHybridSetAggInterpType
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+HYPRE_ParCSRHybridSetAggInterpType( HYPRE_Solver solver,
+                                    HYPRE_Int    agg_interp_type    )
+{
+   return( hypre_AMGHybridSetAggInterpType( (void *) solver, agg_interp_type ) );
+}
+
+/*--------------------------------------------------------------------------
  * HYPRE_ParCSRHybridSetNumPaths
  *--------------------------------------------------------------------------*/
 
@@ -669,4 +680,12 @@ HYPRE_ParCSRHybridGetFinalRelativeResidualNorm( HYPRE_Solver solver,
                                                 HYPRE_Real  *norm    )
 {
    return( hypre_AMGHybridGetFinalRelativeResidualNorm( (void *) solver, norm ) );
+}
+
+
+HYPRE_Int
+HYPRE_ParCSRHybridGetSetupSolveTime( HYPRE_Solver solver,
+                                     HYPRE_Real  *time    )
+{
+   return( hypre_AMGHybridGetSetupSolveTime( (void *) solver, time ) );
 }

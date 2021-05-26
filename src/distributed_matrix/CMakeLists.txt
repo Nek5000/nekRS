@@ -5,6 +5,9 @@
 
 set(HDRS
   distributed_matrix.h
+  HYPRE_distributed_matrix_mv.h
+  HYPRE_distributed_matrix_protos.h
+  HYPRE_distributed_matrix_types.h
 )
 
 set(SRCS
@@ -14,11 +17,11 @@ set(SRCS
   distributed_matrix_PETSc.c
   HYPRE_distributed_matrix.c
 )
-  
+
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+          ${HDRS}
+)
+
 convert_filenames_to_full_paths(HDRS)
-convert_filenames_to_full_paths(SRCS)
-
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
-set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)
-
-

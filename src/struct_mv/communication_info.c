@@ -116,6 +116,8 @@ hypre_CommInfoProjectRecv( hypre_CommInfo  *comm_info,
 {
    hypre_ProjectBoxArrayArray(hypre_CommInfoRecvBoxes(comm_info),
                               index, stride);
+   hypre_ProjectBoxArrayArray(hypre_CommInfoRecvRBoxes(comm_info),
+                              index, stride);
    hypre_CopyIndex(stride, hypre_CommInfoRecvStride(comm_info));
 
    return hypre_error_flag;
@@ -812,7 +814,7 @@ hypre_CreateCommInfoFromNumGhost( hypre_StructGrid      *grid,
    hypre_BoxGetSize(box, loop_size);
    hypre_SerialBoxLoop0Begin(ndim, loop_size);
    {
-      hypre_BoxLoopGetIndex(ii);
+      zypre_BoxLoopGetIndex(ii);
       for (d = 0; d < ndim; d++)
       {
          i = ii[d]+start[d];

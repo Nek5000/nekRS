@@ -3,6 +3,12 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+set(HDRS
+  _hypre_blas.h
+  f2c.h
+  hypre_blas.h
+)
+
 set(SRCS
   dasum.c
   daxpy.c
@@ -30,8 +36,11 @@ set(SRCS
   xerbla.c
 )
 
-convert_filenames_to_full_paths(SRCS)
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+          ${HDRS}
+)
 
-set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)
-
+convert_filenames_to_full_paths(HDRS)
+set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
 
