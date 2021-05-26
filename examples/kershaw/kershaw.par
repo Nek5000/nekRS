@@ -5,9 +5,9 @@ polynomialOrder = 7
 [PRESSURE]
 solver = pfgmres+20
 residualTol = 1e-8
-#preconditioner = Jacobi 
-smootherType = Chebyshev+ASM+1
-pMultigridCoarsening = 7,5,3,1
+preconditioner = SEMFEM+AmgX 
+#smootherType = Chebyshev+ASM+1
+#pMultigridCoarsening = 7,5,3,1
 #galerkinCoarseOperator = true
 residualProj = false
 
