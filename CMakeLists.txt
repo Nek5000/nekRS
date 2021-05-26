@@ -5,7 +5,6 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
-set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(FETCHCONTENT_QUIET on)
@@ -48,6 +47,8 @@ set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
 #   - ENABLE_HIP
 #   - ENABLE_METAL
 #   - ENABLE_MPI
+
+set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
@@ -151,6 +152,18 @@ configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
+
+###############################################################################
+# Build with AMGX.
+# - AMGX's CMakeLists must be used before OCCA's, since AMGX explicitly
+#   sets the cache variable CUDA_NVCC_FLAGS before calling find_package(CUDA).
+#   If find_package(CUDA) is called first, then AMGX's explicit CUDA_NVCC_FLAGS
+#   will not be set, since cache variables are not overridden by default.
+###############################################################################
+
+if(ENABLE_AMGX)
+  add_subdirectory(3rd_party/AMGX)
+endif()
 
 ###############################################################################
 # Build OCCA                                                                  #
@@ -268,6 +281,16 @@ target_include_directories(nekrs-lib
   ${HYPRE_SOURCE_DIR}/src/multivector
   ${HYPRE_SOURCE_DIR}/src/krylov
   ${HYPRE_BINARY_DIR})
+
+if(ENABLE_AMGX AND ENABLE_CUDA)
+  # This is used in nekRS itself to conditionaly enable AMGX
+  target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
+  # TODO: Link to the libs you need
+  target_link_libraries(nekrs-lib PUBLIC amgxsh)
+  # AMGX doesn't add incude paths to to its targets, so we have to be specific
+  # about the directories we need
+  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
+endif()
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)

@@ -2,3 +2,6 @@ build/
 CMakeFiles
 *.tgz
 .vscode/
+
+# From AMGX
+plugin_config.cu
