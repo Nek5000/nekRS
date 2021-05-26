@@ -51,15 +51,15 @@ int AMGXsetup(const int nLocalRows, const int nnz,
   } else {
     char cfgStr[] = "config_version=2"
                     // "determinism_flag=1" 
-      		    "communicator=MPI_DIRECT" 
+      		    "communicator=MPI" /* use MPI_DIRECT for GPU aware MPI */ 
    		    "solver=AMG"
           	    // "min_rows_latency_hiding=10000" /* number of rows at which to disable latency hiding */
                     "algorithm=CLASSICAL"
-                    "selector=AGGRESSIVE_PMIS"
+                    "selector=AGGRESSIVE"
                     "strength_threshold=0.25"
           	    "max_row_sum=0.9"
                     "interpolator=D2"
-          	    "aggressive_levels=1"
+          	    "aggressive_levels=0"
           	    "interp_max_elements=4"
                     "max_levels=20"
                     "min_coarse_rows=2"
@@ -75,7 +75,7 @@ int AMGXsetup(const int nLocalRows, const int nnz,
                     "presweeps=1"
                     "postsweeps=1"
                     "coarsest_sweeps=1"
-                    "coarse_solver(c_solver)=DENSE_LU_SOLVER"
+                    "coarse_solver(c_solver)=DENSE_LU_SOLVER" /* won't work if nullspace == true */
                     "dense_lu_num_rows=2";
     AMGX_config_create(&cfg, cfgStr);
   }
