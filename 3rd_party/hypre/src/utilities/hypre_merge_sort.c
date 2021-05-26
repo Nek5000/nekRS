@@ -10,19 +10,76 @@
 #include "../seq_mv/HYPRE_seq_mv.h"
 //#define DBG_MERGE_SORT
 #ifdef DBG_MERGE_SORT
-#include <assert.h>
 #include <algorithm>
 #include <unordered_map>
 #endif
 
 #define SWAP(T, a, b) do { T tmp = a; a = b; b = tmp; } while (0)
 
-/* union of two sorted (in ascending order) array arr1 and arr2 into arr3
- * Assumption: no duplicates in arr1 and arr2
- * arr3 should have enough space on entry 
- * map1 and map2 map arr1 and arr2 to arr3 */
-void hypre_union2(HYPRE_Int n1, HYPRE_BigInt *arr1, HYPRE_Int n2, HYPRE_BigInt *arr2, HYPRE_Int *n3, HYPRE_BigInt *arr3,
-                  HYPRE_Int *map1, HYPRE_Int *map2)
+/*--------------------------------------------------------------------------
+ * hypre_MergeOrderedArrays: merge two ordered arrays
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+hypre_MergeOrderedArrays( HYPRE_Int  size1,     HYPRE_Int  *array1,
+                          HYPRE_Int  size2,     HYPRE_Int  *array2,
+                          HYPRE_Int *size3_ptr, HYPRE_Int **array3_ptr )
+{
+   HYPRE_Int  *array3;
+   HYPRE_Int   i, j, k;
+
+   array3 = hypre_CTAlloc(HYPRE_Int, (size1 + size2), HYPRE_MEMORY_HOST);
+
+   i = j = k = 0;
+   while (i < size1 && j < size2)
+   {
+      if (array1[i] > array2[j])
+      {
+         array3[k++] = array2[j++];
+      }
+      else if (array1[i] < array2[j])
+      {
+         array3[k++] = array1[i++];
+      }
+      else
+      {
+         array3[k++] = array1[i++];
+         j++;
+      }
+   }
+
+   while (i < size1)
+   {
+      array3[k++] = array1[i++];
+   }
+
+   while (j < size2)
+   {
+      array3[k++] = array2[j++];
+   }
+
+   /* Set pointers */
+   *size3_ptr  = k;
+   *array3_ptr = hypre_TReAlloc(array3, HYPRE_Int, k, HYPRE_MEMORY_HOST);
+
+   return hypre_error_flag;
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_union2
+ *
+ * Union of two sorted (in ascending order) array arr1 and arr2 into arr3
+ *
+ * Assumptions:
+ *              1) no duplicate entries in arr1 and arr2. But an entry is
+ *                 allowed to appear in both arr1 and arr2
+ *              2) arr3 should have enough space on entry
+ *              3) map1 and map2 map arr1 and arr2 to arr3
+ *--------------------------------------------------------------------------*/
+void hypre_union2( HYPRE_Int n1,  HYPRE_BigInt *arr1,
+                   HYPRE_Int n2,  HYPRE_BigInt *arr2,
+                   HYPRE_Int *n3, HYPRE_BigInt *arr3,
+                   HYPRE_Int *map1, HYPRE_Int *map2 )
 {
    HYPRE_Int i = 0, j = 0, k = 0;
    while (i < n1 && j < n2)
@@ -58,7 +115,12 @@ void hypre_union2(HYPRE_Int n1, HYPRE_BigInt *arr1, HYPRE_Int n2, HYPRE_BigInt *
    *n3 = k;
 }
 
-static void hypre_merge(HYPRE_Int *first1, HYPRE_Int *last1, HYPRE_Int *first2, HYPRE_Int *last2, HYPRE_Int *out)
+/*--------------------------------------------------------------------------
+ * hypre_merge
+ *--------------------------------------------------------------------------*/
+static void hypre_merge( HYPRE_Int *first1, HYPRE_Int *last1,
+                         HYPRE_Int *first2, HYPRE_Int *last2,
+                         HYPRE_Int *out )
 {
    for ( ; first1 != last1; ++out)
    {
@@ -86,50 +148,59 @@ static void hypre_merge(HYPRE_Int *first1, HYPRE_Int *last1, HYPRE_Int *first2, 
       *out = *first2;
    }
 }
-#ifdef HYPRE_CONCURRENT_HOPSCOTCH
-static void hypre_big_merge(HYPRE_BigInt *first1, HYPRE_BigInt *last1, HYPRE_BigInt *first2, HYPRE_BigInt *last2, HYPRE_BigInt *out)
-{
-   for ( ; first1 != last1; ++out)
-   {
-      if (first2 == last2)
-      {
-         for ( ; first1 != last1; ++first1, ++out)
-         {
-            *out = *first1;
-         }
-         return;
-      }
-      if (*first2 < *first1)
-      {
-         *out = *first2;
-         ++first2;
-      }
-      else
-      {
-         *out = *first1;
-         ++first1;
-      }
-   }
-   for ( ; first2 != last2; ++first2, ++out)
-   {
-      *out = *first2;
-   }
-}
-#endif
 
-static void kth_element_(
-   HYPRE_Int *out1, HYPRE_Int *out2,
-   HYPRE_Int *a1, HYPRE_Int *a2,
-   HYPRE_Int left, HYPRE_Int right, HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
+/*--------------------------------------------------------------------------
+ * hypre_big_merge
+ *--------------------------------------------------------------------------*/
+
+static void hypre_big_merge( HYPRE_BigInt *first1, HYPRE_BigInt *last1,
+                             HYPRE_BigInt *first2, HYPRE_BigInt *last2,
+                             HYPRE_BigInt *out )
+{
+   for ( ; first1 != last1; ++out)
+   {
+      if (first2 == last2)
+      {
+         for ( ; first1 != last1; ++first1, ++out)
+         {
+            *out = *first1;
+         }
+         return;
+      }
+      if (*first2 < *first1)
+      {
+         *out = *first2;
+         ++first2;
+      }
+      else
+      {
+         *out = *first1;
+         ++first1;
+      }
+   }
+   for ( ; first2 != last2; ++first2, ++out)
+   {
+      *out = *first2;
+   }
+}
+
+/*--------------------------------------------------------------------------
+ * kth_element_
+ *--------------------------------------------------------------------------*/
+
+static void kth_element_( HYPRE_Int *out1, HYPRE_Int *out2,
+                          HYPRE_Int *a1, HYPRE_Int *a2,
+                          HYPRE_Int left, HYPRE_Int right,
+                          HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
 {
    while (1)
    {
       HYPRE_Int i = (left + right)/2; // right < k -> i < k
       HYPRE_Int j = k - i - 1;
 #ifdef DBG_MERGE_SORT
-      assert(left <= right && right <= k);
-      assert(i < k); // i == k implies left == right == k that can never happen
-      assert(j >= 0 && j < n2);
+      hypre_assert(left <= right && right <= k);
+      hypre_assert(i < k); // i == k implies left == right == k that can never happen
+      hypre_assert(j >= 0 && j < n2);
 #endif
 
       if ((j == -1 || a1[i] >= a2[j]) && (j == n2 - 1 || a1[i] <= a2[j + 1]))
@@ -159,9 +230,17 @@ static void kth_element_(
  * Partition the input so that
  * a1[0:*out1) and a2[0:*out2) contain the smallest k elements
  */
-static void kth_element(
-   HYPRE_Int *out1, HYPRE_Int *out2,
-   HYPRE_Int *a1, HYPRE_Int *a2, HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
+
+/*--------------------------------------------------------------------------
+ * kth_element
+ *
+ * Partition the input so that
+ * a1[0:*out1) and a2[0:*out2) contain the smallest k elements
+ *--------------------------------------------------------------------------*/
+
+static void kth_element( HYPRE_Int *out1, HYPRE_Int *out2,
+                         HYPRE_Int *a1, HYPRE_Int *a2,
+                         HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
 {
    // either of the inputs is empty
    if (n1 == 0)
@@ -229,24 +308,27 @@ static void kth_element(
       *out2 += offset2;
    }
 #ifdef DBG_MERGE_SORT
-   assert(*out1 + *out2 == k);
+   hypre_assert(*out1 + *out2 == k);
 #endif
 }
 
-#ifdef HYPRE_CONCURRENT_HOPSCOTCH
-static void big_kth_element_(
-   HYPRE_Int *out1, HYPRE_Int *out2,
-   HYPRE_BigInt *a1, HYPRE_BigInt *a2,
-   HYPRE_Int left, HYPRE_Int right, HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
+/*--------------------------------------------------------------------------
+ * big_kth_element_
+ *--------------------------------------------------------------------------*/
+
+static void big_kth_element_( HYPRE_Int *out1, HYPRE_Int *out2,
+                              HYPRE_BigInt *a1, HYPRE_BigInt *a2,
+                              HYPRE_Int left, HYPRE_Int right,
+                              HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
 {
    while (1)
    {
       HYPRE_Int i = (left + right)/2; // right < k -> i < k
       HYPRE_Int j = k - i - 1;
 #ifdef DBG_MERGE_SORT
-      assert(left <= right && right <= k);
-      assert(i < k); // i == k implies left == right == k that can never happen
-      assert(j >= 0 && j < n2);
+      hypre_assert(left <= right && right <= k);
+      hypre_assert(i < k); // i == k implies left == right == k that can never happen
+      hypre_assert(j >= 0 && j < n2);
 #endif
 
       if ((j == -1 || a1[i] >= a2[j]) && (j == n2 - 1 || a1[i] <= a2[j + 1]))
@@ -272,13 +354,16 @@ static void big_kth_element_(
    }
 }
 
-/**
+/*--------------------------------------------------------------------------
+ * big_kth_element
+ *
  * Partition the input so that
  * a1[0:*out1) and a2[0:*out2) contain the smallest k elements
- */
-static void big_kth_element(
-   HYPRE_Int *out1, HYPRE_Int *out2,
-   HYPRE_BigInt *a1, HYPRE_BigInt *a2, HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
+ *--------------------------------------------------------------------------*/
+
+static void big_kth_element( HYPRE_Int *out1, HYPRE_Int *out2,
+                             HYPRE_BigInt *a1, HYPRE_BigInt *a2,
+                             HYPRE_Int n1, HYPRE_Int n2, HYPRE_Int k)
 {
    // either of the inputs is empty
    if (n1 == 0)
@@ -346,19 +431,22 @@ static void big_kth_element(
       *out2 += offset2;
    }
 #ifdef DBG_MERGE_SORT
-   assert(*out1 + *out2 == k);
+   hypre_assert(*out1 + *out2 == k);
 #endif
 }
-#endif
 
-/**
+/*--------------------------------------------------------------------------
+ * hypre_parallel_merge
+ *
  * @param num_threads number of threads that participate in this merge
- * @param my_thread_num thread id (zeor-based) among the threads that participate in this merge
- */
-static void hypre_parallel_merge(
-   HYPRE_Int *first1, HYPRE_Int *last1, HYPRE_Int *first2, HYPRE_Int *last2,
-   HYPRE_Int *out,
-   HYPRE_Int num_threads, HYPRE_Int my_thread_num)
+ * @param my_thread_num thread id (zer0-based) among the threads that
+ *                      participate in this merge
+ *--------------------------------------------------------------------------*/
+
+static void hypre_parallel_merge( HYPRE_Int *first1, HYPRE_Int *last1,
+                                  HYPRE_Int *first2, HYPRE_Int *last2,
+                                  HYPRE_Int *out, HYPRE_Int num_threads,
+                                  HYPRE_Int my_thread_num )
 {
    HYPRE_Int n1 = last1 - first1;
    HYPRE_Int n2 = last2 - first2;
@@ -368,8 +456,8 @@ static void hypre_parallel_merge(
    HYPRE_Int end_rank = hypre_min(begin_rank + n_per_thread, n);
 
 #ifdef DBG_MERGE_SORT
-   assert(std::is_sorted(first1, last1));
-   assert(std::is_sorted(first2, last2));
+   hypre_assert(std::is_sorted(first1, last1));
+   hypre_assert(std::is_sorted(first2, last2));
 #endif
 
    HYPRE_Int begin1, begin2, end1, end2;
@@ -381,7 +469,7 @@ static void hypre_parallel_merge(
 #ifdef DBG_MERGE_SORT
       printf("%s:%d\n", __FILE__, __LINE__);
 #endif
-      begin1--; begin2++; 
+      begin1--; begin2++;
    }
    while (begin2 > end2 && end1 > 0 && end2 < n2 && first1[end1 - 1] == first2[end2])
    {
@@ -392,8 +480,8 @@ static void hypre_parallel_merge(
    }
 
 #ifdef DBG_MERGE_SORT
-   assert(begin1 <= end1);
-   assert(begin2 <= end2);
+   hypre_assert(begin1 <= end1);
+   hypre_assert(begin2 <= end2);
 #endif
 
    hypre_merge(
@@ -402,15 +490,18 @@ static void hypre_parallel_merge(
       out + begin1 + begin2);
 
 #ifdef DBG_MERGE_SORT
-   assert(std::is_sorted(out + begin1 + begin2, out + end1 + end2));
+   hypre_assert(std::is_sorted(out + begin1 + begin2, out + end1 + end2));
 #endif
 }
 
-#ifdef HYPRE_CONCURRENT_HOPSCOTCH
-/**
+/*--------------------------------------------------------------------------
+ * hypre_big_parallel_merge
+ *
  * @param num_threads number of threads that participate in this merge
- * @param my_thread_num thread id (zeor-based) among the threads that participate in this merge
- */
+ * @param my_thread_num thread id (zero-based) among the threads that
+ *                      participate in this merge
+ *--------------------------------------------------------------------------*/
+
 static void hypre_big_parallel_merge(
    HYPRE_BigInt *first1, HYPRE_BigInt *last1, HYPRE_BigInt *first2, HYPRE_BigInt *last2,
    HYPRE_BigInt *out,
@@ -424,8 +515,8 @@ static void hypre_big_parallel_merge(
    HYPRE_Int end_rank = hypre_min(begin_rank + n_per_thread, n);
 
 #ifdef DBG_MERGE_SORT
-   assert(std::is_sorted(first1, last1));
-   assert(std::is_sorted(first2, last2));
+   hypre_assert(std::is_sorted(first1, last1));
+   hypre_assert(std::is_sorted(first2, last2));
 #endif
 
    HYPRE_Int begin1, begin2, end1, end2;
@@ -437,7 +528,7 @@ static void hypre_big_parallel_merge(
 #ifdef DBG_MERGE_SORT
       printf("%s:%d\n", __FILE__, __LINE__);
 #endif
-      begin1--; begin2++; 
+      begin1--; begin2++;
    }
    while (begin2 > end2 && end1 > 0 && end2 < n2 && first1[end1 - 1] == first2[end2])
    {
@@ -448,8 +539,8 @@ static void hypre_big_parallel_merge(
    }
 
 #ifdef DBG_MERGE_SORT
-   assert(begin1 <= end1);
-   assert(begin2 <= end2);
+   hypre_assert(begin1 <= end1);
+   hypre_assert(begin2 <= end2);
 #endif
 
    hypre_big_merge(
@@ -458,12 +549,15 @@ static void hypre_big_parallel_merge(
       out + (HYPRE_BigInt)(begin1 + begin2));
 
 #ifdef DBG_MERGE_SORT
-   assert(std::is_sorted(out + begin1 + begin2, out + end1 + end2));
+   hypre_assert(std::is_sorted(out + begin1 + begin2, out + end1 + end2));
 #endif
 }
-#endif
 
-void hypre_merge_sort(HYPRE_Int *in, HYPRE_Int *temp, HYPRE_Int len, HYPRE_Int **out)
+/*--------------------------------------------------------------------------
+ * hypre_merge_sort
+ *--------------------------------------------------------------------------*/
+
+void hypre_merge_sort( HYPRE_Int *in, HYPRE_Int *temp, HYPRE_Int len, HYPRE_Int **out )
 {
    if (0 == len) return;
 
@@ -534,7 +628,7 @@ void hypre_merge_sort(HYPRE_Int *in, HYPRE_Int *temp, HYPRE_Int len, HYPRE_Int *
    } /* omp parallel */
 
 #ifdef DBG_MERGE_SORT
-   assert(std::equal(*out, *out + len, dbg_buf));
+   hypre_assert(std::equal(*out, *out + len, dbg_buf));
 
    delete[] dbg_buf;
 #endif
@@ -544,9 +638,17 @@ void hypre_merge_sort(HYPRE_Int *in, HYPRE_Int *temp, HYPRE_Int len, HYPRE_Int *
 #endif
 }
 
-#ifdef HYPRE_CONCURRENT_HOPSCOTCH
-void hypre_sort_and_create_inverse_map(
-  HYPRE_Int *in, HYPRE_Int len, HYPRE_Int **out, hypre_UnorderedIntMap *inverse_map)
+/*--------------------------------------------------------------------------
+ * hypre_sort_and_create_inverse_map
+ *
+ * Sort array "in" with length len and put result in array "out"
+ *   "in" will be deallocated unless in == *out
+ *   inverse_map is an inverse hash table s.t.
+ *      inverse_map[i] = j iff (*out)[j] = i
+ *--------------------------------------------------------------------------*/
+
+void hypre_sort_and_create_inverse_map(HYPRE_Int *in, HYPRE_Int len, HYPRE_Int **out,
+                                       hypre_UnorderedIntMap *inverse_map)
 {
    if (len == 0)
    {
@@ -561,16 +663,18 @@ void hypre_sort_and_create_inverse_map(
    hypre_merge_sort(in, temp, len, out);
    hypre_UnorderedIntMapCreate(inverse_map, 2*len, 16*hypre_NumThreads());
    HYPRE_Int i;
+#ifdef HYPRE_CONCURRENT_HOPSCOTCH
 #pragma omp parallel for HYPRE_SMP_SCHEDULE
+#endif
    for (i = 0; i < len; i++)
    {
       HYPRE_Int old = hypre_UnorderedIntMapPutIfAbsent(inverse_map, (*out)[i], i);
-      assert(old == HYPRE_HOPSCOTCH_HASH_EMPTY);
+      hypre_assert(old == HYPRE_HOPSCOTCH_HASH_EMPTY);
 #ifdef DBG_MERGE_SORT
       if (hypre_UnorderedIntMapGet(inverse_map, (*out)[i]) != i)
       {
          fprintf(stderr, "%d %d\n", i, (*out)[i]);
-         assert(false);
+         hypre_assert(false);
       }
 #endif
    }
@@ -582,10 +686,10 @@ void hypre_sort_and_create_inverse_map(
     if (hypre_UnorderedIntMapGet(inverse_map, (*out)[i]) != i)
     {
       fprintf(stderr, "%d %d\n", i, (*out)[i]);
-      assert(false);
+      hypre_assert(false);
     }
   }
-  assert(hypre_UnorderedIntMapSize(inverse_map) == len);
+  hypre_assert(hypre_UnorderedIntMapSize(inverse_map) == len);
 #endif
 
    if (*out == in)
@@ -602,8 +706,12 @@ void hypre_sort_and_create_inverse_map(
 #endif
 }
 
-#ifdef HYPRE_CONCURRENT_HOPSCOTCH
-void hypre_big_merge_sort(HYPRE_BigInt *in, HYPRE_BigInt *temp, HYPRE_Int len, HYPRE_BigInt **out)
+/*--------------------------------------------------------------------------
+ * hypre_big_merge_sort
+ *--------------------------------------------------------------------------*/
+
+void hypre_big_merge_sort(HYPRE_BigInt *in, HYPRE_BigInt *temp, HYPRE_Int len,
+                          HYPRE_BigInt **out)
 {
    if (0 == len) return;
 
@@ -674,7 +782,7 @@ void hypre_big_merge_sort(HYPRE_BigInt *in, HYPRE_BigInt *temp, HYPRE_Int len, H
    } /* omp parallel */
 
 #ifdef DBG_MERGE_SORT
-   assert(std::equal(*out, *out + len, dbg_buf));
+   hypre_assert(std::equal(*out, *out + len, dbg_buf));
 
    delete[] dbg_buf;
 #endif
@@ -684,9 +792,12 @@ void hypre_big_merge_sort(HYPRE_BigInt *in, HYPRE_BigInt *temp, HYPRE_Int len, H
 #endif
 }
 
+/*--------------------------------------------------------------------------
+ * hypre_big_sort_and_create_inverse_map
+ *--------------------------------------------------------------------------*/
 
-void hypre_big_sort_and_create_inverse_map(
-  HYPRE_BigInt *in, HYPRE_Int len, HYPRE_BigInt **out, hypre_UnorderedBigIntMap *inverse_map)
+void hypre_big_sort_and_create_inverse_map(HYPRE_BigInt *in, HYPRE_Int len, HYPRE_BigInt **out,
+                                           hypre_UnorderedBigIntMap *inverse_map)
 {
    if (len == 0)
    {
@@ -701,16 +812,18 @@ void hypre_big_sort_and_create_inverse_map(
    hypre_big_merge_sort(in, temp, len, out);
    hypre_UnorderedBigIntMapCreate(inverse_map, 2*len, 16*hypre_NumThreads());
    HYPRE_Int i;
+#ifdef HYPRE_CONCURRENT_HOPSCOTCH
 #pragma omp parallel for HYPRE_SMP_SCHEDULE
+#endif
    for (i = 0; i < len; i++)
    {
       HYPRE_Int old = hypre_UnorderedBigIntMapPutIfAbsent(inverse_map, (*out)[i], i);
-      assert(old == HYPRE_HOPSCOTCH_HASH_EMPTY);
+      hypre_assert(old == HYPRE_HOPSCOTCH_HASH_EMPTY);
 #ifdef DBG_MERGE_SORT
       if (hypre_UnorderedBigIntMapGet(inverse_map, (*out)[i]) != i)
       {
          fprintf(stderr, "%d %d\n", i, (*out)[i]);
-         assert(false);
+         hypre_assert(false);
       }
 #endif
    }
@@ -722,10 +835,10 @@ void hypre_big_sort_and_create_inverse_map(
     if (hypre_UnorderedBigIntMapGet(inverse_map, (*out)[i]) != i)
     {
       fprintf(stderr, "%d %d\n", i, (*out)[i]);
-      assert(false);
+      hypre_assert(false);
     }
   }
-  assert(hypre_UnorderedBigIntMapSize(inverse_map) == len);
+  hypre_assert(hypre_UnorderedBigIntMapSize(inverse_map) == len);
 #endif
 
    if (*out == in)
@@ -741,7 +854,5 @@ void hypre_big_sort_and_create_inverse_map(
    hypre_profile_times[HYPRE_TIMER_ID_MERGE] += hypre_MPI_Wtime();
 #endif
 }
-#endif
-#endif
 
 /* vim: set tabstop=8 softtabstop=3 sw=3 expandtab: */

@@ -34,25 +34,25 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
    hypre_ParCSRBlockMatrix **A_block_array;
    hypre_ParCSRBlockMatrix **P_block_array;
 
-   hypre_CSRMatrix *A_diag;
+   hypre_CSRMatrix *A_diag, *A_diag_clone;
    HYPRE_Real      *A_diag_data;
    HYPRE_Int       *A_diag_i;
 
    hypre_CSRBlockMatrix *A_block_diag;
 
-   hypre_CSRMatrix *A_offd;
+   hypre_CSRMatrix *A_offd, *A_offd_clone;
    HYPRE_Real      *A_offd_data;
    HYPRE_Int       *A_offd_i;
 
    hypre_CSRBlockMatrix *A_block_offd;
 
-   hypre_CSRMatrix *P_diag;
+   hypre_CSRMatrix *P_diag, *P_diag_clone;
    HYPRE_Real      *P_diag_data;
    HYPRE_Int       *P_diag_i;
 
    hypre_CSRBlockMatrix *P_block_diag;
 
-   hypre_CSRMatrix *P_offd;
+   hypre_CSRMatrix *P_offd, *P_offd_clone;
    HYPRE_Real      *P_offd_data;
    HYPRE_Int       *P_offd_i;
 
@@ -196,11 +196,7 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
    block_mode = hypre_ParAMGDataBlockMode(amg_data);
 
    send_buff     = hypre_CTAlloc(HYPRE_Real,  6, HYPRE_MEMORY_HOST);
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    gather_buff = hypre_CTAlloc(HYPRE_Real, 6, HYPRE_MEMORY_HOST);
-#else
-   gather_buff = hypre_CTAlloc(HYPRE_Real, 6*num_procs, HYPRE_MEMORY_HOST);
-#endif
 
    if (my_id==0)
    {
@@ -295,9 +291,7 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
          hypre_printf(" measures are determined %s\n\n",
                (measure_type ? "globally" : "locally"));
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
       hypre_printf( "\n No global partition option chosen.\n\n");
-#endif
 
       if (interp_type == 0)
       {
@@ -342,6 +336,18 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
       else if (interp_type == 14)
       {
          hypre_printf(" Interpolation = extended interpolation\n");
+      }
+      else if (interp_type == 15)
+      {
+         hypre_printf(" Interpolation = direct interpolation with separation of weights\n");
+      }
+      else if (interp_type == 16)
+      {
+         hypre_printf(" Interpolation = extended interpolation with MMs\n");
+      }
+      else if (interp_type == 17)
+      {
+         hypre_printf(" Interpolation = extended+i interpolation with MMs\n");
       }
       else if (interp_type == 8)
       {
@@ -527,12 +533,28 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
       else
       {
          A_diag = hypre_ParCSRMatrixDiag(A_array[level]);
-         A_diag_data = hypre_CSRMatrixData(A_diag);
-         A_diag_i = hypre_CSRMatrixI(A_diag);
+         if ( hypre_GetActualMemLocation(hypre_CSRMatrixMemoryLocation(A_diag)) != hypre_MEMORY_HOST )
+         {
+            A_diag_clone = hypre_CSRMatrixClone_v2(A_diag, 1, HYPRE_MEMORY_HOST);
+         }
+         else
+         {
+            A_diag_clone = A_diag;
+         }
+         A_diag_data = hypre_CSRMatrixData(A_diag_clone);
+         A_diag_i = hypre_CSRMatrixI(A_diag_clone);
 
          A_offd = hypre_ParCSRMatrixOffd(A_array[level]);
-         A_offd_data = hypre_CSRMatrixData(A_offd);
-         A_offd_i = hypre_CSRMatrixI(A_offd);
+         if ( hypre_GetActualMemLocation(hypre_CSRMatrixMemoryLocation(A_offd)) != hypre_MEMORY_HOST )
+         {
+            A_offd_clone = hypre_CSRMatrixClone_v2(A_offd, 1, HYPRE_MEMORY_HOST);
+         }
+         else
+         {
+            A_offd_clone = A_offd;
+         }
+         A_offd_data = hypre_CSRMatrixData(A_offd_clone);
+         A_offd_i = hypre_CSRMatrixI(A_offd_clone);
 
          row_starts = hypre_ParCSRMatrixRowStarts(A_array[level]);
 
@@ -585,9 +607,17 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
             }
          }
          avg_entries = global_nonzeros / ((HYPRE_Real) fine_size);
-      }
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
+         if (A_diag_clone != A_diag)
+         {
+            hypre_CSRMatrixDestroy(A_diag_clone);
+         }
+
+         if (A_offd_clone != A_offd)
+         {
+            hypre_CSRMatrixDestroy(A_offd_clone);
+         }
+      }
 
       numrows = (HYPRE_Int)(row_starts[1]-row_starts[0]);
       if (!numrows) /* if we don't have any rows, then don't have this count toward
@@ -617,44 +647,6 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
          hypre_printf("  %*.1f  %10.3e  %10.3e\n", ndigits[2], avg_entries,
                global_min_rsum, global_max_rsum);
       }
-
-#else
-
-      send_buff[0] = (HYPRE_Real) min_entries;
-      send_buff[1] = (HYPRE_Real) max_entries;
-      send_buff[2] = min_rowsum;
-      send_buff[3] = max_rowsum;
-
-      hypre_MPI_Gather(send_buff,4,HYPRE_MPI_REAL,gather_buff,4,HYPRE_MPI_REAL,0,comm);
-
-      if (my_id == 0)
-      {
-         global_min_e = 1000000;
-         global_max_e = 0;
-         global_min_rsum = 1.0e7;
-         global_max_rsum = 0.0;
-         for (j = 0; j < num_procs; j++)
-         {
-            numrows = row_starts[j+1]-row_starts[j];
-            if (numrows)
-            {
-               global_min_e = hypre_min(global_min_e, (HYPRE_Int) gather_buff[j*4]);
-               global_min_rsum = hypre_min(global_min_rsum, gather_buff[j*4 +2]);
-            }
-            global_max_e = hypre_max(global_max_e, (HYPRE_Int) gather_buff[j*4 +1]);
-            global_max_rsum = hypre_max(global_max_rsum, gather_buff[j*4 +3]);
-         }
-
-         hypre_printf("%3d %*b %*.0f  %0.3f  %4d %4d",
-               level, ndigits[0], fine_size, ndigits[1], global_nonzeros,
-               sparse, global_min_e, global_max_e);
-         hypre_printf("  %*.1f  %10.3e  %10.3e\n", ndigits[2], avg_entries,
-               global_min_rsum, global_max_rsum);
-      }
-
-#endif
-
-
    }
 
    ndigits[0] = 5;
@@ -799,12 +791,28 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
       else
       {
          P_diag = hypre_ParCSRMatrixDiag(P_array[level]);
-         P_diag_data = hypre_CSRMatrixData(P_diag);
-         P_diag_i = hypre_CSRMatrixI(P_diag);
+         if ( hypre_GetActualMemLocation(hypre_CSRMatrixMemoryLocation(P_diag)) != hypre_MEMORY_HOST )
+         {
+            P_diag_clone = hypre_CSRMatrixClone_v2(P_diag, 1, HYPRE_MEMORY_HOST);
+         }
+         else
+         {
+            P_diag_clone = P_diag;
+         }
+         P_diag_data = hypre_CSRMatrixData(P_diag_clone);
+         P_diag_i = hypre_CSRMatrixI(P_diag_clone);
 
          P_offd = hypre_ParCSRMatrixOffd(P_array[level]);
-         P_offd_data = hypre_CSRMatrixData(P_offd);
-         P_offd_i = hypre_CSRMatrixI(P_offd);
+         if ( hypre_GetActualMemLocation(hypre_CSRMatrixMemoryLocation(P_offd)) != hypre_MEMORY_HOST )
+         {
+            P_offd_clone = hypre_CSRMatrixClone_v2(P_offd, 1, HYPRE_MEMORY_HOST);
+         }
+         else
+         {
+            P_offd_clone = P_offd;
+         }
+         P_offd_data = hypre_CSRMatrixData(P_offd_clone);
+         P_offd_i = hypre_CSRMatrixI(P_offd_clone);
 
          row_starts = hypre_ParCSRMatrixRowStarts(P_array[level]);
 
@@ -873,9 +881,17 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
 
          }
          avg_entries = ((HYPRE_Real) (global_nonzeros - coarse_size)) / ((HYPRE_Real) (fine_size - coarse_size));
-      }
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
+         if (P_diag_clone != P_diag)
+         {
+            hypre_CSRMatrixDestroy(P_diag_clone);
+         }
+
+         if (P_offd_clone != P_offd)
+         {
+            hypre_CSRMatrixDestroy(P_offd_clone);
+         }
+      }
 
       numrows = row_starts[1]-row_starts[0];
       if (!numrows) /* if we don't have any rows, then don't have this count toward
@@ -911,54 +927,7 @@ hypre_BoomerAMGSetupStats( void               *amg_vdata,
                avg_entries, global_min_wt, global_max_wt,
                global_min_rsum, global_max_rsum);
       }
-
-
-#else
-
-      send_buff[0] = (HYPRE_Real) min_entries;
-      send_buff[1] = (HYPRE_Real) max_entries;
-      send_buff[2] = min_rowsum;
-      send_buff[3] = max_rowsum;
-      send_buff[4] = min_weight;
-      send_buff[5] = max_weight;
-
-      hypre_MPI_Gather(send_buff,6,HYPRE_MPI_REAL,gather_buff,6,HYPRE_MPI_REAL,0,comm);
-
-      if (my_id == 0)
-      {
-         global_min_e = 1000000;
-         global_max_e = 0;
-         global_min_rsum = 1.0e7;
-         global_max_rsum = 0.0;
-         global_min_wt = 1.0e7;
-         global_max_wt = 0.0;
-
-         for (j = 0; j < num_procs; j++)
-         {
-            numrows = row_starts[j+1] - row_starts[j];
-            if (numrows)
-            {
-               global_min_e = hypre_min(global_min_e, (HYPRE_Int) gather_buff[j*6]);
-               global_min_rsum = hypre_min(global_min_rsum, gather_buff[j*6+2]);
-               global_min_wt = hypre_min(global_min_wt, gather_buff[j*6+4]);
-            }
-            global_max_e = hypre_max(global_max_e, (HYPRE_Int) gather_buff[j*6+1]);
-            global_max_rsum = hypre_max(global_max_rsum, gather_buff[j*6+3]);
-            global_max_wt = hypre_max(global_max_wt, gather_buff[j*6+5]);
-         }
-
-         hypre_printf("%3d %*b x %-*b %3d  %3d",
-               level, ndigits[0], fine_size, ndigits[0], coarse_size,
-               global_min_e, global_max_e);
-         hypre_printf("  %4.1f  %10.3e  %10.3e  %10.3e  %10.3e\n",
-               avg_entries, global_min_wt, global_max_wt,
-               global_min_rsum, global_max_rsum);
-      }
-
-#endif
-
    }
-
 
    total_variables = 0;
    operat_cmplxty = 0;

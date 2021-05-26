@@ -12,7 +12,7 @@
 #include "seq_mv.h"
 #include "csr_spgemm_device.h"
 
-#if defined(HYPRE_USING_CUDA)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - *
                        NAIVE
@@ -65,9 +65,7 @@ void csr_spmm_rownnz_naive(HYPRE_Int M, /*HYPRE_Int K,*/ HYPRE_Int N, HYPRE_Int 
    /* lane id inside the warp */
    volatile const HYPRE_Int lane_id = get_lane_id();
 
-#if DEBUG_MODE
-   assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
-#endif
+   hypre_device_assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
 
    for (HYPRE_Int i = blockIdx.x * NUM_WARPS_PER_BLOCK + warp_id;
             i < M;
@@ -112,9 +110,7 @@ void expdistfromuniform(HYPRE_Int n, float *x)
    const HYPRE_Int global_thread_id  = blockIdx.x * get_block_size() + get_thread_id();
    const HYPRE_Int total_num_threads = gridDim.x  * get_block_size();
 
-#if DEBUG_MODE
-   assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
-#endif
+   hypre_device_assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
 
    for (HYPRE_Int i = global_thread_id; i < n; i += total_num_threads)
    {
@@ -138,11 +134,9 @@ void cohen_rowest_kernel(HYPRE_Int nrow, HYPRE_Int *rowptr, HYPRE_Int *colidx, T
    volatile HYPRE_Int  *warp_s_col = s_col + warp_id * SHMEM_SIZE_PER_WARP;
 #endif
 
-#if DEBUG_MODE
-   assert(blockDim.z              == NUM_WARPS_PER_BLOCK);
-   assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
-   assert(sizeof(T) == sizeof(float));
-#endif
+   hypre_device_assert(blockDim.z              == NUM_WARPS_PER_BLOCK);
+   hypre_device_assert(blockDim.x * blockDim.y == HYPRE_WARP_SIZE);
+   hypre_device_assert(sizeof(T) == sizeof(float));
 
    for (HYPRE_Int i = blockIdx.x * NUM_WARPS_PER_BLOCK + warp_id;
             i < nrow;
@@ -205,9 +199,8 @@ void cohen_rowest_kernel(HYPRE_Int nrow, HYPRE_Int *rowptr, HYPRE_Int *colidx, T
                HYPRE_Int colk = __shfl_sync(HYPRE_WARP_FULL_MASK, col, k);
                if (colk == -1)
                {
-#if DEBUG_MODE
-                  assert(j + HYPRE_WARP_SIZE >= iend);
-#endif
+                  hypre_device_assert(j + HYPRE_WARP_SIZE >= iend);
+
                   break;
                }
                if (r + lane_id < nsamples)
@@ -277,7 +270,7 @@ template <typename T, HYPRE_Int BDIMX, HYPRE_Int BDIMY, HYPRE_Int NUM_WARPS_PER_
 void csr_spmm_rownnz_cohen(HYPRE_Int M, HYPRE_Int K, HYPRE_Int N, HYPRE_Int *d_ia, HYPRE_Int *d_ja, HYPRE_Int *d_ib, HYPRE_Int *d_jb, HYPRE_Int *d_low, HYPRE_Int *d_upp, HYPRE_Int *d_rc, HYPRE_Int nsamples, T mult_factor, T *work)
 {
    dim3 bDim(BDIMX, BDIMY, NUM_WARPS_PER_BLOCK);
-   assert(bDim.x * bDim.y == HYPRE_WARP_SIZE);
+   hypre_assert(bDim.x * bDim.y == HYPRE_WARP_SIZE);
 
    T *d_V1, *d_V2, *d_V3;
 
@@ -286,11 +279,9 @@ void csr_spmm_rownnz_cohen(HYPRE_Int M, HYPRE_Int K, HYPRE_Int N, HYPRE_Int *d_i
    //d_V1 = hypre_TAlloc(T, nsamples*N, HYPRE_MEMORY_DEVICE);
    //d_V2 = hypre_TAlloc(T, nsamples*K, HYPRE_MEMORY_DEVICE);
 
-   curandGenerator_t gen = hypre_HandleCurandGenerator(hypre_handle);
-   //CURAND_CALL(curandSetGeneratorOrdering(gen, CURAND_ORDERING_PSEUDO_SEEDED));
    /* random V1: uniform --> exp */
-   HYPRE_CURAND_CALL(curandGenerateUniform(gen, d_V1, nsamples * N));
-   //  CURAND_CALL(curandGenerateUniformDouble(gen, d_V1, nsamples * N));
+   hypre_CurandUniformSingle(nsamples * N, d_V1, 0, 0, 0, 0);
+
    dim3 gDim( (nsamples * N + bDim.z * HYPRE_WARP_SIZE - 1) / (bDim.z * HYPRE_WARP_SIZE) );
 
    HYPRE_CUDA_LAUNCH( expdistfromuniform, gDim, bDim, nsamples * N, d_V1 );
@@ -329,13 +320,13 @@ hypreDevice_CSRSpGemmRownnzEstimate(HYPRE_Int m, HYPRE_Int k, HYPRE_Int n,
 
    /* CUDA kernel configurations */
    dim3 bDim(BDIMX, BDIMY, num_warps_per_block);
-   assert(bDim.x * bDim.y == HYPRE_WARP_SIZE);
+   hypre_assert(bDim.x * bDim.y == HYPRE_WARP_SIZE);
    // for cases where one WARP works on a row
    dim3 gDim( (m + bDim.z - 1) / bDim.z );
 
-   HYPRE_Int   row_est_mtd    = hypre_handle->spgemm_rownnz_estimate_method;
-   HYPRE_Int   cohen_nsamples = hypre_handle->spgemm_rownnz_estimate_nsamples;
-   float cohen_mult           = hypre_handle->spgemm_rownnz_estimate_mult_factor;
+   HYPRE_Int   row_est_mtd    = hypre_HandleSpgemmRownnzEstimateMethod(hypre_handle());
+   HYPRE_Int   cohen_nsamples = hypre_HandleSpgemmRownnzEstimateNsamples(hypre_handle());
+   float cohen_mult           = hypre_HandleSpgemmRownnzEstimateMultFactor(hypre_handle());
 
    if (row_est_mtd == 1)
    {
@@ -375,8 +366,9 @@ hypreDevice_CSRSpGemmRownnzEstimate(HYPRE_Int m, HYPRE_Int k, HYPRE_Int n,
    }
    else
    {
-      printf("Unknown row nnz estimation method %d! \n", row_est_mtd);
-      exit(-1);
+      char msg[256];
+      hypre_sprintf(msg, "Unknown row nnz estimation method %d! \n", row_est_mtd);
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
    }
 
 #ifdef HYPRE_PROFILE
@@ -387,5 +379,4 @@ hypreDevice_CSRSpGemmRownnzEstimate(HYPRE_Int m, HYPRE_Int k, HYPRE_Int n,
    return hypre_error_flag;
 }
 
-#endif /* HYPRE_USING_CUDA */
-
+#endif /* HYPRE_USING_CUDA  || defined(HYPRE_USING_HIP) */

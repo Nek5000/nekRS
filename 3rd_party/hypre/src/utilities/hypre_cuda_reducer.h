@@ -10,12 +10,8 @@
 #ifndef HYPRE_CUDA_REDUCER_H
 #define HYPRE_CUDA_REDUCER_H
 
-#if defined(HYPRE_USING_CUDA)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 #if !defined(HYPRE_USING_RAJA) && !defined(HYPRE_USING_KOKKOS)
-
-#ifdef __cplusplus
-extern "C++" {
-#endif
 
 template<typename T> void OneBlockReduce(T *d_arr, HYPRE_Int N, T *h_out);
 
@@ -94,7 +90,7 @@ struct HYPRE_double6
 __inline__ __host__ __device__
 HYPRE_Real warpReduceSum(HYPRE_Real val)
 {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   for (HYPRE_Int offset = warpSize/2; offset > 0; offset /= 2)
   {
     val += __shfl_down_sync(HYPRE_WARP_FULL_MASK, val, offset);
@@ -105,7 +101,7 @@ HYPRE_Real warpReduceSum(HYPRE_Real val)
 
 __inline__ __host__ __device__
 HYPRE_double4 warpReduceSum(HYPRE_double4 val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   for (HYPRE_Int offset = warpSize / 2; offset > 0; offset /= 2)
   {
     val.x += __shfl_down_sync(HYPRE_WARP_FULL_MASK, val.x, offset);
@@ -119,7 +115,7 @@ HYPRE_double4 warpReduceSum(HYPRE_double4 val) {
 
 __inline__ __host__ __device__
 HYPRE_double6 warpReduceSum(HYPRE_double6 val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   for (HYPRE_Int offset = warpSize / 2; offset > 0; offset /= 2)
   {
     val.x += __shfl_down_sync(HYPRE_WARP_FULL_MASK, val.x, offset);
@@ -138,13 +134,15 @@ template <typename T>
 __inline__ __host__ __device__
 T blockReduceSum(T val)
 {
-#ifdef __CUDA_ARCH__
-   //static __shared__ T shared[32]; // Shared mem for 32 partial sums
-   __shared__ T shared[32];        // Shared mem for 32 partial sums
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+   //static __shared__ T shared[HYPRE_WARP_SIZE]; // Shared mem for HYPRE_WARP_SIZE partial sums
+
+   __shared__ T shared[HYPRE_WARP_SIZE];        // Shared mem for HYPRE_WARP_SIZE partial sums
+
    //HYPRE_Int lane = threadIdx.x % warpSize;
    //HYPRE_Int wid  = threadIdx.x / warpSize;
    HYPRE_Int lane = threadIdx.x & (warpSize - 1);
-   HYPRE_Int wid  = threadIdx.x >> 5;
+   HYPRE_Int wid  = threadIdx.x >> HYPRE_WARP_BITSHIFT;
 
    val = warpReduceSum(val);       // Each warp performs partial reduction
 
@@ -195,6 +193,8 @@ OneBlockReduceKernel(T *arr, HYPRE_Int N)
 template <typename T>
 struct ReduceSum
 {
+   using value_type = T;
+
    T init;                    /* initial value passed in */
    mutable T __thread_sum;    /* place to hold local sum of a thread,
                                  and partial sum of a block */
@@ -211,14 +211,13 @@ struct ReduceSum
       __thread_sum = 0.0;
       nblocks = -1;
 
-      if (hypre_handle->cuda_reduce_buffer == NULL)
+      if (hypre_HandleCudaReduceBuffer(hypre_handle()) == NULL)
       {
          /* allocate for the max size for reducing double6 type */
-         hypre_handle->cuda_reduce_buffer =
-            hypre_TAlloc(HYPRE_double6, 1024, HYPRE_MEMORY_DEVICE);
+         hypre_HandleCudaReduceBuffer(hypre_handle()) = hypre_TAlloc(HYPRE_double6, 1024, HYPRE_MEMORY_DEVICE);
       }
 
-      d_buf = (T*) hypre_handle->cuda_reduce_buffer;
+      d_buf = (T*) hypre_HandleCudaReduceBuffer(hypre_handle());
    }
 
    /* copy constructor */
@@ -232,7 +231,7 @@ struct ReduceSum
    __host__ __device__
    void BlockReduce() const
    {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
       __thread_sum = blockReduceSum(__thread_sum);
       if (threadIdx.x == 0)
       {
@@ -252,12 +251,23 @@ struct ReduceSum
    operator T()
    {
       T val;
-      /* 2nd reduction with only *one* block */
-      assert(nblocks >= 0 && nblocks <= 1024);
-      const dim3 gDim(1), bDim(1024);
-      HYPRE_CUDA_LAUNCH( OneBlockReduceKernel, gDim, bDim, d_buf, nblocks );
-      hypre_TMemcpy(&val, d_buf, T, 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
-      val += init;
+
+      HYPRE_ExecutionPolicy exec_policy = hypre_HandleStructExecPolicy(hypre_handle());
+
+      if (exec_policy == HYPRE_EXEC_HOST)
+      {
+         val = __thread_sum;
+         val += init;
+      }
+      else
+      {
+         /* 2nd reduction with only *one* block */
+         hypre_assert(nblocks >= 0 && nblocks <= 1024);
+         const dim3 gDim(1), bDim(1024);
+         HYPRE_CUDA_LAUNCH( OneBlockReduceKernel, gDim, bDim, d_buf, nblocks );
+         hypre_TMemcpy(&val, d_buf, T, 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         val += init;
+      }
 
       return val;
    }
@@ -269,11 +279,6 @@ struct ReduceSum
    }
 };
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* #if !defined(HYPRE_USING_RAJA) && !defined(HYPRE_USING_KOKKOS) */
-#endif /* #if defined(HYPRE_USING_CUDA) */
+#endif /* #if defined(HYPRE_USING_CUDA)  || defined(HYPRE_USING_HIP) */
 #endif /* #ifndef HYPRE_CUDA_REDUCER_H */
-

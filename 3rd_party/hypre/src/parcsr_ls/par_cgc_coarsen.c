@@ -243,7 +243,12 @@ hypre_BoomerAMGCoarsenCGCb( hypre_ParCSRMatrix    *S,
     *
     *************************************************************/
 
-   CF_marker = hypre_CTAlloc(HYPRE_Int,  num_variables, HYPRE_MEMORY_HOST);
+   /* Allocate CF_marker if not done before */
+   if (*CF_marker_ptr == NULL)
+   {
+      *CF_marker_ptr = hypre_CTAlloc(HYPRE_Int, num_variables, HYPRE_MEMORY_HOST);
+   }
+   CF_marker = *CF_marker_ptr;
 
    num_left = 0;
    for (j = 0; j < num_variables; j++)
@@ -610,8 +615,6 @@ hypre_BoomerAMGCoarsenCGCb( hypre_ParCSRMatrix    *S,
          && num_procs > 1)
       hypre_CSRMatrixDestroy(S_ext);
 
-   *CF_marker_ptr   = CF_marker;
-
    return hypre_error_flag;
 }
 
@@ -672,20 +675,15 @@ HYPRE_Int hypre_BoomerAMGCoarsenCGC (hypre_ParCSRMatrix    *S,HYPRE_Int numberof
       hypre_printf ("Starting CGC matrix communication\n");
    }
 #endif
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    {
-      /* classical CGC does not really make sense in combination with HYPRE_NO_GLOBAL_PARTITION,
-         but anyway, here it is:
-         */
+      /* classical CGC does not really make sense with an assumed partition, but
+         anyway, here it is: */
       HYPRE_Int nlocal = vertexrange[1]-vertexrange[0];
       vertexrange_all = hypre_CTAlloc(HYPRE_Int, mpisize+1, HYPRE_MEMORY_HOST);
       hypre_MPI_Allgather (&nlocal,1,HYPRE_MPI_INT,vertexrange_all+1,1,HYPRE_MPI_INT,comm);
       vertexrange_all[0]=0;
       for (j=2;j<=mpisize;j++) vertexrange_all[j]+=vertexrange_all[j-1];
    }
-#else
-   vertexrange_all = vertexrange;
-#endif
    Gseq = hypre_ParCSRMatrixToCSRMatrixAll (G);
 #if 0 /* debugging */
    if (!mpirank) {
@@ -750,9 +748,7 @@ HYPRE_Int hypre_BoomerAMGCoarsenCGC (hypre_ParCSRMatrix    *S,HYPRE_Int numberof
 #endif
    HYPRE_IJMatrixDestroy (ijG);
    hypre_TFree(vertexrange, HYPRE_MEMORY_HOST);
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    hypre_TFree(vertexrange_all, HYPRE_MEMORY_HOST);
-#endif
    hypre_TFree(CF_marker_offd, HYPRE_MEMORY_HOST);
 #if 0
    if (!mpirank) {
@@ -800,7 +796,6 @@ HYPRE_Int hypre_AmgCGCPrepare (hypre_ParCSRMatrix *S,HYPRE_Int nlocal,HYPRE_Int 
    num_sends = hypre_ParCSRCommPkgNumSends (comm_pkg);
 
    if (coarsen_type % 2 == 0) nlocal++; /* even coarsen_type means allow_emptygrids */
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    {
       HYPRE_Int scan_recv;
 
@@ -813,15 +808,6 @@ HYPRE_Int hypre_AmgCGCPrepare (hypre_ParCSRMatrix *S,HYPRE_Int nlocal,HYPRE_Int 
       vstart = vertexrange[0];
       /*vend   = vertexrange[1];*/
    }
-#else
-   vertexrange = hypre_CTAlloc(HYPRE_Int, mpisize+1, HYPRE_MEMORY_HOST);
-
-   hypre_MPI_Allgather (&nlocal,1,HYPRE_MPI_INT,vertexrange+1,1,HYPRE_MPI_INT,comm);
-   vertexrange[0]=0;
-   for (i=2;i<=mpisize;i++) vertexrange[i]+=vertexrange[i-1];
-   vstart = vertexrange[mpirank];
-   /*vend   = vertexrange[mpirank+1];*/
-#endif
 
    /* Note: vstart uses 0-based indexing, while CF_marker uses 1-based indexing */
    if (coarsen_type % 2 == 1) { /* see above */
@@ -875,8 +861,6 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
    HYPRE_Int i,/* ii,ip,*/ j,jj,m,n,p;
    HYPRE_Int mpisize,mpirank;
 
-   HYPRE_Real weight;
-
    MPI_Comm comm = hypre_ParCSRMatrixComm(S);
    /*   hypre_MPI_Status status; */
 
@@ -900,13 +884,15 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
    HYPRE_Int /* *zeros,*rownz,*/*rownz_diag,*rownz_offd;
    HYPRE_Int nz;
    HYPRE_Int nlocal;
-   HYPRE_Int one=1;
+   //HYPRE_Int one=1;
 
    hypre_ParCSRCommPkg    *comm_pkg    = hypre_ParCSRMatrixCommPkg (S);
 
-
    hypre_MPI_Comm_size (comm,&mpisize);
    hypre_MPI_Comm_rank (comm,&mpirank);
+
+   HYPRE_BigInt *big_m_n = hypre_TAlloc(HYPRE_BigInt, 2, HYPRE_MEMORY_DEVICE);
+   HYPRE_Real *weight = hypre_TAlloc(HYPRE_Real, 1, HYPRE_MEMORY_DEVICE);
 
    /* determine neighbor processors */
    num_recvs = hypre_ParCSRCommPkgNumRecvs (comm_pkg);
@@ -914,7 +900,6 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
    pointrange = hypre_ParCSRMatrixRowStarts (S);
    pointrange_nonlocal = hypre_CTAlloc(HYPRE_Int,  2*num_recvs, HYPRE_MEMORY_HOST);
    vertexrange_nonlocal = hypre_CTAlloc(HYPRE_Int,  2*num_recvs, HYPRE_MEMORY_HOST);
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    {
       HYPRE_Int num_sends  =  hypre_ParCSRCommPkgNumSends (comm_pkg);
       HYPRE_Int *send_procs =  hypre_ParCSRCommPkgSendProcs (comm_pkg);
@@ -947,19 +932,6 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
       hypre_TFree(int_buf_data, HYPRE_MEMORY_HOST);
       hypre_TFree(sendrequest, HYPRE_MEMORY_HOST);
    }
-#else
-   nlocal = vertexrange[mpirank+1] - vertexrange[mpirank];
-   /*pointrange_start = pointrange[mpirank];
-     pointrange_end   = pointrange[mpirank+1];*/
-   vertexrange_start = vertexrange[mpirank];
-   vertexrange_end   = vertexrange[mpirank+1];
-   for (i=0;i<num_recvs;i++) {
-      pointrange_nonlocal[2*i] = pointrange[recv_procs[i]];
-      pointrange_nonlocal[2*i+1] = pointrange[recv_procs[i]+1];
-      vertexrange_nonlocal[2*i] = vertexrange[recv_procs[i]];
-      vertexrange_nonlocal[2*i+1] = vertexrange[recv_procs[i]+1];
-   }
-#endif
    /* now we have the array recv_procs. However, it may contain too many entries as it is
       inherited from A. We now have to determine the subset which contains only the
       strongly connected neighbors */
@@ -1020,13 +992,13 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
    hypre_TFree(rownz_diag, HYPRE_MEMORY_HOST);
 
    /* initialize graph */
-   weight = -1;
+   weight[0] = -1;
    for (m=vertexrange_start;m<vertexrange_end;m++) {
-      HYPRE_BigInt big_m = (HYPRE_BigInt)m;
+      big_m_n[0] = (HYPRE_BigInt) m;
       for (p=0;p<num_recvs_strong;p++) {
          for (n=vertexrange_strong[2*p];n<vertexrange_strong[2*p+1];n++) {
-            HYPRE_BigInt big_n = (HYPRE_BigInt)n;
-            HYPRE_IJMatrixAddToValues (ijmatrix,1,&one,&big_m,&big_n,&weight);
+            big_m_n[1] = (HYPRE_BigInt) n;
+            HYPRE_IJMatrixAddToValues (ijmatrix, 1, NULL, &big_m_n[0], &big_m_n[1], &weight[0]);
             /*#if 0
               if (ierr) hypre_printf ("Processor %d: error %d while initializing graphs at (%d, %d)\n",mpirank,ierr,m,n);
 #endif*/
@@ -1045,21 +1017,21 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
          /*ip=recv_procs_strong[p];*/
          /* loop over all coarse grids constructed on this processor domain */
          for (m=vertexrange_start;m<vertexrange_end;m++) {
-            HYPRE_BigInt big_m = (HYPRE_BigInt)m;
+            big_m_n[0] = (HYPRE_BigInt) m;
             /* loop over all coarse grids constructed on neighbor processor domain */
             for (n=vertexrange_strong[2*p];n<vertexrange_strong[2*p+1];n++) {
-               HYPRE_BigInt big_n = (HYPRE_BigInt)n;
+               big_m_n[1] = (HYPRE_BigInt) n;
                /* coarse grid counting inside gridpartition->local/gridpartition->nonlocal starts with one
                   while counting inside range starts with zero */
                if (CF_marker[i]-1==m && CF_marker_offd[jj]-1==n)
                   /* C-C-coupling */
-                  weight = -1;
+                  weight[0] = -1;
                else if ( (CF_marker[i]-1==m && (CF_marker_offd[jj]==0 || CF_marker_offd[jj]-1!=n) )
                      || ( (CF_marker[i]==0 || CF_marker[i]-1!=m) && CF_marker_offd[jj]-1==n ) )
                   /* C-F-coupling */
-                  weight = 0;
-               else weight = -8; /* F-F-coupling */
-               HYPRE_IJMatrixAddToValues (ijmatrix,1,&one,&big_m,&big_n,&weight);
+                  weight[0] = 0;
+               else weight[0] = -8; /* F-F-coupling */
+               HYPRE_IJMatrixAddToValues (ijmatrix, 1, NULL, &big_m_n[0], &big_m_n[1], &weight[0]);
                /*#if 0
                  if (ierr) hypre_printf ("Processor %d: error %d while adding %lf to entry (%d, %d)\n",mpirank,ierr,weight,m,n);
 #endif*/
@@ -1074,6 +1046,10 @@ HYPRE_Int hypre_AmgCGCGraphAssemble (hypre_ParCSRMatrix *S,HYPRE_Int *vertexrang
    hypre_TFree(recv_procs_strong, HYPRE_MEMORY_HOST);
    hypre_TFree(pointrange_strong, HYPRE_MEMORY_HOST);
    hypre_TFree(vertexrange_strong, HYPRE_MEMORY_HOST);
+
+   hypre_TFree(big_m_n, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(weight, HYPRE_MEMORY_DEVICE);
+
    /*} */
 
    *ijG = ijmatrix;
@@ -1341,4 +1317,3 @@ HYPRE_Int hypre_AmgCGCBoundaryFix (hypre_ParCSRMatrix *S,HYPRE_Int *CF_marker,HY
 #endif
    return hypre_error_flag;
 }
-
