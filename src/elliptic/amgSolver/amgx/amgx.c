@@ -49,33 +49,33 @@ int AMGXsetup(const int nLocalRows, const int nnz,
   if (cfgFile) { 
     AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg, cfgFile));
   } else {
-    char cfgStr[] = "config_version=2"
-                    // "determinism_flag=1" 
-      		    "communicator=MPI" /* use MPI_DIRECT for GPU aware MPI */ 
-   		    "solver=AMG"
-          	    // "min_rows_latency_hiding=10000" /* number of rows at which to disable latency hiding */
-                    "algorithm=CLASSICAL"
-                    "selector=AGGRESSIVE"
-                    "strength_threshold=0.25"
-          	    "max_row_sum=0.9"
-                    "interpolator=D2"
-          	    "aggressive_levels=0"
-          	    "interp_max_elements=4"
-                    "max_levels=20"
-                    "min_coarse_rows=2"
-                    "error_scaling=0" /* scales the coarse grid correction vector */
-                    "print_config=1"
-                    "print_grid_stats=1"
-                    "print_solve_stats=0"
-                    // "amg_host_levels_rows=-1" /* levels with number of rows below this number will be solved on host */
-                    "max_iters=1"
-                    "cycle=V"
-                    "smoother(my_smoother)=JACOBI_L1"
-                    "my_smoother:relaxation_factor=0.8"
-                    "presweeps=1"
-                    "postsweeps=1"
-                    "coarsest_sweeps=1"
-                    "coarse_solver(c_solver)=DENSE_LU_SOLVER" /* won't work if nullspace == true */
+    char cfgStr[] = "config_version=2,"
+                    // "determinism_flag=1," 
+      		    "communicator=MPI," /* use MPI_DIRECT for GPU aware MPI */ 
+   		    "solver=AMG,"
+          	    // "min_rows_latency_hiding=10000," /* number of rows at which to disable latency hiding */
+                    "algorithm=CLASSICAL,"
+                    "selector=AGGRESSIVE,"
+                    "strength_threshold=0.25,"
+          	    "max_row_sum=0.9,"
+                    "interpolator=D2,"
+          	    "aggressive_levels=0,"
+          	    "interp_max_elements=4,"
+                    "max_levels=20,"
+                    "min_coarse_rows=2,"
+                    "error_scaling=0," /* scales the coarse grid correction vector */
+                    "print_config=1,"
+                    "print_grid_stats=1,"
+                    "print_solve_stats=0,"
+                    // "amg_host_levels_rows=-1," /* levels with number of rows below this number will be solved on host */
+                    "max_iters=1,"
+                    "cycle=V,"
+                    "smoother(my_smoother)=JACOBI_L1,"
+                    "my_smoother:relaxation_factor=0.8,"
+                    "presweeps=1,"
+                    "postsweeps=1,"
+                    "coarsest_sweeps=1,"
+                    "coarse_solver(c_solver)=DENSE_LU_SOLVER," /* won't work if nullspace == true */
                     "dense_lu_num_rows=2";
     AMGX_config_create(&cfg, cfgStr);
   }

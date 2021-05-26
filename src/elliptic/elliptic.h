@@ -34,7 +34,7 @@
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
-#include "parAlmond.hpp"
+#include "amgSolver/parAlmond/parAlmond.hpp"
 #include "ellipticPrecon.h"
 #include "platform.hpp"
 

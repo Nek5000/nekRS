@@ -198,7 +198,7 @@ cmake -Wno-dev \
       -DUSE_LONG_LONG=1 \
       -DHYPRE_BIGINT=1 \
       -DENABLE_AMGX="${AMGX_ENABLED}" \
-      -DCUDA_ARCH="70 80" \
+      -DCUDA_ARCH="70" \
       ${NEKRS_DIR}
 
 # =========================
