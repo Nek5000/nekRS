@@ -102,6 +102,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       platform->comm.mpiComm,
       platform->device.id(),
       useFP32,
+      std::stoi(getenv("NEKRS_GPU_MPI")),
       nullptr // use default parameters
     );
   } else {

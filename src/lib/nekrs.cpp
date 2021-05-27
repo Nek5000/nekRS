@@ -66,6 +66,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
+  oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
+
   srand48((long int) rank);
 
   configRead(comm);

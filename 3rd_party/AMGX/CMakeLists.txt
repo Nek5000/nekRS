@@ -237,12 +237,12 @@ endif()
 
 #if compiling against CUDA Toolkit 9.x
 IF(CUDA_VERSION_MAJOR MATCHES 9)
-  SET(CUDA_ARCH "35 52 60 70" CACHE STRING "Target Architectures (SM35 SM52 SM60 SM70), multiple are allowed")
+  SET(CUDA_ARCH "70" CACHE STRING "Target Architectures (SM35 SM52 SM60 SM70), multiple are allowed")
 ENDIF(CUDA_VERSION_MAJOR MATCHES 9)
 
 #if compiling against CUDA Toolkit 10.x
 IF(CUDA_VERSION_MAJOR MATCHES 10)
-  SET(CUDA_ARCH "35 52 60 70" CACHE STRING "Target Architectures (SM35 SM52 SM60 SM70), multiple are allowed")
+  SET(CUDA_ARCH "70" CACHE STRING "Target Architectures (SM35 SM52 SM60 SM70), multiple are allowed")
 
   IF(CUDA_VERSION_MINOR GREATER 0)
     # Disable mixed precision for CUDA 10.1+
@@ -253,7 +253,7 @@ ENDIF(CUDA_VERSION_MAJOR MATCHES 10)
 
 #if compiling against CUDA Toolkit 11.x
 IF(CUDA_VERSION_MAJOR MATCHES 11)
-  SET(CUDA_ARCH "60 70 80" CACHE STRING "Target Architectures (SM60 SM70 SM80), multiple are allowed")
+  SET(CUDA_ARCH "70 80" CACHE STRING "Target Architectures (SM60 SM70 SM80), multiple are allowed")
 
   # Disable mixed precision for CUDA 10.1+
   # Use the generic cuSPARSE interfaces available from 10.1 on Linux, cusparseSpGEMM from 11.0

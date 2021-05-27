@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <mpi.h>
 
 #ifdef ENABLE_AMGX
@@ -19,8 +20,8 @@ static amgx_data handle;
 
 int AMGXsetup(const int nLocalRows, const int nnz,
               const long long *rows, const long long *cols, const double *values, /* COO */ 
-              const int null_space, const MPI_Comm comm, int deviceID,
-              int useFP32, const char* cfgFile)
+              const int nullspace, const MPI_Comm comm, int deviceID,
+              int useFP32, int MPI_DIRECT, const char* cfgFile)
 {
   MPI_Comm_dup(comm,&handle.comm);
   handle.nLocalRows = nLocalRows;
@@ -49,34 +50,48 @@ int AMGXsetup(const int nLocalRows, const int nnz,
   if (cfgFile) { 
     AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg, cfgFile));
   } else {
-    char cfgStr[] = "config_version=2,"
-                    // "determinism_flag=1," 
-      		    "communicator=MPI," /* use MPI_DIRECT for GPU aware MPI */ 
-   		    "solver=AMG,"
-          	    // "min_rows_latency_hiding=10000," /* number of rows at which to disable latency hiding */
-                    "algorithm=CLASSICAL,"
-                //    "selector=AGGRESSIVE," // for CLASSICAL, only PMIS is allowed
-                    "strength_threshold=0.25,"
-          	    "max_row_sum=0.9,"
-                    "interpolator=D2,"
-          	    "aggressive_levels=0,"
-          	    "interp_max_elements=4,"
-                    "max_levels=20,"
-                    "min_coarse_rows=2,"
-                    "error_scaling=0," /* scales the coarse grid correction vector */
-                    "print_config=1,"
-                    "print_grid_stats=1,"
-                    "print_solve_stats=0,"
-                    // "amg_host_levels_rows=-1," /* levels with number of rows below this number will be solved on host */
-                    "max_iters=1,"
-                    "cycle=V,"
-                    "smoother(my_smoother)=JACOBI_L1,"
-                    "my_smoother:relaxation_factor=0.8,"
-                    "presweeps=1,"
-                    "postsweeps=1,"
-                    "coarsest_sweeps=1,"
-                    "coarse_solver(c_solver)=DENSE_LU_SOLVER," /* won't work if nullspace == true */
-                    "dense_lu_num_rows=2";
+    char settings[] = "config_version=2,"
+     		      "solver=AMG,"
+                      "algorithm=CLASSICAL,"
+                      "strength_threshold=0.25,"
+            	      "max_row_sum=0.9,"
+                      "interpolator=D2,"
+            	      "interp_max_elements=4,"
+                      "max_levels=20,"
+                      "min_coarse_rows=2,"
+                      "error_scaling=0," /* scales the coarse grid correction vector */
+                      "print_config=1,"
+                      "print_grid_stats=1,"
+                      "print_solve_stats=0,"
+                      "max_iters=1,"
+                      "cycle=V,"
+                      "smoother(my_smoother)=JACOBI_L1,"
+                      "my_smoother:relaxation_factor=0.8,"
+                      "presweeps=1,"
+                      "postsweeps=1,";
+
+    char cfgStr[4096];
+    strcat(cfgStr, settings);
+    strcat(cfgStr, (MPI_DIRECT) ? "MPI_DIRECT," : "MPI,");
+    const int aggressive_levels = 0;
+    if(aggressive_levels) {
+      strcat(cfgStr, "selector=AGGRESSIVE_PMIS,");
+      strcat(cfgStr, "aggressive_levels=1,");
+    } else {
+      strcat(cfgStr, "selector=PMIS,");
+      strcat(cfgStr, "aggressive_levels=0,");
+    }
+    //strcat(cfgStr, "amg_host_levels_rows=1000,");
+    //strcat(cfgStr, "min_rows_latency_hiding=10000,");
+    if(nullspace) {
+      strcat(cfgStr, "coarse_solver(c_solver)=JACOBI_L1,");
+      strcat(cfgStr, "coarsest_sweeps=5,");
+      strcat(cfgStr, "dense_lu_num_rows=2,");
+    } else {
+      strcat(cfgStr, "coarse_solver(c_solver)=DENSE_LU_SOLVER,");
+    }
+    strcat(cfgStr, "determinism_flag=0");
+    //
     AMGX_config_create(&cfg, cfgStr);
   }
 
