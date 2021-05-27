@@ -521,6 +521,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
     }
 
+    if(par->sections.count("amgx")) {
+      string configFile;
+      if(par->extract("amgx", "configfile", configFile))
+        options.setArgs("AMGX CONFIG FILE", configFile);
+    }
+
     // VELOCITY 
     {
       string keyValue;

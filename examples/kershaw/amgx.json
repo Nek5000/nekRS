@@ -1,0 +1,29 @@
+{
+    "config_version": 2, 
+    "determinism_flag":0,
+    "communicator": "MPI",
+    "min_rows_latency_hiding": -1,
+    "solver": {
+        "scope": "main",
+        "print_grid_stats": 1,
+        "solver": "AMG", 
+        "scaling":"NONE",
+        "interpolator": "D2",
+        "strength_threshold": 0.25,
+        "selector": "PMIS",
+        "aggressive_levels": 0,
+        "interp_max_elements": 4,
+        "max_row_sum": 0.9,
+        "print_solve_stats": 0, 
+        "obtain_timings": 0, 
+        "max_iters": 1, 
+        "max_levels": 20, 
+        "cycle": "V", 
+        "smoother": {
+           "scope": "smoother",
+           "solver": "BLOCK_JACOBI"
+        },
+        "presweeps": 1, 
+        "postsweeps": 1
+    }
+}
