@@ -35,15 +35,73 @@ extern "C"
   void ogsHostGatherScatter    (void *v, const char *type, const char *op, void *gsh);
   void ogsHostGatherScatterVec (void *v, const int k, const char *type, const char *op, void *gsh);
   void ogsHostGatherScatterMany(void *v, const int k, const char *type, const char *op, void *gsh);
-  
+
   void ogsHostGather    (void *v, const char *type, const char *op, void *gsh);
   void ogsHostGatherVec (void *v, const int k, const char *type, const char *op, void *gsh);
   void ogsHostGatherMany(void *v, const int k, const char *type, const char *op, void *gsh);
-  
+
   void ogsHostScatter    (void *v, const char *type, const char *op, void *gsh);
   void ogsHostScatterVec (void *v, const int k, const char *type, const char *op, void *gsh);
   void ogsHostScatterMany(void *v, const int k, const char *type, const char *op, void *gsh);
-  
+
+  struct findpts_data_2;
+  struct findpts_data_3;
+
+  typedef findpts_data_2 ogsFindptsData_2;
+  typedef findpts_data_3 ogsFindptsData_3;
+
+  struct findpts_data_2 *ogsHostFindptsSetup_2(
+    MPI_Comm comm,
+    const dfloat *const elx[2],
+    const dlong n[2], const dlong nel,
+    const dlong m[2], const dfloat bbox_tol,
+    const hlong local_hash_size, const hlong global_hash_size,
+    const dlong npt_max, const dfloat newt_tol);
+
+  struct findpts_data_3 *ogsHostFindptsSetup_3(
+    MPI_Comm comm,
+    const dfloat *const elx[3],
+    const dlong n[3], const dlong nel,
+    const dlong m[3], const dfloat bbox_tol,
+    const hlong local_hash_size, const hlong global_hash_size,
+    const dlong npt_max, const dfloat newt_tol);
+
+
+  void ogsHostFindptsFree_2(struct findpts_data_2 *fd);
+  void ogsHostFindptsFree_3(struct findpts_data_3 *fd);
+
+  void ogsHostFindpts_2(    dlong  *const  code_base   , const dlong  code_stride   ,
+                            dlong  *const  proc_base   , const dlong  proc_stride   ,
+                            dlong  *const    el_base   , const dlong    el_stride   ,
+                            dfloat *const     r_base   , const dlong     r_stride   ,
+                            dfloat *const dist2_base   , const dlong dist2_stride   ,
+                      const dfloat *const     x_base[2], const dlong     x_stride[2],
+                      const dfloat npt, struct findpts_data_2 *const fd);
+
+  void ogsHostFindpts_3(    dlong  *const  code_base   , const dlong  code_stride   ,
+                            dlong  *const  proc_base   , const dlong  proc_stride   ,
+                            dlong  *const    el_base   , const dlong    el_stride   ,
+                            dfloat *const     r_base   , const dlong     r_stride   ,
+                            dfloat *const dist2_base   , const dlong dist2_stride   ,
+                      const dfloat *const     x_base[3], const dlong     x_stride[3],
+                      const dfloat npt, struct findpts_data_3 *const fd);
+
+  void ogsHostFindptsEval_2(
+          dfloat *const  out_base, const dlong  out_stride,
+    const dlong  *const code_base, const dlong code_stride,
+    const dlong  *const proc_base, const dlong proc_stride,
+    const dlong  *const   el_base, const dlong   el_stride,
+    const dfloat *const    r_base, const dlong    r_stride,
+    const dlong npt, const dfloat *const in, struct findpts_data_2 *const fd);
+
+  void ogsHostFindptsEval_3(
+          dfloat *const  out_base, const dlong  out_stride,
+    const dlong  *const code_base, const dlong code_stride,
+    const dlong  *const proc_base, const dlong proc_stride,
+    const dlong  *const   el_base, const dlong   el_stride,
+    const dfloat *const    r_base, const dlong    r_stride,
+    const dlong npt, const dfloat *const in, struct findpts_data_3 *const fd);
+
   void ogsHostFree(void *gsh);
 
 }

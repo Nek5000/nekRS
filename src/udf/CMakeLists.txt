@@ -34,6 +34,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg
+  ${NEKRS_INSTALL_DIR}/include/interp
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 

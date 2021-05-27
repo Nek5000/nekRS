@@ -24,7 +24,7 @@ ExternalProject_Add(
         SOURCE_DIR ${GS_SOURCE_DIR}
         BUILD_IN_SOURCE on
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND 
+        BUILD_COMMAND
           ${CMAKE_CURRENT_LIST_DIR}/run_gs_install.sh
           "CC=${CMAKE_C_COMPILER}"
           "CFLAGS=-fPIC ${EXTERNAL_C_FLAGS}"
@@ -43,12 +43,14 @@ add_dependencies(gs gs_build)
 # =============================================================
 
 set(OGS_SOURCES
+        ${OGS_SOURCE_DIR}/src/ogsFindpts.cpp
         ${OGS_SOURCE_DIR}/src/ogsGather.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherMany.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherScatter.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherScatterMany.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherScatterVec.cpp
         ${OGS_SOURCE_DIR}/src/ogsGatherVec.cpp
+        ${OGS_SOURCE_DIR}/src/ogsHostFindpts.c
         ${OGS_SOURCE_DIR}/src/ogsHostGather.c
         ${OGS_SOURCE_DIR}/src/ogsHostGatherMany.c
         ${OGS_SOURCE_DIR}/src/ogsHostGatherScatter.c

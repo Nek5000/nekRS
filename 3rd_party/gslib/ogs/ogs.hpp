@@ -28,13 +28,13 @@ SOFTWARE.
   OCCA Gather/Scatter Library
 
   The code
-  
+
   	int N;
     long long int id[N];    // the long long int and int types are defined in "types.h"
-    int   haloFlag[N];    
+    int   haloFlag[N];
     ...
     struct ogs_t *ogs = ogsSetup(N, id, &comm, verbose);
-    
+
   defines a partition of the set of (processor, local index) pairs,
     (p,i) \in S_j  iff   abs(id[i]) == j  on processor p
   That is, all (p,i) pairs are grouped together (in group S_j) that have the
@@ -42,72 +42,72 @@ SOFTWARE.
   S_0 is treated specially --- it is ignored completely
     (i.e., when id[i] == 0, local index i does not participate in any
     gather/scatter operation
-  
-  When a partition of pairs, is shared between MPI processes, one specific 
+
+  When a partition of pairs, is shared between MPI processes, one specific
   member of the parition is chosen in an arbitrary but consistent way. This member
-  is considered the 'owning' member and is used to define the nonsymmetric gather 
+  is considered the 'owning' member and is used to define the nonsymmetric gather
   and scatter operations.
 
   When "ogs" is no longer needed, free it with
-  
+
     ogsFree(ogs);
-  
+
   A basic gatherScatter operation is, e.g.,
-  
-    occa::memory o_v; 
+
+    occa::memory o_v;
     ...
     ogsGatherScatter(o_v, ogsDouble, ogsAdd, ogs);
-    
+
   This gs call has the effect,
-  
+
     o_v[i] <--  \sum_{ (p,j) \in S_{id[i]} } o_v_(p) [j]
-    
+
   where o_v_(p) [j] means o_v[j] on proc p. In other words, every o_v[i] is replaced
   by the sum of all o_v[j]'s with the same id, given by id[i]. This accomplishes
   "direct stiffness summation" corresponding to the action of QQ^T, where
   "Q" is a boolean matrix that copies from a global vector (indexed by id)
   to the local vectors indexed by (p,i) pairs.
-  
-  Summation on doubles is not the only operation and datatype supported. Support 
+
+  Summation on doubles is not the only operation and datatype supported. Support
   includes the operations
     ogsAdd, ogsMul, ogsMax, ogsMin
   and datatypes
     ogsDfloat, ogsDouble, ogsFloat, ogsInt, ogsLong, ogsDlong, ogsHlong.
-   
+
   For the nonsymmetric behavior, the operations are
-  
+
     ogsGather (o_Gv, o_v, gsDouble, gsAdd, ogs);
     ogsScatter(o_Sv, o_v, gsDouble, gsAdd, ogs);
 
   A version for vectors (contiguously packed) is, e.g.,
-  
+
     occa::memory o_v[k];
     ogsGatherScatterVec(o_v,k, ogsDouble,ogsAdd, transpose, ogs);
-  
+
   which is like "gs" operating on the datatype double[k],
   with summation here being vector summation. Number of messages sent
   is independent of k.
-  
+
   For combining the communication for "gs" on multiple arrays:
-      
+
     occa::memory o_v1, o_v2, ..., o_vk;
-    
+
     ogsGatherScatterMany(o_v, k, stride, ogsDouble, op, ogs);
-  
-  when the arrays o_v1, o_v2, ..., o_vk are packed in o_v as 
+
+  when the arrays o_v1, o_v2, ..., o_vk are packed in o_v as
 
     o_v1 = o_v + 0*stride, o_v2 = o_v + 1*stride, ...
 
   This call is equivalent to
-  
+
     ogsGatherScatter(o_v1, gsDouble, op, ogs);
     ogsGatherScatter(o_v2, gsDouble, op, ogs);
     ...
     ogsGatherScatter(o_vk, gsDouble, op, ogs);
-    
+
   except that all communication is done together.
 
-*/  
+*/
 
 #ifndef OGS_HPP
 #define OGS_HPP 1
@@ -139,32 +139,32 @@ SOFTWARE.
 
 // OCCA+gslib gather scatter
 typedef struct {
-  
+
   MPI_Comm comm;
   occa::device device;
 
   int         N;
   int         Ngather;        //  total number of gather nodes
   int         Nlocal;         //  number of local nodes
-  int         NlocalGather;   //  number of local gathered nodes 
+  int         NlocalGather;   //  number of local gathered nodes
   int         Nhalo;          //  number of halo nodes
   int         NhaloGather;    //  number of gathered nodes on halo
   int         NownedHalo;     //  number of owned halo nodes
 
   int         *localGatherOffsets;
   int         *localGatherIds;
-  occa::memory o_localGatherOffsets;  
-  occa::memory o_localGatherIds;      
+  occa::memory o_localGatherOffsets;
+  occa::memory o_localGatherIds;
 
   int         *haloGatherOffsets;
   int         *haloGatherIds;
   occa::memory o_haloGatherOffsets;
-  occa::memory o_haloGatherIds;    
+  occa::memory o_haloGatherIds;
 
-  void         *hostGsh;          // gslib gather 
-  void         *haloGshSym;       // gslib gather 
-  void         *haloGshNonSym;    // gslib gather 
-  
+  void         *hostGsh;          // gslib gather
+  void         *haloGshSym;       // gslib gather
+  void         *haloGshNonSym;    // gslib gather
+
   //degree vectors
   dfloat *invDegree, *gatherInvDegree;
   occa::memory o_invDegree;
@@ -173,7 +173,7 @@ typedef struct {
 }ogs_t;
 
 
-ogs_t *ogsSetup(int N, long long int *ids, MPI_Comm &comm, 
+ogs_t *ogsSetup(int N, long long int *ids, MPI_Comm &comm,
                 int verbose, occa::device device);
 
 void ogsFree(ogs_t* ogs);
@@ -233,6 +233,35 @@ void ogsScatterManyFinish(occa::memory  o_Sv, occa::memory  o_v, const int k, co
 
 void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa::memory &mem, occa::memory &h_mem);
 
+typedef struct {
+  int D;
+  void *findpts_data;
+} ogs_findpts_t;
+
+ogs_findpts_t *ogsFindptsSetup(
+  const dlong D, MPI_Comm comm,
+  const dfloat *const elx[],
+  const dlong n[], const dlong nel,
+  const dlong m[], const dfloat bbox_tol,
+  const hlong local_hash_size, const hlong global_hash_size,
+  const dlong npt_max, const dfloat newt_tol);
+void ogsFindptsFree(ogs_findpts_t *fd);
+void ogsFindpts(    dlong  *const  code_base  , const dlong  code_stride,
+                    dlong  *const  proc_base  , const dlong  proc_stride,
+                    dlong  *const    el_base  , const dlong    el_stride,
+                    dfloat *const     r_base  , const dlong     r_stride,
+                    dfloat *const dist2_base  , const dlong dist2_stride,
+              const dfloat *const     x_base[], const dlong     x_stride[],
+              const dfloat npt, ogs_findpts_t *const fd);
+void ogsFindptsEval(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const code_base, const dlong code_stride,
+  const dlong  *const proc_base, const dlong proc_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, const dfloat *const in, ogs_findpts_t *const fd);
+
+
 #define USE_OOGS
 
 enum oogs_mode { OOGS_AUTO, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI };
@@ -262,7 +291,7 @@ typedef struct {
   occa::memory o_scatterIds, o_gatherIds;
 
   occa::kernel packBufFloatToHalfAddKernel, unpackBufHalfToFloatAddKernel;
-  occa::kernel packBufFloatAddKernel, unpackBufFloatAddKernel;  
+  occa::kernel packBufFloatAddKernel, unpackBufFloatAddKernel;
   occa::kernel packBufDoubleAddKernel, unpackBufDoubleAddKernel;
   occa::kernel packBufDoubleMinKernel, unpackBufDoubleMinKernel;
   occa::kernel packBufDoubleMaxKernel, unpackBufDoubleMaxKernel;

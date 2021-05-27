@@ -30,10 +30,10 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherSc
 # Configure Options
 ###############################################################################
 
-set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING 
+set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING
   "Preprocessor macros for Nek5000")
 
-set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
+set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH
   "Directory for Nek5000 inteface source files")
 
 set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
@@ -123,7 +123,7 @@ function(set_external_flags lang)
   get_directory_property(compile_defs
           DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMPILE_DEFINITIONS )
   foreach(def "${compile_defs}")
-  
+
     if ("${def}" STREQUAL "")
       set(ext_flags "${ext_flags}")
     else ()
@@ -190,7 +190,7 @@ include(config/blaslapack.cmake)
 # Build NekRS
 ###############################################################################
 
-set(SRC 
+set(SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/utils.cpp
@@ -222,6 +222,7 @@ set(SRC
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
+    src/interp/interp.cpp
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
@@ -230,7 +231,7 @@ set(SRC
 )
 
 set_property(
-   SOURCE src/lib/nekrs.cpp 
+   SOURCE src/lib/nekrs.cpp
    APPEND PROPERTY COMPILE_DEFINITIONS
    GITCOMMITHASH="${GIT_COMMIT_HASH}"
    NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
@@ -246,8 +247,8 @@ target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
     -DHYPRE)
 
-target_include_directories(nekrs-lib 
-  PUBLIC 
+target_include_directories(nekrs-lib
+  PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR}
   src/core
   src/core/utils
@@ -259,6 +260,7 @@ target_include_directories(nekrs-lib
   src/timeStepper
   src/lns
   src/cds
+  src/interp
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
@@ -291,19 +293,19 @@ target_link_libraries(nekrs-bin nekrs-lib)
 
 message(NOTICE "")
 message(NOTICE "------------ Summary ------------")
-message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}") 
+message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
 message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
 message(NOTICE "Fortran compiler: ${CMAKE_Fortran_COMPILER}")
 message(NOTICE "Default backend : ${BACKEND_DEFAULT}")
 message(NOTICE "CPU backend compiler: ${OCCA_CXX} (flags: ${OCCA_CXXFLAGS})")
-if(ENABLE_CUDA) 
+if(ENABLE_CUDA)
   message(NOTICE "NVIDIA CUDA backend enabled (flags: ${OCCA_CUDA_COMPILER_FLAGS})")
 endif()
-if(ENABLE_HIP) 
+if(ENABLE_HIP)
   message(NOTICE "AMD HIP backend enabled (flags: ${OCCA_HIP_COMPILER_FLAGS})")
 endif()
-if(ENABLE_OPENCL) 
+if(ENABLE_OPENCL)
   message(NOTICE "OPENCL backend enabled (flags: ${OCCA_OPENCL_COMPILER_FLAGS})")
 endif()
 if(GPU_MPI)
@@ -367,15 +369,12 @@ set(DEST_DIR "nekRS-v${PROJECT_VERSION}")
 set(TAR_NAME "nekRS-v${PROJECT_VERSION}.tar.gz")
 
 add_custom_target(tar
-  COMMAND ${CMAKE_COMMAND} 
-      -DDEST_DIR=${DEST_DIR} 
+  COMMAND ${CMAKE_COMMAND}
+      -DDEST_DIR=${DEST_DIR}
       -DOCCA_SOURCE_DIR=${OCCA_SOURCE_DIR}
-      -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR} 
-      -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR} 
+      -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR}
+      -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
   COMMAND tar -czf ${TAR_NAME} ${DEST_DIR}
   COMMAND rm -rf ${DEST_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-
-
