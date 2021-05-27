@@ -52,11 +52,6 @@ int boomerAMGSetup(int nrows,
     MPI_Abort(MPI_COMM_WORLD, 1);
   } 
 
-  if(deviceID > 0) {
-    if(rank == 0) printf("HYPRE has not been built with GPU support!\n");
-    MPI_Abort(MPI_COMM_WORLD, 1);
-  } 
-
   long long rowStart = nrows;
   MPI_Scan(MPI_IN_PLACE, &rowStart, 1, MPI_LONG_LONG, MPI_SUM, ce);
   rowStart -= nrows;

@@ -3,11 +3,7 @@
 
 #include <mpi.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct SEMFEMData{
+struct SEMFEMData{
   long long* Ai;
   long long* Aj;
   double* Av;
@@ -15,17 +11,13 @@ typedef struct SEMFEMData{
   long long rowStart;
   long long rowEnd;
   long long* dofMap;
-} SEMFEMData;
+};
 
 SEMFEMData* fem_amg_setup(const int N_, const int n_elem_, 
                    double *x_m_, double *y_m_, double *z_m_, 
                    double *pmask_,
                    MPI_Comm comm,
-                   long long int* gatherGlobalNodes
-                   );
+                   long long int* gatherGlobalNodes);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif

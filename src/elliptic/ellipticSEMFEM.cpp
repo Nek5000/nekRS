@@ -3,14 +3,16 @@
 #include "gslib.h"
 #include "boomerAMG.h"
 #include "elliptic.h"
-#include "fem_amg_preco.h"
+#include "fem_amg_preco.hpp"
+#ifdef ENABLE_AMGX
 #include "amgx.h"
+#endif
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
   MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();
-  if(platform->comm.mpiRank == 0)  printf("setup SEMFEM preconditioner ... "); fflush(stdout);
+  if(platform->comm.mpiRank == 0)  printf("setup SEMFEM preconditioner ... \n"); fflush(stdout);
 
   mesh_t* mesh = elliptic->mesh;
   double* mask = (double*) malloc(mesh->Np*mesh->Nelements*sizeof(double));
@@ -77,6 +79,11 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       settings[9]  = 0.1;  /* non galerkin tol             */
       settings[10] = 0;    /* aggressive coarsening levels */
 
+      if(platform->device.mode() != "Serial") {
+        if(platform->comm.mpiRank == 0) printf("HYPRE has not been built with GPU support!\n");
+        MPI_Abort(platform->comm.mpiComm, 1);
+      } 
+
       setupRetVal = boomerAMGSetup(
         numRows,
         data->nnz,
@@ -91,6 +98,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
         settings 
       );
   }
+#ifdef ENABLE_AMGX
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){
     setupRetVal = AMGXsetup(
       numRows,
@@ -105,7 +113,9 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       std::stoi(getenv("NEKRS_GPU_MPI")),
       nullptr // use default parameters
     );
-  } else {
+  }
+#endif
+  else {
     if(platform->comm.mpiRank == 0){
       std::string amgSolver;
       elliptic->options.getArgs("SEMFEM SOLVER", amgSolver);
@@ -138,7 +148,9 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
     boomerAMGSolve(o_buffer2.ptr(), o_buffer.ptr());
   } else {
+#ifdef ENABLE_AMGX
     AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
+#endif
   }
 
   elliptic->scatterKernel(
