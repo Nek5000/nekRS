@@ -19,7 +19,7 @@
 : ${NEKRS_BACKEND_DEFAULT:=CUDA}
 
 # GPU aware MPI
-: ${NEKRS_GPU_MPI:=1}
+: ${NEKRS_GPU_MPI:=0}
 
 # OCCA backend
 : ${OCCA_CXX:="g++"}
@@ -217,7 +217,7 @@ fi
 # Otherwise, make install
 # =========================
 
-make -j6 install
+make -j16 install
 
 if [ $? -ne 0 ]; then
   echo

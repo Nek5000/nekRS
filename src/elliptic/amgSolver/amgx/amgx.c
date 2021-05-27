@@ -14,6 +14,7 @@ typedef struct amgx_data {
   AMGX_matrix_handle AmgXA;
   AMGX_solver_handle solver;
   AMGX_resources_handle rsrc;
+  AMGX_config_handle cfg;
 } amgx_data;
 
 static amgx_data handle; 
@@ -46,9 +47,8 @@ int AMGXsetup(const int nLocalRows, const int nnz,
   AMGX_SAFE_CALL(AMGX_initialize_plugins());
   AMGX_SAFE_CALL(AMGX_install_signal_handler());
 
-  AMGX_config_handle cfg;
   if (cfgFile) { 
-    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg, cfgFile));
+    AMGX_SAFE_CALL(AMGX_config_create_from_file(&handle.cfg, cfgFile));
   } else {
     char settings[] = "config_version=2,"
      		      "solver=AMG,"
@@ -60,51 +60,54 @@ int AMGXsetup(const int nLocalRows, const int nnz,
                       "max_levels=20,"
                       "min_coarse_rows=2,"
                       "error_scaling=0," /* scales the coarse grid correction vector */
-                      "print_config=1,"
-                      "print_grid_stats=1,"
-                      "print_solve_stats=0,"
+                      "print_config=0,"
+                      "print_grid_stats=0,"
+                      "print_solve_stats=1,"
                       "max_iters=1,"
                       "cycle=V,"
-                      "smoother(my_smoother)=JACOBI_L1,"
-                      "my_smoother:relaxation_factor=0.8,"
+                      //"smoother(my_smoother)=JACOBI_L1,"
+                      //"my_smoother:relaxation_factor=0.8,"
+		      //"smoother(my_smoother)=CHEBYSHEV_POLY,"
+		      //"my_smoother:chebyshev_polynomial_order=2,"
+		      //"my_smoother:chebyshev_lambda_estimate_mode=1,"
                       "presweeps=1,"
                       "postsweeps=1,";
 
-    char cfgStr[4096];
+    char cfgStr[4096] = "";
     strcat(cfgStr, settings);
-    strcat(cfgStr, (MPI_DIRECT) ? "MPI_DIRECT," : "MPI,");
+    strcat(cfgStr, (MPI_DIRECT) ? "communicator=MPI_DIRECT," : "communicator=MPI,");
     const int aggressive_levels = 0;
     if(aggressive_levels) {
-      strcat(cfgStr, "selector=AGGRESSIVE_PMIS,");
+      strcat(cfgStr, "selector=PMIS,");
       strcat(cfgStr, "aggressive_levels=1,");
     } else {
       strcat(cfgStr, "selector=PMIS,");
       strcat(cfgStr, "aggressive_levels=0,");
     }
     //strcat(cfgStr, "amg_host_levels_rows=1000,");
-    //strcat(cfgStr, "min_rows_latency_hiding=10000,");
+    strcat(cfgStr, "min_rows_latency_hiding=10000,");
     if(nullspace) {
       strcat(cfgStr, "coarse_solver(c_solver)=JACOBI_L1,");
       strcat(cfgStr, "coarsest_sweeps=5,");
-      strcat(cfgStr, "dense_lu_num_rows=2,");
     } else {
+      strcat(cfgStr, "dense_lu_num_rows=2,");
       strcat(cfgStr, "coarse_solver(c_solver)=DENSE_LU_SOLVER,");
     }
     strcat(cfgStr, "determinism_flag=0");
-    //
-    AMGX_config_create(&cfg, cfgStr);
+    //printf("cfgStr: %s\n", cfgStr); fflush(stdout);
+    AMGX_config_create(&handle.cfg, cfgStr);
   }
 
-  AMGX_resources_create(&handle.rsrc, cfg, &handle.comm, 1, &deviceID);
+  AMGX_resources_create(&handle.rsrc, handle.cfg, &handle.comm, 1, &deviceID);
 
-  AMGX_solver_create(&handle.solver, handle.rsrc, mode, cfg);
+  AMGX_solver_create(&handle.solver, handle.rsrc, mode, handle.cfg);
 
   AMGX_vector_create(&handle.AmgXP, handle.rsrc, mode);
   AMGX_vector_create(&handle.AmgXRHS, handle.rsrc, mode);
   AMGX_matrix_create(&handle.AmgXA, handle.rsrc, mode);
 
   AMGX_distribution_handle dist;
-  AMGX_distribution_create(&dist, cfg);
+  AMGX_distribution_create(&dist, handle.cfg);
 
   long long *partitionOffsets = (long long*) calloc(commSize + 1, sizeof(long long));
   long long n64 = nLocalRows;
@@ -162,6 +165,19 @@ int AMGXsolve(void *x, void *rhs)
   return 0;
 }
 
+int AMGXfree() 
+{
+  AMGX_solver_destroy(handle.solver);
+  AMGX_vector_destroy(handle.AmgXP);
+  AMGX_vector_destroy(handle.AmgXRHS);
+  AMGX_matrix_destroy(handle.AmgXA);
+  AMGX_resources_destroy(handle.rsrc);
+  /* destroy config (need to use AMGX_SAFE_CALL after this point) */
+  AMGX_SAFE_CALL(AMGX_config_destroy(handle.cfg));
+  AMGX_SAFE_CALL(AMGX_finalize_plugins());
+  AMGX_SAFE_CALL(AMGX_finalize());
+}
+
 #else
 int AMGXsetup(const int nLocalRows, const int nnz,
               const long long *rows, const long long *cols, const double *values, /* COO */ 
@@ -180,5 +196,9 @@ int AMGXsolve(void *x, void *rhs)
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);  
   if(rank == 0) printf("ERROR: Recompile with AMGX support!\n");
   return 1;
+}
+
+int AMGXfree()
+{
 }
 #endif

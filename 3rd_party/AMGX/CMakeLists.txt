@@ -196,9 +196,9 @@ endif(AMGX_keep_intermediate)
 #windows/linux specific settings for C
 GET_FILENAME_COMPONENT(CMAKE_C_COMPILER_NAME "${CMAKE_C_COMPILER}" NAME)
 IF(CMAKE_C_COMPILER_NAME MATCHES cl AND NOT CMAKE_C_COMPILER_NAME MATCHES clang)
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" CACHE STRING "nvcc flags")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
 ELSE(CMAKE_C_COMPILER_NAME MATCHES cl AND NOT CMAKE_C_COMPILER_NAME MATCHES clang)
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler=-rdynamic;-Xcompiler=-fPIC;-Xcompiler=-fvisibility=default" CACHE STRING "nvcc flags")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler=-rdynamic;-Xcompiler=-fPIC;-Xcompiler=-fvisibility=default")
 ENDIF(CMAKE_C_COMPILER_NAME MATCHES cl AND NOT CMAKE_C_COMPILER_NAME MATCHES clang)
 
 # VS: include object files in target property SOURCES
@@ -356,10 +356,10 @@ endforeach(src)
 
 # build amgx
 set_source_files_properties(${obj_all} PROPERTIES GENERATED TRUE)
-CUDA_ADD_LIBRARY(amgx   STATIC ${obj_all} )  # static lib
+#CUDA_ADD_LIBRARY(amgx   STATIC ${obj_all} )  # static lib
 CUDA_ADD_LIBRARY(amgxsh SHARED ${obj_all} )  # shared lib
 if (target_all)
-  add_dependencies(amgx  ${target_all})
+	#  add_dependencies(amgx  ${target_all})
   add_dependencies(amgxsh ${target_all})
 endif (target_all)
 
@@ -368,31 +368,31 @@ find_library_local_first(cusparse_library cusparse "The cusparse CUDA library")
 find_library_local_first(cusolver_library cusolver "The cusolver CUDA library")
 
 IF (WIN32)
-  target_link_libraries( amgx ${cublas_library} ${cusparse_library} ${cusolver_library})
+	#target_link_libraries( amgx ${cublas_library} ${cusparse_library} ${cusolver_library})
   target_link_libraries( amgxsh ${cublas_library} ${cusparse_library} ${cusolver_library})
 ELSE (WIN32)
   find_library_local_first(nvtx nvToolsExt "nvtx CUDA library")
-  target_link_libraries( amgx ${cublas_library} ${cusparse_library} ${cusolver_library} ${nvtx} m pthread)
+  #  target_link_libraries( amgx ${cublas_library} ${cusparse_library} ${cusolver_library} ${nvtx} m pthread)
   target_link_libraries( amgxsh ${cublas_library} ${cusparse_library} ${cusolver_library} ${nvtx} m pthread)
 ENDIF(WIN32)
 
 if(MPI_FOUND)
-    target_link_libraries( amgx   ${MPI_C_LIBRARIES})
+	#    target_link_libraries( amgx   ${MPI_C_LIBRARIES})
     target_link_libraries( amgxsh ${MPI_C_LIBRARIES})
 endif(MPI_FOUND)
 
 #link magma
 if (MAGMA_ROOT_DIR)
-  target_link_libraries(amgx   ${magma_libs})
+	#  target_link_libraries(amgx   ${magma_libs})
   target_link_libraries(amgxsh ${magma_libs})
 endif(MAGMA_ROOT_DIR)
 #link lapack (MKL)
 if (MKL_ROOT_DIR)
-  target_link_libraries(amgx   ${mkl_libs} )
+	#  target_link_libraries(amgx   ${mkl_libs} )
   target_link_libraries(amgxsh ${mkl_libs})
 endif(MKL_ROOT_DIR)
 
-install(TARGETS amgx   DESTINATION "lib")
+#install(TARGETS amgx   DESTINATION "lib")
 install(TARGETS amgxsh DESTINATION "lib")
 
 export(TARGETS amgxsh FILE ${CMAKE_CURRENT_SOURCE_DIR}/amgxsh.cmake)

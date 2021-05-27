@@ -154,18 +154,6 @@ configure_file(
   @ONLY)
 
 ###############################################################################
-# Build with AMGX.
-# - AMGX's CMakeLists must be used before OCCA's, since AMGX explicitly
-#   sets the cache variable CUDA_NVCC_FLAGS before calling find_package(CUDA).
-#   If find_package(CUDA) is called first, then AMGX's explicit CUDA_NVCC_FLAGS
-#   will not be set, since cache variables are not overridden by default.
-###############################################################################
-
-if(ENABLE_AMGX)
-  add_subdirectory(3rd_party/AMGX)
-endif()
-
-###############################################################################
 # Build OCCA                                                                  #
 ###############################################################################
 
@@ -283,6 +271,7 @@ target_include_directories(nekrs-lib
   ${HYPRE_BINARY_DIR})
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
+  add_subdirectory(3rd_party/AMGX)
   # This is used in nekRS itself to conditionaly enable AMGX
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
   # TODO: Link to the libs you need

@@ -136,9 +136,10 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
   }
 
   string deviceNumber;
-  if(par->extract("occa", "devicenumber", deviceNumber))
+  if(par->extract("occa", "devicenumber", deviceNumber)) {
     UPPER(deviceNumber);
-  options.setArgs("DEVICE NUMBER", deviceNumber);
+    options.setArgs("DEVICE NUMBER", deviceNumber);
+  }
 
   // GENERAL
   bool verbose = false;

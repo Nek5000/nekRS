@@ -188,6 +188,7 @@ int main(int argc, char** argv)
   }
   fflush(stdout);
 
+  nekrs::finalize();
   MPI_Finalize();
   return EXIT_SUCCESS;
 }

@@ -260,7 +260,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   oogs_mode_list.push_back(OOGS_DEFAULT);
   oogs_mode_list.push_back(OOGS_HOSTMPI);
   if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") { 
-    if(OGS_MPI_SUPPORT) oogs_mode_list.push_back(OOGS_DEVICEMPI);; 
+    oogs_mode_list.push_back(OOGS_DEVICEMPI);; 
   }
   std::list<oogs_modeExchange> oogs_modeExchange_list;
   oogs_modeExchange_list.push_back(OOGS_EX_PW);

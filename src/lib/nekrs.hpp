@@ -16,6 +16,7 @@ void udfExecuteStep(double time, int tstep, int isOutputStep);
 void outfld(double time);
 int outputStep(double time, int tStep);
 void outputStep(int val);
+void finalize();
 void nekUserchk(void);
 void printRuntimeStatistics(void);
 double writeInterval(void);
