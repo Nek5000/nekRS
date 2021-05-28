@@ -21,7 +21,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     mask[elliptic->maskIds[n]] = 0.0;
   }
   
-  //double tStartAssembly = MPI_Wtime();
   SEMFEMData* data = fem_amg_setup(
     mesh->Nq,
     mesh->Nelements,
@@ -30,12 +29,8 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     mesh->z,
     mask,
     platform->comm.mpiComm,
-    mesh->globalIds,
-    mesh->o_x,
-    mesh->o_y,
-    mesh->o_z
+    mesh->globalIds
   );
-  //if(platform->comm.mpiRank == 0)  printf("SEMFEM assembly: (%gs)\n", MPI_Wtime() - tStartAssembly); fflush(stdout);
 
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
   const int sizeType = useFP32 ? sizeof(float) : sizeof(dfloat);
