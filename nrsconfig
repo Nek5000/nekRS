@@ -195,7 +195,6 @@ cmake -Wno-dev \
       -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
       -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
       -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
-      -DUSE_LONG_LONG=1 \
       -DHYPRE_BIGINT=1 \
       -DENABLE_AMGX="${AMGX_ENABLED}" \
       ${NEKRS_DIR}
@@ -212,28 +211,3 @@ if [ "$#" -eq 1 ]; then
   fi
   ${NEKRS_EXIT_CMD} 0
 fi
-
-# =========================
-# Otherwise, make install
-# =========================
-
-make -j16 install
-
-if [ $? -ne 0 ]; then
-  echo
-  echo "##################################################################"
-  echo
-  echo "An error occured duing installation!"
-  echo
-  echo "##################################################################"
-  ${NEKRS_EXIT_CMD} 1
-else
-  echo
-  echo "##################################################################"
-  echo
-  echo "Installation to $NEKRS_INSTALL_DIR successful!"
-  echo
-  echo "##################################################################"
-  ${NEKRS_EXIT_CMD} 0
-fi
-echo

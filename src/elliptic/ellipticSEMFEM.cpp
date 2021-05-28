@@ -100,6 +100,10 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
   }
 #ifdef ENABLE_AMGX
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){
+    string configFile;
+    elliptic->options.getArgs("AMGX CONFIG FILE", configFile);
+    char *cfg = NULL;
+    if(configFile.size()) cfg = (char*) configFile.c_str();
     setupRetVal = AMGXsetup(
       numRows,
       data->nnz,
@@ -111,8 +115,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       platform->device.id(),
       useFP32,
       std::stoi(getenv("NEKRS_GPU_MPI")),
-      nullptr // use default parameters
-    );
+      cfg);
   }
 #endif
   else {

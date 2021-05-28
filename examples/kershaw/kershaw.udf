@@ -25,8 +25,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   // warm-up
   ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
+  platform->timer.reset("pressureSolve");
 
-  platform->timer.reset();
   const int Nrep = 10; 
   if(platform->comm.mpiRank == 0) printf("solving "); 
   for (int i = 0; i < Nrep; i++) { 
@@ -60,7 +60,4 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     printf("avg throughput: %g DOF/s\n", throughput);
     printf("avg throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
   }
-
-  MPI_Finalize();
-  exit(EXIT_SUCCESS);
 }

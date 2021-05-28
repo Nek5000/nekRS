@@ -48,7 +48,9 @@ git clone https://github.com/Nek5000/nekRS.git
 To build and install the code just run:
 
 ```sh
-./makenrs
+./nrsconfig
+cd build
+make -j8
 ```
 Build settings can be customized in the script.
 

@@ -12,7 +12,7 @@ int AMGXsetup(const int nLocalRows, const int nnz,
               const int null_space, const MPI_Comm comm, int deviceID,
               int useFP32, int MPIDIRECT, const char* cfgFile);
 int AMGXsolve(void *x, void *rhs);
-int AMGXfree();
+void AMGXfree();
 
 #ifdef __cplusplus
 }

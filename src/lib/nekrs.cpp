@@ -157,7 +157,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     cout << "\nsettings:\n" << endl << options << endl;
-    cout << "device memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
+    cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
     cout << "initialization took " << setupTime << " s" << endl;
   }
   fflush(stdout);

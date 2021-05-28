@@ -206,6 +206,7 @@ ENDIF(CMAKE_C_COMPILER_NAME MATCHES cl AND NOT CMAKE_C_COMPILER_NAME MATCHES cla
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
 
 # load CUDA.
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 FIND_PACKAGE(CUDA)
 
 message("Cuda libraries: " ${CUDA_LIBRARIES})
@@ -284,10 +285,9 @@ endif(${versionFile} IS_NEWER_THAN ${versionCode})
 
 # plugin management
 set(pluginConf "PluginConfig.txt")                     # plugin configuration
-set(pluginCode "${CMAKE_SOURCE_DIR}/plugin_config.cu") # plugin code
+set(pluginCode "${CMAKE_CURRENT_SOURCE_DIR}/plugin_config.cu") # plugin code
 file(STRINGS ${pluginConf} pluginList)                 # plugin list
 set(libList base core ${pluginList})                   # lib list
-
 
 # create initialization and finalization for plugins
 if(${pluginConf} IS_NEWER_THAN ${pluginCode})

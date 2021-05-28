@@ -22,3 +22,6 @@ viscosity = 1.0
 #iterations = 1
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.0
+
+#[AMGX]
+#configFile = "amgx.json"

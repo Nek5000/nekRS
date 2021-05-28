@@ -160,6 +160,14 @@ configure_file(
 include(config/occa.cmake)
 
 ###############################################################################
+# Build AMGX                                                                  #
+###############################################################################
+
+if(ENABLE_AMGX AND ENABLE_CUDA)
+  add_subdirectory(3rd_party/AMGX)
+endif()
+
+###############################################################################
 # Build HYPRE
 ###############################################################################
 
@@ -271,7 +279,6 @@ target_include_directories(nekrs-lib
   ${HYPRE_BINARY_DIR})
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
-  add_subdirectory(3rd_party/AMGX)
   # This is used in nekRS itself to conditionaly enable AMGX
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
   # TODO: Link to the libs you need
