@@ -3,6 +3,8 @@
 */
 
 #include <math.h>
+#include <limits>
+
 #include "_hypre_utilities.h"
 #include "HYPRE_parcsr_ls.h"
 #include "_hypre_parcsr_ls.h"
@@ -89,6 +91,17 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
   {
 
     const int numRows = row_end - row_start + 1;
+
+    {
+      long long numRowsGlobal64;
+      long long numRows64 = numRows;
+      comm_allreduce(&comm, gs_long_long, gs_add, &numRows64, 1, &numRowsGlobal64);
+      if(numRowsGlobal64 > std::numeric_limits<int>::max()) { 
+        if(comm.id == 0) printf("Number of global rows requires BigInt support!");
+        MPI_Abort(comm.c, EXIT_FAILURE);  
+      }
+    }
+
     HYPRE_BigInt *ownedRows = (HYPRE_BigInt*) calloc(numRows, sizeof(HYPRE_BigInt));
     int ctr = 0;
     for(long long row = row_start; row <= row_end; ++row)
