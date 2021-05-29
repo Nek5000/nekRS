@@ -46,4 +46,4 @@ FILE(GLOB_RECURSE SRCS "src/*.cu")
 
 CUDA_ADD_LIBRARY(amgx_eigensolvers STATIC ${SRCS})
 target_link_libraries(amgx_eigensolvers amgx_base amgx_core)
-install(TARGETS amgx_eigensolvers DESTINATION "lib/sublibs")
+#install(TARGETS amgx_eigensolvers DESTINATION "lib/sublibs")

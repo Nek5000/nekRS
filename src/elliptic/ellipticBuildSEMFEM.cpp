@@ -9,7 +9,7 @@
 #include "HYPRE.h"
 
 #include "gslib.h"
-#include "fem_amg_preco.hpp"
+#include "ellipticBuildSEMFEM.hpp"
 
 namespace{
 
@@ -52,7 +52,7 @@ static struct gs_data *gsh;
 
 
 /* Interface definition */
-SEMFEMData* fem_amg_setup(const int N_, const int n_elem_,
+SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
                           double *x_m_, double *y_m_, double *z_m_,
                           double *pmask_, MPI_Comm mpiComm,
                           long long int *gatherGlobalNodes)
@@ -268,16 +268,15 @@ void fem_assembly() {
    * Returns A_fem and B_fem
    */
 
-  /* Variables */
+  MPI_Barrier(comm.c);
+  const double tStart = MPI_Wtime();
+  if(comm.id == 0) printf("building matrix ... ");
+  fflush(stdout);
+
   int i, j, k, e, d, t, q;
   int idx;
   long long row;
 
-  /*
-   * Rank and prepare data to be mapped to rows of the matrix so it can
-   * be solved with Hypre (Ranking done on the Fortran side since here it fails
-   * for some reason I couldn't figure out)
-   */
   long long *ranking = (long long*) malloc(n_xyze * sizeof(long long));
 
   for (idx = 0; idx < n_xyze; idx++)
@@ -333,9 +332,11 @@ void fem_assembly() {
   double q_x[3];
 
   int s_x, s_y, s_z;
-  int E_x = n_x - 1;
-  int E_y = n_y - 1;
-  int E_z = n_z - 1;
+  const int E_x = n_x - 1;
+  const int E_y = n_y - 1;
+  const int E_z = n_z - 1;
+
+  const int n_vertex = pow(2, n_dim);
 
   for (e = 0; e < n_elem; e++) {
     /* Cycle through collocated quads/hexes */
@@ -349,9 +350,9 @@ void fem_assembly() {
           s[1] = s_y;
           s[2] = s_z;
 
-          int idx[(int)(pow(2, n_dim))];
+          int idx[n_vertex];
 
-          for (i = 0; i < pow(2, n_dim); i++) {
+          for (i = 0; i < n_vertex; i++) {
             idx[i] = 0;
 
             for (d = 0; d < n_dim; d++) {
@@ -443,6 +444,8 @@ void fem_assembly() {
   free(ranking);
   free(glo_num);
 
+  MPI_Barrier(comm.c);
+  if(comm.id == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 }
 
  void quadrature_rule(double q_r[4][3], double q_w[4]) {
@@ -608,16 +611,16 @@ void inverse(double invA[3][3], double A[3][3]) {
   /*
    * Computes the inverse of a matrix
    */
-  double det_A = determinant(A);
-  invA[0][0] = (1.0 / det_A) * (A[1][1] * A[2][2] - A[2][1] * A[1][2]);
-  invA[0][1] = (1.0 / det_A) * (A[0][2] * A[2][1] - A[2][2] * A[0][1]);
-  invA[0][2] = (1.0 / det_A) * (A[0][1] * A[1][2] - A[1][1] * A[0][2]);
-  invA[1][0] = (1.0 / det_A) * (A[1][2] * A[2][0] - A[2][2] * A[1][0]);
-  invA[1][1] = (1.0 / det_A) * (A[0][0] * A[2][2] - A[2][0] * A[0][2]);
-  invA[1][2] = (1.0 / det_A) * (A[0][2] * A[1][0] - A[1][2] * A[0][0]);
-  invA[2][0] = (1.0 / det_A) * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
-  invA[2][1] = (1.0 / det_A) * (A[0][1] * A[2][0] - A[2][1] * A[0][0]);
-  invA[2][2] = (1.0 / det_A) * (A[0][0] * A[1][1] - A[1][0] * A[0][1]);
+  const double invdet_A = 1.0/determinant(A);
+  invA[0][0] = invdet_A * (A[1][1] * A[2][2] - A[2][1] * A[1][2]);
+  invA[0][1] = invdet_A * (A[0][2] * A[2][1] - A[2][2] * A[0][1]);
+  invA[0][2] = invdet_A * (A[0][1] * A[1][2] - A[1][1] * A[0][2]);
+  invA[1][0] = invdet_A * (A[1][2] * A[2][0] - A[2][2] * A[1][0]);
+  invA[1][1] = invdet_A * (A[0][0] * A[2][2] - A[2][0] * A[0][2]);
+  invA[1][2] = invdet_A * (A[0][2] * A[1][0] - A[1][2] * A[0][0]);
+  invA[2][0] = invdet_A * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
+  invA[2][1] = invdet_A * (A[0][1] * A[2][0] - A[2][1] * A[0][0]);
+  invA[2][2] = invdet_A * (A[0][0] * A[1][1] - A[1][0] * A[0][1]);
 }
 
 }

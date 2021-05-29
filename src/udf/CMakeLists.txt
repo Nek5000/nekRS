@@ -1,6 +1,5 @@
-project(libUDF)
+project(libUDF LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.11)
-enable_language(CXX)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 
@@ -10,7 +9,6 @@ set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 #set(CMAKE_VERBOSE_MAKEFILE on)
 
-set(CMAKE_C_COMPILER_FORCED TRUE)
 set(CMAKE_CXX_STANDARD 14)
 
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})

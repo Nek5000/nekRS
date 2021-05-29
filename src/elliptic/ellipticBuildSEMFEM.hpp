@@ -13,7 +13,7 @@ struct SEMFEMData{
   long long* dofMap;
 };
 
-SEMFEMData* fem_amg_setup(const int N_, const int n_elem_, 
+SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_, 
                    double *x_m_, double *y_m_, double *z_m_, 
                    double *pmask_,
                    MPI_Comm comm,

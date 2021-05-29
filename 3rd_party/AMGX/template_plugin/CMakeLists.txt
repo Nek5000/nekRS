@@ -44,5 +44,5 @@ FILE(GLOB_RECURSE SRCS "src/*.cu")
 
 CUDA_ADD_LIBRARY(amgx_template_plugin STATIC ${SRCS})
 target_link_libraries(amgx_template_plugin amgx_base)
-install(TARGETS amgx_template_plugin DESTINATION "lib/sublibs")
+#install(TARGETS amgx_template_plugin DESTINATION "lib/sublibs")
 

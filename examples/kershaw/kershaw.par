@@ -4,6 +4,7 @@ polynomialOrder = 7
 
 [PRESSURE]
 solver = pfgmres+20
+maxIterations = 200
 residualTol = 1e-8
 preconditioner = SEMFEM+AmgX+FP32 
 #smootherType = Chebyshev+RAS+2

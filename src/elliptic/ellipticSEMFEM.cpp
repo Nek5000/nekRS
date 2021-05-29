@@ -3,7 +3,7 @@
 #include "gslib.h"
 #include "boomerAMG.h"
 #include "elliptic.h"
-#include "fem_amg_preco.hpp"
+#include "ellipticBuildSEMFEM.hpp"
 #include "amgx.h"
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
@@ -19,7 +19,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     mask[elliptic->maskIds[n]] = 0.0;
   }
   
-  SEMFEMData* data = fem_amg_setup(
+  SEMFEMData* data = ellipticBuildSEMFEM(
     mesh->Nq,
     mesh->Nelements,
     mesh->x,

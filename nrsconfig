@@ -6,22 +6,12 @@
 ###############################################################################
 
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
-
-# MPI wrapper compilers
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-
-# GPU backends
-: ${OCCA_CUDA_ENABLED:=1}
-: ${OCCA_HIP_ENABLED:=1}
-: ${OCCA_OPENCL_ENABLED:=1}
 : ${NEKRS_BACKEND_DEFAULT:=CUDA}
-
-# GPU aware MPI
 : ${NEKRS_GPU_MPI:=0}
 
-# OCCA backend
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
 : ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
@@ -33,63 +23,11 @@
 ###############################################################################
 set -e -a
 
-function nekrs_info() {
-  local GREEN='\033[0;92m'
-  local NC='\033[0m'
-  echo -e "${GREEN} $1 ${NC}"
-}
-export -f nekrs_info
-
-function nekrs_error() {
-  local RED='\033[0;31m'
-  local NC='\033[0m'
-  echo -e "${RED} $1 ${NC}"
-}
-export -f nekrs_error
-
-NEKRS_SOURCED=0
-(return 0 2>/dev/null) && NEKRS_SOURCED=1
-if [ ${NEKRS_SOURCED} -eq 1 ]; then
-   NEKRS_EXIT_CMD=return
-else
-   NEKRS_EXIT_CMD=exit
-fi
-
-export NEKRS_BUILD_DIR=`pwd`/build
-
-if [[ "$#" -eq 1 ]]; then
-  if [[ "$1" = *"clean"* ]]; then
-    set +e
-
-    read -p "Uninstall from $NEKRS_INSTALL_DIR? [N]" yn
-    case $yn in
-      [Yy]* )
-        make -C "${NEKRS_BUILD_DIR}" uninstall
-        ;;
-      * )
-        ;;
-    esac
-
-    read -p "Clean build in $NEKRS_BUILD_DIR? [N]" yn
-    case $yn in
-      [Yy]* )
-        make -C "${NEKRS_BUILD_DIR}" clean
-        ;;
-      * )
-        ;;
-    esac
-
-    set -e
-    exit 0
-  elif [[ "$1" = *"tar"* ]]; then
-    nekrs_info "Creating distribution tarball ..."
-  else
-    nekrs_info "Usage: makenrs [clean|tar]"
-    ${NEKRS_EXIT_CMD} 1
-  fi
-fi
-
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=1}
+: ${OCCA_OPENCL_ENABLED:=1}
 : ${OCCA_METAL_ENABLED:=0}
+
 : ${NEKRS_CXXFLAGS:=""}
 
 if uname -a | grep 'ppc64'; then
@@ -102,55 +40,20 @@ NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
 if [[ ${OCCA_CUDA_ENABLED} -eq 1 ]]; then
-  AMGX_ENABLED=1
+: ${AMGX_ENABLED:=1}
 fi
 
-export OCCA_CUDA_ENABLED
-export OCCA_HIP_ENABLED
-export OCCA_OPENCL_ENABLED
-export OCCA_METAL_ENABLED
-export AMGX_ENABLED
-
-export NEKRS_CC
-export NEKRS_CXX
-export NEKRS_FC
-
-export NEKRS_CFLAGS
-export NEKRS_CXXFLAGS
-export NEKRS_FFLAGS
-
-export NEKRS_DEBUG
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
-export NEKRS_INSTALL_DIR
-export NEKRS_NEK5000_PPLIST
-
-export NEKRS_DIR=`pwd`
-export NEKRS_UDF_DIR="${NEKRS_INSTALL_DIR}/udf"
-export NEKRS_NEKINTERFACE_DIR="${NEKRS_INSTALL_DIR}/nekInterface"
-export NEKRS_NEK5000_DIR="${NEKRS_INSTALL_DIR}/nek5000"
-export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
-
-export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"
-
-if [ ${NEKRS_SOURCED} -eq 1 ]; then
-  ${NEKRS_EXIT_CMD} 0
-fi
-
-if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
-  nekrs_error "Install directory and source directory are the same."
-  ${NEKRS_EXIT_CMD} 1
-fi
+NEKRS_DIR=`pwd`
 
 # =======================
 # Run CMake
 # =======================
 
+NEKRS_BUILD_DIR=`pwd`/build
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
-#rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
 cd "${NEKRS_BUILD_DIR}"
-
-# ENABLE_CUDA, ENABLE_OPENCL, etc., are used by OCCA's CMakeLists
 cmake -Wno-dev \
       -Wfatal-errors \
       -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
@@ -177,19 +80,6 @@ cmake -Wno-dev \
       -DENABLE_AMGX="${AMGX_ENABLED}" \
       ${NEKRS_DIR}
 
-# =========================
-# Make tarball if requested
-# =========================
-
-if [ "$#" -eq 1 ]; then
-  if [[ "$1" = *"tar"* ]]; then
-    make tar
-    cd ..
-    rm -rf build
-  fi
-  ${NEKRS_EXIT_CMD} 0
-fi
-
 if [ "$#" -eq 0 ]; then
   echo ""
   echo "Installation Settings"
@@ -205,11 +95,10 @@ if [ "$#" -eq 0 ]; then
   echo "Default backend :" $NEKRS_BACKEND_DEFAULT
   echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
   echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
-  echo "NVIDIA AMGX support:" $AMGX_ENABLED
   echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
   echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
   echo "GPU aware MPI support:" $NEKRS_GPU_MPI
   echo ""
 fi
 
-echo "Now run e.g. make -C build -j8 install ..."
+echo "Now run e.g. make -s -C build -j8 install ..."

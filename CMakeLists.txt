@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.11)
 project(NekRS LANGUAGES C CXX Fortran VERSION 21.1)
 
+if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+  MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
+endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+
 include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
+set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(FETCHCONTENT_QUIET on)
@@ -92,7 +97,6 @@ if (NOT FortranCInterface_VERIFIED_CXX)
     message(WARNING "C and Fortran may not work properly")
 endif()
 
-## Use c++14
 set (CMAKE_C_STANDARD 99)
 set (CMAKE_CXX_STANDARD 14)
 
@@ -264,10 +268,10 @@ target_include_directories(nekrs-lib
   ${OGS_SOURCE_DIR}/include
   ${OGS_SOURCE_DIR}
   ${ELLIPTIC_SOURCE_DIR}
+  PRIVATE
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
   ${PARALMOND_SOURCE_DIR}
-  PRIVATE
   ${HYPRE_SOURCE_DIR}/src
   ${HYPRE_SOURCE_DIR}/src/utilities
   ${HYPRE_SOURCE_DIR}/src/seq_mv
@@ -279,12 +283,8 @@ target_include_directories(nekrs-lib
   ${HYPRE_BINARY_DIR})
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
-  # This is used in nekRS itself to conditionaly enable AMGX
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
-  # TODO: Link to the libs you need
   target_link_libraries(nekrs-lib PUBLIC amgxsh)
-  # AMGX doesn't add incude paths to to its targets, so we have to be specific
-  # about the directories we need
   target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
 endif()
 
