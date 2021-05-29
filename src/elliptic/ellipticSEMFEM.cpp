@@ -4,9 +4,7 @@
 #include "boomerAMG.h"
 #include "elliptic.h"
 #include "fem_amg_preco.hpp"
-#ifdef ENABLE_AMGX
 #include "amgx.h"
-#endif
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
@@ -98,7 +96,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
         settings 
       );
   }
-#ifdef ENABLE_AMGX
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){
     string configFile;
     elliptic->options.getArgs("AMGX CONFIG FILE", configFile);
@@ -117,7 +114,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       std::stoi(getenv("NEKRS_GPU_MPI")),
       cfg);
   }
-#endif
   else {
     if(platform->comm.mpiRank == 0){
       std::string amgSolver;
@@ -151,9 +147,7 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
     boomerAMGSolve(o_buffer2.ptr(), o_buffer.ptr());
   } else {
-#ifdef ENABLE_AMGX
     AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
-#endif
   }
 
   elliptic->scatterKernel(

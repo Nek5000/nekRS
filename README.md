@@ -49,8 +49,7 @@ To build and install the code just run:
 
 ```sh
 ./nrsconfig
-cd build
-make -j8
+make -C build -j8 install
 ```
 Build settings can be customized in the script.
 

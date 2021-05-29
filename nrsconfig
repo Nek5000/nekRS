@@ -142,28 +142,6 @@ if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
   ${NEKRS_EXIT_CMD} 1
 fi
 
-if [ "$#" -eq 0 ]; then
-  echo ""
-  echo "Installation Settings"
-  echo "---------------------"
-  echo "Directory:" $NEKRS_INSTALL_DIR 
-  echo "C compiler:" `which $NEKRS_CC` 
-  echo "C++ compiler:" `which $NEKRS_CXX`
-  echo "Fortran compiler:" `which $NEKRS_FC`
-  echo ""
-  echo "Configured Runtime Settings" 
-  echo "---------------------------"
-  echo "File :" $NEKRS_INSTALL_DIR/nekrs.conf
-  echo "Default backend :" $NEKRS_BACKEND_DEFAULT
-  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
-  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
-  echo "NVIDIA AMGX support:" $AMGX_ENABLED
-  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
-  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
-  echo "GPU aware MPI support:" $NEKRS_GPU_MPI
-  echo ""
-fi
-
 # =======================
 # Run CMake
 # =======================
@@ -211,3 +189,27 @@ if [ "$#" -eq 1 ]; then
   fi
   ${NEKRS_EXIT_CMD} 0
 fi
+
+if [ "$#" -eq 0 ]; then
+  echo ""
+  echo "Installation Settings"
+  echo "---------------------"
+  echo "Directory:" $NEKRS_INSTALL_DIR 
+  echo "C compiler:" `which $NEKRS_CC` 
+  echo "C++ compiler:" `which $NEKRS_CXX`
+  echo "Fortran compiler:" `which $NEKRS_FC`
+  echo ""
+  echo "Configured Runtime Settings" 
+  echo "---------------------------"
+  echo "File :" $NEKRS_INSTALL_DIR/nekrs.conf
+  echo "Default backend :" $NEKRS_BACKEND_DEFAULT
+  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
+  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
+  echo "NVIDIA AMGX support:" $AMGX_ENABLED
+  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
+  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
+  echo "GPU aware MPI support:" $NEKRS_GPU_MPI
+  echo ""
+fi
+
+echo "Now run e.g. make -C build -j8 install ..."
