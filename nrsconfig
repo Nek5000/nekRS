@@ -18,6 +18,9 @@
 : ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
 : ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
 
+
+
+
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
 ###############################################################################
@@ -29,14 +32,13 @@ set -e -a
 : ${OCCA_METAL_ENABLED:=0}
 
 : ${NEKRS_CXXFLAGS:=""}
-
 if uname -a | grep 'ppc64'; then
   NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
   OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
 fi
-
 NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
+
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
 if [[ ${OCCA_CUDA_ENABLED} -eq 1 ]]; then
@@ -80,25 +82,5 @@ cmake -Wno-dev \
       -DENABLE_AMGX="${AMGX_ENABLED}" \
       ${NEKRS_DIR}
 
-if [ "$#" -eq 0 ]; then
-  echo ""
-  echo "Installation Settings"
-  echo "---------------------"
-  echo "Directory:" $NEKRS_INSTALL_DIR 
-  echo "C compiler:" `which $NEKRS_CC` 
-  echo "C++ compiler:" `which $NEKRS_CXX`
-  echo "Fortran compiler:" `which $NEKRS_FC`
-  echo ""
-  echo "Configured Runtime Settings" 
-  echo "---------------------------"
-  echo "File :" $NEKRS_INSTALL_DIR/nekrs.conf
-  echo "Default backend :" $NEKRS_BACKEND_DEFAULT
-  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
-  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
-  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
-  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
-  echo "GPU aware MPI support:" $NEKRS_GPU_MPI
-  echo ""
-fi
-
+echo ""
 echo "Now run e.g. make -s -C build -j8 install ..."

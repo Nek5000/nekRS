@@ -149,25 +149,18 @@ if ("${GIT_COMMIT_HASH}" STREQUAL "")
 endif()
 
 ###############################################################################
-# Generate nekrs.conf                                                       #
-###############################################################################
-
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
-  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
-  @ONLY)
-
-###############################################################################
 # Build OCCA                                                                  #
 ###############################################################################
-
 include(config/occa.cmake)
+set(ENABLE_CUDA ${OCCA_CUDA_ENABLED})
+set(ENABLE_HIP ${OCCA_HIP_ENABLED})
+set(ENABLE_OPENCL ${OCCA_OPENCL_ENABLED})
 
 ###############################################################################
 # Build AMGX                                                                  #
 ###############################################################################
 
-if(ENABLE_AMGX AND ENABLE_CUDA)
+if(ENABLE_CUDA AND ENABLE_AMGX)
   add_subdirectory(3rd_party/AMGX)
 endif()
 
@@ -293,6 +286,34 @@ target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin nekrs-lib)
 
+message(NOTICE "")
+message(NOTICE "--- Configuration -------------------------")
+message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}") 
+message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
+message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
+message(NOTICE "Fortran compiler: ${CMAKE_Fortran_COMPILER}")
+message(NOTICE "Default backend : ${BACKEND_DEFAULT}")
+message(NOTICE "CPU backend compiler: ${OCCA_CXX} (flags: ${OCCA_CXXFLAGS})")
+if(ENABLE_CUDA) 
+        message(NOTICE "NVIDIA CUDA backend (flags: ${OCCA_CUDA_COMPILER_FLAGS})")
+endif()
+if(ENABLE_HIP) 
+        message(NOTICE "AMD HIP backend (flags: ${OCCA_HIP_COMPILER_FLAGS})")
+endif()
+if(ENABLE_OPENCL) 
+        message(NOTICE "OPENCL backend (flags: ${OCCA_OPENCL_COMPILER_FLAGS})")
+endif()
+message(NOTICE "GPU aware MPI support: ${GPU_MPI}")
+message(NOTICE "")
+###############################################################################
+# Generate nekrs.conf                                                       #
+###############################################################################
+
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
+  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
+  @ONLY)
+
 #################################################################################
 ### Install                                                                     #
 #################################################################################
@@ -347,4 +368,6 @@ add_custom_target(tar
   COMMAND tar -czf ${TAR_NAME} ${DEST_DIR}
   COMMAND rm -rf ${DEST_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+
 
