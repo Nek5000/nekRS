@@ -300,40 +300,47 @@ void fem_assembly_device() {
   int E_z = n_z - 1;
 
   std::unordered_map<long long, std::unordered_set<long long>> graph;
+  std::unordered_map<int, std::unordered_set<int>> rowIdxToColIdxMap;
   double tStart = MPI_Wtime();
-  for (int e = 0; e < n_elem; e++) {
-    /* Cycle through collocated quads/hexes */
-    for (int s_z = 0; s_z < E_z; s_z++) {
-      for (int s_y = 0; s_y < E_y; s_y++) {
-        for (int s_x = 0; s_x < E_x; s_x++) {
-          /* Get indices */
-          int s[n_dim];
+  for (int s_z = 0; s_z < E_z; s_z++) {
+    for (int s_y = 0; s_y < E_y; s_y++) {
+      for (int s_x = 0; s_x < E_x; s_x++) {
+        /* Get indices */
+        int s[n_dim];
 
-          s[0] = s_x;
-          s[1] = s_y;
-          s[2] = s_z;
+        s[0] = s_x;
+        s[1] = s_y;
+        s[2] = s_z;
 
-          int idx[8];
+        int idx[8];
 
-          for (int i = 0; i < 8; i++) {
-            idx[i] = 0;
+        for (int i = 0; i < 8; i++) {
+          idx[i] = 0;
 
-            for (int d = 0; d < n_dim; d++) {
-              idx[i] += (s[d] + v_coord[i][d]) * pow(n_x, d);
+          for (int d = 0; d < n_dim; d++) {
+            idx[i] += (s[d] + v_coord[i][d]) * pow(n_x, d);
+          }
+        }
+        for (int t = 0; t < num_fem; t++) {
+          for (int i = 0; i < n_dim + 1; i++) {
+            for (int j = 0; j < n_dim + 1; j++) {
+              rowIdxToColIdxMap[idx[t_map[t][i]]].insert(idx[t_map[t][j]]);
             }
           }
-          for (int t = 0; t < num_fem; t++) {
-            for (int i = 0; i < n_dim + 1; i++) {
-              for (int j = 0; j < n_dim + 1; j++) {
-                if ((pmask[idx[t_map[t][i]] + e * n_xyz] > 0.0) &&
-                    (pmask[idx[t_map[t][j]] + e * n_xyz] > 0.0)) {
-                  HYPRE_BigInt row = glo_num[idx[t_map[t][i]] + e * n_xyz];
-                  HYPRE_BigInt col = glo_num[idx[t_map[t][j]] + e * n_xyz];
-                  graph[row].emplace(col);
-                }
-              }
-            }
-          }
+        }
+      }
+    }
+  }
+  for(int e = 0; e < n_elem; ++e){
+    for(auto&& idx_row_lookup_and_col_lookups : rowIdxToColIdxMap){
+      auto row_lookup = idx_row_lookup_and_col_lookups.first;
+      for(auto && col_lookup : idx_row_lookup_and_col_lookups.second)
+      {
+        if(pmask[e * n_xyz + row_lookup] > 0.0 && pmask[e * n_xyz + col_lookup] > 0.0)
+        {
+          long long row = glo_num[e*n_xyz + row_lookup];
+          long long col = glo_num[e*n_xyz + col_lookup];
+          graph[row].emplace(col);
         }
       }
     }
