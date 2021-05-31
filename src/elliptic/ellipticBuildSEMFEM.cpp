@@ -478,7 +478,7 @@ void fem_assembly() {
 
   /* Variables */
   double tStart = MPI_Wtime();
-  if(comm.id == 0) printf("building SEMFEM matrix... ");
+  if(comm.id == 0) printf("building matrix ... ");
   int i, j, k, e, d, t, q;
   int idx;
   long long row;

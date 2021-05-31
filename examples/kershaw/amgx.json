@@ -1,7 +1,7 @@
 {
     "config_version": 2, 
     "determinism_flag":0,
-    "communicator": "MPI",
+    "communicator": "MPI_DIRECT",
     "min_rows_latency_hiding": -1,
     "solver": {
         "scope": "main",
