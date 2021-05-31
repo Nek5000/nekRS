@@ -110,6 +110,7 @@ void memPool_t::allocate(const dlong offset, const dlong fields)
 }
 void deviceMemPool_t::allocate(memPool_t& hostMemory, const dlong offset, const dlong fields)
 {
+  bytesAllocated = fields * offset * sizeof(dfloat);
   o_ptr = platform->device.malloc(offset*fields*sizeof(dfloat), hostMemory.slice0);
   slice0 = o_ptr.slice(0 * offset * sizeof(dfloat));
   slice1 = o_ptr.slice(1 * offset * sizeof(dfloat));

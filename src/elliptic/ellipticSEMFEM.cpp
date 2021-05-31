@@ -8,38 +8,8 @@
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStart = MPI_Wtime();
-  if(platform->comm.mpiRank == 0)  printf("setup SEMFEM preconditioner ... \n"); fflush(stdout);
-
-  mesh_t* mesh = elliptic->mesh;
-  double* mask = (double*) malloc(mesh->Np*mesh->Nelements*sizeof(double));
-  for(int i = 0; i < mesh->Np*mesh->Nelements; ++i) mask[i] = 1.0;
-  for(dlong n = 0; n < elliptic->Nmasked; n++){
-    mask[elliptic->maskIds[n]] = 0.0;
-  }
-  
-  SEMFEMData* data = ellipticBuildSEMFEM(
-    mesh->Nq,
-    mesh->Nelements,
-    mesh->x,
-    mesh->y,
-    mesh->z,
-    mask,
-    platform->comm.mpiComm,
-    mesh->globalIds
-  );
 
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
-  const int sizeType = useFP32 ? sizeof(float) : sizeof(dfloat);
-  const long long numRows = data->rowEnd - data->rowStart + 1;
-  elliptic->o_dofMap = platform->device.malloc(numRows * sizeof(long long), data->dofMap);
-  elliptic->o_SEMFEMBuffer1 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
-  elliptic->o_SEMFEMBuffer2 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
-
-  elliptic->numRowsSEMFEM = numRows;
-
-
   occa::properties SEMFEMKernelProps = platform->kernelInfo;
   if(useFP32){
     SEMFEMKernelProps["defines/" "pfloat"] = "float";
@@ -61,6 +31,35 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     "scatter",
     SEMFEMKernelProps
   );
+  MPI_Barrier(platform->comm.mpiComm);
+  double tStart = MPI_Wtime();
+  if(platform->comm.mpiRank == 0)  printf("setup SEMFEM preconditioner ... \n"); fflush(stdout);
+
+  mesh_t* mesh = elliptic->mesh;
+  double* mask = (double*) malloc(mesh->Np*mesh->Nelements*sizeof(double));
+  for(int i = 0; i < mesh->Np*mesh->Nelements; ++i) mask[i] = 1.0;
+  for(dlong n = 0; n < elliptic->Nmasked; n++){
+    mask[elliptic->maskIds[n]] = 0.0;
+  }
+  
+  SEMFEMData* data = ellipticBuildSEMFEM(
+    mesh->Nq,
+    mesh->Nelements,
+    mesh->o_x,
+    mesh->o_y,
+    mesh->o_z,
+    mask,
+    platform->comm.mpiComm,
+    mesh->globalIds
+  );
+
+  const int sizeType = useFP32 ? sizeof(float) : sizeof(dfloat);
+  const long long numRows = data->rowEnd - data->rowStart + 1;
+  elliptic->o_dofMap = platform->device.malloc(numRows * sizeof(long long), data->dofMap);
+  elliptic->o_SEMFEMBuffer1 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
+  elliptic->o_SEMFEMBuffer2 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
+
+  elliptic->numRowsSEMFEM = numRows;
 
   int setupRetVal;
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){

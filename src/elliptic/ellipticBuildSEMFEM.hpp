@@ -1,6 +1,7 @@
 #ifndef fem_amg_preco_hpp_
 #define fem_amg_preco_hpp_
 
+#include <platform.hpp>
 #include <mpi.h>
 
 struct SEMFEMData{
@@ -14,7 +15,7 @@ struct SEMFEMData{
 };
 
 SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_, 
-                   double *x_m_, double *y_m_, double *z_m_, 
+                   occa::memory _o_x, occa::memory _o_y, occa::memory _o_z,
                    double *pmask_,
                    MPI_Comm comm,
                    long long int* gatherGlobalNodes);
