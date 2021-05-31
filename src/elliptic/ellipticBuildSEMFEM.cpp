@@ -26,8 +26,6 @@ static occa::memory o_x;
 static occa::memory o_y;
 static occa::memory o_z;
 
-int bisection_search_index(long long* sortedArr, long long value, long long start, long long end);
-
 void build_kernel();
 
 void fem_assembly_device();
@@ -287,21 +285,13 @@ void fem_assembly_device() {
 
   mesh_connectivity(v_coord, t_map);
 
-  /* Finite element assembly */
-
-  double A_loc[4][4];
-  double J_xr[3][3];
-  double J_rx[3][3];
-  double x_t[3][4];
-  double q_x[3];
-
   int E_x = n_x - 1;
   int E_y = n_y - 1;
   int E_z = n_z - 1;
 
   std::unordered_map<long long, std::unordered_set<long long>> graph;
   std::unordered_map<int, std::unordered_set<int>> rowIdxToColIdxMap;
-  double tStart = MPI_Wtime();
+  const int nvert = 8;
   for (int s_z = 0; s_z < E_z; s_z++) {
     for (int s_y = 0; s_y < E_y; s_y++) {
       for (int s_x = 0; s_x < E_x; s_x++) {
@@ -312,9 +302,9 @@ void fem_assembly_device() {
         s[1] = s_y;
         s[2] = s_z;
 
-        int idx[8];
+        int idx[nvert];
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < nvert; i++) {
           idx[i] = 0;
 
           for (int d = 0; d < n_dim; d++) {
@@ -372,10 +362,6 @@ void fem_assembly_device() {
     }
   }
 
-  
-  if(platform->comm.mpiRank == 0) printf("Symbolic graph construction took: (%f)s\n", MPI_Wtime() - tStart);
-
-  tStart = MPI_Wtime();
   struct AllocationTracker{
     bool o_maskAlloc;
     bool o_glo_numAlloc;
@@ -447,8 +433,6 @@ void fem_assembly_device() {
   double bytesTotal = (double) bytesAllocated / 1e9;
   double bytesPerProc = bytesTotal / platform->comm.mpiCommSize;
 
-  if(platform->comm.mpiRank == 0) printf("Allocated in total %f GB, or %f GB/proc\n", bytesTotal, bytesPerProc);
-
   computeStiffnessMatrixKernel(
     n_elem,
     (int)nrows,
@@ -477,7 +461,6 @@ void fem_assembly_device() {
       printf("err!\n");
     exit(EXIT_FAILURE);
   }
-  if(platform->comm.mpiRank == 0) printf("Actual graph construction took: (%f)s\n", MPI_Wtime() - tStart);
 
   free(rows);
   free(rowOffsets);
@@ -495,7 +478,7 @@ void fem_assembly() {
 
   /* Variables */
   double tStart = MPI_Wtime();
-  if(comm.id == 0) printf("building SEMFEM matrix...\n");
+  if(comm.id == 0) printf("building SEMFEM matrix... ");
   int i, j, k, e, d, t, q;
   int idx;
   long long row;
@@ -528,21 +511,17 @@ void fem_assembly() {
   HYPRE_IJMatrixInitialize(A_bc);
 
   {
-    double tStart = MPI_Wtime();
     fem_assembly_device();
-    if(platform->comm.mpiRank == 0) printf("local assembly took: %f s\n", MPI_Wtime() - tStart);
   }
 
   {
-    double tStart = MPI_Wtime();
     HYPRE_IJMatrixAssemble(A_bc);
-    if(platform->comm.mpiRank == 0) printf("HYPRE assembly took: %f s\n", MPI_Wtime() - tStart);
   }
 
   free(glo_num);
 
   MPI_Barrier(comm.c);
-  if(comm.id == 0) printf("done building SEMFEM matrix (%gs)\n", MPI_Wtime() - tStart);
+  if(comm.id == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
 }
 
 void build_kernel(){
@@ -622,23 +601,7 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
   (t_map)[7][2] = 6;
   (t_map)[7][3] = 5;
 }
-int bisection_search_index(long long* sortedArr, long long value, long long start, long long end)
-{
-  int fail = -1;
-  long long L = start;
-  long long R = end-1;
-  while (L <= R){
-    const long long m = (L+R)/2;
-    if(sortedArr[m] < value){
-      L = m + 1;
-    } else if (sortedArr[m] > value){
-      R = m - 1;
-    } else {
-      return m;
-    }
-  }
-  return fail;
-}
+
 occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, long long& bytesRemaining, long long& byteOffset, long long& bytesAllocated, bool& allocated)
 {
   occa::memory o_mem;
