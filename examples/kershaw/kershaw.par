@@ -4,11 +4,15 @@ polynomialOrder = 7
 
 [PRESSURE]
 solver = pfgmres+20
+maxIterations = 200
 residualTol = 1e-8
-#preconditioner = Jacobi 
-smootherType = Chebyshev+ASM+1
-pMultigridCoarsening = 7,5,3,1
+
+#preconditioner = SEMFEM+AmgX+FP32 
+
+smootherType = Chebyshev+RAS+2
+pMultigridCoarsening = 7,3,1
 #galerkinCoarseOperator = true
+
 residualProj = false
 
 [VELOCITY]
@@ -22,3 +26,6 @@ viscosity = 1.0
 #iterations = 1
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.0
+
+#[AMGX]
+#configFile = "amgx.json"

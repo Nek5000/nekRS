@@ -26,7 +26,7 @@ export UCX_TLS=rc,sm,cuda
 export UCX_RNDV_SCHEME=put_zcopy
 export UCX_RNDV_THRESH=1024
 
-export OGS_MPI_SUPPORT=1 
+export NEKRS_GPU_MPI=1 
 
 export ROMIO_HINTS="$(pwd)/.romio_hint"
 if [ ! -f "$ROMIO_HINTS" ]; then

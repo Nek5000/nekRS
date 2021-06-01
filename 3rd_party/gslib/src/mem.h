@@ -1,6 +1,7 @@
 #ifndef MEM_H
 #define MEM_H
 
+#include <stddef.h>
 /* requires:
      <stddef.h> for size_t, offsetof
      <stdlib.h> for malloc, calloc, realloc, free
@@ -11,6 +12,9 @@
 
 #if !defined(C99_H) || !defined(FAIL_H)
 #error "mem.h" requires "c99.h" and "fail.h"
+#endif
+#ifdef __cplusplus
+#include <string.h>
 #endif
 
 /* 
@@ -160,7 +164,11 @@ typedef struct array buffer;
 /*--------------------------------------------------------------------------
    Alignment routines
   --------------------------------------------------------------------------*/
+#ifdef __cplusplus
+#define ALIGNOF(T) alignof(T)
+#else
 #define ALIGNOF(T) offsetof(struct { char c; T x; }, x)
+#endif
 static size_t align_as_(size_t a, size_t n) { return (n+a-1)/a*a; }
 #define align_as(T,n) align_as_(ALIGNOF(T),n)
 #define align_ptr(T,base,offset) ((T*)((char*)(base)+align_as(T,offset)))
