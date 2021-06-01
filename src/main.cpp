@@ -130,6 +130,7 @@ int main(int argc, char** argv)
                cmdOpt->backend, cmdOpt->deviceID);
 
   if (cmdOpt->buildOnly) {
+    nekrs::finalize();
     MPI_Finalize();
     return EXIT_SUCCESS;
   }

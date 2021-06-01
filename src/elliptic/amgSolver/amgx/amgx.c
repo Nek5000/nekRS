@@ -19,6 +19,13 @@ typedef struct {
 static amgx_data *handle; 
 static AMGX_resources_handle rsrc;
 
+void printHandler(const char *msg, int length)
+{
+  int myid;
+  MPI_Comm_rank(handle->comm, &myid);
+  if(myid == 0) printf("%s", msg);
+}
+
 int AMGXsetup(const int nLocalRows, const int nnz,
               const long long *rows, const long long *cols, const double *values, /* COO */ 
               const int nullspace, const MPI_Comm comm, int deviceID,
@@ -47,56 +54,35 @@ int AMGXsetup(const int nLocalRows, const int nnz,
 
   AMGX_SAFE_CALL(AMGX_initialize());
   AMGX_SAFE_CALL(AMGX_initialize_plugins());
-  AMGX_SAFE_CALL(AMGX_install_signal_handler());
+  AMGX_SAFE_CALL(AMGX_register_print_callback(&printHandler));
 
   if (cfgFile) { 
     AMGX_SAFE_CALL(AMGX_config_create_from_file(&handle->cfg, cfgFile));
   } else {
-    char settings[] = "config_version=2,"
-	              "verbosity_level=0,"
-     		      "solver=AMG,"
-                      "algorithm=CLASSICAL,"
-                      "strength_threshold=0.25,"
-            	      "max_row_sum=0.9,"
-                      "interpolator=D2,"
-            	      "interp_max_elements=4,"
-                      "max_levels=20,"
-                      "min_coarse_rows=2,"
-                      "error_scaling=0," /* scales the coarse grid correction vector */
-                      "print_config=0,"
-                      "print_grid_stats=0,"
-                      "print_solve_stats=0,"
-                      "max_iters=1,"
-                      "cycle=V,"
-                      //"smoother(my_smoother)=JACOBI_L1,"
-                      //"my_smoother:relaxation_factor=0.8,"
-		      //"smoother(my_smoother)=CHEBYSHEV_POLY,"
-		      //"my_smoother:chebyshev_polynomial_order=2,"
-		      //"my_smoother:chebyshev_lambda_estimate_mode=1,"
-                      "presweeps=1,"
-                      "postsweeps=1,";
+    char solverSettings[] = 
+      "\"solver\": {\
+            \"scope\":\"main\",\
+            \"solver\":\"AMG\",\
+            \"algorithm\":\"CLASSICAL\",\
+            \"strength_threshold\":0.25,\
+            \"max_row_sum\":0.9,\
+            \"interpolator\":\"D2\",\
+            \"interp_max_elements\":4,\
+            \"max_levels\":20,\
+            \"print_config\":0,\
+            \"print_grid_stats\":1,\
+            \"max_iters\":1,\
+            \"cycle\":\"V\",\
+            \"presweeps\":1,\
+            \"postsweeps\":1,\
+            \"coarse_solver\": \"NOSOLVER\"\
+      }";
 
     char cfgStr[4096] = "";
-    strcat(cfgStr, settings);
-    strcat(cfgStr, (MPI_DIRECT) ? "communicator=MPI_DIRECT," : "communicator=MPI,");
-    const int aggressive_levels = 0;
-    if(aggressive_levels) {
-      strcat(cfgStr, "selector=PMIS,");
-      strcat(cfgStr, "aggressive_levels=1,");
-    } else {
-      strcat(cfgStr, "selector=PMIS,");
-      strcat(cfgStr, "aggressive_levels=0,");
-    }
-    //strcat(cfgStr, "amg_host_levels_rows=1000,");
-    strcat(cfgStr, "min_rows_latency_hiding=10000,");
-    if(nullspace) {
-      strcat(cfgStr, "coarse_solver(c_solver)=JACOBI_L1,");
-      strcat(cfgStr, "coarsest_sweeps=5,");
-    } else {
-      //strcat(cfgStr, "dense_lu_num_rows=2,");
-      strcat(cfgStr, "coarse_solver(c_solver)=DENSE_LU_SOLVER,");
-    }
-    strcat(cfgStr, "determinism_flag=0");
+    strcat(cfgStr, "{ \"config_version\": 2,");
+    strcat(cfgStr, (MPI_DIRECT) ? "\"communicator\":\"MPI_DIRECT\"," : "\"communicator\":\"MPI\",");
+    strcat(cfgStr, solverSettings);
+    strcat(cfgStr, "}");
     //printf("cfgStr: %s\n", cfgStr); fflush(stdout);
     AMGX_SAFE_CALL(AMGX_config_create(&handle->cfg, cfgStr));
   }

@@ -326,7 +326,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm)
     } else if(p_preconditioner.find("semfem") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
       options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
+      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
       std::vector<std::string> list;
       list = serializeString(p_preconditioner, '+');
       for(std::string s : list){
