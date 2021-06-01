@@ -42,7 +42,7 @@ NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
 NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
 
 if [[ ${OCCA_CUDA_ENABLED} -eq 1 ]]; then
-: ${AMGX_ENABLED:=1}
+: ${AMGX_ENABLED:=0}
 fi
 
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
@@ -84,3 +84,4 @@ cmake -Wno-dev \
 
 echo ""
 echo "Now run e.g. cmake --build build --target install -j 8 ..."
+echo ""
