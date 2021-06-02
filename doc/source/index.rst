@@ -32,6 +32,7 @@ Table of Contents
    :maxdepth: 2
 
    input_files
+   detailed_usage
    glossary
 
 .. Indices and tables
