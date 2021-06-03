@@ -1,13 +1,76 @@
+#include <map>
+
 #include <occa/core/base.hpp>
 #include <occa/core/memory.hpp>
 #include <occa/core/device.hpp>
-#include <occa/utils/uva.hpp>
-#include <occa/internal/core/device.hpp>
-#include <occa/internal/core/memory.hpp>
-#include <occa/internal/utils/sys.hpp>
-#include <occa/internal/utils/uva.hpp>
+#include <occa/modes/serial/memory.hpp>
+#include <occa/tools/uva.hpp>
+#include <occa/tools/sys.hpp>
 
 namespace occa {
+  //---[ modeMemory_t ]-----------------
+  modeMemory_t::modeMemory_t(modeDevice_t *modeDevice_,
+                             udim_t size_,
+                             const occa::properties &properties_) :
+    memInfo(uvaFlag::none),
+    properties(properties_),
+    ptr(NULL),
+    uvaPtr(NULL),
+    modeDevice(modeDevice_),
+    dtype_(&dtype::byte),
+    size(size_),
+    isOrigin(true) {
+    modeDevice->addMemoryRef(this);
+  }
+
+  modeMemory_t::~modeMemory_t() {
+    // NULL all wrappers
+    while (memoryRing.head) {
+      memory *mem = (memory*) memoryRing.head;
+      memoryRing.removeRef(mem);
+      mem->modeMemory = NULL;
+    }
+    // Remove ref from device
+    if (modeDevice) {
+      modeDevice->removeMemoryRef(this);
+    }
+  }
+
+  void* modeMemory_t::getPtr(const occa::properties &props) {
+    return ptr;
+  }
+
+  void modeMemory_t::dontUseRefs() {
+    memoryRing.dontUseRefs();
+  }
+
+  void modeMemory_t::addMemoryRef(memory *mem) {
+    memoryRing.addRef(mem);
+  }
+
+  void modeMemory_t::removeMemoryRef(memory *mem) {
+    memoryRing.removeRef(mem);
+  }
+
+  bool modeMemory_t::needsFree() const {
+    return memoryRing.needsFree();
+  }
+
+  bool modeMemory_t::isManaged() const {
+    return (memInfo & uvaFlag::isManaged);
+  }
+
+  bool modeMemory_t::inDevice() const {
+    return (memInfo & uvaFlag::inDevice);
+  }
+
+  bool modeMemory_t::isStale() const {
+    return (memInfo & uvaFlag::isStale);
+  }
+  //====================================
+
+
+  //---[ memory ]-----------------------
   memory::memory() :
       modeMemory(NULL) {}
 
@@ -85,14 +148,28 @@ namespace occa {
   template <>
   void* memory::ptr<void>() {
     return (modeMemory
-            ? modeMemory->getPtr()
+            ? modeMemory->ptr
             : NULL);
   }
 
   template <>
   const void* memory::ptr<void>() const {
     return (modeMemory
-            ? modeMemory->getPtr()
+            ? modeMemory->ptr
+            : NULL);
+  }
+
+  template <>
+  void* memory::ptr<void>(const occa::properties &props) {
+    return (modeMemory
+            ? modeMemory->getPtr(props)
+            : NULL);
+  }
+
+  template <>
+  const void* memory::ptr<void>(const occa::properties &props) const {
+    return (modeMemory
+            ? modeMemory->getPtr(props)
             : NULL);
   }
 
@@ -111,7 +188,10 @@ namespace occa {
   }
 
   memory::operator kernelArg() const {
-    return kernelArg(modeMemory);
+    if (modeMemory) {
+        return modeMemory->makeKernelArg();
+    }
+    return nullKernelArg;
   }
 
   const std::string& memory::mode() const {
@@ -121,8 +201,8 @@ namespace occa {
             : noMode);
   }
 
-  const occa::json& memory::properties() const {
-    static const occa::json noProperties;
+  const occa::properties& memory::properties() const {
+    static const occa::properties noProperties;
     return (modeMemory
             ? modeMemory->properties
             : noProperties);
@@ -335,7 +415,7 @@ namespace occa {
   void memory::copyFrom(const void *src,
                         const dim_t bytes,
                         const dim_t offset,
-                        const occa::json &props) {
+                        const occa::properties &props) {
     assertInitialized();
 
     udim_t bytes_ = ((bytes == -1) ? modeMemory->size : bytes);
@@ -357,7 +437,7 @@ namespace occa {
                         const dim_t bytes,
                         const dim_t destOffset,
                         const dim_t srcOffset,
-                        const occa::json &props) {
+                        const occa::properties &props) {
     assertInitialized();
 
     udim_t bytes_ = ((bytes == -1) ? modeMemory->size : bytes);
@@ -385,7 +465,7 @@ namespace occa {
   void memory::copyTo(void *dest,
                       const dim_t bytes,
                       const dim_t offset,
-                      const occa::json &props) const {
+                      const occa::properties &props) const {
     assertInitialized();
 
     udim_t bytes_ = ((bytes == -1) ? modeMemory->size : bytes);
@@ -407,7 +487,7 @@ namespace occa {
                       const dim_t bytes,
                       const dim_t destOffset,
                       const dim_t srcOffset,
-                      const occa::json &props) const {
+                      const occa::properties &props) const {
     assertInitialized();
 
     udim_t bytes_ = ((bytes == -1) ? modeMemory->size : bytes);
@@ -433,43 +513,38 @@ namespace occa {
   }
 
   void memory::copyFrom(const void *src,
-                        const occa::json &props) {
+                        const occa::properties &props) {
     copyFrom(src, -1, 0, props);
   }
 
   void memory::copyFrom(const memory src,
-                        const occa::json &props) {
+                        const occa::properties &props) {
     copyFrom(src, -1, 0, 0, props);
   }
 
   void memory::copyTo(void *dest,
-                      const occa::json &props) const {
+                      const occa::properties &props) const {
     copyTo(dest, -1, 0, props);
   }
 
   void memory::copyTo(const memory dest,
-                      const occa::json &props) const {
+                      const occa::properties &props) const {
     copyTo(dest, -1, 0, 0, props);
   }
 
-  occa::memory memory::cast(const dtype_t &dtype_) const {
+  occa::memory memory::as(const dtype_t &dtype_) const {
     occa::memory mem = slice(0);
     mem.setDtype(dtype_);
     return mem;
   }
 
   occa::memory memory::clone() const {
-    if (!modeMemory) {
-      return occa::memory();
+    if (modeMemory) {
+      return occa::device(modeMemory->modeDevice).malloc(size(),
+                                                         *this,
+                                                         properties());
     }
-
-    occa::memory mem = (
-      occa::device(modeMemory->modeDevice)
-      .malloc(size(), *this, properties())
-    );
-    mem.setDtype(dtype());
-
-    return mem;
+    return occa::memory();
   }
 
   void memory::free() {
@@ -518,10 +593,25 @@ namespace occa {
   }
 
   memory null;
+  //====================================
 
   std::ostream& operator << (std::ostream &out,
                              const occa::memory &memory) {
     out << memory.properties();
     return out;
+  }
+
+  namespace cpu {
+    occa::memory wrapMemory(occa::device device,
+                            void *ptr,
+                            const udim_t bytes,
+                            const occa::properties &props) {
+      static occa::properties defaultProps(
+        "use_host_pointer: true,"
+        "own_host_pointer: false"
+      );
+
+      return device.malloc(bytes, ptr, defaultProps + props);
+    }
   }
 }

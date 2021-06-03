@@ -1,39 +1,37 @@
-#include <cstring>
-
-#include <occa/internal/c/types.hpp>
+#include <occa/c/types.hpp>
 #include <occa/c/json.h>
 
 OCCA_START_EXTERN_C
 
-occaType occaCreateJson() {
+occaType OCCA_RFUNC occaCreateJson() {
   return occa::c::newOccaType(*(new occa::json()),
                               true);
 }
 
 
 //---[ Global methods ]-----------------
-occaJson occaJsonParse(const char *c) {
+occaJson OCCA_RFUNC occaJsonParse(const char *c) {
   return occa::c::newOccaType(
     *(new occa::json(occa::json::parse(c))),
     true
   );
 }
 
-occaJson occaJsonRead(const char *filename) {
+OCCA_LFUNC occaJson OCCA_RFUNC occaJsonRead(const char *filename) {
   return occa::c::newOccaType(
     *(new occa::json(occa::json::read(filename))),
     true
   );
 }
 
-void occaJsonWrite(occaJson j,
-                   const char *filename) {
+OCCA_LFUNC void OCCA_RFUNC occaJsonWrite(occaJson j,
+                                         const char *filename) {
   occa::json &j_ = occa::c::json(j);
   j_.write(filename);
 }
 
-const char* occaJsonDump(occaJson j,
-                         const int indent) {
+OCCA_LFUNC const char* OCCA_RFUNC occaJsonDump(occaJson j,
+                                               const int indent) {
   occa::json &j_ = occa::c::json(j);
   std::string str = j_.dump(indent);
 
@@ -47,27 +45,27 @@ const char* occaJsonDump(occaJson j,
 
 
 //---[ Type checks ]--------------------
-bool occaJsonIsBoolean(occaJson j) {
+bool OCCA_RFUNC occaJsonIsBoolean(occaJson j) {
   occa::json &j_ = occa::c::json(j);
-  return j_.isBool();
+  return j_.isBoolean();
 }
 
-bool occaJsonIsNumber(occaJson j) {
+bool OCCA_RFUNC occaJsonIsNumber(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.isNumber();
 }
 
-bool occaJsonIsString(occaJson j) {
+bool OCCA_RFUNC occaJsonIsString(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.isString();
 }
 
-bool occaJsonIsArray(occaJson j) {
+bool OCCA_RFUNC occaJsonIsArray(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.isArray();
 }
 
-bool occaJsonIsObject(occaJson j) {
+bool OCCA_RFUNC occaJsonIsObject(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.isObject();
 }
@@ -75,41 +73,41 @@ bool occaJsonIsObject(occaJson j) {
 
 
 //---[ Casters ]------------------------
-void occaJsonCastToBoolean(occaJson j) {
+void OCCA_RFUNC occaJsonCastToBoolean(occaJson j) {
   occa::c::json(j).asBoolean();
 }
 
-void occaJsonCastToNumber(occaJson j) {
+void OCCA_RFUNC occaJsonCastToNumber(occaJson j) {
   occa::c::json(j).asNumber();
 }
 
-void occaJsonCastToString(occaJson j) {
+void OCCA_RFUNC occaJsonCastToString(occaJson j) {
   occa::c::json(j).asString();
 }
 
-void occaJsonCastToArray(occaJson j) {
+void OCCA_RFUNC occaJsonCastToArray(occaJson j) {
   occa::c::json(j).asArray();
 }
 
-void occaJsonCastToObject(occaJson j) {
+void OCCA_RFUNC occaJsonCastToObject(occaJson j) {
   occa::c::json(j).asObject();
 }
 //======================================
 
 
 //---[ Getters ]------------------------
-bool occaJsonGetBoolean(occaJson j) {
+bool OCCA_RFUNC occaJsonGetBoolean(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.boolean();
 }
 
-occaType occaJsonGetNumber(occaJson j,
-                           const int type) {
+occaType OCCA_RFUNC occaJsonGetNumber(occaJson j,
+                                      const int type) {
   occa::json &j_ = occa::c::json(j);
   return occa::c::newOccaType(j_.number(), type);
 }
 
-const char* occaJsonGetString(occaJson j) {
+const char* OCCA_RFUNC occaJsonGetString(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   return j_.string().c_str();
 }
@@ -117,9 +115,9 @@ const char* occaJsonGetString(occaJson j) {
 
 
 //---[ Object methods ]-----------------
-occaType occaJsonObjectGet(occaJson j,
-                           const char *key,
-                           occaType defaultValue) {
+occaType OCCA_RFUNC occaJsonObjectGet(occaJson j,
+                                      const char *key,
+                                      occaType defaultValue) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asObject();
@@ -133,9 +131,9 @@ occaType occaJsonObjectGet(occaJson j,
   return defaultValue;
 }
 
-void occaJsonObjectSet(occaJson j,
-                       const char *key,
-                       occaType value) {
+void OCCA_RFUNC occaJsonObjectSet(occaJson j,
+                                  const char *key,
+                                  occaType value) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asObject();
@@ -146,8 +144,8 @@ void occaJsonObjectSet(occaJson j,
   j_[key] = occa::c::inferJson(value);
 }
 
-bool occaJsonObjectHas(occaJson j,
-                       const char *key) {
+bool OCCA_RFUNC occaJsonObjectHas(occaJson j,
+                                  const char *key) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asObject();
@@ -161,7 +159,7 @@ bool occaJsonObjectHas(occaJson j,
 
 
 //---[ Array methods ]------------------
-int occaJsonArraySize(occaJson j) {
+int OCCA_RFUNC occaJsonArraySize(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asArray();
@@ -172,8 +170,8 @@ int occaJsonArraySize(occaJson j) {
   return j_.size();
 }
 
-occaType occaJsonArrayGet(occaJson j,
-                          const int index) {
+occaType OCCA_RFUNC occaJsonArrayGet(occaJson j,
+                                     const int index) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asArray();
@@ -184,8 +182,8 @@ occaType occaJsonArrayGet(occaJson j,
   return occa::c::newOccaType(j_[index], false);
 }
 
-void occaJsonArrayPush(occaJson j,
-                       occaType value) {
+void OCCA_RFUNC occaJsonArrayPush(occaJson j,
+                                  occaType value) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asArray();
@@ -207,9 +205,9 @@ void occaJsonArrayPop(occaJson j) {
   j_.array().pop_back();
 }
 
-void occaJsonArrayInsert(occaJson j,
-                         const int index,
-                         occaType value) {
+void OCCA_RFUNC occaJsonArrayInsert(occaJson j,
+                                    const int index,
+                                    occaType value) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asArray();
@@ -226,7 +224,7 @@ void occaJsonArrayInsert(occaJson j,
                occa::c::inferJson(value));
 }
 
-void occaJsonArrayClear(occaJson j) {
+void OCCA_RFUNC occaJsonArrayClear(occaJson j) {
   occa::json &j_ = occa::c::json(j);
   if (!j_.isInitialized()) {
     j_.asArray();

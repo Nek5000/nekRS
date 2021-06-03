@@ -1,8 +1,5 @@
 #include <occa.hpp>
-
-#include <occa/internal/io.hpp>
-#include <occa/internal/core/device.hpp>
-#include <occa/internal/utils/testing.hpp>
+#include <occa/tools/testing.hpp>
 
 occa::kernel addVectors;
 const std::string addVectorsFile = (
@@ -52,7 +49,7 @@ void testInfo() {
   ASSERT_EQ(addVectors.mode(),
             "Serial");
 
-  const occa::json &props = addVectors.properties();
+  const occa::properties &props = addVectors.properties();
   ASSERT_EQ(props["mode"].string(),
             "Serial");
 
@@ -89,7 +86,7 @@ void testParsingFailure() {
 
   badKernel = occa::buildKernelFromString(badSource,
                                           "foo",
-                                          {{"silent", true}});
+                                          "silent: true");
   ASSERT_FALSE(badKernel.isInitialized());
 
   // Incorrect OKL
@@ -104,7 +101,7 @@ void testParsingFailure() {
 
   badKernel = occa::buildKernelFromString(badSource,
                                           "foo",
-                                          {{"silent", true}});
+                                          "silent: true");
   ASSERT_FALSE(badKernel.isInitialized());
 }
 
@@ -129,19 +126,14 @@ void testArgumentFailure() {
     "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
     "}",
     "foo",
-    {{"type_validation", false}}
+    "type_validation: false"
   );
 
   const int N = 10;
 
   // Use wrong device
-  occa::device dev({
-    {"mode", "Serial"}
-  });
-  occa::modeDevice_t *modeDev = dev.getModeDevice();
-  modeDev->mode = "foobar";
-
-  occa::memory arg = dev.malloc<int>(N);
+  occa::device dev("mode: 'Serial'");
+  occa::memory arg = dev.malloc(N * sizeof(float));
 
   ASSERT_THROW(
     kernel(N, arg);
@@ -154,7 +146,7 @@ void testRun() {
   );
   occa::kernel argKernel = occa::buildKernel(argKernelFile,
                                              "argKernel",
-                                             {{"type_validation", false}});
+                                             "type_validation: false");
 
   argKernel.setRunDims(occa::dim(1, 1, 1),
                        occa::dim(1, 1, 1));

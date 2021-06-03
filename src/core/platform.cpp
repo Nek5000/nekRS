@@ -1,5 +1,4 @@
 #include <cstdlib>
-#include <strings.h>
 #include "platform.hpp"
 #include "nrs.hpp"
 #include "linAlg.hpp"
@@ -84,7 +83,6 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
   }
 
   if(device.mode() == "HIP" && !getenv("OCCA_HIP_COMPILER_FLAGS")) {
-    warpSize = 64;
     kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
     kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
@@ -228,45 +226,36 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   }
 
   occa::properties deviceProps;
-  string requestedOccaMode; 
-  options.getArgs("THREAD MODEL", requestedOccaMode);
 
-  if(strcasecmp(requestedOccaMode.c_str(), "CUDA") == 0) {
+  if(options.compareArgs("THREAD MODEL", "CUDA")) {
     sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
+  }else if(options.compareArgs("THREAD MODEL", "HIP"))  {
     sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENCL") == 0) {
+  }else if(options.compareArgs("THREAD MODEL", "OPENCL"))  {
     int plat;
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
+  }else if(options.compareArgs("THREAD MODEL", "OPENMP"))  {
     if(rank == 0) printf("OpenMP backend currently not supported!\n");
     ABORT(EXIT_FAILURE);
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
-  }else if(strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
-           strcasecmp(requestedOccaMode.c_str(), "SERIAL") == 0) {
+  }else  {
     sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
     sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
-    options.getArgs("THREAD MODEL", requestedOccaMode);
-  } else {
-    if(rank == 0) printf("Invalid requested backend!\n");
-    ABORT(EXIT_FAILURE);
   }
 
-  if(rank == 0) printf("Initializing device \n");
+  if(rank == 0) printf("Initializing device\n");
   this->setup((std::string)deviceConfig);
   this->comm = comm;
- 
+
+  if (this->mode() == "Serial")
+    options.setArgs("THREAD MODEL", "SERIAL");
+
   if(rank == 0)
     std::cout << "active occa mode: " << this->mode() << "\n\n";
 
-  if(strcasecmp(requestedOccaMode.c_str(), this->mode().c_str()) != 0) {
-    if(rank == 0) printf("active occa mode does not match selected backend!\n");
-    ABORT(EXIT_FAILURE);
-  } 
-
-
+  occa::env::OCCA_MEM_BYTE_ALIGN = 64;
 
   int Nthreads = 1;
   if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);

@@ -38,11 +38,9 @@ set(INCLUDE_DIRS
 )
 
 add_library(UDF SHARED udf.cpp)
-target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${UDF_DIR})
+target_include_directories(UDF PRIVATE ${INCLUDE_DIRS} ${UDF_DIR})
 
 if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
-target_link_libraries(UDF "$ENV{NEKRS_UDF_LDFLAGS}")
-
 set_target_properties(UDF PROPERTIES LINKER_LANGUAGE CXX)

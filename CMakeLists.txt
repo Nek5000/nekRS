@@ -238,7 +238,7 @@ set_property(
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE gs ${GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
@@ -280,6 +280,7 @@ if(ENABLE_AMGX AND ENABLE_CUDA)
   target_link_libraries(nekrs-lib PUBLIC amgxsh)
   target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
 endif()
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE gs HYPRE)
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)

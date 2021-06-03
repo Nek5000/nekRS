@@ -38,34 +38,34 @@ module occa_device_m
       type(occaDevice), value :: device
     end function
 
-    ! occaJson occaDeviceGetProperties(occaDevice device);
-    type(occaJson) function occaDeviceGetProperties(device) &
+    ! occaProperties occaDeviceGetProperties(occaDevice device);
+    type(occaProperties) function occaDeviceGetProperties(device) &
                                   bind(C, name="occaDeviceGetProperties")
-      import occaJson, occaDevice
+      import occaProperties, occaDevice
       implicit none
       type(occaDevice), value :: device
     end function
 
-    ! occaJson occaDeviceGetKernelProperties(occaDevice device);
-    type(occaJson) function occaDeviceGetKernelProperties(device) &
+    ! occaProperties occaDeviceGetKernelProperties(occaDevice device);
+    type(occaProperties) function occaDeviceGetKernelProperties(device) &
                                   bind(C, name="occaDeviceGetKernelProperties")
-      import occaJson, occaDevice
+      import occaProperties, occaDevice
       implicit none
       type(occaDevice), value :: device
     end function
 
-    ! occaJson occaDeviceGetMemoryProperties(occaDevice device);
-    type(occaJson) function occaDeviceGetMemoryProperties(device) &
+    ! occaProperties occaDeviceGetMemoryProperties(occaDevice device);
+    type(occaProperties) function occaDeviceGetMemoryProperties(device) &
                                   bind(C, name="occaDeviceGetMemoryProperties")
-      import occaJson, occaDevice
+      import occaProperties, occaDevice
       implicit none
       type(occaDevice), value :: device
     end function
 
-    ! occaJson occaDeviceGetStreamProperties(occaDevice device);
-    type(occaJson) function occaDeviceGetStreamProperties(device) &
+    ! occaProperties occaDeviceGetStreamProperties(occaDevice device);
+    type(occaProperties) function occaDeviceGetStreamProperties(device) &
                                   bind(C, name="occaDeviceGetStreamProperties")
-      import occaJson, occaDevice
+      import occaProperties, occaDevice
       implicit none
       type(occaDevice), value :: device
     end function
@@ -103,13 +103,13 @@ module occa_device_m
 
     ! ---[ Stream ]-------------------------
     ! occaStream occaDeviceCreateStream(occaDevice device,
-    !                                   occaJson props);
+    !                                   occaProperties props);
     type(occaStream) function occaDeviceCreateStream(device, props) &
                               bind(C, name="occaDeviceCreateStream")
-      import occaJson, occaDevice, occaStream
+      import occaProperties, occaDevice, occaStream
       implicit none
       type(occaDevice), value :: device
-      type(occaJson), value :: props
+      type(occaProperties), value :: props
     end function
 
     ! occaStream occaDeviceGetStream(occaDevice device);
@@ -162,52 +162,52 @@ module occa_device_m
     ! occaKernel occaDeviceBuildKernel(occaDevice device,
     !                                  const char *filename,
     !                                  const char *kernelName,
-    !                                  const occaJson props);
+    !                                  const occaProperties props);
     type(occaKernel) function occaDeviceBuildKernel(device, &
                                                     filename, &
                                                     kernelName, &
                                                     props) &
                               bind(C, name="occaDeviceBuildKernel")
-      import C_char, occaKernel, occaDevice, occaJson
+      import C_char, occaKernel, occaDevice, occaProperties
       implicit none
       type(occaDevice), value :: device
       character(len=1,kind=C_char), dimension(*), intent(in) :: filename, &
                                                                 kernelName
-      type(occaJson), value, intent(in) :: props
+      type(occaProperties), value, intent(in) :: props
     end function
 
     ! occaKernel occaDeviceBuildKernelFromString(occaDevice device,
     !                                            const char *str,
     !                                            const char *kernelName,
-    !                                            const occaJson props);
+    !                                            const occaProperties props);
     type(occaKernel) function occaDeviceBuildKernelFromString(device, &
                                                               str, &
                                                               kernelName, &
                                                               props) &
                               bind(C, name="occaDeviceBuildKernelFromString")
-      import C_char, occaKernel, occaDevice, occaJson
+      import C_char, occaKernel, occaDevice, occaProperties
       implicit none
       type(occaDevice), value :: device
       character(len=1,kind=C_char), dimension(*), intent(in) :: str, &
                                                                 kernelName
-      type(occaJson), value, intent(in) :: props
+      type(occaProperties), value, intent(in) :: props
     end function
 
     ! occaKernel occaDeviceBuildKernelFromBinary(occaDevice device,
     !                                            const char *filename,
     !                                            const char *kernelName,
-    !                                            const occaJson props);
+    !                                            const occaProperties props);
     type(occaKernel) function occaDeviceBuildKernelFromBinary(device, &
                                                               filename, &
                                                               kernelName, &
                                                               props) &
                               bind(C, name="occaDeviceBuildKernelFromBinary")
-      import C_char, occaKernel, occaDevice, occaJson
+      import C_char, occaKernel, occaDevice, occaProperties
       implicit none
       type(occaDevice), value :: device
       character(len=1,kind=C_char), dimension(*), intent(in) :: filename, &
                                                                 kernelName
-      type(occaJson), value, intent(in) :: props
+      type(occaProperties), value, intent(in) :: props
     end function
     ! ======================================
 
@@ -215,70 +215,70 @@ module occa_device_m
     ! occaMemory occaDeviceMalloc(occaDevice device,
     !                             const occaUDim_t bytes,
     !                             const void *src,
-    !                             occaJson props);
+    !                             occaProperties props);
     type(occaMemory) function occaDeviceMalloc(device, bytes, src, props) &
                               bind(C, name="occaDeviceMalloc")
-      import C_void_ptr, occaMemory, occaDevice, occaJson, occaUDim_t
+      import C_void_ptr, occaMemory, occaDevice, occaProperties, occaUDim_t
       implicit none
       type(occaDevice), value :: device
       integer(occaUDim_t), value, intent(in) :: bytes
       type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
+      type(occaProperties), value :: props
     end function
 
     ! occaMemory occaDeviceTypedMalloc(occaDevice device,
     !                                  const occaUDim_t entries,
     !                                  const occaDtype dtype,
     !                                  const void *src,
-    !                                  occaJson props);
+    !                                  occaProperties props);
     type(occaMemory) function occaDeviceTypedMalloc(device, &
                                                     entries, &
                                                     dtype, &
                                                     src, &
                                                     props) &
                               bind(C, name="occaDeviceTypedMalloc")
-      import C_void_ptr, occaMemory, occaDevice, occaJson, occaUDim_t, &
+      import C_void_ptr, occaMemory, occaDevice, occaProperties, occaUDim_t, &
              occaDtype
       implicit none
       type(occaDevice), value :: device
       integer(occaUDim_t), value, intent(in) :: entries
       type(occaDtype), value, intent(in) :: dtype
       type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
+      type(occaProperties), value :: props
     end function
 
     ! void* occaDeviceUMalloc(occaDevice device,
     !                         const occaUDim_t bytes,
     !                         const void *src,
-    !                         occaJson props);
+    !                         occaProperties props);
     type(C_void_ptr) function occaDeviceUMalloc(device, bytes, src, props) &
                               bind(C, name="occaDeviceUMalloc")
-      import C_void_ptr, occaDevice, occaJson, occaUDim_t
+      import C_void_ptr, occaDevice, occaProperties, occaUDim_t
       implicit none
       type(occaDevice), value :: device
       integer(occaUDim_t), value, intent(in) :: bytes
       type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
+      type(occaProperties), value :: props
     end function
 
     ! void* occaDeviceTypedUMalloc(occaDevice device,
     !                              const occaUDim_t entries,
     !                              const occaDtype type,
     !                              const void *src,
-    !                              occaJson props);
+    !                              occaProperties props);
     type(C_void_ptr) function occaDeviceTypedUMalloc(device, &
                                                      entries, &
                                                      dtype, &
                                                      src, &
                                                      props) &
                               bind(C, name="occaDeviceTypedUMalloc")
-      import C_void_ptr, occaDevice, occaJson, occaUDim_t, occaDtype
+      import C_void_ptr, occaDevice, occaProperties, occaUDim_t, occaDtype
       implicit none
       type(occaDevice), value :: device
       integer(occaUDim_t), value, intent(in) :: entries
       type(occaDtype), value, intent(in) :: dtype
       type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
+      type(occaProperties), value :: props
     end function
     ! ======================================
   end interface

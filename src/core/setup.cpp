@@ -654,8 +654,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("VELOCITY PARALMOND CHEBYSHEV DEGREE"));
     nrs->vOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
                           options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
-    nrs->vOptions.setArgs("FIXED ITERATION COUNT", options.getArgs("VELOCITY FIXED ITERATION COUNT"));
-    nrs->vOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("VELOCITY MAXIMUM ITERATIONS"));
 
     // coeff used by ellipticSetup to detect allNeumann
     for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
@@ -792,8 +790,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("RESIDUAL PROJECTION START",
                           options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
     nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
-    nrs->pOptions.setArgs("FIXED ITERATION COUNT", options.getArgs("PRESSURE FIXED ITERATION COUNT"));
-    nrs->pOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("PRESSURE MAXIMUM ITERATIONS"));
 
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->name = "pressure";
@@ -807,10 +803,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->elementType = nrs->elementType;
     nrs->pSolver->BCType = (int*) calloc(nbrBIDs + 1,sizeof(int));
     memcpy(nrs->pSolver->BCType,pBCType,(nbrBIDs + 1) * sizeof(int));
-
     nrs->pSolver->var_coeff = 1;
-
-    // coeff used by ellipticSetup to detect allNeumann
+    //// coeff used by ellipticSetup to detect allNeumann
+    // and coeff[0] to setup MG levels
     for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 0;
     nrs->pSolver->lambda = nrs->ellipticCoeff;
     nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;

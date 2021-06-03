@@ -1,0 +1,232 @@
+#!/bin/bash
+#set -x
+
+###############################################################################
+# USER SETTINGS
+###############################################################################
+
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+# MPI wrapper compilers
+: ${NEKRS_CC:="mpicc"}
+: ${NEKRS_CXX:="mpic++"}
+: ${NEKRS_FC:="mpif77"}
+
+# GPU backends
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=1}
+: ${OCCA_OPENCL_ENABLED:=1}
+
+# GPU aware MPI
+: ${OGS_MPI_SUPPORT:=0}
+
+# OCCA backend
+: ${OCCA_CXX:="g++"}
+: ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
+: ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
+: ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
+
+###############################################################################
+# DONT'T TOUCH WHAT FOLLOWS !!!
+###############################################################################
+set -e -a
+
+function nekrs_info() {
+  local GREEN='\033[0;92m'
+  local NC='\033[0m'
+  echo -e "${GREEN} $1 ${NC}"
+}
+export -f nekrs_info
+
+function nekrs_error() {
+  local RED='\033[0;31m'
+  local NC='\033[0m'
+  echo -e "${RED} $1 ${NC}"
+}
+export -f nekrs_error
+
+NEKRS_SOURCED=0
+(return 0 2>/dev/null) && NEKRS_SOURCED=1
+if [ ${NEKRS_SOURCED} -eq 1 ]; then
+   NEKRS_EXIT_CMD=return
+else
+   NEKRS_EXIT_CMD=exit
+fi
+
+export NEKRS_BUILD_DIR=`pwd`/build
+
+if [[ "$#" -eq 1 ]]; then
+  if [[ "$1" = *"clean"* ]]; then
+    set +e
+
+    read -p "Uninstall from $NEKRS_INSTALL_DIR? [N]" yn
+    case $yn in
+      [Yy]* )
+        make -C "${NEKRS_BUILD_DIR}" uninstall
+        ;;
+      * )
+        ;;
+    esac
+
+    read -p "Clean build in $NEKRS_BUILD_DIR? [N]" yn
+    case $yn in
+      [Yy]* )
+        make -C "${NEKRS_BUILD_DIR}" clean
+        ;;
+      * )
+        ;;
+    esac
+
+    set -e
+    exit 0
+  elif [[ "$1" = *"tar"* ]]; then
+    nekrs_info "Creating distribution tarball ..."
+  else
+    nekrs_info "Usage: makenrs [clean|tar]"
+    ${NEKRS_EXIT_CMD} 1
+  fi
+fi
+
+: ${OCCA_METAL_ENABLED:=0}
+: ${NEKRS_CXXFLAGS:=""}
+
+if uname -a | grep 'ppc64'; then
+  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
+  OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
+fi
+
+NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
+NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
+NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
+
+export OCCA_CUDA_ENABLED
+export OCCA_HIP_ENABLED
+export OCCA_OPENCL_ENABLED
+export OCCA_METAL_ENABLED
+
+export NEKRS_CC
+export NEKRS_CXX
+export NEKRS_FC
+
+export NEKRS_CFLAGS
+export NEKRS_CXXFLAGS
+export NEKRS_FFLAGS
+
+export NEKRS_DEBUG
+mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+export NEKRS_INSTALL_DIR
+export NEKRS_NEK5000_PPLIST
+
+export NEKRS_DIR=`pwd`
+export NEKRS_UDF_DIR="${NEKRS_INSTALL_DIR}/udf"
+export NEKRS_NEKINTERFACE_DIR="${NEKRS_INSTALL_DIR}/nekInterface"
+export NEKRS_NEK5000_DIR="${NEKRS_INSTALL_DIR}/nek5000"
+export NEKRS_LIBP_DIR="${NEKRS_INSTALL_DIR}/libparanumal"
+
+export PATH="${NEKRS_INSTALL_DIR}/bin:${PATH}"
+
+if [ ${NEKRS_SOURCED} -eq 1 ]; then
+  ${NEKRS_EXIT_CMD} 0
+fi
+
+if [ "${NEKRS_DIR}" =  "${NEKRS_INSTALL_DIR}" ]; then
+  nekrs_error "Install directory and source directory are the same."
+  ${NEKRS_EXIT_CMD} 1
+fi
+
+if [ "$#" -eq 0 ]; then
+  echo ""
+  echo "Configuration"
+  echo "-------------"
+  echo "Installation directory:" $NEKRS_INSTALL_DIR 
+  echo "C compiler:" `which $NEKRS_CC` 
+  echo "C++ compiler:" `which $NEKRS_CXX`
+  echo "Fortran compiler:" `which $NEKRS_FC`
+  echo "CPU backend compiler:" `which $OCCA_CXX` "(flags: $OCCA_CXXFLAGS)"
+  echo "NVIDIA CUDA backend support:" $OCCA_CUDA_ENABLED "(flags: $OCCA_CUDA_COMPILER_FLAGS)"
+  echo "AMD HIP backend support:" $OCCA_HIP_ENABLED "(flags: $OCCA_HIP_COMPILER_FLAGS)" 
+  echo "OPENCL backend support:" $OCCA_OPENCL_ENABLED "(flags: $OCCA_OPENCL_COMPILER_FLAGS)"
+  echo "Gather/Scatter GPU MPI support:" $OGS_MPI_SUPPORT "(requires GPU aware MPI installation)"
+  echo ""
+
+  if [ "$TRAVIS" != "true" ]; then
+    read -p "Press ENTER to continue ..." yn
+    case $yn in
+      [Nn]* )
+      ${NEKRS_EXIT_CMD} 1
+      ;;
+    esac
+  fi  
+fi
+
+# =======================
+# Run CMake
+# =======================
+
+mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+#rm -rf "${NEKRS_BUILD_DIR}"/CMakeCache.txt "${NEKRS_BUILD_DIR}"/*.cmake > /dev/null 2>&1
+cd "${NEKRS_BUILD_DIR}"
+
+# ENABLE_CUDA, ENABLE_OPENCL, etc., are used by OCCA's CMakeLists
+cmake -Wno-dev \
+      -Wfatal-errors \
+      -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+      -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
+      -DCMAKE_C_COMPILER="${NEKRS_CC}" \
+      -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
+      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
+      -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
+      -DOCCA_CXX="${OCCA_CXX}" \
+      -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
+      -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
+      -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
+      -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
+      -DOGS_MPI_SUPPORT="${OGS_MPI_SUPPORT}" \
+      -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
+      -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
+      -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
+      -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
+      ${NEKRS_DIR}
+
+# =========================
+# Make tarball if requested
+# =========================
+
+if [ "$#" -eq 1 ]; then
+  if [[ "$1" = *"tar"* ]]; then
+    make tar
+    cd ..
+    rm -rf build
+  fi
+  ${NEKRS_EXIT_CMD} 0
+fi
+
+# =========================
+# Otherwise, make install
+# =========================
+
+make -j6 install
+
+if [ $? -ne 0 ]; then
+  echo
+  echo "##################################################################"
+  echo
+  echo "An error occured duing installation!"
+  echo
+  echo "##################################################################"
+  ${NEKRS_EXIT_CMD} 1
+else
+  echo
+  echo "##################################################################"
+  echo
+  echo "Installation to $NEKRS_INSTALL_DIR successful!"
+  echo
+  echo "##################################################################"
+  ${NEKRS_EXIT_CMD} 0
+fi
+echo

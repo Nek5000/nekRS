@@ -89,16 +89,13 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   options = parRead((void*) nrs->par, setupFile, comm);
 
   options.setArgs("BUILD ONLY", "FALSE");
-  if(buildOnly) options.setArgs("BUILD ONLY", "TRUE");
-
-  if (options.getArgs("THREAD MODEL").length() == 0) 
-    options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
+  if(buildOnly) options.setArgs("BUILD ONLY", "TRUE"); 
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
   setOUDF(options);
 
-  // setup device
+  // configure device
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
 

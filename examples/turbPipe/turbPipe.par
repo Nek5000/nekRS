@@ -1,6 +1,6 @@
 [OCCA]
-#backend = CUDA
-#deviceNumber = LOCAL-RANK
+backend = CUDA
+deviceNumber = LOCAL-RANK
 
 [GENERAL]
 #verbose = true
@@ -29,7 +29,7 @@ residualTol = 1e-04
 #galerkinCoarseOperator = true
 
 [VELOCITY]
-#solver = pcg
+solver = pcg+block
 boundaryTypeMap = inlet, outlet, wall
 density = 1.0
 viscosity = -19000
