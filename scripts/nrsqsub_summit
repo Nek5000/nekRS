@@ -22,9 +22,15 @@ export NEKRS_HOME
 export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
-export OCCA_CXX="$XL_HOME/bin/xlc" 
-export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
-export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
+
+# XLC compiler
+#export OCCA_CXX="$XL_HOME/bin/xlc" 
+#export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
+#export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
+
+# g++ compiler
+export OCCA_CXX="g++" 
+export OCCA_CXXFLAGS="-O2 -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
 
 #export OMPI_LD_PRELOAD_POSTPEND=$OLCF_SPECTRUM_MPI_ROOT/lib/libmpitrace.so
 
