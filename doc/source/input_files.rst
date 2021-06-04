@@ -124,17 +124,26 @@ of nekRS.
 
 This section is used to describe settings for the (optional) :term:`AMG` solver.
 
-**coarsenType** [``BOOMERAMG COARSEN TYPE``]
+.. _tab:boomeramg:
 
-**interpolationType** [``BOOMERAMG INTERPOLATION TYPE``]
+.. table:: ``BOOMERAMG`` keys in the ``.par`` file
 
-**iterations** *<int>* [``BOOMERAMG ITERATIONS``]
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | | Key                   | | Value         | | Availability in ``options``        | | Description                                |
+   +=========================+=================+======================================+==============================================+
+   | ``coarsenType``         | |               | [``BOOMERAMG COARSEN TYPE``]         |                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``interpolationType``   | |               | [``BOOMERAMG INTERPOLATION TYPE``]   |                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``iterations``          | |               | [``BOOMERAMG ITERATIONS``]           |                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``nonGalerkinTol``      | |               | [``BOOMERAMG NONGALERKIN TOLERANCE``]|                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``smootherType``        | |               | [``BOOMERAMG SMOOTHER TYPE``]        |                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``strongThreshold``     | |               | [``BOOMERAMG STRONG THRESHOLD``]     |                                              |
+   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
 
-**nonGalerkinTol** [``BOOMERAMG NONGALERKIN TOLERANCE``]
-
-**smootherType** [``BOOMERAMG SMOOTHER TYPE``]
-
-**strongThreshold** *<double>* [``BOOMERAMG NONGALERKIN TOLERANCE``]
 
 ``GENERAL`` section
 ^^^^^^^^^^^^^^^^^^^
@@ -142,135 +151,96 @@ This section is used to describe settings for the (optional) :term:`AMG` solver.
 This section is used to describe generic settings for the simulation such as time steppers,
 solution order, and file writing control.
 
-**cubaturePolynomialOrder** *<int>* [``CUBATURE POLYNOMIAL DEGREE``]
+.. table:: ``GENERAL`` keys in the ``.par`` file
 
-Polynomial order for the cubature. If not specified, this defaults to the integer
-closest to :math:`\frac{3}{2}(N + 1)` minus one, where :math:`N` is the polynomial
-order.
-
-.. TODO: need better description of what cubature is
-
-**dealiasing** *(true), false*
-
-If dealiasing is turned on, [``ADVECTION TYPE``] is set to ``CUBATURE+CONVECTIVE``,
-whereas if dealiasing is turned off, [``ADVECTION TYPE``] is set to ``CUBATURE``.
-
-.. TODO: need better description of what dealiasing is
-
-**dt** *<double>* [``DT``]
-
-Time step size
-
-**elapsedTime** *<double>* [``STOP AT ELAPSED TIME``]
-
-Elapsed time at which to end the simulation, if using ``stopAt = elapsedTime``.
-
-**endTime** *<double>* [``END TIME``]
-
-Final time at which to end the simulation, if using ``stopAt = endTime``.
-
-**extrapolation** *subCycling*
-
-.. TODO: need better description of what extrapolation is
-
-**filterCutoffRatio** *<double>*
-
-.. TODO: need better description of what filter cutoff ratio is
-
-**filtering** *hpfrt*
-
-If ``filtering = hpfrt``, [``FILTER STABILIZATION``] is set to ``RELAXATION``,
-and ``filterWeight`` must be specified. If ``filtering`` is not specified,
-[``FILTER STABILIZATION``] is set to ``NONE`` by default.
-
-.. TODO: need better description of what filtering is
-
-**filterModes** *<int>* [``HPFRT MODES``]
-
-Number of filter modes; minimum value is 1. If not specified, the number of modes
-is set by default to the nearest integer to :math:`(N+1)(1-f_c)`, where :math:`f_c`
-is the filter cutoff ratio.
-
-.. TODO: need better description of what filter modes is
-
-**filterWeight** *<double>* [``HPFRT STRENGTH``]
-
-.. TODO: need better description of what filter weight is
-
-**numSteps** *(0), <int>* [``NUMBER TIMESTEPS``]
-
-Number of time steps to perform, if using ``stopAt = numSteps``. By default, if not
-specified, then it is assumed that no time steps are performed.
-
-**polynomialOrder** *<int>* [``POLYNOMIAL DEGREE``]
-
-Polynomial order for the spectral element solution. An order of :math:`N` will result
-in :math:`N+1` basis functions for each spatial dimension. The polynomial order is
-currently limited to :math:`N < 10`.
-
-**startFrom** *<string>* [``RESTART FILE NAME``]
-
-Absolute or relative path to a nekRS output file from which to start the simulation from.
-When used, the [``RESTART FROM FILE``] option argument is also set to true.
-If the solution in the restart file was obtained with a different polynomial order,
-interpolation is performed to the current simulation settings. To only read select fields
-from the restart file (such as if you wanted to only apply the temperature solution from the
-restart file to the present simulation), append ``+U`` (to read velocity), ``+P`` (to read pressure),
-or ``+T`` (to read temperature) to the end of the restart file name. For instance, if the restart
-file is named ``restart.fld``, using ``restart.fld+T`` will only read the temperature solution.
-If ``startFrom`` is omitted, the simulation is assumed to start based on the user-defined initial conditions at time zero.
-
-**stopAt** *(numSteps), elapsedTime, endTime*
-
-When to stop the simulation, either based on a number of time steps *numSteps*, a simulated
-end time *endTime*, or a total elapsed wall time *elapsedTime*. If ``stopAt = numSteps``,
-the ``numSteps`` parameter must be provided. If ``stopAt = endTime``, the ``endTime``
-parameter must be provided. If ``stopAt = elapsedTime``, the ``elapsedTime`` parameter
-must be provided.
-
-**subCyclingSteps** *(0), <int>* [``SUBCYCLING STEPS``]
-
-Number of subcycling steps; if ``extrapolation`` is not specified, then by default
-the number of subcycling steps is zero. Otherwise, if ``extrapolation`` is specified,
-there are two possible defaults (both of which would be overridden by setting
-``subCyclingSteps`` directly) - if ``targetCFL`` is not specified, the default number of subcycling
-steps is set to 1; otherwise, the default number of subcycling steps is taken as
-the integer nearest to half the target :term:`CFL` as given by
-the ``targetCFL`` parameter.
-
-.. TODO: better description of what subcycling is
-
-**targetCFL** *<double>*
-
-The target :term:`CFL` number when using adaptive time stepping with ``variableDT = true``
-(not currently enabled). When using extrapolation, the target :term:`CFL` is also used to
-set a default for the ``subCyclingSteps``; so while this parameter does not currently set
-a target :term:`CFL` by adaptively changing the time step, it is used in some cases to set
-the default number of subcycling steps.
-
-**timeStepper** *(tombo2), bdf1, bdf2, bdf3, tombo1, tombo3* [``TIME INTEGRATOR``]
-
-The method to use for time stepping. Note that
-if you select any of the :term:`BDF` options, the time integrator is internally set to
-the :term:`TOMBO` time integrator of equivalent order.
-
-**verbose** *(false), true* [``VERBOSE``]
-
-Whether to print the simulation results in verbose format to the screen.
-
-**writeControl** *(timeStep), runTime* [``SOLUTION OUTPUT COTROL``]
-
-Method to use for the writing of output files, either based on a time step interval with
-*timeStep* (in which case ``SOLUTION OUTPUT CONTROL`` is set to ``STEPS``)
-or a simulated time interval with *runTime* (in which case ``SOLUTION OUTPUT CONTROL``
-is set to ``RUNTIME``).
-
-**writeInterval** *<double>* [``SOLUTION OUTPUT INTERVAL``]
-
-Output writing frequency, either in units of time steps for ``writeControl = timeStep`` or
-in units of simulation time for ``writeControl = runTime``. If a runtime step control is
-used that does not perfectly align with the time steps of the simulation, nekRS will write
-an output file on the timestep that most closely matches the desired write interval.
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | | Key                      | | Value         | | Availability in ``options``        | | Description                                |
+   +============================+=================+======================================+==============================================+
+   | ``cubaturePolynomialOrder``| | *<int>*       | [``CUBATURE POLYNOMIAL DEGREE``]     | | Polynomial order for the cubature. If not  |
+   |                            |                 |                                      | | specified, this defaults to the integer    |
+   |                            |                 |                                      | | closest to :math:`\frac{3}{2}(N + 1)` minus|
+   |                            |                 |                                      | | one, where :math:`N` is polynomial order   |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``dealiasing``             | | *(true)*,     | [``ADVECTION TYPE``]                 | |                                            |
+   |                            | | *false*       |                                      | |                                            |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``dt``                     | | *<double>*    | [``DT``]                             | | Time step size                             |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``elapsedTime``            | | *<double>*    | [``STOP AT ELAPSED TIME``]           | | Elapsed time at which to end the simulation|
+   |                            |                 |                                      | | if using ``stopAt = elapsedTime``          |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``endTime``                | | *<double>*    | [``END TIME``]                       | | Final time at which to end the simulation  |
+   |                            |                 |                                      | | if using ``stopAt = endTime``              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``extrapolation``          | | *subCycling*  |                                      |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterCutoffRatio``      | | *<double>*    |                                      |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filtering``              | | *hpfrt*       | [``FILTER STABILIZATION``]           |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterModes``            | | *<int>*       | [``HPFRT MODES``]                    | | Number of filter modes; minimum value is 1.|
+   |                            |                 |                                      | | If not specified, takes as the nearest     |
+   |                            |                 |                                      | | integer to :math:`(N+1)(1-f_c)`, where     |
+   |                            |                 |                                      | | :math:`f_c` is the filter cutoff ratio     |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterWeight``           | | *<double>*    | [``HPFRT STRENGTH``]                 |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``numSteps``               | | *(0), <int>*  | [``NUMBER TIMESTEPS``]               | | Number of time steps to perform, if using  |
+   |                            |                 |                                      | | ``stopAt = numSteps``.                     |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``polynomialOrder``        | | *<int>*       | [``POLYNOMIAL DEGREE``]              | | Polynomial order for the spectral element  |
+   |                            |                 |                                      | | solution. An order of :math:`N` results in |
+   |                            |                 |                                      | | :math:`N+1` basis functions for each       |
+   |                            |                 |                                      | | spatial dimension. The polynomial order is |
+   |                            |                 |                                      | | currently limited to :math:`N<10`.         |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``startFrom``              | | *<string>*    | [``RESTART FILE NAME``]              | | Absolute or relative path to a nekRS output|
+   |                            |                 |                                      | | file from which to start the simulation    |
+   |                            |                 |                                      | | from. When used, [``RESTART FROM FILE``]   |
+   |                            |                 |                                      | | is set to true. If the solution in the     |
+   |                            |                 |                                      | | file was obtained with a different         |
+   |                            |                 |                                      | | polynomial order, interpolation is         |
+   |                            |                 |                                      | | performed. To only read select fields from |
+   |                            |                 |                                      | | the restart file, append ``+U`` (to read   |
+   |                            |                 |                                      | | velocity), ``+P`` (to read pressure), or   |
+   |                            |                 |                                      | | ``+T`` (to read temperature) to the end of |
+   |                            |                 |                                      | | the restart file name. For instance, if the|
+   |                            |                 |                                      | | file is named ``restart.fld``, using       |
+   |                            |                 |                                      | | ``restart.fld+T`` will only read the       |
+   |                            |                 |                                      | | temperature solution. If ``startFrom`` is  |
+   |                            |                 |                                      | | omitted, the simulation begins based on    |
+   |                            |                 |                                      | | used-defined initial conditions.           |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``stopAt``                 | | *(numSteps)*, |                                      | | When to stop the simulation, either based  |
+   |                            | | *elapsedTime*,|                                      | | on a number of time steps, a simulated end |
+   |                            | | *endTime*     |                                      | | time, or a total elapsed wall time.        |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``subCyclingSteps``        | | *(0), <int>*  | [``SUBCYCLING STEPS``]               | | Number of sub-cycling steps, if using      |
+   |                            |                 |                                      | | extrapolation. If using extrapolation but  |
+   |                            |                 |                                      | | this parameter is not given, there are two |
+   |                            |                 |                                      | | possible defaults - if ``targetCFL`` is    |
+   |                            |                 |                                      | | provided, the default is taken as the      |
+   |                            |                 |                                      | | integer closest to the CFL divided by two; |
+   |                            |                 |                                      | | otherwise, the default is 1.               |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``targetCFL``              | *<double>*      |                                      | | The target :term:`CFL` number when using   |
+   |                            |                 |                                      | | adaptive time stepping (currently disabled)|
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``timeStepper``            | | *(tombo2)*,   | [``TIME INTEGRATOR``]                | | Method to use for time stepping; the       |
+   |                            |                 |                                      | | *bdf<n>* options are internally set to the |
+   |                            |                 |                                      | | TOMBO time integrator of equivalent order  |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``verbose``                | *(false), true* | [``VERBOSE``]                        | | Whether to print simulation results in     |
+   |                            |                 |                                      | | verbose format to standard out             |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``writeControl``           | | *(timeStep)*, | [``SOLUTION OUTPUT CONTROL``]        | | Method to use for writing of output files  |
+   |                            | | *runTime*     |                                      | | based on either a time step interval or a  |
+   |                            |                 |                                      | | simulation time interval                   |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``writeInterval``          | | *<double>*    | [``SOLUTION OUTPUT INTERVAL``]       | | Output writing frequency, in units of time |
+   |                            |                 |                                      | | steps or simulation time according to the  |
+   |                            |                 |                                      | | setting for ``writeControl``               |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
 
 ``MESH`` section
 ^^^^^^^^^^^^^^^^
