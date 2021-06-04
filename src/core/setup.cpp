@@ -785,6 +785,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("DISCRETIZATION",       options.getArgs("PRESSURE DISCRETIZATION"));
     nrs->pOptions.setArgs("BASIS",                options.getArgs("PRESSURE BASIS"));
     nrs->pOptions.setArgs("PRECONDITIONER",       options.getArgs("PRESSURE PRECONDITIONER"));
+    nrs->pOptions.setArgs("SEMFEM SOLVER", options.getArgs("PRESSURE SEMFEM SOLVER"));
+    nrs->pOptions.setArgs("SEMFEM SOLVER PRECISION", options.getArgs("PRESSURE SEMFEM SOLVER PRECISION"));
     nrs->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
     nrs->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
     nrs->pOptions.setArgs("MULTIGRID DOWNWARD SMOOTHER",

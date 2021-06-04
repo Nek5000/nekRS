@@ -29,7 +29,7 @@ jobs:
   include:
    - stage: prepare
      name: "install"
-     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && rm -rf build && ./makenrs 
+     script: rm -rf $NEKRS_HOME && cd $TRAVIS_BUILD_DIR && rm -rf build && ./nrsconfig && cmake --build build --target install -j 2  
    - stage: warmup
      name: "warm-up"
      script: cd $NEKRS_EXAMPLES/ethier && rm -rf .cache && nrspre ethier 1  

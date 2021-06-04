@@ -3,10 +3,13 @@ set(ELLIPTIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic)
 set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PGMRES.cpp
-	      ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
+        ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx/amgx.c
+        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildSEMFEM.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticKernelInfo.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridLevel.cpp
@@ -22,10 +25,10 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp)
 
-set(PARALMOND_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic/parAlmond)
+set(PARALMOND_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/elliptic/amgSolver/parAlmond)
 
 set(PARALMOND_SOURCES
-        ${PARALMOND_SOURCE_DIR}/crs_hypre.cpp
+        ${PARALMOND_SOURCE_DIR}/../hypre/boomerAMG.c
         ${PARALMOND_SOURCE_DIR}/SpMV.cpp
         ${PARALMOND_SOURCE_DIR}/agmgLevel.cpp
         ${PARALMOND_SOURCE_DIR}/agmgSetup/agmgSetup.cpp

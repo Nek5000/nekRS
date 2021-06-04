@@ -34,11 +34,12 @@
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
-#include "parAlmond.hpp"
+#include "amgSolver/parAlmond/parAlmond.hpp"
 #include "ellipticPrecon.h"
 #include "platform.hpp"
 
 #include "timer.hpp"
+
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
@@ -162,6 +163,14 @@ struct elliptic_t
 
   occa::kernel gramSchmidtOrthogonalizationKernel;
 
+  // SEMFEM kernels
+  occa::kernel gatherKernel;
+  occa::kernel scatterKernel;
+  occa::memory o_dofMap;
+  occa::memory o_SEMFEMBuffer1;
+  occa::memory o_SEMFEMBuffer2;
+  dlong numRowsSEMFEM;
+
   dfloat resNormFactor;
 
   // combined PCG update step
@@ -189,6 +198,9 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
+
+void ellipticSEMFEMSetup(elliptic_t*);
+void ellipticSEMFEMSolve(elliptic_t*, occa::memory&, occa::memory&);
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
 

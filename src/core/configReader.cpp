@@ -107,8 +107,8 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_opencl_compiler_flags", buf);
   if(!getenv("OCCA_OPENCL_COMPILER_FLAGS")) setenv("OCCA_OPENCL_COMPILER_FLAGS", buf.c_str(), 1);
 
-  ini.extract("general", "ogs_mpi_support", buf);
-  if(!getenv("OGS_MPI_SUPPORT")) setenv("OGS_MPI_SUPPORT", buf.c_str(), 1);
+  ini.extract("general", "nekrs_gpu_mpi", buf);
+  if(!getenv("NEKRS_GPU_MPI")) setenv("NEKRS_GPU_MPI", buf.c_str(), 1);
 
   buf = install_dir;
   setenv("NEKRS_INSTALL_DIR", buf.c_str(), 1);

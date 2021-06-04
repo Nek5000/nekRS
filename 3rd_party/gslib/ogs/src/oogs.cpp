@@ -17,6 +17,8 @@ extern "C" {
 static const unsigned transpose = 0;
 static const unsigned recv = 0^transpose, send = 1^transpose;
 
+static int OGS_MPI_SUPPORT = 0;
+
 typedef enum { mode_plain, mode_vec, mode_many,
                mode_dry_run } gs_mode;
 
@@ -160,6 +162,16 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
   }
 }
 
+void oogs::gpu_mpi(int val)
+{
+  OGS_MPI_SUPPORT = val;
+}
+
+int oogs::gpu_mpi()
+{
+  return OGS_MPI_SUPPORT;
+}
+
 oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::function<void()> callback, oogs_mode gsMode)
 {
   oogs_t *gs = new oogs_t[1];
@@ -247,9 +259,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   std::list<oogs_mode> oogs_mode_list;
   oogs_mode_list.push_back(OOGS_DEFAULT);
   oogs_mode_list.push_back(OOGS_HOSTMPI);
-  const char* env_val = std::getenv ("OGS_MPI_SUPPORT");
-  if(env_val != NULL && ogs->device.mode() != "Serial") { 
-    if(std::stoi(env_val)) oogs_mode_list.push_back(OOGS_DEVICEMPI);; 
+  if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") { 
+    oogs_mode_list.push_back(OOGS_DEVICEMPI);; 
   }
   std::list<oogs_modeExchange> oogs_modeExchange_list;
   oogs_modeExchange_list.push_back(OOGS_EX_PW);

@@ -41,14 +41,14 @@ export OMPI_MCA_pml=ucx
 export OMPI_MCA_btl="^vader,tcp,openib,smcuda"
 export OMPI_MCA_osc=ucx
 
-export OGS_MPI_SUPPORT=0
+export NEKRS_GPU_MPI=0
 if [[ $UCX_TLS == *"cuda"* ]] || [[ $UCX_TLS == *"rocm"* ]]; then
-  export OGS_MPI_SUPPORT=1
+  export NEKRS_GPU_MPI=1
 fi
 
 ulimit -s unlimited 2>/dev/null
 
 COMMAND="numactl --cpunodebind=$CPU --membind=$CPU $APP --device-id 0"
-echo "RANK=$RANK, LOCAL_RANK=$LOCAL_RANK, GPU=$GPU, NIC=$NIC, CPU=$CPU, OGS_MPI_SUPPORT=$OGS_MPI_SUPPORT"
+echo "RANK=$RANK, LOCAL_RANK=$LOCAL_RANK, GPU=$GPU, NIC=$NIC, CPU=$CPU, NEKRS_GPU_MPI=$NEKRS_GPU_MPI"
 
 $COMMAND

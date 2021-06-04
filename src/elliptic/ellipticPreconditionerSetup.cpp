@@ -41,9 +41,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     if(platform->comm.mpiRank == 0) printf("building MG preconditioner ... \n"); fflush(stdout);
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
-    //ellipticSEMFEMSetup(elliptic,precon);
-    printf("ERROR: SEMFEM not supported!\n");
-    ABORT(EXIT_FAILURE);;
+    ellipticSEMFEMSetup(elliptic);
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
     precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));

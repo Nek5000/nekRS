@@ -1,0 +1,87 @@
+#!/bin/bash
+#set -x
+
+###############################################################################
+# USER SETTINGS
+###############################################################################
+
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+: ${NEKRS_CC:="mpicc"}
+: ${NEKRS_CXX:="mpic++"}
+: ${NEKRS_FC:="mpif77"}
+: ${NEKRS_BACKEND_DEFAULT:=CUDA}
+: ${NEKRS_GPU_MPI:=0}
+
+: ${OCCA_CXX:="g++"}
+: ${OCCA_CXXFLAGS:="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"}
+: ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
+: ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
+
+
+
+
+###############################################################################
+# DONT'T TOUCH WHAT FOLLOWS !!!
+###############################################################################
+set -e -a
+
+: ${OCCA_CUDA_ENABLED:=1}
+: ${OCCA_HIP_ENABLED:=1}
+: ${OCCA_OPENCL_ENABLED:=1}
+: ${OCCA_METAL_ENABLED:=0}
+
+: ${NEKRS_CXXFLAGS:=""}
+if uname -a | grep 'ppc64'; then
+  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
+  OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
+fi
+NEKRS_CFLAGS="${NEKRS_CXXFLAGS}"
+NEKRS_FFLAGS="${NEKRS_CXXFLAGS}"
+
+NEKRS_NEK5000_PPLIST="PARRSB DPROCMAP"
+
+if [[ ${OCCA_CUDA_ENABLED} -eq 1 ]]; then
+: ${AMGX_ENABLED:=0}
+fi
+
+mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+NEKRS_DIR=`pwd`
+
+# =======================
+# Run CMake
+# =======================
+
+NEKRS_BUILD_DIR=`pwd`/build
+mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+cd "${NEKRS_BUILD_DIR}"
+cmake -Wno-dev \
+      -Wfatal-errors \
+      -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+      -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
+      -DCMAKE_C_COMPILER="${NEKRS_CC}" \
+      -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
+      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
+      -DNEK5000_PPLIST="${NEKRS_NEK5000_PPLIST}" \
+      -DOCCA_CXX="${OCCA_CXX}" \
+      -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
+      -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
+      -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
+      -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
+      -DGPU_MPI="${NEKRS_GPU_MPI}" \
+      -DENABLE_CUDA="${OCCA_CUDA_ENABLED}" \
+      -DENABLE_OPENCL="${OCCA_OPENCL_ENABLED}" \
+      -DENABLE_HIP="${OCCA_HIP_ENABLED}" \
+      -DENABLE_METAL="${OCCA_METAL_ENABLED}" \
+      -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
+      -DHYPRE_BIGINT=1 \
+      -DENABLE_AMGX="${AMGX_ENABLED}" \
+      ${NEKRS_DIR}
+
+echo ""
+echo "Now run e.g. cmake --build build --target install -j 8 ..."
+echo ""

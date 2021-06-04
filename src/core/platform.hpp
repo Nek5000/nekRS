@@ -37,6 +37,7 @@ struct deviceMemPool_t{
   occa::memory slice0, slice1, slice2, slice3, slice4, slice5, slice6, slice7;
   occa::memory slice9, slice12, slice15, slice18, slice19;
   occa::memory o_ptr;
+  long long bytesAllocated;
 };
 class device_t : public occa::device{
   public:
@@ -56,8 +57,10 @@ class device_t : public occa::device{
     occa::memory malloc(const dlong Nbytes, const occa::properties& properties);
     occa::memory malloc(const dlong Nwords, const dlong wordSize, occa::memory src);
     occa::memory malloc(const dlong Nwords, const dlong wordSize);
+    int id() const { return _device_id; }
   private:
     dlong bufferSize;
+    int _device_id;
     void* _buffer;
 };
 struct comm_t{
