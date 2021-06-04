@@ -56,7 +56,6 @@ namespace occa {
   class primitive {
   public:
     int type;
-    std::string source;
 
     union {
       bool bool_;
@@ -83,14 +82,13 @@ namespace occa {
     }
 
     inline primitive(const primitive &p) :
-        type(p.type),
-        source(p.source) {
+        type(p.type)
+    {
       value.ptr = p.value.ptr;
     }
 
     inline primitive& operator = (const primitive &p) {
       type = p.type;
-      source = p.source;
       value.ptr = p.value.ptr;
       return *this;
     }

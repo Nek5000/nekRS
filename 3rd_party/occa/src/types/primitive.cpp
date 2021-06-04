@@ -31,14 +31,12 @@ namespace occa {
 
     if (strncmp(c, "true", 4) == 0) {
       p = true;
-      p.source = "true";
 
       c += 4;
       return p;
     }
     if (strncmp(c, "false", 5) == 0) {
       p = false;
-      p.source = "false";
 
       c += 5;
       return p;
@@ -90,7 +88,6 @@ namespace occa {
 
     if (!loadedFormattedValue && !digits) {
       c = c0;
-      p.source = std::string(c0, c - c0);
       return p;
     }
 
@@ -161,7 +158,6 @@ namespace occa {
       }
     }
 
-    p.source = std::string(c0, c - c0);
     return p;
   }
 
@@ -226,10 +222,6 @@ namespace occa {
   }
 
   std::string primitive::toString() const {
-    if (source.size()) {
-      return source;
-    }
-
     std::string str;
     switch (type) {
       case primitiveType::bool_   : str = (value.bool_ ? "true" : "false");         break;
