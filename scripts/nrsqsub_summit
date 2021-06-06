@@ -15,7 +15,13 @@ fi
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
 : ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 NVME_HOME="/mnt/bb/$USER/"
-XL_HOME="/sw/summit/xl/16.1.1-9/xlC/16.1.1"
+
+# temporary load xl modules for OLCF_XLC_ROOT
+module load xl
+XL_HOME="$OLCF_XLC_ROOT"
+
+# reload previously used module
+module load gcc
 
 : ${CPUONLY:=0}
 export NEKRS_HOME
