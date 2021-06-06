@@ -23,7 +23,7 @@ export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
 if [ $CPUONLY -eq 1 ]; then
-  export OCCA_CXX="$XL_HOME/bin/xlc" 
+  export OCCA_CXX="$XL_HOME/bin/xlc_r" 
   export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
   export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 fi
