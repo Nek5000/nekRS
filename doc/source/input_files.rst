@@ -128,21 +128,21 @@ This section is used to describe settings for the (optional) :term:`AMG` solver.
 
 .. table:: ``BOOMERAMG`` keys in the ``.par`` file
 
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | | Key                   | | Value         | | Availability in ``options``        | | Description                                |
-   +=========================+=================+======================================+==============================================+
-   | ``coarsenType``         | |               | [``BOOMERAMG COARSEN TYPE``]         |                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``interpolationType``   | |               | [``BOOMERAMG INTERPOLATION TYPE``]   |                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``iterations``          | |               | [``BOOMERAMG ITERATIONS``]           |                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``nonGalerkinTol``      | |               | [``BOOMERAMG NONGALERKIN TOLERANCE``]|                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``smootherType``        | |               | [``BOOMERAMG SMOOTHER TYPE``]        |                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``strongThreshold``     | |               | [``BOOMERAMG STRONG THRESHOLD``]     |                                              |
-   +-------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | | Key                      | | Value         | | Availability in ``options``        | | Description                                |
+   +============================+=================+======================================+==============================================+
+   | ``coarsenType``            | |               | [``BOOMERAMG COARSEN TYPE``]         |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``interpolationType``      | |               | [``BOOMERAMG INTERPOLATION TYPE``]   |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``iterations``             | |               | [``BOOMERAMG ITERATIONS``]           |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``nonGalerkinTol``         | |               | [``BOOMERAMG NONGALERKIN TOLERANCE``]|                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``smootherType``           | |               | [``BOOMERAMG SMOOTHER TYPE``]        |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``strongThreshold``        | |               | [``BOOMERAMG STRONG THRESHOLD``]     |                                              |
+   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
 
 
 ``GENERAL`` section
@@ -153,94 +153,94 @@ solution order, and file writing control.
 
 .. table:: ``GENERAL`` keys in the ``.par`` file
 
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | | Key                      | | Value         | | Availability in ``options``        | | Description                                |
-   +============================+=================+======================================+==============================================+
-   | ``cubaturePolynomialOrder``| | *<int>*       | [``CUBATURE POLYNOMIAL DEGREE``]     | | Polynomial order for the cubature. If not  |
-   |                            |                 |                                      | | specified, this defaults to the integer    |
-   |                            |                 |                                      | | closest to :math:`\frac{3}{2}(N + 1)` minus|
-   |                            |                 |                                      | | one, where :math:`N` is polynomial order   |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``dealiasing``             | | *(true)*,     | [``ADVECTION TYPE``]                 | |                                            |
-   |                            | | *false*       |                                      | |                                            |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``dt``                     | | *<double>*    | [``DT``]                             | | Time step size                             |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``elapsedTime``            | | *<double>*    | [``STOP AT ELAPSED TIME``]           | | Elapsed time at which to end the simulation|
-   |                            |                 |                                      | | if using ``stopAt = elapsedTime``          |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``endTime``                | | *<double>*    | [``END TIME``]                       | | Final time at which to end the simulation  |
-   |                            |                 |                                      | | if using ``stopAt = endTime``              |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``extrapolation``          | | *subCycling*  |                                      |                                              |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``filterCutoffRatio``      | | *<double>*    |                                      |                                              |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``filtering``              | | *hpfrt*       | [``FILTER STABILIZATION``]           |                                              |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``filterModes``            | | *<int>*       | [``HPFRT MODES``]                    | | Number of filter modes; minimum value is 1.|
-   |                            |                 |                                      | | If not specified, takes as the nearest     |
-   |                            |                 |                                      | | integer to :math:`(N+1)(1-f_c)`, where     |
-   |                            |                 |                                      | | :math:`f_c` is the filter cutoff ratio     |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``filterWeight``           | | *<double>*    | [``HPFRT STRENGTH``]                 |                                              |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``numSteps``               | | *(0), <int>*  | [``NUMBER TIMESTEPS``]               | | Number of time steps to perform, if using  |
-   |                            |                 |                                      | | ``stopAt = numSteps``.                     |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``polynomialOrder``        | | *<int>*       | [``POLYNOMIAL DEGREE``]              | | Polynomial order for the spectral element  |
-   |                            |                 |                                      | | solution. An order of :math:`N` results in |
-   |                            |                 |                                      | | :math:`N+1` basis functions for each       |
-   |                            |                 |                                      | | spatial dimension. The polynomial order is |
-   |                            |                 |                                      | | currently limited to :math:`N<10`.         |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``startFrom``              | | *<string>*    | [``RESTART FILE NAME``]              | | Absolute or relative path to a nekRS output|
-   |                            |                 |                                      | | file from which to start the simulation    |
-   |                            |                 |                                      | | from. When used, [``RESTART FROM FILE``]   |
-   |                            |                 |                                      | | is set to true. If the solution in the     |
-   |                            |                 |                                      | | file was obtained with a different         |
-   |                            |                 |                                      | | polynomial order, interpolation is         |
-   |                            |                 |                                      | | performed. To only read select fields from |
-   |                            |                 |                                      | | the restart file, append ``+U`` (to read   |
-   |                            |                 |                                      | | velocity), ``+P`` (to read pressure), or   |
-   |                            |                 |                                      | | ``+T`` (to read temperature) to the end of |
-   |                            |                 |                                      | | the restart file name. For instance, if the|
-   |                            |                 |                                      | | file is named ``restart.fld``, using       |
-   |                            |                 |                                      | | ``restart.fld+T`` will only read the       |
-   |                            |                 |                                      | | temperature solution. If ``startFrom`` is  |
-   |                            |                 |                                      | | omitted, the simulation begins based on    |
-   |                            |                 |                                      | | used-defined initial conditions.           |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``stopAt``                 | | *(numSteps)*, |                                      | | When to stop the simulation, either based  |
-   |                            | | *elapsedTime*,|                                      | | on a number of time steps, a simulated end |
-   |                            | | *endTime*     |                                      | | time, or a total elapsed wall time.        |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``subCyclingSteps``        | | *(0), <int>*  | [``SUBCYCLING STEPS``]               | | Number of sub-cycling steps, if using      |
-   |                            |                 |                                      | | extrapolation. If using extrapolation but  |
-   |                            |                 |                                      | | this parameter is not given, there are two |
-   |                            |                 |                                      | | possible defaults - if ``targetCFL`` is    |
-   |                            |                 |                                      | | provided, the default is taken as the      |
-   |                            |                 |                                      | | integer closest to the CFL divided by two; |
-   |                            |                 |                                      | | otherwise, the default is 1.               |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``targetCFL``              | *<double>*      |                                      | | The target :term:`CFL` number when using   |
-   |                            |                 |                                      | | adaptive time stepping (currently disabled)|
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``timeStepper``            | | *(tombo2)*,   | [``TIME INTEGRATOR``]                | | Method to use for time stepping; the       |
-   |                            |                 |                                      | | *bdf<n>* options are internally set to the |
-   |                            |                 |                                      | | TOMBO time integrator of equivalent order  |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``verbose``                | *(false), true* | [``VERBOSE``]                        | | Whether to print simulation results in     |
-   |                            |                 |                                      | | verbose format to standard out             |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``writeControl``           | | *(timeStep)*, | [``SOLUTION OUTPUT CONTROL``]        | | Method to use for writing of output files  |
-   |                            | | *runTime*     |                                      | | based on either a time step interval or a  |
-   |                            |                 |                                      | | simulation time interval                   |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
-   | ``writeInterval``          | | *<double>*    | [``SOLUTION OUTPUT INTERVAL``]       | | Output writing frequency, in units of time |
-   |                            |                 |                                      | | steps or simulation time according to the  |
-   |                            |                 |                                      | | setting for ``writeControl``               |
-   +----------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | | Key                         | | Value         | | Availability in ``options``        | | Description                                |
+   +===============================+=================+======================================+==============================================+
+   | ``cubaturePolynomialOrder`   `| | *<int>*       | [``CUBATURE POLYNOMIAL DEGREE``]     | | Polynomial order for the cubature. If not  |
+   |                               |                 |                                      | | specified, this defaults to the integer    |
+   |                               |                 |                                      | | closest to :math:`\frac{3}{2}(N + 1)` minus|
+   |                               |                 |                                      | | one, where :math:`N` is polynomial order   |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``dealiasing``                | | *(true)*,     | [``ADVECTION TYPE``]                 | |                                            |
+   |                               | | *false*       |                                      | |                                            |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``dt``                        | | *<double>*    | [``DT``]                             | | Time step size                             |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``elapsedTime``               | | *<double>*    | [``STOP AT ELAPSED TIME``]           | | Elapsed time at which to end the simulation|
+   |                               |                 |                                      | | if using ``stopAt = elapsedTime``          |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``endTime``                   | | *<double>*    | [``END TIME``]                       | | Final time at which to end the simulation  |
+   |                               |                 |                                      | | if using ``stopAt = endTime``              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``extrapolation``             | | *subCycling*  |                                      |                                              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterCutoffRatio``         | | *<double>*    |                                      |                                              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filtering``                 | | *hpfrt*       | [``FILTER STABILIZATION``]           |                                              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterModes``               | | *<int>*       | [``HPFRT MODES``]                    | | Number of filter modes; minimum value is 1.|
+   |                               |                 |                                      | | If not specified, takes as the nearest     |
+   |                               |                 |                                      | | integer to :math:`(N+1)(1-f_c)`, where     |
+   |                               |                 |                                      | | :math:`f_c` is the filter cutoff ratio     |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``filterWeight``              | | *<double>*    | [``HPFRT STRENGTH``]                 |                                              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``numSteps``                  | | *(0), <int>*  | [``NUMBER TIMESTEPS``]               | | Number of time steps to perform, if using  |
+   |                               |                 |                                      | | ``stopAt = numSteps``.                     |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``polynomialOrder``           | | *<int>*       | [``POLYNOMIAL DEGREE``]              | | Polynomial order for the spectral element  |
+   |                               |                 |                                      | | solution. An order of :math:`N` results in |
+   |                               |                 |                                      | | :math:`N+1` basis functions for each       |
+   |                               |                 |                                      | | spatial dimension. The polynomial order is |
+   |                               |                 |                                      | | currently limited to :math:`N<10`.         |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``startFrom``                 | | *<string>*    | [``RESTART FILE NAME``]              | | Absolute or relative path to a nekRS output|
+   |                               |                 |                                      | | file from which to start the simulation    |
+   |                               |                 |                                      | | from. When used, [``RESTART FROM FILE``]   |
+   |                               |                 |                                      | | is set to true. If the solution in the     |
+   |                               |                 |                                      | | file was obtained with a different         |
+   |                               |                 |                                      | | polynomial order, interpolation is         |
+   |                               |                 |                                      | | performed. To only read select fields from |
+   |                               |                 |                                      | | the restart file, append ``+U`` (to read   |
+   |                               |                 |                                      | | velocity), ``+P`` (to read pressure), or   |
+   |                               |                 |                                      | | ``+T`` (to read temperature) to the end of |
+   |                               |                 |                                      | | the restart file name. For instance, if the|
+   |                               |                 |                                      | | file is named ``restart.fld``, using       |
+   |                               |                 |                                      | | ``restart.fld+T`` will only read the       |
+   |                               |                 |                                      | | temperature solution. If ``startFrom`` is  |
+   |                               |                 |                                      | | omitted, the simulation begins based on    |
+   |                               |                 |                                      | | used-defined initial conditions.           |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``stopAt``                    | | *(numSteps)*, |                                      | | When to stop the simulation, either based  |
+   |                               | | *elapsedTime*,|                                      | | on a number of time steps, a simulated end |
+   |                               | | *endTime*     |                                      | | time, or a total elapsed wall time.        |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``subCyclingSteps``           | | *(0), <int>*  | [``SUBCYCLING STEPS``]               | | Number of sub-cycling steps, if using      |
+   |                               |                 |                                      | | extrapolation. If using extrapolation but  |
+   |                               |                 |                                      | | this parameter is not given, there are two |
+   |                               |                 |                                      | | possible defaults - if ``targetCFL`` is    |
+   |                               |                 |                                      | | provided, the default is taken as the      |
+   |                               |                 |                                      | | integer closest to the CFL divided by two; |
+   |                               |                 |                                      | | otherwise, the default is 1.               |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``targetCFL``                 | *<double>*      |                                      | | The target :term:`CFL` number when using   |
+   |                               |                 |                                      | | adaptive time stepping (currently disabled)|
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``timeStepper``               | | *(tombo2)*,   | [``TIME INTEGRATOR``]                | | Method to use for time stepping; the       |
+   |                               |                 |                                      | | *bdf<n>* options are internally set to the |
+   |                               |                 |                                      | | TOMBO time integrator of equivalent order  |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``verbose``                   | *(false), true* | [``VERBOSE``]                        | | Whether to print simulation results in     |
+   |                               |                 |                                      | | verbose format to standard out             |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``writeControl``              | | *(timeStep)*, | [``SOLUTION OUTPUT CONTROL``]        | | Method to use for writing of output files  |
+   |                               | | *runTime*     |                                      | | based on either a time step interval or a  |
+   |                               |                 |                                      | | simulation time interval                   |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``writeInterval``             | | *<double>*    | [``SOLUTION OUTPUT INTERVAL``]       | | Output writing frequency, in units of time |
+   |                               |                 |                                      | | steps or simulation time according to the  |
+   |                               |                 |                                      | | setting for ``writeControl``               |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
 
 ``MESH`` section
 ^^^^^^^^^^^^^^^^
@@ -248,63 +248,77 @@ solution order, and file writing control.
 This section is used to describe mesh settings and set up various mesh solvers
 for mesh motion.
 
-**partitioner** [``MESH PARTITIONER``]
+.. table:: ``MESH`` keys in the ``.par`` file
 
-**solver** *elasticity, none, user*
-
-If ``solver = none``, the mesh does not move and [``MOVING MESH``] is set to false.
-Otherwise, the solver is stored in [``MESH SOLVER``]. When ``solver = user``, the
-mesh moves according to a user-specified velocity. Alternatively, if
-``solver = elasticity``, then the mesh motion is solved with an :term:`ALE` formulation.
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | | Key                         | | Value         | | Availability in ``options``        | | Description                                |
+   +===============================+=================+======================================+==============================================+
+   | ``partitioner``               |                 | [``MESH PARTITIONER``]               |                                              |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
+   | ``solver``                    | | *elasticity*, | [``MESH SOLVER``]                    | | When ``solver = user``, the mesh moves     |
+   |                               | | *none, user*  |                                      | | according to a user-specified velocity.    |
+   |                               |                 |                                      | | Otherwise, the mesh motion is solved with  |
+   |                               |                 |                                      | | an elasticity formulation.                 |
+   +-------------------------------+-----------------+--------------------------------------+----------------------------------------------+
 
 ``OCCA`` section
 ^^^^^^^^^^^^^^^^
 
 This section is used to specify the :term:`OCCA` backend for parallelization.
 
-**backend** *(CUDA), CPU, HIP, OPENCL, OPENMP, SERIAL* [``THREAD MODEL``]
+.. table:: ``OCCA`` keys in the ``.par`` file
 
-OCCA backend; ``CPU`` is the same as ``SERIAL``, and means that parallelism is achieved with
-:term:`MPI`.
-
-**deviceNumber** *(LOCAL-RANK), <int>* [``DEVICE NUMBER``]
+   +-------------------------------+------------------+--------------------------------------+----------------------------------------------+
+   | | Key                         | | Value          | | Availability in ``options``        | | Description                                |
+   +===============================+==================+======================================+==============================================+
+   | ``backend``                   | | *(CUDA), CPU*  | [``THREAD MODEL``]                   | | OCCA backend; ``CPU`` is the same as       |
+   |                               | | *HIP, OPENCL*  |                                      | | ``SERIAL``, and means that parallelization |
+   |                               | | *OPENMP*,      |                                      | | is achieved with :term:`MPI`.              |
+   |                               | | *SERIAL*       |                                      |                                              |
+   +-------------------------------+------------------+--------------------------------------+----------------------------------------------+
+   | ``deviceNumber``              | | *(LOCAL-RANK)*,| [``DEVICE NUMBER``]                  |                                              |
+   |                               | | *<int>*        |                                      |                                              |
+   +-------------------------------+------------------+--------------------------------------+----------------------------------------------+
 
 ``PRESSURE`` section
 ^^^^^^^^^^^^^^^^^^^^
 
 The ``PRESSURE`` section describes solve settings for the pressure equation. Note that
-this block is only read if the ``VELOCITY`` block is also present.
+this block is only required if the ``VELOCITY`` block is also present.
 
-.. TODO: This section needs a lot more work describing all the parameters
+.. table:: ``PRESSURE`` keys in the ``.par`` file
 
-**downwardSmoother** *ASM, jacobi, RAS* [``PRESSURE MULTIGRID DOWNWARD SMOOTHER``]
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | | Key                         | | Value          | | Availability in ``options``              | | Description                                |
+   +===============================+==================+============================================+==============================================+
+   | ``downwardSmoother``          | | *ASM, jacobi,* | [``PRESSURE MULTIGRID DOWNWARD SMOOTHER``] |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``galerkinCoarseOperator``    | | *<bool>*       | [``GALERKIN COARSE OPERATOR``]             |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``maxIterations``             | *<int>*          | [``PRESSURE MAXIMUM ITERATIONS``]          |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``pMultigridCoarsening``      |                  | [``PRESSURE MULTIGRID COARSENING``]        |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``preconditioner``            | | *jacobi,*      | [``PRESSURE PRECONDITIONER``]              | | The preconditioner for the pressure        |
+   |                               | | *multigrid*,   |                                            | | equation; ``semg`` and ``multigrid`` both  |
+   |                               | | *none, semfem*,|                                            | | result in a multigrid preconditioner       |
+   |                               | | *semg*         |                                            |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProj``              | *(true), false*  | [``PRESSURE RESIDUAL PROJECTION``]         |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProjectionStart``   | *<int>*          | [``PRESSURE RESIDUAL PROJECTION START``]   |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProjectionVectors`` | *<int>*          | [``PRESSURE RESIDUAL PROJECTION VECTORS``] |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualTol``               | *<double>*       | [``PRESSURE SOLVER TOLERANCE``]            | | Absolute residual tolerance for the        |
+   |                               |                  |                                            | | equation                                   |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``smootherType``              |                  | [``PRESSURE MULTIGRID SMOOTHER``]          |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``upwardSmoother``            | | *ASM, JACOBI,* | [``PRESSURE MULTIGRID UPWARD SMOOTHER``]   |                                              |
+   |                               | | *RAS*          |                                            |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
 
-**galerkinCoarseOperator** *<bool>* [``GALERKIN COARSE OPERATOR``]
-
-**maxIterations** *<int>* [``PRESSURE MAXIMUM ITERATIONS``]
-
-**pMultigridCoarsening** [``PRESSURE MULTIGRID COARSENING``]
-
-**preconditioner** *jacobi, multigrid, none, semfem, semg* [``PRESSURE PRECONDITIONER``]
-
-The pressure preconditioner to use; ``semg`` and ``multigrid`` both result
-in a multigrid preconditioner.
-
-**residualProj** *(true), false* [``PRESSURE RESIDUAL PROJECTION``]
-
-**residualProjectionStart** *<int>* [``PRESSURE RESIDUAL PROJECTION START``]
-
-**residualProjectionVectors** *<int>* [``PRESSURE RESIDUAL PROJECTION VECTORS``]
-
-**residualTol** *<double>* [``PRESSURE SOLVER TOLERANCE``]
-
-Absolute residual tolerance for the pressure solution
-
-**smootherType** *additive, asm, chebyshev, chebyshev+ras, chebyshev+asm, ras* [``PRESSURE MULTIGRID SMOOTHER``]
-
-**solver**
-
-**upwardSmoother** *ASM, JACOBI, RAS* [``PRESSURE MULTIGRID UPWARD SMOOTHER``]
 
 ``PROBLEMTYPE`` section
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -314,20 +328,30 @@ While individual equations can be turned on/off in the ``VELOCITY``, ``TEMPERATU
 and ``SCALARXX`` sections, this block is used for higher-level control of the forms
 of those equations themselves.
 
-**equation** *stokes*
+.. table:: ``PRESSURE`` keys in the ``.par`` file
 
-Whether to omit the advection term in the conservation of momentum equation, therefore
-solving for the Stokes equations. If ``equation = stokes``, then
-[``ADVECTION``] is set to false.
-
-**stressFormulation** *(false), true* [``STRESSFORMULATION``]
-
-Whether the viscosity (molecular plus turbulent) is not constant, therefore requiring
-use of the full form of the viscous stress tensor :math:`\tau`. By setting ``stressFormulation = false``,
-:math:`\nabla\cdot\tau` is represented as :math:`\nabla\cdot\tau=\mu\nabla^2\mathbf u`.
-Even if the molecular viscosity is constant, this parameter must be set to ``true``
-when using a :term:`RANS` model because the turbulent viscosity portion of the overall
-viscosity is not constant.
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | | Key                         | | Value          | | Availability in ``options``              | | Description                                |
+   +===============================+==================+============================================+==============================================+
+   | ``equation``                  | *stokes*         |                                            | | Whether to omit the advection term in the  |
+   |                               |                  |                                            | | momentum equations, therefore solving for  |
+   |                               |                  |                                            | | the Stokes equations. If                   |
+   |                               |                  |                                            | | ``equation = stokes``, then [``ADVECTION``]|
+   |                               |                  |                                            | | is set to false.                           |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``stressFormulation``         | *(false), true*  | [``STRESS FORMULATION``]                   | | Whether the viscosity (molecular plus      |
+   |                               |                  |                                            | | turbulent) is not constant, therefore      |
+   |                               |                  |                                            | | requiring use of the full form of the      |
+   |                               |                  |                                            | | viscous stress tensor. By setting          |
+   |                               |                  |                                            | | ``stressFormulation = false``,             |
+   |                               |                  |                                            | | :math:`\nabla\cdot\tau` is represented as  |
+   |                               |                  |                                            | | :math:`\mu\nabla^2\mathbf u`. Even if the  |
+   |                               |                  |                                            | | molecular viscosity is constant, this      |
+   |                               |                  |                                            | | parameter must be set to true when using a |
+   |                               |                  |                                            | | :term:`RANS` model because the turbulent   |
+   |                               |                  |                                            | | viscosity contribution of the overall      |
+   |                               |                  |                                            | | viscosity is not constant.                 |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
 
 ``SCALARXX`` section
 ^^^^^^^^^^^^^^^^^^^^
@@ -336,37 +360,48 @@ This section is used to define the transport parameters and solver settings for 
 passive scalar. For instance, in a simulation with two passive scalars, you would have
 two sections - ``SCALAR01`` and ``SCALAR02``, each of which represents a passive scalar.
 
-**boundaryTypeMap** *<string[]>*
+.. table:: ``SCALARXX`` keys in the ``.par`` file
 
-Array of strings describing the boundary condition to be applied to each sideset, ordered
-by sideset ID. The valid characters/strings are shown in Table
-:ref:`Passive Scalar Boundary Conditions <scalar_bcs>`.
-
-**diffusivity** *<double>*
-
-Although this is named ``diffusivity``, this parameter doublely represents the conductivity
-governing diffusion of the passive scalar. In other words, the analogue from the
-``TEMPERATURE`` section (a passive scalar in its internal representation) is the
-``conductivity`` parameter. If a negative value is provided, the
-conductivity is internally set to :math:`1/|k|`, where :math:`k` is the value of the
-``conductivity`` key. If not specified, this defaults to :math:`1.0`.
-
-**residualProjection** *<bool>*
-
-**residualProjectionStart** *<int>*
-
-**residualProjectionVectors** *<int>*
-
-**residualTol** *<double>*
-
-Absolute residual tolerance for the passive scalar solution
-
-**rho** *<double>*
-
-Although this is name ``rho``, this parameter doublely represents the coefficient on the
-total derivative of the passive scalar. In other words, the analogue from the
-``TEMPERATURE`` section (a passive scalar in its internal representation) is the
-``rhoCp`` parameter. If not specified, this defaults to :math:`1.0`.
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | | Key                         | | Value          | | Availability in ``options``              | | Description                                |
+   +===============================+==================+============================================+==============================================+
+   | ``boundaryTypeMap``           | *<string[]>*     |                                            | | Array of strings describing the boundary   |
+   |                               |                  |                                            | | condition to be applied to each sideset,   |
+   |                               |                  |                                            | | ordered by sideset ID. The valid characters|
+   |                               |                  |                                            | | are shown in                               |
+   |                               |                  |                                            | | :ref:`Passive Scalar BCs <scalar_bcs>`.    |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``diffusivity``               | *<double>*       |                                            | | Although this term is named                |
+   |                               |                  |                                            | | ``diffusivity``, this term really          |
+   |                               |                  |                                            | | represents the conductivity governing      |
+   |                               |                  |                                            | | diffusion of the passive scalar. In other  |
+   |                               |                  |                                            | | words, the analog from the ``TEMPERATURE`` |
+   |                               |                  |                                            | | section (a passive scalar in how it is     |
+   |                               |                  |                                            | | represented internally in nekRS) is the    |
+   |                               |                  |                                            | | ``conductivity`` parameter. If a negative  |
+   |                               |                  |                                            | | value is provided, the conductivity is     |
+   |                               |                  |                                            | | internally set to :math:`1/\|k\|`, where   |
+   |                               |                  |                                            | | :math:`\|k\|` is the absolute value of the |
+   |                               |                  |                                            | | ``diffusivity`` parameter. If not          |
+   |                               |                  |                                            | | specified, this defaults to unity.         |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProj``              | *<bool>*         |                                            |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProjectionStart``   | *<int>*          |                                            |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualProjectionVectors`` | *<int>*          |                                            |                                              |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``residualTol``               | *<double>*       |                                            | | Absolute residual tolerance for the        |
+   |                               |                  |                                            | | equation                                   |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
+   | ``rho``                       | *<double>*       |                                            | | Although this term is named ``rho``, this  |
+   |                               |                  |                                            | | term really represents the coefficient on  |
+   |                               |                  |                                            | | the total derivative of the passive scalar.|
+   |                               |                  |                                            | | In other words, the analog from the        |
+   |                               |                  |                                            | | ``TEMPERATURE`` section is the ``rhoCp``   |
+   |                               |                  |                                            | | parameter. If not specified, this defaults |
+   |                               |                  |                                            | | to unity.                                  |
+   +-------------------------------+------------------+--------------------------------------------+----------------------------------------------+
 
 ``TEMPERATURE`` section
 ^^^^^^^^^^^^^^^^^^^^^^^
