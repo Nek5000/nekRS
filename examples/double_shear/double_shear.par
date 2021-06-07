@@ -1,0 +1,39 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL] 
+numSteps = 2000
+polynomialOrder = 5
+dt = 1e-03
+timestepper = bdf3
+
+[PRESSURE]
+residualTol = 1e-08
+
+[VELOCITY]
+residualTol = 1e-8
+density = 1.
+viscosity = -100000
+
+[TEMPERATURE]
+residualProj = true
+residualTol = 1e-8
+rhocp = 1
+conductivity = -100000
+regularization=none
+
+[SCALAR01]
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=none
+
+[SCALAR02]
+dt = 1e-03
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+c0

@@ -47,6 +47,12 @@ struct cds_t
   //  dfloat *rhsS;
   dfloat* rkS;
 
+  // filter
+  int filterNc;
+  dfloat filterS[NSCALAR_MAX];
+  dfloat* filterM;
+  occa::memory o_filterMT;
+
   //RK Subcycle Data
   int nRK;
   dfloat* coeffsfRK, * weightsRK, * nodesRK;

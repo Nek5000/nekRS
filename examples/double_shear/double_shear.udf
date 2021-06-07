@@ -1,0 +1,25 @@
+//
+// nekRS User Defined File
+//
+
+#include "udf.hpp"
+
+void UDF_LoadKernels(nrs_t *nrs)
+{
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+}
