@@ -43,7 +43,10 @@ or clone our GitHub repository:
 ```sh
 git clone https://github.com/Nek5000/nekRS.git
 ```
+The git master branch always points to the latest release, the next branch
+is a special development branch that contains all the new features that will be released at the next release cycle.
 
+#
 To build and install the code just run:
 
 ```sh
