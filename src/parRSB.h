@@ -14,7 +14,6 @@ typedef struct {
   int rsb_algo;         // 0 - Lanczos, 1 - MG (Default: 0)
   int rsb_prepartition; // 0 - None, 1 - RCB , 2 - RIB (Default: 1)
   int rsb_grammian;     // 0 or 1 (Default: 1)
-  int rsb_paul;         // 0 or 1 (Default: 1)
 } parRSB_options;
 
 extern parRSB_options parrsb_default_options;

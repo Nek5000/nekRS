@@ -95,6 +95,9 @@ int GenmapLanczosLegendary(genmap_handle h, struct comm *gsc, genmap_vector f,
     }
   }
 
+  metric_acc(LANCZOSTOLFINAL, rnorm);
+  metric_acc(LANCZOSTOLTARGET, rtol);
+
   GenmapDestroyVector(p);
   GenmapDestroyVector(w);
   GenmapDestroyVector(r);
