@@ -67,11 +67,6 @@ if [ ! -f $case.par ]; then
   exit 1
 fi
 
-if [ ! -f $case.co2 ]; then
-  echo "Cannot find" $case.co2
-  exit 1
-fi
-
 if [ ! -f $case.udf ]; then
   echo "Cannot find" $case.udf
   exit 1

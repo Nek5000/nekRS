@@ -36,10 +36,11 @@ fi
 
 #export OMPI_LD_PRELOAD_POSTPEND=$OLCF_SPECTRUM_MPI_ROOT/lib/libmpitrace.so
 
-#export PAMI_ENABLE_STRIPING=1
-#export PAMI_IBV_ADAPTER_AFFINITY=1
-#export PAMI_IBV_DEVICE_NAME="mlx5_0:1,mlx5_3:1"
-#export PAMI_IBV_DEVICE_NAME_1="mlx5_3:1,mlx5_0:1"
+# optimize for BW
+export PAMI_ENABLE_STRIPING=1
+export PAMI_IBV_ADAPTER_AFFINITY=1
+export PAMI_IBV_DEVICE_NAME="mlx5_0:1,mlx5_3:1"
+export PAMI_IBV_DEVICE_NAME_1="mlx5_3:1,mlx5_0:1"
 
 export OMPI_MCA_io=romio321
 export ROMIO_HINTS="$(pwd)/.romio_hint"
@@ -79,11 +80,6 @@ fi
 
 if [ ! -f $case.par ]; then
   echo "Cannot find" $case.par
-  exit 1
-fi
-
-if [ ! -f $case.co2 ]; then
-  echo "Cannot find" $case.co2
   exit 1
 fi
 
