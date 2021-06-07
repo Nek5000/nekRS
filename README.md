@@ -34,8 +34,8 @@ Requirements:
 Download the latest release tarball (recommended)
 
 ```sh
-wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.0.tar.gz 
-tar -zxf v21.0.tar.gz 
+wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.1.tar.gz 
+tar -zxf v21.1.tar.gz 
 ```
 
 or clone our GitHub repository:
