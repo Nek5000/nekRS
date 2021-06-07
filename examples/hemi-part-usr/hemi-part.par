@@ -1,0 +1,30 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL] 
+polynomialOrder = 5
+#startFrom = restart.fld
+stopAt = endTime
+endTime = 50 
+
+dt = 5e-3
+timeStepper = tombo2
+extrapolation = subCycling
+subCyclingSteps = 1
+
+writeControl = runTime
+writeInterval = 0.5
+
+filtering = hpfrt 
+filterWeight = 8
+filterModes = 1
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = inlet, outlet, wall, slipY, slipZ
+residualTol = 1e-06
+density = 1.0
+viscosity = -1400

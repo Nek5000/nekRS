@@ -103,13 +103,10 @@ void particle_advect_std(dfloat x[LPART][MAX_D],
          v_hist[i][1][k] = v_hist[i][0][k];
          v_hist[i][0][k] = u1[i][k];
       }
+      // Mark particles that have left the region as invalid
+      // outflow is at x=15
+      valid[i] = x[i][0] <= 15;
     }
-  }
-
-  // Remove particles that have exited the region
-  // outflow is at x=15
-  for (int i = 0; i < npart; ++i) {
-    valid[i] = x[i][0] <= 15;
   }
 }
 
@@ -173,7 +170,7 @@ void particle_out(dfloat x[LPART][MAX_D],
           x_temp[i][j] = x[ii][j];       // coordinates
         }
         x_temp[i][D] = part_color[ii];   // color
-        x_temp[i][D+1] = 1.0;
+        x_temp[i][D+1] = 1.0;            // validity
       }
     }
 
@@ -194,7 +191,7 @@ void particle_out(dfloat x[LPART][MAX_D],
 }
 
 
-void my_particle_generator(nrs_t *nrs, int tstep) {
+void my_particle_generator(nrs_t *nrs, dfloat time, int tstep) {
 
   static int npart = 0;
   static int    partid[LPART];
@@ -203,8 +200,14 @@ void my_particle_generator(nrs_t *nrs, int tstep) {
   static dfloat part_color[LPART];
   static bool   part_valid[LPART] = {false};
 
+
+  bool ifnewpart;
   // adjust to control when particles are generated
-  bool ifnewpart = nrs->isOutputStep || tstep == 1;
+  static dfloat last_new_time = 0.0;
+  ifnewpart = time - last_new_time >= 0.5;    // every 0.5 seconds
+  if(ifnewpart) last_new_time = time;
+  // ifnewpart = tstep % 100;                 // every 100 iterations
+  // ifnewpart = nrs->isOutputStep;           // on the output steps
 
   // Only output particles on output steps to ensure particles match the field files
   bool ifoutpart = nrs->isOutputStep;
@@ -226,7 +229,10 @@ void UDF_Setup(nrs_t *nrs)
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  nek::ocopyToNek(time, tstep);
+  // computing lambda2 requires the velocity on host
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+  }
   nek::userchk();
-  my_particle_generator(nrs, tstep);
+  my_particle_generator(nrs, time, tstep);
 }
