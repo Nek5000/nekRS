@@ -1,4 +1,4 @@
-# Release v21.x
+# Release v21.1.0
 
 ## What is new? 
 
@@ -18,6 +18,14 @@
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.
+
+# Hofix Release v21.0.1
+
+* Update to latest parRSB version
+* Fix restart issue if restart time is non-zero
+* Fix io-frequency issue
+* Fix JIT issue for lowMach
+* Disable gs-timers to prevent performance regression
 
 # Release v21.0
 
