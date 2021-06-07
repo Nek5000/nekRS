@@ -3,7 +3,7 @@
 Thank you for considering contributing to nekRS!
 Here are a few important things you should know about contributing:
 
-* Please create a pull request (PR) on GitHub merging into the latest master.
+* Please create a pull request (PR) on GitHub merging into the latest next branch.
 
 * We prefer a PR for one thing at a time. If you have many contributions, please split them in different PRs.
 
