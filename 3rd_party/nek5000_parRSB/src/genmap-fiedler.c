@@ -14,13 +14,8 @@ int GenmapFiedlerRQI(genmap_handle h, struct comm *gsc, int max_iter,
   struct rsb_element *elements = genmap_get_elements(h);
   GenmapInt i;
   if (global > 0) {
-    if (h->options->rsb_paul == 1) {
-      for (i = 0; i < lelt; i++)
-        initVec->data[i] = genmap_get_local_start_index(h) + i + 1;
-    } else {
-      for (i = 0; i < lelt; i++)
-        initVec->data[i] = elements[i].globalId;
-    }
+    for (i = 0; i < lelt; i++)
+      initVec->data[i] = genmap_get_local_start_index(h) + i + 1;
   } else {
     for (i = 0; i < lelt; i++)
       initVec->data[i] = elements[i].fiedler;
@@ -77,13 +72,8 @@ int GenmapFiedlerLanczos(genmap_handle h, struct comm *gsc, int max_iter,
 
   GenmapInt i;
   if (global > 0) {
-    if (h->options->rsb_paul == 1) {
-      for (i = 0; i < lelt; i++)
-        initVec->data[i] = genmap_get_local_start_index(h) + i + 1;
-    } else {
-      for (i = 0; i < lelt; i++)
-        initVec->data[i] = elements[i].globalId;
-    }
+    for (i = 0; i < lelt; i++)
+      initVec->data[i] = genmap_get_local_start_index(h) + i + 1;
   } else {
     for (i = 0; i < lelt; i++)
       initVec->data[i] = elements[i].fiedler;
@@ -101,11 +91,8 @@ int GenmapFiedlerLanczos(genmap_handle h, struct comm *gsc, int max_iter,
 
   int iter;
   metric_tic(gsc, LANCZOS);
-  if (h->options->rsb_paul == 1)
-    iter = GenmapLanczosLegendary(h, gsc, initVec, max_iter, &q, alphaVec,
-                                  betaVec);
-  else
-    iter = GenmapLanczos(h, gsc, initVec, max_iter, &q, alphaVec, betaVec);
+  iter =
+      GenmapLanczosLegendary(h, gsc, initVec, max_iter, &q, alphaVec, betaVec);
   metric_toc(gsc, LANCZOS);
   metric_acc(NLANCZOS, iter);
 
@@ -150,17 +137,13 @@ int GenmapFiedlerLanczos(genmap_handle h, struct comm *gsc, int max_iter,
   GenmapDestroyVector(evLanczos);
   GenmapDestroyVector(evTriDiag);
 
-  if (h->options->rsb_paul == 1) {
-    GenmapDestroyVector(eValues);
-    for (i = 0; i < iter; i++)
-      GenmapDestroyVector(eVectors[i]);
-    GenmapFree(eVectors);
-  }
-
+  GenmapDestroyVector(eValues);
   for (i = 0; i < iter; i++)
+    GenmapDestroyVector(eVectors[i]);
+  GenmapFree(eVectors);
+
+  for (i = 0; i < iter + 1; i++)
     GenmapDestroyVector(q[i]);
-  if (h->options->rsb_paul == 1)
-    GenmapDestroyVector(q[iter]);
   GenmapFree(q);
 
   return iter;

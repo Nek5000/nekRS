@@ -172,10 +172,12 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce)
   int nelMin, nelMax;
   int ncMin, ncMax, ncSum;
   int nsMin, nsMax, nsSum;
-  int nssMin, nssMax, nssSum;
+  int nssMin, nssMax;
+  long long nssSum;
 
   struct gs_data *gsh;
   int b;
+  long long b_long_long;
 
   int numPoints;
   long long *data;
@@ -222,7 +224,7 @@ void printPartStat(long long *vtx, int nel, int nv, comm_ext ce)
   nssSum = nsSum;
   comm_allreduce(&comm, gs_int, gs_max, &nssMax , 1, &b);
   comm_allreduce(&comm, gs_int, gs_min, &nssMin , 1, &b);
-  comm_allreduce(&comm, gs_int, gs_add, &nssSum , 1, &b);
+  comm_allreduce(&comm, gs_long_long, gs_add, &nssSum , 1, &b_long_long);
 
   nsSum = nsSum/Nmsg;
   comm_allreduce(&comm, gs_int, gs_add, &nsSum , 1, &b);
@@ -286,8 +288,10 @@ int redistributeData(int *nel_, long long *vl, long long *el, int *part, int *se
   if (nel > lelt) count = 1;
   comm_allreduce(comm, gs_int, gs_add, &count, 1, &ibuf);
   if (count > 0) {
+    count = nel;
+    comm_allreduce(comm, gs_int, gs_max, &count, 1, &ibuf);
     if (comm->id == 0)
-      printf("ERROR: resulting parition requires lelt=%d!\n", nel);
+      printf("ERROR: resulting parition requires lelt=%d!\n", count);
     return 1;
   }
 
@@ -312,11 +316,11 @@ int redistributeData(int *nel_, long long *vl, long long *el, int *part, int *se
 
 #define fpartMesh FORTRAN_UNPREFIXED(fpartmesh,FPARTMESH)
 void fpartMesh(long long *el, long long *vl, double *xyz, const int *lelt, int *nell, const int *nve,
-               int *fcomm, int *fmode, int *loglevel, int *rtval)
+               int *fcomm, int *fpartitioner, int *falgo, int *loglevel, int *rtval)
 {
   struct comm comm;
 
-  int nel, nv, mode;
+  int nel, nv, partitioner, algo;
   int e, n;
   int count, ierr, ibuf;
   int *part,*seq;
@@ -324,7 +328,8 @@ void fpartMesh(long long *el, long long *vl, double *xyz, const int *lelt, int *
 
   nel  = *nell;
   nv   = *nve;
-  mode = *fmode;
+  partitioner = *fpartitioner;
+  algo = *falgo; // 0 - Lanczos, 1 - MG (Used only when partitioner = 1)
 
 #if defined(MPI)
   comm_ext cext = MPI_Comm_f2c(*fcomm);
@@ -342,10 +347,13 @@ void fpartMesh(long long *el, long long *vl, double *xyz, const int *lelt, int *
   options.print_timing_info = 0;
   if(*loglevel > 2) options.print_timing_info = 1;
 
-  if (mode & 1)
+  if (partitioner & 1)
     options.global_partitioner = 0;
-  else if (mode & 2)
+  else if (partitioner & 2)
     options.global_partitioner = 1;
+
+  if (partitioner & 1)
+    options.rsb_algo = algo;
 
   if(*loglevel >2)
     printPartStat(vl, nel, nv, cext);
@@ -363,7 +371,7 @@ void fpartMesh(long long *el, long long *vl, double *xyz, const int *lelt, int *
 
 #elif defined(PARMETIS)
   int metis;
-  metis = mode & 4;
+  metis = partitioner & 4;
 
   if (metis) {
     opt[0] = 1;

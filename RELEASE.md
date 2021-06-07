@@ -1,3 +1,13 @@
+
+
+# Hofix Release v21.0.1
+
+* Update to latest parRSB version
+* Fix restart issue if restart time is non-zero
+* Fix io-frequency issue
+* Fix JIT issue for lowMach
+* Disable gs-timers to prevent performance regression
+
 # Release v21.0
 
 ## What is new? 
@@ -22,10 +32,12 @@
 * nek_copyFrom() was renamed to nek::copyToNek()
 * nek_copyTo() was renamed to nek::copyFromNek()
 * cds->fieldOffset was replaced by cds->fieldOffset[i] 
-* nrs->meshT is replaced by cds->mesh[0]
+* nrs->mesh was replaced by nrs->meshV
 * cds->mesh was replaced by cds->mesh[i] 
+* nrs->meshT was replaced by cds->mesh[0]
 * mesh->rank was replaced by platform->comm.mpiRank
 * mesh->comm was replaced by platform->comm.mpiComm
+* mesh->device was replaced by platform->device
 
 ## Known Bugs 
 
@@ -36,7 +48,31 @@
 
 ## Thanks to our Contributors
 
+@RonRahaman, @aprilnovak, @roystgnr, @yslan, @pwang234
+
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.
 
 A special thanks goes to the CAPS Lab at ETHZ who helped to develop the moving mesh support. 
+
+# Release v20.0
+
+## What is new? 
+
+* Initial release
+
+## What you may have to change to be compatible 
+
+* n/a 
+
+## Known Bugs 
+
+[80](https://github.com/Nek5000/nekRS/issues/80)
+
+## Thanks to our Contributors
+
+@AliKarakus, @thilinarmtb, @noelchalmers and @tcew for helping 
+
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.
+

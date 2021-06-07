@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 20.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 21.0.1)
 
 include(FortranCInterface)
 include(ExternalProject)

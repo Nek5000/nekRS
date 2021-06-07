@@ -7,37 +7,41 @@ BLAS ?= 1
 UNDERSCORE ?= 1
 
 ## Don't touch what follows ##
-MKFILEPATH =$(abspath $(lastword $(MAKEFILE_LIST)))
-SRCROOT_  ?=$(patsubst %/,%,$(dir $(MKFILEPATH)))
-SRCROOT    =$(realpath $(SRCROOT_))
+MKFILEPATH = $(abspath $(lastword $(MAKEFILE_LIST)))
+SRCROOT_ ?= $(patsubst %/,%,$(dir $(MKFILEPATH)))
+SRCROOT = $(realpath $(SRCROOT_))
 
-SRCDIR    =$(SRCROOT)/src
-SORTDIR   =$(SRCROOT)/src/sort
-PRECONDDIR=$(SRCROOT)/src/precond
-GENCONDIR =$(SRCROOT)/src/gencon
-BUILDDIR  =$(SRCROOT)/build
-EXAMPLEDIR=$(SRCROOT)/examples
-TESTDIR   =$(SRCROOT)/tests
+BUILDDIR = $(SRCROOT)/build
 
-TARGET=parRSB
-LIB=$(BUILDDIR)/lib/lib$(TARGET).a
+SRCDIR = $(SRCROOT)/src
+SRCS = $(wildcard $(SRCDIR)/*.c)
+SRCOBJS = $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SRCS))
+
+SORTDIR = $(SRCROOT)/src/sort
+SORTSRCS = $(wildcard $(SORTDIR)/*.c)
+SRCOBJS += $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SORTSRCS))
+
+PRECONDDIR = $(SRCROOT)/src/precond
+PRECONDSRCS = $(wildcard $(PRECONDDIR)/*.c)
+SRCOBJS += $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(PRECONDSRCS))
+
+GENCONDIR = $(SRCROOT)/src/gencon
+GENCONSRCS = $(wildcard $(GENCONDIR)/*.c)
+SRCOBJS += $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(GENCONSRCS))
+
+TESTDIR = $(SRCROOT)/tests
+TESTSRCS = $(wildcard $(TESTDIR)/*.c)
+TESTOBJS = $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(TESTSRCS))
+
+EXAMPLEDIR = $(SRCROOT)/examples
+EXAMPLESRCS = $(wildcard $(EXAMPLEDIR)/*.c)
+EXAMPLEOBJS = $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(EXAMPLESRCS))
+
+TARGET = parRSB
+LIB = $(BUILDDIR)/lib/lib$(TARGET).a
 
 INCFLAGS = -I$(SRCDIR) -I$(SORTDIR) -I$(PRECONDDIR) -I$(GENCONDIR) -I$(GSLIBPATH)/include
 LDFLAGS = -L$(BUILDDIR)/lib -l$(TARGET) -L$(GSLIBPATH)/lib -lgs -lm
-
-SRCS       =$(wildcard $(SRCDIR)/*.c)
-SORTSRCS   =$(wildcard $(SORTDIR)/*.c)
-PRECONDSRCS=$(wildcard $(PRECONDDIR)/*.c)
-GENCONSRCS =$(wildcard $(GENCONDIR)/*.c)
-TESTSRCS   =$(wildcard $(TESTDIR)/*.c)
-EXAMPLESRCS=$(wildcard $(EXAMPLEDIR)/*.c)
-
-SRCOBJS =$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SRCS))
-SRCOBJS+=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(SORTSRCS))
-SRCOBJS+=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(PRECONDSRCS))
-SRCOBJS+=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(GENCONSRCS))
-TESTOBJS=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(TESTSRCS))
-EXAMPLEOBJS=$(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(EXAMPLESRCS))
 
 PP=
 
@@ -52,10 +56,6 @@ endif
 ifneq ($(BLAS),0)
   PP += -DGENMAP_BLAS
   LDFLAGS += -L$(BLASLIBPATH) -lblasLapack -lgfortran
-endif
-
-ifneq ($(GRAMMIAN),0)
-  PP += -DGENMAP_GRAMMIAN
 endif
 
 ifneq ($(UNDERSCORE),0)
@@ -73,7 +73,7 @@ endif
 
 INSTALLDIR=
 ifneq (,$(strip $(DESTDIR)))
-	INSTALLDIR=$(realpath $(DESTDIR))
+  INSTALLDIR = $(realpath $(DESTDIR))
 endif
 
 .PHONY: default
@@ -113,17 +113,9 @@ examples: install $(EXAMPLEOBJS)
 $(BUILDDIR)/examples/%: $(SRCROOT)/examples/%.c
 	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) $< -o $@ $(LDFLAGS)
 
-.PHONY: tests
-tests: install $(TESTOBJS)
-	@cp $(TESTDIR)/run-tests.sh $(BUILDDIR)/tests/
-	@cd $(BUILDDIR)/tests && ./run-tests.sh
-
-$(BUILDDIR)/tests/%: $(SRCROOT)/tests/%.c
-	$(CC) $(CFLAGS) $(PP) $(INCFLAGS) $< -o $@ $(LDFLAGS)
-
 .PHONY: clean
 clean:
-	@rm -rf $(BUILDDIR) $(EXAMPLE) $(EXAMPLE).o
+	@rm -rf $(BUILDDIR)
 
 .PHONY: format
 format:

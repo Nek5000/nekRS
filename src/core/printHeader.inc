@@ -3,7 +3,7 @@ cout << R"(                 __    ____  _____)" << endl
      << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
      << R"( / / / //  __// ,<  / _, _/___/ / )" << endl
      << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
-     << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION << endl
+     << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION << "." << NEKRS_PATCHVERSION << endl
      << endl
      << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
      << endl;

@@ -34,8 +34,8 @@ Requirements:
 Download the latest release tarball
 
 ```sh
-wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.0.tar.gz 
-tar -zxf v21.0.tar.gz 
+wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.0.1.tar.gz 
+tar -zxf v21.0.1.tar.gz 
 ```
 
 
@@ -44,7 +44,10 @@ or clone our GitHub repository:
 ```sh
 git clone https://github.com/Nek5000/nekRS.git
 ```
+The git master branch always points to the latest release, the next branch
+is a special development branch that contains all the new features that will be released at the next release cycle.
 
+#
 To build and install the code just run:
 
 ```sh

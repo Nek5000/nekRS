@@ -40,6 +40,7 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/" "p_AMP"] = P_AMP;
   userVpKernel = udfBuildKernel(nrs, "userVp");
   userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
+  lowMach::buildKernel(nrs);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
