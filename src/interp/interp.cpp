@@ -148,6 +148,12 @@ void interp_nfld(const dfloat *fld, dlong nfld,
                  bool if_need_pts, struct interp_data *handle,
                  dfloat *out[], dlong out_stride[]);
 template
+void interp_nfld(dfloat *fld, dlong nfld,
+                 dfloat *x[], dlong x_stride[], dlong n,
+                 dlong *iwk, dfloat *rwk, dlong nmax,
+                 bool if_need_pts, struct interp_data *handle,
+                 dfloat *out[], dlong out_stride[]);
+template
 void interp_nfld(occa::memory fld, dlong nfld,
                  dfloat *x[], dlong x_stride[], dlong n,
                  dlong *iwk, dfloat *rwk, dlong nmax,

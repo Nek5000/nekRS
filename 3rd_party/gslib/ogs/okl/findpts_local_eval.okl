@@ -409,9 +409,13 @@ void lagrange_eval(double *p, double *data,
 
 
 @kernel void findpts_local_eval_2(
-        double *const       out_base, const unsigned int out_stride,
-  const unsigned int *const  el_base, const unsigned int  el_stride,
-  const double *const         r_base, const unsigned int   r_stride,
+        double *const       out_out_base,   const unsigned int out_out_stride,
+        unsigned int *const out_proc_base,  const unsigned int out_proc_stride,
+        unsigned int *const out_index_base, const unsigned int out_index_stride,
+  const unsigned int *const src_el_base,    const unsigned int src_el_stride,
+  const double *const       src_r_base,     const unsigned int src_r_stride,
+  const unsigned int *const src_proc_base,  const unsigned int src_proc_stride,
+  const unsigned int *const src_index_base, const unsigned int src_index_stride,
   const unsigned int pn,
   const double *const in, const unsigned int in_stride,
   const unsigned int nr, const unsigned int ns,
@@ -425,11 +429,15 @@ void lagrange_eval(double *p, double *data,
     @shared double wts[MAX_GLL_N];
     @shared double sums[MAX_GLL_N];
 
-    const unsigned int el = *CAT(unsigned int, el, i);
+    const unsigned int el = *CAT(unsigned int, src_el, i);
     const double *in_el = in + el*in_stride;
 
-    const double *r = CAT(double, r, i);
+    const double *r = CAT(double, src_r, i);
     for (unsigned int j = 0; j < inner_size; ++j; @inner) {
+      if (j == 0) {
+        (*AT(unsigned int, out_proc,  i)) = (*CAT(unsigned int, src_proc,  i));
+        (*AT(unsigned int, out_index, i)) = (*CAT(unsigned int, src_index, i));
+      }
       lagrange_eval(wtr, lag_data_0, nr, r[0], j);
       lagrange_eval(wts, lag_data_1, ns, r[1], j);
     }
@@ -452,7 +460,7 @@ void lagrange_eval(double *p, double *data,
       }
     }
 
-    double *out = AT(double, out, i);
+    double *out = AT(double, out_out, i);
 
 // MAX_GLL_N is assumed to be at most 256
 #if MAX_GLL_N>128
@@ -500,9 +508,13 @@ void lagrange_eval(double *p, double *data,
 }
 
 @kernel void findpts_local_eval_3(
-        double *const       out_base, const unsigned int out_stride,
-  const unsigned int *const  el_base, const unsigned int  el_stride,
-  const double *const         r_base, const unsigned int   r_stride,
+        double *const       out_out_base,   const unsigned int out_out_stride,
+        unsigned int *const out_proc_base,  const unsigned int out_proc_stride,
+        unsigned int *const out_index_base, const unsigned int out_index_stride,
+  const unsigned int *const src_el_base,    const unsigned int src_el_stride,
+  const double *const       src_r_base,     const unsigned int src_r_stride,
+  const unsigned int *const src_proc_base,  const unsigned int src_proc_stride,
+  const unsigned int *const src_index_base, const unsigned int src_index_stride,
   const unsigned int pn,
   const double *const in, const unsigned int in_stride,
   const unsigned int nr, const unsigned int ns, const unsigned int nt,
@@ -517,11 +529,15 @@ void lagrange_eval(double *p, double *data,
     @shared double wtt[MAX_GLL_N];
     @shared double sums[MAX_GLL_N]; // could be overlaped with wtt
 
-    const unsigned int el = *CAT(unsigned int, el, i);
+    const unsigned int el = *CAT(unsigned int, src_el, i);
     const double *in_el = in + el*in_stride;
 
-    const double *r = CAT(double, r, i);
+    const double *r = CAT(double, src_r, i);
     for (unsigned int j = 0; j < inner_size; ++j; @inner) {
+      if (j == 0) {
+        (*AT(unsigned int, out_proc,  i)) = (*CAT(unsigned int, src_proc,  i));
+        (*AT(unsigned int, out_index, i)) = (*CAT(unsigned int, src_index, i));
+      }
       lagrange_eval(wtr, lag_data_0, nr, r[0], j);
       lagrange_eval(wts, lag_data_1, ns, r[1], j);
       lagrange_eval(wtt, lag_data_2, nt, r[2], j);
@@ -552,7 +568,7 @@ void lagrange_eval(double *p, double *data,
       }
     }
 
-    double *out = AT(double, out, i);
+    double *out = AT(double, out_out, i);
 
 // MAX_GLL_N is assumed to be at most 256
 #if MAX_GLL_N>128

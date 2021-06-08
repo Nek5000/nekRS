@@ -17,10 +17,13 @@
 
 extern "C" {
 
+  struct eval_src_pt_3 { double r[3]; uint index, proc, el; };
+  struct eval_src_pt_2 { double r[2]; uint index, proc, el; };
+  struct eval_out_pt_3 { double out; uint index, proc; };
+  struct eval_out_pt_2 { double out; uint index, proc; };
+
 void ogs_findpts_local_eval_internal_2(
-        double   *const out_base, const unsigned out_stride,
-  const unsigned *const  el_base, const unsigned  el_stride,
-  const double   *const   r_base, const unsigned   r_stride,
+  struct eval_out_pt_2 *opt, const struct eval_src_pt_2 *spt,
   const unsigned pn, const void *const in, const unsigned in_stride,
   unsigned *const n, double *const lag_data[2], unsigned lag_data_size[2])
 {
@@ -34,14 +37,24 @@ void ogs_findpts_local_eval_internal_2(
 
   occa::json malloc_props;
 
-  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
+  occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_2)+sizeof(struct eval_src_pt_2))*pn,
                                          occa::dtype::byte,
                                          malloc_props);
-  occa::memory d_out_base = workspace; workspace += out_stride*pn;
-  occa::memory  d_el_base = workspace; workspace += el_stride*pn;
-  occa::memory   d_r_base = workspace;
-  d_el_base.copyFrom(el_base, el_stride*pn);
-   d_r_base.copyFrom( r_base,  r_stride*pn);
+  occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_2)*pn;
+  occa::memory d_src_pt = workspace;
+  d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_2)*pn);
+
+  occa::memory d_out_out_base   = d_out_pt + offsetof(struct eval_out_pt_2, out);
+  occa::memory d_out_proc_base  = d_out_pt + offsetof(struct eval_out_pt_2, proc);
+  occa::memory d_out_index_base = d_out_pt + offsetof(struct eval_out_pt_2, index);
+  occa::memory d_src_el_base    = d_src_pt + offsetof(struct eval_src_pt_2, el);
+  occa::memory d_src_r_base     = d_src_pt + offsetof(struct eval_src_pt_2, r);
+  occa::memory d_src_proc_base  = d_src_pt + offsetof(struct eval_src_pt_2, proc);
+  occa::memory d_src_index_base = d_src_pt + offsetof(struct eval_src_pt_2, index);
+
+  unsigned int out_stride = sizeof(struct eval_out_pt_2);
+  unsigned int src_stride = sizeof(struct eval_src_pt_2);
+
 
   occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
                                             occa::dtype::double_,
@@ -61,20 +74,22 @@ void ogs_findpts_local_eval_internal_2(
 
   occa::memory d_in = *(occa::memory*)in;
 
-  ogs::findpts_local_eval_2(d_out_base, out_stride,
-                             d_el_base,  el_stride,
-                              d_r_base,   r_stride,
+  ogs::findpts_local_eval_2(d_out_out_base,   out_stride,
+                            d_out_proc_base,  out_stride,
+                            d_out_index_base, out_stride,
+                            d_src_el_base,    src_stride,
+                            d_src_r_base,     src_stride,
+                            d_src_proc_base,  src_stride,
+                            d_src_index_base, src_stride,
                             pn, d_in, in_stride,
                             nr, ns, d_lag_data_0, d_lag_data_1);
-  d_out_base.copyTo(out_base, out_stride*pn);
+  d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_2)*pn);
 }
 
 
 
 void ogs_findpts_local_eval_internal_3(
-        double   *const out_base, const unsigned out_stride,
-  const unsigned *const  el_base, const unsigned  el_stride,
-  const double   *const   r_base, const unsigned   r_stride,
+  struct eval_out_pt_3 *opt, const struct eval_src_pt_3 *spt,
   const unsigned pn, const void *const in, const unsigned in_stride,
   unsigned *const n, double *const lag_data[3], unsigned lag_data_size[3])
 {
@@ -89,14 +104,23 @@ void ogs_findpts_local_eval_internal_3(
 
   occa::json malloc_props;
 
-  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
+  occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_3)+sizeof(struct eval_src_pt_3))*pn,
                                          occa::dtype::byte,
                                          malloc_props);
-  occa::memory d_out_base = workspace; workspace += out_stride*pn;
-  occa::memory  d_el_base = workspace; workspace += el_stride*pn;
-  occa::memory   d_r_base = workspace;
-  d_el_base.copyFrom(el_base, el_stride*pn);
-   d_r_base.copyFrom( r_base,  r_stride*pn);
+  occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_3)*pn;
+  occa::memory d_src_pt = workspace;
+  d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_3)*pn);
+
+  occa::memory d_out_out_base   = d_out_pt + offsetof(struct eval_out_pt_3, out);
+  occa::memory d_out_proc_base  = d_out_pt + offsetof(struct eval_out_pt_3, proc);
+  occa::memory d_out_index_base = d_out_pt + offsetof(struct eval_out_pt_3, index);
+  occa::memory d_src_el_base    = d_src_pt + offsetof(struct eval_src_pt_3, el);
+  occa::memory d_src_r_base     = d_src_pt + offsetof(struct eval_src_pt_3, r);
+  occa::memory d_src_proc_base  = d_src_pt + offsetof(struct eval_src_pt_3, proc);
+  occa::memory d_src_index_base = d_src_pt + offsetof(struct eval_src_pt_3, index);
+
+  unsigned int out_stride = sizeof(struct eval_out_pt_3);
+  unsigned int src_stride = sizeof(struct eval_src_pt_3);
 
   occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
                                             occa::dtype::double_,
@@ -119,13 +143,17 @@ void ogs_findpts_local_eval_internal_3(
 
   occa::memory d_in = *(occa::memory*)in;
 
-  ogs::findpts_local_eval_3(d_out_base, out_stride,
-                             d_el_base,  el_stride,
-                              d_r_base,   r_stride,
+  ogs::findpts_local_eval_3(d_out_out_base,   out_stride,
+                            d_out_proc_base,  out_stride,
+                            d_out_index_base, out_stride,
+                            d_src_el_base,    src_stride,
+                            d_src_r_base,     src_stride,
+                            d_src_proc_base,  src_stride,
+                            d_src_index_base, src_stride,
                             pn, d_in, in_stride,
                             nr, ns, nt, d_lag_data_0, d_lag_data_1, d_lag_data_2);
 
-  d_out_base.copyTo(out_base, out_stride*pn);
+  d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_3)*pn);
 }
 
 }
