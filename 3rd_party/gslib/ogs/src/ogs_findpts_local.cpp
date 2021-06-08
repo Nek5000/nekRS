@@ -34,18 +34,14 @@ void ogs_findpts_local_eval_internal_2(
 
   occa::json malloc_props;
 
-  occa::memory d_out_base = device.malloc(out_stride*pn,
-                                          occa::dtype::byte,
-                                          malloc_props);
-  d_out_base.copyFrom(out_base);
-  occa::memory d_el_base = device.malloc(el_stride*pn,
+  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
                                          occa::dtype::byte,
                                          malloc_props);
-  d_el_base.copyFrom(el_base);
-  occa::memory   d_r_base = device.malloc(r_stride*pn,
-                                          occa::dtype::byte,
-                                          malloc_props);
-  d_r_base.copyFrom(r_base);
+  occa::memory d_out_base = workspace; workspace += out_stride*pn;
+  occa::memory  d_el_base = workspace; workspace += el_stride*pn;
+  occa::memory   d_r_base = workspace;
+  d_el_base.copyFrom(el_base, el_stride*pn);
+   d_r_base.copyFrom( r_base,  r_stride*pn);
 
   occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
                                             occa::dtype::double_,
@@ -70,8 +66,7 @@ void ogs_findpts_local_eval_internal_2(
                               d_r_base,   r_stride,
                             pn, d_in, in_stride,
                             nr, ns, d_lag_data_0, d_lag_data_1);
-
-  d_out_base.copyTo(out_base);
+  d_out_base.copyTo(out_base, out_stride*pn);
 }
 
 
@@ -94,18 +89,14 @@ void ogs_findpts_local_eval_internal_3(
 
   occa::json malloc_props;
 
-  occa::memory d_out_base = device.malloc(out_stride*pn,
-                                          occa::dtype::byte,
-                                          malloc_props);
-  d_out_base.copyFrom(out_base);
-  occa::memory d_el_base = device.malloc(el_stride*pn,
+  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
                                          occa::dtype::byte,
                                          malloc_props);
-  d_el_base.copyFrom(el_base);
-  occa::memory   d_r_base = device.malloc(r_stride*pn,
-                                          occa::dtype::byte,
-                                          malloc_props);
-  d_r_base.copyFrom(r_base);
+  occa::memory d_out_base = workspace; workspace += out_stride*pn;
+  occa::memory  d_el_base = workspace; workspace += el_stride*pn;
+  occa::memory   d_r_base = workspace;
+  d_el_base.copyFrom(el_base, el_stride*pn);
+   d_r_base.copyFrom( r_base,  r_stride*pn);
 
   occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
                                             occa::dtype::double_,
@@ -134,7 +125,7 @@ void ogs_findpts_local_eval_internal_3(
                             pn, d_in, in_stride,
                             nr, ns, nt, d_lag_data_0, d_lag_data_1, d_lag_data_2);
 
-  d_out_base.copyTo(out_base);
+  d_out_base.copyTo(out_base, out_stride*pn);
 }
 
 }
