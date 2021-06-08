@@ -195,6 +195,10 @@ namespace ogs {
   extern occa::properties kernelInfo;
 
   void freeKernels();
+
+
+  occa::kernel initFindptsKernel(MPI_Comm comm, occa::device device, dlong D, const dlong *n);
+  void freeFindptsKernel(occa::kernel);
 }
 
 void occaGatherScatter(const  dlong Ngather,

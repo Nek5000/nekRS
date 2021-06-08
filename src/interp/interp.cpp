@@ -47,7 +47,8 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
   MPI_Comm comm = platform_t::getInstance()->comm.mpiComm;
 
   ogs_findpts_t *findpts_handle = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
-                                                  hash_size, hash_size, npt_max, newton_tol);
+                                                  hash_size, hash_size, npt_max, newton_tol,
+                                                  (occa::device*)&platform_t::getInstance()->device);
 
   struct interp_data *handle = new interp_data();
   handle->nrs = nrs;

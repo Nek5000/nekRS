@@ -25,12 +25,15 @@ extern "C" {
 void ogs_findpts_local_eval_internal_2(
   struct eval_out_pt_2 *opt, const struct eval_src_pt_2 *spt,
   const unsigned pn, const void *const in, const unsigned in_stride,
-  unsigned *const n, double *const lag_data[2], unsigned lag_data_size[2])
+  unsigned *const n, double *const lag_data[2], unsigned lag_data_size[2],
+  const void *const fd_void)
 {
   if (pn == 0) return;
 
+  ogs_findpts_t *fd = (ogs_findpts_t*)fd_void;
+
   const unsigned nr=n[0],ns=n[1];
-  occa::device device = platform->device;
+  occa::device device = *fd->device;
 
   assert(nr <= MAX_GLL_N);
   assert(ns <= MAX_GLL_N);
@@ -74,15 +77,15 @@ void ogs_findpts_local_eval_internal_2(
 
   occa::memory d_in = *(occa::memory*)in;
 
-  ogs::findpts_local_eval_2(d_out_out_base,   out_stride,
-                            d_out_proc_base,  out_stride,
-                            d_out_index_base, out_stride,
-                            d_src_el_base,    src_stride,
-                            d_src_r_base,     src_stride,
-                            d_src_proc_base,  src_stride,
-                            d_src_index_base, src_stride,
-                            pn, d_in, in_stride,
-                            nr, ns, d_lag_data_0, d_lag_data_1);
+  (*fd->local_eval_kernel)(d_out_out_base,   out_stride,
+                           d_out_proc_base,  out_stride,
+                           d_out_index_base, out_stride,
+                           d_src_el_base,    src_stride,
+                           d_src_r_base,     src_stride,
+                           d_src_proc_base,  src_stride,
+                           d_src_index_base, src_stride,
+                           pn, d_in, in_stride,
+                           d_lag_data_0, d_lag_data_1);
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_2)*pn);
 }
 
@@ -91,12 +94,15 @@ void ogs_findpts_local_eval_internal_2(
 void ogs_findpts_local_eval_internal_3(
   struct eval_out_pt_3 *opt, const struct eval_src_pt_3 *spt,
   const unsigned pn, const void *const in, const unsigned in_stride,
-  unsigned *const n, double *const lag_data[3], unsigned lag_data_size[3])
+  unsigned *const n, double *const lag_data[3], unsigned lag_data_size[3],
+  const void *const fd_void)
 {
   if (pn == 0) return;
 
+  ogs_findpts_t *fd = (ogs_findpts_t*)fd_void;
+
   const unsigned nr=n[0],ns=n[1],nt=n[2];
-  occa::device device = platform->device;
+  occa::device device = *fd->device;
 
   assert(nr <= MAX_GLL_N);
   assert(ns <= MAX_GLL_N);
@@ -143,15 +149,15 @@ void ogs_findpts_local_eval_internal_3(
 
   occa::memory d_in = *(occa::memory*)in;
 
-  ogs::findpts_local_eval_3(d_out_out_base,   out_stride,
-                            d_out_proc_base,  out_stride,
-                            d_out_index_base, out_stride,
-                            d_src_el_base,    src_stride,
-                            d_src_r_base,     src_stride,
-                            d_src_proc_base,  src_stride,
-                            d_src_index_base, src_stride,
-                            pn, d_in, in_stride,
-                            nr, ns, nt, d_lag_data_0, d_lag_data_1, d_lag_data_2);
+  (*fd->local_eval_kernel)(d_out_out_base,   out_stride,
+                           d_out_proc_base,  out_stride,
+                           d_out_index_base, out_stride,
+                           d_src_el_base,    src_stride,
+                           d_src_r_base,     src_stride,
+                           d_src_proc_base,  src_stride,
+                           d_src_index_base, src_stride,
+                           pn, d_in, in_stride,
+                           d_lag_data_0, d_lag_data_1, d_lag_data_2);
 
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_3)*pn);
 }

@@ -236,6 +236,8 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 typedef struct {
   int D;
   void *findpts_data;
+  occa::device *device;
+  occa::kernel *local_eval_kernel;
 } ogs_findpts_t;
 
 ogs_findpts_t *ogsFindptsSetup(
@@ -244,7 +246,8 @@ ogs_findpts_t *ogsFindptsSetup(
   const dlong n[], const dlong nel,
   const dlong m[], const dfloat bbox_tol,
   const hlong local_hash_size, const hlong global_hash_size,
-  const dlong npt_max, const dfloat newt_tol);
+  const dlong npt_max, const dfloat newt_tol,
+  occa::device *device = nullptr);
 void ogsFindptsFree(ogs_findpts_t *fd);
 void ogsFindpts(    dlong  *const  code_base  , const dlong  code_stride,
                     dlong  *const  proc_base  , const dlong  proc_stride,

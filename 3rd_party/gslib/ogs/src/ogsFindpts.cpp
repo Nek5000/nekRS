@@ -29,6 +29,7 @@ SOFTWARE.
 #include "ogstypes.h"
 #include "ogs.hpp"
 #include "ogsInterface.h"
+#include "ogsKernels.hpp"
 
 ogs_findpts_t *ogsFindptsSetup(
   const dlong D, MPI_Comm comm,
@@ -36,7 +37,8 @@ ogs_findpts_t *ogsFindptsSetup(
   const dlong n[], const dlong nel,
   const dlong m[], const dfloat bbox_tol,
   const hlong local_hash_size, const hlong global_hash_size,
-  const dlong npt_max, const dfloat newt_tol) {
+  const dlong npt_max, const dfloat newt_tol,
+  occa::device *device) {
   // elx, n, m have length D
 
   assert(sizeof(dfloat) == sizeof(double));
@@ -58,6 +60,15 @@ ogs_findpts_t *ogsFindptsSetup(
   ogs_findpts_t *ogs_handle = (ogs_findpts_t*)malloc(sizeof(ogs_findpts_t));
   ogs_handle->D = D;
   ogs_handle->findpts_data = findpts_data;
+
+  if (device != nullptr) {
+    ogs_handle->device = device;
+    occa::kernel k = ogs::initFindptsKernel(comm, *device, D, n);
+    ogs_handle->local_eval_kernel = new occa::kernel(k);
+  } else {
+    ogs_handle->device = nullptr;
+  }
+
   return ogs_handle;
 }
 
@@ -67,6 +78,11 @@ void ogsFindptsFree(ogs_findpts_t *fd) {
     ogsHostFindptsFree_2((findpts_data_2*)fd->findpts_data);
   } else {
     ogsHostFindptsFree_3((findpts_data_3*)fd->findpts_data);
+  }
+  if (fd->device != nullptr) {
+    occa::kernel k = *fd->local_eval_kernel;
+    delete fd->local_eval_kernel;
+    ogs::freeFindptsKernel(k);
   }
   free(fd);
 }
@@ -148,13 +164,13 @@ void ogsFindptsEval(
                         proc_base, proc_stride,
                           el_base,   el_stride,
                            r_base,    r_stride,
-                        npt, &d_in, (findpts_data_2*)fd->findpts_data);
+                        npt, &d_in, (findpts_data_2*)fd->findpts_data, fd);
   } else {
     ogsDevFindptsEval_3( out_base,  out_stride,
                         code_base, code_stride,
                         proc_base, proc_stride,
                           el_base,   el_stride,
                            r_base,    r_stride,
-                        npt, &d_in, (findpts_data_3*)fd->findpts_data);
+                        npt, &d_in, (findpts_data_3*)fd->findpts_data, fd);
   }
 }
