@@ -6,8 +6,6 @@
 : ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 
 export NVME_HOME="/mnt/bb/$USER/"
-export OCCA_CXX=g++
-export OCCA_CXXFLAGS="-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
 
 if [ -z "$PROJ_ID" ]; then
   echo "ERROR: PROJ_ID is empty"
@@ -45,10 +43,6 @@ if [ ! -f $case.par ]; then
   exit 1
 fi
 
-if [ ! -f $case.co2 ]; then
-  echo "Cannot find" $case.co2
-fi
-
 if [ ! -f $case.udf ]; then
   echo "Cannot find" $case.udf
   exit 1
@@ -78,33 +72,6 @@ if [ ! -f "$ROMIO_HINTS" ]; then
 fi
 
 
-# binding
-CMD=$PWD/.lhelper
-echo "#!/bin/bash" >$CMD
-echo "GPUS=(0 1 2 3)" >>$CMD
-echo "CPUS=(0 1 2 3)" >>$CMD 
-#echo "NICS=(mlx5_0 mlx5_0 mlx5_0 mlx5_0)" >>$CMD
-
-echo "if [ ! -z \${OMPI_COMM_WORLD_RANK} ]; then" >>$CMD
-echo "    RANK=\${OMPI_COMM_WORLD_RANK}" >>$CMD
-echo "    LOCAL_RANK=\${OMPI_COMM_WORLD_LOCAL_RANK}" >>$CMD
-echo "elif [ ! -z \${MV2_COMM_WORLD_RANK} ]; then" >>$CMD
-echo "    RANK=\${MV2_COMM_WORLD_RANK}" >>$CMD
-echo "    LOCAL_RANK=\${MV2_COMM_WORLD_LOCAL_RANK}" >>$CMD
-echo "else" >>$CMD
-echo "    RANK=\${SLURM_PROCID}" >>$CMD
-echo "    LOCAL_RANK=\${SLURM_LOCALID}" >>$CMD
-echo "fi" >>$CMD
-echo "GPU=\${GPUS[\$LOCAL_RANK]}" >>$CMD
-echo "CPU=\${CPUS[\$LOCAL_RANK]}" >>$CMD
-#echo "export UCX_NET_DEVICES=\${NICS[\$LOCAL_RANK]}:1" >>$CMD
-
-echo "export ROCR_VISIBLE_DEVICES=\${GPU}" >>$CMD
-echo "echo RANK=\${RANK} LOCAL_RANK=\${LOCAL_RANK} GPU=\$ROCR_VISIBLE_DEVICES CPU=\${CPU}" >>$CMD
-echo "numactl --cpunodebind=\${CPU} --membind=\${CPU} $bin --backend $backend --device-id 0 --setup $case" >>$CMD
-chmod 755 $CMD
-
-
 # sbatch
 SFILE=s.bin
 echo "#!/bin/bash" > $SFILE
@@ -117,14 +84,16 @@ echo "#SBATCH -p $QUEUE" >>$SFILE
 echo "#SBATCH -C nvme" >>$SFILE
 echo "#SBATCH --exclusive" >>$SFILE
 echo "#SBATCH --ntasks-per-node=$gpu_per_node" >>$SFILE
+echo "#SBATCH --gpus-per-task=1" >>$SFILE
+echo "#SBATCH --gpu-bind=closest" >>$SFILE
 echo "#SBATCH --cpus-per-task=$cores_per_socket" >>$SFILE
 
 echo "module load craype-accel-amd-gfx908" >>$SFILE
-echo "module load rocm/4.1.0" >>$SFILE
-echo "module load cmake/3.20.0" >>$SFILE
-echo "module load PrgEnv-gnu/8.0.0" >>$SFILE
+echo "module load rocm" >>$SFILE
+echo "module load cmake" >>$SFILE
+echo "module load PrgEnv-gnu" >>$SFILE
 echo "module load wget" >>$SFILE
-echo "module unload cray-libsci/21.04.1.1" >>$SFILE
+echo "module unload cray-libsci" >>$SFILE
 echo "module list" >>$SFILE
 echo "rocm-smi" >>$SFILE
 echo "rocm-smi --showpids" >>$SFILE
@@ -136,26 +105,20 @@ echo "export PE_MPICH_GTL_LIBS_amd_gfx908=\"-lmpi_gtl_hsa\"" >>$SFILE
 echo "## These must be set before running" >>$SFILE
 echo "export MPIR_CVAR_GPU_EAGER_DEVICE_MEM=0" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
+
+echo "## OLCFDEV-138: GPU-Aware Cray MPICH can cause hang in some codes" >>$SFILE
 echo "export MPICH_SMP_SINGLE_COPY_MODE=CMA" >>$SFILE
+echo "## OLCFDEV-118: Parallel HDF5 failures when running on GPFS" >>$SFILE
 echo "export ROMIO_FSTYPE_FORCE=\"ufs:\"" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
 echo "export OCCA_CACHE_DIR=$OCCA_CACHE_DIR" >>$SFILE
-echo "export NEKRS_HYPRE_NUM_THREADS=1" >>$SFILE
-echo "export OMP_NUM_THREADS=1" >>$SFILE
-echo "export OCCA_CXX=$OCCA_CXX" >>$SFILE
-echo "export OCCA_CXXFLAGS=\"${OCCA_CXXFLAGS}\"" >>$SFILE
-echo "export OMPI_MCA_pml=ucx" >>$SFILE
+
+echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 echo "export OMPI_MCA_btl=\"^vader,tcp,openib,smrocm\"" >>$SFILE
-echo "export OMPI_MCA_osc=ucx" >>$SFILE
 echo "export OMPI_MCA_io=romio321" >>$SFILE
 
-echo "export UCX_TLS=rc,sm" >>$SFILE
-echo "export UCX_RNDV_SCHEME=put_zcopy" >>$SFILE
-echo "export UCX_RNDV_THRESH=1024" >>$SFILE
-
-echo "export OGS_MPI_SUPPORT=1 " >>$SFILE
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
 echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
 
@@ -167,10 +130,10 @@ echo "export OCCA_CACHE_DIR=$NVME_HOME" >>$SFILE
 
 echo "# actual run" >>$SFILE
 echo "date" >>$SFILE
-echo "srun -n $ntasks $CMD" >>$SFILE
+echo "srun -n $ntasks $bin --backend $backend --device-id 0 --setup $case" >>$SFILE
 
 sbatch $SFILE
 
 
 # clean-up
-rm -rf $SFILE $CMD $ROMIO_HINTS
+#rm -rf $SFILE $ROMIO_HINTS
