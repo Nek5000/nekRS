@@ -1,0 +1,197 @@
+#include "casedata.h"
+
+#define INTP_NMAX 200 /* number of sample points for 1D profile */
+#define PI (4.*atan(1.))
+
+c-----------------------------------------------------------------------
+      subroutine uservp (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      common /WFPAR/ gacc
+     $              ,thts0, thts, ts_rate, ts_grad
+     $              ,fcor,  bcor
+
+      yarge  = YLEN*(YLEN-y)
+      factor = exp(-yarge)
+
+      ffx =                              fcor * uz + (1.-ux)*factor
+      ffy =                            + bcor * uz + temp*gacc
+      ffz = -fcor * (ux-1.) - bcor * uy            + (0.-uz)*factor
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      qvol = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+      integer bIDs(1)
+      save iobj_wall
+
+      if (istep.eq.0) then
+         bIDs(1) = 1
+         call create_obj(iobj_wall,bIDs,1)
+         nm = iglsum(nmember(iobj_wall),1)
+         if(nid.eq.0) write(6,*) 'obj_wall nmem:', nm
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (ix,iy,iz,iside,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      common /WFPAR/ gacc
+     $              ,thts0, thts, ts_rate, ts_grad
+     $              ,fcor,  bcor
+
+      real usn(3), tsn(3), bsn(3)
+      character*3 cbv3, cbt3
+
+      ie = gllel(ieg)
+
+      cbv3 = cbc(iside,ie,1)
+      cbt3 = cbc(iside,ie,2)
+
+      if(ifield.eq.1) then
+        ux = 1.0
+        uy = 0.0
+        uz = 0.0
+      elseif(ifield.eq.2) then
+        if(cbt3.eq.'f  ') then
+           flux = param(8)*ts_grad 
+        elseif(cbt3.eq.'t  ') then
+           temp =  thts0 + ts_rate*time - 1.
+        endif
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      common /WFPAR/ gacc
+     $              ,thts0, thts, ts_rate, ts_grad
+     $              ,fcor,  bcor
+
+      real kx, ky
+
+      ux = 1.0
+      uy = 0.0
+      uz = 0.0
+
+      eps = 1.e-2
+      epsT= 0.1/TREF
+      kx  = 23
+      kz  = 13
+
+      alpha = kx * 2*PI/XLEN
+      beta  = kz * 2*PI/ZLEN 
+
+      ! add perturbation to trigger turbulence 
+c      if(y.le.0.5) then
+         ux  = ux  + eps*beta  * sin(alpha*x)*cos(beta*z) 
+         uy  = uy  + eps       * sin(alpha*x)*sin(beta*z)
+         uz  = uz  - eps*alpha * cos(alpha*x)*sin(beta*z)
+c      endif
+
+      if(y.le.1) then
+         temp = (thts0 - 1.)
+         if(y.le.0.5) temp = temp + epsT*sin(alpha*x)*sin(beta*z)
+      else
+         temp =(thts0 - 1.) + ts_grad * (y-1.)
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat   ! This routine to modify element vertices
+      include 'SIZE'      ! _before_ mesh is generated, which 
+      include 'TOTAL'     ! guarantees GLL mapping of mesh.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2   ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+
+      call rescale_x(xm1, 0.0, XLEN)
+      call rescale_x(zm1, 0.0, ZLEN)
+
+c      call rescale_x(ym1, 0.0, 1.0)
+c      do i=1,nx1*ny1*nz1*nelt
+c         ym1(i,1,1,1) = tanh(BETAM*(ym1(i,1,1,1)-1))/tanh(BETAM) + 1
+c      enddo
+
+      call rescale_x(ym1, 0.0, YLEN)
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 2
+
+         cbc(ifc,iel,2) = cbc(ifc,iel,1)
+         if (cbc(ifc,iel,1) .eq. 'W  ') cbc(ifc,iel,2) = 't  '
+         if (cbc(ifc,iel,1) .eq. 'v  ') cbc(ifc,iel,2) = 'f  '
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+
+      integer icalld
+      save    icalld
+      data    icalld /0/
+
+      common /WFPAR/ gacc
+     $              ,thts0, thts, ts_rate, ts_grad
+     $              ,fcor,  bcor
+
+      if(icalld.eq.0) then
+        g       = 9.81 
+        gacc    = LREF*g/UREF/UREF
+        thts0   = TS0/TREF
+        ts_rate = SCR * LREF/TREF/UREF/3600
+        ts_grad = ILSTRENGTH * LREF/TREF
+
+        Omega = 7.292e-5
+        phil  = NLAT*PI/180.
+        fcor  = 2.*Omega*LREF/UREF*sin(phil)
+        bcor =  2.*Omega*LREF/UREF*cos(phil)
+
+        icalld = 1
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
