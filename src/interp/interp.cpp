@@ -6,6 +6,17 @@
 
 #include "interp.hpp"
 
+
+// uncomment the following line to check the accuracy of the OCCA implementation
+// of interp_velocity versus the CPU implementation
+#define check_dev_accuracy
+
+#ifdef check_dev_accuracy
+#include "nekInterfaceAdapter.hpp"
+#endif
+
+
+
 struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
 {
 
@@ -164,16 +175,14 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
   dfloat *rwork = (dfloat*)workspace;
   int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
 
-// uncomment the following line and ensure nek::ocopyToNek is called before hand
-// to check the accuracy of the OCCA implementation
-//#define check_dev_accuracy
-
 #ifdef check_dev_accuracy
-  dfloat *uvw_copy[] = (dfloat*)malloc(D*sizeof(dfloat*));
+  dfloat **uvw_copy = (dfloat**)malloc(D*sizeof(dfloat*));
   for (int i = 0; i < D; ++i) {
-    uvw_copy[i] = (dfloat*)malloc(out_stride[i]*n*sizeof(dfloat));
-    memcpy(uvw_copy[i], uvw_base[i], out_stride[i]*n*sizeof(dfloat));
+    uvw_copy[i] = (dfloat*)malloc(uvw_stride[i]*n*sizeof(dfloat));
+    memcpy(uvw_copy[i], uvw_base[i], uvw_stride[i]*n*sizeof(dfloat));
   }
+
+  nek::ocopyToNek();
 #endif //check_dev_accuracy
 
   occa::memory o_U_dfloat = nrs->o_U.cast(occa::dtype::get<dfloat>());
@@ -190,12 +199,12 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
 
   // controls the tolerences for printing warnings
   const dfloat abs_tol = 2e-15;
-  const dfloat rel_tol = 0;
+  const dfloat rel_tol = 1;
 
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < D; ++j) {
-      dfloat out_dev = uvw_base[j][i*uvw_stride[i]];
-      dfloat out_ref = uvw_copy[j][i*uvw_stride[i]];
+      dfloat out_dev = uvw_base[j][i*uvw_stride[j]];
+      dfloat out_ref = uvw_copy[j][i*uvw_stride[j]];
       if (std::abs(out_ref - out_dev) > abs_tol
           || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
         printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
