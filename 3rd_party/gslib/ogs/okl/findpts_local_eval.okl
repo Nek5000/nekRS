@@ -347,13 +347,14 @@ static const double gllz_24[24] = {
    0.9867305535051608835530867381544749753719197924133,
    1.0
 };
-const double *gllz_n[23] = {
-                    gllz_02, gllz_03, gllz_04,
-  gllz_05, gllz_06, gllz_07, gllz_08, gllz_09,
-  gllz_10, gllz_11, gllz_12, gllz_13, gllz_14,
-  gllz_15, gllz_16, gllz_17, gllz_18, gllz_19,
-  gllz_20, gllz_21, gllz_22, gllz_23, gllz_24
-};
+// OCCA crashes is this definition on CUDA
+//const double *gllz_n[23] = {
+//                    gllz_02, gllz_03, gllz_04,
+//  gllz_05, gllz_06, gllz_07, gllz_08, gllz_09,
+//  gllz_10, gllz_11, gllz_12, gllz_13, gllz_14,
+//  gllz_15, gllz_16, gllz_17, gllz_18, gllz_19,
+//  gllz_20, gllz_21, gllz_22, gllz_23, gllz_24
+//};
 
 void lagrange_eval(double *p, double *data,
                    unsigned int n, double x,
@@ -361,11 +362,34 @@ void lagrange_eval(double *p, double *data,
 {
   if (i < n) {
     const double *z, *w;
-    if (n <= MAX_GLL_N) {
-      z = gllz_n[n-2]; w = data;
-    } else {
-      z = data; w = z+n;
+    w = data;
+    switch(n) {
+      case  2: z = gllz_02; break;
+      case  3: z = gllz_03; break;
+      case  4: z = gllz_04; break;
+      case  5: z = gllz_05; break;
+      case  6: z = gllz_06; break;
+      case  7: z = gllz_07; break;
+      case  8: z = gllz_08; break;
+      case  9: z = gllz_09; break;
+      case 10: z = gllz_10; break;
+      case 11: z = gllz_11; break;
+      case 12: z = gllz_12; break;
+      case 13: z = gllz_13; break;
+      case 14: z = gllz_14; break;
+      case 15: z = gllz_15; break;
+      case 16: z = gllz_16; break;
+      case 17: z = gllz_17; break;
+      case 18: z = gllz_18; break;
+      case 19: z = gllz_19; break;
+      case 20: z = gllz_20; break;
+      case 21: z = gllz_21; break;
+      case 22: z = gllz_22; break;
+      case 23: z = gllz_23; break;
+      case 24: z = gllz_24; break;
+      default: z = data; w = z+n;
     }
+
     double p_i = 1;
     for (unsigned int j = 0; j < n; ++j) {
       double d_j = 2*(x-z[j]);
