@@ -107,7 +107,7 @@ void particle_advect_std(dfloat x[LPART][MAX_D],
     x_stride[i] = MAX_D;
   }
 
-  interp_velocity(u_base, u_stride, x_base, x_stride, npart, nrs);
+  interp_velocity_host(u_base, u_stride, x_base, x_stride, npart, nrs);
 
   double c1, c2, c3, dt = nrs->dt[0];
   if (tstep == 0) { // AB1
