@@ -63,8 +63,7 @@ ogs_findpts_t *ogsFindptsSetup(
 
   if (device != nullptr) {
     ogs_handle->device = device;
-    occa::kernel k = ogs::initFindptsKernel(comm, *device, D, n);
-    ogs_handle->local_eval_kernel = new occa::kernel(k);
+    ogs_handle->local_eval_kernel = ogs::initFindptsKernel(comm, *device, D, n);
 
     dfloat *lag_data[3];
     dlong lag_data_size[3];
@@ -103,11 +102,8 @@ void ogsFindptsFree(ogs_findpts_t *fd) {
     ogsHostFindptsFree_3((findpts_data_3*)fd->findpts_data);
   }
   if (fd->device != nullptr) {
-    occa::kernel k = *fd->local_eval_kernel;
-    delete fd->local_eval_kernel;
-    ogs::freeFindptsKernel(k);
-
-    // Use OCCA's reference counting to free memory
+    // Use OCCA's reference counting to free memory and kernel objects
+    fd->local_eval_kernel = occa::kernel();
     for (dlong i = 0; i < fd->D; ++i) {
       fd->lag_data[i] = occa::memory();
     }

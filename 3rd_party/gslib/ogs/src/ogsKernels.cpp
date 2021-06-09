@@ -490,6 +490,3 @@ occa::kernel ogs::initFindptsKernel(MPI_Comm comm, occa::device device,
   return findpts_local_eval;
 }
 
-void ogs::freeFindptsKernel(occa::kernel findpts_local_eval) {
-  findpts_local_eval.free();
-}
