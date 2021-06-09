@@ -49,6 +49,6 @@ void interp_nfld(fld_ptr fld, dlong nfld,
 //   nrs            ... the NekRS data
 void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
                      dfloat *xyz_base[], dlong xyz_stride[],
-                     int n, nrs_t *nrs);
+                     int n, nrs_t *nrs, bool check_occa = false);
 
 #endif

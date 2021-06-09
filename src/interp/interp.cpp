@@ -164,7 +164,7 @@ void interp_nfld(occa::memory fld, dlong nfld,
 
 void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
                      dfloat *xyz_base[], dlong xyz_stride[],
-                     int n, nrs_t *nrs)
+                     int n, nrs_t *nrs, bool check_occa)
 {
   // the interp handle is cached to avoid repeated setups and frees
   static interp_data *interp_handle;
@@ -182,15 +182,16 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
   dfloat *rwork = (dfloat*)workspace;
   int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
 
-#ifdef check_dev_accuracy
-  dfloat **uvw_copy = (dfloat**)malloc(D*sizeof(dfloat*));
-  for (int i = 0; i < D; ++i) {
-    uvw_copy[i] = (dfloat*)malloc(uvw_stride[i]*n*sizeof(dfloat));
-    memcpy(uvw_copy[i], uvw_base[i], uvw_stride[i]*n*sizeof(dfloat));
-  }
+  dfloat **uvw_copy;
+  if (check_occa) {
+    uvw_copy = (dfloat**)malloc(D*sizeof(dfloat*));
+    for (int i = 0; i < D; ++i) {
+      uvw_copy[i] = (dfloat*)malloc(uvw_stride[i]*n*sizeof(dfloat));
+      memcpy(uvw_copy[i], uvw_base[i], uvw_stride[i]*n*sizeof(dfloat));
+    }
 
-  nek::ocopyToNek();
-#endif //check_dev_accuracy
+    nrs->o_U.copyTo(nrs->U);
+  }
 
   occa::memory o_U_dfloat = nrs->o_U.cast(occa::dtype::get<dfloat>());
   interp_nfld(o_U_dfloat, nrs->dim,
@@ -198,31 +199,31 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
               iwork, rwork, n, true, interp_handle,
               uvw_base, uvw_stride);
 
-#ifdef check_dev_accuracy
-  interp_nfld(nrs->U, nrs->dim,
-              xyz_base, xyz_stride, n,
-              iwork, rwork, n, true, interp_handle,
-              uvw_copy, uvw_stride);
+  if (check_occa) {
+    interp_nfld(nrs->U, nrs->dim,
+                xyz_base, xyz_stride, n,
+                iwork, rwork, n, true, interp_handle,
+                uvw_copy, uvw_stride);
 
-  // controls the tolerences for printing warnings
-  const dfloat abs_tol = 2e-15;
-  const dfloat rel_tol = 1;
+    // controls the tolerences for printing warnings
+    const dfloat abs_tol = 2e-15;
+    const dfloat rel_tol = 1;
 
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < D; ++j) {
-      dfloat out_dev = uvw_base[j][i*uvw_stride[j]];
-      dfloat out_ref = uvw_copy[j][i*uvw_stride[j]];
-      if (std::abs(out_ref - out_dev) > abs_tol
-          || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
-        printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < D; ++j) {
+        dfloat out_dev = uvw_base[j][i*uvw_stride[j]];
+        dfloat out_ref = uvw_copy[j][i*uvw_stride[j]];
+        if (std::abs(out_ref - out_dev) > abs_tol
+            || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
+          printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
+        }
       }
     }
+    for (int i = 0; i < D; ++i) {
+      free(uvw_copy[i]);
+    }
+    free(uvw_copy);
   }
-  for (int i = 0; i < D; ++i) {
-    free(uvw_copy[i]);
-  }
-  free(uvw_copy);
-#endif // check_dev_accuracy
 
   free(workspace);
 }
