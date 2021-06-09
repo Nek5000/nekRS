@@ -79,14 +79,14 @@ void coarseSolver::setup(
     settings[0]  = 1;    /* custom settings              */
     settings[1]  = 8;    /* coarsening                   */
     settings[2]  = 6;    /* interpolation                */
-    settings[3]  = 2;    /* number of cycles             */
+    settings[3]  = 1;    /* number of cycles             */
     settings[4]  = 16;   /* smoother for crs level       */
     settings[5]  = 3;    /* number of coarse sweeps      */
     settings[6]  = 16;   /* smoother                     */
     settings[7]  = 1;    /* number of sweeps             */
     settings[8]  = 0.25; /* strong threshold             */
-    settings[9]  = 0;    /* non galerkin tol             */
-    settings[10] = 1;    /* aggressive coarsening levels */
+    settings[9]  = 0.05; /* non galerkin tol             */
+    settings[10] = 0;    /* aggressive coarsening levels */
 
     options.getArgs("BOOMERAMG COARSEN TYPE", settings[1]);
     options.getArgs("BOOMERAMG INTERPOLATION TYPE", settings[2]);
@@ -95,6 +95,7 @@ void coarseSolver::setup(
     options.getArgs("BOOMERAMG ITERATIONS", settings[3]);
     options.getArgs("BOOMERAMG STRONG THRESHOLD", settings[8]);
     options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
+    options.getArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS" , settings[10]);
 
     boomerAMGSetup(Nrows,
                    nnz,

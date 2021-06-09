@@ -76,8 +76,17 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       settings[6]  = 18;   /* smoother                     */
       settings[7]  = 1;    /* number of sweeps             */
       settings[8]  = 0.25; /* strong threshold             */
-      settings[9]  = 0.1;  /* non galerkin tol             */
+      settings[9]  = 0.05; /* non galerkin tol             */
       settings[10] = 0;    /* aggressive coarsening levels */
+
+      platform->options.getArgs("BOOMERAMG COARSEN TYPE", settings[1]);
+      platform->options.getArgs("BOOMERAMG INTERPOLATION TYPE", settings[2]);
+      platform->options.getArgs("BOOMERAMG SMOOTHER TYPE", settings[6]);
+      platform->options.getArgs("BOOMERAMG SMOOTHER SWEEPS", settings[7]);
+      platform->options.getArgs("BOOMERAMG ITERATIONS", settings[3]);
+      platform->options.getArgs("BOOMERAMG STRONG THRESHOLD", settings[8]);
+      platform->options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
+      platform->options.getArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS" , settings[10]);
 
       if(platform->device.mode() != "Serial") {
         if(platform->comm.mpiRank == 0) printf("HYPRE has not been built with GPU support!\n");
@@ -95,7 +104,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
         platform->comm.mpiComm,
         1, /* Nthreads */
         platform->device.id(),
-        0, /* use FP32 - hardwired as no runtime switch is available */
+        0, /* do not use FP32 - hardwired as no runtime switch is available */
         settings 
       );
   }

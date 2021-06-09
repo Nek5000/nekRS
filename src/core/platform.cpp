@@ -245,7 +245,6 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
   }else if(strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
            strcasecmp(requestedOccaMode.c_str(), "SERIAL") == 0) {
-    sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
     sprintf(deviceConfig, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
     options.getArgs("THREAD MODEL", requestedOccaMode);
@@ -266,7 +265,14 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
     ABORT(EXIT_FAILURE);
   } 
 
-
+  // use same compiler for occa and kernel launcher
+  // to avoid libstdc++ incompatibility issues
+  if(this->mode() != "Serial") {
+    std::string NEKRS_CXX;
+    NEKRS_CXX.assign(getenv("NEKRS_CXX"));
+    setenv("OCCA_CXX", NEKRS_CXX.c_str(), 1);
+    setenv("OCCA_CXXFLAGS", "-g -O2", 1);
+  }
 
   int Nthreads = 1;
   if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);

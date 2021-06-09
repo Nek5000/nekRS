@@ -234,13 +234,10 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-  options.setArgs("BOOMERAMG ITERATIONS", "1");
-  options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-  options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(0.05));
 
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-  options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "12");
+  options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
@@ -478,19 +475,19 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     } else if(p_preconditioner.find("semfem") != std::string::npos) {
       options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
       options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
+      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
       std::vector<std::string> list;
       list = serializeString(p_preconditioner, '+');
       for(std::string s : list){
         if(s.find("semfem") != std::string::npos){}
-        else if(s.find("boomeramg") != std::string::npos){
-          options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-        }
         else if(s.find("amgx") != std::string::npos){
           options.setArgs("PRESSURE SEMFEM SOLVER", "AMGX");
+          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
         }
         else if(s.find("fp32") != std::string::npos){
           options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
+	  if(options.compareArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG"))
+            exit("FP32 is currently not supported for BoomerAMG!", EXIT_FAILURE);
         }
         else if(s.find("fp64") != std::string::npos){
           options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
@@ -544,7 +541,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     string p_smoother;
-    if (par->extract("pressure", "smoothertype", p_smoother)) {
+    if (par->extract("pressure", "smoothertype", p_smoother) &&
+        options.compareArgs("PRESSURE PRECONDITIONER", "MULTIGRID")) {
       std::vector<std::string> list;
       list = serializeString(p_smoother, '+');
       if (p_smoother.find("asm") == 0) {
@@ -578,7 +576,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
         options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
         options.setArgs("BOOMERAMG ITERATIONS", "2");
-        options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(16));
         if (p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for Chebyshev smoother!",
                EXIT_FAILURE);
@@ -595,7 +592,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-        options.setArgs("BOOMERAMG ITERATIONS", "1");
         if (p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
                "smoother!",
@@ -613,7 +609,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
         options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
         options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-        options.setArgs("BOOMERAMG ITERATIONS", "1");
         if (p_preconditioner.find("additive") != std::string::npos) {
           exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
                "smoother!",
@@ -636,7 +631,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
       options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
       options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-      options.setArgs("BOOMERAMG ITERATIONS", "1");
     }
 
     // Allow flexibility in downward/upward smoother
@@ -685,6 +679,11 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (par->extract("boomeramg", "nongalerkintol", nonGalerkinTol))
         options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE",
                         to_string_f(nonGalerkinTol));
+
+      int aggLevels;
+      if (par->extract("boomeramg", "aggressivecoarseninglevels", aggLevels))
+        options.setArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS",
+                        std::to_string(aggLevels));
     }
 
     if(par->sections.count("amgx")) {

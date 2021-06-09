@@ -83,5 +83,5 @@ cmake -Wno-dev \
       ${NEKRS_DIR}
 
 echo ""
-echo "Now run e.g. cmake --build build --target install -j 8 ..."
+echo "Now run e.g. cmake --build ./build --target install -j 8 ..."
 echo ""
