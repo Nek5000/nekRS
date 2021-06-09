@@ -390,9 +390,10 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
       default: z = data; w = z+n;
     }
 
-    double p_i = 1;
+    // for(j=0; j<n; ++j) if(i!=j) p_i *= 2*(x-z[j])
+    double p_i = (1 << (n-1));
     for (unsigned int j = 0; j < n; ++j) {
-      double d_j = 2*(x-z[j]);
+      double d_j = x-z[j];
       p_i *= j==i ? 1 : d_j;
     }
     p[i] = w[i] * p_i;
@@ -462,49 +463,49 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
 // NR is assumed to be at most 256
 #if NR>128
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j + 128 < NR) {
+      if (j < 128 && j < NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if NR>64
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j + 64 < NR) {
+      if (j < 64 && j < NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if NR>32
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j + 32 < NR) {
+      if (j < 32 && j < NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if NR>16
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j + 16 < NR) {
+      if (j < 16 && j < NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if NR>8
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j + 8 < NR) {
+      if (j < 8 && j < NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if NR>4
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j + 4 < NR) {
+      if (j < 4 && j < NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if NR>2
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j + 2 < NR) {
+      if (j < 2 && j < NR-2) {
         sums[j] += sums[j+2];
       }
     }
@@ -584,49 +585,49 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
 // NR is assumed to be at most 256
 #if NR>128
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j + 128 < NR) {
+      if (j < 128 && j < NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if NR>64
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j + 64 < NR) {
+      if (j < 64 && j < NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if NR>32
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j + 32 < NR) {
+      if (j < 32 && j < NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if NR>16
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j + 16 < NR) {
+      if (j < 16 && j < NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if NR>8
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j + 8 < NR) {
+      if (j < 8 && j < NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if NR>4
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j + 4 < NR) {
+      if (j < 4 && j < NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if NR>2
     for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j + 2 < NR) {
+      if (j < 2 && j < NR-2) {
         sums[j] += sums[j+2];
       }
     }
