@@ -221,6 +221,10 @@ void my_particle_generator(nrs_t *nrs, dfloat time, int tstep) {
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
+  // Call interp_velocity w/ 0 particles to pre-compile the OCCA kernels
+  dfloat *u_base[3] = {nullptr, nullptr, nullptr}, *x_base[3] = {nullptr, nullptr, nullptr};
+  dlong u_stride[3] = {0, 0, 0},                  x_stride[3] = {0, 0, 0};
+  interp_velocity(u_base, u_stride, x_base, x_stride, 0, nrs);
 }
 
 void UDF_Setup(nrs_t *nrs)
