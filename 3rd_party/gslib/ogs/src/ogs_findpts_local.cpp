@@ -38,11 +38,8 @@ void ogs_findpts_local_eval_internal_2(
   assert(nr <= MAX_GLL_N);
   assert(ns <= MAX_GLL_N);
 
-  occa::json malloc_props;
-
   occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_2)+sizeof(struct eval_src_pt_2))*pn,
-                                         occa::dtype::byte,
-                                         malloc_props);
+                                         occa::dtype::byte);
   occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_2)*pn;
   occa::memory d_src_pt = workspace;
   d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_2)*pn);
@@ -58,23 +55,6 @@ void ogs_findpts_local_eval_internal_2(
   unsigned int out_stride = sizeof(struct eval_out_pt_2);
   unsigned int src_stride = sizeof(struct eval_src_pt_2);
 
-
-  occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
-                                            occa::dtype::double_,
-                                            malloc_props);
-  d_lag_data_0.copyFrom(lag_data[0]);
-  // reuse lag_data_0 if all directions have the same degree
-  occa::memory d_lag_data_1;
-  if (nr == ns) {
-    d_lag_data_1 = d_lag_data_0;
-  } else {
-    d_lag_data_1 = device.malloc(lag_data_size[1],
-                                            occa::dtype::double_,
-                                            malloc_props);
-    d_lag_data_1.copyFrom(lag_data[1]);
-  }
-
-
   occa::memory d_in = *(occa::memory*)in;
 
   (*fd->local_eval_kernel)(d_out_out_base,   out_stride,
@@ -85,7 +65,7 @@ void ogs_findpts_local_eval_internal_2(
                            d_src_proc_base,  src_stride,
                            d_src_index_base, src_stride,
                            pn, d_in, in_stride,
-                           d_lag_data_0, d_lag_data_1);
+                           fd->lag_data[0], fd->lag_data[1]);
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_2)*pn);
 }
 
@@ -108,11 +88,8 @@ void ogs_findpts_local_eval_internal_3(
   assert(ns <= MAX_GLL_N);
   assert(nt <= MAX_GLL_N);
 
-  occa::json malloc_props;
-
   occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_3)+sizeof(struct eval_src_pt_3))*pn,
-                                         occa::dtype::byte,
-                                         malloc_props);
+                                         occa::dtype::byte);
   occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_3)*pn;
   occa::memory d_src_pt = workspace;
   d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_3)*pn);
@@ -128,25 +105,6 @@ void ogs_findpts_local_eval_internal_3(
   unsigned int out_stride = sizeof(struct eval_out_pt_3);
   unsigned int src_stride = sizeof(struct eval_src_pt_3);
 
-  occa::memory d_lag_data_0 = device.malloc(lag_data_size[0],
-                                            occa::dtype::double_,
-                                            malloc_props);
-  d_lag_data_0.copyFrom(lag_data[0]);
-  // reuse lag_data_0 if all directions have the same degree
-  occa::memory d_lag_data_1, d_lag_data_2;
-  if (nr == ns) {
-    d_lag_data_1 = d_lag_data_0;
-  } else {
-    d_lag_data_1 = device.malloc(lag_data_size[1], occa::dtype::double_, malloc_props);
-    d_lag_data_1.copyFrom(lag_data[1]);
-  }
-  if (nr == nt) {
-    d_lag_data_2 = d_lag_data_0;
-  } else {
-    d_lag_data_2 = device.malloc(lag_data_size[2], occa::dtype::double_, malloc_props);
-    d_lag_data_2.copyFrom(lag_data[2]);
-  }
-
   occa::memory d_in = *(occa::memory*)in;
 
   (*fd->local_eval_kernel)(d_out_out_base,   out_stride,
@@ -157,7 +115,7 @@ void ogs_findpts_local_eval_internal_3(
                            d_src_proc_base,  src_stride,
                            d_src_index_base, src_stride,
                            pn, d_in, in_stride,
-                           d_lag_data_0, d_lag_data_1, d_lag_data_2);
+                           fd->lag_data[0], fd->lag_data[1], fd->lag_data[2]);
 
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_3)*pn);
 }

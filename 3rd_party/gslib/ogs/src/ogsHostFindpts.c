@@ -37,6 +37,30 @@ SOFTWARE.
 
 #include "ogstypes.h"
 
+// need to access internals of findpts_data structs
+struct hash_data_2 {
+  ulong hash_n;
+  struct dbl_range bnd[2];
+  double fac[2];
+  uint *offset;
+};
+struct findpts_data_2 {
+  struct crystal cr;
+  struct findpts_local_data_2 local;
+  struct hash_data_2 hash;
+};
+struct hash_data_3 {
+  ulong hash_n;
+  struct dbl_range bnd[3];
+  double fac[3];
+  uint *offset;
+};
+struct findpts_data_3 {
+  struct crystal cr;
+  struct findpts_local_data_3 local;
+  struct hash_data_3 hash;
+};
+
 struct findpts_data_2 *ogsHostFindptsSetup_2(
   MPI_Comm mpi_comm,
   const dfloat *const elx[2],
@@ -79,6 +103,21 @@ void ogsHostFindptsFree_2(struct findpts_data_2 *fd) {
 }
 void ogsHostFindptsFree_3(struct findpts_data_3 *fd) {
   findpts_free_3(fd);
+}
+
+void ogsHostFindptsLagData_2(struct findpts_data_2 *const fd,
+                             dfloat **lag_data, dlong *lag_data_size) {
+  for (int i = 0; i < 2; ++i) {
+    lag_data[i] = fd->local.fed.lag_data[i];
+    lag_data_size[i] = gll_lag_size(fd->local.fed.n[i]);
+  }
+}
+void ogsHostFindptsLagData_3(struct findpts_data_3 *const fd,
+                             dfloat **lag_data, dlong *lag_data_size) {
+  for (int i = 0; i < 3; ++i) {
+    lag_data[i] = fd->local.fed.lag_data[i];
+    lag_data_size[i] = gll_lag_size(fd->local.fed.n[i]);
+  }
 }
 
 void ogsHostFindpts_2(    dlong  *const  code_base   , const dlong  code_stride   ,

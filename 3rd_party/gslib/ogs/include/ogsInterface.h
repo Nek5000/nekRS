@@ -47,9 +47,6 @@ extern "C"
   struct findpts_data_2;
   struct findpts_data_3;
 
-  typedef findpts_data_2 ogsFindptsData_2;
-  typedef findpts_data_3 ogsFindptsData_3;
-
   struct findpts_data_2 *ogsHostFindptsSetup_2(
     MPI_Comm comm,
     const dfloat *const elx[2],
@@ -69,6 +66,11 @@ extern "C"
 
   void ogsHostFindptsFree_2(struct findpts_data_2 *fd);
   void ogsHostFindptsFree_3(struct findpts_data_3 *fd);
+
+  void ogsHostFindptsLagData_2(struct findpts_data_2 *const fd,
+                               dfloat **lag_data, dlong *lag_data_size);
+  void ogsHostFindptsLagData_3(struct findpts_data_3 *const fd,
+                               dfloat **lag_data, dlong *lag_data_size);
 
   void ogsHostFindpts_2(    dlong  *const  code_base   , const dlong  code_stride   ,
                             dlong  *const  proc_base   , const dlong  proc_stride   ,

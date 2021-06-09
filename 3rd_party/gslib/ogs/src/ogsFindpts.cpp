@@ -57,7 +57,7 @@ ogs_findpts_t *ogsFindptsSetup(
     assert(false);
   }
 
-  ogs_findpts_t *ogs_handle = (ogs_findpts_t*)malloc(sizeof(ogs_findpts_t));
+  ogs_findpts_t *ogs_handle = new ogs_findpts_t();
   ogs_handle->D = D;
   ogs_handle->findpts_data = findpts_data;
 
@@ -65,6 +65,29 @@ ogs_findpts_t *ogsFindptsSetup(
     ogs_handle->device = device;
     occa::kernel k = ogs::initFindptsKernel(comm, *device, D, n);
     ogs_handle->local_eval_kernel = new occa::kernel(k);
+
+    dfloat *lag_data[3];
+    dlong lag_data_size[3];
+    if (D == 2) {
+      ogsHostFindptsLagData_2((struct findpts_data_2*)ogs_handle->findpts_data,
+                              lag_data, lag_data_size);
+    } else {
+      ogsHostFindptsLagData_3((struct findpts_data_3*)ogs_handle->findpts_data,
+                              lag_data, lag_data_size);
+    }
+
+    // Reuse lag_data when multiple dimensions use the same degree
+    dlong last_n = -1;
+    for (dlong i = 0; i < D; ++i) {
+      if (n[i] == last_n) {
+        ogs_handle->lag_data[i] = ogs_handle->lag_data[i-1];
+      } else {
+        ogs_handle->lag_data[i] = device->malloc(lag_data_size[i],
+                                                 occa::dtype::double_);
+        ogs_handle->lag_data[i].copyFrom(lag_data[i]);
+        last_n = n[i];
+      }
+    }
   } else {
     ogs_handle->device = nullptr;
   }
@@ -83,8 +106,13 @@ void ogsFindptsFree(ogs_findpts_t *fd) {
     occa::kernel k = *fd->local_eval_kernel;
     delete fd->local_eval_kernel;
     ogs::freeFindptsKernel(k);
+
+    // Use OCCA's reference counting to free memory
+    for (dlong i = 0; i < fd->D; ++i) {
+      fd->lag_data[i] = occa::memory();
+    }
   }
-  free(fd);
+  delete fd;
 }
 
 void ogsFindpts(    dlong  *const  code_base  , const dlong  code_stride,

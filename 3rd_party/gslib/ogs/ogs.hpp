@@ -238,6 +238,7 @@ typedef struct {
   void *findpts_data;
   occa::device *device;
   occa::kernel *local_eval_kernel;
+  occa::memory lag_data[3];
 } ogs_findpts_t;
 
 ogs_findpts_t *ogsFindptsSetup(
