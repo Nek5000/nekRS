@@ -3,7 +3,7 @@
 polynomialOrder = 9
 #startFrom = "restart.fld"
 stopAt = endTime
-endTime = 2600
+endTime = 100
 
 dt = 1.0e-2
 timeStepper = tombo2
@@ -11,7 +11,7 @@ extrapolation = subCycling
 subCyclingSteps = 1
 
 writeControl = runTime
-writeInterval = 100
+writeInterval = 1
 
 filtering = hpfrt
 filterWeight = 0.05/${dt}

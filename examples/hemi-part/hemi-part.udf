@@ -1,16 +1,18 @@
 //
 // nekRS User Defined File
 //
-#include <climits>
-#include <cstring>
-#include <cstdio>
+#include <limits.h>
+#include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include "interp.hpp"
 #include "udf.hpp"
 
 #define LPART 4000 /* max number of particles per MPI rank */
 #define MAX_D 3
-#define IF_CHECK_ACCURACY true
+
+#define USE_HOST_FINDPTS false
+#define IF_CHECK_ACCURACY false
 
 /* Particle Functions */
 void particle_init(dfloat x[LPART][MAX_D],
@@ -38,6 +40,8 @@ void particle_init(dfloat x[LPART][MAX_D],
       dfloat yp = -1.0 + dy*part;
 
       if (k%mpi_size == mpi_rank) { // Inject particle _only_ on this processor
+        if (l >= LPART) l=0; // Retire old particles by overwriting their data
+
         x[l][0] = xp;
         x[l][1] = yp;
         x[l][2] = zp;
@@ -49,7 +53,6 @@ void particle_init(dfloat x[LPART][MAX_D],
         part_color[l] = line+1;    // color by line
 
         ++l; // local count
-        if (l >= LPART) l=0; // Retire old particles by overwriting their data
       }
       ++k; // Total count
     }
@@ -60,6 +63,34 @@ void particle_init(dfloat x[LPART][MAX_D],
   npart  = std::max(npart,lcount);
 }
 
+// copy of interp_velocity, except using host copy of the velocities
+void interp_velocity_host(dfloat *uvw_base[], dlong uvw_stride[],
+                          dfloat *xyz_base[], dlong xyz_stride[],
+                          int n, nrs_t *nrs)
+{
+  // the interp handle is cached to avoid repeated setups and frees
+  static interp_data *interp_handle;
+  static bool called = false;
+  if (!called || interp_handle->nrs != nrs) {
+    if (called) {
+      interp_free(interp_handle);
+    }
+    called = true;
+    interp_handle = interp_setup(nrs, 0);
+  }
+
+  dlong D = interp_handle->D;
+  char *workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
+  dfloat *rwork = (dfloat*)workspace;
+  int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
+
+  interp_nfld(nrs->U, nrs->dim,
+              xyz_base, xyz_stride, n,
+              iwork, rwork, n, true, interp_handle,
+              uvw_base, uvw_stride);
+
+  free(workspace);
+}
 
 void particle_advect_std(dfloat x[LPART][MAX_D],
                          bool valid[LPART],
@@ -79,7 +110,11 @@ void particle_advect_std(dfloat x[LPART][MAX_D],
     x_stride[i] = MAX_D;
   }
 
-  interp_velocity(u_base, u_stride, x_base, x_stride, npart, nrs, IF_CHECK_ACCURACY);
+  if (USE_HOST_FINDPTS) {
+    interp_velocity_host(u_base, u_stride, x_base, x_stride, npart, nrs);
+  } else {
+    interp_velocity(u_base, u_stride, x_base, x_stride, npart, nrs, IF_CHECK_ACCURACY);
+  }
 
   double c1, c2, c3, dt = nrs->dt[0];
   if (tstep == 0) { // AB1
@@ -225,11 +260,21 @@ void UDF_LoadKernels(nrs_t *nrs)
   // Call interp_velocity w/ 0 particles to pre-compile the OCCA kernels
   dfloat *u_base[3] = {nullptr, nullptr, nullptr}, *x_base[3] = {nullptr, nullptr, nullptr};
   dlong u_stride[3] = {0, 0, 0},                  x_stride[3] = {0, 0, 0};
-  interp_velocity(u_base, u_stride, x_base, x_stride, 0, nrs);
+  if (USE_HOST_FINDPTS) {
+    interp_velocity_host(u_base, u_stride, x_base, x_stride, 0, nrs);
+  } else {
+    interp_velocity(u_base, u_stride, x_base, x_stride, 0, nrs, IF_CHECK_ACCURACY);
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
+  int mpi_rank = platform_t::getInstance()->comm.mpiRank;
+  int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
+  if (mpi_rank == 0) {
+    std::cout << "Particle config: " << (mpi_size*LPART) << " particles (" << LPART << " local) "
+                                     << "with " << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts" << std::endl;
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -237,6 +282,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   // computing lambda2 requires the velocity on host
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
+  } else if (USE_HOST_FINDPTS) {
+    nrs->o_U.copyTo(nrs->U);
   }
   nek::userchk();
   my_particle_generator(nrs, time, tstep);
