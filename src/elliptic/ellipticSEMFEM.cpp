@@ -49,9 +49,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     mesh->o_x,
     mesh->o_y,
     mesh->o_z,
-    mesh->x,
-    mesh->y,
-    mesh->z,
     mask,
     platform->comm.mpiComm,
     mesh->globalIds
