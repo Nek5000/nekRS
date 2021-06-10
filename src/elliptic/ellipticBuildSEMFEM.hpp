@@ -16,7 +16,6 @@ struct SEMFEMData{
 
 SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_, 
                    occa::memory _o_x, occa::memory _o_y, occa::memory _o_z,
-                   double*, double*, double*,
                    double *pmask_,
                    MPI_Comm comm,
                    long long int* gatherGlobalNodes);
