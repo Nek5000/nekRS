@@ -114,7 +114,7 @@ void interp_nfld(fld_ptr fld, dlong nfld,
         nfail += 1;
         //if (nfail < 5) write(6,'(a,1p3e15.7)')        ' WARNING: point not within mesh xy[z]: !',        xp(in),yp(in),zp(in)
         if (nfail < 5){
-          std::cerr << " WARNING: point not within mesh xy[z]d^2: "
+          std::cerr << " WARNING: point not within mesh xy[z]: "
                     << x[0][in*x_stride[0]] << "," << x[1][in*x_stride[1]] << ", " << x[2][in*x_stride[2]] << std::endl;
         }
       }
@@ -132,7 +132,7 @@ void interp_nfld(fld_ptr fld, dlong nfld,
   for (int ifld = 0; ifld < nfld; ++ifld) {
     dlong in_offset  = ifld*handle->nrs->fieldOffset;
 
-    ogsFindptsEval(out     [ifld], out_stride[ifld]*sizeof(dfloat),
+    ogsFindptsEval(out[ifld], out_stride[ifld]*sizeof(dfloat),
                    code,      1               *sizeof(dlong),
                    proc,      1               *sizeof(dlong),
                    el,        1               *sizeof(dlong),
