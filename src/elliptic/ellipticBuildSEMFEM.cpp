@@ -309,9 +309,9 @@ void fem_assembly_device() {
         for (int i = 0; i < nvert; i++) {
           idx[i] = 0;
 
-          for (int d = 0; d < n_dim; d++) {
-            idx[i] += (s[d] + v_coord[i][d]) * pow(n_x, d);
-          }
+          idx[i] += (s[0] + v_coord[i][0]) * 1;
+          idx[i] += (s[1] + v_coord[i][1]) * n_x;
+          idx[i] += (s[2] + v_coord[i][2]) * n_x * n_x;
         }
         for (int t = 0; t < num_fem; t++) {
           for (int i = 0; i < n_dim + 1; i++) {
