@@ -244,10 +244,6 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
           double J_rx[3][3];
           double x_t[3][4];
           double q_x[3];
-          if(s_z == 0){
-            quadrature_rule(q_r, q_w);
-            mesh_connectivity(v_coord, t_map);
-          }
           /* Get indices */
           int s[n_dim];
 
