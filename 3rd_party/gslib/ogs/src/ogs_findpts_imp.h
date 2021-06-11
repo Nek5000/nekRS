@@ -30,19 +30,6 @@ struct findpts_data {
   struct hash_data hash;
 };
 
-void findpts_local_eval(struct eval_out_pt *opt, const struct eval_src_pt *spt,
-                        const uint npt,
-                        const void *const in, struct findpts_local_data *const fd,
-                        const void *const ogs_fd)
-{
-  unsigned lag_data_size[D];
-  for (int i = 0; i < D; ++i) lag_data_size[i] = gll_lag_size(fd->fed.n[i]);
-  cpp_findpts_local_eval(opt, spt,
-                         npt, in, fd->ntot,
-                         fd->fed.n, fd->fed.lag_data, lag_data_size,
-                         ogs_fd);
-}
-
 void findpts_eval(      double *const  out_base, const unsigned  out_stride,
                   const uint   *const code_base, const unsigned code_stride,
                   const uint   *const proc_base, const unsigned proc_stride,

@@ -459,50 +459,50 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
 
     dfloat *out = AT(dfloat, out_out, i);
 
-// NR is assumed to be at most 256
-#if NR>128
+// p_NR is assumed to be at most 256
+#if p_NR>128
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 128 && j < p_NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
-#if NR>64
+#if p_NR>64
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 64 && j < p_NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
-#if NR>32
+#if p_NR>32
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 32 && j < p_NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
-#if NR>16
+#if p_NR>16
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 16 && j < p_NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
-#if NR>8
+#if p_NR>8
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 8 && j < p_NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
-#if NR>4
+#if p_NR>4
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 4 && j < p_NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
-#if NR>2
+#if p_NR>2
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 2 && j < p_NR-2) {
         sums[j] += sums[j+2];
@@ -561,14 +561,14 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
     // out[i] = sum_j sum_k sum_l wtr[j]*wts[k]*wtt[l]*in[j + k*nr + l*nr*ns]
     //        = sum_j wtr[j] * sum_k wts[k] * sum_l wtt[l]*in[j + k*nr + l*nr*ns]
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < NR) {
+      if (j < p_NR) {
         dfloat sum_j = 0;
         const dfloat *in_el_j = in_el+j;
         for (dlong k = 0; k < p_NS; ++k) {
           dfloat sum_k = 0;
           const dfloat *in_el_jk = in_el_j+k*p_NR;
 
-          for (dlong l = 0; l < NT; ++l) {
+          for (dlong l = 0; l < p_NT; ++l) {
             sum_k += in_el_jk[l*p_NR*p_NS] * wtt[l];
           }
           sum_j += wts[k]*sum_k;
@@ -581,50 +581,50 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
 
     dfloat *out = AT(dfloat, out_out, i);
 
-// NR is assumed to be at most 256
-#if NR>128
+// p_NR is assumed to be at most 256
+#if p_NR>128
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 128 && j < p_NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
-#if NR>64
+#if p_NR>64
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 64 && j < p_NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
-#if NR>32
+#if p_NR>32
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 32 && j < p_NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
-#if NR>16
+#if p_NR>16
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 16 && j < p_NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
-#if NR>8
+#if p_NR>8
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 8 && j < p_NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
-#if NR>4
+#if p_NR>4
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 4 && j < p_NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
-#if NR>2
+#if p_NR>2
     for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < 2 && j < p_NR-2) {
         sums[j] += sums[j+2];
