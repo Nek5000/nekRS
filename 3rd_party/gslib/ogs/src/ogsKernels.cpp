@@ -454,15 +454,16 @@ occa::kernel ogs::initFindptsKernel(MPI_Comm comm, occa::device device,
 
   occa::properties kernelInfo;
 
-  kernelInfo["defines/ " "NR"] = n[0];
-  kernelInfo["defines/ " "NS"] = n[1];
+  kernelInfo["defines/ " "p_NR"] = n[0];
+  kernelInfo["defines/ " "p_NS"] = n[1];
   if (D == 3){
-    kernelInfo["defines/ " "NT"] = n[2];
+    kernelInfo["defines/ " "p_NT"] = n[2];
   } else {
-    kernelInfo["defines/ " "NT"] = 1;
+    kernelInfo["defines/ " "p_NT"] = 1;
   }
   kernelInfo["defines/ " "dlong"] = dlongString;
   kernelInfo["defines/ " "hlong"] = hlongString;
+  kernelInfo["defines/ " "dfloat"] = dfloatString;
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);

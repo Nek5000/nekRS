@@ -12,14 +12,14 @@ struct eval_out_pt_2 { double out; uint index, proc; };
 
 void ogs_findpts_local_eval_internal_2(
   struct eval_out_pt_2 *opt, const struct eval_src_pt_2 *spt,
-  const unsigned pn, const void *const in, const unsigned in_stride,
-  unsigned *const n, double *const lag_data[2], unsigned lag_data_size[2],
+  const uint pn, const void *const in, const uint in_stride,
+  uint *const n, double *const lag_data[2], uint lag_data_size[2],
   const void *const ogs_fd);
 
 void ogs_findpts_local_eval_internal_3(
   struct eval_out_pt_3 *opt, const struct eval_src_pt_3 *spt,
-  const unsigned pn, const void *const in, const unsigned in_stride,
-  unsigned *const n, double *const lag_data[3], unsigned lag_data_size[3],
+  const uint pn, const void *const in, const uint in_stride,
+  uint *const n, double *const lag_data[3], uint lag_data_size[3],
   const void *const ogs_fd);
 
 void ogs_findpts_local_eval_2(

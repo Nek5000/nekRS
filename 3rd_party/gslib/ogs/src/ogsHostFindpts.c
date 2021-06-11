@@ -69,8 +69,12 @@ struct findpts_data_2 *ogsHostFindptsSetup_2(
   const hlong local_hash_size, const hlong global_hash_size,
   const dlong npt_max, const dfloat newt_tol) {
 
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
+  if (sizeof(dfloat) != sizeof(double)) {
+    fail(1,__FILE__,__LINE__,"ogs's dfloat is not compatible with gslib's double");
+  }
+  if (sizeof(dlong) != sizeof(uint)) {
+    fail(1,__FILE__,__LINE__,"ogs's dlong is not compatible with gslib's uint");
+  }
 
   struct comm gs_comm;
   comm_init(&gs_comm, mpi_comm);
@@ -87,8 +91,12 @@ struct findpts_data_3 *ogsHostFindptsSetup_3(
   const hlong local_hash_size, const hlong global_hash_size,
   const dlong npt_max, const dfloat newt_tol) {
 
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
+  if (sizeof(dfloat) != sizeof(double)) {
+    fail(1,__FILE__,__LINE__,"ogs's dfloat is not compatible with gslib's double");
+  }
+  if (sizeof(dlong) != sizeof(uint)) {
+    fail(1,__FILE__,__LINE__,"ogs's dlong is not compatible with gslib's uint");
+  }
 
   struct comm gs_comm;
   comm_init(&gs_comm, mpi_comm);
@@ -128,9 +136,6 @@ void ogsHostFindpts_2(    dlong  *const  code_base   , const dlong  code_stride 
                     const dfloat *const     x_base[2], const dlong     x_stride[2],
                     const dfloat npt, struct findpts_data_2 *const fd) {
 
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
-
   findpts_2( code_base,  code_stride,
              proc_base,  proc_stride,
                el_base,    el_stride,
@@ -147,9 +152,6 @@ void ogsHostFindpts_3(    dlong  *const  code_base   , const dlong  code_stride 
                           dfloat *const dist2_base   , const dlong dist2_stride   ,
                     const dfloat *const     x_base[3], const dlong     x_stride[3],
                     const dfloat npt, struct findpts_data_3 *const fd) {
-
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
 
   findpts_3( code_base,  code_stride,
              proc_base,  proc_stride,
@@ -168,9 +170,6 @@ void ogsHostFindptsEval_2(
   const dfloat *const    r_base, const dlong    r_stride,
   const dlong npt, const dfloat *const in, struct findpts_data_2 *const fd) {
 
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
-
   findpts_eval_2( out_base,  out_stride,
                  code_base, code_stride,
                  proc_base, proc_stride,
@@ -186,9 +185,6 @@ void ogsHostFindptsEval_3(
   const dlong  *const   el_base, const dlong   el_stride,
   const dfloat *const    r_base, const dlong    r_stride,
   const dlong npt, const dfloat *const in, struct findpts_data_3 *const fd) {
-
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
 
   findpts_eval_3( out_base,  out_stride,
                  code_base, code_stride,

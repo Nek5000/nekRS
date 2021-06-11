@@ -2,29 +2,29 @@
 
 #define GLL_LAG_FIX_MAX 24
 
-static const double gllz_02[ 2] = {
+static const dfloat gllz_02[ 2] = {
   -1.0,
    1.0
 };
-static const double gllz_03[ 3] = {
+static const dfloat gllz_03[ 3] = {
   -1.0,
    0.0,
    1.0
 };
-static const double gllz_04[ 4] = {
+static const dfloat gllz_04[ 4] = {
   -1.0,
   -0.44721359549995793928183473374625524708812367192231,
    0.44721359549995793928183473374625524708812367192231,
    1.0
 };
-static const double gllz_05[ 5] = {
+static const dfloat gllz_05[ 5] = {
   -1.0,
   -0.65465367070797714379829245624685835556920808239542,
    0.0,
    0.65465367070797714379829245624685835556920808239542,
    1.0
 };
-static const double gllz_06[ 6] = {
+static const dfloat gllz_06[ 6] = {
   -1.0,
   -0.7650553239294646928510029739593381503657356885361,
   -0.28523151648064509631415099404087907191900347272643,
@@ -32,7 +32,7 @@ static const double gllz_06[ 6] = {
    0.7650553239294646928510029739593381503657356885361,
    1.0
 };
-static const double gllz_07[ 7] = {
+static const dfloat gllz_07[ 7] = {
   -1.0,
   -0.830223896278566929872032213967465139587170364872,
   -0.46884879347071421380377188190876632940559747167184,
@@ -41,7 +41,7 @@ static const double gllz_07[ 7] = {
    0.830223896278566929872032213967465139587170364872,
    1.0
 };
-static const double gllz_08[ 8] = {
+static const dfloat gllz_08[ 8] = {
   -1.0,
   -0.87174014850960661533744576122066343810378066967698,
   -0.59170018143314230214451073139795318994570098951733,
@@ -51,7 +51,7 @@ static const double gllz_08[ 8] = {
    0.87174014850960661533744576122066343810378066967698,
    1.0
 };
-static const double gllz_09[ 9] = {
+static const dfloat gllz_09[ 9] = {
   -1.0,
   -0.8997579954114601573123452444183379580514802955661,
   -0.67718627951073775344588542709134245071102964761391,
@@ -62,7 +62,7 @@ static const double gllz_09[ 9] = {
    0.8997579954114601573123452444183379580514802955661,
    1.0
 };
-static const double gllz_10[10] = {
+static const dfloat gllz_10[10] = {
   -1.0,
   -0.91953390816645881382893266082233813415354307544628,
   -0.73877386510550507500310617485983072501618510137693,
@@ -74,7 +74,7 @@ static const double gllz_10[10] = {
    0.91953390816645881382893266082233813415354307544628,
    1.0
 };
-static const double gllz_11[11] = {
+static const dfloat gllz_11[11] = {
   -1.0,
   -0.93400143040805913433227413609938363453991733010996,
   -0.78448347366314441862241781610845810350719745509406,
@@ -87,7 +87,7 @@ static const double gllz_11[11] = {
    0.93400143040805913433227413609938363453991733010996,
    1.0
 };
-static const double gllz_12[12] = {
+static const dfloat gllz_12[12] = {
   -1.0,
   -0.94489927222288222340758013830321871361125655195003,
   -0.81927932164400667834864158171690266069046665790364,
@@ -101,7 +101,7 @@ static const double gllz_12[12] = {
    0.94489927222288222340758013830321871361125655195003,
    1.0
 };
-static const double gllz_13[13] = {
+static const dfloat gllz_13[13] = {
   -1.0,
   -0.95330984664216391189690546475544915162650788869736,
   -0.84634756465187231686592560709875335957803665971441,
@@ -116,7 +116,7 @@ static const double gllz_13[13] = {
    0.95330984664216391189690546475544915162650788869736,
    1.0
 };
-static const double gllz_14[14] = {
+static const dfloat gllz_14[14] = {
   -1.0,
   -0.95993504526726090135510016201542438906639151857265,
   -0.86780105383034725100022020290826421324987235309444,
@@ -132,7 +132,7 @@ static const double gllz_14[14] = {
    0.95993504526726090135510016201542438906639151857265,
    1.0
 };
-static const double gllz_15[15] = {
+static const dfloat gllz_15[15] = {
   -1.0,
   -0.96524592650383857279585139206960117770765013599709,
   -0.88508204422297629882540163148222965198871408520748,
@@ -149,7 +149,7 @@ static const double gllz_15[15] = {
    0.96524592650383857279585139206960117770765013599709,
    1.0
 };
-static const double gllz_16[16] = {
+static const dfloat gllz_16[16] = {
   -1.0,
   -0.96956804627021793295224273836745924138899074650383,
   -0.89920053309347209299462826151984947674999760904514,
@@ -167,7 +167,7 @@ static const double gllz_16[16] = {
    0.96956804627021793295224273836745924138899074650383,
    1.0
 };
-static const double gllz_17[17] = {
+static const dfloat gllz_17[17] = {
   -1.0,
   -0.97313217663141831415697950187372143058895914912251,
   -0.91087999591557359562380250639772646753087945186873,
@@ -186,7 +186,7 @@ static const double gllz_17[17] = {
    0.97313217663141831415697950187372143058895914912251,
    1.0
 };
-static const double gllz_18[18] = {
+static const dfloat gllz_18[18] = {
   -1.0,
   -0.97610555741219854286451892434170006676181344271919,
   -0.92064918534753387383785462543127742356235348618904,
@@ -206,7 +206,7 @@ static const double gllz_18[18] = {
    0.97610555741219854286451892434170006676181344271919,
    1.0
 };
-static const double gllz_19[19] = {
+static const dfloat gllz_19[19] = {
   -1.0,
   -0.97861176622208009515263406311022256281427733781081,
   -0.92890152815258624371794025879654861245016818225195,
@@ -227,7 +227,7 @@ static const double gllz_19[19] = {
    0.97861176622208009515263406311022256281427733781081,
    1.0
 };
-static const double gllz_20[20] = {
+static const dfloat gllz_20[20] = {
   -1.0,
   -0.98074370489391417192544643858423091522991062312625,
   -0.93593449881266543571618158493062692991557383318105,
@@ -249,7 +249,7 @@ static const double gllz_20[20] = {
    0.98074370489391417192544643858423091522991062312625,
    1.0
 };
-static const double gllz_21[21] = {
+static const dfloat gllz_21[21] = {
   -1.0,
   -0.98257229660454802823448127655540587685917158823641,
   -0.94197629695974553429610265066143517664965087404401,
@@ -272,7 +272,7 @@ static const double gllz_21[21] = {
    0.98257229660454802823448127655540587685917158823641,
    1.0
 };
-static const double gllz_22[22] = {
+static const dfloat gllz_22[22] = {
   -1.0,
   -0.98415243845764617655228962221207029660551353611952,
   -0.94720428399922868052421376661572950991206204534136,
@@ -296,7 +296,7 @@ static const double gllz_22[22] = {
    0.98415243845764617655228962221207029660551353611952,
    1.0
 };
-static const double gllz_23[23] = {
+static const dfloat gllz_23[23] = {
   -1.0,
   -0.98552715587873257808146276673809909902061079213965,
   -0.9517579557107102041356396798514291558483519254488,
@@ -321,7 +321,7 @@ static const double gllz_23[23] = {
    0.98552715587873257808146276673809909902061079213965,
    1.0
 };
-static const double gllz_24[24] = {
+static const dfloat gllz_24[24] = {
   -1.0,
   -0.9867305535051608835530867381544749753719197924133,
   -0.95574822092988635802697713055064483107073304295574,
@@ -348,7 +348,7 @@ static const double gllz_24[24] = {
    1.0
 };
 // OCCA crashes is this definition on CUDA
-//const double *gllz_n[23] = {
+//const dfloat *gllz_n[23] = {
 //                    gllz_02, gllz_03, gllz_04,
 //  gllz_05, gllz_06, gllz_07, gllz_08, gllz_09,
 //  gllz_10, gllz_11, gllz_12, gllz_13, gllz_14,
@@ -356,12 +356,11 @@ static const double gllz_24[24] = {
 //  gllz_20, gllz_21, gllz_22, gllz_23, gllz_24
 //};
 
-void lagrange_eval(@restrict double *p, @restrict const double *data,
-                   unsigned int n, double x,
-                   unsigned int i)
-{
+void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
+                   dlong n, dfloat x,
+                   dlong i){
   if (i < n) {
-    const double *z, *w;
+    const dfloat *z, *w;
     w = data;
     switch(n) {
       case  2: z = gllz_02; break;
@@ -391,16 +390,16 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
     }
 
     // for(j=0; j<n; ++j) if(i!=j) p_i *= 2*(x-z[j])
-    double p_i = (1 << (n-1));
-    for (unsigned int j = 0; j < n; ++j) {
-      double d_j = x-z[j];
+    dfloat p_i = (1 << (n-1));
+    for (dlong j = 0; j < n; ++j) {
+      dfloat d_j = x-z[j];
       p_i *= j==i ? 1 : d_j;
     }
     p[i] = w[i] * p_i;
   }
 }
 
-#define INNER_SIZE (NR > NS ? (NR > NT ? NR : NT) : (NS > NT ? NS : NT))
+#define INNER_SIZE (p_NR > p_NS ? (p_NR > p_NT ? p_NR : p_NT) : (p_NS > p_NT ? p_NS : p_NT))
 
 #define   AT(T,var,i)   \
         (T*)(      (char*)var##_base   +(i)*var##_stride   )
@@ -410,47 +409,47 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
   (const T*)((const char*)var##_base[d]+(i)*var##_stride[d])
 
 @kernel void findpts_local_eval_2(
-        double *const       out_out_base,   const unsigned int out_out_stride,
-        unsigned int *const out_proc_base,  const unsigned int out_proc_stride,
-        unsigned int *const out_index_base, const unsigned int out_index_stride,
-  const unsigned int *const src_el_base,    const unsigned int src_el_stride,
-  const double *const       src_r_base,     const unsigned int src_r_stride,
-  const unsigned int *const src_proc_base,  const unsigned int src_proc_stride,
-  const unsigned int *const src_index_base, const unsigned int src_index_stride,
-  const unsigned int pn,
-  @restrict const double *const in, const unsigned int in_stride,
-  const double *lag_data_0, const double *lag_data_1)
-{
-  for (unsigned int i = 0; i<pn; ++i; @outer){
+              dfloat *const out_out_base,   const dlong out_out_stride,
+              dlong  *const out_proc_base,  const dlong out_proc_stride,
+              dlong  *const out_index_base, const dlong out_index_stride,
+        const dlong  *const src_el_base,    const dlong src_el_stride,
+        const dfloat *const src_r_base,     const dlong src_r_stride,
+        const dlong  *const src_proc_base,  const dlong src_proc_stride,
+        const dlong  *const src_index_base, const dlong src_index_stride,
+        const dlong  pn,
+        @restrict const dfloat *const in, const dlong in_stride,
+        const dfloat *lag_data_0, const dfloat *lag_data_1){
 
-    @shared double wtr[NR];
-    @shared double wts[NS];
-    @shared double sums[NR];
+  for (dlong i = 0; i<pn; ++i; @outer){
 
-    const unsigned int el = *CAT(unsigned int, src_el, i);
-    const double *in_el = in + el*in_stride;
+    @shared dfloat wtr[p_NR];
+    @shared dfloat wts[p_NS];
+    @shared dfloat sums[p_NR];
 
-    const double *r = CAT(double, src_r, i);
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
+    const dlong el = *CAT(dlong, src_el, i);
+    const dfloat *in_el = in + el*in_stride;
+
+    const dfloat *r = CAT(dfloat, src_r, i);
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j == 0) {
-        (*AT(unsigned int, out_proc,  i)) = (*CAT(unsigned int, src_proc,  i));
-        (*AT(unsigned int, out_index, i)) = (*CAT(unsigned int, src_index, i));
+        (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
+        (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
       }
-      lagrange_eval(wtr, lag_data_0, NR, r[0], j);
-      lagrange_eval(wts, lag_data_1, NS, r[1], j);
+      lagrange_eval(wtr, lag_data_0, p_NR, r[0], j);
+      lagrange_eval(wts, lag_data_1, p_NS, r[1], j);
     }
 
     // tensor_mxm(slice, nr, in, ns, wts, pn)
     // tensor_i1(wtr, nr, slice)
 
     // out[i] = sum_j sum_k wts[j]*wtr[k]*in[j + k*nr]
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < NR) {
-        double sum = 0;
-        const double *in_el_j = in_el+j;
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < p_NR) {
+        dfloat sum = 0;
+        const dfloat *in_el_j = in_el+j;
 
-        for (unsigned int k = 0; k < NS; ++k) {
-          sum += in_el_j[k*NR] * wts[k];
+        for (dlong k = 0; k < p_NS; ++k) {
+          sum += in_el_j[k*p_NR] * wts[k];
         }
         sums[j] = wtr[j]*sum;
       } else {
@@ -458,61 +457,61 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
       }
     }
 
-    double *out = AT(double, out_out, i);
+    dfloat *out = AT(dfloat, out_out, i);
 
 // NR is assumed to be at most 256
 #if NR>128
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j < NR-128) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 128 && j < p_NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if NR>64
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j < NR-64) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 64 && j < p_NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if NR>32
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j < NR-32) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 32 && j < p_NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if NR>16
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j < NR-16) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 16 && j < p_NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if NR>8
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j < NR-8) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 8 && j < p_NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if NR>4
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j < NR-4) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 4 && j < p_NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if NR>2
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j < NR-2) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 2 && j < p_NR-2) {
         sums[j] += sums[j+2];
       }
     }
 #endif
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j == 0) {
-        if (1 < NR) {
+        if (1 < p_NR) {
           *out = sums[0] + sums[1];
         } else {
           *out = sums[0];
@@ -523,36 +522,36 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
 }
 
 @kernel void findpts_local_eval_3(
-        double *const       out_out_base,   const unsigned int out_out_stride,
-        unsigned int *const out_proc_base,  const unsigned int out_proc_stride,
-        unsigned int *const out_index_base, const unsigned int out_index_stride,
-  const unsigned int *const src_el_base,    const unsigned int src_el_stride,
-  const double *const       src_r_base,     const unsigned int src_r_stride,
-  const unsigned int *const src_proc_base,  const unsigned int src_proc_stride,
-  const unsigned int *const src_index_base, const unsigned int src_index_stride,
-  const unsigned int pn,
-  @restrict const double *const in, const unsigned int in_stride,
-  const double *lag_data_0, const double *lag_data_1, const double *lag_data_2)
-{
-  for (unsigned int i = 0; i<pn; ++i; @outer){
+              dfloat *const out_out_base,   const dlong out_out_stride,
+              dlong  *const out_proc_base,  const dlong out_proc_stride,
+              dlong  *const out_index_base, const dlong out_index_stride,
+        const dlong  *const src_el_base,    const dlong src_el_stride,
+        const dfloat *const src_r_base,     const dlong src_r_stride,
+        const dlong  *const src_proc_base,  const dlong src_proc_stride,
+        const dlong  *const src_index_base, const dlong src_index_stride,
+        const dlong  pn,
+        @restrict const dfloat *const in, const dlong in_stride,
+        const dfloat *lag_data_0, const dfloat *lag_data_1, const dfloat *lag_data_2){
 
-    @shared double wtr[NR];
-    @shared double wts[NS];
-    @shared double wtt[NT];
-    @shared double sums[NR]; // could be overlaped with wtt
+  for (dlong i = 0; i<pn; ++i; @outer){
 
-    const unsigned int el = *CAT(unsigned int, src_el, i);
-    const double *in_el = in + el*in_stride;
+    @shared dfloat wtr[p_NR];
+    @shared dfloat wts[p_NS];
+    @shared dfloat wtt[p_NT];
+    @shared dfloat sums[p_NR];
 
-    const double *r = CAT(double, src_r, i);
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
+    const dlong el = *CAT(dlong, src_el, i);
+    const dfloat *in_el = in + el*in_stride;
+
+    const dfloat *r = CAT(dfloat, src_r, i);
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j == 0) {
-        (*AT(unsigned int, out_proc,  i)) = (*CAT(unsigned int, src_proc,  i));
-        (*AT(unsigned int, out_index, i)) = (*CAT(unsigned int, src_index, i));
+        (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
+        (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
       }
-      lagrange_eval(wtr, lag_data_0, NR, r[0], j);
-      lagrange_eval(wts, lag_data_1, NS, r[1], j);
-      lagrange_eval(wtt, lag_data_2, NT, r[2], j);
+      lagrange_eval(wtr, lag_data_0, p_NR, r[0], j);
+      lagrange_eval(wts, lag_data_1, p_NS, r[1], j);
+      lagrange_eval(wtt, lag_data_2, p_NT, r[2], j);
     }
 
     // tensor_mxm(slice, nr*ns, in, nt, wtt, pn)
@@ -561,16 +560,16 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
 
     // out[i] = sum_j sum_k sum_l wtr[j]*wts[k]*wtt[l]*in[j + k*nr + l*nr*ns]
     //        = sum_j wtr[j] * sum_k wts[k] * sum_l wtt[l]*in[j + k*nr + l*nr*ns]
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j < NR) {
-        double sum_j = 0;
-        const double *in_el_j = in_el+j;
-        for (unsigned int k = 0; k < NS; ++k) {
-          double sum_k = 0;
-          const double *in_el_jk = in_el_j+k*NR;
+        dfloat sum_j = 0;
+        const dfloat *in_el_j = in_el+j;
+        for (dlong k = 0; k < p_NS; ++k) {
+          dfloat sum_k = 0;
+          const dfloat *in_el_jk = in_el_j+k*p_NR;
 
-          for (unsigned int l = 0; l < NT; ++l) {
-            sum_k += in_el_jk[l*NR*NS] * wtt[l];
+          for (dlong l = 0; l < NT; ++l) {
+            sum_k += in_el_jk[l*p_NR*p_NS] * wtt[l];
           }
           sum_j += wts[k]*sum_k;
         }
@@ -580,61 +579,61 @@ void lagrange_eval(@restrict double *p, @restrict const double *data,
       }
     }
 
-    double *out = AT(double, out_out, i);
+    dfloat *out = AT(dfloat, out_out, i);
 
 // NR is assumed to be at most 256
 #if NR>128
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j < NR-128) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 128 && j < p_NR-128) {
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if NR>64
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j < NR-64) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 64 && j < p_NR-64) {
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if NR>32
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j < NR-32) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 32 && j < p_NR-32) {
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if NR>16
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j < NR-16) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 16 && j < p_NR-16) {
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if NR>8
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j < NR-8) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 8 && j < p_NR-8) {
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if NR>4
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j < NR-4) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 4 && j < p_NR-4) {
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if NR>2
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j < NR-2) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
+      if (j < 2 && j < p_NR-2) {
         sums[j] += sums[j+2];
       }
     }
 #endif
-    for (unsigned int j = 0; j < INNER_SIZE; ++j; @inner) {
+    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
       if (j == 0) {
-        if (1 < NR) {
+        if (1 < p_NR) {
           *out = sums[0] + sums[1];
         } else {
           *out = sums[0];

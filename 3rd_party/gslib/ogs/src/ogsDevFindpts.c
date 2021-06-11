@@ -46,9 +46,6 @@ void ogsDevFindptsEval_2(
   const dlong npt, void *const in, struct findpts_data_2 *const fd,
   const void *const ogs_fd) {
 
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
-
   ogs_findpts_eval_2( out_base,  out_stride,
                      code_base, code_stride,
                      proc_base, proc_stride,
@@ -65,9 +62,6 @@ void ogsDevFindptsEval_3(
   const dfloat *const    r_base, const dlong    r_stride,
   const dlong npt, void *const in, struct findpts_data_3 *const fd,
   const void *const ogs_fd) {
-
-  assert(sizeof(dfloat) == sizeof(double));
-  assert(sizeof(dlong) == sizeof(uint));
 
   ogs_findpts_eval_3( out_base,  out_stride,
                      code_base, code_stride,

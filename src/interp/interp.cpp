@@ -17,7 +17,7 @@
 
 
 
-struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
+interp_data* interp_setup(nrs_t* nrs, double newton_tol)
 {
 
   if (newton_tol < 5e-13) {
@@ -26,14 +26,14 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
   int npt_max = 128;
   int bb_tol = 0.01;
 
-  mesh_t *mesh = nrs->meshV;
+  mesh_t* mesh = nrs->meshV;
 
   dlong nmsh = mesh->N;
   dlong nelm = mesh->Nelements;
   dlong D = mesh->dim;
 
   // element geometry
-  dfloat *elx[3] = {mesh->x, mesh->y, mesh->z};
+  dfloat* elx[3] = {mesh->x, mesh->y, mesh->z};
 
   // element dimensions
   dlong n1[3] = {mesh->N+1, mesh->N+1, mesh->N+1};
@@ -46,11 +46,11 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
 
   MPI_Comm comm = platform_t::getInstance()->comm.mpiComm;
 
-  ogs_findpts_t *findpts_handle = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
+  ogs_findpts_t* findpts_handle = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
                                                   hash_size, hash_size, npt_max, newton_tol,
                                                   (occa::device*)&platform_t::getInstance()->device);
 
-  struct interp_data *handle = new interp_data();
+  interp_data* handle = new interp_data();
   handle->nrs = nrs;
   handle->newton_tol = newton_tol;
   handle->D = D;
@@ -60,7 +60,7 @@ struct interp_data* interp_setup(nrs_t *nrs, double newton_tol)
 }
 
 
-void interp_free(struct interp_data *handle)
+void interp_free(interp_data* handle)
 {
   ogsFindptsFree(handle->findpts);
   delete handle;
@@ -70,18 +70,18 @@ void interp_free(struct interp_data *handle)
 // I.E. dfloat*, occa::memory (w/ a dtype of dfloat)
 template<typename fld_ptr>
 void interp_nfld(fld_ptr fld, dlong nfld,
-                 dfloat *x[], dlong x_stride[], dlong n,
-                 dlong *iwk, dfloat *rwk, dlong nmax,
-                 bool if_need_pts, struct interp_data *handle,
-                 dfloat *out[], dlong out_stride[])
+                 dfloat* x[], dlong x_stride[], dlong n,
+                 dlong* iwk, dfloat* rwk, dlong nmax,
+                 bool if_need_pts, interp_data* handle,
+                 dfloat* out[], dlong out_stride[])
 {
   assert(n <= nmax);
 
-  dlong  *code  = iwk;
-  dlong  *proc  = iwk+2*nmax;
-  dlong  *el    = iwk+nmax;
-  dfloat *r     = rwk+nmax;
-  dfloat *dist2 = rwk;
+  dlong*  code  = iwk;
+  dlong*  proc  = iwk+2*nmax;
+  dlong*  el    = iwk+nmax;
+  dfloat* r     = rwk+nmax;
+  dfloat* dist2 = rwk;
 
   dlong D = handle->D;
 
@@ -89,7 +89,7 @@ void interp_nfld(fld_ptr fld, dlong nfld,
   if (if_need_pts) {
     unsigned nfail = 0;
     // findpts takes strides in terms of bytes, but interp_nfld takes strides in terms of elements
-    dlong *x_stride_bytes = (dlong*)malloc(D*sizeof(dlong));
+    dlong* x_stride_bytes = (dlong*)malloc(D*sizeof(dlong));
     for (int i = 0; i < D; ++i) x_stride_bytes[i] = x_stride[i]*sizeof(dfloat);
     ogsFindpts(code,  1*sizeof(dlong),
                proc,  1*sizeof(dlong),
@@ -143,23 +143,23 @@ void interp_nfld(fld_ptr fld, dlong nfld,
 
 // instantiations for host and occa memory
 template
-void interp_nfld(const dfloat *fld, dlong nfld,
-                 dfloat *x[], dlong x_stride[], dlong n,
-                 dlong *iwk, dfloat *rwk, dlong nmax,
-                 bool if_need_pts, struct interp_data *handle,
-                 dfloat *out[], dlong out_stride[]);
+void interp_nfld(const dfloat* fld, dlong nfld,
+                 dfloat* x[], dlong x_stride[], dlong n,
+                 dlong* iwk, dfloat* rwk, dlong nmax,
+                 bool if_need_pts, interp_data* handle,
+                 dfloat* out[], dlong out_stride[]);
 template
-void interp_nfld(dfloat *fld, dlong nfld,
-                 dfloat *x[], dlong x_stride[], dlong n,
-                 dlong *iwk, dfloat *rwk, dlong nmax,
-                 bool if_need_pts, struct interp_data *handle,
-                 dfloat *out[], dlong out_stride[]);
+void interp_nfld(dfloat* fld, dlong nfld,
+                 dfloat* x[], dlong x_stride[], dlong n,
+                 dlong* iwk, dfloat* rwk, dlong nmax,
+                 bool if_need_pts, interp_data* handle,
+                 dfloat* out[], dlong out_stride[]);
 template
 void interp_nfld(occa::memory fld, dlong nfld,
-                 dfloat *x[], dlong x_stride[], dlong n,
-                 dlong *iwk, dfloat *rwk, dlong nmax,
-                 bool if_need_pts, struct interp_data *handle,
-                 dfloat *out[], dlong out_stride[]);
+                 dfloat* x[], dlong x_stride[], dlong n,
+                 dlong* iwk, dfloat* rwk, dlong nmax,
+                 bool if_need_pts, interp_data* handle,
+                 dfloat* out[], dlong out_stride[]);
 
 
 void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
@@ -178,11 +178,11 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
   }
 
   dlong D = interp_handle->D;
-  char *workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
-  dfloat *rwork = (dfloat*)workspace;
-  int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
+  char* workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
+  dfloat* rwork = (dfloat*)workspace;
+  int*    iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
 
-  dfloat **uvw_copy;
+  dfloat** uvw_copy;
   if (check_occa) {
     uvw_copy = (dfloat**)malloc(D*sizeof(dfloat*));
     for (int i = 0; i < D; ++i) {
