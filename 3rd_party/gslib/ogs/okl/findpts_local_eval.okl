@@ -356,13 +356,15 @@ static const dfloat gllz_24[24] = {
 //  gllz_20, gllz_21, gllz_22, gllz_23, gllz_24
 //};
 
-void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
-                   dlong n, dfloat x,
+void lagrange_eval(@restrict dfloat * p,
+                   @restrict const dfloat * data,
+                   dlong n,
+                   dfloat x,
                    dlong i){
-  if (i < n) {
+  if(i<n){
     const dfloat *z, *w;
     w = data;
-    switch(n) {
+    switch(n){
       case  2: z = gllz_02; break;
       case  3: z = gllz_03; break;
       case  4: z = gllz_04; break;
@@ -388,10 +390,9 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
       case 24: z = gllz_24; break;
       default: z = data; w = z+n;
     }
-
     // for(j=0; j<n; ++j) if(i!=j) p_i *= 2*(x-z[j])
     dfloat p_i = (1 << (n-1));
-    for (dlong j = 0; j < n; ++j) {
+    for(dlong j=0;j<n;++j){
       dfloat d_j = x-z[j];
       p_i *= j==i ? 1 : d_j;
     }
@@ -409,18 +410,18 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
   (const T*)((const char*)var##_base[d]+(i)*var##_stride[d])
 
 @kernel void findpts_local_eval_2(
-              dfloat *const out_out_base,   const dlong out_out_stride,
-              dlong  *const out_proc_base,  const dlong out_proc_stride,
-              dlong  *const out_index_base, const dlong out_index_stride,
-        const dlong  *const src_el_base,    const dlong src_el_stride,
-        const dfloat *const src_r_base,     const dlong src_r_stride,
-        const dlong  *const src_proc_base,  const dlong src_proc_stride,
-        const dlong  *const src_index_base, const dlong src_index_stride,
-        const dlong  pn,
-        @restrict const dfloat *const in, const dlong in_stride,
-        const dfloat *lag_data_0, const dfloat *lag_data_1){
+              dfloat * const out_out_base,   const dlong out_out_stride,
+              dlong  * const out_proc_base,  const dlong out_proc_stride,
+              dlong  * const out_index_base, const dlong out_index_stride,
+        const dlong  * const src_el_base,    const dlong src_el_stride,
+        const dfloat * const src_r_base,     const dlong src_r_stride,
+        const dlong  * const src_proc_base,  const dlong src_proc_stride,
+        const dlong  * const src_index_base, const dlong src_index_stride,
+        const dlong pn,
+        @restrict const dfloat * const in, const dlong in_stride,
+        const dfloat * lag_data_0, const dfloat * lag_data_1){
 
-  for (dlong i = 0; i<pn; ++i; @outer){
+  for(dlong i=0;i<pn;++i;@outer){
 
     @shared dfloat wtr[p_NR];
     @shared dfloat wts[p_NS];
@@ -429,9 +430,9 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
     const dlong el = *CAT(dlong, src_el, i);
     const dfloat *in_el = in + el*in_stride;
 
-    const dfloat *r = CAT(dfloat, src_r, i);
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j == 0) {
+    const dfloat * r = CAT(dfloat, src_r, i);
+    for(dlong j= 0;j<INNER_SIZE;++j;@inner){
+      if(j==0){
         (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
         (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
       }
@@ -439,81 +440,76 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
       lagrange_eval(wts, lag_data_1, p_NS, r[1], j);
     }
 
-    // tensor_mxm(slice, nr, in, ns, wts, pn)
-    // tensor_i1(wtr, nr, slice)
-
     // out[i] = sum_j sum_k wts[j]*wtr[k]*in[j + k*nr]
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < p_NR) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<p_NR){
         dfloat sum = 0;
         const dfloat *in_el_j = in_el+j;
 
-        for (dlong k = 0; k < p_NS; ++k) {
+        for(dlong k=0;k<p_NS;++k){
           sum += in_el_j[k*p_NR] * wts[k];
         }
         sums[j] = wtr[j]*sum;
-      } else {
+      }else{
         sums[j] = 0.0;
       }
     }
-
-    dfloat *out = AT(dfloat, out_out, i);
-
+    dfloat * out = AT(dfloat, out_out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j < p_NR-128) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<128&&j<p_NR-128){
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if p_NR>64
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j < p_NR-64) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<64&&j<p_NR-64){
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if p_NR>32
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j < p_NR-32) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<32&&j<p_NR-32){
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if p_NR>16
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j < p_NR-16) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<16&&j<p_NR-16){
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if p_NR>8
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j < p_NR-8) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<8&&j<p_NR-8){
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if p_NR>4
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j < p_NR-4) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<4&&j<p_NR-4){
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if p_NR>2
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j < p_NR-2) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<2&&j<p_NR-2){
         sums[j] += sums[j+2];
       }
     }
 #endif
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j == 0) {
-        if (1 < p_NR) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j==0){
+        if(1<p_NR){
           *out = sums[0] + sums[1];
-        } else {
+        }else{
           *out = sums[0];
         }
       }
@@ -522,18 +518,18 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
 }
 
 @kernel void findpts_local_eval_3(
-              dfloat *const out_out_base,   const dlong out_out_stride,
-              dlong  *const out_proc_base,  const dlong out_proc_stride,
-              dlong  *const out_index_base, const dlong out_index_stride,
-        const dlong  *const src_el_base,    const dlong src_el_stride,
-        const dfloat *const src_r_base,     const dlong src_r_stride,
-        const dlong  *const src_proc_base,  const dlong src_proc_stride,
-        const dlong  *const src_index_base, const dlong src_index_stride,
+              dfloat * const out_out_base,   const dlong out_out_stride,
+              dlong  * const out_proc_base,  const dlong out_proc_stride,
+              dlong  * const out_index_base, const dlong out_index_stride,
+        const dlong  * const src_el_base,    const dlong src_el_stride,
+        const dfloat * const src_r_base,     const dlong src_r_stride,
+        const dlong  * const src_proc_base,  const dlong src_proc_stride,
+        const dlong  * const src_index_base, const dlong src_index_stride,
         const dlong  pn,
-        @restrict const dfloat *const in, const dlong in_stride,
-        const dfloat *lag_data_0, const dfloat *lag_data_1, const dfloat *lag_data_2){
+        @restrict const dfloat * const in, const dlong in_stride,
+        const dfloat * lag_data_0, const dfloat * lag_data_1, const dfloat * lag_data_2){
 
-  for (dlong i = 0; i<pn; ++i; @outer){
+  for(dlong i=0;i<pn;++i;@outer){
 
     @shared dfloat wtr[p_NR];
     @shared dfloat wts[p_NS];
@@ -543,9 +539,9 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
     const dlong el = *CAT(dlong, src_el, i);
     const dfloat *in_el = in + el*in_stride;
 
-    const dfloat *r = CAT(dfloat, src_r, i);
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j == 0) {
+    const dfloat * r = CAT(dfloat, src_r, i);
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j==0){
         (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
         (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
       }
@@ -554,88 +550,82 @@ void lagrange_eval(@restrict dfloat *p, @restrict const dfloat *data,
       lagrange_eval(wtt, lag_data_2, p_NT, r[2], j);
     }
 
-    // tensor_mxm(slice, nr*ns, in, nt, wtt, pn)
-    // tensor_i2(wtr, nr, wts, ns, slice, sums)
-    //   computes wtr^T * slice * wts w/ wtr and wts vectors, and slice matrix
-
     // out[i] = sum_j sum_k sum_l wtr[j]*wts[k]*wtt[l]*in[j + k*nr + l*nr*ns]
     //        = sum_j wtr[j] * sum_k wts[k] * sum_l wtt[l]*in[j + k*nr + l*nr*ns]
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < p_NR) {
+    for (dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<p_NR){
         dfloat sum_j = 0;
         const dfloat *in_el_j = in_el+j;
-        for (dlong k = 0; k < p_NS; ++k) {
+        for(dlong k=0;k<p_NS;++k){
           dfloat sum_k = 0;
           const dfloat *in_el_jk = in_el_j+k*p_NR;
 
-          for (dlong l = 0; l < p_NT; ++l) {
+          for(dlong l=0;l<p_NT;++l){
             sum_k += in_el_jk[l*p_NR*p_NS] * wtt[l];
           }
           sum_j += wts[k]*sum_k;
         }
         sums[j] = wtr[j]*sum_j;
-      } else {
+      }else{
         sums[j] = 0.0;
       }
     }
-
-    dfloat *out = AT(dfloat, out_out, i);
-
+    dfloat * out = AT(dfloat, out_out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 128 && j < p_NR-128) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<128&&j<p_NR-128){
         sums[j] += sums[j+128];
       }
     }
 #endif
 #if p_NR>64
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 64 && j < p_NR-64) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<64&&j<p_NR-64){
         sums[j] += sums[j+64];
       }
     }
 #endif
 #if p_NR>32
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 32 && j < p_NR-32) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<32&&j<p_NR-32){
         sums[j] += sums[j+32];
       }
     }
 #endif
 #if p_NR>16
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 16 && j < p_NR-16) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<16&&j<p_NR-16){
         sums[j] += sums[j+16];
       }
     }
 #endif
 #if p_NR>8
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 8 && j < p_NR-8) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<8&&j<p_NR-8){
         sums[j] += sums[j+8];
       }
     }
 #endif
 #if p_NR>4
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 4 && j < p_NR-4) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<4&&j<p_NR-4){
         sums[j] += sums[j+4];
       }
     }
 #endif
 #if p_NR>2
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j < 2 && j < p_NR-2) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j<2&&j<p_NR-2){
         sums[j] += sums[j+2];
       }
     }
 #endif
-    for (dlong j = 0; j < INNER_SIZE; ++j; @inner) {
-      if (j == 0) {
-        if (1 < p_NR) {
+    for(dlong j=0;j<INNER_SIZE;++j;@inner){
+      if(j==0){
+        if(1<p_NR){
           *out = sums[0] + sums[1];
-        } else {
+        }else{
           *out = sums[0];
         }
       }
