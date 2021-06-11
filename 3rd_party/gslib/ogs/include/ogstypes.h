@@ -1,5 +1,5 @@
 #if !defined(ogstypes_h)
-#define ogstypes_h
+#define ogstypes_h 
 
 #define BLOCKSIZE 256
 

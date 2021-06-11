@@ -27,9 +27,9 @@ SOFTWARE.
 #include <cassert>
 #include <cstdlib>
 #include "ogstypes.h"
-#include "ogs.hpp"
-#include "ogsInterface.h"
-#include "ogsKernels.hpp"
+#include "ogs_FINDPTS.hpp"
+#include "ogsInterface_FINDPTS.h"
+#include "ogsKernels_FINDPTS.hpp"
 
 ogs_findpts_t* ogsFindptsSetup(
   const dlong D, MPI_Comm comm,

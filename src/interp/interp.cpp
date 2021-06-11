@@ -6,17 +6,6 @@
 
 #include "interp.hpp"
 
-
-// uncomment the following line to check the accuracy of the OCCA implementation
-// of interp_velocity versus the CPU implementation
-//#define check_dev_accuracy
-
-#ifdef check_dev_accuracy
-#include "nekInterfaceAdapter.hpp"
-#endif
-
-
-
 interp_data* interp_setup(nrs_t* nrs, double newton_tol)
 {
 

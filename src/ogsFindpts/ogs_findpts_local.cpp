@@ -1,7 +1,7 @@
 
 #include <type_traits>
 #include "ogstypes.h"
-#include "ogs.hpp"
+#include "ogs_FINDPTS.hpp"
 
 extern "C" {
 

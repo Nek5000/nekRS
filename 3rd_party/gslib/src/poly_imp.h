@@ -1946,3 +1946,4 @@ static lagrange_fun *const gll_lag_table[23] = {
   &gll_lag_14, &gll_lag_15, &gll_lag_16, &gll_lag_17, &gll_lag_18, &gll_lag_19,
   &gll_lag_20, &gll_lag_21, &gll_lag_22, &gll_lag_23, &gll_lag_24
 };
+
