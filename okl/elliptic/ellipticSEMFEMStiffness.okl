@@ -244,10 +244,6 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
           double J_rx[3][3];
           double x_t[3][4];
           double q_x[3];
-          if(s_z == 0){
-            quadrature_rule(q_r, q_w);
-            mesh_connectivity(v_coord, t_map);
-          }
           /* Get indices */
           int s[n_dim];
 
@@ -259,10 +255,9 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
 
           for (int i = 0; i < 8; i++) {
             idx[i] = 0;
-
-            for (int d = 0; d < n_dim; d++) {
-              idx[i] += (s[d] + v_coord[i][d]) * pow(p_Nq, d);
-            }
+            idx[i] += (s[0] + v_coord[i][0]) * 1;
+            idx[i] += (s[1] + v_coord[i][1]) * p_Nq;
+            idx[i] += (s[2] + v_coord[i][2]) * p_Nq * p_Nq;
           }
 
           /* Cycle through collocated triangles/tets */
