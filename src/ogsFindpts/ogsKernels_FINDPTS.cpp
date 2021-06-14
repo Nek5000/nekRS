@@ -5,6 +5,9 @@
 
 occa::kernel ogs::initFindptsKernel(MPI_Comm comm, occa::device device,
                                     dlong D, const dlong *n) {
+  std::string oklDir;
+  oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  oklDir += "/okl/ogsFindpts/";
 
   occa::properties kernelInfo;
 
@@ -33,9 +36,9 @@ occa::kernel ogs::initFindptsKernel(MPI_Comm comm, occa::device device,
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {
       if (D == 2) {
-        findpts_local_eval = device.buildKernel(DOGS "/okl/findpts_local_eval.okl", "findpts_local_eval_2", kernelInfo);
+        findpts_local_eval = device.buildKernel(oklDir+"findpts_local_eval.okl", "findpts_local_eval_2", kernelInfo);
       } else {
-        findpts_local_eval = device.buildKernel(DOGS "/okl/findpts_local_eval.okl", "findpts_local_eval_3", kernelInfo);
+        findpts_local_eval = device.buildKernel(oklDir+"findpts_local_eval.okl", "findpts_local_eval_3", kernelInfo);
       }
       findpts_local_eval.dontUseRefs();
     }

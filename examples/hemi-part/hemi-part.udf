@@ -5,30 +5,46 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-#include "interp.hpp"
 #include "udf.hpp"
+#include "particle.hpp"
 
-#define LPART 4000 /* max number of particles per MPI rank */
-#define MAX_D 3
+#define D 3
 
 #define USE_HOST_FINDPTS false
-#define IF_CHECK_ACCURACY false
+#define CHECK_ACCURACY   false
+
+#define OUT_CHUNK_SIZE 10000 /* chunk size for outputing particles */
+
+struct hemi_particle_data {
+  dfloat v_hist[2][D];
+  hlong  id;
+  dfloat color;
+
+  hemi_particle_data()
+  {
+  }
+
+  hemi_particle_data(dfloat v_hist_[2][D], dfloat color_, hlong id_)
+  {
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < D; ++j) {
+        v_hist[i][j] = v_hist_[i][j];
+      }
+    }
+    id = id_;
+    color = color_;
+  }
+};
 
 /* Particle Functions */
-void particle_init(dfloat x[LPART][MAX_D],
-                   bool valid[LPART],
-                   int partid[LPART],
-                   dfloat v_hist[LPART][2][MAX_D],
-                   dfloat part_color[LPART],
-                   int &npart) {
+void particle_init(particle_set<D,hemi_particle_data>& particles) {
 
-  static int gcount = 0, lcount = 0;
+  static hlong gcount = 0;
 
   int mpi_rank = platform_t::getInstance()->comm.mpiRank;
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
 
-  int k  = gcount; // total # particles emitted
-  int l  = lcount; // Index into local particle array
+  hlong k  = gcount; // total # particles emitted
 
   int nw = 100;
 
@@ -40,83 +56,73 @@ void particle_init(dfloat x[LPART][MAX_D],
       dfloat yp = -1.0 + dy*part;
 
       if (k%mpi_size == mpi_rank) { // Inject particle _only_ on this processor
-        if (l >= LPART) l=0; // Retire old particles by overwriting their data
+        particle_set<D,hemi_particle_data>::particle_t particle;
 
-        x[l][0] = xp;
-        x[l][1] = yp;
-        x[l][2] = zp;
-        partid[l] = k;
-        for (int m = 0; m < 2; ++m) for (int d = 0; d < MAX_D; ++d) v_hist[l][m][d] = 0;
-        valid[l] = true;
-//      part_color[l] = time;      // color by spawning timestep
-//      part_color[l] = partid[l]; // color by id
-        part_color[l] = line+1;    // color by line
+        particle.x[0] = xp;
+        particle.x[1] = yp;
+        particle.x[2] = zp;
+        particle.extra.id = k;
+        for (int d = 0; d < D; ++d) {
+          particle.extra.v_hist[0][d] = 0.0;
+          particle.extra.v_hist[1][d] = 0.0;
+        }
+//      particle.extra.color = time;    // color by spawning timestep
+//      particle.extra.color = k;       // color by id
+        particle.extra.color = line+1;  // color by line
 
-        ++l; // local count
+        particles.push(particle);
       }
       ++k; // Total count
     }
   }
 
   gcount = k;
-  lcount = l;
-  npart  = std::max(npart,lcount);
 }
 
-// copy of interp_velocity, except using host copy of the velocities
-void interp_velocity_host(dfloat *uvw_base[], dlong uvw_stride[],
-                          dfloat *xyz_base[], dlong xyz_stride[],
-                          int n, nrs_t *nrs)
-{
-  // the interp handle is cached to avoid repeated setups and frees
-  static interp_data *interp_handle;
-  static bool called = false;
-  if (!called || interp_handle->nrs != nrs) {
-    if (called) {
-      interp_free(interp_handle);
+
+void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tstep) {
+
+  particles.find();
+  particles.migrate();
+
+  // Run on either occa, host, or both
+  // If both, compare the difference in the computed values
+  dlong eval_counts = CHECK_ACCURACY ? 2 : 1;
+  dfloat *u_alloc = new dfloat[D*particles.size()*eval_counts], *u_base[D*2];
+  for (int i = 0; i < D*eval_counts; ++i) {
+    u_base[i]   = u_alloc;
+    u_alloc += particles.size();
+  }
+  dfloat **u_host, **u_occa, **u_base_next = u_base;
+  if (!USE_HOST_FINDPTS || CHECK_ACCURACY) {
+    u_occa = u_base_next; u_base_next += D;
+    occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
+    particles.interp(o_U, u_occa, D);
+  }
+  if (USE_HOST_FINDPTS || CHECK_ACCURACY) {
+    u_host = u_base_next;
+    particles.interp(particles.nrs->U, u_host, D);
+  }
+  if (CHECK_ACCURACY) {
+    // controls the tolerences for printing warnings
+    const dfloat abs_tol = 2e-15;
+    const dfloat rel_tol = 1;
+
+    for (int i = 0; i < particles.size(); ++i) {
+      for (int j = 0; j < D; ++j) {
+        dfloat out_occa = u_occa[j][i];
+        dfloat out_host = u_host[j][i];
+        if (std::abs(out_host - out_occa) > abs_tol
+            || std::abs(out_host - out_occa) > rel_tol*std::abs(out_host)) {
+          printf("WARNING: ogs_findpts_eval varied at point %d coord %d: %e != %e (diff %e)\n",
+                 i, j, out_host, out_occa, out_host-out_occa);
+        }
+      }
     }
-    called = true;
-    interp_handle = interp_setup(nrs, 0);
   }
+  dfloat **u1 = USE_HOST_FINDPTS ? u_host : u_occa;
 
-  dlong D = interp_handle->D;
-  char *workspace = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
-  dfloat *rwork = (dfloat*)workspace;
-  int    *iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
-
-  interp_nfld(nrs->U, nrs->dim,
-              xyz_base, xyz_stride, n,
-              iwork, rwork, n, true, interp_handle,
-              uvw_base, uvw_stride);
-
-  free(workspace);
-}
-
-void particle_advect_std(dfloat x[LPART][MAX_D],
-                         bool valid[LPART],
-                         dfloat v_hist[LPART][2][MAX_D],
-                         int npart, nrs_t *nrs, int tstep) {
-
-  static dfloat u1[LPART][MAX_D];
-
-  dlong D = nrs->dim;
-
-  dfloat *u_base[MAX_D], *x_base[MAX_D];
-  dlong u_stride[MAX_D], x_stride[MAX_D];
-  for (int i = 0; i < D; ++i) {
-    u_base[i]   = &u1[0][i];
-    u_stride[i] = MAX_D;
-    x_base[i]   = &x[0][i];
-    x_stride[i] = MAX_D;
-  }
-
-  if (USE_HOST_FINDPTS) {
-    interp_velocity_host(u_base, u_stride, x_base, x_stride, npart, nrs);
-  } else {
-    interp_velocity(u_base, u_stride, x_base, x_stride, npart, nrs, IF_CHECK_ACCURACY);
-  }
-
-  double c1, c2, c3, dt = nrs->dt[0];
+  double c1, c2, c3, dt = particles.nrs->dt[0];
   if (tstep == 0) { // AB1
     c1 = 1.0;
     c2 = 0.0;
@@ -131,89 +137,89 @@ void particle_advect_std(dfloat x[LPART][MAX_D],
     c3 =   5.0 / 12.0;
   }
 
-  for (int i = 0; i < npart; ++i) {
-    if (valid[i]) {
-      // Update particle position and velocity history
-      for (int k=0; k < D; ++k) {
-         x[i][k] += dt*(c1*u1[i][k] + c2*v_hist[i][0][k] + c3*v_hist[i][1][k]);
-         v_hist[i][1][k] = v_hist[i][0][k];
-         v_hist[i][0][k] = u1[i][k];
-      }
-      // Mark particles that have left the region as invalid
-      // outflow is at x=15
-      valid[i] = x[i][0] <= 15;
+  for (int i = 0; i < particles.size(); ++i) {
+    // Update particle position and velocity history
+    for (int k=0; k < D; ++k) {
+       particles.x[k][i] += dt*(c1*u1[k][i] + c2*particles.extra[i].v_hist[0][k] + c3*particles.extra[i].v_hist[1][k]);
+       particles.extra[i].v_hist[0][k] = particles.extra[i].v_hist[1][k];
+       particles.extra[i].v_hist[1][k] = u1[k][i];
+    }
+
+    // Remove particles that have left the region
+    // outflow is at x=15
+    if (particles.x[0][i] > 15) {
+      particles.remove(i);
+      --i; // cancel out the for loop increment
     }
   }
+
+  delete[] u_base[0];
 }
 
-void particle_out(dfloat x[LPART][MAX_D],
-                  bool valid[LPART],
-                  int partid[LPART],
-                  dfloat part_color[LPART],
-                  int npart, nrs_t *nrs)
+void particle_out(particle_set<D,hemi_particle_data>& particles)
 {
-
-  static dfloat x_temp[LPART][MAX_D+2];
-  static dfloat x_root[LPART][MAX_D+2];
+  constexpr dlong entry_len = D+2;
+  static dfloat x_temp[OUT_CHUNK_SIZE][entry_len];
+  static dfloat x_root[OUT_CHUNK_SIZE][entry_len];
 
   static int out_step = 0;
   ++out_step;
 
-  dlong D = nrs->dim;
   MPI_Comm mpi_comm = platform_t::getInstance()->comm.mpiComm;
   int mpi_rank = platform_t::getInstance()->comm.mpiRank;
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
+  dlong npart = particles.size();
 
   std::FILE *file_out;
   if (mpi_rank == 0) {
     char fname[128];
     sprintf(fname, "part%05d.3d", out_step);
     file_out = fopen(fname, "w+");
+    fprintf(file_out, "X Y Z Color\n");
   }
 
-  int l_min = INT_MAX, l_max = INT_MIN, min_points, max_points;
+  hlong l_min = INT_MAX, l_max = INT_MIN, min_points, max_points;
   for (int i = 0; i < npart; ++i) {
-    if (valid[i]) {
-      if (l_min > partid[i]) {
-        l_min = partid[i];
-      }
-      if (l_max < partid[i]) {
-        l_max = partid[i];
-      }
+    hlong id = particles.extra[i].id;
+    if (l_min > id) {
+      l_min = id;
+    }
+    if (l_max < id) {
+      l_max = id;
     }
   }
-  MPI_Allreduce(&l_min, &min_points, 1, MPI_INT, MPI_MIN, mpi_comm);
-  MPI_Allreduce(&l_max, &max_points, 1, MPI_INT, MPI_MAX, mpi_comm);
+  MPI_Allreduce(&l_min, &min_points, 1, MPI_HLONG, MPI_MIN, mpi_comm);
+  MPI_Allreduce(&l_max, &max_points, 1, MPI_HLONG, MPI_MAX, mpi_comm);
 
-  int n_active = max_points - min_points + 1;
-  int npass = n_active / LPART;
-  if (n_active > npass*LPART) ++npass;
-  int ilast=min_points;
-
-  if (mpi_rank == 0) fprintf(file_out, "X Y Z Color\n");
+  hlong n_active = max_points - min_points + 1;
+  dlong npass = n_active / OUT_CHUNK_SIZE;
+  if (n_active > npass*OUT_CHUNK_SIZE) ++npass;
+  hlong ilast=min_points;
 
   for (int ipass = 0; ipass < npass; ++ipass) {
-    int mpart = std::min(LPART, max_points - ilast+1);
-    int i0 = ilast;
-    int i1 = i0 + mpart;
+    dlong mpart = (dlong)std::min((hlong)OUT_CHUNK_SIZE, max_points - ilast+1);
+    hlong i0 = ilast;
+    hlong i1 = i0 + mpart;
     ilast = i1;
 
-    memset(&x_temp[0][0], 0, mpart*(MAX_D+2)*sizeof(dfloat));
+    memset(&x_temp[0][0], 0, mpart*entry_len*sizeof(dfloat));
     for (int ii=0; ii < npart; ++ii) {
-      if (valid[ii] && i0 <= partid[ii] && partid[ii] < i1) {
-        int i = partid[ii]-i0;
+      hlong id = particles.extra[ii].id;
+      if (i0 <= id && id < i1) {
+        dlong i = dlong(id-i0);
         for (int j = 0; j < D; ++j) {
-          x_temp[i][j] = x[ii][j];       // coordinates
+          x_temp[i][j] = particles.x[j][ii];       // coordinates
         }
-        x_temp[i][D] = part_color[ii];   // color
-        x_temp[i][D+1] = 1.0;            // validity
+        x_temp[i][D] = particles.extra[ii].color;  // color
+        x_temp[i][D+1] = 1.0;                      // this entry contains a particle
       }
     }
 
-    MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*(MAX_D+2), MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
+    MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*entry_len, MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
     if (mpi_rank == 0) {
       for (int i = 0; i < mpart; ++i) {
-        if (x_root[i][D+1] != 0) { // don't output invalid particles
+        // This case removes particles in the B.C.  Need to check for holes in the indices
+        if (x_root[i][D+1] != 0) {
           for (int j = 0; j < D+1; ++j) {
             fprintf(file_out, " %17.9e", x_root[i][j]);
           }
@@ -226,55 +232,36 @@ void particle_out(dfloat x[LPART][MAX_D],
   if (mpi_rank == 0) fclose(file_out);
 }
 
+particle_set<D,hemi_particle_data> *particle_data;
 
-void my_particle_generator(nrs_t *nrs, dfloat time, int tstep) {
-
-  static int npart = 0;
-  static int    partid[LPART];
-  static dfloat pts[LPART][MAX_D];
-  static dfloat v_hist[LPART][2][MAX_D];
-  static dfloat part_color[LPART];
-  static bool   part_valid[LPART] = {false};
-
-
+void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
+{
   bool ifnewpart;
   // adjust to control when particles are generated
   static dfloat last_new_time = 0.0;
   ifnewpart = time - last_new_time >= 0.5;    // every 0.5 seconds
   if(ifnewpart) last_new_time = time;
-  // ifnewpart = tstep % 100;                 // every 100 iterations
-  // ifnewpart = nrs->isOutputStep;           // on the output steps
+//ifnewpart = tstep % 100;                    // every 100 iterations
+//ifnewpart = nrs->isOutputStep;              // on the output steps
+//ifnewpart = tstep == 0;                     // only generate particles on the first step
 
   // Only output particles on output steps to ensure particles match the field files
   bool ifoutpart = nrs->isOutputStep;
 
-  if (ifnewpart) particle_init(pts, part_valid, partid, v_hist, part_color, npart);
-  particle_advect_std         (pts, part_valid,         v_hist,             npart, nrs, tstep);
-  if (ifoutpart) particle_out (pts, part_valid, partid,         part_color, npart, nrs);
+  if (ifnewpart) particle_init(*particle_data);
+  particle_advect_std         (*particle_data, tstep);
+  if (ifoutpart) particle_out (*particle_data);
 }
 
 /* UDF Functions */
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
-  // Call interp_velocity w/ 0 particles to pre-compile the OCCA kernels
-  dfloat *u_base[3] = {nullptr, nullptr, nullptr}, *x_base[3] = {nullptr, nullptr, nullptr};
-  dlong u_stride[3] = {0, 0, 0},                  x_stride[3] = {0, 0, 0};
-  if (USE_HOST_FINDPTS) {
-    interp_velocity_host(u_base, u_stride, x_base, x_stride, 0, nrs);
-  } else {
-    interp_velocity(u_base, u_stride, x_base, x_stride, 0, nrs, IF_CHECK_ACCURACY);
-  }
+  particle_data = new particle_set<D,hemi_particle_data>(nrs, 0);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  int mpi_rank = platform_t::getInstance()->comm.mpiRank;
-  int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
-  if (mpi_rank == 0) {
-    std::cout << "Particle config: " << (mpi_size*LPART) << " particles (" << LPART << " local) "
-                                     << "with " << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts" << std::endl;
-  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -282,7 +269,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   // computing lambda2 requires the velocity on host
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
-  } else if (USE_HOST_FINDPTS) {
+  } else if (USE_HOST_FINDPTS || CHECK_ACCURACY) {
     nrs->o_U.copyTo(nrs->U);
   }
   nek::userchk();
