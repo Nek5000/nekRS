@@ -49,46 +49,46 @@ jobs:
           - name: build_dir
             path: ${NEKRS_HOME}
 
-  ethier:
-    runs-on: ubuntu-latest
-    shell: bash
-    needs: build_nekrs
-    steps:
-      - name: download_build_dir
-        uses: actions@download-artifact@v2
-        with:
-          - name: build_dir
-      - name: warmup
-        run: |
-          cd $NEKRS_EXAMPLES/ethier 
-          ${NEKRS_HOME}/bin/nrspre ethier 1
-      - name: default
-        run: |
-          cd $NEKRS_EXAMPLES/ethier 
-          ${NEKRS_HOME}/bin/nrsmpi ethier 1 1
-      - name: subcycle
-        run: |
-          cd $NEKRS_EXAMPLES/ethier 
-          ${NEKRS_HOME}/bin/nrsmpi ethier 2 2
-
-  mv_cyl:
-    runs-on: ubuntu-latest
-    shell: bash
-    needs: build_nekrs
-    steps:
-      - name: download_build_dir
-        uses: actions@download-artifact@v2
-        with:
-          - name: build_dir
-      - name: warmup
-        run: |
-          cd $NEKRS_EXAMPLES/mv_cyl 
-          ${NEKRS_HOME}/bin/nrspre mv_cyl 1
-      - name: default
-        run: |
-          cd $NEKRS_EXAMPLES/mv_cyl 
-          ${NEKRS_HOME}/bin/nrsmpi mv_cyl 2 1
-      - name: subcycle
-        run: |
-          cd $NEKRS_EXAMPLES/mv_cyl 
-          ${NEKRS_HOME}/bin/nrsmpi mv_cyl 2 2
+#  ethier:
+#    runs-on: ubuntu-latest
+#    shell: bash
+#    needs: build_nekrs
+#    steps:
+#      - name: download_build_dir
+#        uses: actions@download-artifact@v2
+#        with:
+#          - name: build_dir
+#      - name: warmup
+#        run: |
+#          cd $NEKRS_EXAMPLES/ethier 
+#          ${NEKRS_HOME}/bin/nrspre ethier 1
+#      - name: default
+#        run: |
+#          cd $NEKRS_EXAMPLES/ethier 
+#          ${NEKRS_HOME}/bin/nrsmpi ethier 1 1
+#      - name: subcycle
+#        run: |
+#          cd $NEKRS_EXAMPLES/ethier 
+#          ${NEKRS_HOME}/bin/nrsmpi ethier 2 2
+#
+#  mv_cyl:
+#    runs-on: ubuntu-latest
+#    shell: bash
+#    needs: build_nekrs
+#    steps:
+#      - name: download_build_dir
+#        uses: actions@download-artifact@v2
+#        with:
+#          - name: build_dir
+#      - name: warmup
+#        run: |
+#          cd $NEKRS_EXAMPLES/mv_cyl 
+#          ${NEKRS_HOME}/bin/nrspre mv_cyl 1
+#      - name: default
+#        run: |
+#          cd $NEKRS_EXAMPLES/mv_cyl 
+#          ${NEKRS_HOME}/bin/nrsmpi mv_cyl 2 1
+#      - name: subcycle
+#        run: |
+#          cd $NEKRS_EXAMPLES/mv_cyl 
+#          ${NEKRS_HOME}/bin/nrsmpi mv_cyl 2 2
