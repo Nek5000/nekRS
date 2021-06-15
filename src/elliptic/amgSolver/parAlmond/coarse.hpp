@@ -71,6 +71,7 @@ public:
   void gather(occa::memory o_rhs, occa::memory o_x);
   void scatter(occa::memory o_rhs, occa::memory o_x);
   void BoomerAMGSolve();
+  void AmgXSolve(occa::memory o_rhs, occa::memory o_x);
 };
 
 }

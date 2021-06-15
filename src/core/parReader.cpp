@@ -653,6 +653,17 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     else if (p_upwardSmoother == "jacobi")
       options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
 
+    string p_coarseSolver;
+    par->extract("pressure", "coarsesolver", p_coarseSolver);
+    if(p_coarseSolver == "boomeramg"){
+      options.setArgs("AMG SOLVER", "BOOMERAMG");
+    }
+    else if(p_coarseSolver == "amgx"){
+      options.setArgs("AMG SOLVER", "AMGX");
+    } else if(p_coarseSolver.size() > 0){
+      if(rank == 0) printf("PRESSURE:coarseSolver %s is not supported!\n", p_coarseSolver.c_str());
+      ABORT(EXIT_FAILURE);
+    }
     string p_amgsolver;
     par->extract("pressure", "amgsolver", p_amgsolver);
     if (p_amgsolver == "paralmond")
