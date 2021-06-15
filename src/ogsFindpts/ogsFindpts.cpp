@@ -186,3 +186,41 @@ void ogsFindptsEval(
                         npt, &d_in, (findpts_data_3*)fd->findpts_data, fd);
   }
 }
+
+void ogsFindptsLocalEval(
+        dfloat* const  out_base, const dlong  out_stride,
+  const dlong*  const   el_base, const dlong   el_stride,
+  const dfloat* const    r_base, const dlong    r_stride,
+  const dlong npt, const dfloat* const in, ogs_findpts_t* const fd) {
+
+  if (fd->D == 2) {
+    ogsHostFindptsLocalEval_2(out_base,  out_stride,
+                               el_base,   el_stride,
+                                r_base,    r_stride,
+                              npt, in, (findpts_data_2*)fd->findpts_data);
+  } else {
+    ogsHostFindptsLocalEval_3(out_base,  out_stride,
+                               el_base,   el_stride,
+                                r_base,    r_stride,
+                              npt, in, (findpts_data_3*)fd->findpts_data);
+  }
+}
+
+void ogsFindptsLocalEval(
+        dfloat* const  out_base, const dlong  out_stride,
+  const dlong*  const   el_base, const dlong   el_stride,
+  const dfloat* const    r_base, const dlong    r_stride,
+  const dlong npt, occa::memory d_in, ogs_findpts_t* const fd) {
+
+  if (fd->D == 2) {
+    ogsDevFindptsLocalEval_2(out_base,  out_stride,
+                              el_base,   el_stride,
+                               r_base,    r_stride,
+                             npt, &d_in, (findpts_data_2*)fd->findpts_data, fd);
+  } else {
+    ogsDevFindptsLocalEval_3(out_base,  out_stride,
+                              el_base,   el_stride,
+                               r_base,    r_stride,
+                             npt, &d_in, (findpts_data_3*)fd->findpts_data, fd);
+  }
+}

@@ -97,11 +97,11 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
   if (!USE_HOST_FINDPTS || CHECK_ACCURACY) {
     u_occa = u_base_next; u_base_next += D;
     occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
-    particles.interp(o_U, u_occa, D);
+    particles.interp_local(o_U, u_occa, D);
   }
   if (USE_HOST_FINDPTS || CHECK_ACCURACY) {
     u_host = u_base_next;
-    particles.interp(particles.nrs->U, u_host, D);
+    particles.interp_local(particles.nrs->U, u_host, D);
   }
   if (CHECK_ACCURACY) {
     // controls the tolerences for printing warnings

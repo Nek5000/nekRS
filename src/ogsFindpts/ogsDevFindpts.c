@@ -37,6 +37,30 @@ SOFTWARE.
 
 #include "ogstypes.h"
 
+// need to access internals of findpts_data structs
+struct hash_data_2 {
+  ulong hash_n;
+  struct dbl_range bnd[2];
+  double fac[2];
+  uint *offset;
+};
+struct findpts_data_2 {
+  struct crystal cr;
+  struct findpts_local_data_2 local;
+  struct hash_data_2 hash;
+};
+struct hash_data_3 {
+  ulong hash_n;
+  struct dbl_range bnd[3];
+  double fac[3];
+  uint *offset;
+};
+struct findpts_data_3 {
+  struct crystal cr;
+  struct findpts_local_data_3 local;
+  struct hash_data_3 hash;
+};
+
 void ogsDevFindptsEval_2(
         dfloat *const  out_base, const dlong  out_stride,
   const dlong  *const code_base, const dlong code_stride,
@@ -69,4 +93,30 @@ void ogsDevFindptsEval_3(
                        el_base,   el_stride,
                         r_base,    r_stride,
                      npt, in, fd, ogs_fd);
+}
+
+void ogsDevFindptsLocalEval_2(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, void *const in, struct findpts_data_2 *const fd,
+  const void *const ogs_fd) {
+
+  ogs_findpts_local_eval_2(out_base,  out_stride,
+                            el_base,   el_stride,
+                             r_base,    r_stride,
+                           npt, in, &fd->local, ogs_fd);
+}
+
+void ogsDevFindptsLocalEval_3(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, void *const in, struct findpts_data_3 *const fd,
+  const void *const ogs_fd) {
+
+  ogs_findpts_local_eval_3(out_base,  out_stride,
+                            el_base,   el_stride,
+                             r_base,    r_stride,
+                           npt, in, &fd->local, ogs_fd);
 }

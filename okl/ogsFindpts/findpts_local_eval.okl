@@ -410,13 +410,9 @@ void lagrange_eval(@restrict dfloat * p,
   (const T*)((const char*)var##_base[d]+(i)*var##_stride[d])
 
 @kernel void findpts_local_eval_2(
-              dfloat * const out_out_base,   const dlong out_out_stride,
-              dlong  * const out_proc_base,  const dlong out_proc_stride,
-              dlong  * const out_index_base, const dlong out_index_stride,
-        const dlong  * const src_el_base,    const dlong src_el_stride,
-        const dfloat * const src_r_base,     const dlong src_r_stride,
-        const dlong  * const src_proc_base,  const dlong src_proc_stride,
-        const dlong  * const src_index_base, const dlong src_index_stride,
+              dfloat * const out_base,   const dlong out_stride,
+        const dlong  * const el_base,    const dlong el_stride,
+        const dfloat * const r_base,     const dlong r_stride,
         const dlong pn,
         @restrict const dfloat * const in, const dlong in_stride,
         const dfloat * lag_data_0, const dfloat * lag_data_1){
@@ -427,15 +423,11 @@ void lagrange_eval(@restrict dfloat * p,
     @shared dfloat wts[p_NS];
     @shared dfloat sums[p_NR];
 
-    const dlong el = *CAT(dlong, src_el, i);
+    const dlong el = *CAT(dlong, el, i);
     const dfloat *in_el = in + el*in_stride;
 
-    const dfloat * r = CAT(dfloat, src_r, i);
+    const dfloat * r = CAT(dfloat, r, i);
     for(dlong j= 0;j<INNER_SIZE;++j;@inner){
-      if(j==0){
-        (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
-        (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
-      }
       lagrange_eval(wtr, lag_data_0, p_NR, r[0], j);
       lagrange_eval(wts, lag_data_1, p_NS, r[1], j);
     }
@@ -454,7 +446,7 @@ void lagrange_eval(@restrict dfloat * p,
         sums[j] = 0.0;
       }
     }
-    dfloat * out = AT(dfloat, out_out, i);
+    dfloat * out = AT(dfloat, out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -518,13 +510,9 @@ void lagrange_eval(@restrict dfloat * p,
 }
 
 @kernel void findpts_local_eval_3(
-              dfloat * const out_out_base,   const dlong out_out_stride,
-              dlong  * const out_proc_base,  const dlong out_proc_stride,
-              dlong  * const out_index_base, const dlong out_index_stride,
-        const dlong  * const src_el_base,    const dlong src_el_stride,
-        const dfloat * const src_r_base,     const dlong src_r_stride,
-        const dlong  * const src_proc_base,  const dlong src_proc_stride,
-        const dlong  * const src_index_base, const dlong src_index_stride,
+              dfloat * const out_base,   const dlong out_stride,
+        const dlong  * const el_base,    const dlong el_stride,
+        const dfloat * const r_base,     const dlong r_stride,
         const dlong  pn,
         @restrict const dfloat * const in, const dlong in_stride,
         const dfloat * lag_data_0, const dfloat * lag_data_1, const dfloat * lag_data_2){
@@ -536,15 +524,11 @@ void lagrange_eval(@restrict dfloat * p,
     @shared dfloat wtt[p_NT];
     @shared dfloat sums[p_NR];
 
-    const dlong el = *CAT(dlong, src_el, i);
+    const dlong el = *CAT(dlong, el, i);
     const dfloat *in_el = in + el*in_stride;
 
-    const dfloat * r = CAT(dfloat, src_r, i);
+    const dfloat * r = CAT(dfloat, r, i);
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
-      if(j==0){
-        (*AT(dlong, out_proc,  i)) = (*CAT(dlong, src_proc,  i));
-        (*AT(dlong, out_index, i)) = (*CAT(dlong, src_index, i));
-      }
       lagrange_eval(wtr, lag_data_0, p_NR, r[0], j);
       lagrange_eval(wts, lag_data_1, p_NS, r[1], j);
       lagrange_eval(wtt, lag_data_2, p_NT, r[2], j);
@@ -570,7 +554,7 @@ void lagrange_eval(@restrict dfloat * p,
         sums[j] = 0.0;
       }
     }
-    dfloat * out = AT(dfloat, out_out, i);
+    dfloat * out = AT(dfloat, out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
     for(dlong j=0;j<INNER_SIZE;++j;@inner){

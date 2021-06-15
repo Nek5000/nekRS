@@ -33,7 +33,6 @@ SOFTWARE.
 #include <string.h>
 
 #include "gslib.h"
-#include "ogs_findpts.h"
 
 #include "ogstypes.h"
 
@@ -192,4 +191,28 @@ void ogsHostFindptsEval_3(
                    el_base,   el_stride,
                     r_base,    r_stride,
                  npt, in, fd);
+}
+
+void ogsHostFindptsLocalEval_2(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, const dfloat *const in, struct findpts_data_2 *const fd) {
+
+  findpts_local_eval_2(out_base,  out_stride,
+                        el_base,   el_stride,
+                         r_base,    r_stride,
+                       npt, in, &fd->local);
+}
+
+void ogsHostFindptsLocalEval_3(
+        dfloat *const  out_base, const dlong  out_stride,
+  const dlong  *const   el_base, const dlong   el_stride,
+  const dfloat *const    r_base, const dlong    r_stride,
+  const dlong npt, const dfloat *const in, struct findpts_data_3 *const fd) {
+
+  findpts_local_eval_3(out_base,  out_stride,
+                        el_base,   el_stride,
+                         r_base,    r_stride,
+                       npt, in, &fd->local);
 }

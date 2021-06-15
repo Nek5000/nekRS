@@ -306,6 +306,24 @@ struct particle_set {
       fld += nrs->fieldOffset;
     }
   }
+
+  // Interpolates the fields at each particle with the assumption that all particles belong to local elements
+  // this->migrate must have been called since the last change in position
+  //   fld            ... source field(s), may be host pointer or occa::memory (dfloat[nrs->fieldOffset*nfld])
+  //   out            ... array of pointers to the output arrays (dfloat[n][D])
+  //   nfld           ... number of fields
+  template<typename fld_ptr>
+  void interp_local(fld_ptr fld, dfloat *out[], dlong nfld)
+  {
+    for (int ifld = 0; ifld < nfld; ++ifld) {
+      ogsFindptsLocalEval(out[ifld],         1*sizeof(dfloat),
+                          el.data(),         1*sizeof(dlong),
+                          &(r.data()[0][0]), D*sizeof(dfloat),
+                          size(), fld, findpts);
+
+      fld += nrs->fieldOffset;
+    }
+  }
 };
 
 #endif

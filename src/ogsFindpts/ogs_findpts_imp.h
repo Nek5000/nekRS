@@ -5,10 +5,9 @@
 #define findpts_el_data        TOKEN_PASTE(findpts_el_data_                 ,D)
 #define findpts_el_eval        TOKEN_PASTE(ogs_findpts_el_eval_             ,D)
 #define findpts_local_data     TOKEN_PASTE(findpts_local_data_              ,D)
-#define findpts_local_eval     TOKEN_PASTE(ogs_findpts_local_eval_          ,D)
+#define findpts_local_eval_int TOKEN_PASTE(ogs_findpts_local_eval_internal_ ,D)
 #define findpts_data           TOKEN_PASTE(findpts_data_                    ,D)
 #define findpts_eval           TOKEN_PASTE(ogs_findpts_eval_                ,D)
-#define cpp_findpts_local_eval TOKEN_PASTE(ogs_findpts_local_eval_internal_ ,D)
 
 #define   AT(T,var,i)   \
         (T*)(      (char*)var##_base   +(i)*var##_stride   )
@@ -72,11 +71,10 @@ void findpts_eval(      double *const  out_base, const unsigned  out_stride,
     /* group points by element */
     sarray_sort(struct eval_src_pt,src.ptr,n, el,0, &fd->cr.data);
     array_init(struct eval_out_pt,&outpt,n), outpt.n=n;
-
-    // Because local eval copies all of spt to the GPU and all of opt from the GPU
-    // we can use the GPU to copy the proc and index data
     spt=src.ptr, opt=outpt.ptr;
-    findpts_local_eval(opt, spt, src.n, in,&fd->local, ogs_fd);
+    for(;n;--n,++spt,++opt) opt->index=spt->index,opt->proc=spt->proc;
+    spt=src.ptr, opt=outpt.ptr;
+    findpts_local_eval_int(opt, spt, src.n, in,&fd->local, ogs_fd);
     array_free(&src);
     sarray_transfer(struct eval_out_pt,&outpt,proc,1,&fd->cr);
   }
