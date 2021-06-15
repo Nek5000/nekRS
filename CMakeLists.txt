@@ -53,6 +53,7 @@ set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
 #   - ENABLE_METAL
 #   - ENABLE_MPI
 
+set(ENABLE_METAL OFF CACHE BOOL "Enable OCCA Metal support")
 set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 
 ###############################################################################
@@ -290,7 +291,7 @@ set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs
 target_link_libraries(nekrs-bin nekrs-lib)
 
 message(NOTICE "")
-message(NOTICE "------------ Summary ------------")
+message(NOTICE "----------------- Summary -----------------")
 message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}") 
 message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
 message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
@@ -311,7 +312,7 @@ if(GPU_MPI)
 else(GPU_MPI)
   message(NOTICE "GPU aware MPI support disabled!")
 endif()
-message(NOTICE "")
+message(NOTICE "-------------------------------------------")
 
 ###############################################################################
 # Generate nekrs.conf                                                       #
@@ -376,6 +377,3 @@ add_custom_target(tar
   COMMAND tar -czf ${TAR_NAME} ${DEST_DIR}
   COMMAND rm -rf ${DEST_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-
-

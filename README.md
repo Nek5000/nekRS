@@ -51,9 +51,9 @@ To build and install the code just run:
 
 ```sh
 ./nrsconfig
-cmake --build ./build --target install -j 8
+cmake --build ./build --target install -j8
 ```
-Build settings can be customized in the script.
+Build settings can be customized by environment variables. 
 
 
 ## Setting the Enviroment
