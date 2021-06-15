@@ -670,7 +670,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("VELOCITY PARALMOND CHEBYSHEV DEGREE"));
     nrs->vOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
                           options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
-    nrs->vOptions.setArgs("FIXED ITERATION COUNT", options.getArgs("VELOCITY FIXED ITERATION COUNT"));
     nrs->vOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("VELOCITY MAXIMUM ITERATIONS"));
 
     // coeff used by ellipticSetup to detect allNeumann
@@ -765,9 +764,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE")) {
       nrs->uvwSolver->name = "velocity";
     } else {
-      nrs->uSolver->name = "velocity";
-      nrs->vSolver->name = "velocity";
-      nrs->wSolver->name = "velocity";
+      nrs->uSolver->name = "x-velocity";
+      nrs->vSolver->name = "y-velocity";
+      nrs->wSolver->name = "v-velocity";
     }
   } // flow
 
@@ -808,7 +807,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("RESIDUAL PROJECTION START",
                           options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
     nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
-    nrs->pOptions.setArgs("FIXED ITERATION COUNT", options.getArgs("PRESSURE FIXED ITERATION COUNT"));
     nrs->pOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("PRESSURE MAXIMUM ITERATIONS"));
 
     nrs->pSolver = new elliptic_t();
@@ -1058,6 +1056,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("RESIDUAL PROJECTION",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION"));
     cds->options[is].setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
+    cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR MAXIMUM ITERATIONS"));
 
     // setup boundary mapping
     dfloat largeNumber = 1 << 20;

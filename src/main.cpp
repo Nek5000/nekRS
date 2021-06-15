@@ -113,19 +113,12 @@ int main(int argc, char** argv)
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) {
-    if (rank == 0) {
-      std::cout << "Attach debugger, then press enter to continue\n";
-    }
-    printf("\tRank\tpid\n");
     for(int currRank = 0; currRank < size; ++currRank)
-    {
-      if(rank == currRank){
-        printf("\t%d\t%d\n", rank, ::getpid());
-      }
-    }
-    if (rank == 0) {
-      std::cin.get();
-    }
+      if(rank == currRank) printf("rank %d: pid<%d>\n", rank, ::getpid());
+    fflush(stdout); 
+    MPI_Barrier(comm);
+    if (rank == 0) std::cout << "Attach debugger, then press enter to continue\n";
+    if (rank == 0) std::cin.get(); 
     MPI_Barrier(comm);
   }
   if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);

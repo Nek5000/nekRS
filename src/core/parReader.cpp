@@ -186,6 +186,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("MESH DIMENSION", string("3"));
 
   options.setArgs("NUMBER OF SCALARS", "0");
+  options.setArgs("SCALAR MAXIMUM ITERATIONS", "200");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("MESH INTEGRATION ORDER", "3");
@@ -212,6 +213,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
 
   options.setArgs("START TIME", "0.0");
 
+  options.setArgs("VELOCITY MAXIMUM ITERATIONS", "200");
   options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   options.setArgs("VELOCITY KRYLOV SOLVER", "PCG");
   options.setArgs("VELOCITY BASIS", "NODAL");
@@ -221,8 +223,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("STRESSFORMULATION", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
-  options.setArgs("MAXIMUM ITERATIONS", "200");
-  options.setArgs("FIXED ITERATION COUNT", "FALSE");
+
+  options.setArgs("PRESSURE MAXIMUM ITERATIONS", "200");
   options.setArgs("GALERKIN COARSE MATRIX", "FALSE");
   options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");
   options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");

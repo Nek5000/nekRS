@@ -37,7 +37,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
   const int flexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
   const int verbose = options.compareArgs("VERBOSE", "TRUE");
-  const int fixedIterationCountFlag = options.compareArgs("FIXED ITERATION COUNT", "TRUE");
+  const int fixedIteration = false;
 
   dfloat rdotz1;
   dfloat alpha;
@@ -49,11 +49,17 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory &o_weight = elliptic->o_invDegree;
   platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
 
-  if(platform->comm.mpiRank == 0 && verbose)
-    printf("CG: initial res norm %.15e WE NEED TO GET TO %e \n", rdotr, tol);
+  if(platform->comm.mpiRank == 0 && verbose) {
+    if(flexible) 
+      printf("PFCG ");	  
+    else
+      printf("PCG ");	  
+    printf("%s: initial res norm %.15e WE NEED TO GET TO %e \n", elliptic->name.c_str(), rdotr, tol);
+  }
 
-  int iter; 
-  for(iter = 1; iter <= MAXIT; ++iter) {
+  int iter = 0;
+  do {
+    iter++;
     ellipticPreconditioner(elliptic, o_r, o_z);
 
     const dfloat rdotz2 = rdotz1;
@@ -114,9 +120,8 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       
     if (verbose && (platform->comm.mpiRank == 0))
       printf("it %d r norm %.15e\n", iter, rdotr);
-
-    if(rdotr <= tol && !fixedIterationCountFlag) break;
   }
+  while (rdotr > tol && iter < MAXIT);
 
   return iter;
 }

@@ -169,8 +169,13 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   dfloat error = rdotr;
   const dfloat TOL = tol;
 
-  if (verbose&&(platform->comm.mpiRank==0))
-    printf("PGMRES: initial res norm %12.12f \n", rdotr);
+  if (verbose&&(platform->comm.mpiRank==0)) {
+    if(flexible)
+      printf("PFGMRES ");
+    else
+      printf("PGMRES ");
+    printf("%s: initial res norm %.15e WE NEED TO GET TO %e \n", elliptic->name.c_str(), rdotr, tol);
+  }
 
   int iter=0;
 
