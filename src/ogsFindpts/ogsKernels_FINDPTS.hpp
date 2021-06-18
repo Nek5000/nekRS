@@ -5,7 +5,8 @@
 #include "ogsKernels.hpp"
 
 namespace ogs {
-      occa::kernel initFindptsKernel(MPI_Comm comm, occa::device device, dlong D, const dlong *n);
+  std::pair<occa::kernel, occa::kernel> initFindptsKernel(
+        MPI_Comm comm, occa::device device, dlong D, const dlong *n);
 }
 
 #endif

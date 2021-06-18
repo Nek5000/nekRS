@@ -60,17 +60,18 @@ void interp_free(interp_data* handle)
 template<typename fld_ptr>
 void interp_nfld(fld_ptr fld, dlong nfld,
                  dfloat* x[], dlong x_stride[], dlong n,
-                 dlong* iwk, dfloat* rwk, dlong nmax,
+                 dlong* iwork, dfloat* rwork, dlong nmax,
                  bool if_need_pts, interp_data* handle,
-                 dfloat* out[], dlong out_stride[])
+                 dfloat* out[], dlong out_stride[],
+                 bool dev_findpts)
 {
   assert(n <= nmax);
 
-  dlong*  code  = iwk;
-  dlong*  proc  = iwk+2*nmax;
-  dlong*  el    = iwk+nmax;
-  dfloat* r     = rwk+nmax;
-  dfloat* dist2 = rwk;
+  dlong*  code  = iwork;
+  dlong*  proc  = iwork+2*nmax;
+  dlong*  el    = iwork+nmax;
+  dfloat* r     = rwork+nmax;
+  dfloat* dist2 = rwork;
 
   dlong D = handle->D;
 
@@ -86,7 +87,8 @@ void interp_nfld(fld_ptr fld, dlong nfld,
                r,     D*sizeof(dfloat),
                dist2, 1*sizeof(dfloat),
                x,     x_stride_bytes,
-               n, handle->findpts);
+               n, handle->findpts,
+               dev_findpts);
     free(x_stride_bytes);
 
     for (int in = 0; in < n; ++in) {
@@ -136,19 +138,22 @@ void interp_nfld(const dfloat* fld, dlong nfld,
                  dfloat* x[], dlong x_stride[], dlong n,
                  dlong* iwk, dfloat* rwk, dlong nmax,
                  bool if_need_pts, interp_data* handle,
-                 dfloat* out[], dlong out_stride[]);
+                 dfloat* out[], dlong out_stride[],
+                 bool dev_findpts);
 template
 void interp_nfld(dfloat* fld, dlong nfld,
                  dfloat* x[], dlong x_stride[], dlong n,
                  dlong* iwk, dfloat* rwk, dlong nmax,
                  bool if_need_pts, interp_data* handle,
-                 dfloat* out[], dlong out_stride[]);
+                 dfloat* out[], dlong out_stride[],
+                 bool dev_findpts);
 template
 void interp_nfld(occa::memory fld, dlong nfld,
                  dfloat* x[], dlong x_stride[], dlong n,
                  dlong* iwk, dfloat* rwk, dlong nmax,
                  bool if_need_pts, interp_data* handle,
-                 dfloat* out[], dlong out_stride[]);
+                 dfloat* out[], dlong out_stride[],
+                 bool dev_findpts);
 
 
 void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
@@ -171,8 +176,17 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
   dfloat* rwork = (dfloat*)workspace;
   int*    iwork = (int*)(workspace + sizeof(dfloat)*n*(D+1));
 
+
+  char* workspace_copy;
+  dfloat* rwork_copy;
+  int* iwork_copy;
   dfloat** uvw_copy;
   if (check_occa) {
+    workspace_copy = (char*)malloc(sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
+    memcpy(workspace_copy, workspace, sizeof(dfloat)*n*(D+1) + sizeof(int)*n*3);
+    rwork_copy = (dfloat*)workspace_copy;
+    iwork_copy = (int*)(workspace_copy + sizeof(dfloat)*n*(D+1));
+
     uvw_copy = (dfloat**)malloc(D*sizeof(dfloat*));
     for (int i = 0; i < D; ++i) {
       uvw_copy[i] = (dfloat*)malloc(uvw_stride[i]*n*sizeof(dfloat));
@@ -182,36 +196,70 @@ void interp_velocity(dfloat *uvw_base[], dlong uvw_stride[],
     nrs->o_U.copyTo(nrs->U);
   }
 
+  MPI_Comm comm = platform_t::getInstance()->comm.mpiComm;
+  int mpi_rank = platform_t::getInstance()->comm.mpiRank;
+  int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
+
   occa::memory o_U_dfloat = nrs->o_U.cast(occa::dtype::get<dfloat>());
   interp_nfld(o_U_dfloat, nrs->dim,
               xyz_base, xyz_stride, n,
               iwork, rwork, n, true, interp_handle,
-              uvw_base, uvw_stride);
+              uvw_base, uvw_stride, true);
 
   if (check_occa) {
     interp_nfld(nrs->U, nrs->dim,
                 xyz_base, xyz_stride, n,
-                iwork, rwork, n, true, interp_handle,
-                uvw_copy, uvw_stride);
+                iwork_copy, rwork_copy, n, true, interp_handle,
+                uvw_copy, uvw_stride, false);
 
     // controls the tolerences for printing warnings
     const dfloat abs_tol = 2e-15;
     const dfloat rel_tol = 1;
 
-    for (int i = 0; i < n; ++i) {
-      for (int j = 0; j < D; ++j) {
-        dfloat out_dev = uvw_base[j][i*uvw_stride[j]];
-        dfloat out_ref = uvw_copy[j][i*uvw_stride[j]];
-        if (std::abs(out_ref - out_dev) > abs_tol
-            || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
-          printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
+    dlong*   code_dev = iwork;
+    dlong*   proc_dev = iwork+2*n;
+    dlong*     el_dev = iwork+n;
+    dfloat*     r_dev = rwork+n;
+    dfloat* dist2_dev = rwork;
+
+    dlong*   code_ref = iwork_copy;
+    dlong*   proc_ref = iwork_copy+2*n;
+    dlong*     el_ref = iwork_copy+n;
+    dfloat*     r_ref = rwork_copy+n;
+    dfloat* dist2_ref = rwork_copy;
+
+    for(int r = 0; r<mpi_size; ++r) {
+      if (r == mpi_rank) {
+        for (int i = 0; i < n; ++i) {
+          if (code_ref[i] != code_dev[i]
+              || (code_ref[i] != 2
+                  && (   proc_ref[i] != proc_dev[i]
+                      ||   el_ref[i] !=   el_dev[i]
+                      || (dist2_dev[i]>1e-16 && dist2_ref[i]*2 < dist2_dev[i])))) {
+            printf("%d: WARNING: ogs_findpts varied at %4d: %e, %e, %e\n",
+                   mpi_rank, i, xyz_base[0][i*xyz_stride[0]], xyz_base[1][i*xyz_stride[1]], xyz_base[2][i*xyz_stride[2]]);
+            printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
+                   mpi_rank, code_ref[i], proc_ref[i], el_ref[i], r_ref[3*i], r_ref[3*i+1], r_ref[3*i+2], dist2_ref[i]);
+            printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
+                   mpi_rank, code_dev[i], proc_dev[i], el_dev[i], r_dev[3*i], r_dev[3*i+1], r_dev[3*i+2], dist2_dev[i]);
+          }
+          for (int j = 0; j < D; ++j) {
+            dfloat out_dev = uvw_base[j][i*uvw_stride[j]];
+            dfloat out_ref = uvw_copy[j][i*uvw_stride[j]];
+            if (std::abs(out_ref - out_dev) > abs_tol
+                || std::abs(out_ref - out_dev) > rel_tol*std::abs(out_ref)) {
+              printf("WARNING: ogs_findpts_eval varied at point %d: %e != %e (diff %e)\n", i, out_ref, out_dev, out_ref-out_dev);
+            }
+          }
         }
       }
+      MPI_Barrier(comm);
     }
     for (int i = 0; i < D; ++i) {
       free(uvw_copy[i]);
     }
     free(uvw_copy);
+    free(workspace_copy);
   }
 
   free(workspace);

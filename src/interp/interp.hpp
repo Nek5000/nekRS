@@ -39,7 +39,8 @@ void interp_nfld(fld_ptr fld, dlong nfld,
                  dfloat* x[], dlong x_stride[], dlong n,
                  dlong* iwk, dfloat* rwk, dlong nmax,
                  bool if_need_pts, interp_data* handle,
-                 dfloat* out[], dlong out_stride[]);
+                 dfloat* out[], dlong out_stride[],
+                 bool dev_findpts=true);
 
 // Interpolates the velocity fields at the give points
 //   uvw_base       ... array of pointers to the velocity output arrays (dfloat[D][n])

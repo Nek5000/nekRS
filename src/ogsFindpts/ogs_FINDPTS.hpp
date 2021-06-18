@@ -8,7 +8,8 @@ typedef struct {
   void *findpts_data;
   occa::device *device;
   occa::kernel local_eval_kernel;
-  occa::memory lag_data[3];
+  occa::kernel local_kernel;
+  occa::memory d_fd_local;
 } ogs_findpts_t;
 
 ogs_findpts_t *ogsFindptsSetup(
@@ -26,7 +27,8 @@ void ogsFindpts(    dlong  *const  code_base  , const dlong  code_stride,
                     dfloat *const     r_base  , const dlong     r_stride,
                     dfloat *const dist2_base  , const dlong dist2_stride,
               const dfloat *const     x_base[], const dlong     x_stride[],
-              const dlong npt, ogs_findpts_t *const fd);
+              const dlong npt, ogs_findpts_t *const fd,
+              const bool use_device=true);
 void ogsFindptsEval(
         dfloat *const  out_base, const dlong  out_stride,
   const dlong  *const code_base, const dlong code_stride,
