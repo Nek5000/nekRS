@@ -173,6 +173,7 @@ void build_kernel();
 
 void construct_coo_graph();
 void fem_assembly_device();
+void fem_assembly_host();
 
 void matrix_distribution();
 void fem_assembly();
@@ -527,6 +528,7 @@ void construct_coo_graph() {
   coo_graph.rowOffsets = rowOffsets;
   coo_graph.ncols = ncols;
   coo_graph.vals = vals;
+  coo_graph.cols = cols;
 }
 
 void fem_assembly_host() {
@@ -828,12 +830,18 @@ void fem_assembly() {
 
   construct_coo_graph();
 
-  if(platform->device.mode() != "OpenCL" || platform->device.mode() != "Serial")
-  {
-    fem_assembly_device();
-  } else
+  const bool constructOnHost = 
+    platform->device.mode() == std::string("OpenCL")
+    ||
+    platform->device.mode() == std::string("Serial");
+
+  if(constructOnHost)
   {
     fem_assembly_host();
+  }
+  else
+  {
+    fem_assembly_device();
   }
 
   {
