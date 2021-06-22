@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "udf.hpp"
 #include "linAlg.hpp"
+#include <limits>
 
 namespace tombo
 {

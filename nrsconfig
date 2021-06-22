@@ -48,10 +48,6 @@ cmake -Wno-dev \
       -B ./build 
 
 if [ $? -eq 0 ]; then
-  echo ""
-  echo ""
-  echo "Check configuration summary printed above!"
-  echo "Now just run e.g."
-  echo "    cmake --build ./build --target install -j8"
-  echo ""
+  echo ""        
+  echo "--> Now just run \`cmake --build ./build --target install -j8\`"
 fi
