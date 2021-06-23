@@ -197,7 +197,7 @@ namespace occa {
                  if(oklForSmnt.getIterationCount()->canEvaluate()) {
                    dims[i-1] = (int) oklForSmnt.getIterationCount()->evaluate();
                  } else { // in this case loop bound is unknown at compile time (except tiled loops) 
-                   if(s.find("_occa_tiled_n") != std::string::npos) // hack to evalute tile size 
+                   if(s.find("_occa_tiled_") != std::string::npos) // hack to evalute tile size 
                      dims[i-1] = std::stoi(s.substr(s.find_first_of("0123456789")));
                  }
                }
