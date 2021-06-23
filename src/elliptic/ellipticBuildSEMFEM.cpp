@@ -833,6 +833,8 @@ void fem_assembly() {
   const bool constructOnHost = 
     platform->device.mode() == std::string("OpenCL")
     ||
+    platform->device.mode() == std::string("HIP")
+    ||
     platform->device.mode() == std::string("Serial");
 
   if(constructOnHost)
