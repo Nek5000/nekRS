@@ -41,9 +41,10 @@
                                          @restrict dfloat*  PI)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
-    for(int fp = 0; fp < p_Nfp; ++fp; @inner(0)) {
-      for(int f = 0; f < p_Nfaces; ++f){
-        const int n = f * p_Nfp + fp;
+    for(int f = 0; f < p_Nfaces; ++f){
+      @barrier("global");
+      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = f * p_Nfp + m;
         struct bcData bc;
         const dlong idM = vmapM[e * p_Nfp * p_Nfaces + n];
         const dlong bcType = EToB[f + p_Nfaces * e];
@@ -70,7 +71,6 @@
           pressureDirichletConditions(&bc);
           PI[idM] = bc.p;
         }
-        @barrier("global");
       }
     }
 }
