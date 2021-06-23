@@ -168,6 +168,7 @@ static occa::memory o_stiffness;
 static occa::memory o_x;
 static occa::memory o_y;
 static occa::memory o_z;
+static bool constructOnHost = false;
 
 void build_kernel();
 
@@ -241,7 +242,14 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
                    /* mode */ 0);
   }
 
-  if (platform->device.mode() != "OpenCL" || platform->device.mode() != "Serial") build_kernel();
+  constructOnHost = 
+    platform->device.mode() == std::string("OpenCL")
+    ||
+    platform->device.mode() == std::string("HIP")
+    ||
+    platform->device.mode() == std::string("Serial");
+
+  if(!constructOnHost) build_kernel();
 
   if(platform->options.compareArgs("BUILD ONLY", "TRUE")) return NULL;
 
@@ -829,13 +837,6 @@ void fem_assembly() {
   HYPRE_IJMatrixInitialize(A_bc);
 
   construct_coo_graph();
-
-  const bool constructOnHost = 
-    platform->device.mode() == std::string("OpenCL")
-    ||
-    platform->device.mode() == std::string("HIP")
-    ||
-    platform->device.mode() == std::string("Serial");
 
   if(constructOnHost)
   {
