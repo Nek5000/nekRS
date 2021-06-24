@@ -6,6 +6,15 @@
 #include "ellipticBuildSEMFEM.hpp"
 #include "amgx.h"
 
+namespace{
+occa::kernel gatherKernel;
+occa::kernel scatterKernel;
+occa::memory o_dofMap;
+occa::memory o_SEMFEMBuffer1;
+occa::memory o_SEMFEMBuffer2;
+dlong numRowsSEMFEM;
+}
+
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
 
@@ -20,13 +29,13 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
   std::string filename = oklpath + "ellipticGather.okl";
-  elliptic->gatherKernel = platform->device.buildKernel(
+  gatherKernel = platform->device.buildKernel(
     filename,
     "gather",
     SEMFEMKernelProps
   );
   filename = oklpath + "ellipticScatter.okl";
-  elliptic->scatterKernel = platform->device.buildKernel(
+  scatterKernel = platform->device.buildKernel(
     filename,
     "scatter",
     SEMFEMKernelProps
@@ -58,11 +67,11 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
 
   const int sizeType = useFP32 ? sizeof(float) : sizeof(dfloat);
   const long long numRows = data->rowEnd - data->rowStart + 1;
-  elliptic->o_dofMap = platform->device.malloc(numRows * sizeof(long long), data->dofMap);
-  elliptic->o_SEMFEMBuffer1 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
-  elliptic->o_SEMFEMBuffer2 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
+  o_dofMap = platform->device.malloc(numRows * sizeof(long long), data->dofMap);
+  o_SEMFEMBuffer1 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
+  o_SEMFEMBuffer2 = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal,sizeType);
 
-  elliptic->numRowsSEMFEM = numRows;
+  numRowsSEMFEM = numRows;
 
   int setupRetVal;
   if(elliptic->options.compareArgs("SEMFEM SOLVER", "BOOMERAMG")){
@@ -150,12 +159,12 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
 {
   mesh_t* mesh = elliptic->mesh;
 
-  occa::memory& o_buffer = elliptic->o_SEMFEMBuffer1;
-  occa::memory& o_buffer2 = elliptic->o_SEMFEMBuffer2;
+  occa::memory& o_buffer = o_SEMFEMBuffer1;
+  occa::memory& o_buffer2 = o_SEMFEMBuffer2;
 
-  elliptic->gatherKernel(
-    elliptic->numRowsSEMFEM,
-    elliptic->o_dofMap,
+  gatherKernel(
+    numRowsSEMFEM,
+    o_dofMap,
     o_r,
     o_buffer
   );
@@ -168,9 +177,9 @@ void ellipticSEMFEMSolve(elliptic_t* elliptic, occa::memory& o_r, occa::memory& 
     AMGXsolve(o_buffer2.ptr(), o_buffer.ptr());
   }
 
-  elliptic->scatterKernel(
-    elliptic->numRowsSEMFEM,
-    elliptic->o_dofMap,
+  scatterKernel(
+    numRowsSEMFEM,
+    o_dofMap,
     o_buffer2,
     o_z
   );
