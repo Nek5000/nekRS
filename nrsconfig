@@ -25,6 +25,7 @@ set -e -a
 : ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+mkdir ./build 2>/dev/null
 
 cmake -Wno-dev \
       -Wfatal-errors \
