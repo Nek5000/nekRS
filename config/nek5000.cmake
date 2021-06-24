@@ -1,6 +1,3 @@
-set(NEK5000_GS_VERSION "1.0.7")
-set(PARRSB_VERSION "0.7")
-
 if (${NEK5000_PPLIST} MATCHES "PARRSB")
   set(USE_PARRSB on)
 endif()

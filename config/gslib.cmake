@@ -10,10 +10,10 @@ set(OGS_SOURCE_DIR ${GS_SOURCE_DIR}/ogs)
 # and we want to keep source tree clean.
 FetchContent_Declare(
     gs_content
-    URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gslib
+    URL ${GS_SOURCE_DIR} 
 )
 FetchContent_GetProperties(gs_content)
-if (NOT gs_content)
+if (NOT gs_content_POPULATED)
     FetchContent_Populate(gs_content)
 endif()
 set(GS_SOURCE_DIR ${gs_content_SOURCE_DIR})
