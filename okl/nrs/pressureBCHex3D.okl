@@ -41,33 +41,36 @@
                                          @restrict dfloat*  PI)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
-    for(int n = 0; n < p_Nfp * p_Nfaces; ++n; @inner(0)) {
-      const int f = n / p_Nfp;
-      struct bcData bc;
-      const dlong idM = vmapM[e * p_Nfp * p_Nfaces + n];
-      const dlong bcType = EToB[f + p_Nfaces * e];
+    for(int f = 0; f < p_Nfaces; ++f){
+      @barrier("global");
+      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = f * p_Nfp + m;
+        struct bcData bc;
+        const dlong idM = vmapM[e * p_Nfp * p_Nfaces + n];
+        const dlong bcType = EToB[f + p_Nfaces * e];
 
-      if(bcType == 3) {
-        bc.idM  = idM;
-        bc.id   = EToBM[f + p_Nfaces * e];
-        bc.time = time;
-        bc.fieldOffset = offset;
-        bc.x  = x[idM];
-        bc.y  = y[idM];
-        bc.z  = z[idM];
-        const dlong sk = e * p_Nfaces * p_Nfp + n;
-        bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
-        bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
-        bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
-        // Get Current Solution i.e. Un
-        bc.u = U[idM + 0 * offset];
-        bc.v = U[idM + 1 * offset];
-        bc.w = U[idM + 2 * offset];
-        bc.wrk = W;
+        if(bcType == 3) {
+          bc.idM  = idM;
+          bc.id   = EToBM[f + p_Nfaces * e];
+          bc.time = time;
+          bc.fieldOffset = offset;
+          bc.x  = x[idM];
+          bc.y  = y[idM];
+          bc.z  = z[idM];
+          const dlong sk = e * p_Nfaces * p_Nfp + n;
+          bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
+          bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
+          bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
+          // Get Current Solution i.e. Un
+          bc.u = U[idM + 0 * offset];
+          bc.v = U[idM + 1 * offset];
+          bc.w = U[idM + 2 * offset];
+          bc.wrk = W;
 
-        bc.p = 0.f;
-        pressureDirichletConditions(&bc);
-        PI[idM] = bc.p;
+          bc.p = 0.f;
+          pressureDirichletConditions(&bc);
+          PI[idM] = bc.p;
+        }
       }
     }
 }
