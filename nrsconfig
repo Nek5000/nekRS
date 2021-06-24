@@ -28,6 +28,7 @@ NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basena
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_BUILD_DIR=`pwd`/build
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+cd ${NEKRS_BUILD_DIR}
 
 cmake -Wno-dev \
       -Wfatal-errors \
@@ -48,7 +49,7 @@ cmake -Wno-dev \
       -DGPU_MPI="${NEKRS_GPU_MPI}" \
       -DHYPRE_BIGINT=1 \
       -DENABLE_AMGX="${AMGX_ENABLED}" \
-      -B ./build 
+      .. 
 
 if [ $? -eq 0 ]; then
   echo ""        
