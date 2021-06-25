@@ -515,7 +515,21 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     dlong nStepsStart = 5;
     options.getArgs("RESIDUAL PROJECTION START", nStepsStart);
 
-    elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
+    ResidualProjection::ProjectionType type = ResidualProjection::ProjectionType::CLASSIC;
+    if(options.compareArgs("RESIDUAL PROJECTION METHOD", "CLASSIC"))
+      type == ResidualProjection::ProjectionType::CLASSIC;
+    else if (options.compareArgs("RESIDUAL PROJECTION METHOD", "ACONJ"))
+      type == ResidualProjection::ProjectionType::ACONJ;
+    else {
+      if(platform->comm.mpiRank == 0){
+        printf("Encountered invalid residual projection method %s!\n",
+          options.getArgs("RESIDUAL PROJECTION METHOD").c_str());
+      }
+      exit(1);
+    }
+
+
+    elliptic->residualProjection = new ResidualProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
 
   MPI_Barrier(platform->comm.mpiComm);
