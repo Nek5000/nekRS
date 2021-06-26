@@ -265,13 +265,14 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
     ABORT(EXIT_FAILURE);
   } 
 
-  // use same compiler for occa and kernel launcher
-  // to avoid libstdc++ incompatibility issues
+  // overwrite compiler settings to ensure
+  // compatability of libocca and kernelLauchner 
   if(this->mode() != "Serial") {
-    std::string NEKRS_CXX;
-    NEKRS_CXX.assign(getenv("NEKRS_CXX"));
-    setenv("OCCA_CXX", NEKRS_CXX.c_str(), 1);
-    setenv("OCCA_CXXFLAGS", "-g -O2", 1);
+    std::string buf;
+    buf.assign(getenv("NEKRS_CXX"));
+    setenv("OCCA_CXX", buf.c_str(), 1);
+    buf.assign(getenv("NEKRS_CXXFLAGS"));
+    setenv("OCCA_CXXFLAGS", buf.c_str(), 1);
   }
 
   int Nthreads = 1;
