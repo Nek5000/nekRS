@@ -517,9 +517,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
     ResidualProjection::ProjectionType type = ResidualProjection::ProjectionType::CLASSIC;
     if(options.compareArgs("RESIDUAL PROJECTION METHOD", "CLASSIC"))
-      type == ResidualProjection::ProjectionType::CLASSIC;
+      type = ResidualProjection::ProjectionType::CLASSIC;
     else if (options.compareArgs("RESIDUAL PROJECTION METHOD", "ACONJ"))
-      type == ResidualProjection::ProjectionType::ACONJ;
+      type = ResidualProjection::ProjectionType::ACONJ;
     else {
       if(platform->comm.mpiRank == 0){
         printf("Encountered invalid residual projection method %s!\n",
@@ -527,7 +527,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       }
       exit(1);
     }
-
 
     elliptic->residualProjection = new ResidualProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
