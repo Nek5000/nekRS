@@ -67,15 +67,19 @@ void RANSktau::buildKernel(nrs_t* nrs)
   kernelInfo["defines/p_alp_inf"]       = coeff[12];
   kernelInfo["defines/p_tiny"]          = coeff[13];
 
-  string fileName;
+  string fileName, install_dir;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/RANSktau.okl";
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   {
+      fileName = install_dir + "/okl/plugins/computeHex3D.okl";
       computeKernel    = platform->device.buildKernel(fileName, "computeHex3D", kernelInfo);
+      fileName = install_dir + "/okl/plugins/SijOijHex3D.okl";
       SijOijKernel     = platform->device.buildKernel(fileName, "SijOijHex3D", kernelInfo);
+      fileName = install_dir + "/okl/plugins/SijOijMag2.okl";
       SijOijMag2Kernel = platform->device.buildKernel(fileName, "SijOijMag2", kernelInfo);
+      fileName = install_dir + "/okl/plugins/limit.okl";
       limitKernel      = platform->device.buildKernel(fileName, "limit", kernelInfo);
+      fileName = install_dir + "/okl/plugins/mue.okl";
       mueKernel        = platform->device.buildKernel(fileName, "mue", kernelInfo);
   }
 

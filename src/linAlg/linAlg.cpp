@@ -80,38 +80,38 @@ void linAlg_t::setup() {
   {
       if (fillKernel.isInitialized()==false)
         fillKernel = device.buildKernel(oklDir + 
-                                        "linAlgFill.okl",
+                                        "fill.okl",
                                         "fill",
                                         kernelInfo);
       if (absKernel.isInitialized()==false)
         absKernel = device.buildKernel(oklDir + 
-                                        "linAlgAbs.okl",
+                                        "vabs.okl",
                                         "vabs",
                                         kernelInfo);
       if (addKernel.isInitialized()==false)
         addKernel = device.buildKernel(oklDir + 
-                                        "linAlgAdd.okl",
+                                        "add.okl",
                                         "add",
                                         kernelInfo);
       if (scaleKernel.isInitialized()==false)
         scaleKernel = device.buildKernel(oklDir + 
-                                        "linAlgScale.okl",
+                                        "scale.okl",
                                         "scale",
                                         kernelInfo);
       if (scaleManyKernel.isInitialized()==false)
         scaleManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgScale.okl",
+                                        "scaleMany.okl",
                                         "scaleMany",
                                         kernelInfo);
       if (axpbyKernel.isInitialized()==false){
         if(serial){
           axpbyKernel = device.buildKernel(oklDir + 
-                                           "linAlgAXPBY.c",
+                                           "axpby.c",
                                            "axpby",
                                            kernelInfoNoOkl);
         } else {
           axpbyKernel = device.buildKernel(oklDir + 
-                                           "linAlgAXPBY.okl",
+                                           "axpby.okl",
                                            "axpby",
                                            kernelInfo);
         }
@@ -119,35 +119,35 @@ void linAlg_t::setup() {
       if (axpbyManyKernel.isInitialized()==false){
         if(serial){
           axpbyManyKernel = device.buildKernel(oklDir + 
-                                           "linAlgAXPBY.c",
+                                           "axpbyMany.c",
                                            "axpbyMany",
                                            kernelInfoNoOkl);
         } else {
           axpbyManyKernel = device.buildKernel(oklDir + 
-                                           "linAlgAXPBY.okl",
+                                           "axpbyMany.okl",
                                            "axpbyMany",
                                            kernelInfo);
         }
       }
       if (axpbyzKernel.isInitialized()==false)
         axpbyzKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXPBY.okl",
+                                          "axpbyz.okl",
                                           "axpbyz",
                                           kernelInfo);
       if (axpbyzManyKernel.isInitialized()==false)
         axpbyzManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXPBY.okl",
+                                          "axpbyzMany.okl",
                                           "axpbyzMany",
                                           kernelInfo);
       if (axmyKernel.isInitialized()==false){
         if(serial){
           axmyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.c",
+                                          "axmy.c",
                                           "axmy",
                                           kernelInfoNoOkl);
         } else {
           axmyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.okl",
+                                          "axmy.okl",
                                           "axmy",
                                           kernelInfo);
         }
@@ -155,12 +155,12 @@ void linAlg_t::setup() {
       if (axmyManyKernel.isInitialized()==false){
         if(serial){
           axmyManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.c",
+                                          "axmyMany.c",
                                           "axmyMany",
                                           kernelInfoNoOkl);
         } else {
           axmyManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.okl",
+                                          "axmyMany.okl",
                                           "axmyMany",
                                           kernelInfo);
         }
@@ -168,85 +168,85 @@ void linAlg_t::setup() {
       if (axmyVectorKernel.isInitialized()==false){
         if(serial){
           axmyVectorKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.c",
+                                          "axmyVector.c",
                                           "axmyVector",
                                           kernelInfoNoOkl);
         } else {
           axmyVectorKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXMY.okl",
+                                          "axmyVector.okl",
                                           "axmyVector",
                                           kernelInfo);
         }
       }
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXMY.okl",
+                                         "axmyz.okl",
                                          "axmyz",
                                          kernelInfo);
       if (axmyzManyKernel.isInitialized()==false)
         axmyzManyKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXMY.okl",
+                                         "axmyzMany.okl",
                                          "axmyzMany",
                                          kernelInfo);
       if (adyKernel.isInitialized()==false)
         adyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
+                                        "ady.okl",
                                         "ady",
                                         kernelInfo);
       if (adyManyKernel.isInitialized()==false)
         adyManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
+                                        "adyMany.okl",
                                         "adyMany",
                                         kernelInfo);
       if (axdyKernel.isInitialized()==false)
         axdyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
+                                        "axdy.okl",
                                         "axdy",
                                         kernelInfo);
       if (aydxKernel.isInitialized()==false)
         aydxKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
+                                        "aydx.okl",
                                         "aydx",
                                         kernelInfo);
       if (aydxManyKernel.isInitialized()==false)
         aydxManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
+                                        "aydxMany.okl",
                                         "aydxMany",
                                         kernelInfo);
       if (axmyzKernel.isInitialized()==false)
         axmyzKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXDY.okl",
+                                         "axdyz.okl",
                                          "axdyz",
                                          kernelInfo);
       if (sumKernel.isInitialized()==false)
         sumKernel = device.buildKernel(oklDir + 
-                                        "linAlgSum.okl",
+                                        "sum.okl",
                                         "sum",
                                         kernelInfo);
       if (minKernel.isInitialized()==false)
         minKernel = device.buildKernel(oklDir + 
-                                        "linAlgMin.okl",
+                                        "min.okl",
                                         "min",
                                         kernelInfo);
        if (maxKernel.isInitialized()==false)
         maxKernel = device.buildKernel(oklDir + 
-                                        "linAlgMax.okl",
+                                        "max.okl",
                                         "max",
                                         kernelInfo);
       if (norm2Kernel.isInitialized()==false)
         norm2Kernel = device.buildKernel(oklDir + 
-                                        "linAlgNorm2.okl",
+                                        "norm2.okl",
                                         "norm2",
                                         kernelInfo);
       if (weightedNorm2Kernel.isInitialized()==false){
         if(serial){
           weightedNorm2Kernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedNorm2.c",
+                                          "weightedNorm2.c",
                                           "weightedNorm2",
                                           kernelInfoNoOkl);
         } else {
           weightedNorm2Kernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedNorm2.okl",
+                                          "weightedNorm2.okl",
                                           "weightedNorm2",
                                           kernelInfo);
         }
@@ -254,30 +254,30 @@ void linAlg_t::setup() {
       if (weightedNorm2ManyKernel.isInitialized()==false){
         if(serial){
           weightedNorm2ManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedNorm2.c",
+                                          "weightedNorm2Many.c",
                                           "weightedNorm2Many",
                                           kernelInfoNoOkl);
         } else {
           weightedNorm2ManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedNorm2.okl",
+                                          "weightedNorm2Many.okl",
                                           "weightedNorm2Many",
                                           kernelInfo);
         }
       }
       if (innerProdKernel.isInitialized()==false)
         innerProdKernel = device.buildKernel(oklDir + 
-                                        "linAlgInnerProd.okl",
+                                        "innerProd.okl",
                                         "innerProd",
                                         kernelInfo);
       if (weightedInnerProdKernel.isInitialized()==false){
         if(serial){
           weightedInnerProdKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedInnerProd.c",
+                                          "weightedInnerProd.c",
                                           "weightedInnerProd",
                                           kernelInfoNoOkl);
         } else {
           weightedInnerProdKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedInnerProd.okl",
+                                          "weightedInnerProd.okl",
                                           "weightedInnerProd",
                                           kernelInfo);
         }
@@ -285,19 +285,19 @@ void linAlg_t::setup() {
       if (weightedInnerProdManyKernel.isInitialized()==false){
         if(serial){
           weightedInnerProdManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedInnerProd.c",
+                                          "weightedInnerProdMany.c",
                                           "weightedInnerProdMany",
                                           kernelInfoNoOkl);
         } else {
           weightedInnerProdManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgWeightedInnerProd.okl",
+                                          "weightedInnerProdMany.okl",
                                           "weightedInnerProdMany",
                                           kernelInfo);
         }
       }
       if (weightedInnerProdMultiKernel.isInitialized()==false)
         weightedInnerProdMultiKernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedInnerProd.okl",
+                                        "weightedInnerProdMulti.okl",
                                         "weightedInnerProdMulti",
                                         kernelInfo);
   }

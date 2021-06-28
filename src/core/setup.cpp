@@ -353,7 +353,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
 
   {
-      fileName = oklpath + "core/nStagesSum.okl";
+      fileName = oklpath + "core/nStagesSum3.okl";
       kernelName = "nStagesSum3";
       nrs->nStagesSum3Kernel =
         device.buildKernel(fileName, kernelName, platform->kernelInfo);
@@ -362,10 +362,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         occa::properties prop = kernelInfo;
         prop["defines/" "p_cubNq"] = nrs->meshV->cubNq;
         prop["defines/" "p_cubNp"] = nrs->meshV->cubNp;
-	fileName = oklpath + "nrs/advection" + suffix + ".okl";
+	fileName = oklpath + "nrs/strongAdvectionVolume" + suffix + ".okl";
         kernelName = "strongAdvectionVolume" + suffix;
         nrs->advectionStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
+	fileName = oklpath + "nrs/strongAdvectionCubatureVolume" + suffix + ".okl";
         kernelName = "strongAdvectionCubatureVolume" + suffix;
         nrs->advectionStrongCubatureVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
@@ -376,10 +377,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->curlKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/gradient" + suffix + ".okl";
+      fileName = oklpath + "nrs/gradientVolume" + suffix + ".okl";
       kernelName = "gradientVolume" + suffix;
       nrs->gradientVolumeKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
 
+      fileName = oklpath + "nrs/nrswGradientVolume" + suffix + ".okl";
       kernelName = "nrswGradientVolume" + suffix;
       nrs->wgradientVolumeKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -400,14 +402,16 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
       }
 
-      fileName = oklpath + "nrs/divergence" + suffix + ".okl";
+      fileName = oklpath + "nrs/nrswDivergenceVolume" + suffix + ".okl";
       kernelName = "nrswDivergenceVolume" + suffix;
       nrs->wDivergenceVolumeKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfoBC);
+      fileName = oklpath + "nrs/divergenceVolume" + suffix + ".okl";
       kernelName = "divergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
+      fileName = oklpath + "nrs/divergenceSurfaceTOMBO" + suffix + ".okl";
       kernelName = "divergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
@@ -425,7 +429,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         ABORT(EXIT_FAILURE);
       }
 
-      fileName = oklpath + "nrs/pressureRhs" + suffix + ".okl";
+      fileName = oklpath + "nrs/pressureRhsTOMBO" + suffix + ".okl";
       kernelName = "pressureRhsTOMBO" + suffix;
       nrs->pressureRhsKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -435,7 +439,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->pressureStressKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/pressureBC" + suffix + ".okl";
+      fileName = oklpath + "nrs/pressureDirichletBC" + suffix + ".okl";
       kernelName = "pressureDirichletBC" + suffix;
       nrs->pressureDirichletBCKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
@@ -444,16 +448,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       kernelName = "pressureUpdate";
       nrs->pressureUpdateKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/velocityRhs" + suffix + ".okl";
+      fileName = oklpath + "nrs/velocityRhsTOMBO" + suffix + ".okl";
       kernelName = "velocityRhsTOMBO" + suffix;
       nrs->velocityRhsKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "nrs/velocityBC" + suffix + ".okl";
+      fileName = oklpath + "nrs/velocityDirichletBC" + suffix + ".okl";
       kernelName = "velocityDirichletBC" + suffix;
       nrs->velocityDirichletBCKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
+      fileName = oklpath + "nrs/velocityNeumannBC" + suffix + ".okl";
       kernelName = "velocityNeumannBC" + suffix;
       nrs->velocityNeumannBCKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
@@ -463,11 +468,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       prop["defines/" "p_relative"] = movingMesh && nrs->Nsubsteps;
       prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
       prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
-      fileName = oklpath + "nrs/Urst" + suffix + ".okl";
+      fileName = oklpath + "nrs/UrstCubature" + suffix + ".okl";
       kernelName = "UrstCubature" + suffix;
       nrs->UrstCubatureKernel =
         device.buildKernel(fileName, kernelName, prop);
 
+      fileName = oklpath + "nrs/Urst" + suffix + ".okl";
       kernelName = "Urst" + suffix;
       nrs->UrstKernel =
         device.buildKernel(fileName, kernelName, prop);
@@ -482,38 +488,40 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
         prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
 	
-        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
+        fileName = oklpath + "nrs/subCycleStrongCubatureVolume" + suffix + ".okl";
         occa::properties subCycleStrongCubatureProps = prop;
         if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
-          fileName = oklpath + "nrs/subCycle" + suffix + ".c";
+          fileName = oklpath + "nrs/subCycleStrongCubatureVolume" + suffix + ".c";
           subCycleStrongCubatureProps["okl/enabled"] = false;
         }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
           device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
-        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
+        fileName = oklpath + "nrs/subCycleStrongVolume" + suffix + ".okl";
+        kernelName = "subCycleStrongVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
 
-        fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
-        kernelName = "subCycleLSERKUpdate";
-        if(nrs->nRK == 4) kernelName = "subCycleERKUpdate";
+        fileName = oklpath + "nrs/subcycleERKUpdate" + ".okl";
+        kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
           platform->device.buildKernel(fileName, kernelName, prop);
+        fileName = oklpath + "nrs/subCycleRK" + ".okl";
         kernelName = "subCycleRK";
         nrs->subCycleRKKernel =
           platform->device.buildKernel(fileName, kernelName, prop);
 
+        fileName = oklpath + "nrs/subCycleInitU0" + ".okl";
         kernelName = "subCycleInitU0";
         nrs->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
       }
 
-      fileName = oklpath + "nrs/extrapolate" + ".okl";
+      fileName = oklpath + "nrs/multiExtrapolate" + ".okl";
       kernelName = "multiExtrapolate";
       nrs->extrapolateKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "core/mask" + ".okl";
+      fileName = oklpath + "core/maskCopy" + ".okl";
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -545,6 +553,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
+      fileName = oklpath + "core/setEllipticCoeffPressure.okl";
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1142,12 +1151,13 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
         occa::properties prop = kernelInfo;
         prop["defines/" "p_cubNq"] = cds->mesh[0]->cubNq;
         prop["defines/" "p_cubNp"] = cds->mesh[0]->cubNp;
-        fileName = oklpath + "cds/advection" + suffix + ".okl";
+        fileName = oklpath + "cds/strongAdvectionVolume" + suffix + ".okl";
 
 	kernelName = "strongAdvectionVolume" + suffix;
         cds->advectionStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
 
+        fileName = oklpath + "cds/strongAdvectionCubatureVolume" + suffix + ".okl";
 	kernelName = "strongAdvectionCubatureVolume" + suffix;
         cds->advectionStrongCubatureVolumeKernel =  
           device.buildKernel(fileName, kernelName, prop);
@@ -1158,7 +1168,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
       cds->advectMeshVelocityKernel =
         platform->device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "core/mask.okl";
+      fileName = oklpath + "core/maskCopy.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
@@ -1183,6 +1193,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
       fileName = oklpath + "cds/helmholtzBC" + suffix + ".okl";
       kernelName = "helmholtzBC" + suffix;
       cds->helmholtzRhsBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
+      fileName = oklpath + "cds/dirichletBC.okl";
       kernelName = "dirichletBC";
       cds->dirichletBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
 
@@ -1196,7 +1207,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
       cds->filterRTKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
-      fileName = oklpath + "core/nStagesSum.okl";
+      fileName = oklpath + "core/nStagesSum3.okl";
       kernelName = "nStagesSum3";
       cds->nStagesSum3Kernel =
         device.buildKernel(fileName, kernelName, platform->kernelInfo);
@@ -1211,28 +1222,29 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
         prop["defines/" "p_cubNp"] =  cds->mesh[0]->cubNp;
  
 
-        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
+        fileName = oklpath + "cds/subCycleStrongCubatureVolume" + suffix + ".okl";
         occa::properties subCycleStrongCubatureProps = prop;
         if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
-          fileName = oklpath + "cds/subCycle" + suffix + ".c";
+          fileName = oklpath + "cds/subCycleStrongCubatureVolume" + suffix + ".c";
           subCycleStrongCubatureProps["okl/enabled"] = false;
         }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =
           device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
-        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
+        fileName = oklpath + "cds/subCycleStrongVolume" + suffix + ".okl";
         kernelName = "subCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
 
 
-        fileName = oklpath + "cds/subCycleRKUpdate.okl";
-        kernelName = "subCycleLSERKUpdate";
-        if(cds->nRK == 4) kernelName = "subCycleERKUpdate";
+        fileName = oklpath + "cds/subCycleERKUpdate.okl";
+        kernelName = "subCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, prop);
+        fileName = oklpath + "cds/subCycleRK.okl";
         kernelName = "subCycleRK";
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, prop);
 
+        fileName = oklpath + "cds/subCycleInitU0.okl";
         kernelName = "subCycleInitU0";
         cds->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
       }

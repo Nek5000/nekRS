@@ -48,14 +48,16 @@ void avg::buildKernel(nrs_t* nrs)
   mesh_t* mesh = nrs->meshV;
   
 
-  string fileName;
+  string fileName, install_dir;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/avg.okl";
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   occa::properties& kernelInfo = *nrs->kernelInfo;
   {
+      fileName = install_dir + "/okl/plugins/EX.okl";
       EXKernel  = platform->device.buildKernel(fileName, "EX", kernelInfo);
+      fileName = install_dir + "/okl/plugins/EXX.okl";
       EXXKernel = platform->device.buildKernel(fileName, "EXX", kernelInfo);
+      fileName = install_dir + "/okl/plugins/EXY.okl";
       EXYKernel = platform->device.buildKernel(fileName, "EXY", kernelInfo);
   }
   buildKernelCalled = 1;

@@ -888,7 +888,7 @@ void MGLevel::build(
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const string oklpath = install_dir + "/okl/elliptic/";
-  string filename, kernelName;
+  string filename, kernelName, extension;
 
   {
       occa::properties properties = platform->kernelInfo;
@@ -899,13 +899,18 @@ void MGLevel::build(
       if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
         properties["defines/p_restrict"] = 1;
 
-      filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
-      if(serial) {
-        filename = oklpath + "ellipticSchwarzSolverHex3D.c";
+      if(serial)
         properties["okl/enabled"] = false;
-      }
+
+      extension = serial ? ".c" : ".okl";
+      
+      filename = oklpath + "preFDM" + extension;
       preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties);
+      
+      filename = oklpath + "fusedFDM" + extension;
       fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties);
+      
+      filename = oklpath + "postFDM" + extension;
       postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties);
   }
 }
@@ -922,33 +927,33 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
   if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,mesh->o_globalGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
 
     oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
 
     oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   } else {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,mesh->o_globalGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     }
 
     oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
     oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);

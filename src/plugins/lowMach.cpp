@@ -25,10 +25,9 @@ void lowMach::buildKernel(nrs_t* nrs)
 {
   mesh_t* mesh = nrs->meshV;
   occa::properties kernelInfo = *(nrs->kernelInfo);
-  string fileName;
+  string fileName, install_dir;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/lowMach.okl";
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
     if(rank == 0)
       printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
@@ -36,8 +35,11 @@ void lowMach::buildKernel(nrs_t* nrs)
     ABORT(EXIT_FAILURE);
   }
   {
+    fileName = install_dir + "/okl/plugins/qtlHex3D.okl";
     qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
+    fileName = install_dir + "/okl/plugins/p0thHelper.okl";
     p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
+    fileName = install_dir + "/okl/plugins/surfaceFlux.okl";
     surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
   }
 }

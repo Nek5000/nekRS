@@ -174,10 +174,11 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
     occa::properties properties = platform->kernelInfo;
     properties["defines/p_Nfields"] = Nfields;
 
-    filename = oklpath + "ellipticResidualProjection.okl";
+    filename = oklpath + "multiScaledAddwOffset.okl";
     multiScaledAddwOffsetKernel = platform->device.buildKernel(filename,
                                                                     "multiScaledAddwOffset",
                                                                     properties);
+    filename = oklpath + "accumulate.okl";
     accumulateKernel = platform->device.buildKernel(filename, "accumulate", properties);
   }
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)

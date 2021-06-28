@@ -40,10 +40,10 @@ void compileKernels(cds_t* cds)
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/cds/regularization/";
-  std::string filename = oklpath + "evaluateShockSensor.okl";
   occa::properties info = platform->kernelInfo;
   info["defines/" "p_Nq"] = cds->mesh[0]->Nq;
   info["defines/" "p_Np"] = cds->mesh[0]->Np;
+  std::string filename = oklpath + "evaluateShockSensor.okl";
   evaluateShockSensorKernel =
     platform->device.buildKernel(filename,
                              "evaluateShockSensor",

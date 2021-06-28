@@ -1,0 +1,189 @@
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+//
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+// Currently Implemented for
+
+
+//
+
+//
+
+//
+@kernel void ellipticBlockPartialAxHex3D_N2(const dlong Nelements,
+                                            const dlong offset,
+                                            const dlong loffset,
+                                            @restrict const dlong* elementList,
+                                            @restrict const dfloat* ggeo,
+                                            @restrict const dfloat* D,
+                                            @restrict const dfloat*  S,
+                                            @restrict const dfloat* lambda,
+                                            @restrict const dfloat* q,
+                                            @restrict dfloat* Aq)
+{
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+
+    @shared dfloat s_GUr[p_Nq][p_Nq];
+    @shared dfloat s_GUs[p_Nq][p_Nq];
+    @shared dfloat s_GVr[p_Nq][p_Nq];
+    @shared dfloat s_GVs[p_Nq][p_Nq];
+
+    @exclusive dlong element;
+
+    @exclusive dfloat r_Ut, r_Vt;
+
+    // too much register ....(2*3*8 for N=7)
+    @exclusive dfloat r_U[p_Nq], r_V[p_Nq];
+    @exclusive dfloat r_AU[p_Nq], r_AV[p_Nq];
+
+    // array of threads
+    for(int j = 0; j < p_Nq; ++j; @inner(1))
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        element = elementList[e];
+        //load D into local memory
+        // s_D[i][j] = d \phi_i at node j
+        s_D[j][i] = D[p_Nq * j + i]; // D is column major
+
+        for(int k = 0; k < p_Nq; k++) {
+          const dlong id = i + j * p_Nq + k * p_Nq * p_Nq + element * p_Np;
+          //
+          r_U[k] = q[id + 0 * offset];
+          r_V[k] = q[id + 1 * offset];
+          //
+          r_AU[k] = 0.f;
+          r_AV[k] = 0.f;
+        }
+      }
+
+    // Layer by layer
+#pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
+
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          // share u(:,:,k)
+          s_U[j][i] = r_U[k];
+          s_V[j][i] = r_V[k];
+
+          r_Ut = 0.f;
+          r_Vt = 0.f;
+
+#pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            // 1 shared, 6 flops => 12*6/(1*8) = 9 TFLOPSs > peak
+            dfloat Dkm = s_D[k][m];
+            r_Ut += Dkm * r_U[m];
+            r_Vt += Dkm * r_V[m];
+          }
+        }
+      }
+
+      @barrier("local");
+
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dfloat Ur = 0.f, Us = 0.f;
+          dfloat Vr = 0.f, Vs = 0.f;
+
+#pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            // 8 shared, 12 FLOPS => 12TB/s*12/(8*8) => 2.25TF on V100
+            dfloat Dim = s_D[i][m];
+            dfloat Djm = s_D[j][m];
+
+            Ur += Dim * s_U[j][m];
+            Us += Djm * s_U[m][i];
+
+            Vr += Dim * s_V[j][m];
+            Vs += Djm * s_V[m][i];
+          }
+
+          const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat G00 = ggeo[gbase + p_G00ID * p_Np];
+          const dfloat G01 = ggeo[gbase + p_G01ID * p_Np];
+          const dfloat G02 = ggeo[gbase + p_G02ID * p_Np];
+
+          const dfloat G11 = ggeo[gbase + p_G11ID * p_Np];
+          const dfloat G12 = ggeo[gbase + p_G12ID * p_Np];
+          const dfloat G22 = ggeo[gbase + p_G22ID * p_Np];
+
+          const dfloat GwJ = ggeo[gbase + p_GWJID * p_Np];
+
+          s_GUr[j][i] = (G00 * Ur + G01 * Us + G02 * r_Ut);
+          s_GVr[j][i] = (G00 * Vr + G01 * Vs + G02 * r_Vt);
+
+          s_GUs[j][i] = (G01 * Ur + G11 * Us + G12 * r_Ut);
+          s_GVs[j][i] = (G01 * Vr + G11 * Vs + G12 * r_Vt);
+
+          r_Ut        = (G02 * Ur + G12 * Us + G22 * r_Ut);
+          r_Vt        = (G02 * Vr + G12 * Vs + G22 * r_Vt);
+
+          r_AU[k] += GwJ * lambda[0 * loffset] * r_U[k];
+          r_AV[k] += GwJ * lambda[1 * loffset] * r_V[k];
+        }
+      }
+
+      @barrier("local");
+
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dfloat AUtmp = 0, AVtmp = 0;
+#pragma unroll p_Nq
+          for(int m = 0; m < p_Nq; m++) {
+            // 9 shared, 18 flops => 12TB/s*18/(9*8) = 3TFLOPS/s
+            dfloat Dmi = s_D[m][i];
+            dfloat Dmj = s_D[m][j];
+            dfloat Dkm = s_D[k][m];
+
+            AUtmp += Dmi * s_GUr[j][m];
+            AUtmp += Dmj * s_GUs[m][i];
+            //
+            AVtmp += Dmi * s_GVr[j][m];
+            AVtmp += Dmj * s_GVs[m][i];
+            //
+            r_AU[m] += Dkm * r_Ut;
+            r_AV[m] += Dkm * r_Vt;
+          }
+          r_AU[k] += AUtmp;
+          r_AV[k] += AVtmp;
+        }
+      }
+    }
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+        for(int k = 0; k < p_Nq; k++) {
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat value = r_AU[k];
+          Aq[id + 0 * offset] = r_AU[k];
+          Aq[id + 1 * offset] = r_AV[k];
+        }
+      }
+    }
+  }
+}

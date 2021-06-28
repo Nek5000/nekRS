@@ -79,22 +79,24 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
     const string oklpath = install_dir + "/okl/elliptic/";
     string filename;
+    string extension = ".okl";
+    if(serial) extension = ".c";
 
     occa::properties gmresKernelInfo = platform->kernelInfo;
     gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
     gmresKernelInfo["defines/" "p_Nfields"] = elliptic->Nfields;
     if(serial) gmresKernelInfo["okl/enabled"] = false;
-    filename = serial ? oklpath + "ellipticGramSchmidtOrthogonalization.c" : oklpath + "ellipticGramSchmidtOrthogonalization.okl";
+    filename = oklpath + "gramSchmidtOrthogonalization" + extension;
     elliptic->gramSchmidtOrthogonalizationKernel =
       platform->device.buildKernel(filename,
                                "gramSchmidtOrthogonalization",
                                gmresKernelInfo);
-    filename = serial ? oklpath + "ellipticUpdatePGMRES.c" : oklpath + "ellipticUpdatePGMRES.okl";
+    filename = oklpath + "updatePGMRESSolution" + extension;
     elliptic->updatePGMRESSolutionKernel =
       platform->device.buildKernel(filename,
                                "updatePGMRESSolution",
                                gmresKernelInfo);
-    filename = serial ? oklpath + "ellipticFusedResidualAndNorm.c" : oklpath + "ellipticFusedResidualAndNorm.okl";
+    filename = oklpath + "fusedResidualAndNorm" + extension;
     elliptic->fusedResidualAndNormKernel =
       platform->device.buildKernel(filename,
                                "fusedResidualAndNorm",
@@ -293,44 +295,49 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
                                  "mask",
                                  kernelInfo);
 
-      filename = oklpath + "mask.okl";
       mesh->maskPfloatKernel =
         platform->device.buildKernel(filename,
                                  "mask",
                                  pfloatKernelInfo);
-        filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
+        filename = install_dir + "/okl/elliptic/fusedCopyDfloatToPfloat.okl";
         elliptic->fusedCopyDfloatToPfloatKernel =
           platform->device.buildKernel(filename,
                                    "fusedCopyDfloatToPfloat",
                                    kernelInfo);
+        filename = install_dir + "/okl/elliptic/copyDfloatToPfloat.okl";
         elliptic->copyDfloatToPfloatKernel =
           platform->device.buildKernel(filename,
                                    "copyDfloatToPfloat",
                                    kernelInfo);
 
+        filename = install_dir + "/okl/elliptic/copyPfloatToDfloat.okl";
         elliptic->copyPfloatToDPfloatKernel =
           platform->device.buildKernel(filename,
                                    "copyPfloatToDfloat",
                                    kernelInfo);
 
+        filename = install_dir + "/okl/elliptic/scaledAdd.okl";
         elliptic->scaledAddPfloatKernel =
           platform->device.buildKernel(filename,
                                    "scaledAdd",
                                    kernelInfo);
+        filename = install_dir + "/okl/elliptic/dotMultiply.okl";
         elliptic->dotMultiplyPfloatKernel =
           platform->device.buildKernel(filename,
                                    "dotMultiply",
                                    kernelInfo);
-        filename = install_dir + "/okl/elliptic/chebyshev.okl";
+        filename = install_dir + "/okl/elliptic/updateSmoothedSolutionVec.okl";
         elliptic->updateSmoothedSolutionVecKernel =
           platform->device.buildKernel(filename,
                                    "updateSmoothedSolutionVec",
                                    kernelInfo);
+        filename = install_dir + "/okl/elliptic/updateChebyshevSolutionVec.okl";
         elliptic->updateChebyshevSolutionVecKernel =
           platform->device.buildKernel(filename,
                                    "updateChebyshevSolutionVec",
                                    kernelInfo);
 
+        filename = install_dir + "/okl/elliptic/updateIntermediateSolutionVec.okl";
         elliptic->updateIntermediateSolutionVecKernel =
           platform->device.buildKernel(filename,
                                    "updateIntermediateSolutionVec",
@@ -366,50 +373,69 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   {
       const string oklpath = install_dir + "/okl/elliptic/";
-      string filename;
+      string filename, extension;
 
-      filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
+      extension = ".okl";
+      if(serial) extension = ".c";
+
+      filename = oklpath + "ellipticBlockBuildDiagonal" + suffix + ".okl";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
       elliptic->updateDiagonalKernel = platform->device.buildKernel(filename,
                                                                     kernelName,
                                                                     dfloatKernelInfo);
       if(elliptic->blockSolver) {
-        filename =  oklpath + "ellipticBlockAx" + suffix + ".okl";
-        if(serial) filename = oklpath + "ellipticSerialAx" +  suffix + ".c";
+        filename =  oklpath + "ellipticBlockAx" + suffix + extension;
         if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA) {
-          if(elliptic->stressForm)
+          if(elliptic->stressForm){
             kernelName = "ellipticStressAxVar" + suffix;
-          else
+            filename =  oklpath + "ellipticStressAxVar" + suffix + extension;
+          }
+          else{
             kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
+            filename =  oklpath + "ellipticBlockAxVar" + suffix + "_N3" + extension;
+          }
         }else {
-          if(elliptic->stressForm)
+          if(elliptic->stressForm){
             kernelName = "ellipticStressAx" + suffix;
-          else
+            filename = oklpath + "ellipticStressAx" + suffix + extension;
+          }
+          else{
             kernelName = "ellipticBlockAx", suffix + "_N" + std::to_string(elliptic->Nfields);
+            filename = oklpath + "ellipticBlockAx" + suffix + + "_N3" + extension;
+          }
         }
       }else{
-        filename = oklpath + "ellipticAx" + suffix + ".okl";
-        if(serial) filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
+        filename = oklpath + "ellipticAx" + suffix + extension;
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
           kernelName = "ellipticAxVar" + suffix;
-        else
+          filename = oklpath + "ellipticAxVar" + suffix + extension;
+        }
+        else{
           kernelName =  "ellipticAx" + suffix;
+          filename = oklpath + "ellipticAx" + suffix + extension;
+        }
       }
       elliptic->AxStressKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
       if(elliptic->blockSolver) {
-        filename = oklpath + "ellipticBlockAx" + suffix + ".okl";
-        if(serial) filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
+        filename = oklpath + "ellipticBlockAx" + suffix + extension;
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+          filename = oklpath + "ellipticBlockAxVar" + suffix + "_N3" + extension;
           kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-        else
+        }
+        else{
+          filename = oklpath + "ellipticBlockAx" + suffix + "_N3" + extension;
           kernelName = "ellipticBlockAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
+        }
       }else{
-        filename = oklpath + "ellipticAx" + suffix + ".okl";
-        if(serial) filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
+        filename = oklpath + "ellipticAx" + suffix + extension;
+        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA){
+          filename = oklpath + "ellipticAxVar" + suffix + extension;
           kernelName = "ellipticAxVar" + suffix;
-        else
+        }
+        else{
+          filename = oklpath + "ellipticAx" + suffix + extension;
           kernelName = "ellipticAx" + suffix;
+        }
       }
       // Keep other kernel around
       elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
@@ -417,6 +443,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       if(!serial) {
         if(elliptic->elementType != HEXAHEDRA) {
           kernelName = "ellipticPartialAx" + suffix;
+          filename = oklpath + "ellipticPartialAx" + suffix + ".okl";
         }else {
           if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
             if(elliptic->var_coeff || elliptic->blockSolver) {
@@ -428,21 +455,33 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
           }else {
             if(elliptic->blockSolver) {
               if(elliptic->var_coeff) {
-                if(elliptic->stressForm)
+                if(elliptic->stressForm){
                   kernelName = "ellipticStressPartialAxVar" + suffix;
-                else
+                  filename = oklpath + "ellipticStressPartialAxVar" + suffix + ".okl";
+                }
+                else{
                   kernelName = "ellipticBlockPartialAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
+                  filename = oklpath + "ellipticBlockPartialAxVar" + suffix + "_N3" + ".okl";
+                }
               }else {
-                if(elliptic->stressForm)
+                if(elliptic->stressForm){
                   kernelName = "ellipticStessPartialAx" + suffix;
-                else
+                  filename = oklpath + "ellipticStressPartialAx" + suffix + ".okl";
+                }
+                else{
                   kernelName = "ellipticBlockPartialAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
+                  filename = oklpath + "ellipticBlockPartialAx" + suffix + "_N3" + ".okl";
+                }
               }
             }else {
-              if(elliptic->var_coeff)
+              if(elliptic->var_coeff){
                 kernelName = "ellipticPartialAxVar" + suffix;
-              else
+                filename = oklpath + "ellipticPartialAxVar" + suffix + ".okl";
+              }
+              else{
                 kernelName = "ellipticPartialAx" + suffix;
+                filename = oklpath + "ellipticPartialAx" + suffix + ".okl";
+              }
             }
           }
         }
@@ -452,12 +491,12 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
       // combined PCG update and r.r kernel
       if(serial) {
-        filename = oklpath + "ellipticSerialUpdatePCG.c";
+        filename = oklpath + "ellipticUpdatePCG.c";
         elliptic->updatePCGKernel =
           platform->device.buildKernel(filename,
                                    "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
       } else {
-        filename = oklpath + "ellipticUpdatePCG.okl";
+        filename = oklpath + "ellipticBlockUpdatePCG.okl";
         elliptic->updatePCGKernel =
           platform->device.buildKernel(filename,
                                    "ellipticBlockUpdatePCG", dfloatKernelInfo);

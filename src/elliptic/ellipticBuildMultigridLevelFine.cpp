@@ -79,7 +79,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       kernelName = "ellipticAx" + suffix;
       if(serial) {
         AxKernelInfo["okl/enabled"] = false;
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
+        filename = oklpath + "ellipticAx" + suffix + ".c";
       }
       elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
 
@@ -90,12 +90,10 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
-      if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-        kernelName = "ellipticPartialAxTrilinear" + suffix;
-      else
-        kernelName = "ellipticPartialAx" + suffix;
+      kernelName = "ellipticPartialAx" + suffix;
 
       if(!serial) {
+        filename = oklpath + "ellipticPartialAx" + suffix + ".okl";
         elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;

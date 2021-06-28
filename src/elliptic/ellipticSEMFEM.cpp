@@ -28,13 +28,13 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename = oklpath + "ellipticGather.okl";
+  std::string filename = oklpath + "gather.okl";
   gatherKernel = platform->device.buildKernel(
     filename,
     "gather",
     SEMFEMKernelProps
   );
-  filename = oklpath + "ellipticScatter.okl";
+  filename = oklpath + "scatter.okl";
   scatterKernel = platform->device.buildKernel(
     filename,
     "scatter",

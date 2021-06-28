@@ -862,7 +862,7 @@ void build_kernel(){
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   std::string oklpath = install_dir + "/okl/";
   occa::properties stiffnessKernelInfo = platform->kernelInfo;
-  std::string filename = oklpath + "elliptic/ellipticSEMFEMStiffness.okl";
+  std::string filename = oklpath + "elliptic/computeStiffnessMatrix.okl";
   stiffnessKernelInfo["defines/" "p_Nq"] = n_x;
   stiffnessKernelInfo["defines/" "p_Np"] = n_x * n_x * n_x;
   stiffnessKernelInfo["defines/" "p_rows_sorted"] = 1;

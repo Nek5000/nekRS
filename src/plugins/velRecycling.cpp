@@ -44,19 +44,22 @@ void velRecycling::buildKernel(nrs_t* nrs)
   mesh_t* mesh = nrs->meshV;
   
 
-  string fileName;
+  string fileName, install_dir;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/velRecycling.okl";
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   occa::properties& kernelInfo = *nrs->kernelInfo;
   {
+      fileName = install_dir + "/okl/plugins/setBCVectorValue.okl";
       setBCVectorValueKernel =  platform->device.buildKernel(fileName,
                                                          "setBCVectorValue",
                                                          kernelInfo);
+      fileName = install_dir + "/okl/plugins/getBCFlux.okl";
       getBCFluxKernel        =  platform->device.buildKernel(fileName, "getBCFlux", kernelInfo);
+      fileName = install_dir + "/okl/plugins/sumReduction.okl";
       sumReductionKernel     =  platform->device.buildKernel(fileName,
                                                          "sumReduction",
                                                          kernelInfo);
+      fileName = install_dir + "/okl/plugins/scalarMultiply.okl";
       scalarMultiplyKernel   =  platform->device.buildKernel(fileName,
                                                          "scalarMultiply",
                                                          kernelInfo);

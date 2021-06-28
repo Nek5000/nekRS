@@ -446,7 +446,7 @@ void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
 
         meshKernelInfo = kernelInfo;
         meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "core/nStagesSum.okl";
+        filename = oklpath + "core/nStagesSumVector.okl";
         mesh->nStagesSumVectorKernel =
           platform->device.buildKernel(filename,
                                    "nStagesSumVector",

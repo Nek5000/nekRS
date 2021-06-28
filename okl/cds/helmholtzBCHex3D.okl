@@ -51,6 +51,7 @@
   }
 
 //RHS contributions for continuous solver
+
 @kernel void helmholtzBCHex3D(const dlong Nelements,
                                  @restrict const dfloat*  sgeo,
                                  @restrict const dlong*  vmapM,
@@ -226,49 +227,4 @@
     }
   }
 }
-
-@kernel void dirichletBC(const dlong Nelements,
-                            const dlong offset,
-                            const dlong scalarId,
-                            const dfloat time,
-                            @restrict const dfloat*  sgeo,
-                            @restrict const dfloat*  x,
-                            @restrict const dfloat*  y,
-                            @restrict const dfloat*  z,
-                            @restrict const dlong*  vmapM,
-                            @restrict const int*  EToBM,
-                            @restrict const int*  EToB,
-                            @restrict const dfloat*  W,
-                            @restrict dfloat*  S)
-{
-  for(dlong e = 0; e < Nelements; e++; @outer(0))
-    for(int f = 0; f < p_Nfaces; f++) {
-      @barrier("global");
-      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
-        struct bcData bc;
-        const int n = m + f * p_Nfp;
-        const dlong sk = e * p_Nfp * p_Nfaces + n;
-        const dlong idM = vmapM[sk];
-        const dlong bcType = EToB[f + p_Nfaces * e];
-
-        if(bcType == 1) {
-          bc.id = EToBM[f + p_Nfaces * e];
-          bc.idM = idM;
-          bc.time = time;
-          bc.x  = x[idM];
-          bc.y  = y[idM];
-          bc.z  = z[idM];
-          bc.s  = S[idM];
-          bc.wrk = W;
-          bc.fieldOffset = offset;
-          bc.scalarId = scalarId;
-
-          bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
-          bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
-          bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
-          scalarDirichletConditions(&bc);
-          S[idM] = bc.s;
-        }
-      }
-    }
-}
+#undef surfaceTerms
