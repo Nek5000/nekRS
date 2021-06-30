@@ -30,7 +30,9 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
-void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *par, bool isScalar = false, bool isTemperature = false, string sidPar = "")
+void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *par,
+                         bool isScalar = false, bool isTemperature = false,
+                         string sidPar = "")
 {
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
@@ -246,6 +248,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
   options.setArgs("ENABLE OVERLAP", "TRUE");
+
+  options.setArgs("MESH CONNECTIVITY TOLERANCE", "0.2");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
@@ -405,6 +409,10 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   string meshPartitioner;
   if (par->extract("mesh", "partitioner", meshPartitioner))
     options.setArgs("MESH PARTITIONER", meshPartitioner);
+
+  double connectivityTol;
+  if (par->extract("mesh", "connectivityTol", connectivityTol))
+    options.setArgs("MESH CONNECTIVITY TOLERANCE", std::to_string(connectivityTol));
 
   string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {

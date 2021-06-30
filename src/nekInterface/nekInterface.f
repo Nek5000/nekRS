@@ -132,7 +132,7 @@ c-----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
       subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
-     $                      npscal_in, p32, meshp_in,
+     $                      npscal_in, p32, meshp_in, conn_tol_in,
      $                      rho, mue, rhoCp, lambda) 
 
       include 'SIZE'
@@ -141,6 +141,7 @@ c-----------------------------------------------------------------------
       include 'NEKINTF'
 
       integer comm_in, iftmsh_in, ifflow_in, meshp_in, p32
+      real*8 conn_tol_in
       real rho, mue, rhoCp, lambda
       character session_in*(*),path_in*(*)
 
@@ -192,6 +193,7 @@ c-----------------------------------------------------------------------
       param(32) = p32 ! number of BC fields read from re2
       param(99) = -1 ! no dealiasing to save mem
       meshPartitioner = meshp_in 
+      connectivityTol = conn_tol_in
 
       ifflow = .true.
       if(ifflow_in.eq.0) ifflow = .false.
