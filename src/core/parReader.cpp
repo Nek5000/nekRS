@@ -30,28 +30,75 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
-void parseProjectionType(const int rank, setupAide &options, inipp::Ini<char> *par,
-                     string parScope) {
-  string projectionType;
+void parseInitialGuess(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+
   string parSectionName = (parScope.find("temperature") != std::string::npos)
                               ? "scalar00"
                               : parScope;
 
   UPPER(parSectionName);
 
-  par->extract(parScope, "projectiontype", projectionType);
-  if (projectionType.size() > 0) {
-    if (projectionType.find("classic") != std::string::npos) {
+  // see if user has provided old (deprecated) solution projection syntax
+  {
+    bool solutionProjection;
+    if (par->extract(parScope, "residualproj", solutionProjection) ||
+        par->extract(parScope, "residualprojection", solutionProjection)) {
+      if (solutionProjection) {
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION", "TRUE");
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD",
+                        "ACONJ");
+        if (parScope.find("pressure") == std::string::npos)
+          options.setArgs(parSectionName + " INITIAL GUESS DEFAULT",
+                          "PREVIOUS STEP");
+
+        const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+
+        // default parameters
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                        std::to_string(defaultNumVectors));
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+      } else {
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION", "FALSE");
+      }
+
+      return;
+    }
+  }
+
+  string initialGuess;
+
+  if (par->extract(parScope, "initialguess", initialGuess)) {
+    const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION", "TRUE");
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                    std::to_string(defaultNumVectors));
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+
+    if (initialGuess.find("projectionaconj") != std::string::npos) {
+      options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD", "ACONJ");
+    } else if (initialGuess.find("projection") != std::string::npos) {
       options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD",
                       "CLASSIC");
-    } else if (projectionType.find("aconj") != std::string::npos) {
-      options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD", "ACONJ");
+    } else if (initialGuess.find("none") != std::string::npos) {
+      options.setArgs(parSectionName + " RESIDUAL PROJECTION", "FALSE");
     } else {
       if (rank == 0) {
-        printf("Projection type %s is not supported!\n",
-               projectionType.c_str());
+        printf("Could not parse initialGuess string %s !\n",
+               initialGuess.c_str());
       }
       ABORT(1);
+    }
+
+    const std::vector<string> list = serializeString(initialGuess, '+');
+    for (std::string s : list) {
+      if (s.find("nvectors") == 0) {
+        const std::vector<string> items = serializeString(s, '=');
+        assert(items.size() = 2);
+        const int value = std::stoi(items[1]);
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                        std::to_string(value));
+      }
     }
   }
 }
@@ -462,26 +509,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       exit("Cannot find mandatory parameter PRESSURE::residualTol!",
            EXIT_FAILURE);
 
-    bool p_rproj;
-    if (par->extract("pressure", "residualproj", p_rproj) ||
-        par->extract("pressure", "residualprojection", p_rproj)) {
-      if (p_rproj)
-        options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-      else
-        options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
-    }
-
-    parseProjectionType(rank, options, par, "pressure");
-
-    int p_nProjVec;
-    if (par->extract("pressure", "residualprojectionvectors", p_nProjVec))
-      options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS",
-                      std::to_string(p_nProjVec));
-
-    int p_nProjStep;
-    if (par->extract("pressure", "residualprojectionstart", p_nProjStep))
-      options.setArgs("PRESSURE RESIDUAL PROJECTION START",
-                      std::to_string(p_nProjStep));
+    parseInitialGuess(rank, options, par, "pressure");
 
     bool p_gproj;
     if (par->extract("pressure", "galerkincoarseoperator", p_gproj))
@@ -736,31 +764,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION");
     string vsolver;
     int flow = 1;
-    bool v_rproj;
-    if (par->extract("velocity", "residualproj", v_rproj) ||
-        par->extract("velocity", "residualprojection", v_rproj)) {
-      if (v_rproj) {
-        options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
-        options.setArgs("VELOCITY RESIDUAL PROJECTION METHOD", "CLASSIC");
-        options.setArgs("VELOCITY INITIAL GUESS DEFAULT", "PREVIOUS STEP");
 
-        // default parameters
-        options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "5");
-        options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
-      } else {
-        options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
-      }
-    }
-    int v_nProjVec;
-    if (par->extract("velocity", "residualprojectionvectors", v_nProjVec))
-      options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS",
-                      std::to_string(v_nProjVec));
-    int v_nProjStep;
-    if (par->extract("velocity", "residualprojectionstart", v_nProjStep))
-      options.setArgs("VELOCITY RESIDUAL PROJECTION START",
-                      std::to_string(v_nProjStep));
-
-    parseProjectionType(rank, options, par, "velocity");
+    parseInitialGuess(rank, options, par, "velocity");
 
     par->extract("velocity", "solver", vsolver);
     if (vsolver == "none") {
@@ -826,29 +831,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
       options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
-      bool t_rproj;
-      if (par->extract("temperature", "residualproj", t_rproj) ||
-          par->extract("temperature", "residualprojection", t_rproj)) {
-        if (t_rproj) {
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
-          options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "PREVIOUS STEP");
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "5");
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
-        } else {
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
-        }
-      }
 
-      int t_nProjVec;
-      if (par->extract("temperature", "residualprojectionvectors", t_nProjVec))
-        options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS",
-                        std::to_string(t_nProjVec));
-      int t_nProjStep;
-      if (par->extract("temperature", "residualprojectionstart", t_nProjStep))
-        options.setArgs("SCALAR00 RESIDUAL PROJECTION START",
-                        std::to_string(t_nProjStep));
-
-    parseProjectionType(rank, options, par, "temperature");
+      parseInitialGuess(rank, options, par, "temperature");
 
       double s_residualTol;
       if (par->extract("temperature", "residualtol", s_residualTol) ||
@@ -919,31 +903,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
     options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
-    bool t_rproj;
-    if (par->extract("scalar" + sidPar, "residualproj", t_rproj) ||
-        par->extract("scalar" + sidPar, "residualprojection", t_rproj)) {
-      if (t_rproj) {
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
-        options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT",
-                        "PREVIOUS STEP");
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "5");
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
-      } else {
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
-      }
-    }
 
-    parseProjectionType(rank, options, par, "scalar" + sid);
-
-    int t_nProjVec;
-    if (par->extract("scalar" + sidPar, "residualprojectionvectors",
-                     t_nProjVec))
-      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS",
-                      std::to_string(t_nProjVec));
-    int t_nProjStep;
-    if (par->extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
-      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START",
-                      std::to_string(t_nProjStep));
+    parseInitialGuess(rank, options, par, "scalar" + sid);
 
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
