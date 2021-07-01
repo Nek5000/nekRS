@@ -502,7 +502,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->subCycleStrongVolumeKernel =
           device.buildKernel(fileName, kernelName, prop);
 
-        fileName = oklpath + "nrs/subcycleERKUpdate" + ".okl";
+        fileName = oklpath + "nrs/subCycleERKUpdate" + ".okl";
         kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
           platform->device.buildKernel(fileName, kernelName, prop);
