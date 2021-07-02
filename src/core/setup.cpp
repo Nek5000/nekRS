@@ -178,8 +178,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
-    mesh->U = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
-    mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat), mesh->U);
+    mesh->o_U = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * nAB * sizeof(dfloat));
     if(nrs->Nsubsteps)
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
   }
@@ -198,35 +197,31 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
   }
 
-  nrs->U  = (dfloat*) calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,sizeof(dfloat));
-  nrs->Ue = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->P  = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
-  nrs->BF = (dfloat*) calloc(nrs->NVfields * nrs->fieldOffset,sizeof(dfloat));
-  nrs->FU = (dfloat*) calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset,sizeof(dfloat));
-
-  nrs->o_U  = platform->device.malloc(nrs->NVfields * std::max(nrs->nBDF,nrs->nEXT) * nrs->fieldOffset * sizeof(dfloat), nrs->U);
-  nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->Ue);
-  nrs->o_P  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
-  nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
-  nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
+  nrs->o_U  = platform->device.malloc(nrs->NVfields * std::max(nrs->nBDF,nrs->nEXT) * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_P  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat));
 
   nrs->var_coeff = 1; // use always var coeff elliptic
   nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
   nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
                                              nrs->ellipticCoeff);
 
-  nrs->prop =  (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
+  dfloat* prop =  (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
   for (int e = 0; e < mesh->Nelements; e++)
     for (int n = 0; n < mesh->Np; n++) {
-      nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
-      nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
+      prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
+      prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
     }
-  nrs->o_prop = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
+  nrs->o_prop = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), prop);
+
+  free(prop);
+
   nrs->o_mue = nrs->o_prop.slice(0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_rho = nrs->o_prop.slice(1 * nrs->fieldOffset * sizeof(dfloat));
 
-  nrs->div   = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
+  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat));
 
   nrs->o_coeffEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
@@ -565,7 +560,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(!buildOnly) {
     // get IC + t0 from nek
     double startTime;
-    nek::copyFromNek(startTime);
+    nek::ocopyFromNek(startTime);
     platform->options.setArgs("START TIME", to_string_f(startTime));
 
     if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
@@ -957,14 +952,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->gshT = cds->gsh;
   }
 
-  // Solution storage at interpolation nodes
-  cds->U     = nrs->U; // Point to INS side Velocity
-  cds->S     =
-    (dfloat*) calloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum,sizeof(dfloat));
-  cds->BF    = (dfloat*) calloc(cds->fieldOffsetSum,sizeof(dfloat));
-  cds->FS    =
-    (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
-
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
     cds->nRK   = nrs->nRK;
@@ -978,10 +965,8 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   cds->dt  = nrs->dt;
   cds->sdt = nrs->sdt;
 
-  cds->prop = (dfloat*) calloc(2 * cds->fieldOffsetSum,sizeof(dfloat));
 
-
-
+  dfloat * prop = (dfloat*) malloc(2 * cds->fieldOffsetSum * sizeof(dfloat));
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -997,12 +982,13 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     const dlong off = cds->fieldOffsetSum;
     for (int e = 0; e < mesh->Nelements; e++)
       for (int n = 0; n < mesh->Np; n++) {
-        cds->prop[0 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = diff;
-        cds->prop[1 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = rho;
+        prop[0 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = diff;
+        prop[1 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = rho;
       }
   }
   cds->o_prop =
-    device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat), cds->prop);
+    device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat), prop);
+  free(prop);
   cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
   cds->o_rho  = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
@@ -1013,13 +999,12 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   cds->o_U  = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   cds->o_S  =
-    platform->device.malloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
+    platform->device.malloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum * sizeof(dfloat));
   cds->o_Se =
     platform->device.malloc(cds->fieldOffsetSum ,  sizeof(dfloat));
-  cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
+  cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat));
   cds->o_FS =
-    platform->device.malloc(cds->nEXT * cds->fieldOffsetSum * sizeof(dfloat),
-                        cds->FS);
+    platform->device.malloc(cds->nEXT * cds->fieldOffsetSum * sizeof(dfloat));
 
   cds->o_relUrst = nrs->o_relUrst;
   cds->o_Urst = nrs->o_Urst;

@@ -42,7 +42,6 @@ struct cds_t
 
   int compute[NSCALAR_MAX];
 
-  dfloat* U, * S;
   dfloat* rkNS;
   //  dfloat *rhsS;
   dfloat* rkS;
@@ -72,11 +71,10 @@ struct cds_t
 
   int Nsubsteps;
   dfloat sdt;
-  dfloat* Ue;
   occa::memory o_Ue;
 
   int var_coeff;
-  dfloat* prop, * ellipticCoeff;
+  dfloat * ellipticCoeff;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 

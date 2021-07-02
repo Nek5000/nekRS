@@ -62,9 +62,6 @@ struct nrs_t
   int isOutputStep;
   int outputForceStep;
 
-  dfloat* U, * P;
-  dfloat* BF, * FU;
-
   //RK Subcycle Data
   int nRK;
   dfloat* coeffsfRK, * weightsRK, * nodesRK;
@@ -84,7 +81,6 @@ struct nrs_t
   dfloat* Ue, sdt;
   occa::memory o_Ue;
 
-  dfloat* div;
   occa::memory o_div;
 
   dfloat rho, mue;
@@ -130,7 +126,7 @@ struct nrs_t
   occa::memory o_FU;
 
   int var_coeff;
-  dfloat* prop, * ellipticCoeff;
+  dfloat * ellipticCoeff;
   occa::memory o_prop, o_ellipticCoeff;
 
   //EXTBDF data

@@ -130,17 +130,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   nrsSetup(comm, options, nrs);
 
-  nrs->o_U.copyFrom(nrs->U);
-  nrs->o_P.copyFrom(nrs->P);
-  nrs->o_prop.copyFrom(nrs->prop);
-  if(nrs->Nscalar) {
-    nrs->cds->o_S.copyFrom(nrs->cds->S);
-    nrs->cds->o_prop.copyFrom(nrs->cds->prop);
-  }
-
   evaluateProperties(nrs, startTime());
-  nrs->o_prop.copyTo(nrs->prop);
-  if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
 
   nek::ocopyToNek(startTime(), 0);
 

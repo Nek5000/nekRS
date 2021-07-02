@@ -179,7 +179,6 @@ struct mesh_t
 
   // mesh velocity
   occa::memory o_U;
-  dfloat* U; // host shadow of mesh velocity
 
   occa::memory o_D;
   occa::memory o_DPfloat;
