@@ -718,9 +718,9 @@ void copyToNek(dfloat time)
     mesh->o_U.copyTo(nekData.wy, sizeof(dfloat) * Nlocal, 1 * nrs->fieldOffset * sizeof(dfloat));
     mesh->o_U.copyTo(nekData.wz, sizeof(dfloat) * Nlocal, 2 * nrs->fieldOffset * sizeof(dfloat));
 
-    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+    mesh->o_x.copyTo(nekData.xm1, sizeof(dfloat) * Nlocal);
+    mesh->o_y.copyTo(nekData.ym1, sizeof(dfloat) * Nlocal);
+    mesh->o_z.copyTo(nekData.zm1, sizeof(dfloat) * Nlocal);
     recomputeGeometry();
   }
 
@@ -789,9 +789,9 @@ void copyFromNek(dfloat &time)
     mesh->o_U.copyFrom(nekData.wy, sizeof(dfloat) * Nlocal, 1 * nrs->fieldOffset * sizeof(dfloat));
     mesh->o_U.copyFrom(nekData.wz, sizeof(dfloat) * Nlocal, 2 * nrs->fieldOffset * sizeof(dfloat));
 
-    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+    mesh->o_x.copyTo(nekData.xm1, sizeof(dfloat) * Nlocal);
+    mesh->o_y.copyTo(nekData.ym1, sizeof(dfloat) * Nlocal);
+    mesh->o_z.copyTo(nekData.zm1, sizeof(dfloat) * Nlocal);
     recomputeGeometry();
   }
   nrs->o_P.copyFrom(nekData.pr, sizeof(dfloat) * Nlocal);
