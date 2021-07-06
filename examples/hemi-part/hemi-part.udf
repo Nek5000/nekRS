@@ -88,20 +88,23 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
 
   ////////// particles.find() //////////
   if(CHECK_ACCURACY){
+    int mpi_rank = platform_t::getInstance()->comm.mpiRank;
+
     particle_set<D,hemi_particle_data> particles_copy = particles;
     dfloat *dist2_dev = new dfloat[particles.size()];
     dfloat *dist2_ref = new dfloat[particles.size()];
     particles.find(true, dist2_dev);
     particles_copy.find(false, dist2_ref);
 
-    std::vector<dlong>       & code_dev = particles     .code();
-    std::vector<dlong>       & proc_dev = particles     .proc();
-    std::vector<dlong>       &   el_dev = particles     .el();
-    std::vector<dfloat_array>&    r_dev = particles     .r();
-    std::vector<dlong>       & code_ref = particles_copy.code();
-    std::vector<dlong>       & proc_ref = particles_copy.proc();
-    std::vector<dlong>       &   el_ref = particles_copy.el();
-    std::vector<dfloat_array>&    r_ref = particles_copy.r();
+    auto&    x     = particles     .x;
+    auto& code_dev = particles     .code;
+    auto& proc_dev = particles     .proc;
+    auto&   el_dev = particles     .el;
+    auto&    r_dev = particles     .r;
+    auto& code_ref = particles_copy.code;
+    auto& proc_ref = particles_copy.proc;
+    auto&   el_ref = particles_copy.el;
+    auto&    r_ref = particles_copy.r;
 
     for (int i = 0; i < particles.size(); ++i) {
       if (code_ref[i] != code_dev[i]
@@ -110,11 +113,11 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
                   ||   el_ref[i] !=   el_dev[i]
                   || (dist2_dev[i]>1e-17 && dist2_ref[i]*2 < dist2_dev[i])))) {
         printf("%d: WARNING: ogs_findpts varied at %4d: %e, %e, %e\n",
-               mpi_rank, i, xyz_base[0][i*xyz_stride[0]], xyz_base[1][i*xyz_stride[1]], xyz_base[2][i*xyz_stride[2]]);
+               mpi_rank, i, x[0][i], x[1][i], x[2][i]);
         printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
-               mpi_rank, code_ref[i], proc_ref[i], el_ref[i], r_ref[3*i], r_ref[3*i+1], r_ref[3*i+2], dist2_ref[i]);
+               mpi_rank, code_ref[i], proc_ref[i], el_ref[i], r_ref[i][0], r_ref[i][1], r_ref[i][2], dist2_ref[i]);
         printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
-               mpi_rank, code_dev[i], proc_dev[i], el_dev[i], r_dev[3*i], r_dev[3*i+1], r_dev[3*i+2], dist2_dev[i]);
+               mpi_rank, code_dev[i], proc_dev[i], el_dev[i], r_dev[i][0], r_dev[i][1], r_dev[i][0], dist2_dev[i]);
       }
     }
     delete [] dist2_dev;
@@ -315,12 +318,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  int mpi_rank = platform_t::getInstance()->comm.mpiRank;
-  if (mpi_rank == 0) {
-    std::cout << "Particle config: " << PART_K << "x" << PART_M << "x" << PART_N << " particle grid "
-                                     << "with " << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts";
-                                     << "and " << (USE_HOST_FINDPTS_EVAL ? "host" : "OCCA") << " findpts_eval" << std::endl;
-  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

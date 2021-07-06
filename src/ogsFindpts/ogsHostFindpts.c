@@ -78,8 +78,11 @@ struct findpts_data_2 *ogsHostFindptsSetup_2(
   struct comm gs_comm;
   comm_init(&gs_comm, mpi_comm);
 
-  return findpts_setup_2(&gs_comm, elx, n, nel, m, bbox_tol,
-                         local_hash_size, global_hash_size, npt_max, newt_tol);
+  struct findpts_data_2* fd = findpts_setup_2(&gs_comm, elx, n, nel, m, bbox_tol,
+                                              local_hash_size, global_hash_size,
+                                              npt_max, newt_tol);
+  comm_free(&gs_comm);
+  return fd;
 }
 
 struct findpts_data_3 *ogsHostFindptsSetup_3(
@@ -100,8 +103,11 @@ struct findpts_data_3 *ogsHostFindptsSetup_3(
   struct comm gs_comm;
   comm_init(&gs_comm, mpi_comm);
 
-  return findpts_setup_3(&gs_comm, elx, n, nel, m, bbox_tol,
-                         local_hash_size, global_hash_size, npt_max, newt_tol);
+  struct findpts_data_3* fd = findpts_setup_3(&gs_comm, elx, n, nel, m, bbox_tol,
+                                              local_hash_size, global_hash_size,
+                                              npt_max, newt_tol);
+  comm_free(&gs_comm);
+  return fd;
 }
 
 

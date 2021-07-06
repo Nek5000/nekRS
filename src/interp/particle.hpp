@@ -100,8 +100,8 @@ struct particle_set {
   std::vector<Extra>        extra;
   std::vector<dfloat_array> r;
 
-  particle_set(nrs_t *nrs_, double newton_tol_)
-      : nrs(nrs_), newton_tol(newton_tol_) {
+private:
+  void setup_findpts() {
     if (newton_tol < 5e-13) {
       newton_tol = 5e-13;
     }
@@ -129,6 +129,19 @@ struct particle_set {
     findpts = ogsFindptsSetup(D, comm, elx, n1, nelm, m1, bb_tol,
                               hash_size, hash_size, npt_max, newton_tol,
                               (occa::device*)&platform_t::getInstance()->device);
+  }
+
+public:
+
+  particle_set(nrs_t *nrs_, double newton_tol_)
+      : nrs(nrs_), newton_tol(newton_tol_) {
+    setup_findpts();
+  }
+
+  particle_set(particle_set& set)
+      : nrs(set.nrs), newton_tol(newton_tol),
+        x(set.x), code(set.code), proc(set.proc), el(set.el), extra(set.extra), r(set.r) {
+    setup_findpts();
   }
 
   ~particle_set() {
@@ -256,7 +269,7 @@ struct particle_set {
         std::cout << "Total number of points = " << gcounts[0] << ", failed = " << gcounts[1] << " done :: particle_set::find" << std::endl;
       }
     }
-    if(dist2_in == nullptr)
+    if(dist2_in == nullptr) {
       delete[] dist2;
     }
   }

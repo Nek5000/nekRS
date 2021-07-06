@@ -221,9 +221,9 @@ void findpts_eval(      double *const  out_base, const unsigned  out_stride,
     sarray_sort(struct eval_src_pt,src.ptr,n, el,0, &fd->cr.data);
     array_init(struct eval_out_pt,&outpt,n), outpt.n=n;
     spt=src.ptr, opt=outpt.ptr;
-    for(;n;--n,++spt,++opt) opt->index=spt->index,opt->proc=spt->proc;
-    spt=src.ptr, opt=outpt.ptr;
     findpts_local_eval_int(opt, spt, src.n, in,&fd->local, ogs_fd);
+    spt=src.ptr, opt=outpt.ptr;
+    for(;n;--n,++spt,++opt) opt->index=spt->index,opt->proc=spt->proc;
     array_free(&src);
     sarray_transfer(struct eval_out_pt,&outpt,proc,1,&fd->cr);
   }

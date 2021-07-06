@@ -265,7 +265,7 @@ void ogs_findpts_local_eval_2(
                             d_el_base,    el_stride,
                             d_r_base,     r_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->lag_data[0], ogs_fd->lag_data[1]);
+                            ogs_fd->d_fd_local);
 
   d_out_base.copyTo(out_base, out_stride*pn);
 }
@@ -299,7 +299,7 @@ void ogs_findpts_local_eval_3(
                             d_el_base,    el_stride,
                             d_r_base,     r_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->lag_data[0], ogs_fd->lag_data[1], ogs_fd->lag_data[2]);
+                            ogs_fd->d_fd_local);
 
   d_out_base.copyTo(out_base, out_stride*pn);
 }
