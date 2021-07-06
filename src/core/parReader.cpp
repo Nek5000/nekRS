@@ -92,7 +92,7 @@ void parseInitialGuess(const int rank, setupAide &options,
 
     const std::vector<string> list = serializeString(initialGuess, '+');
     for (std::string s : list) {
-      if (s.find("nvectors") == 0) {
+      if (s.find("nvector") == 0) {
         const std::vector<string> items = serializeString(s, '=');
         assert(items.size() = 2);
         const int value = std::stoi(items[1]);
@@ -572,8 +572,22 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         std::vector<std::string> list;
         list = serializeString(p_solver, '+');
         string n = "15";
-        if (list.size() == 2)
-          n = list[1];
+        for(std::string s : list)
+        {
+          if(s.find("nvector") != std::string::npos)
+          {
+            std::vector<std::string> nVecList = serializeString(s,'=');
+            if(nVecList.size() == 2)
+            {
+              int nVec = std::stoi(nVecList[1]);
+              n = std::to_string(nVec);
+            } else {
+              if(rank == 0)
+                printf("Could not parse string \"%s\" while parsing PRESSURE:solver.\n", s.c_str());
+              ABORT(1);
+            }
+          }
+        }
         options.setArgs("PRESSURE PGMRES RESTART", n);
         if (p_solver.find("fgmres") != string::npos ||
             p_solver.find("flexible") != string::npos)
