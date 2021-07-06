@@ -61,6 +61,40 @@ struct findpts_data_3 {
   struct hash_data_3 hash;
 };
 
+void ogsDevFindpts_2(      dlong  *const  code_base   , const dlong  code_stride   ,
+                           dlong  *const  proc_base   , const dlong  proc_stride   ,
+                           dlong  *const    el_base   , const dlong    el_stride   ,
+                           dfloat *const     r_base   , const dlong     r_stride   ,
+                           dfloat *const dist2_base   , const dlong dist2_stride   ,
+                     const dfloat *const     x_base[2], const dlong     x_stride[2],
+                     const dlong npt, struct findpts_data_2 *const fd,
+                     const void *const ogs_fd) {
+  ogs_findpts_2( code_base,  code_stride,
+                 proc_base,  proc_stride,
+                   el_base,    el_stride,
+                    r_base,     r_stride,
+                dist2_base, dist2_stride,
+                    x_base,     x_stride,
+                npt, fd, ogs_fd);
+}
+
+void ogsDevFindpts_3(      dlong  *const  code_base   , const dlong  code_stride   ,
+                           dlong  *const  proc_base   , const dlong  proc_stride   ,
+                           dlong  *const    el_base   , const dlong    el_stride   ,
+                           dfloat *const     r_base   , const dlong     r_stride   ,
+                           dfloat *const dist2_base   , const dlong dist2_stride   ,
+                     const dfloat *const     x_base[3], const dlong     x_stride[3],
+                     const dlong npt, struct findpts_data_3 *const fd,
+                     const void *const ogs_fd) {
+  ogs_findpts_3( code_base,  code_stride,
+                 proc_base,  proc_stride,
+                   el_base,    el_stride,
+                    r_base,     r_stride,
+                dist2_base, dist2_stride,
+                    x_base,     x_stride,
+                npt, fd, ogs_fd);
+}
+
 void ogsDevFindptsEval_2(
         dfloat *const  out_base, const dlong  out_stride,
   const dlong  *const code_base, const dlong code_stride,
