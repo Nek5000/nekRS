@@ -3,7 +3,7 @@
 polynomialOrder = 7
 
 [PRESSURE]
-solver = pfgmres+20
+solver = pfgmres+nVector=20
 maxIterations = 200
 residualTol = 1e-8
 
