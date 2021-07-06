@@ -10,8 +10,12 @@
 
 #define D 3
 
-#define USE_HOST_FINDPTS false
-#define CHECK_ACCURACY   false
+#define USE_HOST_FINDPTS       false
+#define USE_HOST_FINDPTS_EVAL  false
+#define USE_MIGRATE            false
+#define USE_LOCAL_FINDPTS_EVAL false
+#define CHECK_ACCURACY         false
+static_assert(USE_MIGRATE || !USE_LOCAL_FINDPTS_EVAL, "Cannot use local eval w/out migration");
 
 #define OUT_CHUNK_SIZE 10000 /* chunk size for outputing particles */
 
@@ -82,11 +86,52 @@ void particle_init(particle_set<D,hemi_particle_data>& particles) {
 
 void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tstep) {
 
-  particles.find();
-  particles.migrate();
+  ////////// particles.find() //////////
+  if(CHECK_ACCURACY){
+    particle_set<D,hemi_particle_data> particles_copy = particles;
+    dfloat *dist2_dev = new dfloat[particles.size()];
+    dfloat *dist2_ref = new dfloat[particles.size()];
+    particles.find(true, dist2_dev);
+    particles_copy.find(false, dist2_ref);
 
-  // Run on either occa, host, or both
-  // If both, compare the difference in the computed values
+    std::vector<dlong>       & code_dev = particles     .code();
+    std::vector<dlong>       & proc_dev = particles     .proc();
+    std::vector<dlong>       &   el_dev = particles     .el();
+    std::vector<dfloat_array>&    r_dev = particles     .r();
+    std::vector<dlong>       & code_ref = particles_copy.code();
+    std::vector<dlong>       & proc_ref = particles_copy.proc();
+    std::vector<dlong>       &   el_ref = particles_copy.el();
+    std::vector<dfloat_array>&    r_ref = particles_copy.r();
+
+    for (int i = 0; i < particles.size(); ++i) {
+      if (code_ref[i] != code_dev[i]
+          || (code_ref[i] != 2
+              && (   proc_ref[i] != proc_dev[i]
+                  ||   el_ref[i] !=   el_dev[i]
+                  || (dist2_dev[i]>1e-17 && dist2_ref[i]*2 < dist2_dev[i])))) {
+        printf("%d: WARNING: ogs_findpts varied at %4d: %e, %e, %e\n",
+               mpi_rank, i, xyz_base[0][i*xyz_stride[0]], xyz_base[1][i*xyz_stride[1]], xyz_base[2][i*xyz_stride[2]]);
+        printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
+               mpi_rank, code_ref[i], proc_ref[i], el_ref[i], r_ref[3*i], r_ref[3*i+1], r_ref[3*i+2], dist2_ref[i]);
+        printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
+               mpi_rank, code_dev[i], proc_dev[i], el_dev[i], r_dev[3*i], r_dev[3*i+1], r_dev[3*i+2], dist2_dev[i]);
+      }
+    }
+    delete [] dist2_dev;
+    delete [] dist2_ref;
+    if(USE_HOST_FINDPTS){
+      particles=particles_copy;
+    }
+  }else{
+    particles.find(!USE_HOST_FINDPTS);
+  }
+
+  ////////// particles.migrate() //////////
+  if(USE_MIGRATE) {
+    particles.migrate();
+  }
+
+  ////////// particles.interp() //////////
   dlong eval_counts = CHECK_ACCURACY ? 2 : 1;
   dfloat *u_alloc = new dfloat[D*particles.size()*eval_counts], *u_base[D*2];
   for (int i = 0; i < D*eval_counts; ++i) {
@@ -94,14 +139,22 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
     u_alloc += particles.size();
   }
   dfloat **u_host, **u_occa, **u_base_next = u_base;
-  if (!USE_HOST_FINDPTS || CHECK_ACCURACY) {
+  if (!USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
     u_occa = u_base_next; u_base_next += D;
     occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
-    particles.interp_local(o_U, u_occa, D);
+    if(USE_LOCAL_FINDPTS_EVAL){
+      particles.interp_local(o_U, u_occa, D);
+    }else{
+      particles.interp(o_U, u_occa, D);
+    }
   }
-  if (USE_HOST_FINDPTS || CHECK_ACCURACY) {
+  if (USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
     u_host = u_base_next;
-    particles.interp_local(particles.nrs->U, u_host, D);
+    if(USE_LOCAL_FINDPTS_EVAL){
+      particles.interp_local(particles.nrs->U, u_host, D);
+    }else{
+      particles.interp(particles.nrs->U, u_host, D);
+    }
   }
   if (CHECK_ACCURACY) {
     // controls the tolerences for printing warnings
@@ -120,7 +173,7 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
       }
     }
   }
-  dfloat **u1 = USE_HOST_FINDPTS ? u_host : u_occa;
+  dfloat **u1 = USE_HOST_FINDPTS_EVAL ? u_host : u_occa;
 
   double c1, c2, c3, dt = particles.nrs->dt[0];
   if (tstep == 0) { // AB1
@@ -262,6 +315,12 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  int mpi_rank = platform_t::getInstance()->comm.mpiRank;
+  if (mpi_rank == 0) {
+    std::cout << "Particle config: " << PART_K << "x" << PART_M << "x" << PART_N << " particle grid "
+                                     << "with " << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts";
+                                     << "and " << (USE_HOST_FINDPTS_EVAL ? "host" : "OCCA") << " findpts_eval" << std::endl;
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -269,7 +328,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   // computing lambda2 requires the velocity on host
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
-  } else if (USE_HOST_FINDPTS || CHECK_ACCURACY) {
+  } else if (USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
     nrs->o_U.copyTo(nrs->U);
   }
   nek::userchk();

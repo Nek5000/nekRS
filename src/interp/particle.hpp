@@ -207,9 +207,14 @@ struct particle_set {
   //// particle operations ////
 
   // Locates the element and process for each particle
-  void find() {
+  void find(bool use_device=true, dfloat *dist2_in=nullptr) {
     dlong n = size();
-    dfloat *dist2 = new dfloat[n];
+    dfloat *dist2;
+    if(dist2_in != nullptr){
+      dist2 = dist2_in;
+    }else{
+      dist2 = new dfloat[n];
+    }
     dfloat *x_base[D]; dlong x_stride[D];
     for (int i = 0; i < D; ++i){
       x_base[i] = x[i].data();
@@ -221,7 +226,8 @@ struct particle_set {
                &(r.data()[0][0]), D*sizeof(dfloat),
                dist2,             1*sizeof(dfloat),
                x_base,            x_stride,
-               n, findpts);
+               n, findpts,
+               use_device);
 
     dlong nfail = 0;
     for (int in = 0; in < n; ++in) {
@@ -250,7 +256,9 @@ struct particle_set {
         std::cout << "Total number of points = " << gcounts[0] << ", failed = " << gcounts[1] << " done :: particle_set::find" << std::endl;
       }
     }
-    delete[] dist2;
+    if(dist2_in == nullptr)
+      delete[] dist2;
+    }
   }
 
   // Moves each particle to the process that owns it's current element
