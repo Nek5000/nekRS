@@ -45,12 +45,7 @@ void parseInitialGuess(const int rank, setupAide &options,
     if (par->extract(parScope, "residualproj", solutionProjection) ||
         par->extract(parScope, "residualprojection", solutionProjection)) {
       if (solutionProjection) {
-        options.setArgs(parSectionName + " RESIDUAL PROJECTION", "TRUE");
-        options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD",
-                        "ACONJ");
-        if (parScope.find("pressure") == std::string::npos)
-          options.setArgs(parSectionName + " INITIAL GUESS DEFAULT",
-                          "PREVIOUS STEP");
+        options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
 
         const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
 
@@ -58,8 +53,6 @@ void parseInitialGuess(const int rank, setupAide &options,
         options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
                         std::to_string(defaultNumVectors));
         options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
-      } else {
-        options.setArgs(parSectionName + " RESIDUAL PROJECTION", "FALSE");
       }
 
       return;
@@ -70,18 +63,18 @@ void parseInitialGuess(const int rank, setupAide &options,
 
   if (par->extract(parScope, "initialguess", initialGuess)) {
     const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
-    options.setArgs(parSectionName + " RESIDUAL PROJECTION", "TRUE");
     options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
                     std::to_string(defaultNumVectors));
     options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
 
     if (initialGuess.find("projectionaconj") != std::string::npos) {
-      options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD", "ACONJ");
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
     } else if (initialGuess.find("projection") != std::string::npos) {
-      options.setArgs(parSectionName + " RESIDUAL PROJECTION METHOD",
-                      "CLASSIC");
+      options.setArgs(parSectionName + " INITIAL GUESS",
+                      "PROJECTION");
     } else if (initialGuess.find("none") != std::string::npos) {
-      options.setArgs(parSectionName + " RESIDUAL PROJECTION", "FALSE");
+      if(parScope == "pressure")
+        options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
     } else {
       if (rank == 0) {
         printf("Could not parse initialGuess string %s !\n",
@@ -301,10 +294,9 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
 
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+  options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
-  options.setArgs("PRESSURE RESIDUAL PROJECTION METHOD", "ACONJ");
 
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
@@ -765,7 +757,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("VELOCITY MAXIMUM ITERATIONS", keyValue);
     }
 
-    options.setArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION");
+    options.setArgs("VELOCITY INITIAL GUESS", "EXTRAPOLATION");
     bool _;
     if (par->extract("velocity", "regularization", _)) {
       exit("ERROR: cannot specify regularization in [VELOCITY]!\n",
@@ -775,7 +767,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       exit("ERROR: cannot specify filtering in [VELOCITY]!\n", EXIT_FAILURE);
     }
 
-    options.setArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION");
+    options.setArgs("VELOCITY INITIAL GUESS", "EXTRAPOLATION");
     string vsolver;
     int flow = 1;
 
@@ -843,7 +835,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     } else {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
-      options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
+      options.setArgs("SCALAR00 INITIAL GUESS", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
 
       parseInitialGuess(rank, options, par, "temperature");
@@ -916,7 +908,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
-    options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
+    options.setArgs("SCALAR" + sid + " INITIAL GUESS", "EXTRAPOLATION");
 
     parseInitialGuess(rank, options, par, "scalar" + sid);
 

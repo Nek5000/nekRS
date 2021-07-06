@@ -656,10 +656,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->vOptions.setArgs("DISCRETIZATION",       options.getArgs("VELOCITY DISCRETIZATION"));
     nrs->vOptions.setArgs("BASIS",                options.getArgs("VELOCITY BASIS"));
     nrs->vOptions.setArgs("PRECONDITIONER",       options.getArgs("VELOCITY PRECONDITIONER"));
-    nrs->vOptions.setArgs("RESIDUAL PROJECTION",       options.getArgs("VELOCITY RESIDUAL PROJECTION"));
+    nrs->vOptions.setArgs("INITIAL GUESS",       options.getArgs("VELOCITY INITIAL GUESS"));
     nrs->vOptions.setArgs("RESIDUAL PROJECTION VECTORS",       options.getArgs("VELOCITY RESIDUAL PROJECTION VECTORS"));
     nrs->vOptions.setArgs("RESIDUAL PROJECTION START",       options.getArgs("VELOCITY RESIDUAL PROJECTION START"));
-    nrs->vOptions.setArgs("RESIDUAL PROJECTION METHOD",       options.getArgs("VELOCITY RESIDUAL PROJECTION METHOD"));
     nrs->vOptions.setArgs("MULTIGRID COARSENING", options.getArgs("VELOCITY MULTIGRID COARSENING"));
     nrs->vOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("VELOCITY MULTIGRID SMOOTHER"));
     nrs->vOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",
@@ -802,12 +801,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
     nrs->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
                           options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
-    nrs->pOptions.setArgs("RESIDUAL PROJECTION", options.getArgs("PRESSURE RESIDUAL PROJECTION"));
+    nrs->pOptions.setArgs("INITIAL GUESS", options.getArgs("PRESSURE INITIAL GUESS"));
     nrs->pOptions.setArgs("RESIDUAL PROJECTION VECTORS",
                           options.getArgs("PRESSURE RESIDUAL PROJECTION VECTORS"));
     nrs->pOptions.setArgs("RESIDUAL PROJECTION START",
                           options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
-    nrs->pOptions.setArgs("RESIDUAL PROJECTION METHOD",       options.getArgs("PRESSURE RESIDUAL PROJECTION METHOD"));
     nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
     nrs->pOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("PRESSURE MAXIMUM ITERATIONS"));
 
@@ -1055,10 +1053,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));
     cds->options[is].setArgs("SOLVER TOLERANCE",
                          options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
-    cds->options[is].setArgs("RESIDUAL PROJECTION",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION"));
+    cds->options[is].setArgs("INITIAL GUESS",  options.getArgs("SCALAR" + sid + " INITIAL GUESS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
-    cds->options[is].setArgs("RESIDUAL PROJECTION METHOD",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION METHOD"));
     cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR MAXIMUM ITERATIONS"));
 
     // setup boundary mapping

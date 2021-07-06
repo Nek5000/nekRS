@@ -62,7 +62,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
   std::stringstream ss;
   ss << std::setfill('0') << std::setw(2) << is;
   string sid = ss.str();
-  if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) {
+  if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS", "EXTRAPOLATION") && stage == 1) {
     platform->o_mempool.slice0.copyFrom(cds->o_Se, cds->fieldOffset[is] * sizeof(dfloat), 0, cds->fieldOffsetScan[is] * sizeof(dfloat));
     if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_mempool.slice2, platform->o_mempool.slice0);
   }

@@ -23,27 +23,27 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("END TIME", string("0.06"));
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+  options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
-  options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS");
-  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS");
+  options.setArgs("SCALAR INITIAL GUESS","PREVIOUS");
+  options.setArgs("VELOCITY INITIAL GUESS","PREVIOUS");
 
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 3) {
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 4) {
     options.setArgs("END TIME", string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 5) {
     options.setArgs("END TIME", string("0.2"));

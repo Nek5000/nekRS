@@ -508,7 +508,9 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->precon->preconBytes = usedBytes;
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
+  if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
+     options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
+  {
     dlong nVecsProject = 8;
     options.getArgs("RESIDUAL PROJECTION VECTORS", nVecsProject);
 
@@ -516,17 +518,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     options.getArgs("RESIDUAL PROJECTION START", nStepsStart);
 
     ResidualProjection::ProjectionType type = ResidualProjection::ProjectionType::CLASSIC;
-    if(options.compareArgs("RESIDUAL PROJECTION METHOD", "CLASSIC"))
-      type = ResidualProjection::ProjectionType::CLASSIC;
-    else if (options.compareArgs("RESIDUAL PROJECTION METHOD", "ACONJ"))
+    if(options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
       type = ResidualProjection::ProjectionType::ACONJ;
-    else {
-      if(platform->comm.mpiRank == 0){
-        printf("Encountered invalid residual projection method %s!\n",
-          options.getArgs("RESIDUAL PROJECTION METHOD").c_str());
-      }
-      exit(1);
-    }
+    else if (options.compareArgs("INITIAL GUESS", "PROJECTION"))
+      type = ResidualProjection::ProjectionType::CLASSIC;
 
     elliptic->residualProjection = new ResidualProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
