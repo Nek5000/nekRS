@@ -286,8 +286,8 @@ void ogs_findpts_local_eval_3(
   occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
                                          occa::dtype::byte);
   occa::memory d_out_base = workspace; workspace += out_stride*pn;
-  occa::memory d_el_base  = workspace; workspace += el_stride*pn;
   occa::memory d_r_base   = workspace; workspace += r_stride*pn;
+  occa::memory d_el_base  = workspace; workspace += el_stride*pn;
   d_el_base.copyFrom(el_base, el_stride*pn);
   d_r_base .copyFrom(r_base,  r_stride*pn);
   // don't need to copy out to device if it will be entirely overwritten
