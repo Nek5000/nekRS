@@ -360,8 +360,9 @@ void UDF_Setup(nrs_t *nrs)
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
   if (mpi_rank == 0) {
     std::cout << "Particle config: " << PART_K << "x" << PART_M << "x" << PART_N << " particle grid "
-                                     << "with " << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts"
-                                     << "and " << (USE_HOST_FINDPTS_EVAL ? "host" : "OCCA") << " findpts_eval" << std::endl;
+                                     << "with " << (USE_MIGRATE ? "migration, " : "")
+                                                << (USE_HOST_FINDPTS ? "host" : "OCCA") << " findpts "
+                                     << "and, " << (USE_LOCAL_FINDPTS_EVAL ? "local " : "") << (USE_HOST_FINDPTS_EVAL ? "host" : "OCCA") << " findpts_eval" << std::endl;
   }
 }
 
