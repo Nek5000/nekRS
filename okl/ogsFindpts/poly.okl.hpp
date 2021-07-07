@@ -424,7 +424,7 @@ void lagrange_eval(@restrict dfloat * p0,
       dfloat *p1 = p0+n, *p2 = p0+2*n;
       p0[i]=  w[i]*u0;
       p1[i]=2*w[i]*u1;
-      p2[i]=4*w[i]*u2;
+      p2[i]=8*w[i]*u2;
     }
   }
 }
