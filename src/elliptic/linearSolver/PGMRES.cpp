@@ -140,9 +140,25 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
   occa::memory& o_w = elliptic->o_p;
   occa::memory& o_b = elliptic->o_rtmp;
+  
 
   occa::memory& o_z = elliptic->o_z;
   occa::memory& o_Ax = elliptic->o_Ap;
+
+  // r = b - Ax =>
+  // r + Ax = b
+  ellipticOperator(elliptic, o_x, o_Ax, dfloatString);
+  platform->linAlg->axpbyzMany(
+    mesh->Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    1.0,
+    o_r,
+    1.0,
+    o_Ax,
+    o_b
+  );
+
   deviceVector_t& o_V = elliptic->gmresData->o_V;
   deviceVector_t& o_Z = elliptic->gmresData->o_Z;
 
