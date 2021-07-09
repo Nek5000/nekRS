@@ -73,8 +73,7 @@ void parseInitialGuess(const int rank, setupAide &options,
       options.setArgs(parSectionName + " INITIAL GUESS",
                       "PROJECTION");
     } else if (initialGuess.find("none") != std::string::npos) {
-      if(parScope == "pressure")
-        options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
     } else {
       if (rank == 0) {
         printf("Could not parse initialGuess string %s !\n",
@@ -757,7 +756,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("VELOCITY MAXIMUM ITERATIONS", keyValue);
     }
 
-    options.setArgs("VELOCITY INITIAL GUESS", "EXTRAPOLATION");
     bool _;
     if (par->extract("velocity", "regularization", _)) {
       exit("ERROR: cannot specify regularization in [VELOCITY]!\n",
@@ -767,7 +765,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       exit("ERROR: cannot specify filtering in [VELOCITY]!\n", EXIT_FAILURE);
     }
 
-    options.setArgs("VELOCITY INITIAL GUESS", "EXTRAPOLATION");
     string vsolver;
     int flow = 1;
 
@@ -835,7 +832,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     } else {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
-      options.setArgs("SCALAR00 INITIAL GUESS", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
 
       parseInitialGuess(rank, options, par, "temperature");
@@ -908,7 +904,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
-    options.setArgs("SCALAR" + sid + " INITIAL GUESS", "EXTRAPOLATION");
 
     parseInitialGuess(rank, options, par, "scalar" + sid);
 
