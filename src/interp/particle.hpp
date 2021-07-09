@@ -333,8 +333,7 @@ public:
   //   fld            ... source field(s), may be host pointer or occa::memory (dfloat[nrs->fieldOffset*nfld])
   //   out            ... array of pointers to the output arrays (dfloat[n][D])
   //   nfld           ... number of fields
-  template<typename fld_ptr>
-  void interp_local(fld_ptr fld, dfloat *out[], dlong nfld)
+  void interp_local(const dfloat* fld, dfloat *out[], dlong nfld)
   {
     for (int ifld = 0; ifld < nfld; ++ifld) {
       ogsFindptsLocalEval(out[ifld],         1*sizeof(dfloat),
@@ -343,6 +342,38 @@ public:
                           size(), fld, findpts);
 
       fld += nrs->fieldOffset;
+    }
+  }
+
+  void interp_local(occa::memory fld, dfloat *out[], dlong nfld)
+  {
+    dlong pn = size();
+    dlong out_stride = 1*sizeof(dfloat);
+    dlong   r_stride = D*sizeof(dfloat);
+    dlong  el_stride = 1*sizeof(dlong);
+
+    occa::device device = *findpts->device;
+    occa::memory workspace = device.malloc((nfld*out_stride+r_stride+el_stride)*pn,
+                                           occa::dtype::byte);
+    occa::memory d_out = workspace; workspace += nfld*out_stride*pn;
+    occa::memory d_r   = workspace; workspace +=        r_stride*pn;
+    occa::memory d_el  = workspace; workspace +=       el_stride*pn;
+    d_r .copyFrom(&(r.data()[0][0]),  r_stride*pn);
+    d_el.copyFrom(el.data(),         el_stride*pn);
+
+    occa::memory d_out_i = d_out;
+    for (int ifld = 0; ifld < nfld; ++ifld) {
+      ogsFindptsLocalEval((double*)d_out_i.ptr(), out_stride,
+                          (int*)   d_el.ptr(),     el_stride,
+                          (double*)d_r.ptr(),       r_stride,
+                          pn, fld, findpts);
+
+      d_out_i += out_stride*pn;
+      fld += nrs->fieldOffset;
+    }
+    for (int ifld = 0; ifld < nfld; ++ifld) {
+      d_out.copyTo(out[ifld], out_stride*pn);
+      d_out += out_stride*pn;
     }
   }
 };

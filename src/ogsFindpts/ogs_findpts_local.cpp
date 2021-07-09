@@ -237,63 +237,35 @@ void ogs_findpts_local_eval_internal_3(
 }
 
 void ogs_findpts_local_eval_2(
-          dfloat * const out_base, const uint out_stride,
-    const uint   * const el_base,  const uint el_stride,
-    const dfloat * const r_base,   const uint r_stride,
+          dfloat * const d_out_base, const uint out_stride,
+    const uint   * const d_el_base,  const uint el_stride,
+    const dfloat * const d_r_base,   const uint r_stride,
     const uint pn, const void *const in,
     struct findpts_local_data_2 *const gs_fd, const void *const ogs_fd_void)
 {
   if (pn == 0) return;
 
   ogs_findpts_t *ogs_fd = (ogs_findpts_t*)ogs_fd_void;
-  occa::device device = *ogs_fd->device;
   occa::memory d_in = *(occa::memory*)in;
-
-  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
-                                         occa::dtype::byte);
-  occa::memory d_out_base = workspace; workspace += out_stride*pn;
-  occa::memory d_el_base  = workspace; workspace += el_stride*pn;
-  occa::memory d_r_base   = workspace; workspace += r_stride*pn;
-  d_el_base.copyFrom(el_base, el_stride*pn);
-  d_r_base .copyFrom(r_base,  r_stride*pn);
-  // don't need to copy out to device if it will be entirely overwritten
-  if (out_stride != sizeof(dfloat)) {
-    d_out_base.copyFrom(out_base, out_stride*pn);
-  }
 
   ogs_fd->local_eval_kernel(d_out_base,   out_stride,
                             d_el_base,    el_stride,
                             d_r_base,     r_stride,
                             pn, d_in, gs_fd->ntot,
                             ogs_fd->d_fd_local);
-
-  d_out_base.copyTo(out_base, out_stride*pn);
 }
 
 void ogs_findpts_local_eval_3(
-          dfloat * const out_base, const uint out_stride,
-    const uint   * const el_base,  const uint el_stride,
-    const dfloat * const r_base,   const uint r_stride,
+          dfloat * const d_out_base, const uint out_stride,
+    const uint   * const d_el_base,  const uint el_stride,
+    const dfloat * const d_r_base,   const uint r_stride,
     const uint pn, const void *const in,
     struct findpts_local_data_3 *const gs_fd, const void *const ogs_fd_void)
 {
   if (pn == 0) return;
 
   ogs_findpts_t *ogs_fd = (ogs_findpts_t*)ogs_fd_void;
-  occa::device device = *ogs_fd->device;
   occa::memory d_in = *(occa::memory*)in;
-
-  occa::memory workspace = device.malloc((out_stride+el_stride+r_stride)*pn,
-                                         occa::dtype::byte);
-  occa::memory d_out_base = workspace; workspace += out_stride*pn;
-  occa::memory d_r_base   = workspace; workspace += r_stride*pn;
-  occa::memory d_el_base  = workspace; workspace += el_stride*pn;
-  d_el_base.copyFrom(el_base, el_stride*pn);
-  d_r_base .copyFrom(r_base,  r_stride*pn);
-  // don't need to copy out to device if it will be entirely overwritten
-  if (out_stride != sizeof(dfloat)) {
-    d_out_base.copyFrom(out_base, out_stride*pn);
-  }
 
   ogs_fd->local_eval_kernel(d_out_base,   out_stride,
                             d_el_base,    el_stride,
@@ -301,7 +273,6 @@ void ogs_findpts_local_eval_3(
                             pn, d_in, gs_fd->ntot,
                             ogs_fd->d_fd_local);
 
-  d_out_base.copyTo(out_base, out_stride*pn);
 }
 
 }
