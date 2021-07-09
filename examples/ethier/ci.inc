@@ -57,6 +57,13 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("SUBCYCLING STEPS", string("1"));
     options.setArgs("MOVING MESH", string("TRUE"));
   }
+  if (ciMode == 7) {
+    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE MAXIMUM ITERATIONS", "1000");
+    options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
+    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("END TIME", string("0.012"));
+  }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
@@ -123,7 +130,7 @@ void ciTestLinAlg(const int N)
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
-  if(tstep == 1){
+  if(tstep == 1 && ciMode != 7){
     int NiterP = nrs->pSolver->Niter;
     const int expectedNiterP = 6;
     const int pIterErr = abs(NiterP - expectedNiterP);
@@ -225,6 +232,15 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              prErr = abs((err[1] - 2.89E-06)/err[1]);
              s01IterErr = abs(NiterS01 - 5);
              s02IterErr = abs(NiterS02 - 5);
+             break;
+    case 7 : velIterErr = abs(NiterU - 5);
+             s1Err = abs((err[2] - 2E-13)/err[2]);
+             s2Err = abs((err[3] - 2E-13)/err[3]);
+             pIterErr = abs(NiterP - 409);
+             vxErr = abs((err[0] - 1.4E-10)/err[0]);
+             prErr = abs((err[1] - 8.7E-9)/err[1]);
+             s01IterErr = abs(NiterS01 - 2);
+             s02IterErr = abs(NiterS02 - 2);
              break;
 
      }

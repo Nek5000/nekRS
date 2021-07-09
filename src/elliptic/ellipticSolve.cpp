@@ -53,13 +53,6 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     if(platform->comm.mpiRank == 0) printf("RHS norm: %.15e\n", rhsNorm);
   }
 
-  if(options.compareArgs("KRYLOV SOLVER", "PGMRES")){
-    elliptic->o_rtmp.copyFrom(o_r, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    if(elliptic->allNeumann) ellipticZeroMean(elliptic, elliptic->o_rtmp);
-    oogs::startFinish(elliptic->o_rtmp, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
-    if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, elliptic->o_rtmp);
-  }
-
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic);
 
