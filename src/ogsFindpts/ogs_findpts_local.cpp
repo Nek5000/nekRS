@@ -237,39 +237,45 @@ void ogs_findpts_local_eval_internal_3(
 }
 
 void ogs_findpts_local_eval_2(
-          dfloat * const d_out_base, const uint out_stride,
-    const uint   * const d_el_base,  const uint el_stride,
-    const dfloat * const d_r_base,   const uint r_stride,
+          void * const out_base, const uint out_stride,
+    const void * const el_base,  const uint el_stride,
+    const void * const r_base,   const uint r_stride,
     const uint pn, const void *const in,
     struct findpts_local_data_2 *const gs_fd, const void *const ogs_fd_void)
 {
   if (pn == 0) return;
 
   ogs_findpts_t *ogs_fd = (ogs_findpts_t*)ogs_fd_void;
-  occa::memory d_in = *(occa::memory*)in;
+  occa::memory d_out_base = *(occa::memory*)out_base;
+  occa::memory d_el_base  = *(occa::memory*) el_base;
+  occa::memory d_r_base   = *(occa::memory*)  r_base;
+  occa::memory d_in       = *(occa::memory*)in;
 
-  ogs_fd->local_eval_kernel(d_out_base,   out_stride,
-                            d_el_base,    el_stride,
-                            d_r_base,     r_stride,
+  ogs_fd->local_eval_kernel(d_out_base, out_stride,
+                            d_el_base,  el_stride,
+                            d_r_base,   r_stride,
                             pn, d_in, gs_fd->ntot,
                             ogs_fd->d_fd_local);
 }
 
 void ogs_findpts_local_eval_3(
-          dfloat * const d_out_base, const uint out_stride,
-    const uint   * const d_el_base,  const uint el_stride,
-    const dfloat * const d_r_base,   const uint r_stride,
+          void * const out_base, const uint out_stride,
+    const void * const el_base,  const uint el_stride,
+    const void * const r_base,   const uint r_stride,
     const uint pn, const void *const in,
     struct findpts_local_data_3 *const gs_fd, const void *const ogs_fd_void)
 {
   if (pn == 0) return;
 
   ogs_findpts_t *ogs_fd = (ogs_findpts_t*)ogs_fd_void;
-  occa::memory d_in = *(occa::memory*)in;
+  occa::memory d_out_base = *(occa::memory*)out_base;
+  occa::memory d_el_base  = *(occa::memory*) el_base;
+  occa::memory d_r_base   = *(occa::memory*)  r_base;
+  occa::memory d_in       = *(occa::memory*)in;
 
-  ogs_fd->local_eval_kernel(d_out_base,   out_stride,
-                            d_el_base,    el_stride,
-                            d_r_base,     r_stride,
+  ogs_fd->local_eval_kernel(d_out_base, out_stride,
+                            d_el_base,  el_stride,
+                            d_r_base,   r_stride,
                             pn, d_in, gs_fd->ntot,
                             ogs_fd->d_fd_local);
 

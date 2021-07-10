@@ -363,17 +363,18 @@ public:
 
     occa::memory d_out_i = d_out;
     for (int ifld = 0; ifld < nfld; ++ifld) {
-      ogsFindptsLocalEval((double*)d_out_i.ptr(), out_stride,
-                          (int*)   d_el.ptr(),     el_stride,
-                          (double*)d_r.ptr(),       r_stride,
+      ogsFindptsLocalEval(d_out_i, out_stride,
+                          d_el,     el_stride,
+                          d_r,       r_stride,
                           pn, fld, findpts);
 
       d_out_i += out_stride*pn;
       fld += nrs->fieldOffset;
     }
+    d_out_i = d_out;
     for (int ifld = 0; ifld < nfld; ++ifld) {
-      d_out.copyTo(out[ifld], out_stride*pn);
-      d_out += out_stride*pn;
+      d_out_i.copyTo(out[ifld], out_stride*pn);
+      d_out_i += out_stride*pn;
     }
   }
 };

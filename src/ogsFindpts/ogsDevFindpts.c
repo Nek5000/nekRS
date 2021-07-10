@@ -130,9 +130,9 @@ void ogsDevFindptsEval_3(
 }
 
 void ogsDevFindptsLocalEval_2(
-        dfloat *const  out_base, const dlong  out_stride,
-  const dlong  *const   el_base, const dlong   el_stride,
-  const dfloat *const    r_base, const dlong    r_stride,
+        void *const  out_base, const dlong  out_stride,
+  const void *const   el_base, const dlong   el_stride,
+  const void *const    r_base, const dlong    r_stride,
   const dlong npt, void *const in, struct findpts_data_2 *const fd,
   const void *const ogs_fd) {
 
@@ -143,9 +143,9 @@ void ogsDevFindptsLocalEval_2(
 }
 
 void ogsDevFindptsLocalEval_3(
-        dfloat *const  out_base, const dlong  out_stride,
-  const dlong  *const   el_base, const dlong   el_stride,
-  const dfloat *const    r_base, const dlong    r_stride,
+        void *const  out_base, const dlong  out_stride,
+  const void *const   el_base, const dlong   el_stride,
+  const void *const    r_base, const dlong    r_stride,
   const dlong npt, void *const in, struct findpts_data_3 *const fd,
   const void *const ogs_fd) {
 
