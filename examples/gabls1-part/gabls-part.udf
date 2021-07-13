@@ -22,7 +22,8 @@
 #define CHECK_ACCURACY         false
 static_assert(USE_MIGRATE || !USE_LOCAL_FINDPTS_EVAL, "Cannot use local eval w/out migration");
 
-#define OUT_CHUNK_SIZE 10000 /* chunk size for outputing particles */
+#define OUT_CHUNK_SIZE 100000 /* chunk size for outputing particles */
+#define USE_MPIIO      true
 
 struct gabls_particle_data {
   dfloat v_hist[2][D];
@@ -218,8 +219,9 @@ void particle_advect_std(particle_set<D,gabls_particle_data>& particles, int tst
 void particle_out(particle_set<D,gabls_particle_data>& particles)
 {
   constexpr dlong entry_len = D+1;
-  static dfloat x_temp[OUT_CHUNK_SIZE][entry_len];
-  static dfloat x_root[OUT_CHUNK_SIZE][entry_len];
+
+  static dfloat x_temp[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
+  static dfloat x_root[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
 
   static int out_step = 0;
   ++out_step;
@@ -229,62 +231,95 @@ void particle_out(particle_set<D,gabls_particle_data>& particles)
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
   dlong npart = particles.size();
 
-  std::FILE *file_out;
-  if (mpi_rank == 0) {
-    char fname[128];
-    sprintf(fname, "part%05d.3d", out_step);
-    file_out = fopen(fname, "w+");
-    fprintf(file_out, "X Y Z Color\n");
-  }
+  char fname[128];
+  sprintf(fname, "part%05d.3d", out_step);
 
-  hlong l_min = INT_MAX, l_max = INT_MIN, min_points, max_points;
-  for (int i = 0; i < npart; ++i) {
-    hlong id = particles.extra[i].id;
-    if (l_min > id) {
-      l_min = id;
+  if (USE_MPIIO) {
+    constexpr hlong p_size = 18*entry_len;
+
+    hlong p_offset = npart;
+    MPI_Exscan(MPI_IN_PLACE, &p_offset, 1, MPI_HLONG, MPI_SUM, mpi_comm);
+    hlong file_offset = p_offset*p_size+12;
+
+    MPI_File file_out;
+    MPI_File_open(mpi_comm, fname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &file_out);
+    if(mpi_rank == 0) {
+      MPI_File_write(file_out, "X Y Z Color\n", 12, MPI_CHAR, MPI_STATUS_IGNORE);
+    } else {
+      MPI_File_seek(file_out, file_offset, MPI_SEEK_SET);
     }
-    if (l_max < id) {
-      l_max = id;
-    }
-  }
-  MPI_Allreduce(&l_min, &min_points, 1, MPI_HLONG, MPI_MIN, mpi_comm);
-  MPI_Allreduce(&l_max, &max_points, 1, MPI_HLONG, MPI_MAX, mpi_comm);
 
-  hlong n_active = max_points - min_points + 1;
-  dlong npass = n_active / OUT_CHUNK_SIZE;
-  if (n_active > npass*OUT_CHUNK_SIZE) ++npass;
-  hlong ilast=min_points;
-
-  for (int ipass = 0; ipass < npass; ++ipass) {
-    dlong mpart = (dlong)std::min((hlong)OUT_CHUNK_SIZE, max_points - ilast+1);
-    hlong i0 = ilast;
-    hlong i1 = i0 + mpart;
-    ilast = i1;
-
-    memset(&x_temp[0][0], 0, mpart*entry_len*sizeof(dfloat));
-    for (int ii=0; ii < npart; ++ii) {
-      hlong id = particles.extra[ii].id;
-      if (i0 <= id && id < i1) {
-        int i = id-i0;
-        for (int j = 0; j < D; ++j) {
-          x_temp[i][j] = particles.x[j][ii];       // coordinates
-        }
-        x_temp[i][D] = particles.extra[ii].color;  // color
+    char *char_buffer = new char[npart*p_size + 1];
+    for (dlong ii = 0; ii < npart; ++ii) {
+      if(D == 3) {
+        sprintf(char_buffer+ii*p_size, "%17.9e %17.9e %17.9e %17.9e\n",
+                particles.x[0][ii], particles.x[1][ii], particles.x[2][ii], particles.extra[ii].color);
+      } else {
+        sprintf(char_buffer+ii*p_size, "%17.9e %17.9e %17.9e\n",
+                particles.x[0][ii], particles.x[1][ii], particles.extra[ii].color);
       }
     }
+    MPI_File_write_all(file_out, char_buffer, p_size*npart, MPI_CHAR, MPI_STATUS_IGNORE);
+    delete [] char_buffer;
 
-    MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*entry_len, MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
+    MPI_File_close(&file_out);
+  } else {
+    std::FILE *file_out;
     if (mpi_rank == 0) {
-      for (int i = 0; i < mpart; ++i) {
-        for (int j = 0; j < D+1; ++j) {
-          fprintf(file_out, " %17.9e", x_root[i][j]);
-        }
-        fprintf(file_out, "\n");
+      file_out = fopen(fname, "w+");
+      fprintf(file_out, "X Y Z Color\n");
+    }
+    hlong l_min = INT_MAX, l_max = INT_MIN, min_points, max_points;
+    for (int i = 0; i < npart; ++i) {
+      hlong id = particles.extra[i].id;
+      if (l_min > id) {
+        l_min = id;
+      }
+      if (l_max < id) {
+        l_max = id;
       }
     }
-  }
+    MPI_Allreduce(&l_min, &min_points, 1, MPI_HLONG, MPI_MIN, mpi_comm);
+    MPI_Allreduce(&l_max, &max_points, 1, MPI_HLONG, MPI_MAX, mpi_comm);
 
-  if (mpi_rank == 0) fclose(file_out);
+    hlong n_active = max_points - min_points + 1;
+    dlong npass = n_active / OUT_CHUNK_SIZE;
+    if (n_active > npass*OUT_CHUNK_SIZE) ++npass;
+    hlong ilast=min_points;
+
+    for (int ipass = 0; ipass < npass; ++ipass) {
+      dlong mpart = (dlong)std::min((hlong)OUT_CHUNK_SIZE, max_points - ilast+1);
+      hlong i0 = ilast;
+      hlong i1 = i0 + mpart;
+      ilast = i1;
+
+      memset(&x_temp[0][0], 0, mpart*entry_len*sizeof(dfloat));
+      for (int ii=0; ii < npart; ++ii) {
+        hlong id = particles.extra[ii].id;
+        if (i0 <= id && id < i1) {
+          int i = id-i0;
+          for (int j = 0; j < D; ++j) {
+            x_temp[i][j] = particles.x[j][ii];       // coordinates
+          }
+          x_temp[i][D] = particles.extra[ii].color;  // color
+        }
+      }
+
+      MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*entry_len, MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
+      if (mpi_rank == 0) {
+        for (int i = 0; i < mpart; ++i) {
+          if(D == 3) {
+            fprintf(file_out, " %17.9e %17.9e %17.9e %17.9e\n",
+                    x_root[i][0], x_root[i][2], x_root[i][3], x_root[i][4]);
+          } else {
+            fprintf(file_out, " %17.9e %17.9e %17.9e\n",
+                    x_root[i][0], x_root[i][2], x_root[i][3]);
+          }
+        }
+      }
+    }
+    if (mpi_rank == 0) fclose(file_out);
+  }
 }
 
 particle_set<D,gabls_particle_data> *particle_data;
