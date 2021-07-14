@@ -52,9 +52,9 @@ void ogsFindptsLocalEval(
   const dlong npt, const dfloat *const in, ogs_findpts_t *const fd);
 
 void ogsFindptsLocalEval(
-        dfloat *const  out_base, const dlong  out_stride,
-  const dlong  *const   el_base, const dlong   el_stride,
-  const dfloat *const    r_base, const dlong    r_stride,
+  occa::memory out_base, const dlong  out_stride,
+  occa::memory  el_base, const dlong   el_stride,
+  occa::memory   r_base, const dlong    r_stride,
   const dlong npt, occa::memory d_in, ogs_findpts_t *const fd);
 
 
