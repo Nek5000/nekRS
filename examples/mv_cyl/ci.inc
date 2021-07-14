@@ -65,7 +65,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
-  const int expectedVIter = 3;
+  const int expectedVIter = 11;
 
   double vxErr, prErr;
   double s1Err;
