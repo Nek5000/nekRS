@@ -335,11 +335,17 @@ public:
   //   nfld           ... number of fields
   void interp_local(const dfloat* fld, dfloat *out[], dlong nfld)
   {
+    dlong pn = size();
+
+    if (pn == 0 || nfld == 0) {
+       return;
+    }
+
     for (int ifld = 0; ifld < nfld; ++ifld) {
       ogsFindptsLocalEval(out[ifld],         1*sizeof(dfloat),
                           el.data(),         1*sizeof(dlong),
                           &(r.data()[0][0]), D*sizeof(dfloat),
-                          size(), fld, findpts);
+                          pn, fld, findpts);
 
       fld += nrs->fieldOffset;
     }
@@ -351,6 +357,10 @@ public:
     dlong out_stride = 1*sizeof(dfloat);
     dlong   r_stride = D*sizeof(dfloat);
     dlong  el_stride = 1*sizeof(dlong);
+
+    if (pn == 0 || nfld == 0) {
+       return;
+    }
 
     occa::device device = *findpts->device;
     occa::memory workspace = device.malloc((nfld*out_stride+r_stride+el_stride)*pn,
