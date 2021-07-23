@@ -217,6 +217,20 @@ public:
     }
     return part;
   }
+
+  void swap(int i, int j) {
+    if (i == j) return;
+
+    for (int d = 0; d < D; ++d) {
+      std::swap(x[d][i], x[d][j]);
+      std::swap(r[d][i], r[d][j]);
+    }
+    std::swap(code[i],  code[j]);
+    std::swap(proc[i],  proc[j]);
+    std::swap(el  [i],  el  [j]);
+    std::swap(extra[i], extra[j]);
+  }
+
   //// particle operations ////
 
   // Locates the element and process for each particle
@@ -250,7 +264,7 @@ public:
           //if (nfail < 5) write(6,'(a,1p4e15.7)')     ' WARNING: point on boundary or outside the mesh xy[z]d^2: ',     xp(in),yp(in),zp(in),rwk(in,1)
           if (nfail < 5){
             std::cerr << " WARNING: point on boundary or outside the mesh xy[z]d^2: "
-                      << x[0][in*x_stride[0]] << "," << x[1][in*x_stride[1]] << ", " << x[2][in*x_stride[2]] << ", " << dist2[in] << std::endl;
+                      << x[0][in] << "," << x[1][in] << ", " << x[2][in] << ", " << dist2[in] << std::endl;
           }
         }
       } else if (code[in] == 2) {
@@ -258,7 +272,7 @@ public:
         //if (nfail < 5) write(6,'(a,1p3e15.7)')        ' WARNING: point not within mesh xy[z]: !',        xp(in),yp(in),zp(in)
         if (nfail < 5){
           std::cerr << " WARNING: point not within mesh xy[z]: "
-                    << x[0][in*x_stride[0]] << "," << x[1][in*x_stride[1]] << ", " << x[2][in*x_stride[2]] << std::endl;
+                    << x[0][in] << "," << x[1][in] << ", " << x[2][in] << std::endl;
         }
       }
     }
@@ -283,8 +297,13 @@ public:
     array_init(particle_t, &transfer, 128);
 
     int index = 0;
+    int unfound_count = 0;
     while (index < size()) {
-      if (code[index] != 2 && proc[index] != mpi_rank) {
+      if (code[index] == 2) {
+        swap(index, unfound_count);
+        ++unfound_count;
+        ++index;
+      } else if (proc[index] != mpi_rank) {
         // remove index'th element and move the last point to index'th storage
         array_reserve(particle_t, &transfer, transfer.n+1);
         ((particle_t*)transfer.ptr)[transfer.n] = remove(index);
@@ -358,6 +377,10 @@ public:
     dlong   r_stride = D*sizeof(dfloat);
     dlong  el_stride = 1*sizeof(dlong);
 
+    dlong start = 0;
+    while (code[start] == 2 && start < pn) ++start;
+    pn -= start;
+
     if (pn == 0 || nfld == 0) {
        return;
     }
@@ -368,8 +391,8 @@ public:
     occa::memory d_out = workspace; workspace += nfld*out_stride*pn;
     occa::memory d_r   = workspace; workspace +=        r_stride*pn;
     occa::memory d_el  = workspace; workspace +=       el_stride*pn;
-    d_r .copyFrom(&(r.data()[0][0]),  r_stride*pn);
-    d_el.copyFrom(el.data(),         el_stride*pn);
+    d_r .copyFrom(&(r.data()[start][0]),  r_stride*pn);
+    d_el.copyFrom(el.data()+start,        el_stride*pn);
 
     occa::memory d_out_i = d_out;
     for (int ifld = 0; ifld < nfld; ++ifld) {
@@ -383,7 +406,7 @@ public:
     }
     d_out_i = d_out;
     for (int ifld = 0; ifld < nfld; ++ifld) {
-      d_out_i.copyTo(out[ifld], out_stride*pn);
+      d_out_i.copyTo(out[ifld]+start, out_stride*pn);
       d_out_i += out_stride*pn;
     }
   }
