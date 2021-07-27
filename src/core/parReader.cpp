@@ -237,6 +237,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MIN BOUND FACTOR", "0.1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MAX BOUND FACTOR", "1.1");
 
   options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
