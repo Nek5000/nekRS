@@ -27,6 +27,7 @@ residualTol = 1e-04
 #smootherType = Chebyshev+ASM
 #pMultigridCoarsening = 7,3,1
 #galerkinCoarseOperator = true
+#initialGuess = projectionAconj+nVector=10
 
 [VELOCITY]
 #solver = pcg

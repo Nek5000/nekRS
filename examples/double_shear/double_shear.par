@@ -17,14 +17,12 @@ density = 1.
 viscosity = -100000
 
 [TEMPERATURE]
-initialGuess = projectionAconj+nVector=5
 residualTol = 1e-8
 rhocp = 1
 conductivity = -100000
 regularization=none
 
 [SCALAR01]
-initialGuess = projectionAconj+nVector=5
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
@@ -32,7 +30,6 @@ regularization=none
 
 [SCALAR02]
 dt = 1e-03
-initialGuess = projectionAconj+nVector=10
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000

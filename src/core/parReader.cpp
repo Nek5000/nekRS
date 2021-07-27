@@ -74,6 +74,12 @@ void parseInitialGuess(const int rank, setupAide &options,
                       "PROJECTION");
     } else if (initialGuess.find("none") != std::string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+    } else if (initialGuess.find("true") != std::string::npos) {
+      const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+      options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+    } else if (initialGuess.find("false") != std::string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
     } else {
       if (rank == 0) {
         printf("Could not parse initialGuess string %s !\n",
