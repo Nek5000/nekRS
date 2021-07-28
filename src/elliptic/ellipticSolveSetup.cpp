@@ -508,14 +508,22 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->precon->preconBytes = usedBytes;
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
+  if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
+     options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
+  {
     dlong nVecsProject = 8;
     options.getArgs("RESIDUAL PROJECTION VECTORS", nVecsProject);
 
     dlong nStepsStart = 5;
     options.getArgs("RESIDUAL PROJECTION START", nStepsStart);
 
-    elliptic->residualProjection = new ResidualProjection(*elliptic, nVecsProject, nStepsStart);
+    ResidualProjection::ProjectionType type = ResidualProjection::ProjectionType::CLASSIC;
+    if(options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
+      type = ResidualProjection::ProjectionType::ACONJ;
+    else if (options.compareArgs("INITIAL GUESS", "PROJECTION"))
+      type = ResidualProjection::ProjectionType::CLASSIC;
+
+    elliptic->residualProjection = new ResidualProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

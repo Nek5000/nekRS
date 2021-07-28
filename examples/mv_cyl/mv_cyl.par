@@ -14,12 +14,10 @@ stressFormulation = true
 
 [PRESSURE]
 residualTol = 1e-8
-residualProj = false
+initialGuess = none
 
 [VELOCITY]
 residualTol = 1e-12
-residualProj = false
 
 [TEMPERATURE]
 residualTol = 1e-12
-residualProj = false

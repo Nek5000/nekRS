@@ -34,7 +34,12 @@
 class ResidualProjection final
 {
 public:
+  enum class ProjectionType {
+    CLASSIC,
+    ACONJ,
+  };
   ResidualProjection(elliptic_t& _elliptic,
+                     const ProjectionType _type,
                      const dlong _maxNumVecsProjection = 8,
                      const dlong _numTimeSteps = 5);
   void pre(occa::memory& o_r);
@@ -46,6 +51,7 @@ private:
   void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
+  const ProjectionType type;
   dlong timestep;
   bool verbose;
 
