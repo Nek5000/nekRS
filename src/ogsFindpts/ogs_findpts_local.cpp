@@ -2,6 +2,7 @@
 #include <type_traits>
 #include "ogstypes.h"
 #include "ogs_FINDPTS.hpp"
+#include "platform.hpp"
 
 extern "C" {
 
@@ -32,8 +33,14 @@ void ogs_findpts_local_2(    uint   *const  code_base   , const unsigned  code_s
 
   dlong worksize = code_stride+el_stride+r_stride+dist2_stride
                    +x_stride[0]+x_stride[1];
-  occa::memory workspace = device.malloc(worksize*pn+2*(sizeof(dfloat*)+sizeof(dlong)),
-                                         occa::dtype::byte);
+  dlong alloc_size = worksize*pn+2*(sizeof(dfloat*)+sizeof(dlong));
+  occa::memory workspace;
+  occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
+  if(alloc_size < mempool.size()) {
+    workspace = mempool.cast(occa::dtype::byte);
+  } else {
+    workspace = device.malloc(alloc_size, occa::dtype::byte);
+  }
   occa::memory  d_code_base = workspace; workspace +=   sizeof(dlong) *pn;
   occa::memory    d_el_base = workspace; workspace +=   sizeof(dlong) *pn;
   occa::memory     d_r_base = workspace; workspace += 2*sizeof(dfloat)*pn;
@@ -106,8 +113,14 @@ void ogs_findpts_local_3(    uint   *const  code_base   , const unsigned  code_s
 
   dlong worksize = code_stride+el_stride+r_stride+dist2_stride
                    +x_stride[0]+x_stride[1]+x_stride[2];
-  occa::memory workspace = device.malloc(worksize*pn+3*(sizeof(dfloat*)+sizeof(dlong)),
-                                         occa::dtype::byte);
+  dlong alloc_size = worksize*pn+3*(sizeof(dfloat*)+sizeof(dlong));
+  occa::memory workspace;
+  occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
+  if(alloc_size < mempool.size()) {
+    workspace = mempool.cast(occa::dtype::byte);
+  } else {
+    workspace = device.malloc(alloc_size, occa::dtype::byte);
+  }
   occa::memory  d_code_base = workspace; workspace +=   sizeof(dlong) *pn;
   occa::memory    d_el_base = workspace; workspace +=   sizeof(dlong) *pn;
   occa::memory     d_r_base = workspace; workspace += 3*sizeof(dfloat)*pn;
@@ -179,8 +192,14 @@ void ogs_findpts_local_eval_internal_2(
   occa::device device = *ogs_fd->device;
   occa::memory d_in = *(occa::memory*)in;
 
-  occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_2)+sizeof(struct eval_src_pt_2))*pn,
-                                         occa::dtype::byte);
+  dlong alloc_size = (sizeof(struct eval_out_pt_2)+sizeof(struct eval_src_pt_2))*pn;
+  occa::memory workspace;
+  occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
+  if(alloc_size < mempool.size()) {
+    workspace = mempool.cast(occa::dtype::byte);
+  } else {
+    workspace = device.malloc(alloc_size, occa::dtype::byte);
+  }
   occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_2)*pn;
   occa::memory d_src_pt = workspace;
   d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_2)*pn);
@@ -214,8 +233,14 @@ void ogs_findpts_local_eval_internal_3(
   occa::device device = *ogs_fd->device;
   occa::memory d_in = *(occa::memory*)in;
 
-  occa::memory workspace = device.malloc((sizeof(struct eval_out_pt_3)+sizeof(struct eval_src_pt_3))*pn,
-                                         occa::dtype::byte);
+  dlong alloc_size = (sizeof(struct eval_out_pt_3)+sizeof(struct eval_src_pt_3))*pn;
+  occa::memory workspace;
+  occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
+  if(alloc_size < mempool.size()) {
+    workspace = mempool.cast(occa::dtype::byte);
+  } else {
+    workspace = device.malloc(alloc_size, occa::dtype::byte);
+  }
   occa::memory d_out_pt = workspace; workspace += sizeof(struct eval_out_pt_3)*pn;
   occa::memory d_src_pt = workspace;
   d_src_pt.copyFrom(spt, sizeof(struct eval_src_pt_3)*pn);

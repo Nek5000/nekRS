@@ -356,14 +356,18 @@ public:
   {
     dlong pn = size();
 
+    dlong start = 0;
+    while (start < pn && code[start] == 2) ++start;
+    pn -= start;
+
     if (pn == 0 || nfld == 0) {
        return;
     }
 
     for (int ifld = 0; ifld < nfld; ++ifld) {
-      ogsFindptsLocalEval(out[ifld],         1*sizeof(dfloat),
-                          el.data(),         1*sizeof(dlong),
-                          &(r.data()[0][0]), D*sizeof(dfloat),
+      ogsFindptsLocalEval(out[ifld]+start,       1*sizeof(dfloat),
+                          el.data()+start,       1*sizeof(dlong),
+                          &(r.data()[start][0]), D*sizeof(dfloat),
                           pn, fld, findpts);
 
       fld += nrs->fieldOffset;
@@ -378,7 +382,7 @@ public:
     dlong  el_stride = 1*sizeof(dlong);
 
     dlong start = 0;
-    while (code[start] == 2 && start < pn) ++start;
+    while (start < pn && code[start] == 2) ++start;
     pn -= start;
 
     if (pn == 0 || nfld == 0) {
@@ -386,8 +390,14 @@ public:
     }
 
     occa::device device = *findpts->device;
-    occa::memory workspace = device.malloc((nfld*out_stride+r_stride+el_stride)*pn,
-                                           occa::dtype::byte);
+    dlong alloc_size = (nfld*out_stride+r_stride+el_stride)*pn;
+    occa::memory workspace;
+    occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
+    if(alloc_size < mempool.size()) {
+      workspace = mempool.cast(occa::dtype::byte);
+    } else {
+      workspace = device.malloc(alloc_size, occa::dtype::byte);
+    }
     occa::memory d_out = workspace; workspace += nfld*out_stride*pn;
     occa::memory d_r   = workspace; workspace +=        r_stride*pn;
     occa::memory d_el  = workspace; workspace +=       el_stride*pn;
