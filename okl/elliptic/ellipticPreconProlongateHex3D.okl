@@ -51,9 +51,6 @@
         const int t = i + j * p_NqFine;
 
         if(t < p_NqCoarse * p_NqCoarse) {
-          const int ti = t % p_NqCoarse;
-          const int tj = t / p_NqCoarse;
-
           for(int k = 0; k < p_NqFine; ++k)
             r_q[k] = 0;
 

@@ -102,17 +102,14 @@
             dwdt += Dt * Wloc[n];
           }
           // compute local derivatives
-          const dfloat ux = drdx * dudr + dsdx * duds + dtdx * dudt;
           const dfloat uy = drdy * dudr + dsdy * duds + dtdy * dudt;
           const dfloat uz = drdz * dudr + dsdz * duds + dtdz * dudt;
 
           const dfloat vx = drdx * dvdr + dsdx * dvds + dtdx * dvdt;
-          const dfloat vy = drdy * dvdr + dsdy * dvds + dtdy * dvdt;
           const dfloat vz = drdz * dvdr + dsdz * dvds + dtdz * dvdt;
 
           const dfloat wx = drdx * dwdr + dsdx * dwds + dtdx * dwdt;
           const dfloat wy = drdy * dwdr + dsdy * dwds + dtdy * dwdt;
-          const dfloat wz = drdz * dwdr + dsdz * dwds + dtdz * dwdt;
 
           // Multiply with mass matrix
           const dfloat vortx = JW * (wy - vz);
