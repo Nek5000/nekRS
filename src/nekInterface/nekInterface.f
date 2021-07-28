@@ -16,6 +16,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'NEKINTF'
       include 'HSMG'
+      include 'NEKNEK'
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
@@ -59,6 +60,8 @@ c-----------------------------------------------------------------------
          ptr = loc(UNZ(1,1,1,1)) 
       elseif (id .eq. 'cbc') then
          ptr = loc(cbc(1,1,1)) 
+      elseif (id .eq. 'intflag') then
+         ptr = loc(intflag(1,1))
       elseif (id .eq. 'eface1') then
          ptr = loc(eface1) 
       elseif (id .eq. 'eface') then
@@ -133,7 +136,8 @@ c-----------------------------------------------------------------------
 c-----------------------------------------------------------------------
       subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
      $                      npscal_in, p32, meshp_in,
-     $                      rho, mue, rhoCp, lambda) 
+     $                      rho, mue, rhoCp, lambda,
+     $                      ifneknekc_in,nsessions_in,idsess_in)
 
       include 'SIZE'
       include 'TOTAL'
@@ -167,7 +171,8 @@ c-----------------------------------------------------------------------
       llelt = lelt
       lldimt = ldimt
 
-      call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
+      call nekf_setupcomm(comm_in,newcomm,newcommg,path_in,session_in,
+     $                    ifneknekc_in,nsessions_in,idsess_in)
       call iniproc()
 
       etimes = dnekclock_sync()
@@ -220,6 +225,10 @@ c-----------------------------------------------------------------------
       call mapelpr 
       call read_re2_data(ifbswap, .true., .true., .true.)
 
+      call setvar          ! Initialize most variables
+
+      call nekf_neknek_setup
+
       call izero(boundaryID, size(boundaryID))
       ifld_bId = 2
       if(ifflow) ifld_bId = 1
@@ -236,8 +245,6 @@ c-----------------------------------------------------------------------
         enddo
         enddo
       endif
-
-      call setvar          ! Initialize most variables
 
       igeom = 2
       call setup_topo      ! Setup domain topology  
@@ -281,6 +288,89 @@ c      call findSYMOrient
  999  format(' nek setup done in ', 1p1e13.4, ' s')
       if(nio.eq.0) write(6,*) 
       call flush(6)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setupcomm(comm,newcomm,newcommg,path_in,
+     $                          session_in,ifneknekc_in,nsessions_in,
+     $                          idsess_in)
+      include 'mpif.h'
+      include 'SIZE'
+      include 'PARALLEL' 
+      include 'TSTEP' 
+      include 'INPUT'
+
+      integer comm, newcomm, newcommg
+      character session_in*(*), path_in*(*)
+      logical flag
+    
+      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
+ 
+      integer nid_global_root(0:nsessmax-1)
+
+      logical ifhigh
+      logical mpi_is_initialized
+
+      integer*8 ntags
+
+c     write(6,*) 'TMP: nekf_setupcomm'
+      call mpi_initialized(mpi_is_initialized, ierr)
+      if (.not.mpi_is_initialized) call mpi_init(ierr)
+
+      call mpi_comm_dup(comm,newcommg,ierr)
+      iglobalcomm = newcommg
+
+      call mpi_comm_size(newcommg,np_global,ierr)
+      call mpi_comm_rank(newcommg,nid_global,ierr)
+
+      ! check upper tag size limit
+      call mpi_comm_get_attr(MPI_COMM_WORLD,MPI_TAG_UB,ntags,flag,ierr)
+      if (ntags .lt. np_global) then
+         if(nid_global.eq.0) write(6,*) 'ABORT: MPI_TAG_UB too small!'
+         call exitt
+      endif
+
+      nsessions = nsessions_in
+      if (nsessions.eq.1) then
+         ifneknek = .false.
+         ifneknekc = .false.
+         idsess = 1
+         nid = nid_global
+         np = np_global
+         intracomm = newcommg
+      else
+         ifneknek = .true.
+         ifneknekc = ifneknekc_in.eq.1
+         idsess = idsess_in
+         call mpi_comm_split(comm,idsess,nid,newcomm,ierr)
+         call mpi_comm_size(newcomm,np,ierr)
+         call mpi_comm_rank(newcomm,nid,ierr)
+         intracomm = newcomm
+      endif
+ 
+      nekcomm = intracomm
+      session = session_in
+      path    = path_in
+      amgfile  = session
+
+      return
+      end
+c-------------------------------------------------------------
+      subroutine nekf_neknek_setup
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      if(.not.ifneknek) return
+
+      if (nsessmax.eq.1) 
+     $  call exitti('set nsessmax > 1 in SIZE!$',nsessmax)
+
+      call setup_neknek_wts
+
+      call set_intflag
+      call neknekmv
 
       return
       end
@@ -727,6 +817,7 @@ c
          else
            if(cb.ne.'E  ' .and. cb.ne.'P  ') then
              ierr = 1
+             write(6,*) 'b/c(1) of type ', cb
              goto 99
            endif
          endif
@@ -759,7 +850,10 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
             else if(cb.eq.'f  ' .or. cb.eq.'O  ') then
               bcID = 3
             else
-              if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+              if(cb.ne.'E  ' .and. cb.ne.'P  ') then
+                ierr = 1
+                write(6,*) 'b/c(2) of type ', cb
+              endif
             endif 
             ibc_bmap(bID, ifld) = bcID 
           endif          
@@ -794,7 +888,10 @@ c        write(6,*) ifld, 't cbc_bmap: ', (cbc_bmap(i,ifld), i=1,6)
            else if(cb.eq.'f  ') then
              map(3) = 1
            else 
-             if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+             if(cb.ne.'E  ' .and. cb.ne.'P  ') then
+               ierr = 1
+               write(6,*) 'b/c(3) of type ', cb
+             endif
            endif
         enddo
         enddo

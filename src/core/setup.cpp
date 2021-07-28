@@ -924,6 +924,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;
   cds->NSfields    = nrs->Nscalar;
+  cds->neknek      = nrs->neknek;
 
   cds->coeffEXT    = nrs->coeffEXT;
   cds->coeffBDF    = nrs->coeffBDF;

@@ -402,6 +402,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
   parseRegularization(rank, options, par);
 
+  dlong maxNumSessions;
+  if (par->extract("general", "maxNumSessions", maxNumSessions))
+    options.setArgs("NEKNEK MAX NUM SESSIONS", std::to_string(maxNumSessions));
+  else
+    options.setArgs("NEKNEK MAX NUM SESSIONS", "2");
+
   // MESH
   string meshPartitioner;
   if (par->extract("mesh", "partitioner", meshPartitioner))

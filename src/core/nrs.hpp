@@ -17,6 +17,7 @@
 #include "timer.hpp"
 #include "inipp.hpp"
 #include "platform.hpp"
+#include "neknek.hpp"
 
 struct nrs_t
 {
@@ -32,6 +33,8 @@ struct nrs_t
   elliptic_t* pSolver;
 
   cds_t* cds;
+
+  neknek_t* neknek;
 
   oogs_t* gsh;
 

@@ -50,7 +50,8 @@ double startTime(void)
 
 void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
            int ciMode, string cacheDir, string _setupFile,
-           string _backend, string _deviceID)
+           string _backend, string _deviceID,
+           neknek_t *neknek)
 {
   if(buildOnly) {
     int rank, size;
@@ -83,6 +84,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   }
 
   nrs = new nrs_t();
+  nrs->neknek = neknek;
 
   nrs->par = new inipp::Ini<char>();	  
   string setupFile = _setupFile + ".par";
@@ -114,12 +116,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   // jit compile udf
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
+  string casename;
+  options.getArgs("CASENAME", casename);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), 0);
+    if(rank == 0) err = udfBuild(casename.c_str(), udfFile.c_str(), 0);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);;
-    udfLoad();
+    udfLoad(casename.c_str());
   }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
@@ -141,6 +145,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   evaluateProperties(nrs, startTime());
   nrs->o_prop.copyTo(nrs->prop);
   if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
+
+  neknek_setup(nrs);
 
   nek::ocopyToNek(startTime(), 0);
 
@@ -297,14 +303,16 @@ static void dryRun(setupAide &options, int npTarget)
   // jit compile udf
   string udfFile;
   options.getArgs("UDF FILE", udfFile);
+  string casename;
+  options.getArgs("CASENAME", casename);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), 1);
+    if(rank == 0) err = udfBuild(casename.c_str(), udfFile.c_str(), 1);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);
     MPI_Barrier(comm);
-    *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
-    *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
+    *(void**)(&udf.loadKernels) = udfLoadFunction(casename.c_str(), "UDF_LoadKernels",0);
+    *(void**)(&udf.setup0) = udfLoadFunction(casename.c_str(), "UDF_Setup0",0);
   }
 
   if(udf.setup0) udf.setup0(comm, options);
@@ -335,7 +343,7 @@ static void setOUDF(setupAide &options)
   string casename;
   options.getArgs("CASENAME", casename);
   const string dataFileDir = cache_dir + "/udf/";
-  const string dataFile = dataFileDir + "udf.okl";
+  const string dataFile = dataFileDir + "udf-" + casename + ".okl";
 
   if (rank == 0) {
     mkdir(dataFileDir.c_str(), S_IRWXU);

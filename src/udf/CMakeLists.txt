@@ -19,6 +19,7 @@ set(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   ${CDSDIR}
   ${OGSDIR}
+  ${OGSDIR}/include
   ${GSDIR}
   ${NEKRS_INSTALL_DIR}
   ${NEKRS_INSTALL_DIR}/include
@@ -35,10 +36,12 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg
   ${NEKRS_INSTALL_DIR}/include/ogsFindpts
+  ${NEKRS_INSTALL_DIR}/include/neknek
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 
-add_library(UDF SHARED udf.cpp)
+add_library(UDF SHARED udf-${CASENAME}.cpp)
+set_target_properties(UDF PROPERTIES LIBRARY_OUTPUT_NAME UDF-${CASENAME})
 target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${UDF_DIR})
 
 if(APPLE)

@@ -173,6 +173,8 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
      
     const dfloat timeNew = time + nrs->dt[0]; 
 
+    neknek_update_boundary(nrs);
+
     if(nrs->Nscalar)
       scalarSolve(nrs, timeNew, cds->o_S, stage); 
 
@@ -193,20 +195,22 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     if(stage == 1) tElapsedStep += tPreStep;
     tElapsed += tElapsedStep;
 
-    converged = true;
+    converged = nrs->neknek->Nsubsteps <= stage;
     if(udf.converged) converged = udf.converged(nrs, stage);
 
-    printInfo(nrs, timeNew, tstep, tElapsedStep, tElapsed);
+    if(converged) {
+      printInfo(nrs, timeNew, tstep, tElapsedStep, tElapsed);
 
-    platform->timer.tic("udfExecuteStep", 1);
-    if(isOutputStep && converged) {
-      nek::ifoutfld(1);
-      nrs->isOutputStep = 1;
-    } 
-    if(udf.executeStep) udf.executeStep(nrs, timeNew, tstep);
-    nek::ifoutfld(0);
-    nrs->isOutputStep = 0;
-    platform->timer.toc("udfExecuteStep");
+      platform->timer.tic("udfExecuteStep", 1);
+      if(isOutputStep && converged) {
+        nek::ifoutfld(1);
+        nrs->isOutputStep = 1;
+      } 
+      if(udf.executeStep) udf.executeStep(nrs, timeNew, tstep);
+      nek::ifoutfld(0);
+      nrs->isOutputStep = 0;
+      platform->timer.toc("udfExecuteStep");
+    }
   }
   while(!converged);
 

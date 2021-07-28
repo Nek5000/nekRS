@@ -9,6 +9,7 @@
 #include "nrssys.hpp"
 #include "mesh3D.h"
 #include "elliptic.h"
+#include "neknek.hpp"
 
 #define NSCALAR_MAX 100
 
@@ -22,6 +23,7 @@ struct cds_t
   dlong fieldOffsetSum;
   mesh_t* meshV;
   elliptic_t* solver[NSCALAR_MAX];
+  neknek_t* neknek;
 
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields

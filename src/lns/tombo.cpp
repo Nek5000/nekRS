@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "udf.hpp"
 #include "linAlg.hpp"
+#include "neknek.hpp"
 
 namespace tombo
 {
@@ -38,6 +39,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    mesh->o_EToB,
                                    nrs->o_EToB,
                                    nrs->o_VmapB,
+                                   nrs->neknek->o_point_map,
+                                   nrs->neknek->o_val_interp,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    platform->o_mempool.slice7);

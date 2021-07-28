@@ -238,6 +238,8 @@
                             @restrict const dlong*  vmapM,
                             @restrict const int*  EToBM,
                             @restrict const int*  EToB,
+                            @restrict const dlong*  neknekPointMap,
+                            @restrict const dfloat*  neknekValInterp,
                             @restrict const dfloat*  W,
                             @restrict dfloat*  S)
 {
@@ -250,6 +252,7 @@
         const dlong sk = e * p_Nfp * p_Nfaces + n;
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
+        const dlong neknekOffset = neknekPointMap[offset];
 
         if(bcType == 1) {
           bc.id = EToBM[f + p_Nfaces * e];
@@ -266,7 +269,11 @@
           bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
           bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
           bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
-          scalarDirichletConditions(&bc);
+          if (neknekOffset > 0 && neknekPointMap[idM] >= 0) {
+            bc.s = neknekValInterp[neknekPointMap[idM]];
+          } else {
+            scalarDirichletConditions(&bc);
+          }
           S[idM] = bc.s;
         }
       }

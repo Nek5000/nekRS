@@ -264,6 +264,8 @@
                                          @restrict const int*  EToBM,
                                          @restrict const int*  EToB,
                                          @restrict const int*  EToBV,
+                                         @restrict const dlong*  neknekPointMap,
+                                         @restrict const dfloat*  neknekValInterp,
                                          @restrict const dfloat*  W,
                                          @restrict const dfloat*  U,
                                          @restrict dfloat*  UH)
@@ -279,6 +281,7 @@
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
         const dlong bcTypeV = EToBV[idM];
+        const dlong neknekOffset = neknekPointMap[offset];
 
         if(bcType > 0) {
           bc.id = EToBM[f + p_Nfaces * e];
@@ -304,7 +307,13 @@
             UH[idM + 1 * offset] = 0.0;
             UH[idM + 2 * offset] = 0.0;
           }else if(bcType == 2 && bcTypeV == bcType) {
-            velocityDirichletConditions(&bc);
+            if (neknekOffset > 0 && neknekPointMap[idM] >= 0) {
+              bc.u = neknekValInterp[neknekPointMap[idM] + 0*neknekOffset];
+              bc.v = neknekValInterp[neknekPointMap[idM] + 1*neknekOffset];
+              bc.w = neknekValInterp[neknekPointMap[idM] + 2*neknekOffset];
+            } else {
+              velocityDirichletConditions(&bc);
+            }
             UH[idM + 0 * offset] = bc.u;
             UH[idM + 1 * offset] = bc.v;
             UH[idM + 2 * offset] = bc.w;
