@@ -30,6 +30,101 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+void parseSmoother(const int rank, setupAide &options,
+                         inipp::Ini<char> *par, string parScope) {
+    string p_smoother;
+    if (par->extract(parScope, "smoothertype", p_smoother) &&
+        options.compareArgs(parScope + " PRECONDITIONER", "MULTIGRID")) {
+      std::vector<std::string> list;
+      list = serializeString(p_smoother, '+');
+      if (p_smoother.find("asm") == 0) {
+        options.setArgs(parScope + " MULTIGRID SMOOTHER", "ASM");
+        if (p_preconditioner.find("multigrid") != std::string::npos) {
+          if (p_preconditioner.find("additive") == std::string::npos)
+            exit("ASM smoother only supported for additive V-cycle!",
+                 EXIT_FAILURE);
+        } else {
+          options.setArgs(parScope + " PARALMOND CYCLE",
+                          "VCYCLE+ADDITIVE+OVERLAPCRS");
+        }
+        if (list.size() == 2)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[1]);
+      } else if (p_smoother.find("ras") == 0) {
+        options.setArgs(parScope + " MULTIGRID SMOOTHER", "RAS");
+        if (p_preconditioner.find("multigrid") != std::string::npos) {
+          if (p_preconditioner.find("additive") == std::string::npos)
+            exit("RAS smoother only supported for additive V-cycle!",
+                 EXIT_FAILURE);
+        } else {
+          options.setArgs(parScope + " PARALMOND CYCLE",
+                          "VCYCLE+ADDITIVE+OVERLAPCRS");
+        }
+        if (list.size() == 2)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[1]);
+      } else if (p_smoother.find("chebyshev+jac") == 0) {
+        options.setArgs(parScope + " MULTIGRID SMOOTHER",
+                        "DAMPEDJACOBI,CHEBYSHEV");
+        options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
+        options.setArgs(parScope + " MULTIGRID UPWARD SMOOTHER", "JACOBI");
+        options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", "2");
+        options.setArgs("BOOMERAMG ITERATIONS", "2");
+        if (p_preconditioner.find("additive") != std::string::npos) {
+          exit("Additive vcycle is not supported for Chebyshev smoother!",
+               EXIT_FAILURE);
+        } else {
+          std::string entry = options.getArgs(parScope + " PARALMOND CYCLE");
+          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
+            entry += "+MULTIPLICATIVE";
+            options.setArgs(" PARALMOND CYCLE", entry);
+          }
+        }
+        if (list.size() == 3)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+      } else if (p_smoother.find("chebyshev+asm") == 0) {
+        options.setArgs(parScope + " MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
+        options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+        options.setArgs(parScope + " MULTIGRID UPWARD SMOOTHER", "ASM");
+        if (p_preconditioner.find("additive") != std::string::npos) {
+          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+               "smoother!",
+               EXIT_FAILURE);
+        } else {
+          std::string entry = options.getArgs(parScope + " PARALMOND CYCLE");
+          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
+            entry += "+MULTIPLICATIVE";
+            options.setArgs(" PARALMOND CYCLE", entry);
+          }
+        }
+        if (list.size() == 3)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+      } else if (p_smoother.find("chebyshev+ras") == 0) {
+        options.setArgs(parScope + " MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
+        options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "RAS");
+        options.setArgs(parScope + " MULTIGRID UPWARD SMOOTHER", "RAS");
+        if (p_preconditioner.find("additive") != std::string::npos) {
+          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+               "smoother!",
+               EXIT_FAILURE);
+        } else {
+          std::string entry = options.getArgs(" PARALMOND CYCLE");
+          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
+            entry += "+MULTIPLICATIVE";
+            options.setArgs(" PARALMOND CYCLE", entry);
+          }
+        }
+        if (list.size() == 3)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+      } else {
+        exit("Unknown ::smootherType!", EXIT_FAILURE);
+      }
+    }
+
+    if (p_preconditioner.find("additive") != std::string::npos) {
+      options.setArgs(parScope + " MULTIGRID SMOOTHER", "ASM");
+      options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+      options.setArgs(parScope + " MULTIGRID UPWARD SMOOTHER", "ASM");
+    }
+}
 void parsePreconditioner(const int rank, setupAide &options,
                          inipp::Ini<char> *par, string parScope) {
 
@@ -563,7 +658,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (p_gproj)
         options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
 
-    string p_preconditioner;
     parsePreconditioner(rank, options, par, "pressure");
 
     string p_mglevels;
@@ -610,116 +704,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
     }
 
-    string p_smoother;
-    if (par->extract("pressure", "smoothertype", p_smoother) &&
-        options.compareArgs("PRESSURE PRECONDITIONER", "MULTIGRID")) {
-      std::vector<std::string> list;
-      list = serializeString(p_smoother, '+');
-      if (p_smoother.find("asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("ASM smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("RAS smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("chebyshev+jac") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER",
-                        "DAMPEDJACOBI,CHEBYSHEV");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-        options.setArgs("BOOMERAMG ITERATIONS", "2");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for Chebyshev smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else {
-        exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
-      }
-    }
-
-    if (p_preconditioner.find("additive") != std::string::npos) {
-      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    }
-
-    // Allow flexibility in downward/upward smoother
-    string p_downwardSmoother;
-    par->extract("pressure", "downwardsmoother", p_downwardSmoother);
-    if (p_downwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-    else if (p_downwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-    else if (p_downwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-    string p_upwardSmoother;
-    par->extract("pressure", "upwardsmoother", p_upwardSmoother);
-    if (p_upwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-    else if (p_upwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    else if (p_upwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
+    parseSmoother(rank, options, par, "pressure");
 
     string p_amgsolver;
     par->extract("pressure", "amgsolver", p_amgsolver);
