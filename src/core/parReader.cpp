@@ -5,6 +5,7 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <utility>
 
 #include "inipp.hpp"
 #include "tinyexpr.h"
@@ -30,13 +31,47 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+bool is_number(const std::string& s)
+{
+  return !s.empty() && std::find_if(s.begin(), 
+    s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+}
+
+std::vector<int>
+checkForIntInInputs(const std::vector<std::string>& inputs)
+{
+  std::vector<int> values;
+  for(std::string s : inputs)
+  {
+    if(is_number(s)){
+      values.emplace_back(std::stoi(s));
+    }
+  }
+  return values;
+}
+
 void parseSmoother(const int rank, setupAide &options,
                          inipp::Ini<char> *par, string parScope) {
+    
+
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+
     string p_smoother;
     if (par->extract(parScope, "smoothertype", p_smoother) &&
         options.compareArgs(parScope + " PRECONDITIONER", "MULTIGRID")) {
       std::vector<std::string> list;
       list = serializeString(p_smoother, '+');
+
+      std::vector<int> optionalChebyshevOrder = checkForIntInInputs(list);
+      if(optionalChebyshevOrder.size() > 1)
+      {
+        if(rank == 0){
+          printf("Could not parse smoother string %s!\n", p_smoother.c_str());
+        }
+        ABORT(1);
+      }
+
       if (p_smoother.find("asm") == 0) {
         options.setArgs(parScope + " MULTIGRID SMOOTHER", "ASM");
         if (p_preconditioner.find("multigrid") != std::string::npos) {
@@ -47,8 +82,6 @@ void parseSmoother(const int rank, setupAide &options,
           options.setArgs(parScope + " PARALMOND CYCLE",
                           "VCYCLE+ADDITIVE+OVERLAPCRS");
         }
-        if (list.size() == 2)
-          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[1]);
       } else if (p_smoother.find("ras") == 0) {
         options.setArgs(parScope + " MULTIGRID SMOOTHER", "RAS");
         if (p_preconditioner.find("multigrid") != std::string::npos) {
@@ -59,8 +92,6 @@ void parseSmoother(const int rank, setupAide &options,
           options.setArgs(parScope + " PARALMOND CYCLE",
                           "VCYCLE+ADDITIVE+OVERLAPCRS");
         }
-        if (list.size() == 2)
-          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[1]);
       } else if (p_smoother.find("chebyshev+jac") == 0) {
         options.setArgs(parScope + " MULTIGRID SMOOTHER",
                         "DAMPEDJACOBI,CHEBYSHEV");
@@ -78,8 +109,8 @@ void parseSmoother(const int rank, setupAide &options,
             options.setArgs(" PARALMOND CYCLE", entry);
           }
         }
-        if (list.size() == 3)
-          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+        if (optionalChebyshevOrder.size() == 1)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", optionalChebyshevOrder[0]);
       } else if (p_smoother.find("chebyshev+asm") == 0) {
         options.setArgs(parScope + " MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
         options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
@@ -95,8 +126,8 @@ void parseSmoother(const int rank, setupAide &options,
             options.setArgs(" PARALMOND CYCLE", entry);
           }
         }
-        if (list.size() == 3)
-          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+        if (optionalChebyshevOrder.size() == 1)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", optionalChebyshevOrder[0]);
       } else if (p_smoother.find("chebyshev+ras") == 0) {
         options.setArgs(parScope + " MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
         options.setArgs(parScope + " MULTIGRID DOWNWARD SMOOTHER", "RAS");
@@ -112,8 +143,8 @@ void parseSmoother(const int rank, setupAide &options,
             options.setArgs(" PARALMOND CYCLE", entry);
           }
         }
-        if (list.size() == 3)
-          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", list[2]);
+        if (optionalChebyshevOrder.size() == 1)
+          options.setArgs(parScope + " MULTIGRID CHEBYSHEV DEGREE", optionalChebyshevOrder[0]);
       } else {
         exit("Unknown ::smootherType!", EXIT_FAILURE);
       }
