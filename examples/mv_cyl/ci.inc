@@ -17,7 +17,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("END TIME", string("0.1"));
   options.setArgs("DT", string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+  options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
@@ -65,7 +65,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
-  const int expectedVIter = 3;
+  const int expectedVIter = 11;
 
   double vxErr, prErr;
   double s1Err;

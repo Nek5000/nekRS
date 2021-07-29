@@ -8,7 +8,7 @@ writeInterval = 100
 
 [PRESSURE]
 residualTol = 1e-08
-residualProj = false
+initialGuess = none
 
 [VELOCITY]
 boundaryTypeMap = fixedValue
