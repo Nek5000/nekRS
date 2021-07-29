@@ -30,6 +30,54 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+void parsePreconditioner(const int rank, setupAide &options,
+                         inipp::Ini<char> *par, string parScope) {
+
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+  if (p_preconditioner == "none") {
+    options.setArgs(parScope + " PRECONDITIONER", "NONE");
+  } else if (p_preconditioner == "jacobi") {
+    options.setArgs(parScope + " PRECONDITIONER", "JACOBI");
+  } else if (p_preconditioner.find("semfem") != std::string::npos) {
+    options.setArgs(parScope + " PRECONDITIONER", "SEMFEM");
+    options.setArgs(parScope + " SEMFEM SOLVER", "BOOMERAMG");
+    options.setArgs(parScope + " SEMFEM SOLVER PRECISION", "FP64");
+    std::vector<std::string> list;
+    list = serializeString(p_preconditioner, '+');
+    for (std::string s : list) {
+      if (s.find("semfem") != std::string::npos) {
+      } else if (s.find("amgx") != std::string::npos) {
+        options.setArgs(parScope + " SEMFEM SOLVER", "AMGX");
+        options.setArgs(parScope + " SEMFEM SOLVER PRECISION", "FP32");
+      } else if (s.find("fp32") != std::string::npos) {
+        options.setArgs(parScope + " SEMFEM SOLVER PRECISION", "FP32");
+        if (options.compareArgs(" SEMFEM SOLVER", "BOOMERAMG"))
+          exit("FP32 is currently not supported for BoomerAMG!", EXIT_FAILURE);
+      } else if (s.find("fp64") != std::string::npos) {
+        options.setArgs(parScope + " SEMFEM SOLVER PRECISION", "FP64");
+      } else {
+        if (rank == 0) {
+          printf("SEMFEM preconditioner flag %s is not recognized!\n",
+                 s.c_str());
+        }
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
+  } else if (p_preconditioner.find("semg") != std::string::npos ||
+             p_preconditioner.find("multigrid") != std::string::npos) {
+    options.setArgs(parScope + " PRECONDITIONER", "MULTIGRID");
+    string key = "VCYCLE";
+    if (p_preconditioner.find("additive") != std::string::npos)
+      key += "+ADDITIVE";
+    if (p_preconditioner.find("multiplicative") != std::string::npos)
+      key += "+MULTIPLICATIVE";
+    if (p_preconditioner.find("overlap") != std::string::npos)
+      key += "+OVERLAPCRS";
+    options.setArgs(parScope + " PARALMOND CYCLE", key);
+  }
+}
 void parseInitialGuess(const int rank, setupAide &options,
                        inipp::Ini<char> *par, string parScope) {
 
@@ -516,50 +564,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
 
     string p_preconditioner;
-    par->extract("pressure", "preconditioner", p_preconditioner);
-    if (p_preconditioner == "none") {
-      options.setArgs("PRESSURE PRECONDITIONER", "NONE");
-    } else if (p_preconditioner == "jacobi") {
-      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    } else if (p_preconditioner.find("semfem") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
-      options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-      std::vector<std::string> list;
-      list = serializeString(p_preconditioner, '+');
-      for (std::string s : list) {
-        if (s.find("semfem") != std::string::npos) {
-        } else if (s.find("amgx") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER", "AMGX");
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-        } else if (s.find("fp32") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-          if (options.compareArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG"))
-            exit("FP32 is currently not supported for BoomerAMG!",
-                 EXIT_FAILURE);
-        } else if (s.find("fp64") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-        } else {
-          if (rank == 0) {
-            printf("SEMFEM preconditioner flag %s is not recognized!\n",
-                   s.c_str());
-          }
-          ABORT(EXIT_FAILURE);
-        }
-      }
-
-    } else if (p_preconditioner.find("semg") != std::string::npos ||
-               p_preconditioner.find("multigrid") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-      string key = "VCYCLE";
-      if (p_preconditioner.find("additive") != std::string::npos)
-        key += "+ADDITIVE";
-      if (p_preconditioner.find("multiplicative") != std::string::npos)
-        key += "+MULTIPLICATIVE";
-      if (p_preconditioner.find("overlap") != std::string::npos)
-        key += "+OVERLAPCRS";
-      options.setArgs("PRESSURE PARALMOND CYCLE", key);
-    }
+    parsePreconditioner(rank, options, par, "pressure");
 
     string p_mglevels;
     if (par->extract("pressure", "pmultigridcoarsening", p_mglevels))
