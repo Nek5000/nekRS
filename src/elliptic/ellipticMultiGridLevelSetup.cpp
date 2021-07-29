@@ -115,7 +115,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
   options.getArgs("MULTIGRID CHEBYSHEV MIN BOUND FACTOR", minMultiplier);
 
   dfloat maxMultiplier;
-  options.getArgs("MULTIGRID CHEBYSHEV MAX BOUND FACTOR", minMultiplier);
+  options.getArgs("MULTIGRID CHEBYSHEV MAX BOUND FACTOR", maxMultiplier);
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
       options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
