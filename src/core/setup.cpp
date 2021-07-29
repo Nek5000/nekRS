@@ -808,6 +808,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
     nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
     nrs->pOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("PRESSURE MAXIMUM ITERATIONS"));
+    nrs->pOptions.setArgs("MULTIGRID CHEBYSHEV MAX BOUND FACTOR", options.getArgs("PRESSURE MULTIGRID CHEBYSHEV MAX BOUND FACTOR"));
+    nrs->pOptions.setArgs("MULTIGRID CHEBYSHEV MIN BOUND FACTOR", options.getArgs("PRESSURE MULTIGRID CHEBYSHEV MIN BOUND FACTOR"));
 
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->name = "pressure";
