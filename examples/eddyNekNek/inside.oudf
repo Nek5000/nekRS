@@ -1,0 +1,7 @@
+// Boundary conditions
+void velocityDirichletConditions(bcData *bc)
+{                                                                        
+  bc->u = 0.0;
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
