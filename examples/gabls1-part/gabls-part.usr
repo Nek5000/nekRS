@@ -45,14 +45,167 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      real x0(3)
+      data x0 /0.0, 0.0, 0.0/
+      save x0
+
+      integer icalld
+      save    icalld
+      data    icalld /0/
+
+      real    rwk(INTP_NMAX,ldim+1) ! r, s, t, dist2
+      integer iwk(INTP_NMAX,3)      ! code, proc, el
+      save    rwk, iwk
+
+      integer nint, intp_h
+      save    nint, intp_h
+
+      logical iffpts
+      save iffpts
+
+      real xint(INTP_NMAX),yint(INTP_NMAX),zint(INTP_NMAX)
+      save xint, yint, zint
+      save igs_x, igs_z
+
+      real uwhav(INTP_NMAX,7)
+
+      common /gaaa/    wo1(lx1,ly1,lz1,lelv)
+     &              ,  wo2(lx1,ly1,lz1,lelv)
+     &              ,  wk1(lx1,ly1,lz1,lelv)
+     &              ,  wk2(lx1,ly1,lz1,lelv)
+     &              ,  wk3(lx1,ly1,lz1,lelv)
+
       integer bIDs(1)
       save iobj_wall
+
+      n     = nx1*ny1*nz1*nelv
 
       if (istep.eq.0) then
          bIDs(1) = 1
          call create_obj(iobj_wall,bIDs,1)
          nm = iglsum(nmember(iobj_wall),1)
          if(nid.eq.0) write(6,*) 'obj_wall nmem:', nm
+      endif
+
+c
+c     What follows computes statistics ...
+c
+      if(ifoutfld) then
+        if (ldimt.ge.2) call lambda2(t(1,1,1,1,2))
+        if (ldimt.ge.3) call comp_vort3(t(1,1,1,1,3),wo1,wo2,vx,vy,vz)
+      endif
+
+      if(icalld.eq.0) then
+        nxm = 1 ! mesh is linear
+        call interp_setup(intp_h,0.0,nxm,nelt)
+        nint = 0
+        if (nid.eq.0) then
+          nint = INTP_NMAX
+          call cfill(xint,0.0,size(xint))
+          do i = 1,INTP_NMAX
+             yi = (i-1.)/(INTP_NMAX-1)
+             yint(i) = yi*YLEN
+          enddo
+          call cfill(zint,0.0,size(zint))
+        endif
+        iffpts = .true. ! dummy call to find points
+        call interp_nfld(uwhav,wo2,1,xint,yint,zint,nint,
+     $                   iwk,rwk,INTP_NMAX,iffpts,intp_h)
+        iffpts = .false.
+        nelx  = NUMBER_ELEMENTS_X
+        nely  = NUMBER_ELEMENTS_Y
+        nelz  = NUMBER_ELEMENTS_Z
+        call gtpp_gs_setup(igs_x,nelx     ,nely,nelz,1) ! x-avx
+        call gtpp_gs_setup(igs_z,nelx*nely,1   ,nelz,3) ! z-avg
+
+        if(nid.eq.0) then
+           open(unit=58,file='mean_prof_horz.dat')
+           write(58,'(A)') '# Horizontally averaged mean profiles'
+           close(58)
+           open(unit=58,file='mean_prof_horz.dat', access='append')
+        endif
+
+        icalld = 1
+      endif
+
+c calculate du/dy and average horizontally and interpolate
+      call rzero(uwhav, 7*INTP_NMAX)
+      call opgrad(wk1,wk2,wk3,vx)
+      call dssum (wk2,lx1,ly1,lz1)
+      call col2  (wk2,binvm1,n)
+
+      call planar_avg (wo1      ,wk2      ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,1),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c calculate dw/dy and average horizontally and interpolate
+      call opgrad(wk1,wk2,wk3,vz)
+      call dssum (wk2,lx1,ly1,lz1)
+      call col2  (wk2,binvm1,n)
+
+      call planar_avg (wo1      ,wk2      ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,2),wo2,1,xint,yint,zint,nint,
+     $                      iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c average horizontally u and interpolate
+      call planar_avg (wo1      ,vx       ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,3),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c average horizontally w and interpolate
+      call planar_avg (wo1      ,vz       ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,4),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c calculate dT/dy and average horizontally and interpolate
+      call opgrad(wk1,wk2,wk3,t )
+      call dssum (wk2,lx1,ly1,lz1)
+      call col2  (wk2,binvm1,n)
+
+      call planar_avg (wo1      ,wk2      ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,5),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c average horizontally T and interpolate
+      call planar_avg (wo1      ,t        ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,6),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+c average horizontally nu and interpolate
+      call planar_avg (wo1      ,vdiff    ,igs_x)
+      call planar_avg (wo2      ,wo1      ,igs_z)
+      call interp_nfld(uwhav(1,7),wo2,1,xint,yint,zint,nint,
+     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+
+      if(ifoutfld .and. nid.eq.0) then
+        write(6,*) 'Dumping horizontally averaged mean profiles',time
+        write(58,'(A,1pe14.7,A)') '#time = ', time,
+     $    '   y   u   w   T   dudy  dwdy   dTdy  '
+        do i = 1,nint
+          yy = yint(i)
+          um = uwhav(i,3)
+          wm = uwhav(i,4)
+          ang= atan2(wm,um)*180./PI
+          uh = sqrt(um*um+wm*wm)
+          write(58,3)
+     &        yy,
+     &        uwhav(i,3),
+     &        uwhav(i,4),
+     &        uwhav(i,6),
+     &        uwhav(i,1),
+     &        uwhav(i,2),
+     &        uwhav(i,5),
+     &        uh, ang, uwhav(i,7)
+  3       format(1p15e17.9)
+        enddo
+        write(58,*)
+        call flush(58)
       endif
 
       return

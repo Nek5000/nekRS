@@ -10,18 +10,7 @@
 
 #include "casedata.h"
 
-#define PART_K 50
-#define PART_M 50
-#define PART_N 50
 #define D 3
-
-#define USE_HOST_FINDPTS       false
-#define USE_HOST_FINDPTS_EVAL  false
-#define USE_MIGRATE            false
-#define USE_LOCAL_FINDPTS_EVAL false
-#define CHECK_ACCURACY         false
-static_assert(USE_MIGRATE || !USE_LOCAL_FINDPTS_EVAL, "Cannot use local eval w/out migration");
-
 #define OUT_CHUNK_SIZE 100000 /* chunk size for outputing particles */
 #define USE_MPIIO      true
 
@@ -49,22 +38,20 @@ struct gabls_particle_data {
 /* Particle Functions */
 void particle_init(particle_set<D,gabls_particle_data>& particles) {
 
-  static hlong gcount = 0;
+  static hlong gcount = 0; // total # particles emitted
 
   int mpi_rank = platform_t::getInstance()->comm.mpiRank;
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
 
-  hlong k  = gcount; // total # particles emitted
-
-  // spawn PART_COUNT particles in (0.0, 4.0)x(0.0, 4.0)x(0.0, 4.0)
-  for (int ix = 0; ix < PART_K; ++ix) {
-    for (int iy = 0; iy < PART_M; ++iy) {
-      for (int iz = 0; iz < PART_N; ++iz) {
+  // evenly distribute 150^3 particles in (0.0, 4.0)x(0.0, 4.0)x(0.0, 4.0)
+  for (int ix = 0; ix < 50; ++ix) {
+    for (int iy = 0; iy < 50; ++iy) {
+      for (int iz = 0; iz < 50; ++iz) {
 
         dfloat dx = 4.0/(PART_K+1), dy = 4.0/(PART_M+1), dz = 4.0/(PART_N+1);
         dfloat xp = dx*(ix+1),      yp = dy*(iy+1),      zp = dz*(iz+1);
 
-        if (k%mpi_size == mpi_rank) { // Inject particle _only_ on this processor
+        if (gcount%mpi_size == mpi_rank) { // Inject particle _only_ on this processor
           particle_set<D,gabls_particle_data>::particle_t particle;
 
           particle.x[0] = xp;
@@ -76,112 +63,29 @@ void particle_init(particle_set<D,gabls_particle_data>& particles) {
             particle.extra.v_hist[1][d] = 0.0;
           }
 //        particle.extra.color = time;    // color by spawning timestep
-          particle.extra.color = k;       // color by id
+          particle.extra.color = gcount;  // color by id
+//        particle.extra.color = xp;      // color by intial x position
 
           particles.push(particle);
         }
-        ++k; // Total count
+        ++gcount; // Total count
       }
     }
   }
-
-  gcount = k;
 }
 
 
 void particle_advect_std(particle_set<D,gabls_particle_data>& particles, int tstep) {
 
+  particles.find();
+  particles.migrate();
 
-  ////////// particles.find() //////////
-  if(CHECK_ACCURACY){
-    int mpi_rank = platform_t::getInstance()->comm.mpiRank;
-    particle_set<D,gabls_particle_data> particles_copy = particles;
-    dfloat *dist2_dev = new dfloat[particles.size()];
-    dfloat *dist2_ref = new dfloat[particles.size()];
-    particles.find(true, dist2_dev);
-    particles_copy.find(false, dist2_ref);
-
-    auto&    x     = particles     .x;
-    auto& code_dev = particles     .code;
-    auto& proc_dev = particles     .proc;
-    auto&   el_dev = particles     .el;
-    auto&    r_dev = particles     .r;
-    auto& code_ref = particles_copy.code;
-    auto& proc_ref = particles_copy.proc;
-    auto&   el_ref = particles_copy.el;
-    auto&    r_ref = particles_copy.r;
-
-    for (int i = 0; i < particles.size(); ++i) {
-      if (code_ref[i] != code_dev[i]
-          || (code_ref[i] != 2
-              && (   proc_ref[i] != proc_dev[i]
-                  ||   el_ref[i] !=   el_dev[i]
-                  || (dist2_dev[i]>1e-17 && dist2_ref[i]*2 < dist2_dev[i])))) {
-        printf("%d: WARNING: ogs_findpts varied at %4d: %e, %e, %e\n",
-               mpi_rank, i, x[0][i], x[1][i], x[2][i]);
-        printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
-               mpi_rank, code_ref[i], proc_ref[i], el_ref[i], r_ref[i][0], r_ref[i][1], r_ref[i][2], dist2_ref[i]);
-        printf("%d:                          %1d, %3d, %4d, %e, %e, %e, %e\n",
-               mpi_rank, code_dev[i], proc_dev[i], el_dev[i], r_dev[i][0], r_dev[i][1], r_dev[i][0], dist2_dev[i]);
-      }
-    }
-    delete [] dist2_dev;
-    delete [] dist2_ref;
-    if(USE_HOST_FINDPTS){
-      particles=particles_copy;
-    }
-  }else{
-    particles.find(!USE_HOST_FINDPTS);
-  }
-
-  ////////// particles.migrate() //////////
-  if(USE_MIGRATE) {
-    particles.migrate();
-  }
-
-  ////////// particles.interp() //////////
-  dlong eval_counts = CHECK_ACCURACY ? 2 : 1;
-  dfloat *u_alloc = new dfloat[D*particles.size()*eval_counts], *u_base[D*2];
-  for (int i = 0; i < D*eval_counts; ++i) {
-    u_base[i]   = u_alloc;
-    u_alloc += particles.size();
-  }
-  dfloat **u_host, **u_occa, **u_base_next = u_base;
-  if (!USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
-    u_occa = u_base_next; u_base_next += D;
-    occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
-    if(USE_LOCAL_FINDPTS_EVAL){
-      particles.interp_local(o_U, u_occa, D);
-    }else{
-      particles.interp(o_U, u_occa, D);
-    }
-  }
-  if (USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
-    u_host = u_base_next;
-    if(USE_LOCAL_FINDPTS_EVAL){
-      particles.interp_local(particles.nrs->U, u_host, D);
-    }else{
-      particles.interp(particles.nrs->U, u_host, D);
-    }
-  }
-  if (CHECK_ACCURACY) {
-    // controls the tolerences for printing warnings
-    const dfloat abs_tol = 2e-15;
-    const dfloat rel_tol = 1;
-
-    for (int i = 0; i < particles.size(); ++i) {
-      for (int j = 0; j < D; ++j) {
-        dfloat out_occa = u_occa[j][i];
-        dfloat out_host = u_host[j][i];
-        if (std::abs(out_host - out_occa) > abs_tol
-            || std::abs(out_host - out_occa) > rel_tol*std::abs(out_host)) {
-          printf("WARNING: ogs_findpts_eval varied at point %d coord %d: %e != %e (diff %e)\n",
-                 i, j, out_host, out_occa, out_host-out_occa);
-        }
-      }
-    }
-  }
-  dfloat **u1 = USE_HOST_FINDPTS_EVAL ? u_host : u_occa;
+  dfloat *u1[3];
+  u1[0] = new dfloat[D*particle.size()];
+  u1[1] = u1[0] + particle.size();
+  u1[2] = u1[1] + particle.size();
+  occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
+  particles.interp_local(o_U, u_occa, D);
 
   double c1, c2, c3, dt = particles.nrs->dt[0];
   if (tstep == 0) { // AB1
@@ -328,12 +232,16 @@ void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
 {
   bool ifnewpart;
   // adjust to control when particles are generated
+  // every 0.5 seconds //
 //static dfloat last_new_time = 0.0;
-//ifnewpart = time - last_new_time >= 0.5; // every 0.5 seconds
+//ifnewpart = time - last_new_time >= 0.5;
 //if(ifnewpart) last_new_time = time;
-//ifnewpart = tstep % 100;                 // every 100 iterations
-//ifnewpart = nrs->isOutputStep;           // on the output steps
-  ifnewpart = tstep == 0;                     // only generate particles on the first step
+  // every 100 iterations //
+//ifnewpart = tstep % 100 == 0;
+  // on the output steps //
+//ifnewpart = nrs->isOutputStep;
+  // only once at the begining
+  ifnewpart = tstep == 0;
 
   // Only output particles on output steps to ensure particles match the field files
   bool ifoutpart = nrs->isOutputStep;
