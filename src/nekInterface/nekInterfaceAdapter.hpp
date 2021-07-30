@@ -115,7 +115,7 @@ void   map_m_to_n(double* a, int na, double* b, int nb);
 void   outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char* name);
 int    lglel(int e);
 void   uf(double* u, double* v, double* w);
-int    setup(MPI_Comm c, setupAide &options, nrs_t* nrs);
+int    setup(MPI_Comm c, MPI_Comm gc, setupAide &options_in, nrs_t* nrs_in);
 void   ifoutfld(int i);
 void   setic(void);
 void   userchk(void);

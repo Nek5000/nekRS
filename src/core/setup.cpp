@@ -64,7 +64,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (err) ABORT(EXIT_FAILURE);; 
 
     if (!buildOnly) {
-      nek::setup(comm, platform->options, nrs);
+      nek::setup(comm, nrs->neknek->global_comm, platform->options, nrs);
       nek::setic();
       nek::userchk();
       if (platform->comm.mpiRank == 0) cout << "\n";

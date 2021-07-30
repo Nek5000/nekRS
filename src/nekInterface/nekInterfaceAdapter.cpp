@@ -36,7 +36,7 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
                                 double* vt, char* name, int);
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
-static void (* nek_setup_ptr)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int*, int*, int*, int, int);
+static void (* nek_setup_ptr)(int*, int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int*, int*, int*, int, int);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
 static int (* nek_bcmap_ptr)(int*, int*);
@@ -265,7 +265,7 @@ void set_function_handles(const char* session_in,int verbose)
   nek_scptr_ptr = (void (*)(int*, void*))dlsym(handle, fname("nekf_scptr"));
   check_error(dlerror());
   nek_setup_ptr =
-    (void (*)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int*, int*, int*, int, int))dlsym(handle, fname("nekf_setup"));
+    (void (*)(int*, int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int*, int*, int*, int, int))dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int*))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -538,12 +538,13 @@ void gen_bcmap()
   (*nek_gen_bcmap_ptr)();
 }
 
-int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
+int setup(MPI_Comm c, MPI_Comm gc, setupAide &options_in, nrs_t* nrs_in)
 {
   options = &options_in;
   nrs = nrs_in;
   MPI_Comm_rank(c,&rank);
   MPI_Fint nek_comm = MPI_Comm_c2f(c);
+  MPI_Fint nek_globalcomm = MPI_Comm_c2f(gc);
 
   if(rank == 0) { 
    printf("loading nek ...\n"); 
@@ -594,7 +595,8 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   dlong nsessions = nrs->neknek->nsessions;
   dlong sessionID = nrs->neknek->sessionID;
 
-  (*nek_setup_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
+  (*nek_setup_ptr)(&nek_comm, &nek_globalcomm,
+                   (char*)cwd.c_str(), (char*)casename.c_str(),
                    &flow, &nscal, &nBcRead, &meshPartType,
 		   &rho, &mue, &rhoCp, &lambda, 
                    &ifneknekc, &nsessions, &sessionID, 

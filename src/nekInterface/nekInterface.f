@@ -134,8 +134,8 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
-     $                      npscal_in, p32, meshp_in,
+      subroutine nekf_setup(comm_in, globalcomm_in, path_in, session_in,
+     $                      ifflow_in, npscal_in, p32, meshp_in,
      $                      rho, mue, rhoCp, lambda,
      $                      ifneknekc_in,nsessions_in,idsess_in)
 
@@ -144,7 +144,8 @@ c-----------------------------------------------------------------------
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in, iftmsh_in, ifflow_in, meshp_in, p32
+      integer comm_in, globalcomm_in
+      integer iftmsh_in, ifflow_in, meshp_in, p32
       real rho, mue, rhoCp, lambda
       character session_in*(*),path_in*(*)
 
@@ -171,7 +172,7 @@ c-----------------------------------------------------------------------
       llelt = lelt
       lldimt = ldimt
 
-      call nekf_setupcomm(comm_in,newcomm,newcommg,path_in,session_in,
+      call nekf_setupcomm(comm_in,globalcomm_in,path_in,session_in,
      $                    ifneknekc_in,nsessions_in,idsess_in)
       call iniproc()
 
@@ -292,7 +293,7 @@ c      call findSYMOrient
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setupcomm(comm,newcomm,newcommg,path_in,
+      subroutine nekf_setupcomm(comm_in,globalcomm_in,path_in,
      $                          session_in,ifneknekc_in,nsessions_in,
      $                          idsess_in)
       include 'mpif.h'
@@ -301,7 +302,7 @@ c-----------------------------------------------------------------------
       include 'TSTEP' 
       include 'INPUT'
 
-      integer comm, newcomm, newcommg
+      integer comm_in, globalcomm_in
       character session_in*(*), path_in*(*)
       logical flag
     
@@ -314,15 +315,17 @@ c-----------------------------------------------------------------------
 
       integer*8 ntags
 
-c     write(6,*) 'TMP: nekf_setupcomm'
       call mpi_initialized(mpi_is_initialized, ierr)
       if (.not.mpi_is_initialized) call mpi_init(ierr)
 
-      call mpi_comm_dup(comm,newcommg,ierr)
-      iglobalcomm = newcommg
+      call mpi_comm_dup(comm_in,intracomm,ierr)
+      nekcomm = intracomm
+      call mpi_comm_dup(globalcomm_in,iglobalcomm,ierr)
 
-      call mpi_comm_size(newcommg,np_global,ierr)
-      call mpi_comm_rank(newcommg,nid_global,ierr)
+      call mpi_comm_size(iglobalcomm,np_global,ierr)
+      call mpi_comm_rank(iglobalcomm,nid_global,ierr)
+      call mpi_comm_size(intracomm,np,ierr)
+      call mpi_comm_rank(intracomm,nid,ierr)
 
       ! check upper tag size limit
       call mpi_comm_get_attr(MPI_COMM_WORLD,MPI_TAG_UB,ntags,flag,ierr)
@@ -332,28 +335,19 @@ c     write(6,*) 'TMP: nekf_setupcomm'
       endif
 
       nsessions = nsessions_in
+      path      = path_in
+      session   = session_in
+      amgfile   = session
       if (nsessions.eq.1) then
-         ifneknek = .false.
+         ifneknek  = .false.
          ifneknekc = .false.
-         idsess = 1
-         nid = nid_global
-         np = np_global
-         intracomm = newcommg
+         idsess    = 1
       else
-         ifneknek = .true.
+         ifneknek  = .true.
          ifneknekc = ifneknekc_in.eq.1
-         idsess = idsess_in
-         call mpi_comm_split(comm,idsess,nid,newcomm,ierr)
-         call mpi_comm_size(newcomm,np,ierr)
-         call mpi_comm_rank(newcomm,nid,ierr)
-         intracomm = newcomm
+         idsess    = idsess_in
       endif
  
-      nekcomm = intracomm
-      session = session_in
-      path    = path_in
-      amgfile  = session
-
       return
       end
 c-------------------------------------------------------------
