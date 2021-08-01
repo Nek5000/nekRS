@@ -57,6 +57,6 @@ void ogsFindptsLocalEval(
   occa::memory   r_base, const dlong    r_stride,
   const dlong npt, occa::memory d_in, ogs_findpts_t *const fd);
 
-
+crystal* ogsCrystalRouter(ogs_findpts_t *const fd);
 
 #endif
