@@ -45,21 +45,12 @@ static void reserveAllocation(nrs_t *nrs, dlong npt) {
 }
 
 
-void neknek_setup(nrs_t *nrs)
-{
+static void find_interp_points(nrs_t* nrs){
   neknek_t *neknek = nrs->neknek;
-  if(!neknek->connected) {
-    reserveAllocation(nrs, 0);
-    neknek->point_map[nrs->fieldOffset] = 0;
-    neknek->o_point_map.copyFrom(neknek->point_map);
-    return;
-  }
 
   const dlong nsessions = neknek->nsessions;
   const dlong sessionID = neknek->sessionID;
   MPI_Comm global_comm = neknek->global_comm;
-  dlong global_rank;
-  MPI_Comm_rank(global_comm, &global_rank);
 
   const dlong D = nrs->dim;
   const mesh_t *mesh = nrs->meshV;
@@ -69,21 +60,6 @@ void neknek_setup(nrs_t *nrs)
   const dlong nfpt = mesh->Nfp;
 
   occa::device &device = platform_t::getInstance()->device;
-
-  if(global_rank == 0) printf("configuring neknek with %d sessions\n", nsessions);
-
-  dlong nfld[2];
-  nfld[0] = nrs->Nscalar;
-  nfld[1] = -nfld[0];
-  MPI_Allreduce(MPI_IN_PLACE, nfld, 2, MPI_DLONG, MPI_MIN, global_comm);
-  nfld[1] = -nfld[1];
-  if (nfld[0] != nfld[1]) {
-    if(global_rank == 0) {
-      std::cout << "WARNING: varying numbers of scalars; only updating " << nfld[0] << std::endl;
-    }
-  }
-  neknek->Nscalar = nfld[0];
-  
 
   // Setup findpts
   dfloat tol = 5e-13;
@@ -209,6 +185,43 @@ void neknek_setup(nrs_t *nrs)
 
 }
 
+void neknek_setup(nrs_t *nrs)
+{
+  neknek_t *neknek = nrs->neknek;
+  if(!neknek->connected) {
+    reserveAllocation(nrs, 0);
+    neknek->point_map[nrs->fieldOffset] = 0;
+    neknek->o_point_map.copyFrom(neknek->point_map);
+    return;
+  }
+
+  const dlong nsessions = neknek->nsessions;
+  MPI_Comm global_comm = neknek->global_comm;
+  dlong global_rank;
+  MPI_Comm_rank(global_comm, &global_rank);
+
+  if(global_rank == 0) printf("configuring neknek with %d sessions\n", nsessions);
+
+  dlong nfld[2];
+  nfld[0] = nrs->Nscalar;
+  nfld[1] = -nfld[0];
+  MPI_Allreduce(MPI_IN_PLACE, nfld, 2, MPI_DLONG, MPI_MIN, global_comm);
+  nfld[1] = -nfld[1];
+  if (nfld[0] != nfld[1]) {
+    if(global_rank == 0) {
+      std::cout << "WARNING: varying numbers of scalars; only updating " << nfld[0] << std::endl;
+    }
+  }
+  neknek->Nscalar = nfld[0];
+
+  const dlong movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  dlong globalMovingMesh;
+  MPI_Allreduce(&movingMesh, &globalMovingMesh, 1, MPI_DLONG, MPI_MAX, global_comm);
+  neknek->globalMovingMesh = globalMovingMesh;
+
+  find_interp_points(nrs);
+}
+
 static void field_eval(nrs_t *nrs, dlong field, occa::memory in) {
 
   neknek_t *neknek = nrs->neknek;
@@ -229,6 +242,10 @@ void neknek_update_boundary(nrs_t *nrs)
 {
   neknek_t *neknek = nrs->neknek;
   if(!neknek->connected) return;
+
+  if (neknek->globalMovingMesh) {
+    find_interp_points(nrs);
+  }
 
   const dlong D = nrs->dim;
 

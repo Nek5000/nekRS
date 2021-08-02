@@ -234,7 +234,7 @@ void set_function_handles(const char* session_in,int verbose)
   char lib_session[BUFSIZ], * error;
 
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(lib_session, "%s/nek5000/lib%s.so", cache_dir, session_in);
+  sprintf(lib_session, "%s/nek5000/%s/lib%s.so", cache_dir, session_in, session_in);
 
   void* handle = dlopen(lib_session,RTLD_NOW | RTLD_LOCAL);
   if(!handle) {
@@ -466,6 +466,8 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
 {
   char buf[BUFSIZ], cache_dir[BUFSIZ];
   sprintf(cache_dir,"%s/nek5000",getenv("NEKRS_CACHE_DIR"));
+  mkdir(cache_dir, S_IRWXU); 
+  sprintf(cache_dir,"%s/nek5000/%s",getenv("NEKRS_CACHE_DIR"), casename);
   mkdir(cache_dir, S_IRWXU); 
   const char* nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
   const char* nek5000_dir = getenv("NEKRS_NEK5000_DIR");

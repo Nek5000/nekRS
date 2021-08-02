@@ -13,6 +13,7 @@ struct neknek_t {
   dlong Nsubsteps = 2;
 
   dlong Nscalar;
+  bool globalMovingMesh;
   ogs_findpts_t *ogs_handle = nullptr;
   dlong npt;
 
