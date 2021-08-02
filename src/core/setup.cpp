@@ -1095,6 +1095,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   bool avmEnabled = false;
   {
     for(int is = 0; is < cds->NSfields; is++) {
+      if(!cds->compute[is]) continue;
       if(!cds->options[is].compareArgs("FILTER STABILIZATION", "NONE")) scalarFilteringEnabled = true;
       if(cds->options[is].compareArgs("FILTER STABILIZATION", "AVM")) avmEnabled = true;
     }
@@ -1106,6 +1107,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->o_filterMT = platform->device.malloc(cds->NSfields * Nmodes * Nmodes, sizeof(dfloat));
     for(int is = 0; is < cds->NSfields; is++)
     {
+      if(!cds->compute[is]) continue;
       if(cds->options[is].compareArgs("FILTER STABILIZATION", "NONE")) continue;
       int filterNc = -1;
       cds->options[is].getArgs("HPFRT MODES", filterNc);
