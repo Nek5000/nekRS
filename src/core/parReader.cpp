@@ -74,25 +74,25 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
         options.setArgs(parSection + " MULTIGRID CHEBYSHEV DEGREE",
                         std::to_string(optionalChebyshevOrder[0]));
       for (string s : list) {
-        if (s.find("minboundfactor") != string::npos) {
+        if (s.find("mineigenvalueboundfactor") != string::npos) {
           std::vector<string> params = serializeString(s, '=');
           if (params.size() != 2) {
             if (rank == 0)
-              printf("Error: could not parse minboundfactor %s!\n", s.c_str());
+              printf("Error: could not parse mineigenvalueboundfactor %s!\n", s.c_str());
             ABORT(1);
           }
           const double value = std::stod(params[1]);
-          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MIN BOUND FACTOR",
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR",
                           to_string_f(value));
-        } else if (s.find("maxboundfactor") != string::npos) {
+        } else if (s.find("maxeigenvalueboundfactor") != string::npos) {
           std::vector<string> params = serializeString(s, '=');
           if (params.size() != 2) {
             if (rank == 0)
-              printf("Error: could not parse maxboundfactor %s!\n", s.c_str());
+              printf("Error: could not parse maxeigenvalueboundfactor %s!\n", s.c_str());
             ABORT(1);
           }
           const double value = std::stod(params[1]);
-          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MAX BOUND FACTOR",
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR",
                           to_string_f(value));
         }
       }
@@ -493,8 +493,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MIN BOUND FACTOR", "0.1");
-  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MAX BOUND FACTOR", "1.1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", "0.1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", "1.1");
 
   options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");

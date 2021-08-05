@@ -112,10 +112,10 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
   if (degree == 1) return; // solved by coarse grid solver
 
   dfloat minMultiplier;
-  options.getArgs("MULTIGRID CHEBYSHEV MIN BOUND FACTOR", minMultiplier);
+  options.getArgs("MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", minMultiplier);
 
   dfloat maxMultiplier;
-  options.getArgs("MULTIGRID CHEBYSHEV MAX BOUND FACTOR", maxMultiplier);
+  options.getArgs("MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", maxMultiplier);
 
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
       options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
