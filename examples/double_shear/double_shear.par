@@ -37,3 +37,4 @@ residualTol = 1e-8
 rho = 1
 diffusivity = -100000
 regularization=avm+c0
+#regularization=avm+c0+vismaxcoeff=0.5+rampconstant=1+nmodes=1
