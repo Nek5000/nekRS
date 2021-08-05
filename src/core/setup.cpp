@@ -963,7 +963,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     (dfloat*) calloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->fieldOffsetSum,sizeof(dfloat));
   cds->FS    =
-    (dfloat*) calloc(cds->nBDF * cds->fieldOffsetSum,sizeof(dfloat));
+    (dfloat*) calloc(cds->nEXT * cds->fieldOffsetSum,sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if(cds->Nsubsteps) {
