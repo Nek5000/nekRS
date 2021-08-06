@@ -5,7 +5,7 @@ polynomialOrder = 7
 [PRESSURE]
 solver = pfgmres+nVector=20
 maxIterations = 200
-residualTol = 1e-8
+residualTol = 1e-8+relative
 
 #preconditioner = SEMFEM+AmgX+FP32 
 

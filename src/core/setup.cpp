@@ -653,6 +653,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->vOptions.setArgs("PGMRES RESTART",        options.getArgs("VELOCITY PGMRES RESTART"));
     nrs->vOptions.setArgs("KRYLOV SOLVER",        options.getArgs("VELOCITY KRYLOV SOLVER"));
     nrs->vOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("VELOCITY SOLVER TOLERANCE"));
+    nrs->vOptions.setArgs("LINEAR SOLVER STOPPING CRITERION",     options.getArgs("VELOCITY LINEAR SOLVER STOPPING CRITERION"));
     nrs->vOptions.setArgs("DISCRETIZATION",       options.getArgs("VELOCITY DISCRETIZATION"));
     nrs->vOptions.setArgs("BASIS",                options.getArgs("VELOCITY BASIS"));
     nrs->vOptions.setArgs("PRECONDITIONER",       options.getArgs("VELOCITY PRECONDITIONER"));
@@ -781,6 +782,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("PGMRES RESTART",       options.getArgs("PRESSURE PGMRES RESTART"));
     nrs->pOptions.setArgs("KRYLOV SOLVER",        options.getArgs("PRESSURE KRYLOV SOLVER"));
     nrs->pOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("PRESSURE SOLVER TOLERANCE"));
+    nrs->pOptions.setArgs("LINEAR SOLVER STOPPING CRITERION",     options.getArgs("PRESSURE LINEAR SOLVER STOPPING CRITERION"));
     nrs->pOptions.setArgs("DISCRETIZATION",       options.getArgs("PRESSURE DISCRETIZATION"));
     nrs->pOptions.setArgs("BASIS",                options.getArgs("PRESSURE BASIS"));
     nrs->pOptions.setArgs("PRECONDITIONER",       options.getArgs("PRESSURE PRECONDITIONER"));
@@ -1053,6 +1055,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));
     cds->options[is].setArgs("SOLVER TOLERANCE",
                          options.getArgs("SCALAR" + sid +  " SOLVER TOLERANCE"));
+    cds->options[is].setArgs("LINEAR SOLVER STOPPING CRITERION",     options.getArgs("SCALAR" + sid + " LINEAR SOLVER STOPPING CRITERION"));
     cds->options[is].setArgs("INITIAL GUESS",  options.getArgs("SCALAR" + sid + " INITIAL GUESS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));

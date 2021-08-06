@@ -9,7 +9,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  platform->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

@@ -23,6 +23,7 @@ filterModes = 1
 
 [PRESSURE]
 residualTol = 1e-04
+#residualTol = 1e-04+relative
 #preconditioner = multigrid+additive+overlapCrsSolve
 #smootherType = Chebyshev+ASM
 #pMultigridCoarsening = 7,3,1

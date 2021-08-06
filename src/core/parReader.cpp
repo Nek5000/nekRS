@@ -30,6 +30,35 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+void parseSolverTolerance(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+  string parSectionName = (parScope.find("temperature") != std::string::npos)
+                              ? "scalar00"
+                              : parScope;
+
+  UPPER(parSectionName);
+
+  string residualTol;
+  if(par->extract(parScope, "residualtol", residualTol) ||
+     par->extract(parScope, "residualtolerance", residualTol))
+  {
+    if(residualTol.find("relative") != string::npos)
+    {
+      options.setArgs(parSectionName + " LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+    }
+
+    std::vector<string> entries = serializeString(residualTol, '+');
+    for(std::string entry : entries)
+    {
+      double tolerance = std::strtod(entry.c_str(), nullptr);
+      if(tolerance > 0.0)
+      {
+        options.setArgs(parSectionName + " SOLVER TOLERANCE", to_string_f(tolerance));
+      }
+    }
+  }
+}
+
 void parseInitialGuess(const int rank, setupAide &options,
                        inipp::Ini<char> *par, string parScope) {
 
@@ -497,14 +526,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (par->extract("pressure", "maxiterations", keyValue))
         options.setArgs("PRESSURE MAXIMUM ITERATIONS", keyValue);
     }
-    //
-    double p_residualTol;
-    if (par->extract("pressure", "residualtol", p_residualTol) ||
-        par->extract("pressure", "residualtoltolerance", p_residualTol))
-      options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
-    else
-      exit("Cannot find mandatory parameter PRESSURE::residualTol!",
-           EXIT_FAILURE);
+    
+    parseSolverTolerance(rank, options, par, "pressure");
 
     parseInitialGuess(rank, options, par, "pressure");
 
@@ -787,10 +810,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       }
     }
 
-    double v_residualTol;
-    if (par->extract("velocity", "residualtol", v_residualTol) ||
-        par->extract("velocity", "residualtoltolerance", v_residualTol))
-      options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
+    parseSolverTolerance(rank, options, par, "velocity");
 
     string v_bcMap;
     if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
@@ -842,11 +862,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
       parseInitialGuess(rank, options, par, "temperature");
 
-      double s_residualTol;
-      if (par->extract("temperature", "residualtol", s_residualTol) ||
-          par->extract("temperature", "residualtolerance", s_residualTol))
-        options.setArgs("SCALAR00 SOLVER TOLERANCE",
-                        to_string_f(s_residualTol));
+      parseSolverTolerance(rank, options, par, "temperature");
 
       if (par->extract("temperature", "conductivity", sbuf)) {
         int err = 0;
@@ -915,11 +931,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
-    double s_residualTol;
-    if (par->extract("scalar" + sidPar, "residualtol", s_residualTol) ||
-        par->extract("scalar" + sidPar, "residualtolerance", s_residualTol))
-      options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE",
-                      to_string_f(s_residualTol));
+    parseSolverTolerance(rank, options, par, "scalar" + sidPar);
 
     if (par->extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
