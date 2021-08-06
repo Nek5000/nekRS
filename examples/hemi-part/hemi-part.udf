@@ -8,21 +8,20 @@
 #include "udf.hpp"
 #include "particle.hpp"
 
-#define D 3
 #define OUT_CHUNK_SIZE 10000 /* chunk size for outputing particles */
 #define USE_MPIIO      1
 
 // Helper class for case specific data
-struct hemi_particle_data {
+struct extra_particle_data {
   dfloat v_hist[2][D];
   hlong  id;
   dfloat color;
 
-  hemi_particle_data()
+  extra_particle_data()
   {
   }
 
-  hemi_particle_data(dfloat v_hist_[2][D], dfloat color_, hlong id_)
+  extra_particle_data(dfloat v_hist_[2][D], dfloat color_, hlong id_)
   {
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < D; ++j) {
@@ -33,26 +32,25 @@ struct hemi_particle_data {
     color = color_;
   }
 };
+typdef particle_set<extra_particle_data> particles_t;
 
 /* Particle Functions */
-void particle_init(particle_set<D,hemi_particle_data>& particles) {
+void particle_init(particles_t& particles) {
 
   static hlong gcount = 0; // total # particles emitted
 
   int mpi_rank = platform_t::getInstance()->comm.mpiRank;
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
 
-  int nw = 100;
-
   for (int line = 0; line < 4; ++line) { // 4 lines at different heights
     dfloat xp = -1.5;
     dfloat zp = .05 + line*0.075;
-    for (int part = 0; part < nw; ++part) { // nw points in a line
+    for (int part = 0; part < 100; ++part) { // 100 points in a line
       dfloat dy =  1.0*2/(nw-1);
       dfloat yp = -1.0 + dy*part;
 
-      if (gcount%mpi_size == mpi_rank) { // Inject particle _only_ on this processor
-        particle_set<D,hemi_particle_data>::particle_t particle;
+      if (gcount%mpi_size == mpi_rank) { // Distribute particles in a round robin fashion
+        particles_t::particle_t particle;
 
         particle.x[0] = xp;
         particle.x[1] = yp;
@@ -75,7 +73,7 @@ void particle_init(particle_set<D,hemi_particle_data>& particles) {
 }
 
 
-void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tstep) {
+void particle_advect_std(particles_t& particles, int tstep) {
 
   particles.find();
   particles.migrate();
@@ -121,7 +119,7 @@ void particle_advect_std(particle_set<D,hemi_particle_data>& particles, int tste
   delete[] u_base[0];
 }
 
-void particle_out(particle_set<D,hemi_particle_data>& particles)
+void particle_out(particles_t& particles)
 {
   constexpr dlong entry_len = D+1;
 
@@ -227,22 +225,18 @@ void particle_out(particle_set<D,hemi_particle_data>& particles)
   }
 }
 
-particle_set<D,hemi_particle_data> *particle_data;
+particles_t *particle_data;
 
 void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
 {
-  bool ifnewpart;
   // adjust to control when particles are generated
-  // every 0.5 seconds //
-  static dfloat last_new_time = 0.0;
-  ifnewpart = time - last_new_time >= 0.5;
-  if(ifnewpart) last_new_time = time;
-  // every 100 iterations //
-//ifnewpart = tstep % 100 == 0;
-  // on the output steps //
-//ifnewpart = nrs->isOutputStep;
-  // only once at the begining
-//ifnewpart = tstep == 0;
+  bool ifnewpart;
+  static dfloat last_new_time = 0.0;       // |
+  ifnewpart = time - last_new_time >= 0.5; // | every 0.5 seconds
+  if(ifnewpart) last_new_time = time;      // |
+//ifnewpart = tstep % 100 == 0;            // every 100 iterations
+//ifnewpart = nrs->isOutputStep;           // on the output steps
+//ifnewpart = tstep == 0;                  // only once at the begining
 
   // Only output particles on output steps to ensure particles match the field files
   bool ifoutpart = nrs->isOutputStep;
@@ -256,7 +250,7 @@ void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
-  particle_data = new particle_set<D,hemi_particle_data>(nrs, 0);
+  particle_data = new particles_t(nrs, 0);
 }
 
 void UDF_Setup(nrs_t *nrs)
