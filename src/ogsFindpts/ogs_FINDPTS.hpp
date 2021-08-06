@@ -9,7 +9,7 @@ typedef struct {
   occa::device *device;
   occa::kernel local_eval_kernel;
   occa::kernel local_kernel;
-  occa::memory d_fd_local;
+  occa::memory o_fd_local;
 } ogs_findpts_t;
 
 ogs_findpts_t *ogsFindptsSetup(

@@ -61,7 +61,7 @@ void ogs_findpts_local_2(    uint   *const  code_base   , const unsigned  code_s
                            d_r_base, 2*sizeof(dfloat),
                        d_dist2_base,   sizeof(dfloat),
                            d_x_base,       d_x_stride,
-                       pn, ogs_fd->d_fd_local);
+                       pn, ogs_fd->o_fd_local);
 
   if( code_stride == sizeof(dlong)) {
      d_code_base.copyTo( code_base, sizeof(dlong) *pn);
@@ -143,7 +143,7 @@ void ogs_findpts_local_3(    uint   *const  code_base   , const unsigned  code_s
                            d_r_base, 3*sizeof(dfloat),
                        d_dist2_base,   sizeof(dfloat),
                            d_x_base, d_x_stride,
-                       pn, ogs_fd->d_fd_local);
+                       pn, ogs_fd->o_fd_local);
 
   if( code_stride == sizeof(dlong)) {
      d_code_base.copyTo( code_base, sizeof(dlong) *pn);
@@ -215,7 +215,7 @@ void ogs_findpts_local_eval_internal_2(
                             d_el_base,    src_stride,
                             d_r_base,     src_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->d_fd_local);
+                            ogs_fd->o_fd_local);
 
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_2)*pn);
 }
@@ -256,7 +256,7 @@ void ogs_findpts_local_eval_internal_3(
                             d_el_base,    src_stride,
                             d_r_base,     src_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->d_fd_local);
+                            ogs_fd->o_fd_local);
 
   d_out_pt.copyTo(opt, sizeof(struct eval_out_pt_3)*pn);
 }
@@ -280,7 +280,7 @@ void ogs_findpts_local_eval_2(
                             d_el_base,  el_stride,
                             d_r_base,   r_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->d_fd_local);
+                            ogs_fd->o_fd_local);
 }
 
 void ogs_findpts_local_eval_3(
@@ -302,7 +302,7 @@ void ogs_findpts_local_eval_3(
                             d_el_base,  el_stride,
                             d_r_base,   r_stride,
                             pn, d_in, gs_fd->ntot,
-                            ogs_fd->d_fd_local);
+                            ogs_fd->o_fd_local);
 
 }
 

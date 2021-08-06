@@ -218,10 +218,10 @@ ogs_findpts_t* ogsFindptsSetup(
 
     // Need to copy findpts data to the
     if (D == 2) {
-      ogs_handle->d_fd_local
+      ogs_handle->o_fd_local
           = ogsFindptsCopyData_2((struct findpts_data_2*)ogs_handle->findpts_data, nel, local_hash_size, *device);
     } else {
-      ogs_handle->d_fd_local
+      ogs_handle->o_fd_local
           = ogsFindptsCopyData_3((struct findpts_data_3*)ogs_handle->findpts_data, nel, local_hash_size, *device);
     }
   } else {
@@ -242,7 +242,7 @@ void ogsFindptsFree(ogs_findpts_t* fd) {
     // Use OCCA's reference counting to free memory and kernel objects
     fd->local_eval_kernel = occa::kernel();
     fd->local_kernel = occa::kernel();
-    fd->d_fd_local = occa::memory();
+    fd->o_fd_local = occa::memory();
   }
   delete fd;
 }

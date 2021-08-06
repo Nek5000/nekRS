@@ -62,10 +62,10 @@ public:
 
   // Evaluates a field at the given points
   template<typename fld_ptr>
-  void evalField(fld_ptr fld, dlong nfld,
-                 const dfloat* x[],   const dlong x_stride[],
-                       dfloat* out[], const dlong out_stride[],
-                 dlong n)
+  void interpField(fld_ptr fld, dlong nfld,
+                   const dfloat* x[],   const dlong x_stride[],
+                         dfloat* out[], const dlong out_stride[],
+                   dlong n)
   {
     dlong *iwork = new dlong[3*n];
     dfloat *rwork = new dfloat[4*n];
@@ -98,11 +98,11 @@ public:
   }
 
   // Evaluates the velocity at the given points
-  void evalVelocity(      dfloat *uvw_base[], const dlong uvw_stride[],
-                    const dfloat *xyz_base[], const dlong xyz_stride[],
-                    dlong n)
+  void interpVelocity(      dfloat *uvw_base[], const dlong uvw_stride[],
+                      const dfloat *xyz_base[], const dlong xyz_stride[],
+                      dlong n)
   {
-    evalField(this->nrs->o_U, 3, xyz_base, xyz_stride, uvw_base, uvw_stride, n);
+    interpField(this->nrs->o_U, 3, xyz_base, xyz_stride, uvw_base, uvw_stride, n);
   }
 }
 
