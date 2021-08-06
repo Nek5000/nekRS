@@ -111,6 +111,12 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
   
   if (degree == 1) return; // solved by coarse grid solver
 
+  dfloat minMultiplier;
+  options.getArgs("MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", minMultiplier);
+
+  dfloat maxMultiplier;
+  options.getArgs("MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", maxMultiplier);
+
   if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
       options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     stype = SmootherType::SCHWARZ;
@@ -126,8 +132,8 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
         ChebyshevIterations = 2;   //default to degree 2
       //estimate the max eigenvalue of S*A
       dfloat rho = this->maxEigSmoothAx();
-      lambda1 = 1.1 * rho;
-      lambda0 = rho / 10.;
+      lambda1 = maxMultiplier * rho;
+      lambda0 = minMultiplier * rho;
     }
     if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
        options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
@@ -162,8 +168,8 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       //estimate the max eigenvalue of S*A
       dfloat rho = this->maxEigSmoothAx();
 
-      lambda1 = 1.1 * rho;
-      lambda0 = rho / 10.;
+      lambda1 = maxMultiplier * rho;
+      lambda0 = minMultiplier * rho;
     }else {
 
       std::string invalidSmootherName;

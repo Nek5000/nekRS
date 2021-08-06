@@ -5,6 +5,7 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <utility>
 
 #include "inipp.hpp"
 #include "tinyexpr.h"
@@ -30,10 +31,204 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+bool is_number(const string &s) {
+  return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) {
+                         return !std::isdigit(c);
+                       }) == s.end();
+}
+
+std::vector<int> checkForIntInInputs(const std::vector<string> &inputs) {
+  std::vector<int> values;
+  for (string s : inputs) {
+    if (is_number(s)) {
+      values.emplace_back(std::stoi(s));
+    }
+  }
+  return values;
+}
+
+void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
+                   string parScope) {
+
+  string parSection = parScope;
+  UPPER(parSection);
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+
+  string p_smoother;
+  if (par->extract(parScope, "smoothertype", p_smoother) &&
+      options.compareArgs(parSection + " PRECONDITIONER", "MULTIGRID")) {
+    std::vector<string> list;
+    list = serializeString(p_smoother, '+');
+
+    std::vector<int> optionalChebyshevOrder = checkForIntInInputs(list);
+    if (optionalChebyshevOrder.size() > 1) {
+      if (rank == 0) {
+        printf("Could not parse smoother string %s!\n", p_smoother.c_str());
+      }
+      ABORT(1);
+    }
+
+    if (p_smoother.find("chebyshev") != string::npos) {
+      if (optionalChebyshevOrder.size() == 1)
+        options.setArgs(parSection + " MULTIGRID CHEBYSHEV DEGREE",
+                        std::to_string(optionalChebyshevOrder[0]));
+      for (string s : list) {
+        if (s.find("mineigenvalueboundfactor") != string::npos) {
+          std::vector<string> params = serializeString(s, '=');
+          if (params.size() != 2) {
+            if (rank == 0)
+              printf("Error: could not parse mineigenvalueboundfactor %s!\n", s.c_str());
+            ABORT(1);
+          }
+          const double value = std::stod(params[1]);
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR",
+                          to_string_f(value));
+        } else if (s.find("maxeigenvalueboundfactor") != string::npos) {
+          std::vector<string> params = serializeString(s, '=');
+          if (params.size() != 2) {
+            if (rank == 0)
+              printf("Error: could not parse maxeigenvalueboundfactor %s!\n", s.c_str());
+            ABORT(1);
+          }
+          const double value = std::stod(params[1]);
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR",
+                          to_string_f(value));
+        }
+      }
+    }
+
+    if (p_smoother.find("asm") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "ASM");
+      if (p_preconditioner.find("multigrid") != string::npos) {
+        if (p_preconditioner.find("additive") == string::npos)
+          exit("ASM smoother only supported for additive V-cycle!",
+               EXIT_FAILURE);
+      } else {
+        options.setArgs(parSection + " PARALMOND CYCLE",
+                        "VCYCLE+ADDITIVE+OVERLAPCRS");
+      }
+    } else if (p_smoother.find("ras") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "RAS");
+      if (p_preconditioner.find("multigrid") != string::npos) {
+        if (p_preconditioner.find("additive") == string::npos)
+          exit("RAS smoother only supported for additive V-cycle!",
+               EXIT_FAILURE);
+      } else {
+        options.setArgs(parSection + " PARALMOND CYCLE",
+                        "VCYCLE+ADDITIVE+OVERLAPCRS");
+      }
+    } else if (p_smoother.find("chebyshev+jac") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER",
+                      "DAMPEDJACOBI,CHEBYSHEV");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "JACOBI");
+      options.setArgs("BOOMERAMG ITERATIONS", "2");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for Chebyshev smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(" PARALMOND CYCLE", entry);
+        }
+      }
+    } else if (p_smoother.find("chebyshev+asm") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "ASM");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+             "smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(" PARALMOND CYCLE", entry);
+        }
+      }
+    } else if (p_smoother.find("chebyshev+ras") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "RAS");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "RAS");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+             "smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(" PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(" PARALMOND CYCLE", entry);
+        }
+      }
+    } else {
+      exit("Unknown ::smootherType!", EXIT_FAILURE);
+    }
+  }
+
+  if (p_preconditioner.find("additive") != string::npos) {
+    options.setArgs(parSection + " MULTIGRID SMOOTHER", "ASM");
+    options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+    options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "ASM");
+  }
+}
+void parsePreconditioner(const int rank, setupAide &options,
+                         inipp::Ini<char> *par, string parScope) {
+
+  string parSection = parScope;
+  UPPER(parSection);
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+  if (p_preconditioner == "none") {
+    options.setArgs(parSection + " PRECONDITIONER", "NONE");
+  } else if (p_preconditioner == "jacobi") {
+    options.setArgs(parSection + " PRECONDITIONER", "JACOBI");
+  } else if (p_preconditioner.find("semfem") != string::npos) {
+    options.setArgs(parSection + " PRECONDITIONER", "SEMFEM");
+    options.setArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG");
+    options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
+    std::vector<string> list;
+    list = serializeString(p_preconditioner, '+');
+    for (string s : list) {
+      if (s.find("semfem") != string::npos) {
+      } else if (s.find("amgx") != string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER", "AMGX");
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
+      } else if (s.find("fp32") != string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
+        if (options.compareArgs(" SEMFEM SOLVER", "BOOMERAMG"))
+          exit("FP32 is currently not supported for BoomerAMG!", EXIT_FAILURE);
+      } else if (s.find("fp64") != string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
+      } else {
+        if (rank == 0) {
+          printf("SEMFEM preconditioner flag %s is not recognized!\n",
+                 s.c_str());
+        }
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
+  } else if (p_preconditioner.find("semg") != string::npos ||
+             p_preconditioner.find("multigrid") != string::npos) {
+    options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
+    string key = "VCYCLE";
+    if (p_preconditioner.find("additive") != string::npos)
+      key += "+ADDITIVE";
+    if (p_preconditioner.find("multiplicative") != string::npos)
+      key += "+MULTIPLICATIVE";
+    if (p_preconditioner.find("overlap") != string::npos)
+      key += "+OVERLAPCRS";
+    options.setArgs(parSection + " PARALMOND CYCLE", key);
+  }
+}
 void parseInitialGuess(const int rank, setupAide &options,
                        inipp::Ini<char> *par, string parScope) {
 
-  string parSectionName = (parScope.find("temperature") != std::string::npos)
+  string parSectionName = (parScope.find("temperature") != string::npos)
                               ? "scalar00"
                               : parScope;
 
@@ -67,18 +262,18 @@ void parseInitialGuess(const int rank, setupAide &options,
                     std::to_string(defaultNumVectors));
     options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
 
-    if (initialGuess.find("projectionaconj") != std::string::npos) {
+    if (initialGuess.find("projectionaconj") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
-    } else if (initialGuess.find("projection") != std::string::npos) {
+    } else if (initialGuess.find("projection") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS",
                       "PROJECTION");
-    } else if (initialGuess.find("none") != std::string::npos) {
+    } else if (initialGuess.find("none") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
-    } else if (initialGuess.find("true") != std::string::npos) {
+    } else if (initialGuess.find("true") != string::npos) {
       const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
       options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
-    } else if (initialGuess.find("false") != std::string::npos) {
+    } else if (initialGuess.find("false") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
     } else {
       if (rank == 0) {
@@ -89,7 +284,7 @@ void parseInitialGuess(const int rank, setupAide &options,
     }
 
     const std::vector<string> list = serializeString(initialGuess, '+');
-    for (std::string s : list) {
+    for (string s : list) {
       if (s.find("nvector") == 0) {
         const std::vector<string> items = serializeString(s, '=');
         assert(items.size() = 2);
@@ -149,7 +344,7 @@ void parseRegularization(const int rank, setupAide &options,
     }
 
     // common parameters
-    for (std::string s : list) {
+    for (string s : list) {
       if (s.find("nmodes") == 0) {
         std::vector<string> items = serializeString(s, '=');
         assert(items.size() == 2);
@@ -167,7 +362,7 @@ void parseRegularization(const int rank, setupAide &options,
     }
 
     if (usesAVM) {
-      for (std::string s : list) {
+      for (string s : list) {
         if (s.find("vismaxcoeff") == 0) {
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
@@ -189,7 +384,7 @@ void parseRegularization(const int rank, setupAide &options,
 
     if (usesHPFRT) {
       bool setsStrength = false;
-      for (std::string s : list) {
+      for (string s : list) {
         if (s.find("strength") == 0) {
           setsStrength = true;
           std::vector<string> items = serializeString(s, '=');
@@ -298,6 +493,8 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", "0.1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", "1.1");
 
   options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
@@ -309,7 +506,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("ENABLE OVERLAP", "TRUE");
 }
 
-setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
+setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   int rank;
   MPI_Comm_rank(comm, &rank);
 
@@ -513,51 +710,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (p_gproj)
         options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
 
-    string p_preconditioner;
-    par->extract("pressure", "preconditioner", p_preconditioner);
-    if (p_preconditioner == "none") {
-      options.setArgs("PRESSURE PRECONDITIONER", "NONE");
-    } else if (p_preconditioner == "jacobi") {
-      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    } else if (p_preconditioner.find("semfem") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
-      options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-      std::vector<std::string> list;
-      list = serializeString(p_preconditioner, '+');
-      for (std::string s : list) {
-        if (s.find("semfem") != std::string::npos) {
-        } else if (s.find("amgx") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER", "AMGX");
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-        } else if (s.find("fp32") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-          if (options.compareArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG"))
-            exit("FP32 is currently not supported for BoomerAMG!",
-                 EXIT_FAILURE);
-        } else if (s.find("fp64") != std::string::npos) {
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-        } else {
-          if (rank == 0) {
-            printf("SEMFEM preconditioner flag %s is not recognized!\n",
-                   s.c_str());
-          }
-          ABORT(EXIT_FAILURE);
-        }
-      }
-
-    } else if (p_preconditioner.find("semg") != std::string::npos ||
-               p_preconditioner.find("multigrid") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-      string key = "VCYCLE";
-      if (p_preconditioner.find("additive") != std::string::npos)
-        key += "+ADDITIVE";
-      if (p_preconditioner.find("multiplicative") != std::string::npos)
-        key += "+MULTIPLICATIVE";
-      if (p_preconditioner.find("overlap") != std::string::npos)
-        key += "+OVERLAPCRS";
-      options.setArgs("PRESSURE PARALMOND CYCLE", key);
-    }
+    parsePreconditioner(rank, options, par, "pressure");
 
     string p_mglevels;
     if (par->extract("pressure", "pmultigridcoarsening", p_mglevels))
@@ -566,14 +719,14 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     string p_solver;
     if (par->extract("pressure", "solver", p_solver)) {
       if (p_solver.find("gmres") != string::npos) {
-        std::vector<std::string> list;
+        std::vector<string> list;
         list = serializeString(p_solver, '+');
         string n = "15";
-        for(std::string s : list)
+        for(string s : list)
         {
-          if(s.find("nvector") != std::string::npos)
+          if(s.find("nvector") != string::npos)
           {
-            std::vector<std::string> nVecList = serializeString(s,'=');
+            std::vector<string> nVecList = serializeString(s,'=');
             if(nVecList.size() == 2)
             {
               int nVec = std::stoi(nVecList[1]);
@@ -603,116 +756,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
     }
 
-    string p_smoother;
-    if (par->extract("pressure", "smoothertype", p_smoother) &&
-        options.compareArgs("PRESSURE PRECONDITIONER", "MULTIGRID")) {
-      std::vector<std::string> list;
-      list = serializeString(p_smoother, '+');
-      if (p_smoother.find("asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("ASM smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("RAS smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("chebyshev+jac") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER",
-                        "DAMPEDJACOBI,CHEBYSHEV");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-        options.setArgs("BOOMERAMG ITERATIONS", "2");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for Chebyshev smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else {
-        exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
-      }
-    }
-
-    if (p_preconditioner.find("additive") != std::string::npos) {
-      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    }
-
-    // Allow flexibility in downward/upward smoother
-    string p_downwardSmoother;
-    par->extract("pressure", "downwardsmoother", p_downwardSmoother);
-    if (p_downwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-    else if (p_downwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-    else if (p_downwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-    string p_upwardSmoother;
-    par->extract("pressure", "upwardsmoother", p_upwardSmoother);
-    if (p_upwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-    else if (p_upwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    else if (p_upwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
+    parseSmoother(rank, options, par, "pressure");
 
     string p_amgsolver;
     par->extract("pressure", "amgsolver", p_amgsolver);
@@ -794,7 +838,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     string v_bcMap;
     if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-      std::vector<std::string> sList;
+      std::vector<string> sList;
       sList = serializeString(v_bcMap, ',');
       bcMap::setup(sList, "velocity");
       bcInPar = 1;
@@ -871,7 +915,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         if (!bcInPar)
           exit("ERROR: boundaryTypeMap has to be defined for all fields!",
                EXIT_FAILURE);
-        std::vector<std::string> sList;
+        std::vector<string> sList;
         sList = serializeString(s_bcMap, ',');
         bcMap::setup(sList, "scalar00");
       } else {
@@ -890,12 +934,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
   for (int is = isStart; is < nscal; is++) {
-    std::stringstream ss;
+    stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str();
     string sidPar = sid;
     if (isStart == 0) {
-      std::stringstream ss;
+      stringstream ss;
       ss << std::setfill('0') << std::setw(2) << is + 1;
       sidPar = ss.str();
     }
@@ -945,7 +989,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (!bcInPar)
         exit("ERROR: boundaryTypeMap has to be defined for all fields!",
              EXIT_FAILURE);
-      std::vector<std::string> sList;
+      std::vector<string> sList;
       sList = serializeString(s_bcMap, ',');
       bcMap::setup(sList, "scalar" + sid);
     } else {
