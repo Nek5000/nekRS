@@ -1,0 +1,17 @@
+[GENERAL] 
+polynomialOrder = 7
+#startFrom = "restart.fld"
+numSteps = 3000
+dt = 1e-04
+timeStepper = tombo2
+writeInterval = 20
+maxNumSessions = 2
+
+[PRESSURE]
+residualTol = 1e-08
+
+[VELOCITY]
+boundaryTypeMap = none 
+residualTol = 1e-12
+density = 1.0
+viscosity = 0.05 
