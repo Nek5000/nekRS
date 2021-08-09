@@ -2,7 +2,7 @@
 polynomialOrder = 7
 #startFrom = "r.fld"+time=0
 stopAt = endTime
-endTime = 500
+endTime = 50
 dt = 2e-02
 timeStepper = tombo2
 
