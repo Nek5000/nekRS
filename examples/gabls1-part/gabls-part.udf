@@ -36,7 +36,7 @@ struct extra_particle_data {
 typdef particle_set<extra_particle_data> particles_t;
 
 /* Particle Functions */
-void particle_init(particles_t& particles) {
+void particleInit(particles_t& particles) {
 
   static hlong gcount = 0; // total # particles emitted
 
@@ -75,7 +75,7 @@ void particle_init(particles_t& particles) {
 }
 
 
-void particle_advect_std(particles_t& particles, int tstep) {
+void particleUpdate(particles_t& particles, int tstep) {
 
   particles.find();
   particles.migrate();
@@ -85,7 +85,7 @@ void particle_advect_std(particles_t& particles, int tstep) {
   u1[1] = u1[0] + particle.size();
   u1[2] = u1[1] + particle.size();
   occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
-  particles.interp_local(o_U, u_occa, D);
+  particles.interpLocal(o_U, u1, D);
 
   double c1, c2, c3, dt = particles.nrs->dt[0];
   if (tstep == 0) { // AB1
@@ -122,10 +122,8 @@ void particle_advect_std(particles_t& particles, int tstep) {
   delete[] u_base[0];
 }
 
-void particle_out(particles_t& particles)
+void particleOut(particles_t& particles)
 {
-  constexpr dlong entry_len = D+1;
-
   static dfloat x_temp[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
   static dfloat x_root[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
 
@@ -230,23 +228,23 @@ void particle_out(particles_t& particles)
 
 particles_t *particle_data;
 
-void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
+void particleStep(nrs_t *nrs, dfloat time, int tstep)
 {
   // adjust to control when particles are generated
-  bool ifnewpart;
-//static dfloat last_new_time = 0.0;       // |
-//ifnewpart = time - last_new_time >= 0.5; // | every 0.5 seconds
-//if(ifnewpart) last_new_time = time;      // |
-//ifnewpart = tstep % 100 == 0;            // every 100 iterations
-//ifnewpart = nrs->isOutputStep;           // on the output steps
-  ifnewpart = tstep == 0;                  // only once at the begining
+  bool ifInit;
+//static dfloat last_new_time = 0.0;    // |
+//ifInit = time - last_new_time >= 0.5; // | every 0.5 seconds
+//if(ifInit) last_new_time = time;      // |
+//ifInit = tstep % 100 == 0;            // every 100 iterations
+//ifInit = nrs->isOutputStep;           // on the output steps
+  ifInit = tstep == 0;                  // only once at the begining
 
   // Only output particles on output steps to ensure particles match the field files
-  bool ifoutpart = nrs->isOutputStep;
+  bool ifOut = nrs->isOutputStep;
 
-  if (ifnewpart) particle_init(*particle_data);
-  particle_advect_std         (*particle_data, tstep);
-  if (ifoutpart) particle_out (*particle_data);
+  if (ifInit) particleInit  (*particle_data);
+              particleUpdate(*particle_data, tstep);
+  if (ifOut)  particleOut   (*particle_data);
 }
 
 
@@ -312,5 +310,5 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   if (USE_HOST_FINDPTS_EVAL || CHECK_ACCURACY) {
     nrs->o_U.copyTo(nrs->U);
   }
-  my_particle_generator(nrs, time, tstep);
+  particleStep(nrs, time, tstep);
 }
