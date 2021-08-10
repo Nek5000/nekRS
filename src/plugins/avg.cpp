@@ -91,7 +91,7 @@ void avg::EXY(dlong N,
 void avg::run(dfloat time)
 {
   if(!setupCalled || !buildKernelCalled) {
-    cout << "avg::run() was called prior to avg::setup()!\n";
+    std::cout << "avg::run() was called prior to avg::setup()!\n";
     ABORT(1);
   }
 
@@ -143,7 +143,7 @@ void avg::run(dfloat time)
 void avg::setup(nrs_t* nrs_)
 {
   if(!buildKernelCalled) {
-    cout << "avg::setup() was called prior avg::buildKernel()!\n";
+    std::cout << "avg::setup() was called prior avg::buildKernel()!\n";
     ABORT(1);
   }
 

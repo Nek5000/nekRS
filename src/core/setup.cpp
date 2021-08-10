@@ -67,14 +67,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nek::setup(comm, platform->options, nrs);
       nek::setic();
       nek::userchk();
-      if (platform->comm.mpiRank == 0) cout << "\n";
+      if (platform->comm.mpiRank == 0) std::cout << "\n";
     }
   }
 
   nrs->cht = 0;
   if (nekData.nelv != nekData.nelt && nrs->Nscalar) nrs->cht = 1;
   if (nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
-    if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
+    if (platform->comm.mpiRank == 0) std::cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
 
@@ -151,7 +151,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->weightsRK, rkb, nrs->nRK * sizeof(dfloat));
       memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }else{
-      if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
+      if(platform->comm.mpiRank == 0) std::cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
     nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
@@ -242,9 +242,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (udf.loadKernels) {
     occa::properties* tmpKernelInfo = nrs->kernelInfo;
     nrs->kernelInfo = &kernelInfoBC;
-    if (platform->comm.mpiRank == 0) cout << "loading udf kernels ... ";
+    if (platform->comm.mpiRank == 0) std::cout << "loading udf kernels ... ";
     udf.loadKernels(nrs);
-    if (platform->comm.mpiRank == 0) cout << "done" << endl;
+    if (platform->comm.mpiRank == 0) std::cout << "done" << std::endl;
     nrs->kernelInfo = tmpKernelInfo;
   }
   const string bcDataFile = install_dir + "/include/core/bcData.h";
@@ -592,7 +592,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
-        cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
+        std::cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
 
       int nbrBIDs = bcMap::size(0);
       if(nrs->cht && is == 0) nbrBIDs = bcMap::size(1);

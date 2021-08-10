@@ -1301,7 +1301,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
   }
 
   if(cfl > 30 || std::isnan(cfl)) {
-    if(platform->comm.mpiRank == 0) cout << "Unreasonable CFL! Dying ...\n" << endl;
+    if(platform->comm.mpiRank == 0) std::cout << "Unreasonable CFL! Dying ...\n" << std::endl;
     ABORT(1);
   }
 

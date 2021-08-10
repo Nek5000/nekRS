@@ -80,7 +80,7 @@ void RANSktau::buildKernel(nrs_t* nrs)
   }
 
   if(nrs->Nscalar < 2) {
-    if(platform->comm.mpiRank == 0) cout << "RANSktau: Nscalar needs to be >= 2!\n";
+    if(platform->comm.mpiRank == 0) std::cout << "RANSktau: Nscalar needs to be >= 2!\n";
     ABORT(1);
   }
   platform->options.setArgs("STRESSFORMULATION", "TRUE");

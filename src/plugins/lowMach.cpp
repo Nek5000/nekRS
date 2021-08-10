@@ -51,7 +51,7 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   int err = 1;
   if(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
-    if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
+    if(platform->comm.mpiRank == 0) std::cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   platform->options.setArgs("LOWMACH", "TRUE"); 

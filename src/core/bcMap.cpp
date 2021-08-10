@@ -74,7 +74,7 @@ static void v_setup(string field, std::vector<std::string> slist)
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
-      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
       ABORT(1);
     }
 
@@ -84,7 +84,7 @@ static void v_setup(string field, std::vector<std::string> slist)
     }
     catch (const std::out_of_range& oor)
     {
-      cout << "Out of Range error: " << oor.what() << "!\n";
+      std::cout << "Out of Range error: " << oor.what() << "!\n";
       ABORT(1);
     }
   }
@@ -107,7 +107,7 @@ static void s_setup(string field, std::vector<std::string> slist)
     if (key.compare("o") == 0) key = "zerogradient";
 
     if (sBcTextToID.find(key) == sBcTextToID.end()) {
-      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
       ABORT(1);
     }
 
@@ -117,7 +117,7 @@ static void s_setup(string field, std::vector<std::string> slist)
     }
     catch (const std::out_of_range& oor)
     {
-      cout << "Out of Range error: " << oor.what() << "!\n";
+      std::cout << "Out of Range error: " << oor.what() << "!\n";
       ABORT(1);
     }
   }
@@ -188,7 +188,7 @@ int type(int bid, string field)
     if (bcID == 3) return NEUMANN;
   }
 
-  cout << __func__ << "(): Unexpected error occured!" << endl;
+  std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
   ABORT(1);
   return 0;
 }
@@ -207,7 +207,7 @@ string text(int bid, string field)
     return sBcIDToText[bcID];
 
 
-  cout << __func__ << "(): Unexpected error occured!" << endl;
+  std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
   ABORT(1);
   return 0;
 }
@@ -261,7 +261,7 @@ void setBcMap(string field, int* map, int nIDs)
   }
   catch (const std::out_of_range& oor)
   {
-    cout << "Out of Range error: " << oor.what() << "!\n";
+    std::cout << "Out of Range error: " << oor.what() << "!\n";
     ABORT(1);
   }
 }

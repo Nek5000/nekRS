@@ -27,16 +27,16 @@ static void dryRun(setupAide &options, int npTarget);
 
 void printHeader()
 {
-  cout << R"(                 __    ____  _____)" << endl
-       << R"(   ____   ___   / /__ / __ \/ ___/)" << endl
-       << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
-       << R"( / / / //  __// ,<  / _, _/___/ / )" << endl
-       << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
-       << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
-       << " (" << GITCOMMITHASH << ")" << endl
-       << endl
-       << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
-       << endl;
+  std::cout << R"(                 __    ____  _____)" << std::endl
+            << R"(   ____   ___   / /__ / __ \/ ___/)" << std::endl
+            << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << std::endl
+            << R"( / / / //  __// ,<  / _, _/___/ / )" << std::endl
+            << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
+            << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
+            << " (" << GITCOMMITHASH << ")" << std::endl
+            << std::endl
+            << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << std::endl
+            << std::endl;
 }
 
 namespace nekrs
@@ -75,11 +75,11 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   if (rank == 0) {
     printHeader();
-    cout << "MPI tasks: " << size << endl << endl;
+    std::cout << "MPI tasks: " << size << std::endl << std::endl;
     string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
-    cout << "using NEKRS_HOME: " << install_dir << endl;
-    cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
+    std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
+    std::cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << std::endl << std::endl;
   }
 
   nrs = new nrs_t();
@@ -124,7 +124,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode)
-    cout << "enabling continous integration mode " << ciMode << "\n";
+    std::cout << "enabling continous integration mode " << ciMode << "\n";
 
   if(udf.setup0) udf.setup0(comm, options);
 
@@ -147,9 +147,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
-    cout << "\nsettings:\n" << endl << options << endl;
-    cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
-    cout << "initialization took " << setupTime << " s" << endl;
+    std::cout << "\nsettings:\n" << std::endl << options << std::endl;
+    std::cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << std::endl;
+    std::cout << "initialization took " << setupTime << " s" << std::endl;
   }
   fflush(stdout);
 
@@ -284,9 +284,9 @@ void printRuntimeStatistics()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  cout << "performing dry-run to jit-compile for >="
+  std::cout << "performing dry-run to jit-compile for >="
        << npTarget 
-       << " MPI tasks ...\n" << endl;
+       << " MPI tasks ...\n" << std::endl;
   fflush(stdout);	
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
@@ -313,7 +313,7 @@ static void dryRun(setupAide &options, int npTarget)
   platform_t* platform = platform_t::getInstance();
   nrsSetup(comm, options, nrs);
 
-  cout << "\nBuild successful." << endl;
+  std::cout << "\nBuild successful." << std::endl;
 }
 
 static void setOUDF(setupAide &options)
@@ -325,7 +325,7 @@ static void setOUDF(setupAide &options)
 
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
-    if (rank == 0) cout << "ERROR: Cannot find " << oklFile << "!\n";
+    if (rank == 0) std::cout << "ERROR: Cannot find " << oklFile << "!\n";
     ABORT(EXIT_FAILURE);;
   }
   free(ptr);

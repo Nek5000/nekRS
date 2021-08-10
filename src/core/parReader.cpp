@@ -16,7 +16,7 @@
 #define exit(a, b)                                                             \
   {                                                                            \
     if (rank == 0)                                                             \
-      cout << a << endl;                                                       \
+      std::cout << a << std::endl;                                             \
     EXIT(1);                                                                   \
   }
 #define UPPER(a)                                                               \
@@ -255,7 +255,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   const char *ptr = realpath(setupFile.c_str(), NULL);
   if (!ptr) {
     if (rank == 0)
-      cout << "\nERROR: Cannot find " << setupFile << "!\n";
+      std::cout << "\nERROR: Cannot find " << setupFile << "!\n";
     ABORT(1);
   }
 
