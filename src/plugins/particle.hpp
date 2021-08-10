@@ -4,6 +4,7 @@
 #include "nrs.hpp"
 #include "gslib.h"
 #include "ogs_FINDPTS.hpp"
+#include "plugins/interp.hpp"
 
 // Contains a set of particles and the information needed to interpolate on the mesh
 template<class Extra=char>
@@ -63,7 +64,7 @@ struct particle_set {
   };
 
 
-  std::shared_ptr<interp::handle_t> handle;
+  std::shared_ptr<interp_t> interp_;
 
 
   std::vector<dfloat>       x[3];
@@ -74,12 +75,12 @@ struct particle_set {
   std::vector<dfloat_array> r;
 
   particle_set(nrs_t *nrs_, double newton_tol_)
-      : handle(interp::setup(nrs_, newton_tol_))
+      : interp_(new interp_t(nrs_, newton_tol_))
   {
   }
 
   particle_set(particle_set& set)
-      : handle(set.handle),
+      : interp_(set.interp_),
         x(set.x), code(set.code), proc(set.proc), el(set.el), extra(set.extra), r(set.r)
   {
   }
@@ -89,7 +90,7 @@ struct particle_set {
 
   //// Set management ////
   void reserve(int n) {
-    for (int i = 0; i < D; ++i) {
+    for (int i = 0; i < 3; ++i) {
       x[i].reserve(n);
     }
     code.reserve(n);
@@ -184,13 +185,13 @@ struct particle_set {
       xBase[i] = x[i].data();
       xStride[i] = 1;
     }
-    interp.findPoints(xBase, xStride,
-                      code.data(),       1,
-                      proc.data(),       1,
-                        el.data(),       1,
-                      &(r.data()[0][0]), 3,
-                      dist2,             dist2Stride,
-                      size(), printWarnings);
+    interp_->findPoints(xBase, xStride,
+                        code.data(),       1,
+                        proc.data(),       1,
+                          el.data(),       1,
+                        &(r.data()[0][0]), 3,
+                        dist2,             dist2Stride,
+                        size(), printWarnings);
     if(dist2In == nullptr) {
       delete[] dist2;
     }
@@ -222,7 +223,7 @@ struct particle_set {
       }
     }
 
-    sarray_transfer(particle_t, &transfer, proc, true, ogsCrystalRouter(interp->findpts));
+    sarray_transfer(particle_t, &transfer, proc, true, ogsCrystalRouter(interp_->findpts));
 
     reserve(size() + transfer.n);
     particle_t *transfer_ptr = (particle_t*)transfer.ptr;
@@ -240,25 +241,15 @@ struct particle_set {
   //   out            ... array of pointers to the output arrays (dfloat[n][3])
   //   nfld           ... number of fields
   template<typename fieldPtr>
-  void interp(fieldPtr field, dfloat *out[], dlong nField)
+  void interp(fieldPtr field, dfloat *out[], dlong nFields)
   {
-    dlong offset = 0;
-    while (offset < pn && code[offset] == 2) ++offset;
-    pn -= offset;
-
-    dfloat **outOffset = new dfloat*[nFields];
-    for (dlong i = 0; i < nFields; ++i) {
-      outOffset[i] = out[i] + offset;
-    }
-
-    interp.evalPoints(field, nField,
-                      code.data()+offset,     1*sizeof(dlong),
-                      proc.data()+offset,     1*sizeof(dlong),
-                      el.data()+offset,       1*sizeof(dlong),
-                      &(r.data()[offset][0]), D*sizeof(dfloat),
-                      outOffset,              1*sizeof(dfloat),
-                      size());
-    delete[] outOffset;
+    interp_->evalPoints(field, nFields,
+                        code.data(),       1,
+                        proc.data(),       1,
+                        el.data(),         1,
+                        &(r.data()[0][0]), 3,
+                        out,               1,
+                        size());
   }
 
   // Interpolates the fields at each particle with the assumption that all particles belong to local elements
@@ -270,26 +261,24 @@ struct particle_set {
   void interpLocal(fieldPtr field, dfloat *out[], dlong nFields)
   {
     dlong pn = size();
-    dlong out_stride = 1*sizeof(dfloat);
-    dlong   r_stride = D*sizeof(dfloat);
-    dlong  el_stride = 1*sizeof(dlong);
-
     dlong offset = 0;
     while (offset < pn && code[offset] == 2) ++offset;
     pn -= offset;
 
 
     dfloat **outOffset = new dfloat*[nFields];
+    dlong* outStride = new dlong[nFields];
     for (dlong i = 0; i < nFields; ++i) {
       outOffset[i] = out[i] + offset;
+      outStride[i] = 1;
     }
 
-    interp.evalLocalPoints(field, nField
-                           el.data()+offset, 1,
-                            r.data()+offset, 3,
-                           outOffset,        1,
-                           pn);
-    delete[] outOffset
+    interp_->evalLocalPoints(field, nFields,
+                             el.data()+offset,       1,
+                             &(r.data()[offset][0]), 3,
+                             outOffset,              outStride,
+                             pn);
+    delete[] outOffset;
   }
 };
 

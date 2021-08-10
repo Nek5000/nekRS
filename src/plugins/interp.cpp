@@ -6,8 +6,8 @@
 
 #include "interp.hpp"
 
-interp_t::interp_t(nrs_t* nrs, double newton_tol)
-  : nrs(nrs_), newton_tol_(newton_tol)
+interp_t::interp_t(nrs_t* nrs_, double newton_tol_)
+  : nrs(nrs_), newton_tol(newton_tol_)
 {
 
   if (newton_tol < 5e-13) {
@@ -34,25 +34,24 @@ interp_t::interp_t(nrs_t* nrs, double newton_tol)
 
   MPI_Comm comm = platform_t::getInstance()->comm.mpiComm;
 
-  findpts_handle = ogsFindptsSetup(3, comm, elx, n1, nelm, m1, bb_tol,
-                                   hash_size, hash_size, npt_max, newton_tol,
-                                   (occa::device*)&platform_t::getInstance()->device);
+  findpts = ogsFindptsSetup(3, comm, elx, n1, nelm, m1, bb_tol,
+                            hash_size, hash_size, npt_max, newton_tol,
+                            (occa::device*)&platform_t::getInstance()->device);
 }
 
 
 interp_t::~interp_t()
 {
-  ogsFindptsFree(handle->findpts);
+  ogsFindptsFree(findpts);
 }
 
-void interp_t::findPoints(dfloat* x[], dlong xStride[],
-                          dlong*  code,  dlong  codeStride,
-                          dlong*  proc,  dlong  procStride,
-                          dlong*  el,    dlong    elStride,
-                          dfloat* r,     dlong     rStride,
-                          dfloat* dist2, dlong dist2Stride,
-                          dlong n,
-                          bool printWarnings)
+void interp_t::findPoints(const dfloat *const * x,   const dlong xStride[],
+                                dlong*  code,  const dlong  codeStride,
+                                dlong*  proc,  const dlong  procStride,
+                                dlong*  el,    const dlong    elStride,
+                                dfloat* r,     const dlong     rStride,
+                                dfloat* dist2, const dlong dist2Stride,
+                          dlong n, bool printWarnings)
 {
   // findpts takes strides in terms of bytes, but findPoints takes strides in terms of elements
   dlong xStrideBytes[3] = {xStride[0]*sizeof(dfloat),
@@ -87,21 +86,21 @@ void interp_t::findPoints(dfloat* x[], dlong xStride[],
         }
       }
     }
-    hlong counts[2] = {n, nFail};
-    MPI_Reduce(MPI_IN_PLACE, counts, 2, MPI_HLONG, MPI_SUM, 0, platform_t::getInstance()->comm.mpiComm);
-    if (platform_t::getInstance()->comm.mpiRank == 0 && counts[1] > 0) {
-      std::cout << "interp::findPoints - Total number of points = " << counts[0]
-                << ", failed = " << counts[1] << std::endl;
+    hlong counts[4] = {n, nFail, 0, 0};
+    MPI_Reduce(counts, counts+2, 2, MPI_HLONG, MPI_SUM, 0, platform_t::getInstance()->comm.mpiComm);
+    if (platform_t::getInstance()->comm.mpiRank == 0 && counts[3] > 0) {
+      std::cout << "interp::findPoints - Total number of points = " << counts[2]
+                << ", failed = " << counts[3] << std::endl;
     }
   }
 }
 
-void interp_t::evalPoints(dfloat* fields, dlong nFields,
-                          dlong*   code,  dlong  codeStride,
-                          dlong*   proc,  dlong  procStride,
-                          dlong*   el,    dlong    elStride,
-                          dfloat*  r,     dlong     rStride,
-                          dfloat** out,   dlong   outStride,
+void interp_t::evalPoints(const dfloat* fields, const dlong nFields,
+                          const dlong*   code,  const dlong codeStride,
+                          const dlong*   proc,  const dlong procStride,
+                          const dlong*   el,    const dlong   elStride,
+                          const dfloat*  r,     const dlong    rStride,
+                                dfloat** out,   const dlong  outStride[],
                           dlong n)
 {
   dlong fieldOffset = nrs->fieldOffset;
@@ -111,16 +110,16 @@ void interp_t::evalPoints(dfloat* fields, dlong nFields,
                    proc,   procStride   *sizeof(dlong),
                    el,       elStride   *sizeof(dlong),
                    r,         rStride   *sizeof(dfloat),
-                   n, fields+i*fieldOffset, findpts);
+                   n, fields+i*nrs->fieldOffset, findpts);
   }
 }
 
-void interp_t::evalPoints(occa::memory fields, dlong nFields,
-                          dlong*   code,  dlong  codeStride,
-                          dlong*   proc,  dlong  procStride,
-                          dlong*   el,    dlong    elStride,
-                          dfloat*  r,     dlong     rStride,
-                          dfloat** out,   dlong   outStride,
+void interp_t::evalPoints(occa::memory fields, const dlong nFields,
+                          const dlong*   code, const dlong codeStride,
+                          const dlong*   proc, const dlong procStride,
+                          const dlong*   el,   const dlong   elStride,
+                          const dfloat*  r,    const dlong    rStride,
+                                dfloat** out,  const dlong  outStride[],
                           dlong n)
 {
   occa::memory o_fields = fields.cast(occa::dtype::get<dfloat>());
@@ -130,15 +129,15 @@ void interp_t::evalPoints(occa::memory fields, dlong nFields,
                    proc,   procStride   *sizeof(dlong),
                    el,       elStride   *sizeof(dlong),
                    r,         rStride   *sizeof(dfloat),
-                   n, o_fields+i*fieldOffset, findpts);
+                   n, o_fields+i*nrs->fieldOffset, findpts);
   }
 }
 
 
-void interp_t::evalLocalPoints(dfloat fields, dlong nFields,
-                               dlong*   el,    dlong    elStride,
-                               dfloat*  r,     dlong     rStride,
-                               dfloat** out,   dlong   outStride,
+void interp_t::evalLocalPoints(const dfloat* fields, const dlong nFields,
+                               const dlong*   el,    const dlong  elStride,
+                               const dfloat*  r,     const dlong   rStride,
+                                     dfloat** out,   const dlong outStride[],
                                dlong n)
 {
   if (n == 0 || nFields == 0) {
@@ -153,10 +152,10 @@ void interp_t::evalLocalPoints(dfloat fields, dlong nFields,
   }
 }
 
-void interp_t::evalLocalPoints(occa::memory fields, dlong nFields,
-                               dlong*   el,    dlong    elStride,
-                               dfloat*  r,     dlong     rStride,
-                               dfloat** out,   dlong   outStride,
+void interp_t::evalLocalPoints(occa::memory o_fields, const dlong nFields,
+                               const dlong*   el,     const dlong  elStride,
+                               const dfloat*  r,      const dlong   rStride,
+                                     dfloat** out,    const dlong outStride[],
                                dlong n)
 {
   if (n == 0 || nFields == 0) {
@@ -165,47 +164,56 @@ void interp_t::evalLocalPoints(occa::memory fields, dlong nFields,
 
   dlong  elStrideBytes =  elStride*sizeof(dlong);
   dlong   rStrideBytes =   rStride*sizeof(dfloat);
-  dlong outStrideBytes = outStride*sizeof(dfloat);
+
+  dlong outBytes = 0;
+  bool unitOutStride = true;
+  for (dlong i = 0; i < nFields; ++i) {
+    unitOutStride &= outStride[i] == 1;
+    outBytes += outStride[i];
+  }
+  outBytes *= sizeof(dfloat);
 
   occa::device device = *findpts->device;
-  dlong allocSize = (nfield*outStrideBytes+rStrideBytes+elStrideBytes)*pn;
+  dlong allocSize = (nFields*outBytes+rStrideBytes+elStrideBytes)*n;
   occa::memory workspace;
   occa::memory mempool = platform_t::getInstance()->o_mempool.o_ptr;
-  if(alloc_size < mempool.size()) {
+  if(allocSize < mempool.size()) {
     workspace = mempool.cast(occa::dtype::byte);
   } else {
     workspace = device.malloc(allocSize, occa::dtype::byte);
   }
-  occa::memory o_out = workspace; workspace += n*nField*sizeof(dfloat);
+  occa::memory o_out = workspace; workspace += n*nFields*sizeof(dfloat);
   occa::memory o_r   = workspace; workspace += n* rStrideBytes;
   occa::memory o_el  = workspace; workspace += n*elStrideBytes;
   o_r .copyFrom(r,   rStrideBytes*n);
   o_el.copyFrom(el, elStrideBytes*n);
 
   dlong fieldOffset = nrs->fieldOffset;
-  for (int i = 0; i < nField; ++i) {
+  for (int i = 0; i < nFields; ++i) {
     occa::memory o_out_i = o_out.slice(i*sizeof(dfloat)*n, sizeof(dfloat)*n);
     ogsFindptsLocalEval(o_out_i, sizeof(dfloat),
                         o_el,     elStrideBytes,
                         o_r,       rStrideBytes,
                         n, o_fields+i*fieldOffset, findpts);
   }
-  if(sizeof(dlong) == outStrideBytes){
+  if(unitOutStride){
     // combine d->h copies where able
     dlong i = 0;
-    while (i < nField) {
-      dlong start = out[i];
+    while (i < nFields) {
+      dfloat* start = out[i];
       dlong j = 0;
-      while (i+j<nField && out[i+j] == start+j*outStrideBytes*n) ++j;
-      o_out.copyTo(start, j*outStrideBytes*n);
+      while (i+j<nFields && out[i+j] == start+j*n) {
+        ++j;
+      }
+      o_out.copyTo(start, j*n*sizeof(dfloat));
       i += j;
     }
   } else {
-    dfloat* outTemp = new dfloat[nField*sizeof(dfloat)*n];
-    o_out.copyTo(outTemp, nField*sizeof(dfloat)*n);
+    dfloat* outTemp = new dfloat[nFields*sizeof(dfloat)*n];
+    o_out.copyTo(outTemp, nFields*sizeof(dfloat)*n);
     for(dlong i = 0; i < nFields; ++i) {
       for(dlong j = 0; j < n; ++j) {
-        out[i][j*outStride] = outTemp[i*n + j];
+        out[i][j*outStride[i]] = outTemp[i*n + j];
       }
     }
   }

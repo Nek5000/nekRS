@@ -387,8 +387,8 @@ void ogsFindptsLocalEval(
 
 crystal* ogsCrystalRouter(ogs_findpts_t *const fd){
   if (fd->D == 2) {
-    return &((findpts_data_2*))(fd->findpts_data))->cr;
+    return &((findpts_data_2*)(fd->findpts_data))->cr;
   } else {
-    return &((findpts_data_3*))(fd->findpts_data))->cr;
+    return &((findpts_data_3*)(fd->findpts_data))->cr;
   }
 }

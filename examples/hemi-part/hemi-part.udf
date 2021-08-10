@@ -6,14 +6,14 @@
 #include <stdio.h>
 #include <math.h>
 #include "udf.hpp"
-#include "particle.hpp"
+#include "plugins/particle.hpp"
 
 #define OUT_CHUNK_SIZE 10000 /* chunk size for outputing particles */
 #define USE_MPIIO      1
 
 // Helper class for case specific data
 struct extra_particle_data {
-  dfloat v_hist[2][D];
+  dfloat v_hist[2][3];
   hlong  id;
   dfloat color;
 
@@ -21,10 +21,10 @@ struct extra_particle_data {
   {
   }
 
-  extra_particle_data(dfloat v_hist_[2][D], dfloat color_, hlong id_)
+  extra_particle_data(dfloat v_hist_[2][3], dfloat color_, hlong id_)
   {
     for (int i = 0; i < 2; ++i) {
-      for (int j = 0; j < D; ++j) {
+      for (int j = 0; j < 3; ++j) {
         v_hist[i][j] = v_hist_[i][j];
       }
     }
@@ -32,7 +32,7 @@ struct extra_particle_data {
     color = color_;
   }
 };
-typdef particle_set<extra_particle_data> particles_t;
+typedef particle_set<extra_particle_data> particles_t;
 
 /* Particle Functions */
 void particleInit(particles_t& particles) {
@@ -42,11 +42,13 @@ void particleInit(particles_t& particles) {
   int mpi_rank = platform_t::getInstance()->comm.mpiRank;
   int mpi_size = platform_t::getInstance()->comm.mpiCommSize;
 
+  dlong partPerWire = 100;
+
   for (int line = 0; line < 4; ++line) { // 4 lines at different heights
     dfloat xp = -1.5;
     dfloat zp = .05 + line*0.075;
-    for (int part = 0; part < 100; ++part) { // 100 points in a line
-      dfloat dy =  1.0*2/(nw-1);
+    for (int part = 0; part < partPerWire; ++part) {
+      dfloat dy =  1.0*2/(partPerWire-1);
       dfloat yp = -1.0 + dy*part;
 
       if (gcount%mpi_size == mpi_rank) { // Distribute particles in a round robin fashion
@@ -56,7 +58,7 @@ void particleInit(particles_t& particles) {
         particle.x[1] = yp;
         particle.x[2] = zp;
         particle.extra.id = gcount;
-        for (int d = 0; d < D; ++d) {
+        for (int d = 0; d < 3; ++d) {
           particle.extra.v_hist[0][d] = 0.0;
           particle.extra.v_hist[1][d] = 0.0;
         }
@@ -73,19 +75,19 @@ void particleInit(particles_t& particles) {
 }
 
 
-void particleUpdate(particles_t& particles, int tstep) {
+void particleUpdate(particles_t& particles, nrs_t* nrs, int tstep) {
 
   particles.find();
   particles.migrate();
 
   dfloat *u1[3];
-  u1[0] = new dfloat[D*particle.size()];
-  u1[1] = u1[0] + particle.size();
-  u1[2] = u1[1] + particle.size();
-  occa::memory o_U = particles.nrs->o_U.cast(occa::dtype::get<dfloat>());
-  particles.interpLocal(o_U, u1, D);
+  u1[0] = new dfloat[3*particles.size()];
+  u1[1] = u1[0] + particles.size();
+  u1[2] = u1[1] + particles.size();
+  occa::memory o_U = nrs->o_U.cast(occa::dtype::get<dfloat>());
+  particles.interpLocal(o_U, u1, 3);
 
-  double c1, c2, c3, dt = particles.nrs->dt[0];
+  double c1, c2, c3, dt = nrs->dt[0];
   if (tstep == 0) { // AB1
     c1 = 1.0;
     c2 = 0.0;
@@ -102,7 +104,7 @@ void particleUpdate(particles_t& particles, int tstep) {
 
   for (int i = 0; i < particles.size(); ++i) {
     // Update particle position and velocity history
-    for (int k=0; k < D; ++k) {
+    for (int k=0; k < 3; ++k) {
        particles.x[k][i] += dt*(c1*u1[k][i] + c2*particles.extra[i].v_hist[0][k] + c3*particles.extra[i].v_hist[1][k]);
        particles.extra[i].v_hist[0][k] = particles.extra[i].v_hist[1][k];
        particles.extra[i].v_hist[1][k] = u1[k][i];
@@ -116,15 +118,13 @@ void particleUpdate(particles_t& particles, int tstep) {
     }
   }
 
-  delete[] u_base[0];
+  delete[] u1[0];
 }
 
 void particleOut(particles_t& particles)
 {
-  constexpr dlong entry_len = D+1;
-
-  static dfloat x_temp[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
-  static dfloat x_root[USE_MPIIO?0:OUT_CHUNK_SIZE][entry_len];
+  static dfloat x_temp[USE_MPIIO?0:OUT_CHUNK_SIZE][4];
+  static dfloat x_root[USE_MPIIO?0:OUT_CHUNK_SIZE][4];
 
   static int out_step = 0;
   ++out_step;
@@ -138,7 +138,7 @@ void particleOut(particles_t& particles)
   sprintf(fname, "part%05d.3d", out_step);
 
   if (USE_MPIIO) {
-    constexpr hlong p_size = 18*entry_len;
+    constexpr hlong p_size = 18*4;
 
     hlong p_offset = npart;
     MPI_Exscan(MPI_IN_PLACE, &p_offset, 1, MPI_HLONG, MPI_SUM, mpi_comm);
@@ -154,13 +154,8 @@ void particleOut(particles_t& particles)
 
     char *char_buffer = new char[npart*p_size + 1];
     for (dlong ii = 0; ii < npart; ++ii) {
-      if(D == 3) {
-        sprintf(char_buffer+ii*p_size, "%17.9e %17.9e %17.9e %17.9e\n",
-                particles.x[0][ii], particles.x[1][ii], particles.x[2][ii], particles.extra[ii].color);
-      } else {
-        sprintf(char_buffer+ii*p_size, "%17.9e %17.9e %17.9e\n",
-                particles.x[0][ii], particles.x[1][ii], particles.extra[ii].color);
-      }
+      sprintf(char_buffer+ii*p_size, "%17.9e %17.9e %17.9e %17.9e\n",
+              particles.x[0][ii], particles.x[1][ii], particles.x[2][ii], particles.extra[ii].color);
     }
     MPI_File_write_all(file_out, char_buffer, p_size*npart, MPI_CHAR, MPI_STATUS_IGNORE);
     delete [] char_buffer;
@@ -196,28 +191,23 @@ void particleOut(particles_t& particles)
       hlong i1 = i0 + mpart;
       ilast = i1;
 
-      memset(&x_temp[0][0], 0, mpart*entry_len*sizeof(dfloat));
+      memset(&x_temp[0][0], 0, mpart*4*sizeof(dfloat));
       for (int ii=0; ii < npart; ++ii) {
         hlong id = particles.extra[ii].id;
         if (i0 <= id && id < i1) {
           int i = id-i0;
-          for (int j = 0; j < D; ++j) {
+          for (int j = 0; j < 3; ++j) {
             x_temp[i][j] = particles.x[j][ii];       // coordinates
           }
-          x_temp[i][D] = particles.extra[ii].color;  // color
+          x_temp[i][3] = particles.extra[ii].color;  // color
         }
       }
 
-      MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*entry_len, MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
+      MPI_Reduce(&x_temp[0][0], &x_root[0][0], mpart*4, MPI_DFLOAT, MPI_SUM, 0, mpi_comm);
       if (mpi_rank == 0) {
         for (int i = 0; i < mpart; ++i) {
-          if(D == 3) {
-            fprintf(file_out, " %17.9e %17.9e %17.9e %17.9e\n",
-                    x_root[i][0], x_root[i][2], x_root[i][3], x_root[i][4]);
-          } else {
-            fprintf(file_out, " %17.9e %17.9e %17.9e\n",
-                    x_root[i][0], x_root[i][2], x_root[i][3]);
-          }
+          fprintf(file_out, " %17.9e %17.9e %17.9e %17.9e\n",
+                  x_root[i][0], x_root[i][2], x_root[i][3], x_root[i][4]);
         }
       }
     }
@@ -227,7 +217,7 @@ void particleOut(particles_t& particles)
 
 particles_t *particle_data;
 
-void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
+void particleStep(nrs_t *nrs, dfloat time, int tstep)
 {
   // adjust to control when particles are generated
   bool ifInit;
@@ -242,7 +232,7 @@ void my_particle_generator(nrs_t *nrs, dfloat time, int tstep)
   bool ifOut = nrs->isOutputStep;
 
   if (ifInit) particleInit  (*particle_data);
-              particleUpdate(*particle_data, tstep);
+              particleUpdate(*particle_data, nrs, tstep);
   if (ifOut)  particleOut   (*particle_data);
 }
 
@@ -264,5 +254,5 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }
-  my_particle_generator(nrs, time, tstep);
+  particleStep(nrs, time, tstep);
 }
