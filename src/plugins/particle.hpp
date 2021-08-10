@@ -246,13 +246,19 @@ struct particle_set {
     while (offset < pn && code[offset] == 2) ++offset;
     pn -= offset;
 
+    dfloat **outOffset = new dfloat*[nFields];
+    for (dlong i = 0; i < nFields; ++i) {
+      outOffset[i] = out[i] + offset;
+    }
+
     interp.evalPoints(field, nField,
                       code.data()+offset,     1*sizeof(dlong),
                       proc.data()+offset,     1*sizeof(dlong),
                       el.data()+offset,       1*sizeof(dlong),
                       &(r.data()[offset][0]), D*sizeof(dfloat),
-                      out[ifld]+offset,       1*sizeof(dfloat),
+                      outOffset,              1*sizeof(dfloat),
                       size());
+    delete[] outOffset;
   }
 
   // Interpolates the fields at each particle with the assumption that all particles belong to local elements
@@ -272,11 +278,19 @@ struct particle_set {
     while (offset < pn && code[offset] == 2) ++offset;
     pn -= offset;
 
+
+    dfloat **outOffset = new dfloat*[nFields];
+    for (dlong i = 0; i < nFields; ++i) {
+      outOffset[i] = out[i] + offset;
+    }
+
     interp.evalLocalPoints(field, nField
-                            el.data()+offset, 1,
-                             r.data()+offset, 3,
-                           out.data()+offset, 1,
+                           el.data()+offset, 1,
+                            r.data()+offset, 3,
+                           outOffset,        1,
                            pn);
+    delete[] outOffset
+  }
 };
 
 #endif
