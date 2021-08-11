@@ -52,6 +52,12 @@ jobs:
      name: "ethier subcycle + moving mesh"
      script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 6 
    - stage: test
+     name: "ethier gmres bug"
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 7
+   - stage: test
+     name: "ethier variable dt"
+     script: cd $NEKRS_EXAMPLES/ethier && nrsmpi ethier 2 8
+   - stage: test
      name: "lowMach default"
      script: cd $NEKRS_EXAMPLES/lowMach && nrsmpi lowMach 2 1 
    - stage: test

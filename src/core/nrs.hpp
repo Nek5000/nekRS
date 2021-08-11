@@ -50,6 +50,9 @@ struct nrs_t
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat CFL;
+  dfloat unitTimeCFL;
+
   dfloat dp0thdt;
   int tstep;
   int lastStep;

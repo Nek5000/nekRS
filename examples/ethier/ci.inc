@@ -58,11 +58,18 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("MOVING MESH", string("TRUE"));
   }
   if (ciMode == 7) {
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("PRESSURE MAXIMUM ITERATIONS", "1000");
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
     options.setArgs("END TIME", string("0.012"));
+  }
+  if (ciMode == 8) {
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VARIABLE DT", "TRUE");
+    options.setArgs("TARGET CFL", "0.5");
   }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
@@ -233,7 +240,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
-    case 7 : velIterErr = abs(NiterU - 10);
+    case 7 : velIterErr = abs(NiterU - 5);
              s1Err = abs((err[2] - 2E-13)/err[2]);
              s2Err = abs((err[3] - 2E-13)/err[3]);
              
@@ -245,8 +252,29 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
+    case 8 : velIterErr = abs(NiterU - 8);
+             s1Err = abs((err[2] - 1.9E-11)/err[2]);
+             s2Err = abs((err[3] - 2.2E-11)/err[3]);
+             pIterErr = abs(NiterP - 1);
+             vxErr = abs((err[0] - 3.65E-10)/err[0]);
+             prErr = abs((err[1] - 2E-009)/err[1]);
+             s01IterErr = abs(NiterS01 - 8);
+             s02IterErr = abs(NiterS02 - 8);
+             break;
 
      }
+  if (ciMode == 8){
+    const double expectedDt0 = 7.2e-04;
+    const double expectedDt1 = 4.4e-03;
+    const double expectedDt2 = 4.4e-03;
+    const double errDt0 = abs((nrs->dt[0] - expectedDt0))/nrs->dt[0];
+    const double errDt1 = abs((nrs->dt[1] - expectedDt1))/nrs->dt[1];
+    const double errDt2 = abs((nrs->dt[2] - expectedDt2))/nrs->dt[2];
+    if (rank == 0)
+      printf("relative error in dt: dt0 = %g, dt1 = %g, dt2 = %g\n", 
+        errDt0, errDt1, errDt2);
+    (errDt0 < EPS && errDt1 < EPS && errDt2 < EPS) ? ({/** no-op **/}) : (FAIL);
+  }
 
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
@@ -254,4 +282,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
    velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
+
 }

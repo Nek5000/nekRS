@@ -5,7 +5,7 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
-#include <utility>
+#include <limits>
 
 #include "inipp.hpp"
 #include "tinyexpr.h"
@@ -533,6 +533,12 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
   options.setArgs("ENABLE OVERLAP", "TRUE");
+
+  options.setArgs("VARIABLE DT", "FALSE");
+  options.setArgs("TARGET CFL", "1.0");
+
+  const double bigNumber = std::numeric_limits<double>::max();
+  options.setArgs("MAX DT", to_string_f(bigNumber));
 }
 
 setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
@@ -613,9 +619,55 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
-  double dt = 0;
-  if (par->extract("general", "dt", dt))
-    options.setArgs("DT", to_string_f(fabs(dt)));
+  string dtString;
+  if (par->extract("general", "dt", dtString)){
+    if(dtString.find("targetcfl") != string::npos)
+    {
+      bool userSuppliesInitialDt = false;
+      options.setArgs("VARIABLE DT", "TRUE");
+      std::vector<string> entries = serializeString(dtString, '+');
+      for(string entry : entries)
+      {
+        if(entry.find("max") != string::npos)
+        {
+          std::vector<string> maxAndValue = serializeString(entry, '=');
+          assert(maxAndValue.size() == 2);
+          const double maxDT = std::stod(maxAndValue[1]);
+          options.setArgs("MAX DT", to_string_f(maxDT));
+        }
+        if(entry.find("initial") != string::npos)
+        {
+          std::vector<string> initialDtAndValue = serializeString(entry, '=');
+          assert(initialDtAndValue.size() == 2);
+          const double initialDt = std::stod(initialDtAndValue[1]);
+          options.setArgs("DT", to_string_f(initialDt));
+          userSuppliesInitialDt = true;
+        }
+      }
+
+      // guard against using a higher initial dt than the max
+      if(userSuppliesInitialDt)
+      {
+        double initialDt = 0.0;
+        double maxDt = 0.0;
+        options.getArgs("DT", initialDt);
+        options.getArgs("MAX DT", maxDt);
+        if(initialDt > maxDt)
+        {
+          if(rank == 0){
+            printf("Error: initial dt %g is larger than the max dt %g!\n", initialDt, maxDt);
+          }
+          ABORT(1);
+        }
+      }
+    }
+    else
+    {
+      const double dt = std::stod(dtString);
+      options.setArgs("DT", to_string_f(fabs(dt)));
+    }
+
+  }
 
   string timeStepper;
   par->extract("general", "timestepper", timeStepper);
@@ -628,11 +680,6 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   if (timeStepper == "bdf1" || timeStepper == "tombo1") {
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   }
-
-  bool variableDt = false;
-  par->extract("general", "variabledt", variableDt);
-  if (variableDt)
-    exit("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE);
 
   double endTime;
   string stopAt = "numsteps";
@@ -668,6 +715,24 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
       ;
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
   }
+
+  double targetCFL;
+  if(par->extract("general", "targetcfl", targetCFL))
+  {
+    options.setArgs("TARGET CFL", to_string_f(targetCFL));
+  }
+
+  bool variableDt;
+  if(par->extract("general", "variabledt", variableDt))
+  {
+    if(variableDt){
+      options.setArgs("VARIABLE DT", "TRUE");
+    }
+    else{
+      options.setArgs("VARIABLE DT", "FALSE");
+    }
+  }
+
 
   double writeInterval = 0;
   par->extract("general", "writeinterval", writeInterval);

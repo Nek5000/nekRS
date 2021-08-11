@@ -10,6 +10,7 @@
 #include "platform.hpp"
 #include "nrssys.hpp"
 #include "linAlg.hpp"
+#include "cfl.hpp"
 #include "amgx.h"
 
 // extern variable from nrssys.hpp
@@ -187,9 +188,140 @@ void nekUserchk(void)
   nek::userchk();
 }
 
-double dt(void)
+namespace{
+void computeTimeStepFromCFL(int tstep)
 {
-  // TODO: adjust dt for target CFL
+  const double TOLToZero = 1e-12;
+  bool initialTimeStepProvided = true;
+  if(nrs->dt[0] < TOLToZero && tstep == 1){
+    nrs->dt[0] = 1.0; // startup without any initial timestep guess
+    initialTimeStepProvided = false;
+  }
+
+    double targetCFL;
+    platform->options.getArgs("TARGET CFL", targetCFL);
+
+    const double CFLmax = 1.2 * targetCFL;
+    const double CFLmin = 0.8 * targetCFL;
+
+    const double CFL = computeCFL(nrs);
+
+    if(!initialTimeStepProvided){
+      if(CFL > TOLToZero)
+      {
+        nrs->dt[0] = targetCFL / CFL * nrs->dt[0];
+        nrs->unitTimeCFL = CFL/nrs->dt[0];
+      } else {
+        // estimate from userf
+        if(udf.uEqnSource) {
+          platform->linAlg->fillKernel(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
+          platform->timer.tic("udfUEqnSource", 1);
+          double startTime;
+          platform->options.getArgs("START TIME", startTime);
+          udf.uEqnSource(nrs, startTime, nrs->o_U, nrs->o_FU);
+          platform->timer.toc("udfUEqnSource");
+
+          occa::memory o_FUx = nrs->o_FU + 0 * nrs->fieldOffset * sizeof(dfloat);
+          occa::memory o_FUy = nrs->o_FU + 1 * nrs->fieldOffset * sizeof(dfloat);
+          occa::memory o_FUz = nrs->o_FU + 2 * nrs->fieldOffset * sizeof(dfloat);
+
+          platform->linAlg->abs(3 * nrs->fieldOffset, nrs->o_FU);
+
+          const double maxFUx = platform->linAlg->max(nrs->meshV->Nlocal, o_FUx, platform->comm.mpiComm);
+          const double maxFUy = platform->linAlg->max(nrs->meshV->Nlocal, o_FUy, platform->comm.mpiComm);
+          const double maxFUz = platform->linAlg->max(nrs->meshV->Nlocal, o_FUz, platform->comm.mpiComm);
+          const double maxFU = std::max({maxFUx, maxFUy, maxFUz});
+          const double maxU = maxFU / nrs->prop[nrs->fieldOffset];
+          const double * x = nrs->meshV->x;
+          const double * y = nrs->meshV->y;
+          const double * z = nrs->meshV->z;
+          double lengthScale = sqrt(
+            (x[0] - x[1]) * (x[0] - x[1]) +
+            (y[0] - y[1]) * (y[0] - y[1]) +
+            (z[0] - z[1]) * (z[0] - z[1])
+          );
+
+          MPI_Allreduce(MPI_IN_PLACE, &lengthScale, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+          if(maxU > TOLToZero)
+          {
+            nrs->dt[0] = sqrt(targetCFL * lengthScale / maxU);
+          } else {
+            if(platform->comm.mpiRank == 0){
+              printf("CFL: Zero velocity and body force! Please specify an initial timestep!\n");
+              ABORT(1); // <- ???
+            }
+          }
+
+        }
+      }
+    }
+
+    const double unitTimeCFLold = (tstep == 1) ? CFL/nrs->dt[0] : nrs->unitTimeCFL;
+
+    const double CFLold = (tstep == 1) ? CFL : nrs->CFL;
+
+    nrs->CFL = CFL;
+    nrs->unitTimeCFL = CFL/nrs->dt[0];
+
+    const double CFLpred = 2.0 * nrs->CFL - CFLold;
+
+    const double TOL = 0.001;
+
+    if(nrs->CFL > CFLmax || CFLpred > CFLmax || nrs->CFL < CFLmin){
+      const double A = (nrs->unitTimeCFL - unitTimeCFLold) / nrs->dt[0];
+      const double B = nrs->unitTimeCFL;
+      const double C = -targetCFL;
+      const double descriminant = B*B-4*A*C;
+      nrs->dt[1] = nrs->dt[0];
+      if(descriminant <= 0.0)
+      {
+        nrs->dt[0] = nrs->dt[0] * (targetCFL / nrs->CFL);
+      }
+      else if (std::abs((nrs->unitTimeCFL - unitTimeCFLold)/nrs->unitTimeCFL) < TOL)
+      {
+        nrs->dt[0] = nrs->dt[0]*(targetCFL / nrs->CFL);
+      }
+      else {
+        const double dtLow = (-B + sqrt(descriminant) ) / (2.0 * A);
+        const double dtHigh = (-B - sqrt(descriminant) ) / (2.0 * A);
+        if(dtHigh > 0.0 && dtLow > 0.0){
+          nrs->dt[0] = std::min(dtLow, dtHigh);
+        }
+        else if (dtHigh <= 0.0 && dtLow <= 0.0){
+          nrs->dt[0] = nrs->dt[0] * targetCFL / nrs->CFL;
+        }
+        else {
+          nrs->dt[0] = std::max(dtHigh, dtLow);
+        }
+      }
+      if(nrs->dt[1] / nrs->dt[0] < 0.2) nrs->dt[0] = 5.0 * nrs->dt[1];
+    }
+}
+}
+
+double dt(int tstep)
+{
+  if(platform->options.compareArgs("VARIABLE DT", "TRUE")){
+
+    if(tstep == 1)
+    {
+      // use user-specified initial dt on startup
+      double initialDt = 0.0;
+      platform->options.getArgs("DT", initialDt);
+      if(initialDt > 0.0){
+        nrs->dt[0] = initialDt;
+        return nrs->dt[0];
+      }
+    }
+    computeTimeStepFromCFL(tstep);
+  }
+  
+  {
+    double maxDt;
+    platform->options.getArgs("MAX DT", maxDt);
+    nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
+  }
+
   return nrs->dt[0];
 }
 
