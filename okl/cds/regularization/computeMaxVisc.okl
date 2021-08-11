@@ -141,11 +141,15 @@ inline dfloat nu_k(const dfloat s, const dfloat logReferenceSensor, const dfloat
                             const dfloat logReferenceSensor,
                             const dfloat rampParameter,
                             const dfloat visCoeff,
+                            const dfloat scalingCoeff,
+                            const dfloat Uinf,
+                            const bool useHPFResidual,
                             @restrict const dfloat* x,
                             @restrict const dfloat* y,
                             @restrict const dfloat* z,
                             @restrict const dfloat* U,
-                            @restrict const dfloat* logShockSensor,
+                            @restrict const dfloat* hpfResidual,
+                            @restrict const dfloat* logRelativeMassHighestMode,
                             @restrict dfloat* epsilons)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
@@ -156,7 +160,7 @@ inline dfloat nu_k(const dfloat s, const dfloat logReferenceSensor, const dfloat
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-        logSensor = logShockSensor[e];
+        logSensor = logRelativeMassHighestMode[e];
         const int id = i + j * p_Nq;
         for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq){
           s_maxdFdS[k] = -1e8;
@@ -176,6 +180,12 @@ inline dfloat nu_k(const dfloat s, const dfloat logReferenceSensor, const dfloat
           const dfloat he = computeMinGLLGridSpacing(i,j,k,e,x,y,z);
           const dfloat Umag = sqrt(Ux*Ux + Uy*Uy + Uz*Uz);
           dfloat visc_max = visCoeff * he * Umag;
+
+          if(useHPFResidual)
+          {
+            const dfloat errorTerm = scalingCoeff * he * he * abs(hpfResidual[id]) * Uinf;
+            visc_max = (visc_max < errorTerm) ? visc_max : errorTerm;
+          }
 
           // s_maxdFdS = max(s_maxdFdS, visc_max)
           s_maxdFdS[tid] = (s_maxdFdS[tid] > visc_max) ? 
@@ -290,9 +300,13 @@ inline dfloat nu_k(const dfloat s, const dfloat logReferenceSensor, const dfloat
           const dfloat maxVisc = (s_maxdFdS[0] > s_maxdFdS[1]) ?
             s_maxdFdS[0] : s_maxdFdS[1];
           dfloat avm = 0.0;
-          const dfloat multiplier = nu_k(logSensor, logReferenceSensor, rampParameter);
-          if(multiplier > 0.0){
-            avm = multiplier * maxVisc;
+          if(useHPFResidual){
+            avm = maxVisc;
+          } else {
+            const dfloat multiplier = nu_k(logSensor, logReferenceSensor, rampParameter);
+            if(multiplier > 0.0){
+              avm = multiplier * maxVisc;
+            }
           }
 
           #pragma unroll

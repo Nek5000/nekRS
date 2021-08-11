@@ -325,7 +325,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
   nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
 
-  if(platform->options.compareArgs("FILTER STABILIZATION", "RELAXATION")){
+  if(platform->options.compareArgs("STABILIZATION METHOD", "RELAXATION")){
 
     nrs->filterNc = -1;
     dfloat filterS;
@@ -1066,15 +1066,16 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
       continue;
     }
 
-    mesh_t* mesh;
+    mesh_t* mesh; 
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
  
     cds->options[is] = options;
 
-    cds->options[is].setArgs("RAMP CONSTANT", options.getArgs("SCALAR" + sid + " RAMP CONSTANT"));
-    cds->options[is].setArgs("AVM C0", options.getArgs("SCALAR" + sid + " AVM C0"));
-    cds->options[is].setArgs("FILTER STABILIZATION", options.getArgs("SCALAR" + sid + " FILTER STABILIZATION"));
-    cds->options[is].setArgs("VISMAX COEFF", options.getArgs("SCALAR" + sid + " VISMAX COEFF"));
+    cds->options[is].setArgs("STABILIZATION RAMP CONSTANT", options.getArgs("SCALAR" + sid + " STABILIZATION RAMP CONSTANT"));
+    cds->options[is].setArgs("STABILIZATION AVM C0", options.getArgs("SCALAR" + sid + " STABILIZATION AVM C0"));
+    cds->options[is].setArgs("STABILIZATION METHOD", options.getArgs("SCALAR" + sid + " STABILIZATION METHOD"));
+    cds->options[is].setArgs("STABILIZATION VISMAX COEFF", options.getArgs("SCALAR" + sid + " STABILIZATION VISMAX COEFF"));
+    cds->options[is].setArgs("STABILIZATION SCALING COEFF", options.getArgs("SCALAR" + sid + " STABILIZATION SCALING COEFF"));
     cds->options[is].setArgs("HPFRT STRENGTH", options.getArgs("SCALAR" + sid + " HPFRT STRENGTH"));
     cds->options[is].setArgs("HPFRT MODES", options.getArgs("SCALAR" + sid + " HPFRT MODES"));
     cds->options[is].setArgs("KRYLOV SOLVER", options.getArgs("SCALAR" + sid + " KRYLOV SOLVER"));
@@ -1127,8 +1128,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   bool avmEnabled = false;
   {
     for(int is = 0; is < cds->NSfields; is++) {
-      if(!cds->options[is].compareArgs("FILTER STABILIZATION", "NONE")) scalarFilteringEnabled = true;
-      if(cds->options[is].compareArgs("FILTER STABILIZATION", "AVM")) avmEnabled = true;
+      if(!cds->options[is].compareArgs("STABILIZATION METHOD", "NONE")) scalarFilteringEnabled = true;
+      if(cds->options[is].compareArgs("STABILIZATION METHOD", "HPF_RESIDUAL")) avmEnabled = true;
+      if(cds->options[is].compareArgs("STABILIZATION METHOD", "HIGHEST_MODAL_DECAY")) avmEnabled = true;
     }
   }
 
@@ -1138,7 +1140,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->o_filterMT = platform->device.malloc(cds->NSfields * Nmodes * Nmodes, sizeof(dfloat));
     for(int is = 0; is < cds->NSfields; is++)
     {
-      if(cds->options[is].compareArgs("FILTER STABILIZATION", "NONE")) continue;
+      if(cds->options[is].compareArgs("STABILIZATION METHOD", "NONE")) continue;
       int filterNc = -1;
       cds->options[is].getArgs("HPFRT MODES", filterNc);
       dfloat filterS;

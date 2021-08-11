@@ -171,7 +171,6 @@
           const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
           const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-          const dfloat JW   = vgeo[gid + p_JWID * p_Np];
 
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
@@ -184,9 +183,9 @@
             Wn -= W[id + 2 * offset];
           }
 
-          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
-          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
-          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+          const dfloat Uhat = (Un * drdx + Vn * drdy + Wn * drdz);
+          const dfloat Vhat = (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          const dfloat What = (Un * dtdx + Vn * dtdy + Wn * dtdz);
 
           result[id + 0 * offset] =  Uhat;
           result[id + 1 * offset] =  Vhat;

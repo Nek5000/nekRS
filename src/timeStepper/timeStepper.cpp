@@ -27,8 +27,12 @@ void evaluateProperties(nrs_t* nrs, const double timeNew)
   if(nrs->Nscalar){
     cds_t* cds = nrs->cds;
     for(int is = 0 ; is < cds->NSfields; ++is){
-      if(cds->options[is].compareArgs("FILTER STABILIZATION", "AVM")){
-        avm::apply(cds, timeNew, is, cds->o_S);
+      string stabilizationMethod;
+      cds->options[is].getArgs("STABILIZATION METHOD", stabilizationMethod);
+      const bool applyAVM = stabilizationMethod.find("HPF_RESIDUAL") != string::npos
+        || stabilizationMethod.find("HIGHEST_MODAL_DECAY") != string::npos;
+      if(applyAVM){
+        avm::apply(nrs, timeNew, is, cds->o_S);
       }
     }
   }
@@ -268,7 +272,7 @@ void makeq(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
     const dlong isOffset = cds->fieldOffsetScan[is];
 
-    if(cds->options[is].compareArgs("FILTER STABILIZATION", "RELAXATION")){
+    if(cds->options[is].compareArgs("STABILIZATION METHOD", "RELAXATION")){
       cds->filterRTKernel(
         cds->meshV->Nelements,
         is,
@@ -411,7 +415,7 @@ void makef(nrs_t* nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o
     platform->timer.toc("udfUEqnSource");
   }
 
-  if(platform->options.compareArgs("FILTER STABILIZATION", "RELAXATION"))
+  if(platform->options.compareArgs("STABILIZATION METHOD", "RELAXATION"))
     nrs->filterRTKernel(
       mesh->Nelements,
       nrs->o_filterMT,

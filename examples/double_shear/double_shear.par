@@ -33,4 +33,12 @@ dt = 1e-03
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=avm+c0
+regularization=avm+c0+highestModalDecay+scalingCoeff=0.5+rampconstant=1
+
+[SCALAR03]
+dt = 1e-03
+residualProj = true
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+c0+hpfResidual+nmodes=1+scalingCoeff=1.0
