@@ -75,6 +75,8 @@ int AMGXsetup(const int nLocalRows, const int nnz,
             \"cycle\":\"V\",\
             \"presweeps\":1,\
             \"postsweeps\":1,\
+            \"coarsest_sweeps\":3,\
+            \"use_sum_stopping_criteria\":1,\
             \"coarse_solver\": \"NOSOLVER\"\
       }";
 

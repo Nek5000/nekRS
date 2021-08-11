@@ -80,6 +80,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   // global nodes
   meshGlobalIds(mesh);
 
+  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
+  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
+  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
+
   //dont need these once vmap is made
   free(mesh->x);
   free(mesh->y);

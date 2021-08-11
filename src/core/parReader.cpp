@@ -59,6 +59,83 @@ void parseSolverTolerance(const int rank, setupAide &options,
     }
   }
 }
+void parseCoarseSolver(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+  string parSectionName = (parScope.find("temperature") != std::string::npos)
+                              ? "scalar00"
+                              : parScope;
+  UPPER(parSectionName);
+  string p_coarseSolver;
+  const bool continueParsing = par->extract(parScope, "coarsesolver", p_coarseSolver);
+  if(!continueParsing)
+    return;
+
+  // solution methods
+  if(p_coarseSolver.find("boomeramg") != string::npos){
+    options.setArgs("AMG SOLVER", "BOOMERAMG");
+    options.setArgs(parSectionName + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
+    options.setArgs("AMG SOLVER PRECISION", "FP64");
+    options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP64");
+    options.setArgs("AMG SOLVER LOCATION", "CPU");
+  }
+  else if(p_coarseSolver.find("amgx") != string::npos){
+    options.setArgs("AMG SOLVER", "AMGX");
+    options.setArgs(parSectionName + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
+    options.setArgs("AMG SOLVER PRECISION", "FP32");
+    options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP32");
+    options.setArgs("AMG SOLVER LOCATION", "GPU");
+  }
+
+  // coarse grid discretization
+  if(p_coarseSolver.find("semfem") != string::npos){
+    options.setArgs(parSectionName + " MULTIGRID COARSE SEMFEM", "TRUE");
+  }
+  else if(p_coarseSolver.find("fem") != string::npos){
+    options.setArgs(parSectionName + " MULTIGRID COARSE SEMFEM", "FALSE");
+    options.setArgs("GALERKIN COARSE OPERATOR", "FALSE");
+    options.setArgs("USER SPECIFIED FEM COARSE SOLVER", "TRUE");
+    if(p_coarseSolver.find("galerkin") != string::npos){
+      options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+    }
+  }
+
+
+  // parse fp type + location
+  std::vector<string> entries = serializeString(p_coarseSolver, '+');
+  for(string entry : entries)
+  {
+    if(entry.find("fp32") != string::npos)
+    {
+      options.setArgs("AMG SOLVER PRECISION", "FP32");
+      options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP32");
+      if(p_coarseSolver.find("boomeramg") != string::npos){
+        if(rank == 0) printf("BoomerAMG+FP32 is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+    else if(entry.find("fp64") != string::npos)
+    {
+      options.setArgs("AMG SOLVER PRECISION", "FP64");
+      options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP64");
+    }
+    else if(entry.find("cpu") != string::npos)
+    {
+      options.setArgs("AMG SOLVER LOCATION", "CPU");
+      if(p_coarseSolver.find("amgx") != string::npos){
+        if(rank == 0) printf("AMGX+CPU is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+    else if(entry.find("gpu") != string::npos)
+    {
+      options.setArgs("AMG SOLVER LOCATION", "GPU");
+      if(p_coarseSolver.find("boomeramg") != string::npos){
+        if(rank == 0) printf("BoomerAMG+CPU is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+  }
+}
 
 bool is_number(const string &s) {
   return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) {
@@ -160,7 +237,7 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
         string entry = options.getArgs(parSection + " PARALMOND CYCLE");
         if (entry.find("MULTIPLICATIVE") == string::npos) {
           entry += "+MULTIPLICATIVE";
-          options.setArgs(" PARALMOND CYCLE", entry);
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
     } else if (p_smoother.find("chebyshev+asm") == 0) {
@@ -175,7 +252,7 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
         string entry = options.getArgs(parSection + " PARALMOND CYCLE");
         if (entry.find("MULTIPLICATIVE") == string::npos) {
           entry += "+MULTIPLICATIVE";
-          options.setArgs(" PARALMOND CYCLE", entry);
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
     } else if (p_smoother.find("chebyshev+ras") == 0) {
@@ -187,10 +264,10 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
              "smoother!",
              EXIT_FAILURE);
       } else {
-        string entry = options.getArgs(" PARALMOND CYCLE");
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
         if (entry.find("MULTIPLICATIVE") == string::npos) {
           entry += "+MULTIPLICATIVE";
-          options.setArgs(" PARALMOND CYCLE", entry);
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
     } else {
@@ -207,30 +284,35 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
 void parsePreconditioner(const int rank, setupAide &options,
                          inipp::Ini<char> *par, string parScope) {
 
-  string parSection = parScope;
+  string parSection = (parScope.find("temperature") != string::npos)
+                              ? "scalar00"
+                              : parScope;
   UPPER(parSection);
+
   string p_preconditioner;
   par->extract(parScope, "preconditioner", p_preconditioner);
   if (p_preconditioner == "none") {
     options.setArgs(parSection + " PRECONDITIONER", "NONE");
   } else if (p_preconditioner == "jacobi") {
     options.setArgs(parSection + " PRECONDITIONER", "JACOBI");
-  } else if (p_preconditioner.find("semfem") != string::npos) {
+  } else if(p_preconditioner.find("semfem") != std::string::npos
+     && p_preconditioner.find("pmg") == std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "SEMFEM");
     options.setArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG");
     options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
-    std::vector<string> list;
+    std::vector<std::string> list;
     list = serializeString(p_preconditioner, '+');
-    for (string s : list) {
-      if (s.find("semfem") != string::npos) {
-      } else if (s.find("amgx") != string::npos) {
+    for (std::string s : list) {
+      if (s.find("semfem") != std::string::npos) {
+      } else if (s.find("amgx") != std::string::npos) {
         options.setArgs(parSection + " SEMFEM SOLVER", "AMGX");
         options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
-      } else if (s.find("fp32") != string::npos) {
+      } else if (s.find("fp32") != std::string::npos) {
         options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
-        if (options.compareArgs(" SEMFEM SOLVER", "BOOMERAMG"))
-          exit("FP32 is currently not supported for BoomerAMG!", EXIT_FAILURE);
-      } else if (s.find("fp64") != string::npos) {
+        if (options.compareArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG"))
+          exit("FP32 is currently not supported for BoomerAMG!",
+               EXIT_FAILURE);
+      } else if (s.find("fp64") != std::string::npos) {
         options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
       } else {
         if (rank == 0) {
@@ -241,17 +323,29 @@ void parsePreconditioner(const int rank, setupAide &options,
       }
     }
 
-  } else if (p_preconditioner.find("semg") != string::npos ||
-             p_preconditioner.find("multigrid") != string::npos) {
+  } else if (p_preconditioner.find("semg") != std::string::npos ||
+             p_preconditioner.find("multigrid") != std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
     string key = "VCYCLE";
-    if (p_preconditioner.find("additive") != string::npos)
+    if (p_preconditioner.find("additive") != std::string::npos)
       key += "+ADDITIVE";
-    if (p_preconditioner.find("multiplicative") != string::npos)
+    if (p_preconditioner.find("multiplicative") != std::string::npos)
       key += "+MULTIPLICATIVE";
-    if (p_preconditioner.find("overlap") != string::npos)
+    if (p_preconditioner.find("overlap") != std::string::npos)
       key += "+OVERLAPCRS";
     options.setArgs(parSection + " PARALMOND CYCLE", key);
+  } else if(p_preconditioner.find("pmg") != std::string::npos){
+    options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
+    string key = "VCYCLE";
+    options.setArgs(parSection + " PARALMOND CYCLE", key);
+    options.setArgs(parSection + " MULTIGRID COARSE SOLVE", "FALSE");
+    options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
+    if(p_preconditioner.find("coarse") != std::string::npos){
+      options.setArgs(parSection + " MULTIGRID COARSE SOLVE", "TRUE");
+      options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
+    }
+
+    options.setArgs(parSection + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
   }
 }
 void parseInitialGuess(const int rank, setupAide &options,
@@ -516,8 +610,12 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("AMG SOLVER", "BOOMERAMG");
+  options.setArgs("AMG SOLVER PRECISION", "FP64");
+  options.setArgs("AMG SOLVER LOCATION", "CPU");
 
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
+  options.setArgs("PRESSURE MULTIGRID COARSE SOLVE", "TRUE");
+  options.setArgs("PRESSURE MULTIGRID COARSE SEMFEM", "FALSE");
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
@@ -795,8 +893,11 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
     bool p_gproj;
     if (par->extract("pressure", "galerkincoarseoperator", p_gproj))
-      if (p_gproj)
-        options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+    {
+      if(rank == 0)
+        printf("PRESSURE:galerkinCoarseOperator is not supported!\n");
+      ABORT(1);
+    }
 
     parsePreconditioner(rank, options, par, "pressure");
 
@@ -846,6 +947,7 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
     parseSmoother(rank, options, par, "pressure");
 
+    parseCoarseSolver(rank, options, par, "pressure");
     string p_amgsolver;
     par->extract("pressure", "amgsolver", p_amgsolver);
     if (p_amgsolver == "paralmond")

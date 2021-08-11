@@ -258,6 +258,10 @@ void timer_t::printRunStat()
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
+  const double amgxTime = query("AmgXSolve", "DEVICE:MAX");
+  hEtime[0] = hEtime[0] > amgxTime ? hEtime[0] : amgxTime;
+  const double semfemTime = query("Coarse SEMFEM Solve", "DEVICE:MAX");
+  hEtime[0] = hEtime[0] > semfemTime ? hEtime[0] : semfemTime;
   hEtime[1] = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &hEtime[1], 1, MPI_DOUBLE, MPI_MAX, comm_);
 

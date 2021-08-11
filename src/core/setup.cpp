@@ -790,6 +790,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pOptions.setArgs("SEMFEM SOLVER PRECISION", options.getArgs("PRESSURE SEMFEM SOLVER PRECISION"));
     nrs->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
     nrs->pOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
+    nrs->pOptions.setArgs("MULTIGRID COARSE SOLVE",   options.getArgs("PRESSURE MULTIGRID COARSE SOLVE"));
+    nrs->pOptions.setArgs("MULTIGRID COARSE SEMFEM",   options.getArgs("PRESSURE MULTIGRID COARSE SEMFEM"));
     nrs->pOptions.setArgs("MULTIGRID DOWNWARD SMOOTHER",
                           options.getArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER"));
     nrs->pOptions.setArgs("MULTIGRID UPWARD SMOOTHER",
@@ -842,11 +844,36 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->pSolver->levels = (int*) calloc(nrs->pSolver->nLevels,sizeof(int));
       for(int i = 0; i < nrs->pSolver->nLevels; ++i)
         nrs->pSolver->levels[i] = std::atoi(mgLevelList.at(i).c_str());
+      
+      bool invalid = false;
+      invalid |= (nrs->pSolver->levels[0] != mesh->N); // top level order must match
+      for(int i = 0; i < nrs->pSolver->nLevels; ++i){
+        invalid |= (nrs->pSolver->levels[i] < 0); // each level must be positive
+        if(i > 0)
+          invalid |= (nrs->pSolver->levels[i] >= nrs->pSolver->levels[i-1]); // each successive level must be smaller
+      }
 
-      if(nrs->pSolver->levels[0] > mesh->N || 
-         nrs->pSolver->levels[nrs->pSolver->nLevels-1] < 1) {
+      if(invalid){
         if(platform->comm.mpiRank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
         ABORT(EXIT_FAILURE);;
+      }
+      if(nrs->pSolver->levels[nrs->pSolver->nLevels-1] > 1)
+      {
+        if(platform->options.compareArgs("PRESSURE MULTIGRID COARSE SOLVE", "TRUE")){
+          // if the coarse level has p > 1 and requires solving the coarsest level,
+          // rather than just smoothing, then use the SEMFEM discretization
+          platform->options.setArgs("PRESSURE MULTIGRID COARSE SEMFEM", "TRUE");
+          nrs->pOptions.setArgs("MULTIGRID COARSE SEMFEM", "TRUE");
+
+          // However, if the user explicitly asked for the FEM discretization, bail
+          if(platform->options.compareArgs("USER SPECIFIED FEM COARSE SOLVER", "TRUE"))
+          {
+            if(platform->comm.mpiRank == 0){
+              printf("Error! FEM coarse discretization only supports p=1 for the coarsest level!\n");
+            }
+            ABORT(1);
+          }
+        }
       }
       nrs->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
     } else if(nrs->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","ASM") ||

@@ -7,13 +7,23 @@ solver = pfgmres+nVector=20
 maxIterations = 200
 residualTol = 1e-8+relative
 
+# SEMFEM preconditioner
 #preconditioner = SEMFEM+AmgX+FP32 
+
+# p-MG, smooth on coarsest level rather than solve
+#preconditioner = pmg
+#coarseSolver = none
+
+# p-MG, solve coarsest level using SEMFEM discretization
+#preconditioner = pmg+coarse+semfem
+#coarseSolver = AmgX+FP32
 
 smootherType = Chebyshev+RAS+2
 pMultigridCoarsening = 7,3,1
 #galerkinCoarseOperator = true
 
 initialGuess = none
+
 
 [VELOCITY]
 density = 1.0
