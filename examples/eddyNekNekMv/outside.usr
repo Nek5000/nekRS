@@ -143,18 +143,14 @@ c
         wy(i,1,1,1) = wyv
        enddo
       endif
-      ifield = 1  ! for outpost
 
       n    = nx1*ny1*nz1*nelv
       visc = 0.05 !param(2)
       u0   = 5.0  !param(96)
       v0   = 1.5  !param(97)
       call exact  (ue,ve,xm1,ym1,n,time,visc,u0,v0)
-c     if (istep.eq.0     ) call outpost(ue,ve,vx,pr,t,'   ')
-
       call sub3   (ud,ue,vx,n)
       call sub3   (vd,ve,vy,n)
-c     if (istep.eq.nsteps) call outpost(ud,vd,vx,pr,t,'   ')
 
       umx = glamax(vx,n)
       vmx = glamax(vy,n)

@@ -32,7 +32,7 @@ void printHeader()
        << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
        << R"( / / / //  __// ,<  / _, _/___/ / )" << endl
        << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
-       << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
+       << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION
        << " (" << GITCOMMITHASH << ")" << endl
        << endl
        << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
@@ -58,13 +58,13 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     MPI_Comm_rank(comm_in, &rank);
     MPI_Comm_size(comm_in, &size);
     int color = MPI_UNDEFINED;
-    if (rank == 0) color = 1;     
+    if (rank == 0) color = 1;
     MPI_Comm_split(comm_in, color, 0, &comm);
     if (rank != 0) return;
   } else {
     MPI_Comm_dup(comm_in, &comm);
   }
-    
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -86,14 +86,14 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   nrs = new nrs_t();
   nrs->neknek = neknek;
 
-  nrs->par = new inipp::Ini<char>();	  
+  nrs->par = new inipp::Ini<char>();
   string setupFile = _setupFile + ".par";
   options = parRead((void*) nrs->par, setupFile, comm);
 
   options.setArgs("BUILD ONLY", "FALSE");
   if(buildOnly) options.setArgs("BUILD ONLY", "TRUE");
 
-  if (options.getArgs("THREAD MODEL").length() == 0) 
+  if (options.getArgs("THREAD MODEL").length() == 0)
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
@@ -146,7 +146,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   nrs->o_prop.copyTo(nrs->prop);
   if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
 
-  neknek_setup(nrs);
+  neknekSetup(nrs);
 
   nek::ocopyToNek(startTime(), 0);
 
@@ -255,8 +255,8 @@ int lastStep(double time, int tstep, double elapsedTime)
   if(!platform->options.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
     platform->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
-    if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
-  } else if (endTime() > 0) { 
+    if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1;
+  } else if (endTime() > 0) {
      const double eps = 1e-12;
      nrs->lastStep = fabs((time+nrs->dt[0]) - endTime()) < eps || (time+nrs->dt[0]) > endTime();
   } else {
@@ -291,9 +291,9 @@ void printRuntimeStatistics()
 static void dryRun(setupAide &options, int npTarget)
 {
   cout << "performing dry-run to jit-compile for >="
-       << npTarget 
+       << npTarget
        << " MPI tasks ...\n" << endl;
-  fflush(stdout);	
+  fflush(stdout);
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
@@ -320,7 +320,7 @@ static void dryRun(setupAide &options, int npTarget)
   // init solver
   platform_t* platform = platform_t::getInstance();
   nrsSetup(comm, options, nrs);
-  neknek_setup(nrs);
+  neknekSetup(nrs);
 
   cout << "\nBuild successful." << endl;
 }

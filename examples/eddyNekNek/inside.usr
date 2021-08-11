@@ -172,18 +172,13 @@ c
       common /exacd/ ud(lx1,ly1,lz1,lelt),vd(lx1,ly1,lz1,lelt)
 
 
-c      ifield = 1  ! for outpost
-
       n    = nx1*ny1*nz1*nelv
       visc = 0.05 !param(2)
       u0   = 1.0  !param(96)
       v0   = 0.3  !param(97)
       call exact  (ue,ve,xm1,ym1,n,time,visc,u0,v0)
-c      if (istep.eq.0     ) call outpost(ue,ve,vx,pr,t,'   ')
-
       call sub3   (ud,ue,vx,n)
       call sub3   (vd,ve,vy,n)
-c      if (istep.eq.nsteps) call outpost(ud,vd,vx,pr,t,'   ')
 
       umx = glamax(vx,n)
       vmx = glamax(vy,n)

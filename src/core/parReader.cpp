@@ -203,7 +203,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("VERBOSE", "FALSE");
 
   options.setArgs("NEKNEK MAX NUM SESSIONS", "1");
-  options.setArgs("NEKNEK CORRECTOR STEPS", "2");
+  options.setArgs("NEKNEK CORRECTOR STEPS", "1");
 
   options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");

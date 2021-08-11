@@ -77,7 +77,7 @@
 
 #define DEBUG
 
-static MPI_Comm global_comm;
+static MPI_Comm globalComm;
 static MPI_Comm comm;
 
 struct cmdOptions
@@ -90,10 +90,10 @@ struct cmdOptions
   std::string deviceID;
   std::string backend;
   bool redirectOutput;
-  int neknek_sessions = 1;
-  std::vector<std::string> neknek_setupFiles;
-  std::vector<int> neknek_procs;
-  bool neknek_connected = true;
+  int neknekSessions = 1;
+  std::vector<std::string> neknekSetupFiles;
+  std::vector<int> neknekProcs;
+  bool neknekConnected = true;
 };
 
 static cmdOptions* processCmdLineOptions(int argc, char** argv);
@@ -114,29 +114,29 @@ int main(int argc, char** argv)
     }
   }
 
-  MPI_Comm_dup(MPI_COMM_WORLD, &global_comm);
+  MPI_Comm_dup(MPI_COMM_WORLD, &globalComm);
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv);
 
   neknek_t *neknek = new neknek_t();
-  neknek->nsessions = cmdOpt->neknek_sessions;
-  neknek->global_comm = global_comm;
+  neknek->nsessions = cmdOpt->neknekSessions;
+  neknek->globalComm = globalComm;
   if (neknek->nsessions != 1) {
-    neknek->connected = cmdOpt->neknek_connected;
+    neknek->connected = cmdOpt->neknekConnected;
     int grank, sessionID = -1, nextRoot = 0;
-    MPI_Comm_rank(global_comm, &grank);
+    MPI_Comm_rank(globalComm, &grank);
     for(int i = 0; i < neknek->nsessions; ++ i) {
-      nextRoot += cmdOpt->neknek_procs[i];
+      nextRoot += cmdOpt->neknekProcs[i];
       if (grank < nextRoot) {
         sessionID = i;
         break;
       }
     }
-    MPI_Comm_split(global_comm, sessionID, 0, &comm);
-    cmdOpt->setupFile = cmdOpt->neknek_setupFiles[sessionID];
+    MPI_Comm_split(globalComm, sessionID, 0, &comm);
+    cmdOpt->setupFile = cmdOpt->neknekSetupFiles[sessionID];
     neknek->sessionID = sessionID;
   } else {
     neknek->connected = false;
-    comm = global_comm;
+    comm = globalComm;
   }
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -193,7 +193,7 @@ int main(int argc, char** argv)
   nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
 
   if (rank == 0 && !lastStep) {
-    if (nekrs::endTime() > nekrs::startTime()) 
+    if (nekrs::endTime() > nekrs::startTime())
       std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
     else
       std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
@@ -206,8 +206,8 @@ int main(int argc, char** argv)
     ++tStep;
     lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
-    double dt; 
-    if (lastStep && nekrs::endTime() > 0) 
+    double dt;
+    if (lastStep && nekrs::endTime() > 0)
       dt = nekrs::endTime() - time;
     else
       dt = nekrs::dt();
@@ -221,7 +221,7 @@ int main(int argc, char** argv)
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
-    if (outputStep) nekrs::outfld(time); 
+    if (outputStep) nekrs::outfld(time);
 
     if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
 
@@ -244,8 +244,8 @@ int main(int argc, char** argv)
 static cmdOptions* processCmdLineOptions(int argc, char** argv)
 {
   int rank,size;
-  MPI_Comm_rank(global_comm, &rank);
-  MPI_Comm_size(global_comm, &size);
+  MPI_Comm_rank(globalComm, &rank);
+  MPI_Comm_size(globalComm, &size);
 
   cmdOptions* cmdOpt = new cmdOptions();
 
@@ -297,15 +297,15 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         cmdOpt->backend.assign(optarg);
         break;
       case 'n': {
-        cmdOpt->neknek_sessions = atoi(optarg);
+        cmdOpt->neknekSessions = atoi(optarg);
 
-        cmdOpt->neknek_setupFiles.resize(cmdOpt->neknek_sessions, cmdOpt->setupFile);
-        std::string case_name;
+        cmdOpt->neknekSetupFiles.resize(cmdOpt->neknekSessions, cmdOpt->setupFile);
+        std::string caseName;
         std::istringstream stream (cmdOpt->setupFile);
         int i = 0;
-        for(int i = 0; i < cmdOpt->neknek_sessions; ++i) {
-          std::getline(stream, case_name, ',');
-          cmdOpt->neknek_setupFiles[i] = case_name;
+        for(int i = 0; i < cmdOpt->neknekSessions; ++i) {
+          std::getline(stream, caseName, ',');
+          cmdOpt->neknekSetupFiles[i] = caseName;
         }
 
         cmdOpt->redirectOutput = true;
@@ -318,51 +318,51 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         std::istringstream stream (input);
         int i = 0;
         while(std::getline(stream, proc, ',')) {
-          cmdOpt->neknek_procs.push_back(atoi(proc.c_str()));
+          cmdOpt->neknekProcs.push_back(atoi(proc.c_str()));
         }
         break;
       }
       case 'u':
-        cmdOpt->neknek_connected = false;
+        cmdOpt->neknekConnected = false;
         break;
       default:
         err = 1;
       }
     }
 
-    if (cmdOpt->neknek_sessions > 1
-        && cmdOpt->neknek_sessions != cmdOpt->neknek_procs.size()) {
+    if (cmdOpt->neknekSessions > 1
+        && cmdOpt->neknekSessions != cmdOpt->neknekProcs.size()) {
       err = 1;
     }
   }
 
   char buf[FILENAME_MAX];
   strcpy(buf, cmdOpt->setupFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, global_comm);
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, globalComm);
   cmdOpt->setupFile.assign(buf);
   strcpy(buf, cmdOpt->deviceID.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, global_comm);
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, globalComm);
   cmdOpt->deviceID.assign(buf);
   strcpy(buf, cmdOpt->backend.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, global_comm);
+  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, globalComm);
   cmdOpt->backend.assign(buf);
-  MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, global_comm);
-  MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, global_comm);
-  MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, global_comm);
-  MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, global_comm);
-  MPI_Bcast(&cmdOpt->redirectOutput, sizeof(cmdOpt->redirectOutput), MPI_BYTE, 0, global_comm);
+  MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, globalComm);
+  MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, globalComm);
+  MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, globalComm);
+  MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, globalComm);
+  MPI_Bcast(&cmdOpt->redirectOutput, sizeof(cmdOpt->redirectOutput), MPI_BYTE, 0, globalComm);
 
-  MPI_Bcast(&cmdOpt->neknek_sessions, sizeof(cmdOpt->neknek_sessions), MPI_BYTE, 0, global_comm);
-  if(cmdOpt->neknek_sessions > 1) {
+  MPI_Bcast(&cmdOpt->neknekSessions, sizeof(cmdOpt->neknekSessions), MPI_BYTE, 0, globalComm);
+  if(cmdOpt->neknekSessions > 1) {
     if (rank != 0) {
-      cmdOpt->neknek_procs.resize(cmdOpt->neknek_sessions);
-      cmdOpt->neknek_setupFiles.resize(cmdOpt->neknek_sessions);
+      cmdOpt->neknekProcs.resize(cmdOpt->neknekSessions);
+      cmdOpt->neknekSetupFiles.resize(cmdOpt->neknekSessions);
     }
-    MPI_Bcast(cmdOpt->neknek_procs.data(), cmdOpt->neknek_sessions, MPI_INT, 0, global_comm);
-    for (int i = 0; i < cmdOpt->neknek_sessions; ++i) {
-      strcpy(buf, cmdOpt->neknek_setupFiles[i].c_str());
-      MPI_Bcast(buf, sizeof(buf), MPI_CHAR, 0, global_comm);
-      cmdOpt->neknek_setupFiles[i].assign(buf);
+    MPI_Bcast(cmdOpt->neknekProcs.data(), cmdOpt->neknekSessions, MPI_INT, 0, globalComm);
+    for (int i = 0; i < cmdOpt->neknekSessions; ++i) {
+      strcpy(buf, cmdOpt->neknekSetupFiles[i].c_str());
+      MPI_Bcast(buf, sizeof(buf), MPI_CHAR, 0, globalComm);
+      cmdOpt->neknekSetupFiles[i].assign(buf);
     }
   }
 
@@ -377,7 +377,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
     cmdOpt->setupFile.assign(casename);
   }
 
-  MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, global_comm);
+  MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, globalComm);
   if (err) {
     if (rank == 0)
       std::cout << "usage: ./nekrs --setup <case name> "

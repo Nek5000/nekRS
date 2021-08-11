@@ -1,4 +1,4 @@
-[GENERAL] 
+[GENERAL]
 polynomialOrder = 7
 #startFrom = "restart.fld"
 numSteps = 1000
@@ -13,4 +13,4 @@ residualTol = 1e-08
 [VELOCITY]
 residualTol = 1e-12
 density = 1.0
-viscosity = 0.05 
+viscosity = 0.05

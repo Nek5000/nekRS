@@ -7,33 +7,32 @@
 
 struct neknek_t {
   dlong nsessions, sessionID;
-  MPI_Comm global_comm;
+  MPI_Comm globalComm;
   bool connected;
 
   dlong NcorrectorSteps;
 
   dlong Nscalar;
   bool globalMovingMesh;
-  ogs_findpts_t *ogs_handle = nullptr;
+  ogs_findpts_t *ogsHandle = nullptr;
   dlong npt;
 
-  dlong *point_map;
-  occa::memory o_point_map;
+  dlong *pointMap;
+  occa::memory o_pointMap;
 
-  dfloat *val_interp = nullptr;
-  occa::memory o_val_interp;
+  dfloat *valInterp = nullptr;
+  occa::memory o_valInterp;
 
-  dlong  *code = nullptr;
-  dlong  *proc = nullptr;
-  dlong  *el = nullptr;
-  dfloat *r = nullptr;
-  dfloat *eval_buffer = nullptr;
+  dlong  *code;
+  dlong  *proc;
+  dlong  *el;
+  dfloat *r;
 };
 
 
 struct nrs_t;
-void neknek_setup(nrs_t *nrs);
-void neknek_update_boundary(nrs_t *nrs);
+void neknekSetup(nrs_t *nrs);
+void neknekUpdateBoundary(nrs_t *nrs);
 
 
 #endif
