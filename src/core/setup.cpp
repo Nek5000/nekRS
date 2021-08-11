@@ -47,6 +47,33 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
        platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE"))
+  {
+    platform->options.getArgs("FLOW RATE", nrs->flowRate);
+    nrs->fromBID = -1;
+    nrs->toBID = -1;
+    platform->options.getArgs("CONSTANT FLOW FROM BID", nrs->fromBID);
+    platform->options.getArgs("CONSTANT FLOW TO BID", nrs->toBID);
+    if(platform->options.compareArgs("CONSTANT FLOW DIRECTION", "X"))
+    {
+      nrs->flowDirection[0] = 1.0;
+      nrs->flowDirection[1] = 0.0;
+      nrs->flowDirection[2] = 0.0;
+    }
+    if(platform->options.compareArgs("CONSTANT FLOW DIRECTION", "Y"))
+    {
+      nrs->flowDirection[0] = 0.0;
+      nrs->flowDirection[1] = 1.0;
+      nrs->flowDirection[2] = 0.0;
+    }
+    if(platform->options.compareArgs("CONSTANT FLOW DIRECTION", "Z"))
+    {
+      nrs->flowDirection[0] = 0.0;
+      nrs->flowDirection[1] = 0.0;
+      nrs->flowDirection[2] = 1.0;
+    }
+  }
+
 
   // jit compile + init nek
   {  
@@ -225,6 +252,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_mue = nrs->o_prop.slice(0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_rho = nrs->o_prop.slice(1 * nrs->fieldOffset * sizeof(dfloat));
 
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")){
+    nrs->o_Uc  = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+    nrs->o_Pc  = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+    nrs->o_prevProp = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
+  }
+
   nrs->div   = (dfloat*) calloc(nrs->fieldOffset,sizeof(dfloat));
   nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
 
@@ -357,6 +390,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       kernelName = "nStagesSum3";
       nrs->nStagesSum3Kernel =
         device.buildKernel(fileName, kernelName, platform->kernelInfo);
+
+      fileName = oklpath + "nrs/computeFieldDotNormal.okl";
+      kernelName = "computeFieldDotNormal";
+      nrs->computeFieldDotNormalKernel =
+        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+
+      occa::properties centroidProp = kernelInfo;
+      centroidProp["defines/" "p_Nfp"] = nrs->meshV->Nq * nrs->meshV->Nq;
+      centroidProp["defines/" "p_Nfaces"] = nrs->meshV->Nfaces;
+      fileName = oklpath + "nrs/computeFaceCentroid.okl";
+      kernelName = "computeFaceCentroid";
+      nrs->computeFaceCentroidKernel =
+        device.buildKernel(fileName, kernelName, centroidProp);
 
       {
         occa::properties prop = kernelInfo;
@@ -516,6 +562,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       fileName = oklpath + "core/mask" + ".okl";
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
+        device.buildKernel(fileName, kernelName, kernelInfo);
+      kernelName = "mask";
+      nrs->maskKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
 
       fileName = oklpath + "nrs/regularization/filterRT" + suffix + ".okl";

@@ -16,6 +16,9 @@ filtering = hpfrt
 filterWeight = 0.1/${dt}
 filterModes = 1
 
+# constant flow rate driver
+constFlowRate = meanVelocity = 0.9 + direction = Z
+
 [PRESSURE]
 residualTol = 1e-04
 

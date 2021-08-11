@@ -72,6 +72,9 @@ jobs:
    - stage: test
      name: "channelStress"
      script: cd $NEKRS_EXAMPLES/channel && nrsmpi channel 2 1
+   - stage: test
+     name: "turbPipePeriodic + constant flow rate"
+     script: cd $NEKRS_EXAMPLES/turbPipePeriodic && nrsmpi turbPipe 2 1
 
 before_install:
   - sudo apt-get update -qq

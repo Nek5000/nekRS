@@ -223,6 +223,11 @@ void linAlg_t::setup() {
                                         "linAlgSum.okl",
                                         "sum",
                                         kernelInfo);
+      if (sumManyKernel.isInitialized()==false)
+        sumManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgSum.okl",
+                                        "sumMany",
+                                        kernelInfo);
       if (minKernel.isInitialized()==false)
         minKernel = device.buildKernel(oklDir + 
                                         "linAlgMin.okl",
@@ -237,6 +242,11 @@ void linAlg_t::setup() {
         norm2Kernel = device.buildKernel(oklDir + 
                                         "linAlgNorm2.okl",
                                         "norm2",
+                                        kernelInfo);
+      if (norm2ManyKernel.isInitialized()==false)
+        norm2ManyKernel = device.buildKernel(oklDir + 
+                                        "linAlgNorm2.okl",
+                                        "norm2Many",
                                         kernelInfo);
       if (weightedNorm2Kernel.isInitialized()==false){
         if(serial){
@@ -461,6 +471,25 @@ dfloat linAlg_t::sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlo
 
   return sum;
 }
+dfloat linAlg_t::sumMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm){
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  sumManyKernel(Nblock, N, Nfields, fieldOffset, o_a, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  dfloat sum = 0;
+  for(dlong n=0;n<Nblock;++n){
+    sum += scratch[n];
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+  return sum;
+}
 
 // \min o_a
 dfloat linAlg_t::min(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
@@ -505,26 +534,44 @@ dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 }
 
 // ||o_a||_2
-/*
-dfloat linAlg_t::norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
+dfloat linAlg_t::norm2(const dlong N, occa::memory& o_x, MPI_Comm _comm) {
   int Nblock = (N+blocksize-1)/blocksize;
-  Nblock = (Nblock>blocksize) ? blocksize : Nblock; //limit to blocksize entries
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
-  norm2Kernel(Nblock, N, o_a, o_scratch);
+  norm2Kernel(Nblock, N, o_x, o_scratch);
 
-  o_scratch.copyTo(scratch, Nblock*sizeof(dfloat));
+  o_scratch.copyTo(scratch, Nbytes);
 
-  dfloat norm = 0;
+  dfloat dot = 0;
   for(dlong n=0;n<Nblock;++n){
-    norm += scratch[n];
+    dot += scratch[n];
   }
 
-  dfloat globalnorm = 0;
-  MPI_Allreduce(&norm, &globalnorm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
 
-  return sqrt(globalnorm);
+  return sqrt(dot);
 }
-*/
+dfloat linAlg_t::norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_x, MPI_Comm _comm) {
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  norm2ManyKernel(Nblock, N, Nfields, fieldOffset, o_x, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  dfloat dot = 0;
+  for(dlong n=0;n<Nblock;++n){
+    dot += scratch[n];
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+  return sqrt(dot);
+}
 
 // o_x.o_y
 dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,

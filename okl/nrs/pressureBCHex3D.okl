@@ -37,7 +37,6 @@
                                          @restrict const int*  EToB,
                                          @restrict const dfloat*  W,
                                          @restrict const dfloat*  U,
-                                         @restrict const dfloat*  P,
                                          @restrict dfloat*  PI)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))

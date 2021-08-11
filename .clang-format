@@ -1,0 +1,16 @@
+#http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+# The style used for all options not specifically set in the configuration.
+# This option is supported only in the clang-format configuration (both within -style='{...}' and the .clang-format file).
+# LLVM A style complying with the LLVM coding standards
+# Google A style complying with Google’s C++ style guide
+# Chromium A style complying with Chromium’s style guide
+# Mozilla A style complying with Mozilla’s style guide
+# WebKit A style complying with WebKit’s style guide
+BasedOnStyle: LLVM
+# If false, a function call’s arguments will either be all on the same line or will have one line each.
+BinPackArguments: false
+# If false, a function call’s arguments will either be all
+# on the same line or will have one line each.
+BinPackParameters: false
+AlignAfterOpenBracket: DontAlign

@@ -25,7 +25,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    nrs->o_EToB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
-                                   nrs->o_P,
                                    platform->o_mempool.slice6);
 
     nrs->velocityDirichletBCKernel(mesh->Nelements,

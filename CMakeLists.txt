@@ -206,6 +206,7 @@ set(SRC
     src/core/setup.cpp
     src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp
+    src/lns/constantFlowRate.cpp
     src/cds/cds.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp

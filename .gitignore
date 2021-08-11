@@ -3,5 +3,7 @@ CMakeFiles
 *.tgz
 .vscode/
 
+*.swp
+
 # From AMGX
 plugin_config.cu

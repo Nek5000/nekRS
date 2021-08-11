@@ -31,6 +31,92 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini<char> *par)
+{
+  string flowRateDescription;
+  if(par->extract("general", "constflowrate", flowRateDescription))
+  {
+    options.setArgs("CONSTANT FLOW RATE", "TRUE");
+    bool flowRateSet = false;
+    bool flowDirectionSet = false;
+    bool issueError = false;
+    const std::vector<string> list = serializeString(flowRateDescription, '+');
+    for(std::string s : list)
+    {
+      if(s.find("meanvelocity") == 0){
+        if(flowRateSet) issueError = true;
+        flowRateSet = true;
+        options.setArgs("CONSTANT FLOW RATE TYPE", "BULK");
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const dfloat value = std::stod(items[1]);
+        options.setArgs("FLOW RATE", to_string_f(value));
+      }
+
+      if(s.find("meanvolumetricflow") == 0)
+      {
+        if(flowRateSet) issueError = true;
+        flowRateSet = true;
+        options.setArgs("CONSTANT FLOW RATE TYPE", "VOLUMETRIC");
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const dfloat value = std::stod(items[1]);
+        options.setArgs("FLOW RATE", to_string_f(value));
+      }
+
+      if(s.find("bid") == 0)
+      {
+        if(flowDirectionSet) issueError = true;
+        flowDirectionSet = true;
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        std::vector<string> bids = serializeString(items[1], ',');
+        assert(bids.size() == 2);
+        const int fromBID = std::stoi(bids[0]);
+        const int toBID = std::stoi(bids[1]);
+        options.setArgs("CONSTANT FLOW FROM BID", std::to_string(fromBID));
+        options.setArgs("CONSTANT FLOW TO BID", std::to_string(toBID));
+
+        if(platform->comm.mpiRank == 0)
+          printf("Specifying a constant flow direction with a pair of BIDs is currently not supported.\n");
+        ABORT(1);
+      }
+      if(s.find("direction") == 0)
+      {
+        if(flowDirectionSet) issueError = true;
+        flowDirectionSet = true;
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        string direction = items[1];
+        issueError = (
+          direction.find("x") == string::npos &&
+          direction.find("y") == string::npos &&
+          direction.find("z") == string::npos
+        );
+
+        UPPER(direction);
+          
+        options.setArgs("CONSTANT FLOW DIRECTION", direction);
+      }
+
+    }
+    if(!flowDirectionSet)
+    {
+      if(rank == 0) printf("Flow direction has not been set in GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+    if(!flowRateSet)
+    {
+      if(rank == 0) printf("Flow rate has not been set in GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+    if(issueError)
+    {
+      if(rank == 0) printf("Error parsing GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+  }
+}
 void parseSolverTolerance(const int rank, setupAide &options,
                        inipp::Ini<char> *par, string parScope) {
   string parSectionName = (parScope.find("temperature") != std::string::npos)
@@ -586,6 +672,7 @@ void parseRegularization(const int rank, setupAide &options,
 void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("FORMAT", string("1.0"));
 
+  options.setArgs("CONSTANT FLOW RATE", "FALSE");
   options.setArgs("ELEMENT TYPE", string("12")); /* HEX */
   options.setArgs("ELEMENT MAP", string("ISOPARAMETRIC"));
   options.setArgs("MESH DIMENSION", string("3"));
@@ -804,6 +891,8 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   if (timeStepper == "bdf1" || timeStepper == "tombo1") {
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   }
+
+  parseConstFlowRate(rank, options, par);
 
   double endTime;
   string stopAt = "numsteps";
