@@ -10,7 +10,7 @@ struct neknek_t {
   MPI_Comm global_comm;
   bool connected;
 
-  dlong Nsubsteps = 2;
+  dlong NcorrectorSteps;
 
   dlong Nscalar;
   bool globalMovingMesh;

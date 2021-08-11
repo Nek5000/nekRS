@@ -3,6 +3,7 @@
 #include "neknek.hpp"
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "ogsKernels_FINDPTS.hpp"
 
 static void reserveAllocation(nrs_t *nrs, dlong npt) {
   neknek_t *neknek = nrs->neknek;
@@ -187,6 +188,21 @@ static void find_interp_points(nrs_t* nrs){
 
 void neknek_setup(nrs_t *nrs)
 {
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) {
+    int maxSessions;
+    platform->options.getArgs("NEKNEK MAX NUM SESSIONS", maxSessions);
+    if (maxSessions >= 2) {
+      occa::device device = platform_t::getInstance()->device;
+      dlong n1[3] = {nrs->meshV->N+1, nrs->meshV->N+1, nrs->meshV->N+1};
+      MPI_Comm comm = platform->comm.mpiComm;
+
+      // precompile kernels
+      // OCCA automatically garbage collections
+      std::pair<occa::kernel, occa::kernel> kernels = ogs::initFindptsKernel(comm, device, 3, n1);
+    }
+    return;
+  }
+
   neknek_t *neknek = nrs->neknek;
   if(!neknek->connected) {
     reserveAllocation(nrs, 0);
@@ -213,6 +229,8 @@ void neknek_setup(nrs_t *nrs)
     }
   }
   neknek->Nscalar = nfld[0];
+
+  platform->options.getArgs("NEKNEK CORRECTOR STEPS", neknek->NcorrectorSteps);
 
   const dlong movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
   dlong globalMovingMesh;

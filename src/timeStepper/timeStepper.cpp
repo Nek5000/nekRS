@@ -195,7 +195,7 @@ void step(nrs_t* nrs, dfloat time, dfloat dt, int tstep)
     if(stage == 1) tElapsedStep += tPreStep;
     tElapsed += tElapsedStep;
 
-    converged = nrs->neknek->Nsubsteps <= stage;
+    converged = nrs->neknek->NcorrectorSteps <= stage;
     if(udf.converged) converged = udf.converged(nrs, stage);
 
     if(converged) {

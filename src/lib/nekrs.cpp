@@ -320,6 +320,7 @@ static void dryRun(setupAide &options, int npTarget)
   // init solver
   platform_t* platform = platform_t::getInstance();
   nrsSetup(comm, options, nrs);
+  neknek_setup(nrs);
 
   cout << "\nBuild successful." << endl;
 }

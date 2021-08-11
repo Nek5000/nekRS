@@ -228,25 +228,6 @@ c-----------------------------------------------------------------------
 
       call setvar          ! Initialize most variables
 
-      call nekf_neknek_setup
-
-      call izero(boundaryID, size(boundaryID))
-      ifld_bId = 2
-      if(ifflow) ifld_bId = 1
-      do iel = 1,nelv
-      do ifc = 1,2*ndim
-         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
-      enddo
-      enddo
-      call izero(boundaryIDt, size(boundaryIDt))
-      if(nelgt.ne.nelgv) then 
-        do iel = 1,nelt
-        do ifc = 1,2*ndim
-           boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
-        enddo
-        enddo
-      endif
-
       igeom = 2
       call setup_topo      ! Setup domain topology  
       call genwz           ! Compute GLL points, weights, etc.
@@ -268,6 +249,26 @@ c-----------------------------------------------------------------------
       call mesh_metrics     ! print some metrics
 
       call setlog(.false.)  ! Initalize logical flags
+
+      call nekf_neknek_setup
+
+      call izero(boundaryID, size(boundaryID))
+      ifld_bId = 2
+      if(ifflow) ifld_bId = 1
+      do iel = 1,nelv
+      do ifc = 1,2*ndim
+         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
+      enddo
+      enddo
+      call izero(boundaryIDt, size(boundaryIDt))
+      if(nelgt.ne.nelgv) then
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
+        enddo
+        enddo
+      endif
+
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
