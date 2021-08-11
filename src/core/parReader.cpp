@@ -410,7 +410,7 @@ void parseInitialGuess(const int rank, setupAide &options,
     for (string s : list) {
       if (s.find("nvector") == 0) {
         const std::vector<string> items = serializeString(s, '=');
-        assert(items.size() = 2);
+        assert(items.size() == 2);
         const int value = std::stoi(items[1]);
         options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
                         std::to_string(value));
