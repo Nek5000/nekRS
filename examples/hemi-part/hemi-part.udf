@@ -106,8 +106,8 @@ void particleUpdate(particles_t& particles, nrs_t* nrs, int tstep) {
     // Update particle position and velocity history
     for (int k=0; k < 3; ++k) {
        particles.x[k][i] += dt*(c1*u1[k][i] + c2*particles.extra[i].v_hist[0][k] + c3*particles.extra[i].v_hist[1][k]);
-       particles.extra[i].v_hist[0][k] = particles.extra[i].v_hist[1][k];
-       particles.extra[i].v_hist[1][k] = u1[k][i];
+       particles.extra[i].v_hist[1][k] = particles.extra[i].v_hist[0][k];
+       particles.extra[i].v_hist[0][k] = u1[k][i];
     }
 
     // Remove particles that have left the region
