@@ -35,7 +35,6 @@ extern "C" void fusedResidualAndNorm(const dlong & Nblocks, const dlong & N,
                                     dfloat* __restrict__ reduction)
 {
   dfloat rdotr = 0.0;
-  #pragma omp parallel for collapse(2)
   for(int fld = 0 ; fld < p_eNfields; ++fld){
     for(int id = 0 ; id < N; ++id){
       const dfloat rnew = b_vec[id + fld * offset] - Ax[id + fld * offset];
