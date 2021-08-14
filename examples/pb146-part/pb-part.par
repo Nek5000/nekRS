@@ -1,0 +1,33 @@
+[GENERAL]
+#verbose = true
+polynomialOrder = 7
+#startFrom = "restart.fld"
+stopAt = endTime
+endTime = 20
+
+dt = 2.0e-3
+timeStepper = tombo2
+extrapolation = subCycling
+subCyclingSteps = 2
+
+writeControl = runTime
+writeInterval = 1
+
+filtering = hpfrt
+filterWeight = 0.2/${dt} 
+filterModes = 2
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = inlet, outlet, wall, wall
+density = 1.0
+viscosity = -5000.0
+residualTol = 1e-06
+
+[TEMPERATURE]
+boundaryTypeMap = inlet, outlet, insulated, flux 
+residualTol = 1e-06
+rhoCp = 1.0
+conductivity = -5000
