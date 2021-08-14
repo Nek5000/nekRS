@@ -358,7 +358,7 @@ void outputStep(int val)
 
 void outfld(double time)
 {
-  writeFld(nrs, time, 0);
+  writeFld(nrs, time);
   lastOutputTime = time;
 }
 
