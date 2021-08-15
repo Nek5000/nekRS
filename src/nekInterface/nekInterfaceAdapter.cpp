@@ -130,8 +130,9 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
   if(o_s.ptr()) {
     const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for(int is = 0; is < NSfields; is++) {
-      mesh_t* mesh;
-      (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
+      mesh_t* mesh = nrs->meshV;
+      if(nrs->cds)
+        (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
       occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
