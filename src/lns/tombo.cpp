@@ -11,7 +11,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
   
 
   //enforce Dirichlet BCs
-  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_mempool.slice6);
+  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
