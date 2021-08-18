@@ -153,6 +153,7 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
         smtypeDown = SecondarySmootherType::JACOBI;
     }
   } else if (options.compareArgs("MULTIGRID SMOOTHER","DAMPEDJACOBI")) { //default to damped jacobi
+    stype = SmootherType::JACOBI;
     smtypeUp = SecondarySmootherType::JACOBI;
     smtypeDown = SecondarySmootherType::JACOBI;
     dfloat* invDiagA;
@@ -174,12 +175,6 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
 
       lambda1 = maxMultiplier * rho;
       lambda0 = minMultiplier * rho;
-    }else {
-
-      std::string invalidSmootherName;
-      options.getArgs("MULTIGRID SMOOTHER", invalidSmootherName);
-      if(platform->comm.mpiRank == 0) printf("Smoother %s is not supported!\n", invalidSmootherName.c_str());
-      ABORT(EXIT_FAILURE);
     }
     free(invDiagA);
   }
@@ -207,8 +202,12 @@ void MGLevel::Report()
       strcpy(smootherString, "Chebyshev+Jacobi ");
     else if (stype == SmootherType::SCHWARZ)
       strcpy(smootherString, "Schwarz          ");
+    else if (stype == SmootherType::JACOBI)
+      strcpy(smootherString, "Jacobi           ");
     else if (stype == SmootherType::CHEBYSHEV && smtypeDown == SecondarySmootherType::SCHWARZ)
       strcpy(smootherString, "Chebyshev+Schwarz");
+    else
+      strcpy(smootherString, "???");
   }
 
   if (platform->comm.mpiRank == 0) {

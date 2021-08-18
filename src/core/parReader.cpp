@@ -356,6 +356,22 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
           options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
+    } else if (p_smoother.find("jac") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER",
+                      "DAMPEDJACOBI");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "JACOBI");
+      options.setArgs("BOOMERAMG ITERATIONS", "2");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for Jacobi smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
+        }
+      }
     } else {
       exit("Unknown ::smootherType!", EXIT_FAILURE);
     }
