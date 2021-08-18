@@ -190,6 +190,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
+void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties kernelInfo);
 
 void ellipticSEMFEMSetup(elliptic_t*);
 void ellipticSEMFEMSolve(elliptic_t*, occa::memory&, occa::memory&);

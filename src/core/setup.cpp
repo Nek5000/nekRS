@@ -532,7 +532,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         occa::properties subCycleStrongCubatureProps = prop;
         if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           fileName = oklpath + "nrs/subCycle" + suffix + ".c";
-          subCycleStrongCubatureProps["okl/enabled"] = false;
         }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
@@ -1298,7 +1297,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
         occa::properties subCycleStrongCubatureProps = prop;
         if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
           fileName = oklpath + "cds/subCycle" + suffix + ".c";
-          subCycleStrongCubatureProps["okl/enabled"] = false;
         }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =

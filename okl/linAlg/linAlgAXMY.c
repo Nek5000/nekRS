@@ -20,7 +20,7 @@ SOFTWARE.
 */
 
 extern "C" 
-void axmy(const dlong & N, 
+void FUNC(axmy)(const dlong & N, 
           const dfloat& alpha,
                  const dfloat * __restrict__ cpu_w,
                  dfloat * __restrict__ cpu_a){
@@ -35,7 +35,7 @@ void axmy(const dlong & N,
 }
 
 extern "C" 
-void axmyMany(const dlong & N, 
+void FUNC(axmyMany)(const dlong & N, 
                       const dlong & Nfields,
                       const dlong & offset,
                       const dlong & mode,
@@ -55,7 +55,7 @@ void axmyMany(const dlong & N,
 
 }
 extern "C" 
-void axmyVector(const dlong & N, 
+void FUNC(axmyVector)(const dlong & N, 
                       const dlong & offset,
                       const dlong & mode,
                       const dfloat & alpha,

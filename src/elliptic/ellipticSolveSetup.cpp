@@ -83,7 +83,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
     occa::properties gmresKernelInfo = platform->kernelInfo;
     gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
     gmresKernelInfo["defines/" "p_Nfields"] = elliptic->Nfields;
-    if(serial) gmresKernelInfo["okl/enabled"] = false;
     filename = serial ? oklpath + "ellipticGramSchmidtOrthogonalization.c" : oklpath + "ellipticGramSchmidtOrthogonalization.okl";
     elliptic->gramSchmidtOrthogonalizationKernel =
       platform->device.buildKernel(filename,
@@ -272,9 +271,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
 
-  occa::properties kernelInfoNoOKL = kernelInfo;
-  if(serial) kernelInfoNoOKL["okl/enabled"] = false;
-
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
@@ -292,66 +288,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
         platform->device.buildKernel(filename,
                                  "mask",
                                  kernelInfo);
-
-      filename = oklpath + "mask.okl";
-      mesh->maskPfloatKernel =
-        platform->device.buildKernel(filename,
-                                 "mask",
-                                 pfloatKernelInfo);
-        filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
-        elliptic->fusedCopyDfloatToPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "fusedCopyDfloatToPfloat",
-                                   kernelInfo);
-        elliptic->copyDfloatToPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "copyDfloatToPfloat",
-                                   kernelInfo);
-
-        elliptic->copyPfloatToDPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "copyPfloatToDfloat",
-                                   kernelInfo);
-
-        elliptic->scaledAddPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "scaledAdd",
-                                   kernelInfo);
-        elliptic->dotMultiplyPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "dotMultiply",
-                                   kernelInfo);
-        filename = install_dir + "/okl/elliptic/chebyshev.okl";
-        elliptic->updateSmoothedSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateSmoothedSolutionVec",
-                                   kernelInfo);
-        elliptic->updateChebyshevSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateChebyshevSolutionVec",
-                                   kernelInfo);
-
-        elliptic->updateIntermediateSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateIntermediateSolutionVec",
-                                   kernelInfo);
-
   }
 
   // add custom defines
   kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
-
-  //sizes for the coarsen and prolongation kernels. degree N to degree 1
-  kernelInfo["defines/" "p_NpFine"] = mesh->Np;
-  kernelInfo["defines/" "p_NpCoarse"] = mesh->Nverts;
-
-  if (elliptic->elementType == QUADRILATERALS || elliptic->elementType == HEXAHEDRA) {
-    kernelInfo["defines/" "p_NqFine"] = mesh->N + 1;
-    kernelInfo["defines/" "p_NqCoarse"] = 2;
-  }
-
-  kernelInfo["defines/" "p_halfC"] = (int)((mesh->cubNq + 1) / 2);
-  kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
 
   occa::properties dfloatKernelInfo = kernelInfo;
   occa::properties floatKernelInfo = kernelInfo;
@@ -360,9 +300,6 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   dfloatKernelInfo["defines/" "pfloat"] = dfloatString;
 
   occa::properties AxKernelInfo = dfloatKernelInfo;
-  occa::properties dfloatKernelInfoNoOKL = kernelInfoNoOKL;
-  dfloatKernelInfoNoOKL["defines/" "pfloat"] = dfloatString;
-  if(serial) AxKernelInfo = dfloatKernelInfoNoOKL;
 
   {
       const string oklpath = install_dir + "/okl/elliptic/";
@@ -453,38 +390,12 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       // combined PCG update and r.r kernel
       if(serial) {
         filename = oklpath + "ellipticSerialUpdatePCG.c";
-        elliptic->updatePCGKernel =
-          platform->device.buildKernel(filename,
-                                   "ellipticUpdatePCG", dfloatKernelInfoNoOKL);
       } else {
         filename = oklpath + "ellipticUpdatePCG.okl";
-        elliptic->updatePCGKernel =
-          platform->device.buildKernel(filename,
-                                   "ellipticBlockUpdatePCG", dfloatKernelInfo);
       }
-
-      if(!elliptic->blockSolver) {
-        if(serial){
-          filename = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
-          kernelName = "ellipticPreconCoarsen" + suffix;
-          occa::properties serialPreconKernelInfo = kernelInfo;
-          serialPreconKernelInfo["okl/enabled"] = false;
-          elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,serialPreconKernelInfo);
-          filename = oklpath + "ellipticPreconProlongate" + suffix + ".c";
-          kernelName = "ellipticPreconProlongate" + suffix;
-          elliptic->precon->prolongateKernel =
-            platform->device.buildKernel(filename,kernelName,serialPreconKernelInfo);
-        } else {
-          filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
-          kernelName = "ellipticPreconCoarsen" + suffix;
-          elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,kernelInfo);
-          filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
-          kernelName = "ellipticPreconProlongate" + suffix;
-          elliptic->precon->prolongateKernel =
-            platform->device.buildKernel(filename,kernelName,kernelInfo);
-        }
-
-      }
+      elliptic->updatePCGKernel =
+        platform->device.buildKernel(filename,
+                                 "ellipticBlockUpdatePCG", dfloatKernelInfo);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

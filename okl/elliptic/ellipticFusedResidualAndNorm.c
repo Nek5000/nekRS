@@ -26,7 +26,7 @@
 
 // r = b - Ax
 // (r,r)
-extern "C" void fusedResidualAndNorm(const dlong & Nblocks, const dlong & N,
+extern "C" void FUNC(fusedResidualAndNorm)(const dlong & Nblocks, const dlong & N,
                                     const dlong & offset,
                                     const dfloat* __restrict__ weights,
                                     const dfloat* __restrict__ b_vec,

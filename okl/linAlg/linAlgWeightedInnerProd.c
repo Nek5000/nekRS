@@ -19,7 +19,7 @@ SOFTWARE.
 */
 
 extern "C" 
-void weightedInnerProd(
+void FUNC(weightedInnerProd)(
             const dlong & Nblocks,
             const dlong & N,
             const dfloat * __restrict__ cpu_w,
@@ -42,7 +42,7 @@ void weightedInnerProd(
 }
 
 extern "C" 
-void weightedInnerProdMany(
+void FUNC(weightedInnerProdMany)(
             const dlong & Nblocks,
             const dlong & N,
             const dlong & Nfields,
