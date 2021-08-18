@@ -1173,6 +1173,12 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     nscal++;
     isStart++;
 
+    {
+      string keyValue;
+      if (par->extract("temperature", "maxiterations", keyValue))
+        options.setArgs("SCALAR00 MAXIMUM ITERATIONS", keyValue);
+    }
+
     { parseRegularization(rank, options, par, true, true, "00"); }
 
     options.setArgs("SCALAR00 IS TEMPERATURE", "TRUE");
@@ -1240,6 +1246,12 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
       stringstream ss;
       ss << std::setfill('0') << std::setw(2) << is + 1;
       sidPar = ss.str();
+    }
+
+    {
+      string keyValue;
+      if (par->extract("scalar" + sidPar, "maxiterations", keyValue))
+        options.setArgs("SCALAR" + sid + " MAXIMUM ITERATIONS", keyValue);
     }
 
     { parseRegularization(rank, options, par, true, false, sidPar); }

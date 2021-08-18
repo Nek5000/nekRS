@@ -1138,7 +1138,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("INITIAL GUESS",  options.getArgs("SCALAR" + sid + " INITIAL GUESS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION VECTORS",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
     cds->options[is].setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
-    cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR MAXIMUM ITERATIONS"));
+    cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR" + sid + " MAXIMUM ITERATIONS"));
 
     // setup boundary mapping
     dfloat largeNumber = 1 << 20;
