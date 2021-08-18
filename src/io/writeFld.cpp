@@ -29,6 +29,5 @@ void writeFld(nrs_t *nrs, dfloat t)
   int outXYZ = 1;
   if(platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "FALSE")) outXYZ = 0;
 
-  printf("writeFld: outXYZ %d\n", outXYZ);
   writeFld(nrs, t, outXYZ, FP64); 
 }
