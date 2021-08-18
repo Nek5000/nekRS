@@ -54,7 +54,6 @@ set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros
 set(ENABLE_METAL OFF CACHE BOOL "Enable OCCA Metal support")
 set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 set(GPU_MPI "0" CACHE STRING "GPU aware MPI")
-set(BACKEND_DEFAULT "SERIAL" CACHE STRING "Default occa mode")
 
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
@@ -290,6 +289,14 @@ add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin nekrs-lib)
+
+if(ENABLE_CUDA)
+  set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
+elseif(ENABLE_HIP)
+  set(BACKEND_DEFAULT "HIP" CACHE STRING "Default occa mode")
+else()
+  set(BACKEND_DEFAULT "SERIAL" CACHE STRING "Default occa mode")
+endif() 
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")
