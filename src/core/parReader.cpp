@@ -310,7 +310,7 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
         options.setArgs(parSection + " PARALMOND CYCLE",
                         "VCYCLE+ADDITIVE+OVERLAPCRS");
       }
-    } else if (p_smoother.find("chebyshev+jac") == 0) {
+    } else if (p_smoother.find("chebyshev+jac") == 0 || p_smoother.find("cheb+jac") == 0) {
       options.setArgs(parSection + " MULTIGRID SMOOTHER",
                       "DAMPEDJACOBI,CHEBYSHEV");
       options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
@@ -326,7 +326,7 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
           options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
-    } else if (p_smoother.find("chebyshev+asm") == 0) {
+    } else if (p_smoother.find("chebyshev+asm") == 0 || p_smoother.find("cheb+asm") == 0) {
       options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
       options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
       options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "ASM");
@@ -341,7 +341,7 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
           options.setArgs(parSection + " PARALMOND CYCLE", entry);
         }
       }
-    } else if (p_smoother.find("chebyshev+ras") == 0) {
+    } else if (p_smoother.find("chebyshev+ras") == 0 || p_smoother.find("cheb+ras") == 0) {
       options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
       options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "RAS");
       options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "RAS");
@@ -379,7 +379,7 @@ void parsePreconditioner(const int rank, setupAide &options,
   par->extract(parScope, "preconditioner", p_preconditioner);
   if (p_preconditioner == "none") {
     options.setArgs(parSection + " PRECONDITIONER", "NONE");
-  } else if (p_preconditioner == "jacobi") {
+  } else if (p_preconditioner.find("jac") != std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "JACOBI");
   } else if(p_preconditioner.find("semfem") != std::string::npos
      && p_preconditioner.find("pmg") == std::string::npos) {
