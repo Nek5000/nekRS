@@ -168,8 +168,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
       mesh->o_U.copyFrom(mesh->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
     }
-    if (platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
-      mesh->solve();
   }
 
   platform->device.finish();
@@ -205,8 +203,11 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
 
     if (useConstantFlowRate && stage > 1) {
       solveRequired = ConstantFlowRate::apply(nrs, tstep, timeNew);
-    } else if (nrs->flow)
+    } else if (nrs->flow) {
       fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage);
+    }
+    if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
+      meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -555,10 +556,29 @@ void fluidSolve(
   platform->timer.toc("velocitySolve");
 }
 
-occa::memory velocityStrongSubCycleMovingMesh(
-    nrs_t *nrs, int nEXT, dfloat time, occa::memory o_U) {
-  mesh_t *mesh = nrs->meshV;
-  linAlg_t *linAlg = platform->linAlg;
+void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
+{
+  mesh_t* mesh = nrs->meshV;
+  linAlg_t* linAlg = platform->linAlg;
+
+  platform->timer.tic("meshSolve", 1);
+  nrs->setEllipticCoeffKernel(
+    mesh->Nlocal,
+    1.0,
+    0 * nrs->fieldOffset,
+    nrs->fieldOffset,
+    nrs->o_meshMue,
+    nrs->o_meshRho,
+    nrs->o_ellipticCoeff);
+  occa::memory o_Unew = tombo::meshSolve(nrs, time, stage);
+  o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  platform->timer.toc("meshSolve");
+}
+
+occa::memory velocityStrongSubCycleMovingMesh(nrs_t* nrs, int nEXT, dfloat time, occa::memory o_U)
+{
+  mesh_t* mesh = nrs->meshV;
+  linAlg_t* linAlg = platform->linAlg;
 
   occa::memory &o_p0 = platform->o_mempool.slice0;
   occa::memory &o_u1 = platform->o_mempool.slice3;
@@ -1357,7 +1377,14 @@ void printInfo(
         }
       }
 
-      for (int is = 0; is < nrs->Nscalar; is++) {
+      if(nrs->meshSolver)
+      {
+        elliptic_t* solver = nrs->meshSolver;
+        printf("  M  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+               solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
+      }
+ 
+      for(int is = 0; is < nrs->Nscalar; is++) {
         if (cds->compute[is]) {
           elliptic_t *solver = cds->solver[is];
           printf("  S%02d: iter %03d  resNorm00 %e  resNorm0 %e  "
@@ -1382,10 +1409,13 @@ void printInfo(
             nrs->wSolver->Niter,
             nrs->pSolver->Niter);
     }
-    for (int is = 0; is < nrs->Nscalar; is++)
-      if (cds->compute[is])
-        printf("  S: %d", cds->solver[is]->Niter);
-
+    if(nrs->meshSolver)
+      printf("  M: %d", 
+       	nrs->meshSolver->Niter);
+      
+    for(int is = 0; is < nrs->Nscalar; is++)
+      if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
+ 
     printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
   }
 

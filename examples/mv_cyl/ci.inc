@@ -28,6 +28,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if(ciMode == 2){
     options.setArgs("SUBCYCLING STEPS", string("1"));
   }
+  if(ciMode == 3){
+    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("MESH SOLVER", "ELASTICITY");
+    options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
@@ -35,6 +40,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (!nrs->lastStep) return;
  
   const int rank = platform->comm.mpiRank;
+  mesh_t* mesh = nrs->meshV;
  
   nek::ocopyToNek(time, tstep);
   nek::userchk();
@@ -61,7 +67,16 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
-    expectedPIter = 6;
+    expectedPIter = 7;
+  }
+  if(ciMode == 3)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.1966487E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.2443839E-05;
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
@@ -86,7 +101,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
   pIterErr = abs(expectedPIter - nrs->pSolver->Niter);
   if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
-  if(velIterErr >= 2) passed = false;
+  if(velIterErr >= 3) passed = false;
   if(pIterErr >= 2) passed = false;
 
   passed ? (PASS) : (FAIL);

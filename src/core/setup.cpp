@@ -117,6 +117,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   occa::properties kernelInfoV  = kernelInfo;
+  occa::properties kernelInfoM  = kernelInfo;
   occa::properties kernelInfoP  = kernelInfo;
   occa::properties kernelInfoS  = kernelInfo;
 
@@ -242,15 +243,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
                                              nrs->ellipticCoeff);
 
-  nrs->prop =  (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
+  int nProperties = 2;
+  if(options.compareArgs("MESH SOLVER", "ELASTICITY")) nProperties = 4;
+  nrs->prop =  (dfloat*) calloc(nProperties * nrs->fieldOffset,sizeof(dfloat));
   for (int e = 0; e < mesh->Nelements; e++)
     for (int n = 0; n < mesh->Np; n++) {
       nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
       nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
     }
-  nrs->o_prop = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
+
+  nrs->o_prop = device.malloc(nProperties * nrs->fieldOffset * sizeof(dfloat), nrs->prop);
   nrs->o_mue = nrs->o_prop.slice(0 * nrs->fieldOffset * sizeof(dfloat));
   nrs->o_rho = nrs->o_prop.slice(1 * nrs->fieldOffset * sizeof(dfloat));
+  if(options.compareArgs("MESH SOLVER", "ELASTICITY")){
+    nrs->o_meshMue = nrs->o_prop.slice(2 * nrs->fieldOffset * sizeof(dfloat));
+    nrs->o_meshRho = nrs->o_prop.slice(3 * nrs->fieldOffset * sizeof(dfloat));
+  }
 
   if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")){
     nrs->o_Uc  = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
@@ -331,32 +339,65 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   // setup boundary mapping
   dfloat largeNumber = 1 << 20;
-  nrs->VmapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-  for (int e = 0; e < mesh->Nelements; e++)
-    for (int n = 0; n < mesh->Np; n++) nrs->VmapB[n + e * mesh->Np] = largeNumber;
 
-  nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+  {
+    nrs->VmapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
+    for (int e = 0; e < mesh->Nelements; e++)
+      for (int n = 0; n < mesh->Np; n++) nrs->VmapB[n + e * mesh->Np] = largeNumber;
 
-  int cnt = 0;
-  for (int e = 0; e < mesh->Nelements; e++)
-    for (int f = 0; f < mesh->Nfaces; f++) {
-      int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
-      nrs->EToB[cnt] = bc;
-      if (bc > 0) {
-        for (int n = 0; n < mesh->Nfp; n++) {
-          int fid = mesh->faceNodes[n + f * mesh->Nfp];
-          nrs->VmapB[fid + e * mesh->Np] = mymin(bc,nrs->VmapB[fid + e * mesh->Np]); // Dirichlet wnrs
+    nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+
+    int cnt = 0;
+    for (int e = 0; e < mesh->Nelements; e++)
+      for (int f = 0; f < mesh->Nfaces; f++) {
+        int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
+        nrs->EToB[cnt] = bc;
+        if (bc > 0) {
+          for (int n = 0; n < mesh->Nfp; n++) {
+            int fid = mesh->faceNodes[n + f * mesh->Nfp];
+            nrs->VmapB[fid + e * mesh->Np] = mymin(bc,nrs->VmapB[fid + e * mesh->Np]); // Dirichlet wins
+          }
         }
+        cnt++;
       }
-      cnt++;
-    }
 
-  ogsGatherScatter(nrs->VmapB, ogsInt, ogsMin, mesh->ogs);
-  for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
-    if (nrs->VmapB[n] == largeNumber) nrs->VmapB[n] = 0;
+    ogsGatherScatter(nrs->VmapB, ogsInt, ogsMin, mesh->ogs);
+    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
+      if (nrs->VmapB[n] == largeNumber) nrs->VmapB[n] = 0;
 
-  nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
-  nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
+    nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
+    nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
+  }
+
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
+  {
+    nrs->VmapBMesh = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
+    for (int e = 0; e < mesh->Nelements; e++)
+      for (int n = 0; n < mesh->Np; n++) nrs->VmapBMesh[n + e * mesh->Np] = largeNumber;
+
+    nrs->EToBMesh = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+
+    int cnt = 0;
+    for (int e = 0; e < mesh->Nelements; e++)
+      for (int f = 0; f < mesh->Nfaces; f++) {
+        int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "mesh");
+        nrs->EToBMesh[cnt] = bc;
+        if (bc > 0) {
+          for (int n = 0; n < mesh->Nfp; n++) {
+            int fid = mesh->faceNodes[n + f * mesh->Nfp];
+            nrs->VmapBMesh[fid + e * mesh->Np] = mymin(bc,nrs->VmapBMesh[fid + e * mesh->Np]); // Dirichlet wins
+          }
+        }
+        cnt++;
+      }
+
+    ogsGatherScatter(nrs->VmapBMesh, ogsInt, ogsMin, mesh->ogs);
+    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
+      if (nrs->VmapBMesh[n] == largeNumber) nrs->VmapBMesh[n] = 0;
+
+    nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
+    nrs->o_VmapBMesh = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapBMesh);
+  }
 
   if(platform->options.compareArgs("STABILIZATION METHOD", "RELAXATION")){
 
@@ -721,6 +762,29 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                           options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
     nrs->vOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("VELOCITY MAXIMUM ITERATIONS"));
 
+    nrs->mOptions = options;
+    nrs->mOptions.setArgs("PGMRES RESTART",        options.getArgs("MESH PGMRES RESTART"));
+    nrs->mOptions.setArgs("KRYLOV SOLVER",        options.getArgs("MESH KRYLOV SOLVER"));
+    nrs->mOptions.setArgs("SOLVER TOLERANCE",     options.getArgs("MESH SOLVER TOLERANCE"));
+    nrs->mOptions.setArgs("DISCRETIZATION",       options.getArgs("MESH DISCRETIZATION"));
+    nrs->mOptions.setArgs("BASIS",                options.getArgs("MESH BASIS"));
+    nrs->mOptions.setArgs("PRECONDITIONER",       options.getArgs("MESH PRECONDITIONER"));
+    nrs->mOptions.setArgs("INITIAL GUESS",       options.getArgs("MESH INITIAL GUESS"));
+    nrs->mOptions.setArgs("RESIDUAL PROJECTION VECTORS",       options.getArgs("MESH RESIDUAL PROJECTION VECTORS"));
+    nrs->mOptions.setArgs("RESIDUAL PROJECTION START",       options.getArgs("MESH RESIDUAL PROJECTION START"));
+    nrs->mOptions.setArgs("MULTIGRID COARSENING", options.getArgs("MESH MULTIGRID COARSENING"));
+    nrs->mOptions.setArgs("MULTIGRID SMOOTHER",   options.getArgs("MESH MULTIGRID SMOOTHER"));
+    nrs->mOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",
+                          options.getArgs("MESH MULTIGRID CHEBYSHEV DEGREE"));
+    nrs->mOptions.setArgs("PARALMOND CYCLE",      options.getArgs("MESH PARALMOND CYCLE"));
+    nrs->mOptions.setArgs("PARALMOND SMOOTHER",   options.getArgs("MESH PARALMOND SMOOTHER"));
+    nrs->mOptions.setArgs("PARALMOND PARTITION",  options.getArgs("MESH PARALMOND PARTITION"));
+    nrs->mOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",
+                          options.getArgs("MESH PARALMOND CHEBYSHEV DEGREE"));
+    nrs->mOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
+                          options.getArgs("MESH PARALMOND AGGREGATION STRATEGY"));
+    nrs->mOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("MESH MAXIMUM ITERATIONS"));
+
     // coeff used by ellipticSetup to detect allNeumann
     for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
 
@@ -983,6 +1047,96 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     ellipticSolveSetup(nrs->pSolver, kernelInfoP);
 
   } // flow
+  if(nrs->flow){
+    if(options.compareArgs("MESH SOLVER", "ELASTICITY")){
+      if (platform->comm.mpiRank == 0) printf("================ ELLIPTIC SETUP MESH ================\n");
+      int* uvwMeshBCType = (int*) calloc(3 * NBCType, sizeof(int));
+      int* uMeshBCType = uvwMeshBCType + 0 * NBCType;
+      int* vMeshBCType = uvwMeshBCType + 1 * NBCType;
+      int* wMeshBCType = uvwMeshBCType + 2 * NBCType;
+      for (int bID = 1; bID <= nbrBIDs; bID++) {
+        string bcTypeText(bcMap::text(bID, "mesh"));
+        if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+
+        uMeshBCType[bID] = bcMap::type(bID, "x-mesh");
+        vMeshBCType[bID] = bcMap::type(bID, "y-mesh");
+        wMeshBCType[bID] = bcMap::type(bID, "z-mesh");
+      }
+      nrs->meshSolver = new elliptic_t();
+      nrs->meshSolver->blockSolver = 1;
+      nrs->meshSolver->stressForm = 1;
+      nrs->meshSolver->Nfields = nrs->NVfields;
+      nrs->meshSolver->Ntotal = nrs->fieldOffset;
+      nrs->meshSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
+      nrs->meshSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->meshSolver->mesh = mesh;
+      nrs->meshSolver->options = nrs->mOptions;
+      nrs->meshSolver->dim = nrs->dim;
+      nrs->meshSolver->elementType = nrs->elementType;
+      nrs->meshSolver->NBCType = NBCType;
+      nrs->meshSolver->BCType = (int*) calloc(nrs->NVfields * NBCType,sizeof(int));
+      memcpy(nrs->meshSolver->BCType,uvwMeshBCType,nrs->NVfields * NBCType * sizeof(int));
+      nrs->meshSolver->var_coeff = 1;
+      nrs->meshSolver->lambda = nrs->ellipticCoeff;
+      nrs->meshSolver->o_lambda = nrs->o_ellipticCoeff;
+      nrs->meshSolver->loffset = 0; // use same ellipticCoeff for u,v and w
+
+      ellipticSolveSetup(nrs->meshSolver, kernelInfoM);
+    }
+  }
+  // set I.C. for U, W
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
+  {
+    double startTime;
+    platform->options.getArgs("START TIME", startTime);
+    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_mempool.slice0);
+    for (int sweep = 0; sweep < 2; sweep++) {
+      nrs->velocityDirichletBCKernel(mesh->Nelements,
+                                     nrs->fieldOffset,
+                                     startTime,
+                                     mesh->o_sgeo,
+                                     mesh->o_x,
+                                     mesh->o_y,
+                                     mesh->o_z,
+                                     mesh->o_vmapM,
+                                     mesh->o_EToB,
+                                     nrs->o_EToB,
+                                     nrs->o_VmapB,
+                                     nrs->o_usrwrk,
+                                     nrs->o_U,
+                                     platform->o_mempool.slice0);
+      if (sweep == 0) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
+      if (sweep == 1) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
+    }
+    nrs->o_U.copyFrom(platform->o_mempool.slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+
+    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, 0.0, platform->o_mempool.slice0);
+    for (int sweep = 0; sweep < 2; sweep++) {
+    nrs->meshV->velocityDirichletKernel(mesh->Nelements,
+                                   nrs->fieldOffset,
+                                   mesh->o_vmapM,
+                                   nrs->o_EToBMesh,
+                                   nrs->o_VmapBMesh,
+                                   nrs->o_U,
+                                   platform->o_mempool.slice0);
+      //take care of Neumann-Dirichlet shared edges across elements
+      if(sweep == 0) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
+      if(sweep == 1) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
+    }
+    oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+    platform->linAlg->axmyMany(
+      mesh->Nlocal,
+      nrs->NVfields,
+      nrs->fieldOffset,
+      0,
+      1.0,
+      nrs->meshSolver->o_invDegree,
+      platform->o_mempool.slice0
+    );
+    mesh->o_U.copyFrom(platform->o_mempool.slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  }
+
+
 }
 
 namespace{
@@ -1080,6 +1234,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
         cds->prop[1 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = rho;
       }
   }
+
   cds->o_prop =
     device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat), cds->prop);
   cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));

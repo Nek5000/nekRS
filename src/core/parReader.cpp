@@ -728,6 +728,11 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
+  options.setArgs("MESH KRYLOV SOLVER", "PCG");
+  options.setArgs("MESH BASIS", "NODAL");
+  options.setArgs("MESH PRECONDITIONER", "JACOBI");
+  options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
+
   options.setArgs("STRESSFORMULATION", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
@@ -755,6 +760,10 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
+
+  options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
+  options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
+  options.setArgs("MESH RESIDUAL PROJECTION START", "5");
 
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
@@ -991,11 +1000,36 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {
     options.setArgs("MOVING MESH", "TRUE");
-    if (meshSolver == "user")
-      options.setArgs("MESH SOLVER", "USER");
-    if (meshSolver == "none")
-      options.setArgs("MOVING MESH", "FALSE");
+    if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+    if(meshSolver == "elasticity") options.setArgs("MESH SOLVER", "ELASTICITY");
+    if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
   }
+
+  {
+    string keyValue;
+    if (par->extract("mesh", "maxiterations", keyValue))
+      options.setArgs("MESH MAXIMUM ITERATIONS", keyValue);
+  }
+
+  parseInitialGuess(rank, options, par, "mesh");
+
+
+  double m_residualTol;
+  if(par->extract("mesh", "residualtol", m_residualTol) ||
+     par->extract("mesh", "residualtoltolerance", m_residualTol))
+    options.setArgs("MESH SOLVER TOLERANCE", to_string_f(m_residualTol));
+
+  int bcInPar = 1;
+  string m_bcMap;
+  if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
+    std::vector<std::string> sList;
+    sList = serializeString(m_bcMap,',');
+    bcMap::setup(sList, "mesh");
+    bcInPar = 1;
+  } else {
+    bcInPar = 0;
+  }
+
 
   bool stressFormulation;
   if (par->extract("problemtype", "stressformulation", stressFormulation))
@@ -1009,7 +1043,6 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
       options.setArgs("ADVECTION", "FALSE");
   }
 
-  int bcInPar = 1;
   if (par->sections.count("velocity")) {
     // PRESSURE
     {

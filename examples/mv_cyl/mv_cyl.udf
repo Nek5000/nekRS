@@ -8,6 +8,8 @@
 
 #include "ci.inc"
 
+static constexpr int meshSolverMode = 3;
+
 static occa::kernel userVpKernel;
 static occa::kernel userMeshVelocityKernel;
  
@@ -28,6 +30,17 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
   userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
                o_S, o_UProp, o_SProp);
+  if(ciMode == meshSolverMode){
+    // moving mesh parameters
+    const dfloat vnu = 0.4;
+    const dfloat ce = 1.0 / (1.0 + vnu);
+    const dfloat c2 = vnu * ce / (1.0 - 2.0 * vnu);
+    const dfloat c3 = 0.5 * ce;
+    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_mesh_rho  = o_UProp + 3 * nrs->fieldOffset * sizeof(dfloat);
+    platform->linAlg->fill(nrs->meshV->Nlocal, c2, o_mesh_diff);
+    platform->linAlg->fill(nrs->meshV->Nlocal, c3, o_mesh_rho);
+  }
 }
 
 /* UDF Functions */                                                      
@@ -62,15 +75,17 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
   linAlg_t* linAlg = platform->linAlg;
-  const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
-  const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
-  userMeshVelocityKernel(mesh->Nelements,
-    nrs->fieldOffset,
-    ymin,
-    ymax,
-    time,
-    mesh->o_y,
-    mesh->o_U);
+  if(ciMode != meshSolverMode){
+    const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    userMeshVelocityKernel(mesh->Nelements,
+      nrs->fieldOffset,
+      ymin,
+      ymax,
+      time,
+      mesh->o_y,
+      mesh->o_U);
+  }
 
   if(nrs->isOutputStep){
     nek::ocopyToNek(time, tstep);
