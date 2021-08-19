@@ -18,7 +18,13 @@ residualTol = 1e-8+relative
 #preconditioner = pmg+coarse+semfem
 #coarseSolver = AmgX+FP32
 
+# p-MG additive V-cycle, overlapping coarse grid solve
+# requires smootherType = <ASM | RAS>
+#preconditioner = multigrid+additive+overlapCrsSolve+coarse
+#smootherType = ASM
+
 smootherType = Chebyshev+RAS+2
+#smootherType = Chebyshev+ASM+2+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
 pMultigridCoarsening = 7,3,1
 #galerkinCoarseOperator = true
 

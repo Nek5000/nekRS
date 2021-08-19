@@ -26,10 +26,6 @@ filterModes = 1
 
 [PRESSURE]
 residualTol = 1e-04
-#preconditioner = multigrid+additive+overlapCrsSolve
-#smootherType = Chebyshev+ASM+2+minEigenvalueBoundFactor=0.05+maxEigenvalueBoundFactor=1.0
-#pMultigridCoarsening = 7,3,1
-#galerkinCoarseOperator = true
 #initialGuess = projectionAconj+nVector=10
 
 [VELOCITY]
