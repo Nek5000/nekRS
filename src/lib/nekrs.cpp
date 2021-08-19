@@ -407,10 +407,10 @@ void finalize(void)
   AMGXfree();
 }
 
-void printRuntimeStatistics()
+void printRuntimeStatistics(int step)
 {
   platform_t* platform = platform_t::getInstance(options, comm);
-  platform->timer.printRunStat();
+  platform->timer.printRunStat(step);
 }
 } // namespace
 

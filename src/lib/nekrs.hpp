@@ -18,7 +18,7 @@ int outputStep(double time, int tStep);
 void outputStep(int val);
 void finalize();
 void nekUserchk(void);
-void printRuntimeStatistics(void);
+void printRuntimeStatistics(int step);
 double writeInterval(void);
 double dt(int tStep);
 double startTime(void);

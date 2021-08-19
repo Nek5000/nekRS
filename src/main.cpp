@@ -178,7 +178,7 @@ int main(int argc, char** argv)
 
     if (outputStep) nekrs::outfld(time); 
 
-    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
+    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics(tStep);
 
     MPI_Barrier(comm);
     elapsedTime += (MPI_Wtime() - timeStart);

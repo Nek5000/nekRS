@@ -43,6 +43,8 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
 namespace timeStepper {
 
 double tElapsed = 0;
+double tElapsedStepMin = std::numeric_limits<double>::max();
+double tElapsedStepMax = std::numeric_limits<double>::min();
 
 void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   const double tStart = MPI_Wtime();
@@ -182,12 +184,13 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE");
   bool solveRequired = true;
 
+  double tElapsedStep = 0;
   do {
-    stage++;
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
-    const double tStartStep = MPI_Wtime();
+    const double tStartStage = MPI_Wtime();
 
+    stage++;
     const dfloat timeNew = time + nrs->dt[0];
 
     if (nrs->Nscalar)
@@ -209,13 +212,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
-    platform->device.finish();
-    MPI_Barrier(platform->comm.mpiComm);
-    double tElapsedStep = MPI_Wtime() - tStartStep;
-    if (stage == 1)
-      tElapsedStep += tPreStep;
-    tElapsed += tElapsedStep;
-
     converged = true;
     if (udf.converged)
       converged = udf.converged(nrs, stage);
@@ -223,8 +219,15 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       converged = false;
     }
 
+    platform->device.finish();
+    MPI_Barrier(platform->comm.mpiComm);
+    double tElapsedStage = MPI_Wtime() - tStartStage;
+    if (stage == 1) tElapsedStage += tPreStep;
+    tElapsedStep += tElapsedStage;
+    tElapsed += tElapsedStage;
+
     if (solveRequired)
-      printInfo(nrs, timeNew, tstep, tElapsedStep, tElapsed);
+      printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed);
 
     platform->timer.tic("udfExecuteStep", 1);
     if (isOutputStep && converged) {
@@ -238,9 +241,16 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     platform->timer.toc("udfExecuteStep");
   } while (!converged);
 
+  if(tstep > 9) {
+    tElapsedStepMin = std::fmin(tElapsedStep, tElapsedStepMin); 
+    tElapsedStepMax = std::fmax(tElapsedStep, tElapsedStepMax); 
+    platform->timer.set("minSolveStep", tElapsedStepMin);
+    platform->timer.set("maxSolveStep", tElapsedStepMax);
+  }
+  platform->timer.set("solve", tElapsed);
+
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
-  platform->timer.set("solve", tElapsed);
 }
 
 void coeffs(nrs_t *nrs, double dt, int tstep) {
