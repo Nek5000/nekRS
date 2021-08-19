@@ -22,8 +22,9 @@ set -e -a
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 
-NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+
 NEKRS_BUILD_DIR=`pwd`/build
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 cd ${NEKRS_BUILD_DIR}

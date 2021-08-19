@@ -300,7 +300,7 @@ endif()
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")
-message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}") 
+message(NOTICE "Installation directory: ${CMAKE_INSTALL_PREFIX}") 
 message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
 message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
 message(NOTICE "Fortran compiler: ${CMAKE_Fortran_COMPILER}")
