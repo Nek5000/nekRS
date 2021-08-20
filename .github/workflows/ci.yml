@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  # allows us to run workflows manually
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - master
+      - next
+  push:
+    branches:
+      - master
+      - next
+
+env:
+  GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+  NEKRS_HOME: "${{ github.workspace }}/.local/nekrs"
+  NEKRS_INSTALL_DIR: "${{ github.workspace }}/.local/nekrs"
+  MPICH_FC: "gfortran"
+  NEKRS_EXAMPLES: "${{ github.workspace }}/.local/nekrs/examples"
+  OCCA_CUDA_ENABLED: "0"
+  OCCA_HIP_ENABLED: "0"
+  OCCA_OPENCL_ENABLED: "0"
+  NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
+  NEKRS_CI: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  install:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: nrsconfig and build
+      run: |
+        ./nrsconfig
+        cmake --build build --target install -j 2
+
+    - name: Upload install dir
+      uses: actions/upload-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+        if-no-files-found: error
+    
+
+  ethier:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'ethier default'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 1
+
+    - name: 'ethier subcycle'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 2
+
+    - name: 'ethier velocity and pressure projection'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 3
+
+    - name: 'ethier (block) velocity and pressure projection with subcycling'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 4
+
+    - name: 'ethier default + moving mesh'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 5
+
+    - name: 'ethier subcycle + moving mesh'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 6
+
+
+  lowMach:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'lowMach default'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 1
+
+
+  mv_cyl:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'mv_cyl'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 1
+
+    - name: 'mv_cyl + subcycling'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 2
+
+
+  conj_ht:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'conj_ht'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 1
+
+
+  channelStress:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'channelStress'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 1
+
+
