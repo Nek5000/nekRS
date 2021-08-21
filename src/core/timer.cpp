@@ -313,26 +313,25 @@ void timer_t::printRunStat(int step)
     if(dEtime[6] > 0)
     std::cout << "      projection        " << dEtime[6] << "s " << printPercentage(dEtime[6],dEtime[9]) << "\n"; 
 
-    if(dEtime[14] > 0)
+    if(dEtime[4] > 0)
     std::cout << "    scalarSolve         " << dEtime[4] << "s " << printPercentage(dEtime[4],dEtime[9]) << "\n" 
-              << std::endl;
-    if(dEtime[18] > 0)
-    std::cout << "    meshSolve           " << dEtime[18] << " s\n"
               << std::endl;
     if(dEtime[4] > 0) {
     std::cout << "    makeq               " << dEtime[3] << "s " << printPercentage(dEtime[3],dEtime[9]) << "\n";
      if(dEtime[14] > 0)
-    std::cout << "      udfSEqnSource     " << dEtime[14] << "s " << printPercentage(dEtime[14],dEtime[9]) << "\n";;
+    std::cout << "      udfSEqnSource     " << dEtime[14] << "s " << printPercentage(dEtime[14],dEtime[9]) << "\n";
     }
 
     if(dEtime[15] > 0)
-    std::cout << "    udfProperties       " << dEtime[15] << "s " << printPercentage(dEtime[15],dEtime[9]) << "\n"
-              << std::endl;
+    std::cout << "    udfProperties       " << dEtime[15] << "s " << printPercentage(dEtime[15],dEtime[9]) << "\n";
+
+    if(dEtime[18] > 0)
+    std::cout << "    meshSolve           " << dEtime[18] << " s\n";
 
     if(hEtime[1] > 0)
-    std::cout << "    gsMPI               " << hEtime[1] << "s " << printPercentage(hEtime[1],dEtime[9]) << "\n";;
+    std::cout << "    gsMPI               " << hEtime[1] << "s " << printPercentage(hEtime[1],dEtime[9]) << "\n";
     if(dEtime[8] > 0)
-    std::cout << "    dotp                " << dEtime[8] << "s " << printPercentage(dEtime[8],dEtime[9]) << "\n";;
+    std::cout << "    dotp                " << dEtime[8] << "s " << printPercentage(dEtime[8],dEtime[9]) << "\n";
 
     std::cout << std::endl;
 
