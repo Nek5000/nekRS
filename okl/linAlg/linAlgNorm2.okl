@@ -123,16 +123,16 @@ SOFTWARE.
     @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_norm[t] += s_norm[t+ 16];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_norm[t] += s_norm[t+  8];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_norm[t] += s_norm[t+  4];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_norm[t] += s_norm[t+  2];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) norm[b] = s_norm[0] + s_norm[1];
   }
