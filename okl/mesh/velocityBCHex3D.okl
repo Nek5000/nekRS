@@ -1,0 +1,65 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+@kernel void velocityDirichletBCHex3D(const dlong Nelements,
+                                         const dlong offset,
+                                         @restrict const dlong*  vmapM,
+                                         @restrict const int*  EToB,
+                                         @restrict const int*  EToBVM,
+                                         @restrict const dfloat*  U,
+                                         @restrict dfloat*  UH)
+{
+  for(dlong e = 0; e < Nelements; e++; @outer(0))
+    for(int f = 0; f < p_Nfaces; f++) {
+      @barrier("global");
+      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = m + f * p_Nfp;
+        const int sk = e * p_Nfp * p_Nfaces + n;
+        const dlong sid  = e * p_Nfaces * p_Nfp + n;
+        const dlong idM = vmapM[sk];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+        const dlong bcTypeM = EToBVM[idM];
+        if(bcTypeM == 1) {
+          UH[idM + 0 * offset] = 0.0;
+          UH[idM + 1 * offset] = 0.0;
+          UH[idM + 2 * offset] = 0.0;
+        }else if(bcTypeM == 2) {
+          UH[idM + 0 * offset] = U[idM + 0 * offset];
+          UH[idM + 1 * offset] = U[idM + 1 * offset];
+          UH[idM + 2 * offset] = U[idM + 2 * offset];
+        }else if(bcTypeM == 3) {
+          UH[idM + 0 * offset] = 0.0;
+          UH[idM + 1 * offset] = 0.0;
+          UH[idM + 2 * offset] = 0.0;
+        }else if(bcTypeM == 4) {
+          UH[idM + 0 * offset] = 0.0;
+        }else if(bcTypeM == 5) {
+          UH[idM + 1 * offset] = 0.0;
+        }else if(bcTypeM == 6) {
+          UH[idM + 2 * offset] = 0.0;
+        }
+      }
+    }
+}

@@ -145,9 +145,23 @@ device_t::buildNativeKernel(const std::string &filename,
 occa::kernel
 device_t::buildKernel(const std::string &filename,
                          const std::string &kernelName,
-                         const occa::properties &props) const
+                         const occa::properties &props,
+                         std::string suffix) const
 {
-  return this->buildKernel(filename, kernelName, props, comm);
+  if(filename.find(".okl") != std::string::npos){
+    occa::properties propsWithSuffix = props;
+    propsWithSuffix["kernelNameSuffix"] = suffix;
+    return this->buildKernel(filename, kernelName, propsWithSuffix, comm);
+  }
+  else{
+    occa::properties propsWithSuffix = props;
+    propsWithSuffix["defines/SUFFIX"] = suffix;
+    propsWithSuffix["defines/TOKEN_PASTE_(a,b)"] = std::string("a##b");
+    propsWithSuffix["defines/TOKEN_PASTE(a,b)"] = std::string("TOKEN_PASTE_(a,b)");
+    propsWithSuffix["defines/FUNC(a)"] = std::string("TOKEN_PASTE(a,SUFFIX)");
+    const std::string alteredName =  kernelName + suffix;
+    return this->buildNativeKernel(filename, alteredName, propsWithSuffix);
+  }
 }
 occa::kernel
 device_t::buildKernel(const std::string &filename,

@@ -25,7 +25,7 @@
  */
 
 // x = x + Zy
-extern "C" void updatePGMRESSolution(const dlong & N,
+extern "C" void FUNC(updatePGMRESSolution)(const dlong & N,
                                     const dlong & offset,
                                     const dlong & gmresSize,
                                     const dfloat* __restrict__ y,

@@ -1,16 +1,24 @@
-# Release v21.1.0
+# Release v21.1
 
 ## What is new? 
 
 * Flexible GMRES for pressure 
+* Constant flow rate
+* Time step controller for targetCFL
+* Improved runtime statistics
+* Support for ROCm version > v4.0
+* AVM for scalars
+* FEMSEM preconditioner
+* NVIDIA AmgX solver 
 * Various bug fixes 
 
 ## What you may have to change to be compatible 
 
-## Known Bugs 
+## Known Bugs / Restrictions
 
+* [300](https://github.com/Nek5000/nekRS/issues/300)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)
-* [199](https://github.com/Nek5000/nekRS/issues/199)
 * [166](https://github.com/Nek5000/nekRS/issues/166)
 * [2](https://github.com/Nek5000/nekRS/issues/2)
 

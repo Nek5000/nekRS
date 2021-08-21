@@ -25,7 +25,7 @@
  */
 
 extern "C"
-void ellipticAxHex3D(const dlong & Nelements,
+void FUNC(ellipticAxHex3D)(const dlong & Nelements,
                      const dfloat* __restrict__ ggeo,
                      const dfloat* __restrict__ D,
                      const dfloat* __restrict__ S,
@@ -120,7 +120,7 @@ void ellipticAxHex3D(const dlong & Nelements,
 }
 
 extern "C"
-void ellipticAxVarHex3D(const dlong & Nelements,
+void FUNC(ellipticAxVarHex3D)(const dlong & Nelements,
                         const dlong & offset,
                         const dfloat* __restrict__ ggeo,
                         const dfloat* __restrict__ D,
@@ -222,7 +222,7 @@ void ellipticAxVarHex3D(const dlong & Nelements,
 }
 
 extern "C"
-void ellipticBlockAxVarHex3D_N3(const dlong & Nelements,
+void FUNC(ellipticBlockAxVarHex3D_N3)(const dlong & Nelements,
                                 const dlong & offset,
                                 const dlong & loffset,
                                 const dfloat* __restrict__ ggeo,
@@ -366,7 +366,7 @@ void ellipticBlockAxVarHex3D_N3(const dlong & Nelements,
 
 //
 extern "C"
-void ellipticStressAxVarHex3D(const dlong &Nelements,
+void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
                               const dlong &offset,
                               const dlong &loffset,
                               const dfloat* __restrict__ vgeo,

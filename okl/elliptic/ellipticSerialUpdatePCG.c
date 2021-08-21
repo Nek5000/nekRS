@@ -25,7 +25,7 @@
  */
 
 extern "C"
-void ellipticUpdatePCG(const dlong & N,
+void FUNC(ellipticBlockUpdatePCG)(const dlong & N,
                        const dlong & offset,
                        const dfloat* __restrict__ cpu_invDegree,
                        const dfloat* __restrict__ cpu_p,

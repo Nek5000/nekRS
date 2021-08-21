@@ -47,7 +47,6 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
-  void solve();
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration
@@ -222,6 +221,7 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
+  occa::kernel velocityDirichletKernel;
 };
 
 occa::properties populateMeshProperties(mesh_t*);

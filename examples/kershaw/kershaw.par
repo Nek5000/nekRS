@@ -3,17 +3,33 @@
 polynomialOrder = 7
 
 [PRESSURE]
-solver = pfgmres+20
+solver = pfgmres+nVector=20
 maxIterations = 200
-residualTol = 1e-8
+residualTol = 1e-8+relative
 
+# SEMFEM preconditioner
 #preconditioner = SEMFEM+AmgX+FP32 
 
+# p-MG, smooth on coarsest level rather than solve
+#preconditioner = pmg
+#coarseSolver = none
+
+# p-MG, solve coarsest level using SEMFEM discretization
+#preconditioner = pmg+coarse+semfem
+#coarseSolver = AmgX+FP32
+
+# p-MG additive V-cycle, overlapping coarse grid solve
+# requires smootherType = <ASM | RAS>
+#preconditioner = multigrid+additive+overlapCrsSolve+coarse
+#smootherType = ASM
+
 smootherType = Chebyshev+RAS+2
+#smootherType = Chebyshev+ASM+2+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
 pMultigridCoarsening = 7,3,1
 #galerkinCoarseOperator = true
 
-residualProj = false
+initialGuess = none
+
 
 [VELOCITY]
 density = 1.0

@@ -60,22 +60,10 @@ void AMGSetup(solver_t *MM,
   double startTime = MPI_Wtime();
   if(rank==0) printf("Setting up AMG...");fflush(stdout);
 
-#if 0
-  dfloat *null = (dfloat *) calloc(numLocalRows, sizeof(dfloat));
-  for (dlong i=0;i<numLocalRows;i++) null[i] = 1/sqrt(TotalRows);
-  parCSR *A = new parCSR(numLocalRows,globalRowStarts,
-                          nnz, Ai, Aj, Avals,
-                          nullSpace, null, nullSpacePenalty,
-                          M->comm, M->device);
-  free(null);
-
-  M->AMGSetup(A);
-#else
   M->coarseLevel = new coarseSolver(M->options, M->comm);
   M->coarseLevel->setup(numLocalRows, globalRowStarts, nnz, Ai, Aj, Avals, nullSpace);
   M->baseLevel = M->numLevels;
   M->numLevels++;
-#endif
 
   MPI_Barrier(M->comm);
   if(rank==0) printf("done (%gs)\n", MPI_Wtime()-startTime);

@@ -27,18 +27,35 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
+namespace{
+std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
+{
+  const std::string precision = std::string(floatString);
+  if(precision.find(pfloatString) != std::string::npos){
+    return std::string("_") + std::to_string(elliptic->mesh->N) + std::string("pfloat");
+  }
+  else{
+    return std::string("_") + std::to_string(elliptic->mesh->N);
+  }
+  
+}
+}
+
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
   
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 
+  mesh_t* mesh = elliptic->mesh;
+  occa::properties kernelInfo = ellipticKernelInfo(mesh);
+  ellipticBuildPreconditionerKernels(elliptic, kernelInfo);
+
   const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
   elliptic->var_coeff = 0;
   elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0
 
-  mesh_t* mesh = elliptic->mesh;
 
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
@@ -57,7 +74,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   }
 
   string suffix;
-  occa::properties kernelInfo = ellipticKernelInfo(mesh);
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
@@ -78,15 +94,18 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       filename = oklpath + "ellipticAx" + suffix + ".okl";
       kernelName = "ellipticAx" + suffix;
       if(serial) {
-        AxKernelInfo["okl/enabled"] = false;
         filename = oklpath + "ellipticSerialAx" + suffix + ".c";
       }
-      elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
+      {
+        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+        elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
+      }
 
       if(!strstr(pfloatString,dfloatString)) {
         AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
-        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
+        const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
+        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
         AxKernelInfo["defines/" "dfloat"] = dfloatString;
       }
 
@@ -96,11 +115,15 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
         kernelName = "ellipticPartialAx" + suffix;
 
       if(!serial) {
-        elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
+        {
+          const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+          elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
+        }
         if(!strstr(pfloatString,dfloatString)) {
           AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
           elliptic->partialAxPfloatKernel =
-            platform->device.buildKernel(filename, kernelName, AxKernelInfo);
+            platform->device.buildKernel(filename, kernelName, AxKernelInfo, kernelSuffix);
           AxKernelInfo["defines/" "dfloat"] = dfloatString;
         }
       }

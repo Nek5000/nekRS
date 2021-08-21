@@ -70,9 +70,6 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_ndU[p_Nq][p_Nq];
 
-#define s_Gur s_ndU
-
-    @exclusive dfloat r_ut, r_Gut, r_Auk;
     @exclusive dfloat r_rhsU[p_Nq]; // array  for results Au(i,j,0:N)
 
     // for all face nodes of all elements
@@ -214,6 +211,8 @@
         }
       }
     }
+
+    @barrier("local");
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {

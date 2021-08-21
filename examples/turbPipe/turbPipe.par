@@ -21,15 +21,15 @@ filtering = hpfrt
 filterWeight = 0.1/${dt}
 filterModes = 1
 
+#dt = targetCFL + max=1e-2 + initial=6e-3
+#targetCFL = 4
+
 [PRESSURE]
 residualTol = 1e-04
-#preconditioner = multigrid+additive+overlapCrsSolve
-#smootherType = Chebyshev+ASM
-#pMultigridCoarsening = 7,3,1
-#galerkinCoarseOperator = true
+#initialGuess = projectionAconj+nVector=10
 
 [VELOCITY]
-#solver = pcg
+#solver = pfcg
 boundaryTypeMap = inlet, outlet, wall
 density = 1.0
 viscosity = -19000

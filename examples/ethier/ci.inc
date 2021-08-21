@@ -23,27 +23,27 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("END TIME", string("0.06"));
   options.setArgs("DT", string("2e-3"));
   options.setArgs("SUBCYCLING STEPS", string("0"));
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+  options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
-  options.setArgs("SCALAR INITIAL GUESS DEFAULT","PREVIOUS");
-  options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS");
+  options.setArgs("SCALAR INITIAL GUESS","PREVIOUS");
+  options.setArgs("VELOCITY INITIAL GUESS","PREVIOUS");
 
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 3) {
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 4) {
     options.setArgs("END TIME", string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", string("1"));
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 5) {
     options.setArgs("END TIME", string("0.2"));
@@ -58,11 +58,18 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("MOVING MESH", string("TRUE"));
   }
   if (ciMode == 7) {
-    options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("PRESSURE MAXIMUM ITERATIONS", "1000");
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
     options.setArgs("END TIME", string("0.012"));
+  }
+  if (ciMode == 8) {
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
+    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("VARIABLE DT", "TRUE");
+    options.setArgs("TARGET CFL", "0.5");
   }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
@@ -185,8 +192,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 2);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.02E-010)/err[1]);
-             s01IterErr = abs(NiterS01 - 2);
-             s02IterErr = abs(NiterS02 - 2);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 2 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 6.49E-12)/err[2]);
@@ -194,8 +201,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 2);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.11E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 2);
-             s02IterErr = abs(NiterS02 - 2);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 3 : velIterErr = abs(NiterU - 4);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
@@ -203,8 +210,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 2);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.11E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 2);
-             s02IterErr = abs(NiterS02 - 2);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 4 : velIterErr = abs(NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
@@ -212,8 +219,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 3.65E-10)/err[0]);
              prErr = abs((err[1] - 6.71E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 2);
-             s02IterErr = abs(NiterS02 - 2);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 5 : velIterErr = abs(NiterU - 12);
              s1Err = abs((err[2] - 1.53E-06)/err[2]);
@@ -221,8 +228,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 12);
              vxErr = abs((err[0] - 2.57E-07)/err[0]);
              prErr = abs((err[1] - 2.16E-06)/err[1]);
-             s01IterErr = abs(NiterS01 - 5);
-             s02IterErr = abs(NiterS02 - 5);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 6 : velIterErr = abs(NiterU - 12);
              s1Err = abs((err[2] - 1.27E-06)/err[2]);
@@ -230,20 +237,39 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 12);
              vxErr = abs((err[0] - 2.43E-07)/err[0]);
              prErr = abs((err[1] - 2.89E-06)/err[1]);
-             s01IterErr = abs(NiterS01 - 5);
-             s02IterErr = abs(NiterS02 - 5);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
     case 7 : velIterErr = abs(NiterU - 5);
              s1Err = abs((err[2] - 2E-13)/err[2]);
              s2Err = abs((err[3] - 2E-13)/err[3]);
-             pIterErr = abs(NiterP - 409);
+             
+             // just check for convergence
+             pIterErr = (NiterP < 999) ? 0 : 1000;
+
              vxErr = abs((err[0] - 1.4E-10)/err[0]);
              prErr = abs((err[1] - 8.7E-9)/err[1]);
-             s01IterErr = abs(NiterS01 - 2);
-             s02IterErr = abs(NiterS02 - 2);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
+             break;
+    case 8 : velIterErr = abs(NiterU - 10);
+             s1Err = abs((err[2] - 1.9E-11)/err[2]);
+             s2Err = abs((err[3] - 2.2E-11)/err[3]);
+             pIterErr = abs(NiterP - 2);
+             vxErr = abs((err[0] - 3.2E-10)/err[0]);
+             prErr = abs((err[1] - 9E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
 
      }
+  if (ciMode == 8){
+    const int expectedSteps = 56;
+    const int errSteps = abs(expectedSteps - tstep);
+    if (rank == 0)
+      printf("error in nSteps:  %d\n", errSteps);
+    (errSteps <= 2) ? ({/** no-op **/}) : (FAIL);
+  }
 
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
@@ -251,4 +277,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
    velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
+
 }

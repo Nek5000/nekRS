@@ -9,7 +9,6 @@ void UDF_LoadKernels(nrs_t *nrs)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  platform->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -22,6 +21,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
       (3*M_PI*M_PI+lambda)*sin(M_PI*mesh->x[i])*sin(M_PI*mesh->y[i])*sin(M_PI*mesh->z[i]);
   }
   platform->linAlg->fillKernel(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
+  platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
   // warm-up
   ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
@@ -49,7 +49,13 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
   const double precoTime = platform->timer.query("pressure preconditioner", "DEVICE:MAX")/Nrep;
   const double smootherTime = platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX")/Nrep;
-  const double crsTime = platform->timer.query("BoomerAMGSolve", "HOST:MAX")/Nrep;
+  const double crsTime = [&](){
+    const double tBoomerAMG = platform->timer.query("BoomerAMGSolve", "HOST:MAX")/Nrep;
+    const double tAMGX = platform->timer.query("AmgXSolve", "DEVICE:MAX")/Nrep;
+    const double tCrsSEMFEM = platform->timer.query("Coarse SEMFEM Solve", "DEVICE:MAX")/Nrep;
+    const double maxTime = tBoomerAMG > tAMGX ? tBoomerAMG : tAMGX;
+    return maxTime > tCrsSEMFEM ? maxTime : tCrsSEMFEM;
+  }();
   if(platform->comm.mpiRank == 0) {
     const double throughput = (double)Ntotal/solveTime;
     printf("iterations: %d\n", nrs->pSolver->Niter);

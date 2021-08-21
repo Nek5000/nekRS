@@ -1,4 +1,4 @@
-extern "C" void preFDM(const dlong& Nelements,
+extern "C" void FUNC(preFDM) (const dlong& Nelements,
                     const pfloat* __restrict__ u,
                     pfloat* __restrict__ work1)
 {
@@ -92,7 +92,7 @@ extern "C" void preFDM(const dlong& Nelements,
   #undef uArr
 }
 
-extern "C" void postFDM(const dlong& Nelements,
+extern "C" void FUNC(postFDM) (const dlong& Nelements,
                      pfloat* __restrict__ my_work1,
                      pfloat* __restrict__ my_work2,
                      pfloat* __restrict__ Su,
@@ -243,7 +243,7 @@ extern "C" void postFDM(const dlong& Nelements,
   }
 }
 
-extern "C" void fusedFDM(
+extern "C" void FUNC(fusedFDM) (
   const dlong& Nelements,
   const dlong& localNelements,
   const dlong* __restrict__  elementList,

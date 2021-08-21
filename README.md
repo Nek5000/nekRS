@@ -11,7 +11,7 @@ Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
 * CG-SEM using curvilinear conformal hexaheadral elements 
-* 3rd/2nd order semi-implicit time integration + operator integration factor splitting
+* Adaptive 3rd/2nd order semi-implicit time integration + operator integration factor splitting
 * MPI+X hybrid parallelism supporting CUDA, HIP, OPENCL and CPU
 * Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 * Conjugate fluid-solid heat transfer

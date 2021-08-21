@@ -7,6 +7,14 @@
 #include "platform.hpp"
 #include "ogs.hpp"
 
+std::string printPercentage(double num, double dom)
+{
+  char buf[4096];
+  double frac = num/dom;
+  snprintf(buf, sizeof(buf), "(%.2f)", frac);
+  return std::string(buf);
+}
+
 namespace timer
 {
 namespace
@@ -227,7 +235,7 @@ double timer_t::query(const std::string tag,const std::string metric)
   return NEKRS_TIMER_INVALID_METRIC;
 }
 
-void timer_t::printRunStat()
+void timer_t::printRunStat(int step)
 {
   int rank;
   MPI_Comm_rank(comm_, &rank);
@@ -240,6 +248,7 @@ void timer_t::printRunStat()
   dEtime[2] = query("pressureSolve", "DEVICE:MAX");
   dEtime[3] = query("makeq", "DEVICE:MAX");
   dEtime[4] = query("scalarSolve", "DEVICE:MAX");
+  dEtime[18] = query("meshSolve", "DEVICE:MAX");
   dEtime[5] = query("pressure preconditioner", "DEVICE:MAX");
   dEtime[16] = query("pressure preconditioner smoother", "DEVICE:MAX");
   dEtime[6] = query("pressure proj pre", "DEVICE:MAX");
@@ -258,59 +267,80 @@ void timer_t::printRunStat()
 
   double hEtime[10];
   hEtime[0] = query("BoomerAMGSolve", "HOST:MAX");
+  const double amgxTime = query("AmgXSolve", "DEVICE:MAX");
+  hEtime[0] = hEtime[0] > amgxTime ? hEtime[0] : amgxTime;
+  const double semfemTime = query("Coarse SEMFEM Solve", "DEVICE:MAX");
+  hEtime[0] = hEtime[0] > semfemTime ? hEtime[0] : semfemTime;
   hEtime[1] = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &hEtime[1], 1, MPI_DOUBLE, MPI_MAX, comm_);
 
-  if (rank == 0) {
-    std::cout.setf ( std::ios::scientific );
+  hEtime[2] = query("minSolveStep", "HOST:MAX");
+  hEtime[3] = query("maxSolveStep", "HOST:MAX");
 
-    std::cout << "runtime statistics\n\n"
-  	      << "  setup                 " << dEtime[10]<< " s\n";
+  if (rank == 0) {
+    std::cout << "step=  " << step << " runtime statistics\n\n";
+
+    std::cout.setf(std::ios::scientific);
+    int outPrecisionSave = std::cout.precision();
+    std::cout.precision(5);
+
+  	std::cout << "  setup                 " << dEtime[10] << "s " << printPercentage(dEtime[10],dEtime[9]) << "\n"; 
 
     if(dEtime[11] > 0)
-    std::cout << "  checkpointing         " << dEtime[11]<< " s\n";
+    std::cout << "  checkpointing         " << dEtime[11]<< "s " << printPercentage(dEtime[11],dEtime[9]) << "\n"; 
 
     if(dEtime[12] > 0)
-    std::cout << "  udfExecuteStep        " << dEtime[12] << " s\n";
+    std::cout << "  udfExecuteStep        " << dEtime[12] << "s " << printPercentage(dEtime[12],dEtime[9]) << "\n";
 
-    std::cout << "  total solve           " << dEtime[9] << " s\n"
-  	      << "    makef               " << dEtime[0] << " s\n";
+    if(hEtime[2] > 0 && hEtime[3] > 0)
+    std::cout << "  solve step min/max    " << hEtime[2] << "s " << "/" << hEtime[3] << "s (first 10 steps excluded)\n";
+
+    std::cout << "  total solve           " << dEtime[9] << "s\n"; 
+  	std::cout << "    makef               " << dEtime[0] << "s " << printPercentage(dEtime[0],dEtime[9]) << "\n";
     if(dEtime[13] > 0)
-    std::cout << "      udfUEqnSource     " << dEtime[13] << " s\n";
-    std::cout << "    velocitySolve       " << dEtime[1] << " s\n";
+    std::cout << "      udfUEqnSource     " << dEtime[13] << "s " << printPercentage(dEtime[13],dEtime[9]) << "\n"; 
+    std::cout << "    velocitySolve       " << dEtime[1] << "s " << printPercentage(dEtime[1],dEtime[9]) << "\n"; 
     if(dEtime[17] > 0)
-    std::cout << "      projection        " << dEtime[17] << " s\n";
+    std::cout << "      projection        " << dEtime[17] << "s " << printPercentage(dEtime[17],dEtime[9]) << "\n";;
 
-    std::cout << "    pressureSolve       " << dEtime[2] << " s\n"
-              << "      preconditioner    " << dEtime[5] << " s\n";
+    std::cout << "    pressureSolve       " << dEtime[2] << "s " << printPercentage(dEtime[2],dEtime[9]) << "\n";
+
+    std::cout << "      preconditioner    " << dEtime[5] << "s " << printPercentage(dEtime[5],dEtime[9]) << "\n";
     if(dEtime[16] > 0)
-    std::cout << "        pMG smoother    " << dEtime[16] << " s\n";
+    std::cout << "        pMG smoother    " << dEtime[16] << "s " << printPercentage(dEtime[16],dEtime[9]) << "\n"; 
     if(hEtime[0] > 0)
-    std::cout << "        coarse grid     " << hEtime[0] << " s\n";
+    std::cout << "        coarse grid     " << hEtime[0] << "s " << printPercentage(hEtime[0],dEtime[9]) << "\n"; 
     if(dEtime[6] > 0)
-    std::cout << "      projection        " << dEtime[6] << " s\n";
+    std::cout << "      projection        " << dEtime[6] << "s " << printPercentage(dEtime[6],dEtime[9]) << "\n"; 
 
     if(dEtime[14] > 0)
-    std::cout << "    scalarSolve         " << dEtime[4] << " s\n"
+    std::cout << "    scalarSolve         " << dEtime[4] << "s " << printPercentage(dEtime[4],dEtime[9]) << "\n" 
+              << std::endl;
+    if(dEtime[18] > 0)
+    std::cout << "    meshSolve           " << dEtime[18] << " s\n"
               << std::endl;
     if(dEtime[4] > 0) {
-    std::cout << "    makeq               " << dEtime[3] << " s\n";
+    std::cout << "    makeq               " << dEtime[3] << "s " << printPercentage(dEtime[3],dEtime[9]) << "\n";
      if(dEtime[14] > 0)
-    std::cout << "      udfSEqnSource     " << dEtime[14] << " s\n";
+    std::cout << "      udfSEqnSource     " << dEtime[14] << "s " << printPercentage(dEtime[14],dEtime[9]) << "\n";;
     }
 
     if(dEtime[15] > 0)
-    std::cout << "    udfProperties       " << dEtime[15] << " s\n"
+    std::cout << "    udfProperties       " << dEtime[15] << "s " << printPercentage(dEtime[15],dEtime[9]) << "\n"
               << std::endl;
 
     if(hEtime[1] > 0)
-    std::cout << "    gsMPI               " << hEtime[1] << " s\n";
+    std::cout << "    gsMPI               " << hEtime[1] << "s " << printPercentage(hEtime[1],dEtime[9]) << "\n";;
     if(dEtime[8] > 0)
-    std::cout << "    dotp                " << dEtime[8] << " s\n";
+    std::cout << "    dotp                " << dEtime[8] << "s " << printPercentage(dEtime[8],dEtime[9]) << "\n";;
 
     std::cout << std::endl;
 
-    std::cout.unsetf ( std::ios::scientific );
+    std::cout.unsetf(std::ios::scientific);
+    std::cout.precision(outPrecisionSave);
   }
 }
+
 } // namespace
+
+

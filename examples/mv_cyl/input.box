@@ -16,5 +16,5 @@ Box
 0 1 1               x0 x1 ratio  !! Rescaled in usrdat2().
 0 1 1               y0 y1 ratio 
 0 1 1               z0 z1 ratio 
-SYM,SYM,v  ,W  ,E  ,E   BCs !3 characters each: west,east,south,north,bottom,top
+SYM,SYM,mv ,W  ,E  ,E   BCs !3 characters each: west,east,south,north,bottom,top
 I  ,I  ,I  ,I  ,I  ,I   BCs !3 characters each: west,east,south,north,bottom,top

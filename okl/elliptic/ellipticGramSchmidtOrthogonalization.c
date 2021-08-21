@@ -26,7 +26,7 @@
 
 // w = w - \sum_i^k (w^T v_i) v_i
 // w = w - \sum_i^k y_i v_i
-extern "C" void gramSchmidtOrthogonalization(const dlong & Nblock, const dlong & N,
+extern "C" void FUNC(gramSchmidtOrthogonalization)(const dlong & Nblock, const dlong & N,
                                     const dlong & offset,
                                     const dlong & gmresSize,
                                     const dfloat * __restrict__ weights,
