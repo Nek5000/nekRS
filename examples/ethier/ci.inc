@@ -252,28 +252,23 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
-    case 8 : velIterErr = abs(NiterU - 8);
+    case 8 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 1.9E-11)/err[2]);
              s2Err = abs((err[3] - 2.2E-11)/err[3]);
-             pIterErr = abs(NiterP - 1);
-             vxErr = abs((err[0] - 3.65E-10)/err[0]);
-             prErr = abs((err[1] - 2E-009)/err[1]);
-             s01IterErr = abs(NiterS01 - 8);
-             s02IterErr = abs(NiterS02 - 8);
+             pIterErr = abs(NiterP - 2);
+             vxErr = abs((err[0] - 3.2E-10)/err[0]);
+             prErr = abs((err[1] - 9E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
              break;
 
      }
   if (ciMode == 8){
-    const double expectedDt0 = 7.2e-04;
-    const double expectedDt1 = 4.4e-03;
-    const double expectedDt2 = 4.4e-03;
-    const double errDt0 = abs((nrs->dt[0] - expectedDt0))/nrs->dt[0];
-    const double errDt1 = abs((nrs->dt[1] - expectedDt1))/nrs->dt[1];
-    const double errDt2 = abs((nrs->dt[2] - expectedDt2))/nrs->dt[2];
+    const int expectedSteps = 56;
+    const int errSteps = abs(expectedSteps - tstep);
     if (rank == 0)
-      printf("relative error in dt: dt0 = %g, dt1 = %g, dt2 = %g\n", 
-        errDt0, errDt1, errDt2);
-    (errDt0 < EPS && errDt1 < EPS && errDt2 < EPS) ? ({/** no-op **/}) : (FAIL);
+      printf("error in nSteps:  %d\n", errSteps);
+    (errSteps <= 2) ? ({/** no-op **/}) : (FAIL);
   }
 
   if (rank == 0)
