@@ -8,7 +8,7 @@ set -e -a
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_COMPILER_FLAGS:=""}
 
-: ${NEKRS_GPU_MPI:=0}
+: ${NEKRS_GPU_MPI:=1}
 
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
