@@ -261,7 +261,6 @@ occa::memory meshSolve(nrs_t* nrs, dfloat time, int stage)
   platform->o_mempool.slice0.copyFrom(mesh->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   ellipticSolve(nrs->meshSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);
 
-#if 0
   // enforce C0
   oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
   platform->linAlg->axmyMany(
@@ -273,7 +272,6 @@ occa::memory meshSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->meshSolver->o_invDegree,
     platform->o_mempool.slice0
   );
-#endif
 
   return platform->o_mempool.slice0;
 }
