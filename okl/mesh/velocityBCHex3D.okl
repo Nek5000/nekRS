@@ -24,15 +24,18 @@
 
  */
 @kernel void velocityDirichletBCHex3D(const dlong Nelements,
-                                         const dlong offset,
-                                         @restrict const int*  EToB,
-                                         @restrict const dfloat*  U,
-                                         @restrict dfloat*  UH)
+                                      const dlong offset,
+                                      @restrict const dlong*  vmapM,
+                                      @restrict const int*  EToB,
+                                      @restrict const dfloat*  U,
+                                      @restrict dfloat*  UH)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
     for(int f = 0; f < p_Nfaces; f++) {
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         const dlong bcType = EToB[f + p_Nfaces * e];
+        const int sk = e * p_Nfp * p_Nfaces + f * p_Nfp + m;
+        const dlong idM = vmapM[sk];
         if(bcType == 2) {
           UH[idM + 0 * offset] = U[idM + 0 * offset];
           UH[idM + 1 * offset] = U[idM + 1 * offset];
@@ -43,6 +46,8 @@
 
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         const dlong bcType = EToB[f + p_Nfaces * e];
+        const int sk = e * p_Nfp * p_Nfaces + f * p_Nfp + m;
+        const dlong idM = vmapM[sk];
         if(bcType == 1 || bcType == 3) {
           UH[idM + 0 * offset] = 0.0;
           UH[idM + 1 * offset] = 0.0;

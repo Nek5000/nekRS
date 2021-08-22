@@ -245,6 +245,7 @@ occa::memory meshSolve(nrs_t* nrs, dfloat time, int stage)
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                    nrs->fieldOffset,
+                                   mesh->o_vmapM,
                                    nrs->o_EToBMesh,
                                    nrs->o_U,
                                    platform->o_mempool.slice3);

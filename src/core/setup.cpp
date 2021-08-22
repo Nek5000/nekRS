@@ -1075,6 +1075,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     for (int sweep = 0; sweep < 2; sweep++) {
     nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                    nrs->fieldOffset,
+                                   mesh->o_vmapM,
                                    nrs->o_EToBMesh,
                                    nrs->o_U,
                                    platform->o_mempool.slice0);
