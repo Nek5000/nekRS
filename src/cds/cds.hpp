@@ -64,8 +64,7 @@ struct cds_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* mapB[NSCALAR_MAX], * EToB[NSCALAR_MAX];
-  occa::memory o_mapB[NSCALAR_MAX];
+  int* EToB[NSCALAR_MAX];
   occa::memory o_EToB[NSCALAR_MAX];
 
   occa::memory* o_usrwrk;

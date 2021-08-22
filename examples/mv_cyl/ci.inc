@@ -30,6 +30,12 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   }
   if(ciMode == 3){
     options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("MESH INITIAL GUESS", "PREVIOUS");
+    options.setArgs("MESH SOLVER", "ELASTICITY");
+    options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
+  }
+  if(ciMode == 4){
+    options.setArgs("SUBCYCLING STEPS", string("1"));
     options.setArgs("MESH SOLVER", "ELASTICITY");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
   }
@@ -78,6 +84,15 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
   }
+  if(ciMode == 4)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.1966487E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.2443839E-05;
+  }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
   const int expectedVIter = 11;
@@ -103,6 +118,18 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
   if(velIterErr >= 3) passed = false;
   if(pIterErr >= 2) passed = false;
+
+  if(ciMode == 3)
+  {
+    const int expectedMeshIter =  265;
+    const int meshIterErr = abs(nrs->meshSolver->Niter - expectedMeshIter);
+    if(meshIterErr >= 3) passed = false;
+  }
+  if(ciMode == 4)
+  {
+    const int meshIterThreshold =  200;
+    if(nrs->meshSolver->Niter >= meshIterThreshold) passed = false;
+  }
 
   passed ? (PASS) : (FAIL);
 }

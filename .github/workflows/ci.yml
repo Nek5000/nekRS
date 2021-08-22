@@ -132,6 +132,10 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 3
 
+    - name: 'mv_cyl + subcycling + mesh solver + proj'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 4
+
 
   conj_ht:
     runs-on: ubuntu-18.04
