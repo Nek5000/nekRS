@@ -30,7 +30,7 @@
                                       @restrict const dfloat*  U,
                                       @restrict dfloat*  UH)
 {
-  for(dlong e = 0; e < Nelements; e++; @outer(0))
+  for(dlong e = 0; e < Nelements; e++; @outer(0)) {
     for(int f = 0; f < p_Nfaces; f++) {
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         const dlong bcType = EToB[f + p_Nfaces * e];
@@ -43,7 +43,9 @@
         }
       }
       @barrier("global");
+    }
 
+    for(int f = 0; f < p_Nfaces; f++) {
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         const dlong bcType = EToB[f + p_Nfaces * e];
         const int sk = e * p_Nfp * p_Nfaces + f * p_Nfp + m;
@@ -62,4 +64,5 @@
       }
       @barrier("global");
     }
+  }
 }

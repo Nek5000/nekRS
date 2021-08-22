@@ -55,7 +55,6 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                             mesh->o_z,
                             platform->o_mempool.slice0,
                             cds->o_EToB[is],
-                            cds->o_mapB[is],
                             *(cds->o_usrwrk),
                             platform->o_mempool.slice1);
 

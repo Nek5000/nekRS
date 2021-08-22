@@ -1025,6 +1025,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         wMeshBCType[bID] = bcMap::type(bID, "z-mesh");
       }
       nrs->meshSolver = new elliptic_t();
+      nrs->meshSolver->name = "mesh";
       nrs->meshSolver->blockSolver = 1;
       nrs->meshSolver->stressForm = 1;
       nrs->meshSolver->Nfields = nrs->NVfields;
@@ -1173,8 +1174,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
 
   cds->prop = (dfloat*) calloc(2 * cds->fieldOffsetSum,sizeof(dfloat));
 
-
-
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
@@ -1254,37 +1253,18 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
     cds->options[is].setArgs("RESIDUAL PROJECTION START",  options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
     cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR" + sid + " MAXIMUM ITERATIONS"));
 
-    // setup boundary mapping
     dfloat largeNumber = 1 << 20;
-    cds->mapB[is] = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-    int* mapB = cds->mapB[is];
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int n = 0; n < mesh->Np; n++) mapB[n + e * mesh->Np] = largeNumber;
-
     cds->EToB[is] = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
     int* EToB = cds->EToB[is];
-
     int cnt = 0;
-    for (int e = 0; e < mesh->Nelements; e++)
+    for (int e = 0; e < mesh->Nelements; e++) {
       for (int f = 0; f < mesh->Nfaces; f++) {
         int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "scalar" + sid);
         EToB[cnt] = bc;
-        if (bc > 0) {
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            mapB[fid + e * mesh->Np] = mymin(bc,mapB[fid + e * mesh->Np]); // Dirichlet wnrs
-          }
-        }
         cnt++;
       }
-
-    ogsGatherScatter(mapB, ogsInt, ogsMin, mesh->ogs);
-
-    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (mapB[n] == largeNumber) mapB[n] = 0;
-
+    }
     cds->o_EToB[is] = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
-    cds->o_mapB[is] = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), mapB);
   }
 
   bool scalarFilteringEnabled = false;

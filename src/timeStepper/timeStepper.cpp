@@ -1390,7 +1390,7 @@ void printInfo(
       if(nrs->meshSolver)
       {
         elliptic_t* solver = nrs->meshSolver;
-        printf("  M  : iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
+        printf("  MSH: iter %03d  resNorm00 %e  resNorm0 %e  resNorm %e\n",
                solver->Niter, solver->res00Norm, solver->res0Norm, solver->resNorm);
       }
  
@@ -1420,8 +1420,7 @@ void printInfo(
             nrs->pSolver->Niter);
     }
     if(nrs->meshSolver)
-      printf("  M: %d", 
-       	nrs->meshSolver->Niter);
+      printf("  MSH: %d", nrs->meshSolver->Niter);
       
     for(int is = 0; is < nrs->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);

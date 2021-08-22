@@ -63,7 +63,6 @@
                                  @restrict const dfloat*  z,
                                  @restrict const dfloat*  S,
                                  @restrict const int*  EToB,
-                                 @restrict const int*  mapB,
                                  @restrict const dfloat*  W,
                                  @restrict dfloat*  rhsU)
 {
