@@ -337,66 +337,28 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     free(tmp);
   }
 
-  // setup boundary mapping
-  dfloat largeNumber = 1 << 20;
-
-  {
-    nrs->VmapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int n = 0; n < mesh->Np; n++) nrs->VmapB[n + e * mesh->Np] = largeNumber;
-
-    nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-
-    int cnt = 0;
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int f = 0; f < mesh->Nfaces; f++) {
-        int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
-        nrs->EToB[cnt] = bc;
-        if (bc > 0) {
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            nrs->VmapB[fid + e * mesh->Np] = mymin(bc,nrs->VmapB[fid + e * mesh->Np]); // Dirichlet wins
-          }
-        }
-        cnt++;
-      }
-
-    ogsGatherScatter(nrs->VmapB, ogsInt, ogsMin, mesh->ogs);
-    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (nrs->VmapB[n] == largeNumber) nrs->VmapB[n] = 0;
-
-    nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
-    nrs->o_VmapB = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapB);
+  nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+  int cnt = 0;
+  for (int e = 0; e < mesh->Nelements; e++) {
+    for (int f = 0; f < mesh->Nfaces; f++) {
+      int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
+      nrs->EToB[cnt] = bc;
+      cnt++;
+    }
   }
+  nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToB);
 
-  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
-  {
-    nrs->VmapBMesh = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int n = 0; n < mesh->Np; n++) nrs->VmapBMesh[n + e * mesh->Np] = largeNumber;
-
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")) {
     nrs->EToBMesh = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-
     int cnt = 0;
-    for (int e = 0; e < mesh->Nelements; e++)
+    for (int e = 0; e < mesh->Nelements; e++) {
       for (int f = 0; f < mesh->Nfaces; f++) {
         int bc = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "mesh");
         nrs->EToBMesh[cnt] = bc;
-        if (bc > 0) {
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            nrs->VmapBMesh[fid + e * mesh->Np] = mymin(bc,nrs->VmapBMesh[fid + e * mesh->Np]); // Dirichlet wins
-          }
-        }
         cnt++;
       }
-
-    ogsGatherScatter(nrs->VmapBMesh, ogsInt, ogsMin, mesh->ogs);
-    for (int n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (nrs->VmapBMesh[n] == largeNumber) nrs->VmapBMesh[n] = 0;
-
+    }
     nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
-    nrs->o_VmapBMesh = device.malloc(mesh->Nelements * mesh->Np * sizeof(int), nrs->VmapBMesh);
   }
 
   if(platform->options.compareArgs("STABILIZATION METHOD", "RELAXATION")){
@@ -1089,7 +1051,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   {
     double startTime;
     platform->options.getArgs("START TIME", startTime);
-    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_mempool.slice0);
+    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice0);
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->velocityDirichletBCKernel(mesh->Nelements,
                                      nrs->fieldOffset,
@@ -1101,7 +1063,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                                      mesh->o_vmapM,
                                      mesh->o_EToB,
                                      nrs->o_EToB,
-                                     nrs->o_VmapB,
                                      nrs->o_usrwrk,
                                      nrs->o_U,
                                      platform->o_mempool.slice0);
@@ -1114,9 +1075,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     for (int sweep = 0; sweep < 2; sweep++) {
     nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                    nrs->fieldOffset,
-                                   mesh->o_vmapM,
                                    nrs->o_EToBMesh,
-                                   nrs->o_VmapBMesh,
                                    nrs->o_U,
                                    platform->o_mempool.slice0);
       //take care of Neumann-Dirichlet shared edges across elements

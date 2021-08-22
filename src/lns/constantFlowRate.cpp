@@ -315,7 +315,7 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
 
     // enforce Dirichlet BCs
     platform->linAlg->fill(nrs->fieldOffset,
-        std::numeric_limits<dfloat>::min(),
+        -1.0*std::numeric_limits<dfloat>::max(),
         platform->o_mempool.slice6);
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->pressureDirichletBCKernel(mesh->Nelements,
@@ -421,7 +421,7 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     }
 
     platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset,
-        std::numeric_limits<dfloat>::min(),
+        -1.0*std::numeric_limits<dfloat>::max(),
         platform->o_mempool.slice3);
     for (int sweep = 0; sweep < 2; sweep++) {
 
@@ -435,7 +435,6 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
           mesh->o_vmapM,
           mesh->o_EToB,
           nrs->o_EToB,
-          nrs->o_VmapB,
           nrs->o_usrwrk,
           nrs->o_Uc,
           platform->o_mempool.slice3);

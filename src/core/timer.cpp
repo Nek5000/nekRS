@@ -293,7 +293,7 @@ void timer_t::printRunStat(int step)
     std::cout << "  udfExecuteStep        " << dEtime[12] << "s " << printPercentage(dEtime[12],dEtime[9]) << "\n";
 
     if(hEtime[2] > 0 && hEtime[3] > 0)
-    std::cout << "  solve step min/max    " << hEtime[2] << "s " << "/" << hEtime[3] << "s (first 10 steps excluded)\n";
+    std::cout << "  solve step min/max    " << hEtime[2] << "s / " << hEtime[3] << "s (first 10 steps excluded)\n";
 
     std::cout << "  total solve           " << dEtime[9] << "s\n"; 
   	std::cout << "    makef               " << dEtime[0] << "s " << printPercentage(dEtime[0],dEtime[9]) << "\n";

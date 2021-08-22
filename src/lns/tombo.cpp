@@ -9,7 +9,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 {
   mesh_t* mesh = nrs->meshV;
   
-
   //enforce Dirichlet BCs
   platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice6);
   for (int sweep = 0; sweep < 2; sweep++) {
@@ -37,7 +36,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    mesh->o_vmapM,
                                    mesh->o_EToB,
                                    nrs->o_EToB,
-                                   nrs->o_VmapB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    platform->o_mempool.slice7);
@@ -243,13 +241,11 @@ occa::memory meshSolve(nrs_t* nrs, dfloat time, int stage)
 
   //enforce Dirichlet BCs
   platform->o_mempool.slice0.copyFrom(mesh->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, 0.0, platform->o_mempool.slice3);
+  platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice3);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                    nrs->fieldOffset,
-                                   mesh->o_vmapM,
                                    nrs->o_EToBMesh,
-                                   nrs->o_VmapBMesh,
                                    nrs->o_U,
                                    platform->o_mempool.slice3);
 

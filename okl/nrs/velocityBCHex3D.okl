@@ -263,14 +263,12 @@
                                          @restrict const dlong*  vmapM,
                                          @restrict const int*  EToBM,
                                          @restrict const int*  EToB,
-                                         @restrict const int*  EToBV,
                                          @restrict const dfloat*  W,
                                          @restrict const dfloat*  U,
                                          @restrict dfloat*  UH)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0))
     for(int f = 0; f < p_Nfaces; f++) {
-      @barrier("global");
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         struct bcData bc;
         const int n = m + f * p_Nfp;
@@ -278,9 +276,8 @@
         const dlong sid  = e * p_Nfaces * p_Nfp + n;
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
-        const dlong bcTypeV = EToBV[idM];
 
-        if(bcType > 0) {
+        if(bcType == 2) {
           bc.id = EToBM[f + p_Nfaces * e];
           bc.idM = idM;
           bc.time = time;
@@ -299,27 +296,36 @@
           bc.wrk = W;
           bc.fieldOffset = offset;
 
+          velocityDirichletConditions(&bc);
+          UH[idM + 0 * offset] = bc.u;
+          UH[idM + 1 * offset] = bc.v;
+          UH[idM + 2 * offset] = bc.w;
+        }
+      }
+      @barrier("global");
+
+      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        struct bcData bc;
+        const int n = m + f * p_Nfp;
+        const int sk = e * p_Nfp * p_Nfaces + n;
+        const dlong sid  = e * p_Nfaces * p_Nfp + n;
+        const dlong idM = vmapM[sk];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+
+        if(bcType > 0) {
           if(bcType == 1) {
             UH[idM + 0 * offset] = 0.0;
             UH[idM + 1 * offset] = 0.0;
             UH[idM + 2 * offset] = 0.0;
-          }else if(bcType == 2 && bcTypeV == bcType) {
-            velocityDirichletConditions(&bc);
-            UH[idM + 0 * offset] = bc.u;
-            UH[idM + 1 * offset] = bc.v;
-            UH[idM + 2 * offset] = bc.w;
-          }else if(bcType == 3 && bcTypeV == bcType) {
-            UH[idM + 0 * offset] = bc.u;
-            UH[idM + 1 * offset] = bc.v;
-            UH[idM + 2 * offset] = bc.w;
-          }else if(bcType == 4 && bcTypeV == bcType) {
+          }else if(bcType == 4) {
             UH[idM + 0 * offset] = 0.0;
-          }else if(bcType == 5 && bcTypeV == bcType) {
+          }else if(bcType == 5) {
             UH[idM + 1 * offset] = 0.0;
-          }else if(bcType == 6 && bcTypeV == bcType) {
+          }else if(bcType == 6) {
             UH[idM + 2 * offset] = 0.0;
           }
         }
       }
+      @barrier("global");
     }
 }
