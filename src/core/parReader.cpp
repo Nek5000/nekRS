@@ -492,7 +492,7 @@ void parseInitialGuess(const int rank, setupAide &options,
     } else if (initialGuess.find("projection") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS",
                       "PROJECTION");
-    } else if (initialGuess.find("none") != string::npos) {
+    } else if (initialGuess.find("previous") != string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
     } else if (initialGuess.find("true") != string::npos) {
       const int defaultNumVectors = parScope == "pressure" ? 10 : 5;

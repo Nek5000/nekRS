@@ -15,7 +15,7 @@ stressFormulation = true
 
 [PRESSURE]
 residualTol = 1e-8
-initialGuess = none
+initialGuess = previous
 
 [VELOCITY]
 boundaryTypeMap = fixedValue, zeroValue, symX
