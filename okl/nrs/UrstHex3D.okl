@@ -1,6 +1,5 @@
 @kernel void UrstCubatureHex3D(const dlong Nelements,
                                                   @restrict const dfloat*  cubvgeo,
-                                                  @restrict const dfloat*  cubD,
                                                   @restrict const dfloat*  cubInterpT,
                                                   @restrict const dfloat*  cubProjectT,
                                                   const dlong offset,
@@ -11,7 +10,6 @@
 {
   // (phi, U.grad Ud)
   for(dlong element = 0; element < Nelements; ++element; @outer(0)) {
-    @shared dfloat s_cubD[p_cubNq][p_cubNq];
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
 
     @shared dfloat s_U[p_cubNq][p_cubNq];
@@ -32,7 +30,6 @@
           s_cubInterpT[0][id] = cubInterpT[id];
         }
 
-        s_cubD[0][id] = cubD[id];
 #pragma unroll p_cubNq
         for(int k = 0; k < p_cubNq; ++k) {
           r_U[k]  = 0;
@@ -150,29 +147,15 @@
 }
 @kernel void UrstHex3D(const dlong Nelements,
                                           @restrict const dfloat*  vgeo,
-                                          @restrict const dfloat*  D,
                                           const dlong offset,
                                           @restrict const dfloat*  U,
                                           @restrict const dfloat*  W,
                                           @restrict dfloat*  result)
 {
   for(dlong element = 0; element < Nelements; ++element; @outer(0)) {
-    @shared dfloat s_Ud[p_Nq][p_Nq];
-    @shared dfloat s_Vd[p_Nq][p_Nq];
-    @shared dfloat s_Wd[p_Nq][p_Nq];
-
-    @shared dfloat s_D[p_Nq][p_Nq];
 
     #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; ++k){
-      for(int j = 0; j < p_Nq; ++j; @inner(1)){
-        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          dlong id = i + j * p_Nq;
-
-          if(k == 0)
-            s_D[0][id] = D[id];
-        }
-      }
 
     @barrier("local");
 
@@ -188,7 +171,6 @@
           const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
           const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
-          const dfloat JW   = vgeo[gid + p_JWID * p_Np];
 
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
@@ -201,9 +183,9 @@
             Wn -= W[id + 2 * offset];
           }
 
-          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
-          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
-          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+          const dfloat Uhat = (Un * drdx + Vn * drdy + Wn * drdz);
+          const dfloat Vhat = (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          const dfloat What = (Un * dtdx + Vn * dtdy + Wn * dtdz);
 
           result[id + 0 * offset] =  Uhat;
           result[id + 1 * offset] =  Vhat;

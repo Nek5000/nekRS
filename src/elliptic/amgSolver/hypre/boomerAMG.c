@@ -206,7 +206,7 @@ int boomerAMGSolve(void *x, void *b)
     if(tid==0) _Nthreads = omp_get_num_threads();
   }
   omp_set_num_threads(data->Nthreads);
-  HYPRE_BoomerAMGSolve(data->solver,par_A,par_b,par_x);
+  err = HYPRE_BoomerAMGSolve(data->solver,par_A,par_b,par_x);
   if(err > 0) { 
     int rank;
     MPI_Comm_rank(data->comm,&rank);

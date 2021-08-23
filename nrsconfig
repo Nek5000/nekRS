@@ -8,9 +8,7 @@ set -e -a
 : ${NEKRS_FC:="mpif77"}
 : ${NEKRS_COMPILER_FLAGS:=""}
 
-: ${NEKRS_GPU_MPI:=0}
-
-: ${NEKRS_BACKEND_DEFAULT:=CUDA}
+: ${NEKRS_GPU_MPI:=1}
 
 : ${OCCA_CXX:="g++"}
 : ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
@@ -24,8 +22,9 @@ set -e -a
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 
-NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+
 NEKRS_BUILD_DIR=`pwd`/build
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 cd ${NEKRS_BUILD_DIR}
@@ -45,7 +44,6 @@ cmake -Wno-dev \
       -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
       -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
       -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
-      -DBACKEND_DEFAULT="${NEKRS_BACKEND_DEFAULT}" \
       -DGPU_MPI="${NEKRS_GPU_MPI}" \
       -DHYPRE_BIGINT=1 \
       -DENABLE_AMGX="${AMGX_ENABLED}" \

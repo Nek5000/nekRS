@@ -41,6 +41,8 @@ static int counter = 0;
 
 static dfloat atime;
 static dfloat timel;
+
+static int outfldCounter = 0;
 }
 
 void avg::buildKernel(nrs_t* nrs)
@@ -175,12 +177,13 @@ void avg::setup(nrs_t* nrs_)
   setupCalled = 1;
 }
 
-void avg::outfld()
+void avg::outfld(int _outXYZ, int FP64)
 {
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->meshV;
-  const int FP64 = 1;
-  const int coords = 0;
+
+  int outXYZ = _outXYZ;
+  if(!outfldCounter) outXYZ = 1;
 
   occa::memory o_null;
   occa::memory o_Tavg, o_Trms;
@@ -191,23 +194,30 @@ void avg::outfld()
     o_Trms = o_Srms;
   }
 
-  writeFld("avg", atime, coords, FP64,
+  writeFld("avg", atime, outXYZ, FP64,
            &o_Uavg,
            &o_Pavg,
            &o_Tavg,
            Nscalar);
 
-  writeFld("rms", atime, coords, FP64,
+  writeFld("rms", atime, outXYZ, FP64,
            &o_Urms,
            &o_Prms,
            &o_Trms,
            Nscalar);
 
-  writeFld("rm2", atime, coords, FP64,
+  writeFld("rm2", atime, outXYZ, FP64,
            &o_Urm2,
            &o_null,
            &o_null,
            0);
 
   atime = 0;
+  outfldCounter++;
+}
+
+
+void avg::outfld()
+{
+  avg::outfld(/* outXYZ */ 0, /* FP64 */ 1);
 }

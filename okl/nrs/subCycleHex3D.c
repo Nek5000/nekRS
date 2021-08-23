@@ -18,7 +18,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
+extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
                                                   const int * __restrict__ elementList,
                                                   const dfloat * __restrict__ cubD,
                                                   const dfloat * __restrict__ cubInterpT,

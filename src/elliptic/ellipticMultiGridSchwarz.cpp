@@ -895,6 +895,7 @@ void MGLevel::build(
       properties["defines/p_Nq"] = Nq;
       properties["defines/p_Nq_e"] = Nq_e;
       properties["defines/p_restrict"] = 0;
+      const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
       properties["defines/p_overlap"] = (int) overlap;
       if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
         properties["defines/p_restrict"] = 1;
@@ -902,11 +903,10 @@ void MGLevel::build(
       filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
       if(serial) {
         filename = oklpath + "ellipticSchwarzSolverHex3D.c";
-        properties["okl/enabled"] = false;
       }
-      preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties);
-      fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties);
-      postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties);
+      preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties, suffix);
+      fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties, suffix);
+      postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties, suffix);
   }
 }
 
@@ -957,4 +957,5 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
     oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   }
+  if (elliptic->Nmasked) mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Su);
 }

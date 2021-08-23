@@ -30,6 +30,7 @@ struct nrs_t
   elliptic_t* wSolver;
   elliptic_t* uvwSolver;
   elliptic_t* pSolver;
+  elliptic_t* meshSolver;
 
   cds_t* cds;
 
@@ -41,7 +42,7 @@ struct nrs_t
 
   int Nscalar;
   dlong fieldOffset;
-  setupAide vOptions, pOptions;
+  setupAide vOptions, pOptions, mOptions;
 
   inipp::Ini<char> *par;
 
@@ -50,6 +51,9 @@ struct nrs_t
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat CFL;
+  dfloat unitTimeCFL;
+
   dfloat dp0thdt;
   int tstep;
   int lastStep;
@@ -65,6 +69,12 @@ struct nrs_t
   dfloat* U, * P;
   dfloat* BF, * FU;
 
+  // unit normal flow direction for constant flow rate
+  dfloat flowDirection[3];
+  int fromBID;
+  int toBID;
+  dfloat flowRate;
+
   //RK Subcycle Data
   int nRK;
   dfloat* coeffsfRK, * weightsRK, * nodesRK;
@@ -77,9 +87,6 @@ struct nrs_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* VmapB;
-  occa::memory o_VmapB;
-
   int Nsubsteps;
   dfloat* Ue, sdt;
   occa::memory o_Ue;
@@ -89,6 +96,7 @@ struct nrs_t
 
   dfloat rho, mue;
   occa::memory o_rho, o_mue;
+  occa::memory o_meshRho, o_meshMue;
 
   dfloat* usrwrk;
   occa::memory o_usrwrk;
@@ -119,7 +127,13 @@ struct nrs_t
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 
+  occa::kernel computeFaceCentroidKernel;
+  occa::kernel computeFieldDotNormalKernel;
+
   occa::memory o_U, o_P;
+
+  occa::memory o_Uc, o_Pc;
+  occa::memory o_prevProp;
 
   occa::memory o_relUrst;
   occa::memory o_Urst;
@@ -166,9 +180,12 @@ struct nrs_t
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
   occa::kernel maskCopyKernel;
+  occa::kernel maskKernel;
 
   int* EToB;
+  int* EToBMesh;
   occa::memory o_EToB;
+  occa::memory o_EToBMesh;
 
   occa::properties* kernelInfo;
 };

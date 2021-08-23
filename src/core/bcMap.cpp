@@ -52,8 +52,45 @@ static std::map<int, string> sBcIDToText = {
 };
 
 static void v_setup(string s);
+static void m_setup(string s);
 static void s_setup(string s);
 
+static void m_setup(string field, std::vector<std::string> slist)
+{
+  for(int i = 0; i < slist.size(); i++) {
+    string key = slist[i];
+    if (key.compare("p") == 0) key = "periodic";
+    if (key.compare("w") == 0) key = "zerovalue";
+    if (key.compare("wall") == 0) key = "zerovalue";
+    if (key.compare("inlet") == 0) key = "fixedvalue";
+    if (key.compare("v") == 0) key = "zerovalue"; // non-moving boundary, which is the same as a wall
+    if (key.compare("mv") == 0) key = "fixedvalue";
+    if (key.compare("outlet") == 0) key = "zerogradient";
+    if (key.compare("outflow") == 0) key = "zerogradient";
+    if (key.compare("o") == 0) key = "zerogradient";
+    if (key.compare("slipx") == 0) key = "zeroxvalue/zerogradient";
+    if (key.compare("slipy") == 0) key = "zeroyvalue/zerogradient";
+    if (key.compare("slipz") == 0) key = "zerozvalue/zerogradient";
+    if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient";
+    if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
+    if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
+
+    if (vBcTextToID.find(key) == vBcTextToID.end()) {
+      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      ABORT(1);
+    }
+
+    try
+    {
+      bToBc[make_pair(field, i)] = vBcTextToID.at(key);
+    }
+    catch (const std::out_of_range& oor)
+    {
+      cout << "Out of Range error: " << oor.what() << "!\n";
+      ABORT(1);
+    }
+  }
+}
 static void v_setup(string field, std::vector<std::string> slist)
 {
   for(int i = 0; i < slist.size(); i++) {
@@ -62,7 +99,7 @@ static void v_setup(string field, std::vector<std::string> slist)
     if (key.compare("w") == 0) key = "zerovalue";
     if (key.compare("wall") == 0) key = "zerovalue";
     if (key.compare("inlet") == 0) key = "fixedvalue";
-    if (key.compare("v") == 0) key = "fixedvalue";
+    if (key.compare("v") == 0 || key.compare("mv") == 0) key = "fixedvalue";
     if (key.compare("outlet") == 0) key = "zerogradient";
     if (key.compare("outflow") == 0) key = "zerogradient";
     if (key.compare("o") == 0) key = "zerogradient";
@@ -134,6 +171,8 @@ void setup(std::vector<std::string> slist, string field)
 
   if (field.compare("velocity") == 0)
     v_setup(field, slist);
+  else if (field.compare("mesh") == 0)
+    m_setup(field, slist);
   else if (field.compare(0, 6, "scalar") == 0)
     s_setup(field, slist);
 }
@@ -173,6 +212,30 @@ int type(int bid, string field)
     if (bcID == 4) return NEUMANN;
     if (bcID == 5) return NEUMANN;
     if (bcID == 6) return DIRICHLET;
+  } else if (field.compare("x-mesh") == 0) {
+    const int bcID = bToBc[{"mesh", bid - 1}];
+    if (bcID == 1) return DIRICHLET;
+    if (bcID == 2) return DIRICHLET;
+    if (bcID == 3) return NEUMANN;
+    if (bcID == 4) return DIRICHLET;
+    if (bcID == 5) return NEUMANN;
+    if (bcID == 6) return NEUMANN;
+  } else if (field.compare("y-mesh") == 0) {
+    const int bcID = bToBc[{"mesh", bid - 1}];
+    if (bcID == 1) return DIRICHLET;
+    if (bcID == 2) return DIRICHLET;
+    if (bcID == 3) return NEUMANN;
+    if (bcID == 4) return NEUMANN;
+    if (bcID == 5) return DIRICHLET;
+    if (bcID == 6) return NEUMANN;
+  } else if (field.compare("z-mesh") == 0) {
+    const int bcID = bToBc[{"mesh", bid - 1}];
+    if (bcID == 1) return DIRICHLET;
+    if (bcID == 2) return DIRICHLET;
+    if (bcID == 3) return NEUMANN;
+    if (bcID == 4) return NEUMANN;
+    if (bcID == 5) return NEUMANN;
+    if (bcID == 6) return DIRICHLET;
   } else if (field.compare("pressure") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
     if (bcID == 1) return NEUMANN;
@@ -198,7 +261,7 @@ string text(int bid, string field)
   if (bid < 1) return std::string();
 
   const int bcID = bToBc[{field, bid - 1}];
-  if (field.compare("velocity") == 0)
+  if (field.compare("velocity") == 0 || field.compare("mesh") == 0)
 
     return vBcIDToText[bcID];
 

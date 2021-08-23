@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     if (lastStep && nekrs::endTime() > 0) 
       dt = nekrs::endTime() - time;
     else
-      dt = nekrs::dt();
+      dt = nekrs::dt(tStep);
 
     int outputStep = nekrs::outputStep(time+dt, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
@@ -178,7 +178,7 @@ int main(int argc, char** argv)
 
     if (outputStep) nekrs::outfld(time); 
 
-    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
+    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics(tStep);
 
     MPI_Barrier(comm);
     elapsedTime += (MPI_Wtime() - timeStart);

@@ -19,7 +19,7 @@ SOFTWARE.
 */
 
 extern "C"
-void axpby(const dlong & N, const dlong & xOffset, const dlong& yOffset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
+void FUNC(axpby)(const dlong & N, const dlong & xOffset, const dlong& yOffset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
                const dfloat &beta, dfloat * __restrict__ cpu_b){
 
   #pragma omp parallel for
@@ -32,7 +32,7 @@ void axpby(const dlong & N, const dlong & xOffset, const dlong& yOffset, const d
 }
 
 extern "C"
-void axpbyMany(const dlong & N, const dlong & Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
+void FUNC(axpbyMany)(const dlong & N, const dlong & Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
                     const dfloat & beta, dfloat * __restrict__ cpu_b){
 
   #pragma omp parallel for collapse(2)

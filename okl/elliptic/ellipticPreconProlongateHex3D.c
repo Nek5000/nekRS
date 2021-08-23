@@ -24,7 +24,7 @@
 
  */
 
-extern "C" void ellipticPreconProlongateHex3D(const dlong& Nelements,
+extern "C" void FUNC(ellipticPreconProlongateHex3D)(const dlong& Nelements,
                                                const dfloat* __restrict__  R,
                                                const dfloat* __restrict__  qc,
                                                dfloat* __restrict__  qN)

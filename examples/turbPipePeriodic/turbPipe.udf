@@ -4,6 +4,7 @@
 #include <math.h>
 #include "udf.hpp"
 #include "casedata.h"
+#include "ci.inc"
 
 /* User Functions */
 
@@ -20,19 +21,28 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
 }
 
-
 /* UDF Functions */                                                      
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
 }
 
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
+}
+
 void UDF_Setup(nrs_t *nrs)
 {
-  // assign function pointer to drive flow by constant mean pressure gradient
-  udf.uEqnSource = &userf;
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")){
+    // assign function pointer to drive flow by constant mean pressure gradient
+    udf.uEqnSource = &userf;
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
+  if (nrs->lastStep)
+    if (ciMode) ciTestErrors(nrs, time, tstep);
 }

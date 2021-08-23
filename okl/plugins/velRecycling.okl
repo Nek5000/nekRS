@@ -118,22 +118,27 @@
         s_w1[t] += s_w1[t + 32];
         s_w2[t] += s_w2[t + 32];
       }
+    @barrier("local");
     for(int t = 0; t < p_blockSize; ++t; @inner(0)) if(t < 16) {
         s_w1[t] += s_w1[t + 16];
         s_w2[t] += s_w2[t + 16];
       }
+    @barrier("local");
     for(int t = 0; t < p_blockSize; ++t; @inner(0)) if(t <  8) {
         s_w1[t] += s_w1[t + 8];
         s_w2[t] += s_w2[t + 8];
       }
+    @barrier("local");
     for(int t = 0; t < p_blockSize; ++t; @inner(0)) if(t <  4) {
         s_w1[t] += s_w1[t + 4];
         s_w2[t] += s_w2[t + 4];
       }
+    @barrier("local");
     for(int t = 0; t < p_blockSize; ++t; @inner(0)) if(t <  2) {
         s_w1[t] += s_w1[t + 2];
         s_w2[t] += s_w2[t + 2];
       }
+    @barrier("local");
     for(int t = 0; t < p_blockSize; ++t; @inner(0)) if(t <  1) {
         w1[b] = s_w1[0] + s_w1[1];
         w2[b] = s_w2[0] + s_w2[1];

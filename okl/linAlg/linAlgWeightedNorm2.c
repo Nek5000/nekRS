@@ -19,7 +19,7 @@ SOFTWARE.
 */
 
 extern "C" 
-void weightedNorm2(const dlong & Nblocks, const dlong & N, 
+void FUNC(weightedNorm2)(const dlong & Nblocks, const dlong & N, 
                    const dfloat * __restrict__ cpu_w,
                    const dfloat * __restrict__ cpu_a,
                    dfloat * __restrict__ cpu_wa){
@@ -38,7 +38,7 @@ void weightedNorm2(const dlong & Nblocks, const dlong & N,
 }
 
 extern "C" 
-void weightedNorm2Many(const dlong & Nblocks, const dlong & N, 
+void FUNC(weightedNorm2Many)(const dlong & Nblocks, const dlong & N, 
                         const dlong & Nfields,
                         const dlong & offset,
                         const dfloat * __restrict__ cpu_w,

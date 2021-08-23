@@ -5,6 +5,7 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <limits>
 
 #include "inipp.hpp"
 #include "tinyexpr.h"
@@ -30,8 +31,498 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
-void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *par, bool isScalar = false, bool isTemperature = false, string sidPar = "")
+void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini<char> *par)
 {
+  string flowRateDescription;
+  if(par->extract("general", "constflowrate", flowRateDescription))
+  {
+    options.setArgs("CONSTANT FLOW RATE", "TRUE");
+    bool flowRateSet = false;
+    bool flowDirectionSet = false;
+    bool issueError = false;
+    const std::vector<string> list = serializeString(flowRateDescription, '+');
+    for(std::string s : list)
+    {
+      if(s.find("meanvelocity") == 0){
+        if(flowRateSet) issueError = true;
+        flowRateSet = true;
+        options.setArgs("CONSTANT FLOW RATE TYPE", "BULK");
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const dfloat value = std::stod(items[1]);
+        options.setArgs("FLOW RATE", to_string_f(value));
+      }
+
+      if(s.find("meanvolumetricflow") == 0)
+      {
+        if(flowRateSet) issueError = true;
+        flowRateSet = true;
+        options.setArgs("CONSTANT FLOW RATE TYPE", "VOLUMETRIC");
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const dfloat value = std::stod(items[1]);
+        options.setArgs("FLOW RATE", to_string_f(value));
+      }
+
+      if(s.find("bid") == 0)
+      {
+        if(flowDirectionSet) issueError = true;
+        flowDirectionSet = true;
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        std::vector<string> bids = serializeString(items[1], ',');
+        assert(bids.size() == 2);
+        const int fromBID = std::stoi(bids[0]);
+        const int toBID = std::stoi(bids[1]);
+        options.setArgs("CONSTANT FLOW FROM BID", std::to_string(fromBID));
+        options.setArgs("CONSTANT FLOW TO BID", std::to_string(toBID));
+
+        if(platform->comm.mpiRank == 0)
+          printf("Specifying a constant flow direction with a pair of BIDs is currently not supported.\n");
+        ABORT(1);
+      }
+      if(s.find("direction") == 0)
+      {
+        if(flowDirectionSet) issueError = true;
+        flowDirectionSet = true;
+        std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        string direction = items[1];
+        issueError = (
+          direction.find("x") == string::npos &&
+          direction.find("y") == string::npos &&
+          direction.find("z") == string::npos
+        );
+
+        UPPER(direction);
+          
+        options.setArgs("CONSTANT FLOW DIRECTION", direction);
+      }
+
+    }
+    if(!flowDirectionSet)
+    {
+      if(rank == 0) printf("Flow direction has not been set in GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+    if(!flowRateSet)
+    {
+      if(rank == 0) printf("Flow rate has not been set in GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+    if(issueError)
+    {
+      if(rank == 0) printf("Error parsing GENERAL:constFlowRate!\n");
+      ABORT(1);
+    }
+  }
+}
+void parseSolverTolerance(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+  string parSectionName = (parScope.find("temperature") != std::string::npos)
+                              ? "scalar00"
+                              : parScope;
+
+  UPPER(parSectionName);
+
+  string residualTol;
+  if(par->extract(parScope, "residualtol", residualTol) ||
+     par->extract(parScope, "residualtolerance", residualTol))
+  {
+    if(residualTol.find("relative") != string::npos)
+    {
+      options.setArgs(parSectionName + " LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+    }
+
+    std::vector<string> entries = serializeString(residualTol, '+');
+    for(std::string entry : entries)
+    {
+      double tolerance = std::strtod(entry.c_str(), nullptr);
+      if(tolerance > 0.0)
+      {
+        options.setArgs(parSectionName + " SOLVER TOLERANCE", to_string_f(tolerance));
+      }
+    }
+  }
+}
+void parseCoarseSolver(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+  string parSectionName = (parScope.find("temperature") != std::string::npos)
+                              ? "scalar00"
+                              : parScope;
+  UPPER(parSectionName);
+  string p_coarseSolver;
+  const bool continueParsing = par->extract(parScope, "coarsesolver", p_coarseSolver);
+  if(!continueParsing)
+    return;
+
+  // solution methods
+  if(p_coarseSolver.find("boomeramg") != string::npos){
+    options.setArgs("AMG SOLVER", "BOOMERAMG");
+    options.setArgs(parSectionName + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
+    options.setArgs("AMG SOLVER PRECISION", "FP64");
+    options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP64");
+    options.setArgs("AMG SOLVER LOCATION", "CPU");
+  }
+  else if(p_coarseSolver.find("amgx") != string::npos){
+    options.setArgs("AMG SOLVER", "AMGX");
+    options.setArgs(parSectionName + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
+    options.setArgs("AMG SOLVER PRECISION", "FP32");
+    options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP32");
+    options.setArgs("AMG SOLVER LOCATION", "GPU");
+  }
+
+  // coarse grid discretization
+  if(p_coarseSolver.find("semfem") != string::npos){
+    options.setArgs(parSectionName + " MULTIGRID COARSE SEMFEM", "TRUE");
+  }
+  else if(p_coarseSolver.find("fem") != string::npos){
+    options.setArgs(parSectionName + " MULTIGRID COARSE SEMFEM", "FALSE");
+    options.setArgs("GALERKIN COARSE OPERATOR", "FALSE");
+    options.setArgs("USER SPECIFIED FEM COARSE SOLVER", "TRUE");
+    if(p_coarseSolver.find("galerkin") != string::npos){
+      options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+    }
+  }
+
+
+  // parse fp type + location
+  std::vector<string> entries = serializeString(p_coarseSolver, '+');
+  for(string entry : entries)
+  {
+    if(entry.find("fp32") != string::npos)
+    {
+      options.setArgs("AMG SOLVER PRECISION", "FP32");
+      options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP32");
+      if(p_coarseSolver.find("boomeramg") != string::npos){
+        if(rank == 0) printf("BoomerAMG+FP32 is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+    else if(entry.find("fp64") != string::npos)
+    {
+      options.setArgs("AMG SOLVER PRECISION", "FP64");
+      options.setArgs(parSectionName + " SEMFEM SOLVER PRECISION", "FP64");
+    }
+    else if(entry.find("cpu") != string::npos)
+    {
+      options.setArgs("AMG SOLVER LOCATION", "CPU");
+      if(p_coarseSolver.find("amgx") != string::npos){
+        if(rank == 0) printf("AMGX+CPU is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+    else if(entry.find("gpu") != string::npos)
+    {
+      options.setArgs("AMG SOLVER LOCATION", "GPU");
+      if(p_coarseSolver.find("boomeramg") != string::npos){
+        if(rank == 0) printf("BoomerAMG+CPU is not currently supported!\n");
+        ABORT(1);
+      }
+    }
+  }
+}
+
+bool is_number(const string &s) {
+  return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) {
+                         return !std::isdigit(c);
+                       }) == s.end();
+}
+
+std::vector<int> checkForIntInInputs(const std::vector<string> &inputs) {
+  std::vector<int> values;
+  for (string s : inputs) {
+    if (is_number(s)) {
+      values.emplace_back(std::stoi(s));
+    }
+  }
+  return values;
+}
+
+void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
+                   string parScope) {
+
+  string parSection = parScope;
+  UPPER(parSection);
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+
+  string p_smoother;
+  if (par->extract(parScope, "smoothertype", p_smoother) &&
+      options.compareArgs(parSection + " PRECONDITIONER", "MULTIGRID")) {
+    std::vector<string> list;
+    list = serializeString(p_smoother, '+');
+
+    std::vector<int> optionalChebyshevOrder = checkForIntInInputs(list);
+    if (optionalChebyshevOrder.size() > 1) {
+      if (rank == 0) {
+        printf("Could not parse smoother string %s!\n", p_smoother.c_str());
+      }
+      ABORT(1);
+    }
+
+    if (p_smoother.find("chebyshev") != string::npos) {
+      if (optionalChebyshevOrder.size() == 1)
+        options.setArgs(parSection + " MULTIGRID CHEBYSHEV DEGREE",
+                        std::to_string(optionalChebyshevOrder[0]));
+      for (string s : list) {
+        if (s.find("mineigenvalueboundfactor") != string::npos) {
+          std::vector<string> params = serializeString(s, '=');
+          if (params.size() != 2) {
+            if (rank == 0)
+              printf("Error: could not parse mineigenvalueboundfactor %s!\n", s.c_str());
+            ABORT(1);
+          }
+          const double value = std::stod(params[1]);
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR",
+                          to_string_f(value));
+        } else if (s.find("maxeigenvalueboundfactor") != string::npos) {
+          std::vector<string> params = serializeString(s, '=');
+          if (params.size() != 2) {
+            if (rank == 0)
+              printf("Error: could not parse maxeigenvalueboundfactor %s!\n", s.c_str());
+            ABORT(1);
+          }
+          const double value = std::stod(params[1]);
+          options.setArgs(parSection + " MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR",
+                          to_string_f(value));
+        }
+      }
+    }
+
+    if (p_smoother.find("asm") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "ASM");
+      if (p_preconditioner.find("multigrid") != string::npos) {
+        if (p_preconditioner.find("additive") == string::npos)
+          exit("ASM smoother only supported for additive V-cycle!",
+               EXIT_FAILURE);
+      } else {
+        options.setArgs(parSection + " PARALMOND CYCLE",
+                        "VCYCLE+ADDITIVE+OVERLAPCRS");
+      }
+    } else if (p_smoother.find("ras") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "RAS");
+      if (p_preconditioner.find("multigrid") != string::npos) {
+        if (p_preconditioner.find("additive") == string::npos)
+          exit("RAS smoother only supported for additive V-cycle!",
+               EXIT_FAILURE);
+      } else {
+        options.setArgs(parSection + " PARALMOND CYCLE",
+                        "VCYCLE+ADDITIVE+OVERLAPCRS");
+      }
+    } else if (p_smoother.find("chebyshev+jac") == 0 || p_smoother.find("cheb+jac") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER",
+                      "DAMPEDJACOBI,CHEBYSHEV");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "JACOBI");
+      options.setArgs("BOOMERAMG ITERATIONS", "2");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for Chebyshev smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
+        }
+      }
+    } else if (p_smoother.find("chebyshev+asm") == 0 || p_smoother.find("cheb+asm") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "ASM");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+             "smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
+        }
+      }
+    } else if (p_smoother.find("chebyshev+ras") == 0 || p_smoother.find("cheb+ras") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "RAS");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "RAS");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
+             "smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
+        }
+      }
+    } else if (p_smoother.find("jac") == 0) {
+      options.setArgs(parSection + " MULTIGRID SMOOTHER",
+                      "DAMPEDJACOBI");
+      options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
+      options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "JACOBI");
+      options.setArgs("BOOMERAMG ITERATIONS", "2");
+      if (p_preconditioner.find("additive") != string::npos) {
+        exit("Additive vcycle is not supported for Jacobi smoother!",
+             EXIT_FAILURE);
+      } else {
+        string entry = options.getArgs(parSection + " PARALMOND CYCLE");
+        if (entry.find("MULTIPLICATIVE") == string::npos) {
+          entry += "+MULTIPLICATIVE";
+          options.setArgs(parSection + " PARALMOND CYCLE", entry);
+        }
+      }
+    } else {
+      exit("Unknown ::smootherType!", EXIT_FAILURE);
+    }
+  }
+
+  if (p_preconditioner.find("additive") != string::npos) {
+    options.setArgs(parSection + " MULTIGRID SMOOTHER", "ASM");
+    options.setArgs(parSection + " MULTIGRID DOWNWARD SMOOTHER", "ASM");
+    options.setArgs(parSection + " MULTIGRID UPWARD SMOOTHER", "ASM");
+  }
+}
+void parsePreconditioner(const int rank, setupAide &options,
+                         inipp::Ini<char> *par, string parScope) {
+
+  string parSection = (parScope.find("temperature") != string::npos)
+                              ? "scalar00"
+                              : parScope;
+  UPPER(parSection);
+
+  string p_preconditioner;
+  par->extract(parScope, "preconditioner", p_preconditioner);
+  if (p_preconditioner == "none") {
+    options.setArgs(parSection + " PRECONDITIONER", "NONE");
+  } else if (p_preconditioner.find("jac") != std::string::npos) {
+    options.setArgs(parSection + " PRECONDITIONER", "JACOBI");
+  } else if(p_preconditioner.find("semfem") != std::string::npos
+     && p_preconditioner.find("pmg") == std::string::npos) {
+    options.setArgs(parSection + " PRECONDITIONER", "SEMFEM");
+    options.setArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG");
+    options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
+    std::vector<std::string> list;
+    list = serializeString(p_preconditioner, '+');
+    for (std::string s : list) {
+      if (s.find("semfem") != std::string::npos) {
+      } else if (s.find("amgx") != std::string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER", "AMGX");
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
+      } else if (s.find("fp32") != std::string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
+        if (options.compareArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG"))
+          exit("FP32 is currently not supported for BoomerAMG!",
+               EXIT_FAILURE);
+      } else if (s.find("fp64") != std::string::npos) {
+        options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
+      } else {
+        if (rank == 0) {
+          printf("SEMFEM preconditioner flag %s is not recognized!\n",
+                 s.c_str());
+        }
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
+  } else if (p_preconditioner.find("semg") != std::string::npos ||
+             p_preconditioner.find("multigrid") != std::string::npos) {
+    options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
+    string key = "VCYCLE";
+    if (p_preconditioner.find("additive") != std::string::npos)
+      key += "+ADDITIVE";
+    if (p_preconditioner.find("multiplicative") != std::string::npos)
+      key += "+MULTIPLICATIVE";
+    if (p_preconditioner.find("overlap") != std::string::npos)
+      key += "+OVERLAPCRS";
+    options.setArgs(parSection + " PARALMOND CYCLE", key);
+  } else if(p_preconditioner.find("pmg") != std::string::npos){
+    options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
+    string key = "VCYCLE";
+    options.setArgs(parSection + " PARALMOND CYCLE", key);
+    options.setArgs(parSection + " MULTIGRID COARSE SOLVE", "FALSE");
+    options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
+    if(p_preconditioner.find("coarse") != std::string::npos){
+      options.setArgs(parSection + " MULTIGRID COARSE SOLVE", "TRUE");
+      options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
+    }
+
+    options.setArgs(parSection + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
+  }
+}
+void parseInitialGuess(const int rank, setupAide &options,
+                       inipp::Ini<char> *par, string parScope) {
+
+  string parSectionName = (parScope.find("temperature") != string::npos)
+                              ? "scalar00"
+                              : parScope;
+
+  UPPER(parSectionName);
+
+  // see if user has provided old (deprecated) solution projection syntax
+  {
+    bool solutionProjection;
+    if (par->extract(parScope, "residualproj", solutionProjection) ||
+        par->extract(parScope, "residualprojection", solutionProjection)) {
+      if (solutionProjection) {
+        options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+
+        const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+
+        // default parameters
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                        std::to_string(defaultNumVectors));
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+      }
+
+      return;
+    }
+  }
+
+  string initialGuess;
+
+  if (par->extract(parScope, "initialguess", initialGuess)) {
+    const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                    std::to_string(defaultNumVectors));
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+
+    if (initialGuess.find("projectionaconj") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+    } else if (initialGuess.find("projection") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS",
+                      "PROJECTION");
+    } else if (initialGuess.find("none") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+    } else if (initialGuess.find("true") != string::npos) {
+      const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+      options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+    } else if (initialGuess.find("false") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+    } else {
+      if (rank == 0) {
+        printf("Could not parse initialGuess string %s !\n",
+               initialGuess.c_str());
+      }
+      ABORT(1);
+    }
+
+    const std::vector<string> list = serializeString(initialGuess, '+');
+    for (string s : list) {
+      if (s.find("nvector") == 0) {
+        const std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const int value = std::stoi(items[1]);
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                        std::to_string(value));
+      }
+    }
+  }
+}
+void parseRegularization(const int rank, setupAide &options,
+                         inipp::Ini<char> *par, bool isScalar = false,
+                         bool isTemperature = false, string sidPar = "") {
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
   string sbuf;
@@ -42,94 +533,110 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     parSection = "general";
   }
   string parPrefix = isScalar ? "SCALAR" + sidPar + " " : "";
-  options.setArgs(parPrefix + "FILTER STABILIZATION", "NONE");
+  options.setArgs(parPrefix + "STABILIZATION METHOD", "NONE");
 
   string regularization;
   par->extract(parSection, "regularization", regularization);
-  if(regularization.find("avm") == 0 || regularization.find("hpfrt") == 0)
-  {
+  if (regularization.find("avm") != string::npos || regularization.find("hpfrt") != string::npos) {
     string filtering;
     par->extract(parSection, "filtering", filtering);
-    if(filtering == "hpfrt"){
+    if (filtering == "hpfrt") {
       exit("ERROR: cannot specify both regularization and filtering!\n",
            EXIT_FAILURE);
     }
     const std::vector<string> list = serializeString(regularization, '+');
-    const bool usesAVM = std::find(list.begin(), list.end(), "avm") != list.end();
-    const bool usesHPFRT = std::find(list.begin(), list.end(), "hpfrt") != list.end();
-    if(!usesAVM && !usesHPFRT)
-    {
-      exit("ERROR: regularization must use avm or hpfrt!\n",
-           EXIT_FAILURE);
+    const bool usesAVM =
+        std::find(list.begin(), list.end(), "avm") != list.end();
+    const bool usesHPFRT =
+        std::find(list.begin(), list.end(), "hpfrt") != list.end();
+    if (!usesAVM && !usesHPFRT) {
+      exit("ERROR: regularization must use avm or hpfrt!\n", EXIT_FAILURE);
     }
-    if(usesAVM && !isScalar)
-    {
+    if (usesAVM && !isScalar) {
       exit("ERROR: avm regularization is only enabled for scalars!\n",
            EXIT_FAILURE);
     }
 
     options.setArgs(parPrefix + "HPFRT MODES", "1");
-    if(usesAVM){
-      options.setArgs(parPrefix + "VISMAX COEFF", "0.5");
-      options.setArgs(parPrefix + "FILTER STABILIZATION", "AVM");
-      options.setArgs(parPrefix + "RAMP CONSTANT", to_string_f(1.0));
-      options.setArgs(parPrefix + "AVM C0", "FALSE");
+    if (usesAVM) {
+      if(regularization.find("hpfresidual") != string::npos)
+        options.setArgs(parPrefix + "STABILIZATION METHOD", "HPF_RESIDUAL");
+      else if(regularization.find("highestmodaldecay") != string::npos)
+        options.setArgs(parPrefix + "STABILIZATION METHOD", "HIGHEST_MODAL_DECAY");
+      else {
+        if(rank == 0){
+          printf("Error: avm must be specified with hpfResidual or HighestModalDecay!\n");
+        }
+        ABORT(1);
+      }
+
+      options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", "0.5");
+      options.setArgs(parPrefix + "STABILIZATION SCALING COEFF", "1.0");
+      options.setArgs(parPrefix + "STABILIZATION RAMP CONSTANT", to_string_f(1.0));
+      options.setArgs(parPrefix + "STABILIZATION AVM C0", "FALSE");
     }
-    if(usesHPFRT){
-      options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
+    if (usesHPFRT) {
+      options.setArgs(parPrefix + "STABILIZATION METHOD", "RELAXATION");
     }
 
     // common parameters
-    for(std::string s : list)
-    {
-      if(s.find("nmodes") == 0)
-      {
+    for (std::string s : list) {
+      if (s.find("nmodes") != string::npos) {
         std::vector<string> items = serializeString(s, '=');
         assert(items.size() == 2);
         double value = std::stod(items[1]);
         value = round(value);
         options.setArgs(parPrefix + "HPFRT MODES", to_string_f(value));
-
       }
-      if(s.find("cutoffratio") == 0)
-      {
+      if (s.find("cutoffratio") != string::npos) {
         std::vector<string> items = serializeString(s, '=');
         assert(items.size() == 2);
         double filterCutoffRatio = std::stod(items[1]);
         double NFilterModes = round((N + 1) * (1 - filterCutoffRatio));
         options.setArgs(parPrefix + "HPFRT MODES", to_string_f(NFilterModes));
-        
       }
     }
 
-    if(usesAVM){
-      for(std::string s : list){
-        if(s.find("vismaxcoeff") == 0)
+    if (usesAVM) {
+      for (std::string s : list) {
+        if (s.find("vismaxcoeff") != string::npos) {
+          std::vector<string> items = serializeString(s, '=');
+          assert(items.size() == 2);
+          const dfloat value = std::stod(items[1]);
+          options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", to_string_f(value));
+        }
+        if(s.find("scalingcoeff") != string::npos)
         {
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
           const dfloat value = std::stod(items[1]);
-          options.setArgs(parPrefix + "VISMAX COEFF", to_string_f(value));
+          if(regularization.find("highestmodaldecay") != string::npos)
+          {
+            // in this context, the scaling coefficient can only be vismax
+            options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", to_string_f(value));
+          } else {
+            options.setArgs(parPrefix + "STABILIZATION SCALING COEFF", to_string_f(value));
+          }
         }
-        if(s.find("c0") == 0)
+        if(s.find("c0") != string::npos)
         {
-          options.setArgs(parPrefix + "AVM C0", "TRUE");
+          options.setArgs(parPrefix + "STABILIZATION AVM C0", "TRUE");
         }
-        if(s.find("rampconstant") == 0)
+        if(s.find("rampconstant") != string::npos)
         {
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
           const dfloat rampConstant = std::stod(items[1]);
-          options.setArgs(parPrefix + "RAMP CONSTANT", to_string_f(rampConstant));
+          options.setArgs(parPrefix + "STABILIZATION RAMP CONSTANT",
+                          to_string_f(rampConstant));
         }
       }
     }
 
-    if(usesHPFRT){
+    if (usesHPFRT) {
       bool setsStrength = false;
-      for(std::string s : list){
-        if(s.find("strength") == 0)
-        {
+      for (std::string s : list) {
+        if (s.find("strength") != string::npos) {
           setsStrength = true;
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
@@ -140,8 +647,9 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(weight));
         }
       }
-      if(!setsStrength){
-        exit("ERROR: required weight parameter for hpfrt regularization is not set!\n",
+      if (!setsStrength) {
+        exit("ERROR: required weight parameter for hpfrt regularization is not "
+             "set!\n",
              EXIT_FAILURE);
       }
     }
@@ -151,7 +659,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
     string filtering;
     par->extract(parSection, "filtering", filtering);
     if (filtering == "hpfrt") {
-      options.setArgs(parPrefix + "FILTER STABILIZATION", "RELAXATION");
+      options.setArgs(parPrefix + "STABILIZATION METHOD", "RELAXATION");
       if (par->extract(parSection, "filterweight", sbuf)) {
         int err = 0;
         double weight = te_interp(sbuf.c_str(), &err);
@@ -159,7 +667,7 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
           exit("Invalid expression for filterWeight!", EXIT_FAILURE);
         options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(weight));
       } else {
-        if(filtering == "hpfrt")
+        if (filtering == "hpfrt")
           exit("Cannot find mandatory parameter GENERAL:filterWeight!",
                EXIT_FAILURE);
       }
@@ -176,11 +684,11 @@ void parseRegularization(const int rank, setupAide& options, inipp::Ini<char> *p
       exit("GENERAL::filtering = explicit not supported!", EXIT_FAILURE);
     }
   }
-
 }
 void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("FORMAT", string("1.0"));
 
+  options.setArgs("CONSTANT FLOW RATE", "FALSE");
   options.setArgs("ELEMENT TYPE", string("12")); /* HEX */
   options.setArgs("ELEMENT MAP", string("ISOPARAMETRIC"));
   options.setArgs("MESH DIMENSION", string("3"));
@@ -198,7 +706,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("UDF OKL FILE", casename + ".oudf");
   options.setArgs("UDF FILE", casename + ".udf");
 
-  //options.setArgs("THREAD MODEL", "SERIAL");
+  // options.setArgs("THREAD MODEL", "SERIAL");
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
   options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
@@ -209,7 +717,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("RESTART FROM FILE", "0");
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
-  options.setArgs("FILTER STABILIZATION", "NONE");
+  options.setArgs("STABILIZATION METHOD", "NONE");
 
   options.setArgs("START TIME", "0.0");
 
@@ -219,6 +727,11 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("VELOCITY BASIS", "NODAL");
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
+
+  options.setArgs("MESH KRYLOV SOLVER", "PCG");
+  options.setArgs("MESH BASIS", "NODAL");
+  options.setArgs("MESH PRECONDITIONER", "JACOBI");
+  options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
 
   options.setArgs("STRESSFORMULATION", "FALSE");
 
@@ -231,24 +744,40 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
   options.setArgs("PRESSURE BASIS", "NODAL");
   options.setArgs("AMG SOLVER", "BOOMERAMG");
+  options.setArgs("AMG SOLVER PRECISION", "FP64");
+  options.setArgs("AMG SOLVER LOCATION", "CPU");
 
   options.setArgs("PRESSURE PARALMOND CYCLE", "VCYCLE");
+  options.setArgs("PRESSURE MULTIGRID COARSE SOLVE", "TRUE");
+  options.setArgs("PRESSURE MULTIGRID COARSE SEMFEM", "FALSE");
   options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
   options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
   options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", "0.1");
+  options.setArgs("PRESSURE MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", "1.1");
 
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
+  options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
+
+  options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
+  options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
+  options.setArgs("MESH RESIDUAL PROJECTION START", "5");
 
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
   options.setArgs("ENABLE OVERLAP", "TRUE");
+
+  options.setArgs("VARIABLE DT", "FALSE");
+  options.setArgs("TARGET CFL", "1.0");
+
+  const double bigNumber = std::numeric_limits<double>::max();
+  options.setArgs("MAX DT", to_string_f(bigNumber));
 }
 
-setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
+setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   int rank;
   MPI_Comm_rank(comm, &rank);
 
@@ -295,7 +824,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
 
   string deviceNumber;
-  if(par->extract("occa", "devicenumber", deviceNumber)) {
+  if (par->extract("occa", "devicenumber", deviceNumber)) {
     UPPER(deviceNumber);
     options.setArgs("DEVICE NUMBER", deviceNumber);
   }
@@ -326,9 +855,55 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
-  double dt = 0;
-  if (par->extract("general", "dt", dt))
-    options.setArgs("DT", to_string_f(fabs(dt)));
+  string dtString;
+  if (par->extract("general", "dt", dtString)){
+    if(dtString.find("targetcfl") != string::npos)
+    {
+      bool userSuppliesInitialDt = false;
+      options.setArgs("VARIABLE DT", "TRUE");
+      std::vector<string> entries = serializeString(dtString, '+');
+      for(string entry : entries)
+      {
+        if(entry.find("max") != string::npos)
+        {
+          std::vector<string> maxAndValue = serializeString(entry, '=');
+          assert(maxAndValue.size() == 2);
+          const double maxDT = std::stod(maxAndValue[1]);
+          options.setArgs("MAX DT", to_string_f(maxDT));
+        }
+        if(entry.find("initial") != string::npos)
+        {
+          std::vector<string> initialDtAndValue = serializeString(entry, '=');
+          assert(initialDtAndValue.size() == 2);
+          const double initialDt = std::stod(initialDtAndValue[1]);
+          options.setArgs("DT", to_string_f(initialDt));
+          userSuppliesInitialDt = true;
+        }
+      }
+
+      // guard against using a higher initial dt than the max
+      if(userSuppliesInitialDt)
+      {
+        double initialDt = 0.0;
+        double maxDt = 0.0;
+        options.getArgs("DT", initialDt);
+        options.getArgs("MAX DT", maxDt);
+        if(initialDt > maxDt)
+        {
+          if(rank == 0){
+            printf("Error: initial dt %g is larger than the max dt %g!\n", initialDt, maxDt);
+          }
+          ABORT(1);
+        }
+      }
+    }
+    else
+    {
+      const double dt = std::stod(dtString);
+      options.setArgs("DT", to_string_f(fabs(dt)));
+    }
+
+  }
 
   string timeStepper;
   par->extract("general", "timestepper", timeStepper);
@@ -342,10 +917,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("TIME INTEGRATOR", "TOMBO1");
   }
 
-  bool variableDt = false;
-  par->extract("general", "variabledt", variableDt);
-  if (variableDt)
-    exit("GENERAL::variableDt = Yes not supported!", EXIT_FAILURE);
+  parseConstFlowRate(rank, options, par);
 
   double endTime;
   string stopAt = "numsteps";
@@ -377,9 +949,28 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     if (par->extract("general", "targetcfl", targetCFL))
       NSubCycles = round(targetCFL / 2);
-    if(par->extract("general", "subcyclingsteps", NSubCycles));
+    if (par->extract("general", "subcyclingsteps", NSubCycles))
+      ;
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
   }
+
+  double targetCFL;
+  if(par->extract("general", "targetcfl", targetCFL))
+  {
+    options.setArgs("TARGET CFL", to_string_f(targetCFL));
+  }
+
+  bool variableDt;
+  if(par->extract("general", "variabledt", variableDt))
+  {
+    if(variableDt){
+      options.setArgs("VARIABLE DT", "TRUE");
+    }
+    else{
+      options.setArgs("VARIABLE DT", "FALSE");
+    }
+  }
+
 
   double writeInterval = 0;
   par->extract("general", "writeinterval", writeInterval);
@@ -409,11 +1000,36 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {
     options.setArgs("MOVING MESH", "TRUE");
-    if (meshSolver == "user")
-      options.setArgs("MESH SOLVER", "USER");
-    if (meshSolver == "none")
-      options.setArgs("MOVING MESH", "FALSE");
+    if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+    if(meshSolver == "elasticity") options.setArgs("MESH SOLVER", "ELASTICITY");
+    if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
   }
+
+  {
+    string keyValue;
+    if (par->extract("mesh", "maxiterations", keyValue))
+      options.setArgs("MESH MAXIMUM ITERATIONS", keyValue);
+  }
+
+  parseInitialGuess(rank, options, par, "mesh");
+
+
+  double m_residualTol;
+  if(par->extract("mesh", "residualtol", m_residualTol) ||
+     par->extract("mesh", "residualtoltolerance", m_residualTol))
+    options.setArgs("MESH SOLVER TOLERANCE", to_string_f(m_residualTol));
+
+  int bcInPar = 1;
+  string m_bcMap;
+  if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
+    std::vector<std::string> sList;
+    sList = serializeString(m_bcMap,',');
+    bcMap::setup(sList, "mesh");
+    bcInPar = 1;
+  } else {
+    bcInPar = 0;
+  }
+
 
   bool stressFormulation;
   if (par->extract("problemtype", "stressformulation", stressFormulation))
@@ -427,232 +1043,75 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("ADVECTION", "FALSE");
   }
 
-  int bcInPar = 1;
   if (par->sections.count("velocity")) {
     // PRESSURE
     {
       string keyValue;
-      if(par->extract("pressure", "maxiterations", keyValue))
+      if (par->extract("pressure", "maxiterations", keyValue))
         options.setArgs("PRESSURE MAXIMUM ITERATIONS", keyValue);
-    }  
-    //
-    double p_residualTol;
-    if (par->extract("pressure", "residualtol", p_residualTol) ||
-        par->extract("pressure", "residualtoltolerance", p_residualTol))
-      options.setArgs("PRESSURE SOLVER TOLERANCE", to_string_f(p_residualTol));
-    else
-      exit("Cannot find mandatory parameter PRESSURE::residualTol!",
-           EXIT_FAILURE);
-
-    bool p_rproj;
-    if (par->extract("pressure", "residualproj", p_rproj) ||
-        par->extract("pressure", "residualprojection", p_rproj)) {
-      if (p_rproj)
-        options.setArgs("PRESSURE RESIDUAL PROJECTION", "TRUE");
-      else
-        options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
     }
+    
+    parseSolverTolerance(rank, options, par, "pressure");
 
-    int p_nProjVec;
-    if (par->extract("pressure", "residualprojectionvectors", p_nProjVec))
-      options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS",
-                      std::to_string(p_nProjVec));
-
-    int p_nProjStep;
-    if (par->extract("pressure", "residualprojectionstart", p_nProjStep))
-      options.setArgs("PRESSURE RESIDUAL PROJECTION START",
-                      std::to_string(p_nProjStep));
+    parseInitialGuess(rank, options, par, "pressure");
 
     bool p_gproj;
     if (par->extract("pressure", "galerkincoarseoperator", p_gproj))
-      if (p_gproj)
-        options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
-
-    string p_preconditioner;
-    par->extract("pressure", "preconditioner", p_preconditioner);
-    if(p_preconditioner == "none") {
-      options.setArgs("PRESSURE PRECONDITIONER", "NONE");
-    } else if(p_preconditioner == "jacobi") {
-      options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    } else if(p_preconditioner.find("semfem") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "SEMFEM");
-      options.setArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG");
-      options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-      std::vector<std::string> list;
-      list = serializeString(p_preconditioner, '+');
-      for(std::string s : list){
-        if(s.find("semfem") != std::string::npos){}
-        else if(s.find("amgx") != std::string::npos){
-          options.setArgs("PRESSURE SEMFEM SOLVER", "AMGX");
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-        }
-        else if(s.find("fp32") != std::string::npos){
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP32");
-	  if(options.compareArgs("PRESSURE SEMFEM SOLVER", "BOOMERAMG"))
-            exit("FP32 is currently not supported for BoomerAMG!", EXIT_FAILURE);
-        }
-        else if(s.find("fp64") != std::string::npos){
-          options.setArgs("PRESSURE SEMFEM SOLVER PRECISION", "FP64");
-        }
-        else {
-          if(rank == 0){
-            printf("SEMFEM preconditioner flag %s is not recognized!\n", s.c_str());
-          }
-          ABORT(EXIT_FAILURE);
-        }
-      }
-      
-    } else if(p_preconditioner.find("semg") != std::string::npos  ||
-              p_preconditioner.find("multigrid") != std::string::npos) {
-      options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
-      string key = "VCYCLE";
-      if (p_preconditioner.find("additive") != std::string::npos)
-        key += "+ADDITIVE";
-      if (p_preconditioner.find("multiplicative") != std::string::npos)
-        key += "+MULTIPLICATIVE";
-      if (p_preconditioner.find("overlap") != std::string::npos)
-        key += "+OVERLAPCRS";
-      options.setArgs("PRESSURE PARALMOND CYCLE", key);
+    {
+      if(rank == 0)
+        printf("PRESSURE:galerkinCoarseOperator is not supported!\n");
+      ABORT(1);
     }
+
+    parsePreconditioner(rank, options, par, "pressure");
 
     string p_mglevels;
     if (par->extract("pressure", "pmultigridcoarsening", p_mglevels))
       options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
 
     string p_solver;
-    if(par->extract("pressure", "solver", p_solver)){
-      if(p_solver.find("gmres") != string::npos) {
-        std::vector<std::string> list;
+    if (par->extract("pressure", "solver", p_solver)) {
+      if (p_solver.find("gmres") != string::npos) {
+        std::vector<string> list;
         list = serializeString(p_solver, '+');
-	string n = "15"; 
-	if(list.size() == 2) n = list[1];
-	options.setArgs("PRESSURE PGMRES RESTART", n);
-        if(p_solver.find("fgmres") != string::npos || p_solver.find("flexible") != string::npos)
-	  p_solver = "PGMRES+FLEXIBLE";
-	else
+        string n = "15";
+        for(string s : list)
+        {
+          if(s.find("nvector") != string::npos)
+          {
+            std::vector<string> nVecList = serializeString(s,'=');
+            if(nVecList.size() == 2)
+            {
+              int nVec = std::stoi(nVecList[1]);
+              n = std::to_string(nVec);
+            } else {
+              if(rank == 0)
+                printf("Could not parse string \"%s\" while parsing PRESSURE:solver.\n", s.c_str());
+              ABORT(1);
+            }
+          }
+        }
+        options.setArgs("PRESSURE PGMRES RESTART", n);
+        if (p_solver.find("fgmres") != string::npos ||
+            p_solver.find("flexible") != string::npos)
+          p_solver = "PGMRES+FLEXIBLE";
+        else
           p_solver = "PGMRES";
-      } else if(p_solver.find("cg") != string::npos) {
-        if(p_solver.find("fcg") != string::npos || p_solver.find("flexible") != string::npos) 
-  	  p_solver = "PCG+FLEXIBLE";
-	else
+      } else if (p_solver.find("cg") != string::npos) {
+        if (p_solver.find("fcg") != string::npos ||
+            p_solver.find("flexible") != string::npos)
+          p_solver = "PCG+FLEXIBLE";
+        else
           p_solver = "PCG";
       } else {
-        exit("Invalid solver for pressure!",  EXIT_FAILURE);
+        exit("Invalid solver for pressure!", EXIT_FAILURE);
       }
       options.setArgs("PRESSURE KRYLOV SOLVER", p_solver);
     }
 
-    string p_smoother;
-    if (par->extract("pressure", "smoothertype", p_smoother) &&
-        options.compareArgs("PRESSURE PRECONDITIONER", "MULTIGRID")) {
-      std::vector<std::string> list;
-      list = serializeString(p_smoother, '+');
-      if (p_smoother.find("asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("ASM smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "RAS");
-        if (p_preconditioner.find("multigrid") != std::string::npos) {
-          if (p_preconditioner.find("additive") == std::string::npos)
-            exit("RAS smoother only supported for additive V-cycle!",
-                 EXIT_FAILURE);
-        } else {
-          options.setArgs("PRESSURE PARALMOND CYCLE",
-                          "VCYCLE+ADDITIVE+OVERLAPCRS");
-        }
-        if (list.size() == 2)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[1]);
-      } else if (p_smoother.find("chebyshev+jac") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER",
-                        "DAMPEDJACOBI,CHEBYSHEV");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
-        options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", "2");
-        options.setArgs("BOOMERAMG ITERATIONS", "2");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for Chebyshev smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+asm") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+ASM");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else if (p_smoother.find("chebyshev+ras") == 0) {
-        options.setArgs("PRESSURE MULTIGRID SMOOTHER", "CHEBYSHEV+RAS");
-        options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-        options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-        if (p_preconditioner.find("additive") != std::string::npos) {
-          exit("Additive vcycle is not supported for hybrid Schwarz/Chebyshev "
-               "smoother!",
-               EXIT_FAILURE);
-        } else {
-          std::string entry = options.getArgs("PRESSURE PARALMOND CYCLE");
-          if (entry.find("MULTIPLICATIVE") == std::string::npos) {
-            entry += "+MULTIPLICATIVE";
-            options.setArgs("PRESSURE PARALMOND CYCLE", entry);
-          }
-        }
-        if (list.size() == 3)
-          options.setArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE", list[2]);
-      } else {
-        exit("Unknown PRESSURE::smootherType!", EXIT_FAILURE);
-      }
-    }
+    parseSmoother(rank, options, par, "pressure");
 
-    if (p_preconditioner.find("additive") != std::string::npos) {
-      options.setArgs("PRESSURE MULTIGRID SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    }
-
-    // Allow flexibility in downward/upward smoother
-    string p_downwardSmoother;
-    par->extract("pressure", "downwardsmoother", p_downwardSmoother);
-    if (p_downwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "RAS");
-    else if (p_downwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "ASM");
-    else if (p_downwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER", "JACOBI");
-    string p_upwardSmoother;
-    par->extract("pressure", "upwardsmoother", p_upwardSmoother);
-    if (p_upwardSmoother == "RAS")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "RAS");
-    else if (p_upwardSmoother == "ASM")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "ASM");
-    else if (p_upwardSmoother == "jacobi")
-      options.setArgs("PRESSURE MULTIGRID UPWARD SMOOTHER", "JACOBI");
-
+    parseCoarseSolver(rank, options, par, "pressure");
     string p_amgsolver;
     par->extract("pressure", "amgsolver", p_amgsolver);
     if (p_amgsolver == "paralmond")
@@ -688,56 +1147,32 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
                         std::to_string(aggLevels));
     }
 
-    if(par->sections.count("amgx")) {
+    if (par->sections.count("amgx")) {
       string configFile;
-      if(par->extract("amgx", "configfile", configFile))
+      if (par->extract("amgx", "configfile", configFile))
         options.setArgs("AMGX CONFIG FILE", configFile);
     }
 
-    // VELOCITY 
+    // VELOCITY
     {
       string keyValue;
-      if(par->extract("velocity", "maxiterations", keyValue))
+      if (par->extract("velocity", "maxiterations", keyValue))
         options.setArgs("VELOCITY MAXIMUM ITERATIONS", keyValue);
-    }  
+    }
 
-    options.setArgs("VELOCITY INITIAL GUESS DEFAULT","EXTRAPOLATION");
     bool _;
-    if(par->extract("velocity", "regularization", _)){
+    if (par->extract("velocity", "regularization", _)) {
       exit("ERROR: cannot specify regularization in [VELOCITY]!\n",
            EXIT_FAILURE);
     }
-    if(par->extract("velocity", "filtering", _)){
-      exit("ERROR: cannot specify filtering in [VELOCITY]!\n",
-           EXIT_FAILURE);
+    if (par->extract("velocity", "filtering", _)) {
+      exit("ERROR: cannot specify filtering in [VELOCITY]!\n", EXIT_FAILURE);
     }
-    
 
-    options.setArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION");
     string vsolver;
     int flow = 1;
-    bool v_rproj;
-    if (par->extract("velocity", "residualproj", v_rproj) ||
-        par->extract("velocity", "residualprojection", v_rproj)) {
-      if (v_rproj) {
-        options.setArgs("VELOCITY RESIDUAL PROJECTION", "TRUE");
-        options.setArgs("VELOCITY INITIAL GUESS DEFAULT","PREVIOUS STEP");
 
-        // default parameters
-        options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS", "5");
-        options.setArgs("VELOCITY RESIDUAL PROJECTION START", "5");
-      } else {
-        options.setArgs("VELOCITY RESIDUAL PROJECTION", "FALSE");
-      }
-    }
-    int v_nProjVec;
-    if (par->extract("velocity", "residualprojectionvectors", v_nProjVec))
-      options.setArgs("VELOCITY RESIDUAL PROJECTION VECTORS",
-                      std::to_string(v_nProjVec));
-    int v_nProjStep;
-    if (par->extract("velocity", "residualprojectionstart", v_nProjStep))
-      options.setArgs("VELOCITY RESIDUAL PROJECTION START",
-                      std::to_string(v_nProjStep));
+    parseInitialGuess(rank, options, par, "velocity");
 
     par->extract("velocity", "solver", vsolver);
     if (vsolver == "none") {
@@ -750,14 +1185,11 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       }
     }
 
-    double v_residualTol;
-    if (par->extract("velocity", "residualtol", v_residualTol) ||
-        par->extract("velocity", "residualtoltolerance", v_residualTol))
-      options.setArgs("VELOCITY SOLVER TOLERANCE", to_string_f(v_residualTol));
+    parseSolverTolerance(rank, options, par, "velocity");
 
     string v_bcMap;
     if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-      std::vector<std::string> sList;
+      std::vector<string> sList;
       sList = serializeString(v_bcMap, ',');
       bcMap::setup(sList, "velocity");
       bcInPar = 1;
@@ -791,8 +1223,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     isStart++;
 
     {
-      parseRegularization(rank, options, par, true, true, "00");
+      string keyValue;
+      if (par->extract("temperature", "maxiterations", keyValue))
+        options.setArgs("SCALAR00 MAXIMUM ITERATIONS", keyValue);
     }
+
+    { parseRegularization(rank, options, par, true, true, "00"); }
 
     options.setArgs("SCALAR00 IS TEMPERATURE", "TRUE");
 
@@ -803,35 +1239,11 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     } else {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
-      options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "EXTRAPOLATION");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
-      bool t_rproj;
-      if (par->extract("temperature", "residualproj", t_rproj) ||
-          par->extract("temperature", "residualprojection", t_rproj)) {
-        if (t_rproj) {
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "TRUE");
-          options.setArgs("SCALAR00 INITIAL GUESS DEFAULT", "PREVIOUS STEP");
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS", "5");
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION START", "5");
-        } else {
-          options.setArgs("SCALAR00 RESIDUAL PROJECTION", "FALSE");
-        }
-      }
 
-      int t_nProjVec;
-      if (par->extract("temperature", "residualprojectionvectors", t_nProjVec))
-        options.setArgs("SCALAR00 RESIDUAL PROJECTION VECTORS",
-                        std::to_string(t_nProjVec));
-      int t_nProjStep;
-      if (par->extract("temperature", "residualprojectionstart", t_nProjStep))
-        options.setArgs("SCALAR00 RESIDUAL PROJECTION START",
-                        std::to_string(t_nProjStep));
+      parseInitialGuess(rank, options, par, "temperature");
 
-      double s_residualTol;
-      if (par->extract("temperature", "residualtol", s_residualTol) ||
-          par->extract("temperature", "residualtolerance", s_residualTol))
-        options.setArgs("SCALAR00 SOLVER TOLERANCE",
-                        to_string_f(s_residualTol));
+      parseSolverTolerance(rank, options, par, "temperature");
 
       if (par->extract("temperature", "conductivity", sbuf)) {
         int err = 0;
@@ -856,7 +1268,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         if (!bcInPar)
           exit("ERROR: boundaryTypeMap has to be defined for all fields!",
                EXIT_FAILURE);
-        std::vector<std::string> sList;
+        std::vector<string> sList;
         sList = serializeString(s_bcMap, ',');
         bcMap::setup(sList, "scalar00");
       } else {
@@ -875,19 +1287,23 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
   for (int is = isStart; is < nscal; is++) {
-    std::stringstream ss;
+    stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
     string sid = ss.str();
     string sidPar = sid;
     if (isStart == 0) {
-      std::stringstream ss;
+      stringstream ss;
       ss << std::setfill('0') << std::setw(2) << is + 1;
       sidPar = ss.str();
     }
 
     {
-      parseRegularization(rank, options, par, true, false, sidPar);
+      string keyValue;
+      if (par->extract("scalar" + sidPar, "maxiterations", keyValue))
+        options.setArgs("SCALAR" + sid + " MAXIMUM ITERATIONS", keyValue);
     }
+
+    { parseRegularization(rank, options, par, true, false, sidPar); }
 
     string solver;
     par->extract("scalar" + sidPar, "solver", solver);
@@ -897,36 +1313,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     options.setArgs("SCALAR" + sid + " KRYLOV SOLVER", "PCG");
-    options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION");
-    bool t_rproj;
-    if (par->extract("scalar" + sidPar, "residualproj", t_rproj) ||
-        par->extract("scalar" + sidPar, "residualprojection", t_rproj)) {
-      if (t_rproj) {
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "TRUE");
-        options.setArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT","PREVIOUS STEP");
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS", "5");
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START", "5");
-      } else {
-        options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION", "FALSE");
-      }
-    }
-    int t_nProjVec;
-    if (par->extract("scalar" + sidPar, "residualprojectionvectors",
-                     t_nProjVec))
-      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS",
-                      std::to_string(t_nProjVec));
-    int t_nProjStep;
-    if (par->extract("scalar" + sidPar, "residualprojectionstart", t_nProjStep))
-      options.setArgs("SCALAR" + sid + " RESIDUAL PROJECTION START",
-                      std::to_string(t_nProjStep));
+
+    parseInitialGuess(rank, options, par, "scalar" + sid);
 
     options.setArgs("SCALAR" + sid + " PRECONDITIONER", "JACOBI");
 
-    double s_residualTol;
-    if (par->extract("scalar" + sidPar, "residualtol", s_residualTol) ||
-        par->extract("scalar" + sidPar, "residualtolerance", s_residualTol))
-      options.setArgs("SCALAR" + sid + " SOLVER TOLERANCE",
-                      to_string_f(s_residualTol));
+    parseSolverTolerance(rank, options, par, "scalar" + sidPar);
 
     if (par->extract("scalar" + sidPar, "diffusivity", sbuf)) {
       int err = 0;
@@ -952,7 +1344,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (!bcInPar)
         exit("ERROR: boundaryTypeMap has to be defined for all fields!",
              EXIT_FAILURE);
-      std::vector<std::string> sList;
+      std::vector<string> sList;
       sList = serializeString(s_bcMap, ',');
       bcMap::setup(sList, "scalar" + sid);
     } else {

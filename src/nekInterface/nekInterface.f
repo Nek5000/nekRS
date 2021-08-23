@@ -515,13 +515,13 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer function nekf_bcmap(bID, ifld)
+      integer function nekf_bcmap(bID, ifld, ismesh)
 
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
 
-      integer bID, ifld
+      integer bID, ifld, ismesh
       character*3 c
 
       if (bID < 1) then ! not a boundary
@@ -537,6 +537,9 @@ c-----------------------------------------------------------------------
           ibc = 1
         else if (c.eq.'v  ') then 
           ibc = 2
+          if(ismesh.eq.1) then
+            ibc = 1
+          endif
         else if (c.eq.'o  ' .or. c.eq.'O  ') then 
           ibc = 3
         else if (c.eq.'SYX') then 
@@ -545,6 +548,8 @@ c-----------------------------------------------------------------------
           ibc = 5
          else if (c.eq.'SYZ') then 
           ibc = 6
+         else if (c.eq.'mv ') then 
+          ibc = 2
         endif
       else if(ifld.gt.1) then
         if (c.eq.'t  ') then 
@@ -662,7 +667,7 @@ c
       include 'TOTAL'
 
       integer bID, bcID
-      integer map(6)
+      integer map(7)
       integer ibc_bmap(lbid, ldimt1) 
 
       logical ifalg,ifnorx,ifnory,ifnorz
@@ -679,6 +684,7 @@ c
            cb = cbc(ifc,iel,1) 
            if(cb.eq.'W  ') map(1) = 1
            if(cb.eq.'v  ') map(2) = 1
+           if(cb.eq.'mv ') map(7) = 1
            if(cb.eq.'o  ' .or. cb.eq.'O  ') map(3) = 1
            if(cb.eq.'SYM') then
              call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
@@ -700,7 +706,7 @@ c
       endif
 
       bID = 1
-      do i = 1,6
+      do i = 1,7
         map(i) = iglmax(map(i),1)
         if(map(i).gt.0) then
           map(i) = bID
@@ -717,6 +723,8 @@ c
            boundaryID(ifc,iel) = map(1) 
          else if(cb.eq.'v  ') then
            boundaryID(ifc,iel) = map(2) 
+         else if(cb.eq.'mv ') then
+           boundaryID(ifc,iel) = map(7) 
          else if(cb.eq.'o  ' .or. cb.eq.'O  ') then
            boundaryID(ifc,iel) = map(3) 
          else if(cb.eq.'SYM') then
@@ -736,6 +744,7 @@ c
 
       if(map(1).gt.0) cbc_bmap(map(1), ifld) = 'W  '
       if(map(2).gt.0) cbc_bmap(map(2), ifld) = 'v  '
+      if(map(7).gt.0) cbc_bmap(map(7), ifld) = 'mv '
       if(map(3).gt.0) cbc_bmap(map(3), ifld) = 'o  '
       if(map(4).gt.0) cbc_bmap(map(4), ifld) = 'SYX'
       if(map(5).gt.0) cbc_bmap(map(5), ifld) = 'SYY'
@@ -767,7 +776,7 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
         enddo
         call err_chk(ierr, 'Invalid boundary condition type!$')
 
-        do bID = 1,6
+        do bID = 1,7
            bcID = iglmax(ibc_bmap(bID, ifld),1)
            if(bcID.eq.1) cbc_bmap(bID, ifld) = 't  ' 
            if(bcID.eq.2) cbc_bmap(bID, ifld) = 'I  ' 

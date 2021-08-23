@@ -139,6 +139,20 @@ C=======================================================================
       enddo
       enddo
 
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'mv ') then
+           boundaryID(ifc,iel) = 1
+         endif
+         if (cbc(ifc,iel,1) .eq. 'W  ') then
+           boundaryID(ifc,iel) = 2
+         endif
+         if (cbc(ifc,iel,1) .eq. 'SYM') then
+           boundaryID(ifc,iel) = 3
+         endif
+      enddo
+      enddo
+
       return
       end
 

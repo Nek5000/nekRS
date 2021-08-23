@@ -56,7 +56,9 @@ void ResidualProjection::updateProjectionSpace()
     o_bb,
     platform->comm.mpiComm,
     alpha,
-    Nfields * (numVecsProjection-1) * fieldOffset
+    (type == ProjectionType::CLASSIC) ?
+      Nfields * (numVecsProjection-1) * fieldOffset :
+      0
   );
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 
@@ -64,7 +66,7 @@ void ResidualProjection::updateProjectionSpace()
   dfloat norm_new = norm_orig;
   const dfloat one = 1.0;
   multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
-  multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
+  if(type == ProjectionType::CLASSIC) multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
   for(int k = 0; k < numVecsProjection - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
   norm_new = sqrt(norm_new);
@@ -73,7 +75,7 @@ void ResidualProjection::updateProjectionSpace()
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
     platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
-    platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
+    if(type == ProjectionType::CLASSIC) platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
   } else {
     if(verbose && platform->comm.mpiRank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -105,8 +107,15 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
-  accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
-  platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
+  if(type == ProjectionType::CLASSIC){
+    accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
+    platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
+  }
+  else if (type == ProjectionType::ACONJ)
+  {
+    matvec(o_bb, 0, o_xbar, 0);
+    platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_bb, one, o_r);
+  }
 }
 
 void ResidualProjection::computePostProjection(occa::memory & o_x)
@@ -131,7 +140,8 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
   const dlong previousNumVecsProjection = numVecsProjection;
-  matvec(o_bb,numVecsProjection - 1,o_xx,numVecsProjection - 1);
+  const dlong bOffset = (type == ProjectionType::CLASSIC) ? numVecsProjection - 1 : 0;
+  matvec(o_bb,bOffset,o_xx,numVecsProjection - 1);
 
   updateProjectionSpace();
   if (numVecsProjection < previousNumVecsProjection) { // Last vector was linearly dependent, reset space
@@ -143,11 +153,13 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
 }
 
 ResidualProjection::ResidualProjection(elliptic_t& elliptic,
+                                       const ProjectionType _type,
                                        const dlong _maxNumVecsProjection,
                                        const dlong _numTimeSteps)
   :
   maxNumVecsProjection(_maxNumVecsProjection),
   numTimeSteps(_numTimeSteps),
+  type(_type),
   Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
   fieldOffset(elliptic.Ntotal),
   Nfields(elliptic.Nfields),
@@ -163,7 +175,10 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   o_alpha = platform->device.malloc(maxNumVecsProjection, sizeof(dfloat));
   o_xbar = platform->device.malloc(Nfields * fieldOffset, sizeof(dfloat));
   o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
-  o_bb = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
+  o_bb = platform->device.malloc(
+    (type == ProjectionType::CLASSIC) ? Nfields * fieldOffset * maxNumVecsProjection :
+    Nfields * fieldOffset
+    , sizeof(dfloat));
 
   string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));

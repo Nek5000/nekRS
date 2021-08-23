@@ -23,7 +23,7 @@
    SOFTWARE.
 
  */
-extern "C" void ellipticPreconCoarsenHex3D(const dlong& Nelements,
+extern "C" void FUNC(ellipticPreconCoarsenHex3D)(const dlong& Nelements,
                                             const dfloat* __restrict__  R,
                                             const dfloat* __restrict__  qf,
                                             dfloat* __restrict__  qc)

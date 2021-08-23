@@ -133,6 +133,7 @@ public:
 
   // \sum o_a
   dfloat sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlong offset = 0);
+  dfloat sumMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
 
   // \min o_a
   dfloat min(const dlong N, occa::memory& o_a, MPI_Comm _comm);
@@ -141,7 +142,8 @@ public:
   dfloat max(const dlong N, occa::memory& o_a, MPI_Comm _comm);
 
   // ||o_a||_2
-  //dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
 
   // o_x.o_y
   dfloat innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
@@ -187,10 +189,12 @@ public:
   occa::kernel adyManyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
+  occa::kernel sumManyKernel;
   occa::kernel sumFieldKernel;
   occa::kernel minKernel;
   occa::kernel maxKernel;
   occa::kernel norm2Kernel;
+  occa::kernel norm2ManyKernel;
   occa::kernel weightedNorm2Kernel;
   occa::kernel weightedNorm2ManyKernel;
   occa::kernel innerProdKernel;
