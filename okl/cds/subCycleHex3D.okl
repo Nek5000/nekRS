@@ -27,7 +27,6 @@
                                                   @restrict const dlong*   elementList,
                                                   @restrict const dfloat*  cubD,
                                                   @restrict const dfloat*  cubInterpT,
-                                                  @restrict const dfloat*  cubProjectT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
                                                   const dlong NSOffset,
@@ -44,7 +43,6 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_cubD[p_cubNq][p_cubNq];
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
-    @shared dfloat s_cubProjectT[p_cubNq][p_Nq];
 
     @shared dfloat s_U[p_cubNq][p_cubNq];
     @shared dfloat s_V[p_cubNq][p_cubNq];
@@ -82,7 +80,6 @@
 
         if (id < p_Nq * p_cubNq) {
           s_cubInterpT[0][id] = cubInterpT[id];
-          s_cubProjectT[0][id] = cubProjectT[id];
         }
 
         s_cubD[0][id] = cubD[id];
