@@ -761,10 +761,6 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("PRESSURE RESIDUAL PROJECTION VECTORS", "10");
   options.setArgs("PRESSURE RESIDUAL PROJECTION START", "5");
 
-  options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
-  options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
-  options.setArgs("MESH RESIDUAL PROJECTION START", "5");
-
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
@@ -1001,7 +997,12 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   if (par->extract("mesh", "solver", meshSolver)) {
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
-    if(meshSolver == "elasticity") options.setArgs("MESH SOLVER", "ELASTICITY");
+    if(meshSolver == "elasticity") {
+      options.setArgs("MESH SOLVER", "ELASTICITY");
+      options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
+      options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
+      options.setArgs("MESH RESIDUAL PROJECTION START", "5");
+    }
     if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
   }
 
