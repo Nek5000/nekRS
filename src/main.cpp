@@ -62,6 +62,7 @@
 
 #include <mpi.h>
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -204,6 +205,8 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   cmdOptions* cmdOpt = new cmdOptions();
 
   int err = 0;
+  int printHelp = 0;
+  std::string helpCat;
 
   if (rank == 0) {
     while(1) {
@@ -211,14 +214,15 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       {
         {"setup", required_argument, 0, 's'},
         {"cimode", required_argument, 0, 'c'},
-	{"build-only", required_argument, 0, 'b'},
+    	{"build-only", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
         {"backend", required_argument, 0, 't'},
         {"device-id", required_argument, 0, 'i'},
+        {"help", optional_argument, 0, 'h'},
         {0, 0, 0, 0}
       };
       int option_index = 0;
-      int c = getopt_long (argc, argv, "s:", long_options, &option_index);
+      int c = getopt_long (argc, argv, "", long_options, &option_index);
 
       if (c == -1)
         break;
@@ -229,13 +233,13 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'b':
         cmdOpt->buildOnly = 1;
-	cmdOpt->sizeTarget = atoi(optarg);
+	    cmdOpt->sizeTarget = atoi(optarg);
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
         if (cmdOpt->ciMode < 1) {
           std::cout << "ERROR: ci test id has to be >0!\n";
-          err = 1;
+          printHelp = 1;
         }
         break;
       case 'd':
@@ -246,6 +250,11 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 't':
         cmdOpt->backend.assign(optarg);
+        break;
+      case 'h':
+        if(!optarg && argv[optind] != NULL && argv[optind][0] != '-') {
+          helpCat.assign(argv[optind++]);
+        }
         break;
       default:
         err = 1;
@@ -269,7 +278,7 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
 
   if(cmdOpt->setupFile.empty()){
-    err++;
+    printHelp++;
   } else {
     std::string casepath, casename;
     size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
@@ -279,15 +288,26 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
     cmdOpt->setupFile.assign(casename);
   }
 
+  MPI_Bcast(&printHelp, sizeof(printHelp), MPI_BYTE, 0, comm);
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
-  if (err) {
-    if (rank == 0)
-      std::cout << "usage: ./nekrs --setup <case name> "
-                << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
-                << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
-                << "\n";
+  if (err | printHelp) {
+    if (rank == 0) {
+      if (helpCat == "par") {
+        std::string install_dir;
+        install_dir.assign(getenv("NEKRS_HOME"));
+        std::ifstream f(install_dir + "/include/parHelp.txt");
+        if (f.is_open()) std::cout << f.rdbuf();
+        f.close();
+      } else {
+        std::cout << "usage: ./nekrs [--help <par>] "
+                  << "--setup <case name> "
+                  << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
+                  << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
+                 << "\n";
+      }
+    }
     MPI_Finalize();
-    exit(EXIT_FAILURE);
+    exit((err) ? EXIT_FAILURE : EXIT_SUCCESS);
   }
 
   return cmdOpt;

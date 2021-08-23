@@ -356,6 +356,8 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
+install(FILES src/core/parHelp.txt DESTINATION include)
+
 #################################################################################
 # Uninstall
 #################################################################################
