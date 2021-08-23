@@ -14,6 +14,9 @@
 
 ## What you may have to change to be compatible 
 
+* Setting preconditioner = <multigrid | semg | pmg> now assumes no coarse solver.
+  Please use preconditioner = multigrid+coarse to keep the coarse solver.
+
 ## Known Bugs / Restrictions
 
 * [300](https://github.com/Nek5000/nekRS/issues/300)

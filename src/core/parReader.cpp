@@ -398,7 +398,11 @@ void parsePreconditioner(const int rank, setupAide &options,
   } else if (p_preconditioner.find("jac") != std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "JACOBI");
   } else if(p_preconditioner.find("semfem") != std::string::npos
-     && p_preconditioner.find("pmg") == std::string::npos) {
+     && (p_preconditioner.find("pmg") == std::string::npos
+         &&
+         p_preconditioner.find("multigrid") == std::string::npos
+        )
+     ) {
     options.setArgs(parSection + " PRECONDITIONER", "SEMFEM");
     options.setArgs(parSection + " SEMFEM SOLVER", "BOOMERAMG");
     options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP64");
@@ -426,7 +430,8 @@ void parsePreconditioner(const int rank, setupAide &options,
     }
 
   } else if (p_preconditioner.find("semg") != std::string::npos ||
-             p_preconditioner.find("multigrid") != std::string::npos) {
+             p_preconditioner.find("multigrid") != std::string::npos ||
+             p_preconditioner.find("pmg") != std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
     string key = "VCYCLE";
     if (p_preconditioner.find("additive") != std::string::npos)
@@ -436,10 +441,8 @@ void parsePreconditioner(const int rank, setupAide &options,
     if (p_preconditioner.find("overlap") != std::string::npos)
       key += "+OVERLAPCRS";
     options.setArgs(parSection + " PARALMOND CYCLE", key);
-  } else if(p_preconditioner.find("pmg") != std::string::npos){
     options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
-    string key = "VCYCLE";
-    options.setArgs(parSection + " PARALMOND CYCLE", key);
+
     options.setArgs(parSection + " MULTIGRID COARSE SOLVE", "FALSE");
     options.setArgs("PARALMOND SMOOTH COARSEST", "TRUE");
     if(p_preconditioner.find("coarse") != std::string::npos){
