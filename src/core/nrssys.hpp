@@ -61,6 +61,7 @@
 #define OMPI_SKIP_MPICXX 1
 
 #include <mpi.h>
+#include <limits>
 #include "occa.hpp"
 #include "ogs.hpp"
 #include "setupAide.hpp"

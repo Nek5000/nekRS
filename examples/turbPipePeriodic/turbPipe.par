@@ -17,13 +17,12 @@ filterWeight = 0.1/${dt}
 filterModes = 1
 
 # constant flow rate driver
-constFlowRate = meanVelocity = 0.9 + direction = Z
+constFlowRate = meanVelocity=1.0 + direction=Z
 
 [PRESSURE]
 residualTol = 1e-04
 
 [VELOCITY]
-solver = pcg+block
 boundaryTypeMap = wall
 viscosity = -19000
 density = 1.0

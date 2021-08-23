@@ -30,7 +30,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
   userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
                o_S, o_UProp, o_SProp);
-  if(ciMode == meshSolverMode){
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")){
     // moving mesh parameters
     const dfloat vnu = 0.4;
     const dfloat ce = 1.0 / (1.0 + vnu);
@@ -75,7 +75,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
   linAlg_t* linAlg = platform->linAlg;
-  if(ciMode != meshSolverMode){
+  if(platform->options.compareArgs("MESH SOLVER", "USER")){
     const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
     const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
     userMeshVelocityKernel(mesh->Nelements,

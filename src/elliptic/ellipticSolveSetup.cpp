@@ -207,8 +207,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
       for (int f = 0; f < mesh->Nfaces; f++) {
         int bc = mesh->EToB[f + e * mesh->Nfaces];
         if (bc > 0) {
+          int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
           for (int n = 0; n < mesh->Nfp; n++) {
-            int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
             int fid = mesh->faceNodes[n + f * mesh->Nfp];
             elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = 
               mymin(BCFlag, elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal]);

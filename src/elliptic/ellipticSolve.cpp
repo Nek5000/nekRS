@@ -50,7 +50,21 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
         platform->comm.mpiComm
       )
       * sqrt(elliptic->resNormFactor); 
-    if(platform->comm.mpiRank == 0) printf("RHS norm: %.15e\n", rhsNorm);
+    if(platform->comm.mpiRank == 0) printf("%s RHS norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
+  }
+
+  if(verbose) {
+    const dfloat rhsNorm = 
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_x,
+        platform->comm.mpiComm
+      )
+      * sqrt(elliptic->resNormFactor); 
+    if(platform->comm.mpiRank == 0) printf("%s x0 norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
   }
 
   if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))

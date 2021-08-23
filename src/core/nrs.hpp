@@ -87,11 +87,6 @@ struct nrs_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* VmapB;
-  int* VmapBMesh;
-  occa::memory o_VmapB;
-  occa::memory o_VmapBMesh;
-
   int Nsubsteps;
   dfloat* Ue, sdt;
   occa::memory o_Ue;

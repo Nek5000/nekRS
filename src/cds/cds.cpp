@@ -19,7 +19,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
   platform->o_mempool.slice0.copyFrom(cds->o_S, cds->fieldOffset[is] * sizeof(dfloat), 0, cds->fieldOffsetScan[is] * sizeof(dfloat));
 
   //enforce Dirichlet BCs
-  platform->linAlg->fill(cds->fieldOffset[is], std::numeric_limits<dfloat>::min(), platform->o_mempool.slice2); 
+  platform->linAlg->fill(cds->fieldOffset[is], -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice2); 
   for (int sweep = 0; sweep < 2; sweep++) {
     cds->dirichletBCKernel(mesh->Nelements,
                            cds->fieldOffset[is],
@@ -55,7 +55,6 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                             mesh->o_z,
                             platform->o_mempool.slice0,
                             cds->o_EToB[is],
-                            cds->o_mapB[is],
                             *(cds->o_usrwrk),
                             platform->o_mempool.slice1);
 
