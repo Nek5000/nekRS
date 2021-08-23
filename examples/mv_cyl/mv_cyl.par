@@ -8,7 +8,7 @@ writeInterval = 50
 
 [MESH]
 boundaryTypeMap = fixedValue, zeroValue, symX
-solver = user
+solver = elasticity
 
 [PROBLEMTYPE]
 stressFormulation = true

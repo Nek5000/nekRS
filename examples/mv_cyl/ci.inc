@@ -24,6 +24,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-09"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
   options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("MESH SOLVER", "USER");
   
   if(ciMode == 2){
     options.setArgs("SUBCYCLING STEPS", string("1"));
