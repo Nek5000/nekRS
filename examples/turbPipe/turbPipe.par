@@ -17,9 +17,7 @@ subCyclingSteps = 2
 writeControl = runTime
 writeInterval = 1
 
-filtering = hpfrt
-filterWeight = 0.1/${dt}
-filterModes = 1
+regularization = hpfrt+nModes=1+strength=0.1/${dt}
 
 #dt = targetCFL + max=1e-2 + initial=6e-3
 #targetCFL = 4
