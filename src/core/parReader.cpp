@@ -878,6 +878,13 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
           options.setArgs("DT", to_string_f(initialDt));
           userSuppliesInitialDt = true;
         }
+        if(entry.find("targetcfl") != string::npos)
+        {
+          std::vector<string> cflAndValue = serializeString(entry, '=');
+          assert(cflAndValue.size() == 2);
+          const double targetCFL = std::stod(cflAndValue[1]);
+          options.setArgs("TARGET CFL", to_string_f(targetCFL));
+        }
       }
 
       // guard against using a higher initial dt than the max
@@ -940,23 +947,12 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
   }
 
-  string extrapolation;
-  par->extract("general", "extrapolation", extrapolation);
-  if (extrapolation == "oifs" || extrapolation == "subcycling") {
-    double targetCFL;
-    int NSubCycles = 1;
+  {
+    int NSubCycles = 0;
 
-    if (par->extract("general", "targetcfl", targetCFL))
-      NSubCycles = round(targetCFL / 2);
     if (par->extract("general", "subcyclingsteps", NSubCycles))
       ;
     options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
-  }
-
-  double targetCFL;
-  if(par->extract("general", "targetcfl", targetCFL))
-  {
-    options.setArgs("TARGET CFL", to_string_f(targetCFL));
   }
 
   bool variableDt;

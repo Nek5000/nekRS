@@ -4,8 +4,7 @@ polynomialOrder = 9
 stopAt = endTime
 endTime = 100 
 
-dt = targetCFL+max=0.05
-targetCFL = 4.0
+dt = targetCFL=4.0+max=0.05
 timeStepper = tombo2 
 extrapolation = subCycling
 subCyclingSteps = 2
