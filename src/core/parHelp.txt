@@ -12,11 +12,13 @@ dealiasing                  true [D], false                        enable dealia
 
 startFrom                   "<string>"                             name of restart file
 
-stopAt                      numSteps [D], endTime                  stop criterion 
+stopAt                      numSteps [D], endTime, elapsedTime     stop criterion 
 
-  numSteps                  <int>                                  number of time steps
+  numSteps                  <int>                                  
 
-  endTime                   <float>                                simulation end time
+  endTime                   <float>                                
+
+  elapsedTime               <float>                                
 
 timeStepper                 tombo2 [D], tombo3                     time stepping scheme
 
