@@ -482,10 +482,10 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   // has to match header in re2
   sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
   if(ndim != 3) {
-    printf("\nERROR: Invalid ndim=%d read from re2 header!\n", ndim);
+    printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
     ABORT(EXIT_FAILURE);
   }
-  if(nelgt <= 0 || nelgv <=0) {
+  if(nelgt <= 0 || nelgv <=0 || nelgv > nelgt) {
     printf("\nERROR: Invalid nelgt=%lld / nelgv=%lld read from re2 header!\n", nelgt, nelgv);
     ABORT(EXIT_FAILURE);
   }
@@ -496,17 +496,16 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
   // generate usr
-  char usrFile[BUFSIZ], usrFileCache[BUFSIZ];
-  sprintf(usrFile,"%s.usr",casename);
-  sprintf(usrFileCache,"%s/%s",cache_dir,usrFile);
-  if(!fileExists(usrFile)) {
-    sprintf(buf, "%s/core/zero.usr", nek5000_dir);
-    copyFile(buf, usrFileCache);
-  } else if(isFileEmpty(usrFile)) {
-    sprintf(buf, "%s/core/zero.usr", nek5000_dir);
-    copyFile(buf, usrFileCache);
-  } else if(isFileNewer(usrFile, usrFileCache)) {
-    copyFile(usrFile, usrFileCache);
+  char usrFileCache[BUFSIZ];
+  {
+    char usrFile[BUFSIZ];
+    sprintf(usrFile,"%s.usr",casename);
+    if(!fileExists(usrFile) || isFileEmpty(usrFile))
+      sprintf(usrFile, "%s/core/zero.usr", nek5000_dir);
+
+    sprintf(usrFileCache,"%s/%s",cache_dir,usrFile);
+    if(isFileNewer(usrFile, usrFileCache))
+      copyFile(usrFile, usrFileCache);
   }
 
   // build
