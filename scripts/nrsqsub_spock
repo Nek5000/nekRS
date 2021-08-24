@@ -98,26 +98,15 @@ echo "module list" >>$SFILE
 echo "rocm-smi" >>$SFILE
 echo "rocm-smi --showpids" >>$SFILE
 
-echo "## These must be set before compiling so the executable picks up GTL" >>$SFILE
-echo "export PE_MPICH_GTL_DIR_amd_gfx908=\"-L/opt/cray/pe/mpich/8.1.4/gtl/lib\"" >>$SFILE
-echo "export PE_MPICH_GTL_LIBS_amd_gfx908=\"-lmpi_gtl_hsa\"" >>$SFILE
-
-echo "## These must be set before running" >>$SFILE
-echo "export MPIR_CVAR_GPU_EAGER_DEVICE_MEM=0" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
 
-echo "## OLCFDEV-138: GPU-Aware Cray MPICH can cause hang in some codes" >>$SFILE
-echo "export MPICH_SMP_SINGLE_COPY_MODE=CMA" >>$SFILE
 echo "## OLCFDEV-118: Parallel HDF5 failures when running on GPFS" >>$SFILE
 echo "export ROMIO_FSTYPE_FORCE=\"ufs:\"" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
 echo "export OCCA_CACHE_DIR=$OCCA_CACHE_DIR" >>$SFILE
-
 echo "export NEKRS_GPU_MPI=1 " >>$SFILE
-echo "export OMPI_MCA_btl=\"^vader,tcp,openib,smrocm\"" >>$SFILE
-echo "export OMPI_MCA_io=romio321" >>$SFILE
 
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
 echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
