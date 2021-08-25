@@ -26,6 +26,7 @@ double endTime(void);
 int numSteps(void);
 int lastStep(double time, int tstep, double elapsedTime);
 int writeControlRunTime(void);
+void processUpdFile();
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);

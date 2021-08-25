@@ -21,6 +21,8 @@ static MPI_Comm comm;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
+static int enforceLastStep = 0;
+static int enforceOutputStep = 0;
 
 static void setOccaVars(string dir);
 static void setOUDF(setupAide &options);
@@ -237,6 +239,11 @@ int outputStep(double time, int tStep)
   } else {
     if (writeInterval() > 0) outputStep = (tStep%(int)writeInterval() == 0);
   }
+
+  if (enforceOutputStep) {
+    enforceOutputStep = 0;
+    return 1;
+  }
   return outputStep;
 }
 
@@ -277,7 +284,8 @@ int lastStep(double time, int tstep, double elapsedTime)
   } else {
     nrs->lastStep = tstep == numSteps();
   }
-
+ 
+  if(enforceLastStep) return 1;
   return nrs->lastStep;
 }
 
@@ -301,6 +309,73 @@ void printRuntimeStatistics(int step)
   platform_t* platform = platform_t::getInstance(options, comm);
   platform->timer.printRunStat(step);
 }
+
+void processUpdFile()
+{
+  char* rbuf = nullptr;
+  long fsize = 0;
+
+  if (rank == 0) {
+    const string cmdFile = "nekrs.upd";
+    const char* ptr = realpath(cmdFile.c_str(), NULL);
+    if (ptr) {
+      if(rank == 0) std::cout << "processing " << cmdFile << " ...\n";
+      FILE* f = fopen(cmdFile.c_str(), "rb");
+      fseek(f, 0, SEEK_END);
+      fsize = ftell(f);
+      fseek(f, 0, SEEK_SET);
+      rbuf = new char[fsize];
+      fread(rbuf, 1, fsize, f);
+      fclose(f);
+      remove(cmdFile.c_str());
+    }
+  }
+  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
+
+  if (fsize) {
+    if(rank != 0) rbuf = new char[fsize];
+    MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
+    stringstream is;
+    is.write(rbuf, fsize);
+    inipp::Ini<char> ini;
+    ini.parse(is, false);
+
+    string end;
+    ini.extract("", "end", end);
+    if (end == "true") {
+      enforceLastStep = 1; 
+      platform->options.setArgs("END TIME", "-1");
+    }
+
+    string checkpoint;
+    ini.extract("", "checkpoint", checkpoint);
+    if (checkpoint == "true") enforceOutputStep = 1; 
+
+    string endTime;
+    ini.extract("general", "endtime", endTime);
+    if (!endTime.empty()) {
+      if (rank == 0) std::cout << "  set endTime = " << endTime << "\n";
+      platform->options.setArgs("END TIME", endTime);
+    }
+
+    string numSteps;
+    ini.extract("general", "numsteps", numSteps);
+    if (!numSteps.empty()) {
+      if (rank == 0) std::cout << "  set numSteps = " << numSteps << "\n";
+      platform->options.setArgs("NUMBER TIMESTEPS", numSteps);
+    }
+
+    string writeInterval;
+    ini.extract("general", "writeinterval", writeInterval);
+    if(!writeInterval.empty()) {
+      if(rank == 0) std::cout << "  set writeInterval = " << writeInterval << "\n";
+      platform->options.setArgs("SOLUTION OUTPUT INTERVAL", writeInterval);
+    }
+
+    delete[] rbuf;
+  }
+}
+
 } // namespace
 
 static void dryRun(setupAide &options, int npTarget)
