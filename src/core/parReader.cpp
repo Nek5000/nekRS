@@ -902,6 +902,7 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
           ABORT(1);
         }
       }
+
     }
     else
     {
@@ -910,6 +911,7 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     }
 
   }
+
 
   string timeStepper;
   par->extract("general", "timestepper", timeStepper);
@@ -947,12 +949,39 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
   }
 
+  string subCyclingString;
+  if(par->extract("general", "subcycling", subCyclingString))
+  {
+    if(subCyclingString.find("auto") != std::string::npos)
+    {
+      double targetCFL;
+      options.getArgs("TARGET CFL", targetCFL);
+      string dtString;
+      if (par->extract("general", "dt", dtString)){
+        if(dtString.find("targetcfl") == std::string::npos)
+        {
+          exit("subCycling = auto requires the targetCFL to be set!",
+               EXIT_FAILURE);
+        }
+      }
+      const int nSteps = [targetCFL](){
+        if (targetCFL <= 0.5){
+          return 0;
+        } else if (targetCFL > 0.5 && targetCFL <= 2.0){
+          return 1;
+        } else {
+          return 2;
+        }
+      }();
+      options.setArgs("SUBCYCLING STEPS", std::to_string(nSteps));
+    }
+  }
+
   {
     int NSubCycles = 0;
-
-    if (par->extract("general", "subcyclingsteps", NSubCycles))
-      ;
-    options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
+    if (par->extract("general", "subcyclingsteps", NSubCycles)){
+      options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
+    }
   }
 
   bool variableDt;
