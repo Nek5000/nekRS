@@ -105,7 +105,7 @@ occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, 
     o_logRelativeMassHighestMode
   );
 
-  const bool useHPFResidual = cds->options[scalarIndex].compareArgs("STABILIZATION METHOD", "HPF_RESIDUAL");
+  const bool useHPFResidual = cds->options[scalarIndex].compareArgs("REGULARIZATION METHOD", "HPF_RESIDUAL");
 
   dfloat Uinf = 1.0;
   if(useHPFResidual){
@@ -164,14 +164,14 @@ occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, 
   const dfloat logReferenceSensor = -4.0 * log10(p);
 
   dfloat coeff = 0.5;
-  cds->options[scalarIndex].getArgs("STABILIZATION VISMAX COEFF", coeff);
+  cds->options[scalarIndex].getArgs("REGULARIZATION VISMAX COEFF", coeff);
 
   dfloat rampParameter = 1.0;
-  cds->options[scalarIndex].getArgs("STABILIZATION RAMP CONSTANT", rampParameter);
+  cds->options[scalarIndex].getArgs("REGULARIZATION RAMP CONSTANT", rampParameter);
 
 
   dfloat scalingCoeff = 1.0;
-  cds->options[scalarIndex].getArgs("STABILIZATION SCALING COEFF", scalingCoeff);
+  cds->options[scalarIndex].getArgs("REGULARIZATION SCALING COEFF", scalingCoeff);
 
   computeMaxViscKernel(
     mesh->Nelements,
@@ -191,7 +191,7 @@ occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, 
     o_epsilon // max(|df/du|) <- max visc
   );
 
-  const bool makeCont = cds->options[scalarIndex].compareArgs("STABILIZATION AVM C0", "TRUE");
+  const bool makeCont = cds->options[scalarIndex].compareArgs("REGULARIZATION AVM C0", "TRUE");
   if(makeCont){
     oogs_t* gsh;
     if(scalarIndex){

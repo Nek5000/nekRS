@@ -536,7 +536,7 @@ void parseRegularization(const int rank, setupAide &options,
     parSection = "general";
   }
   string parPrefix = isScalar ? "SCALAR" + sidPar + " " : "";
-  options.setArgs(parPrefix + "STABILIZATION METHOD", "NONE");
+  options.setArgs(parPrefix + "REGULARIZATION METHOD", "NONE");
 
   string regularization;
   par->extract(parSection, "regularization", regularization);
@@ -563,9 +563,9 @@ void parseRegularization(const int rank, setupAide &options,
     options.setArgs(parPrefix + "HPFRT MODES", "1");
     if (usesAVM) {
       if(regularization.find("hpfresidual") != string::npos)
-        options.setArgs(parPrefix + "STABILIZATION METHOD", "HPF_RESIDUAL");
+        options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPF_RESIDUAL");
       else if(regularization.find("highestmodaldecay") != string::npos)
-        options.setArgs(parPrefix + "STABILIZATION METHOD", "HIGHEST_MODAL_DECAY");
+        options.setArgs(parPrefix + "REGULARIZATION METHOD", "HIGHEST_MODAL_DECAY");
       else {
         if(rank == 0){
           printf("Error: avm must be specified with hpfResidual or HighestModalDecay!\n");
@@ -573,13 +573,13 @@ void parseRegularization(const int rank, setupAide &options,
         ABORT(1);
       }
 
-      options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", "0.5");
-      options.setArgs(parPrefix + "STABILIZATION SCALING COEFF", "1.0");
-      options.setArgs(parPrefix + "STABILIZATION RAMP CONSTANT", to_string_f(1.0));
-      options.setArgs(parPrefix + "STABILIZATION AVM C0", "FALSE");
+      options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", "0.5");
+      options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", "1.0");
+      options.setArgs(parPrefix + "REGULARIZATION RAMP CONSTANT", to_string_f(1.0));
+      options.setArgs(parPrefix + "REGULARIZATION AVM C0", "FALSE");
     }
     if (usesHPFRT) {
-      options.setArgs(parPrefix + "STABILIZATION METHOD", "RELAXATION");
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", "RELAXATION");
     }
 
     // common parameters
@@ -606,7 +606,7 @@ void parseRegularization(const int rank, setupAide &options,
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
           const dfloat value = std::stod(items[1]);
-          options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", to_string_f(value));
+          options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", to_string_f(value));
         }
         if(s.find("scalingcoeff") != string::npos)
         {
@@ -616,21 +616,21 @@ void parseRegularization(const int rank, setupAide &options,
           if(regularization.find("highestmodaldecay") != string::npos)
           {
             // in this context, the scaling coefficient can only be vismax
-            options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", to_string_f(value));
+            options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", to_string_f(value));
           } else {
-            options.setArgs(parPrefix + "STABILIZATION SCALING COEFF", to_string_f(value));
+            options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", to_string_f(value));
           }
         }
         if(s.find("c0") != string::npos)
         {
-          options.setArgs(parPrefix + "STABILIZATION AVM C0", "TRUE");
+          options.setArgs(parPrefix + "REGULARIZATION AVM C0", "TRUE");
         }
         if(s.find("rampconstant") != string::npos)
         {
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
           const dfloat rampConstant = std::stod(items[1]);
-          options.setArgs(parPrefix + "STABILIZATION RAMP CONSTANT",
+          options.setArgs(parPrefix + "REGULARIZATION RAMP CONSTANT",
                           to_string_f(rampConstant));
         }
       }
@@ -662,7 +662,7 @@ void parseRegularization(const int rank, setupAide &options,
     string filtering;
     par->extract(parSection, "filtering", filtering);
     if (filtering == "hpfrt") {
-      options.setArgs(parPrefix + "STABILIZATION METHOD", "RELAXATION");
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", "RELAXATION");
       if (par->extract(parSection, "filterweight", sbuf)) {
         int err = 0;
         double weight = te_interp(sbuf.c_str(), &err);
@@ -720,7 +720,7 @@ void setDefaultSettings(setupAide &options, string casename, int rank) {
   options.setArgs("RESTART FROM FILE", "0");
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
-  options.setArgs("STABILIZATION METHOD", "NONE");
+  options.setArgs("REGULARIZATION METHOD", "NONE");
 
   options.setArgs("START TIME", "0.0");
 

@@ -27,10 +27,10 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
   if(nrs->Nscalar){
     cds_t* cds = nrs->cds;
     for(int is = 0 ; is < cds->NSfields; ++is){
-      string stabilizationMethod;
-      cds->options[is].getArgs("STABILIZATION METHOD", stabilizationMethod);
-      const bool applyAVM = stabilizationMethod.find("HPF_RESIDUAL") != string::npos
-        || stabilizationMethod.find("HIGHEST_MODAL_DECAY") != string::npos;
+      string regularizationMethod;
+      cds->options[is].getArgs("REGULARIZATION METHOD", regularizationMethod);
+      const bool applyAVM = regularizationMethod.find("HPF_RESIDUAL") != string::npos
+        || regularizationMethod.find("HIGHEST_MODAL_DECAY") != string::npos;
       if(applyAVM){
         avm::apply(nrs, timeNew, is, cds->o_S);
       }
@@ -422,7 +422,7 @@ void makeq(
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
     const dlong isOffset = cds->fieldOffsetScan[is];
 
-    if(cds->options[is].compareArgs("STABILIZATION METHOD", "RELAXATION")){
+    if(cds->options[is].compareArgs("REGULARIZATION METHOD", "RELAXATION")){
       cds->filterRTKernel(
         cds->meshV->Nelements,
         is,
@@ -560,7 +560,7 @@ void makef(
     platform->timer.toc("udfUEqnSource");
   }
 
-  if(platform->options.compareArgs("STABILIZATION METHOD", "RELAXATION"))
+  if(platform->options.compareArgs("REGULARIZATION METHOD", "RELAXATION"))
     nrs->filterRTKernel(
       mesh->Nelements,
       nrs->o_filterMT,
