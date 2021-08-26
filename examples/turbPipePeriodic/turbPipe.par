@@ -12,9 +12,7 @@ subCyclingSteps = 2
 writeControl = runTime
 writeInterval = 20
 
-filtering = hpfrt
-filterWeight = 0.1/${dt}
-filterModes = 1
+regularization = hpfrt + nModes = 1 + scalingCoeff = 0.1/${dt}
 
 # constant flow rate driver
 constFlowRate = meanVelocity=1.0 + direction=Z

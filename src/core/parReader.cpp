@@ -639,7 +639,7 @@ void parseRegularization(const int rank, setupAide &options,
     if (usesHPFRT) {
       bool setsStrength = false;
       for (std::string s : list) {
-        if (s.find("strength") != string::npos) {
+        if (s.find("scalingcoeff") != string::npos) {
           setsStrength = true;
           std::vector<string> items = serializeString(s, '=');
           assert(items.size() == 2);
