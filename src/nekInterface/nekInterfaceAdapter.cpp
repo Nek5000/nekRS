@@ -571,20 +571,22 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
 
   int npTarget = size;
   options->getArgs("NP TARGET", npTarget);
+  std::cout << size << "," << npTarget << std::endl;
 
   int err = 0;
   if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, Nscalar), N, npTarget, *options);
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, c);
   if (err) ABORT(EXIT_FAILURE);;
 
-  if(rank == 0) { 
-   printf("loading nek ...\n"); 
-   fflush(stdout);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    if (rank == 0) { 
+     printf("loading nek ...\n"); 
+     fflush(stdout);
+    }
+    set_function_handles(casename.c_str(), 0);
+    (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
+                         cwd.length(), casename.length());
   }
-
-  set_function_handles(casename.c_str(), 0);
-  (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
-                       cwd.length(), casename.length());
 }
 
 int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)

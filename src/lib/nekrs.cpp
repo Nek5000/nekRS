@@ -85,6 +85,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
+  nrs = new nrs_t();
   auto par = new inipp::Ini();	  
   string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
@@ -132,7 +133,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  nrs = new nrs_t();
   nrsSetup(comm, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
@@ -404,6 +404,8 @@ static void dryRun(setupAide &options, int npTarget)
     *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
     *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   }
+
+  nek::bootstrap(comm, options);
 
   if(udf.setup0) udf.setup0(comm, options);
 
