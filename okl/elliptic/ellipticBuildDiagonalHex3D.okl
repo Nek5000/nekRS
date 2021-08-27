@@ -53,9 +53,9 @@
 
           if(k == 0)
             s_D[j][i] = D[i + p_Nq * j]; // column major
-          //
-          s_Grr[j][i]     = ggeo[base + p_G00ID * p_Np];
-          s_Gss[j][i]     = ggeo[base + p_G11ID * p_Np];
+          
+          s_Grr[j][i] = ggeo[base + p_G00ID * p_Np];
+          s_Gss[j][i] = ggeo[base + p_G11ID * p_Np];
 
           for(int l = 0; l < p_eNfields; l++)
             s_lambda0[l][j][i] = lambda[id + 0 * offset + l * loffset];
@@ -64,17 +64,16 @@
             for(int l = 0; l < p_Nq; ++l) {
               const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
-              s_Gtt[l]     = ggeo[other_base + p_G22ID * p_Np];
+              s_Gtt[l] = ggeo[other_base + p_G22ID * p_Np];
               for(int field = 0; field < p_eNfields; field++)
                 s_lambdat[field][l] = lambda[other_id + 0 * offset + field * loffset];
             }
           }
         }
       }
-
       @barrier("local");
 
-      for(int j = 0; j < p_Nq; ++j; @inner(1))
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0;
@@ -112,6 +111,8 @@
             Aq[id + l * offset] = r_q;
           }
         }
+      }
+      @barrier("local");
     }
   }
 }
