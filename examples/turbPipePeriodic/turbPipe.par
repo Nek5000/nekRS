@@ -25,3 +25,7 @@ boundaryTypeMap = wall
 viscosity = -19000
 density = 1.0
 residualTol = 1e-06
+
+[CASEPARAMS]
+Re_tau = 550
+zLength = 6

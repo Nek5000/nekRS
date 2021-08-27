@@ -75,20 +75,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
 
-  // jit compile + init nek
+  // init nek
   {  
     int rank, size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     string casename;
     platform->options.getArgs("CASENAME", casename);
-
-    int err = 0;
-    int npTarget = size;
-    if (buildOnly) platform->options.getArgs("NP TARGET", npTarget);
-    if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, nrs->Nscalar), N, npTarget, platform->options);
-    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if (err) ABORT(EXIT_FAILURE);; 
 
     if (!buildOnly) {
       nek::setup(comm, platform->options, nrs);

@@ -38,8 +38,6 @@ struct nekdata_private
 
   int* ifgetu, * ifgetp, * ifgett, * ifgetps;
 
-  double* cbscnrs;
-
   /* global vertex ids */
   long long* glo_num;
 
@@ -116,6 +114,7 @@ void   outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char*
 int    lglel(int e);
 void   uf(double* u, double* v, double* w);
 int    setup(MPI_Comm c, setupAide &options, nrs_t* nrs);
+void   bootstrap(MPI_Comm c, setupAide &options);
 void   ifoutfld(int i);
 void   setic(void);
 void   userchk(void);

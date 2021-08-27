@@ -20,8 +20,10 @@ c-----------------------------------------------------------------------
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
       elseif (id .eq. 'lelt') then 
+         llelt = lelt
          ptr = loc(llelt)
       elseif (id .eq. 'ldimt') then 
+         lldimt = ldimt            
          ptr = loc(lldimt)
       elseif (id .eq. 'nekcomm') then 
          ptr = loc(nekcomm)
@@ -131,27 +133,21 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in,path_in, session_in, ifflow_in,
-     $                      npscal_in, p32, meshp_in,
-     $                      rho, mue, rhoCp, lambda) 
+      subroutine nekf_bootstrap(comm_in,path_in,session_in)
 
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in, iftmsh_in, ifflow_in, meshp_in, p32
-      real rho, mue, rhoCp, lambda
+      integer comm_in
       character session_in*(*),path_in*(*)
-
-      common /rdump/ ntdump
 
       real rtest
       integer itest
       integer*8 itest8
       character ctest
       logical ltest 
-      logical ifbswap
 
       ! set word size for REAL
       wdsize = sizeof(rtest)
@@ -164,18 +160,32 @@ c-----------------------------------------------------------------------
       ! set word size for CHARACTER
       csize = sizeof(ctest)
 
-      llelt = lelt
-      lldimt = ldimt
-
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
-      etimes = dnekclock_sync()
       istep  = 0
-
       call initdim ! Initialize / set default values.
       call initdat
       call files
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setup(ifflow_in,
+     $                      npscal_in, p32, meshp_in,
+     $                      rho, mue, rhoCp, lambda) 
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+
+      integer iftmsh_in, ifflow_in, meshp_in, p32
+      real rho, mue, rhoCp, lambda
+
+      common /rdump/ ntdump
+
+      etimes = dnekclock_sync()
 
       call read_re2_hdr(ifbswap, .true.)
 
@@ -847,7 +857,6 @@ c-----------------------------------------------------------------------
       pointer(ptr,i8)
 
       include 'SIZE'
-      include 'TOTAL'
       include 'NEKINTF'
      
       ptr = nrs_scptr(id)  

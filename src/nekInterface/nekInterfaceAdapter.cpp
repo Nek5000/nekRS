@@ -36,7 +36,8 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
                                 double* vt, char* name, int);
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
-static void (* nek_setup_ptr)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int, int);
+static void (* nek_bootstrap_ptr)(int*, char*, char*, int, int);
+static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
 static int (* nek_bcmap_ptr)(int*, int*,int*);
@@ -265,8 +266,11 @@ void set_function_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_scptr_ptr = (void (*)(int*, void*))dlsym(handle, fname("nekf_scptr"));
   check_error(dlerror());
+  nek_bootstrap_ptr =
+    (void (*)(int*, char*, char*, int, int))dlsym(handle, fname("nekf_bootstrap"));
+  check_error(dlerror());
   nek_setup_ptr =
-    (void (*)(int*, char*, char*, int*, int*, int*, int*, double*, double*, double*, double*, int, int))dlsym(handle, fname("nekf_setup"));
+    (void (*)(int*, int*, int*, int*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int*))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -542,17 +546,14 @@ void gen_bcmap()
   (*nek_gen_bcmap_ptr)();
 }
 
-int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
+void bootstrap(MPI_Comm c, setupAide &options_in)
 {
   options = &options_in;
-  nrs = nrs_in;
   MPI_Comm_rank(c,&rank);
+  
+  int size;
+  MPI_Comm_size(c,&size);
   MPI_Fint nek_comm = MPI_Comm_c2f(c);
-
-  if(rank == 0) { 
-   printf("loading nek ...\n"); 
-   fflush(stdout);
-  }
 
   string casename;
   options->getArgs("CASENAME", casename);
@@ -562,7 +563,38 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   string cwd;
   cwd.assign(buf);
 
+  int N;
+  options->getArgs("POLYNOMIAL DEGREE", N);
+ 
+  int Nscalar;
+  options->getArgs("NUMBER OF SCALARS", Nscalar);
+
+  int npTarget = size;
+  options->getArgs("NP TARGET", npTarget);
+
+  int err = 0;
+  if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, Nscalar), N, npTarget, *options);
+  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, c);
+  if (err) ABORT(EXIT_FAILURE);;
+
+  if(rank == 0) { 
+   printf("loading nek ...\n"); 
+   fflush(stdout);
+  }
+
   set_function_handles(casename.c_str(), 0);
+  (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
+                       cwd.length(), casename.length());
+}
+
+int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
+{
+  options = &options_in;
+  nrs = nrs_in;
+  MPI_Comm_rank(c,&rank);
+
+  string casename;
+  options->getArgs("CASENAME", casename);
 
   int nscal = 0;
   options->getArgs("NUMBER OF SCALARS", nscal);
@@ -594,10 +626,8 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   dfloat lambda;
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
-  (*nek_setup_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
-                   &flow, &nscal, &nBcRead, &meshPartType,
-		   &rho, &mue, &rhoCp, &lambda, 
-                   cwd.length(), casename.length()); 
+  (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType,
+		           &rho, &mue, &rhoCp, &lambda); 
 
   nekData.param = (double*) ptr("param");
   nekData.ifield = (int*) ptr("ifield");
@@ -636,7 +666,6 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nekData.zc = (double*) ptr("zc");
 
   nekData.glo_num = (long long*) ptr("glo_num");
-  nekData.cbscnrs = (double*) ptr("cb_scnrs");
   nekData.cbc = (char*) ptr("cbc");
 
   nekData.boundaryID  = (int*) ptr("boundaryID");

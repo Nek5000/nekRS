@@ -15,7 +15,6 @@
 #include "cds.hpp"
 #include "linAlg.hpp"
 #include "timer.hpp"
-#include "inipp.hpp"
 #include "platform.hpp"
 
 struct nrs_t
@@ -43,8 +42,6 @@ struct nrs_t
   int Nscalar;
   dlong fieldOffset;
   setupAide vOptions, pOptions, mOptions;
-
-  inipp::Ini *par;
 
   int NVfields, NTfields;
 

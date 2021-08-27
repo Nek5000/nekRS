@@ -85,11 +85,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-  nrs = new nrs_t();
-
-  nrs->par = new inipp::Ini();	  
+  auto par = new inipp::Ini<char>();	  
   string setupFile = _setupFile + ".par";
-  options = parRead((void*) nrs->par, setupFile, comm);
+  options = parRead((void*) par, setupFile, comm);
 
   options.setArgs("BUILD ONLY", "FALSE");
   if(buildOnly) options.setArgs("BUILD ONLY", "TRUE");
@@ -104,6 +102,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   // setup device
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
+  platform->par = par;
 
   if (buildOnly) {
     dryRun(options, commSizeTarget);
@@ -129,8 +128,11 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   if(rank == 0 && ciMode)
     cout << "enabling continous integration mode " << ciMode << "\n";
 
+  nek::bootstrap(comm, options);
+
   if(udf.setup0) udf.setup0(comm, options);
 
+  nrs = new nrs_t();
   nrsSetup(comm, options, nrs);
 
   nrs->o_U.copyFrom(nrs->U);
