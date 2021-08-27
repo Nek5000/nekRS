@@ -54,7 +54,7 @@ void configRead(MPI_Comm comm)
   stringstream is;
   is.write(rbuf, fsize);
 
-  inipp::Ini<char> ini;
+  inipp::Ini ini;
   ini.parse(is, false);
   ini.interpolate();
 

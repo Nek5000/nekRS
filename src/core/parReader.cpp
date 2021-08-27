@@ -31,8 +31,34 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
-void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini<char> *par)
+void checkValidity(
+  const int rank,
+  const std::vector<std::string>& validValues,
+  const std::string& entry)
 {
+  bool valid = false;
+  for(auto && v : validValues){
+    valid |= (entry.find(v) != std::string::npos);
+  }
+  if(!valid){
+    if(rank == 0){
+      printf("Value %s is not recognized!\n", entry.c_str());
+    }
+    ABORT(1);
+  }
+}
+
+void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini *par)
+{
+  const std::vector<std::string> validValues = {
+    {"constflowrate"},
+    {"meanvelocity"},
+    {"meanvolumetricflow"},
+    {"bid"},
+    {"direction"},
+  };
+
+
   string flowRateDescription;
   if(par->extract("general", "constflowrate", flowRateDescription))
   {
@@ -43,6 +69,7 @@ void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini<char> *pa
     const std::vector<string> list = serializeString(flowRateDescription, '+');
     for(std::string s : list)
     {
+      checkValidity(rank, validValues, s);
       if(s.find("meanvelocity") == 0){
         if(flowRateSet) issueError = true;
         flowRateSet = true;
@@ -118,12 +145,16 @@ void parseConstFlowRate(const int rank, setupAide& options, inipp::Ini<char> *pa
   }
 }
 void parseSolverTolerance(const int rank, setupAide &options,
-                       inipp::Ini<char> *par, string parScope) {
+                       inipp::Ini *par, string parScope) {
   string parSectionName = (parScope.find("temperature") != std::string::npos)
                               ? "scalar00"
                               : parScope;
 
   UPPER(parSectionName);
+
+  const std::vector<std::string> validValues = {
+    {"relative"},
+  };
 
   string residualTol;
   if(par->extract(parScope, "residualtol", residualTol) ||
@@ -141,12 +172,14 @@ void parseSolverTolerance(const int rank, setupAide &options,
       if(tolerance > 0.0)
       {
         options.setArgs(parSectionName + " SOLVER TOLERANCE", to_string_f(tolerance));
+      } else {
+        checkValidity(rank, validValues, entry);
       }
     }
   }
 }
 void parseCoarseSolver(const int rank, setupAide &options,
-                       inipp::Ini<char> *par, string parScope) {
+                       inipp::Ini *par, string parScope) {
   string parSectionName = (parScope.find("temperature") != std::string::npos)
                               ? "scalar00"
                               : parScope;
@@ -155,6 +188,17 @@ void parseCoarseSolver(const int rank, setupAide &options,
   const bool continueParsing = par->extract(parScope, "coarsesolver", p_coarseSolver);
   if(!continueParsing)
     return;
+
+  const std::vector<std::string> validValues = {
+    {"boomeramg"},
+    {"amgx"},
+    {"semfem"},
+    {"fem"},
+    {"fp32"},
+    {"fp64"},
+    {"cpu"},
+    {"gpu"},
+  };
 
   // solution methods
   if(p_coarseSolver.find("boomeramg") != string::npos){
@@ -190,6 +234,7 @@ void parseCoarseSolver(const int rank, setupAide &options,
   std::vector<string> entries = serializeString(p_coarseSolver, '+');
   for(string entry : entries)
   {
+    checkValidity(rank, validValues, entry);
     if(entry.find("fp32") != string::npos)
     {
       options.setArgs("AMG SOLVER PRECISION", "FP32");
@@ -223,7 +268,23 @@ void parseCoarseSolver(const int rank, setupAide &options,
   }
 }
 
-void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
+bool is_number(const string &s) {
+  return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) {
+                         return !std::isdigit(c);
+                       }) == s.end();
+}
+
+std::vector<int> checkForIntInInputs(const std::vector<string> &inputs) {
+  std::vector<int> values;
+  for (string s : inputs) {
+    if (is_number(s)) {
+      values.emplace_back(std::stoi(s));
+    }
+  }
+  return values;
+}
+
+void parseSmoother(const int rank, setupAide &options, inipp::Ini *par,
                    string parScope) {
 
   string parSection = parScope;
@@ -373,7 +434,24 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini<char> *par,
   }
 }
 void parsePreconditioner(const int rank, setupAide &options,
-                         inipp::Ini<char> *par, string parScope) {
+                         inipp::Ini *par, string parScope) {
+  const std::vector<std::string> validValues = {
+    {"none"},
+    {"jac"},
+    {"semfem"},
+    {"pmg"},
+    {"multigrid"},
+    {"semg"},
+    {"semfem"},
+    {"amgx"},
+    {"fp32"},
+    {"fp64"},
+    {"additive"},
+    {"multiplicative"},
+    {"overlap"},
+    {"coarse"},
+  };
+
 
   string parSection = (parScope.find("temperature") != string::npos)
                               ? "scalar00"
@@ -381,7 +459,17 @@ void parsePreconditioner(const int rank, setupAide &options,
   UPPER(parSection);
 
   string p_preconditioner;
-  par->extract(parScope, "preconditioner", p_preconditioner);
+  if(par->extract(parScope, "preconditioner", p_preconditioner)) {}
+  else {
+    return; // unspecified, bail
+  }
+
+  const std::vector<std::string> list = serializeString(p_preconditioner, '+');
+  for(std::string s : list)
+  {
+    checkValidity(rank, validValues, s);
+  }
+
   if (p_preconditioner == "none") {
     options.setArgs(parSection + " PRECONDITIONER", "NONE");
   } else if (p_preconditioner.find("jac") != std::string::npos) {
@@ -442,14 +530,93 @@ void parsePreconditioner(const int rank, setupAide &options,
     options.setArgs(parSection + " SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
   }
 }
+
+bool checkForTrue(const std::string& s)
+{
+  return (s.find("true") != std::string::npos) ||
+         (s.find("yes" ) != std::string::npos) ||
+         (s.find("1"   ) != std::string::npos);
+}
+bool checkForFalse(const std::string& s)
+{
+  return (s.find("false") != std::string::npos) ||
+         (s.find("no "  ) != std::string::npos) ||
+         (s.find("0"    ) != std::string::npos);
+}
+
 void parseInitialGuess(const int rank, setupAide &options,
-                       inipp::Ini<char> *par, string parScope) {
+                       inipp::Ini *par, string parScope) {
 
   string parSectionName = (parScope.find("temperature") != string::npos)
                               ? "scalar00"
                               : parScope;
 
   UPPER(parSectionName);
+
+  string initialGuess;
+
+  const std::vector<std::string> validValues = {
+    {"projectionaconj"},
+    {"projection"},
+    {"previous"},
+    // booleans
+    {"yes"},
+    {"true"},
+    {"no"},
+    {"false"},
+    // settings
+    {"nvector"},
+    {"start"},
+  };
+
+  if (par->extract(parScope, "initialguess", initialGuess)) {
+    const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                    std::to_string(defaultNumVectors));
+    options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+
+    if (initialGuess.find("projectionaconj") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+    } else if (initialGuess.find("projection") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS",
+                      "PROJECTION");
+    } else if (initialGuess.find("previous") != string::npos) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+    } else if (checkForTrue(initialGuess)) {
+      const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
+      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
+      options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+    } else if (checkForFalse(initialGuess)) {
+      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+    } else {
+      if (rank == 0) {
+        printf("Could not parse initialGuess string %s !\n",
+               initialGuess.c_str());
+      }
+      ABORT(1);
+    }
+
+    const std::vector<string> list = serializeString(initialGuess, '+');
+
+    for (string s : list) {
+      checkValidity(rank, validValues, s);
+      if (s.find("nvector") != std::string::npos) {
+        const std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const int value = std::stoi(items[1]);
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
+                        std::to_string(value));
+      }
+      if (s.find("start") != std::string::npos) {
+        const std::vector<string> items = serializeString(s, '=');
+        assert(items.size() == 2);
+        const int value = std::stoi(items[1]);
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION START",
+                        std::to_string(value));
+      }
+    }
+    return;
+  }
 
   // see if user has provided old (deprecated) solution projection syntax
   {
@@ -469,51 +636,22 @@ void parseInitialGuess(const int rank, setupAide &options,
 
       return;
     }
-  }
 
-  string initialGuess;
-
-  if (par->extract(parScope, "initialguess", initialGuess)) {
-    const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
-    options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
-                    std::to_string(defaultNumVectors));
-    options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
-
-    if (initialGuess.find("projectionaconj") != string::npos) {
-      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
-    } else if (initialGuess.find("projection") != string::npos) {
-      options.setArgs(parSectionName + " INITIAL GUESS",
-                      "PROJECTION");
-    } else if (initialGuess.find("previous") != string::npos) {
-      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
-    } else if (initialGuess.find("true") != string::npos) {
-      const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
-      options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
-      options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
-    } else if (initialGuess.find("false") != string::npos) {
-      options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
-    } else {
-      if (rank == 0) {
-        printf("Could not parse initialGuess string %s !\n",
-               initialGuess.c_str());
-      }
-      ABORT(1);
-    }
-
-    const std::vector<string> list = serializeString(initialGuess, '+');
-    for (string s : list) {
-      if (s.find("nvector") == 0) {
-        const std::vector<string> items = serializeString(s, '=');
-        assert(items.size() == 2);
-        const int value = std::stoi(items[1]);
+    int nVectors;
+    if(par->extract(parScope, "residualprojectionvectors", nVectors)){
         options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
-                        std::to_string(value));
-      }
+                        std::to_string(nVectors));
+    }
+    int nStart;
+    if(par->extract(parScope, "residualprojectionstart", nStart)){
+        options.setArgs(parSectionName + " RESIDUAL PROJECTION START",
+                        std::to_string(nStart));
     }
   }
 }
 void parseRegularization(const int rank, setupAide &options,
-                       inipp::Ini<char> *par, string parSection) {
+                         inipp::Ini *par, bool isScalar = false,
+                         bool isTemperature = false, string sidPar = "") {
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
   const bool isScalar = (parSection.find("temperature") != std::string::npos) ||
@@ -835,15 +973,36 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
   stringstream is;
   is.write(rbuf, fsize);
 
-  inipp::Ini<char> *par = (inipp::Ini<char> *)ppar;
+  inipp::Ini *par = (inipp::Ini *)ppar;
   par->parse(is);
   par->interpolate();
+
+  int keysInvalid = 0;
+  if (rank == 0) {
+    keysInvalid = par->validateKeys();
+  }
+  MPI_Bcast(&keysInvalid, sizeof(keysInvalid), MPI_BYTE, 0, comm);
+  if(keysInvalid) ABORT(1);
+
+  if (rank == 0) {
+    par->printDeprecation();
+  }
 
   string sbuf;
 
   // OCCA
   string threadModel;
   if (par->extract("occa", "backend", threadModel)) {
+    const std::vector<std::string> validValues = {
+      {"serial"},
+      {"cuda"},
+      {"hip"},
+      {"opencl"},
+      {"openmp"},
+    };
+
+    checkValidity(rank, validValues, threadModel);
+
     UPPER(threadModel);
     options.setArgs("THREAD MODEL", threadModel);
   }
@@ -882,6 +1041,11 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
   string dtString;
   if (par->extract("general", "dt", dtString)){
+    const std::vector<std::string> validValues = {
+      {"targetcfl"},
+      {"max"},
+      {"initial"},
+    };
     if(dtString.find("targetcfl") != string::npos)
     {
       bool userSuppliesInitialDt = false;
@@ -889,6 +1053,7 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
       std::vector<string> entries = serializeString(dtString, '+');
       for(string entry : entries)
       {
+        checkValidity(rank, validValues, entry);
         if(entry.find("max") != string::npos)
         {
           std::vector<string> maxAndValue = serializeString(entry, '=');
@@ -940,15 +1105,22 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
 
   string timeStepper;
-  par->extract("general", "timestepper", timeStepper);
-  if (timeStepper == "bdf3" || timeStepper == "tombo3") {
-    options.setArgs("TIME INTEGRATOR", "TOMBO3");
-  }
-  if (timeStepper == "bdf2" || timeStepper == "tombo2") {
-    options.setArgs("TIME INTEGRATOR", "TOMBO2");
-  }
-  if (timeStepper == "bdf1" || timeStepper == "tombo1") {
-    options.setArgs("TIME INTEGRATOR", "TOMBO1");
+  if(par->extract("general", "timestepper", timeStepper)){
+    if (timeStepper == "bdf3" || timeStepper == "tombo3") {
+      options.setArgs("TIME INTEGRATOR", "TOMBO3");
+    }
+    else if (timeStepper == "bdf2" || timeStepper == "tombo2") {
+      options.setArgs("TIME INTEGRATOR", "TOMBO2");
+    }
+    else if (timeStepper == "bdf1" || timeStepper == "tombo1") {
+      options.setArgs("TIME INTEGRATOR", "TOMBO1");
+    }
+    else {
+      if(rank == 0){
+        printf("Could not parse general::timestepper = %s\n", timeStepper.c_str());
+      }
+      ABORT(1);
+    }
   }
 
   parseConstFlowRate(rank, options, par);
@@ -973,6 +1145,11 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
       exit("Cannot find mandatory parameter GENERAL::elapsedTime!",
            EXIT_FAILURE);
     options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
+  } else {
+      if(rank == 0){
+        printf("Could not parse general::stopat = %s\n", stopAt.c_str());
+      }
+      ABORT(1);
   }
 
   string subCyclingString;
@@ -1028,9 +1205,16 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
   string writeControl;
   if (par->extract("general", "writecontrol", writeControl)) {
-    options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
-    if (writeControl == "runtime")
+    if (writeControl == "steps")
+      options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
+    else if (writeControl == "runtime")
       options.setArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+    else{
+      if(rank == 0){
+        printf("Could not parse general::writecontrol = %s\n", writeControl.c_str());
+      }
+      ABORT(1);
+    }
   }
 
   bool dealiasing;
@@ -1050,20 +1234,33 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
   // MESH
   string meshPartitioner;
-  if (par->extract("mesh", "partitioner", meshPartitioner))
+  if (par->extract("mesh", "partitioner", meshPartitioner)){
+    if(meshPartitioner != "rcb" && meshPartitioner != "rcb+rsb"){
+      if(rank == 0){
+        printf("Could not parse mesh::partitioner = %s\n", meshPartitioner.c_str());
+      }
+      ABORT(1);
+    }
     options.setArgs("MESH PARTITIONER", meshPartitioner);
+  }
 
   string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
-    if(meshSolver == "elasticity") {
+    else if(meshSolver == "elasticity") {
       options.setArgs("MESH SOLVER", "ELASTICITY");
       options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
       options.setArgs("MESH RESIDUAL PROJECTION START", "5");
     }
-    if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
+    else if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
+    else {
+      if(rank == 0){
+        printf("Could not parse mesh::solver = %s\n", meshSolver.c_str());
+      }
+      ABORT(1);
+    }
   }
 
   {
@@ -1074,11 +1271,7 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
   parseInitialGuess(rank, options, par, "mesh");
 
-
-  double m_residualTol;
-  if(par->extract("mesh", "residualtol", m_residualTol) ||
-     par->extract("mesh", "residualtoltolerance", m_residualTol))
-    options.setArgs("MESH SOLVER TOLERANCE", to_string_f(m_residualTol));
+  parseSolverTolerance(rank, options, par, "mesh");
 
   int bcInPar = 1;
   string m_bcMap;
@@ -1132,6 +1325,19 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
     string p_solver;
     if (par->extract("pressure", "solver", p_solver)) {
+      const std::vector<std::string> validValues = {
+        {"gmres"},
+        {"nvector"},
+        {"fgmres"},
+        {"flexible"},
+        {"cg"},
+        {"fcg"},
+      };
+      std::vector<std::string> list = serializeString(p_solver, '+');
+      for(const std::string s : list){
+        checkValidity(rank, validValues, s);
+      }
+
       if (p_solver.find("gmres") != string::npos) {
         std::vector<string> list;
         list = serializeString(p_solver, '+');
@@ -1173,11 +1379,6 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     parseSmoother(rank, options, par, "pressure");
 
     parseCoarseSolver(rank, options, par, "pressure");
-    string p_amgsolver;
-    par->extract("pressure", "amgsolver", p_amgsolver);
-    if (p_amgsolver == "paralmond")
-      exit("Unknown PRESSURE:amgSolver!", EXIT_FAILURE);
-    // options.setArgs("AMG SOLVER", "PARALMOND");
 
     if (par->sections.count("boomeramg")) {
       int coarsenType;
@@ -1226,14 +1427,25 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
 
     parseInitialGuess(rank, options, par, "velocity");
 
-    par->extract("velocity", "solver", vsolver);
-    if (vsolver == "none") {
-      options.setArgs("VELOCITY SOLVER", "NONE");
-      flow = 0;
-    } else if (!vsolver.empty()) {
-      options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
-      if (std::strstr(vsolver.c_str(), "block")) {
-        options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    if(par->extract("velocity", "solver", vsolver)){
+      const std::vector<std::string> validValues = {
+        {"none"},
+        {"block"},
+        {"pcg"},
+      };
+      const std::vector<std::string> list = serializeString(vsolver, '+');
+      for(const std::string s : list){
+        checkValidity(rank, validValues, s);
+      }
+
+      if (vsolver == "none") {
+        options.setArgs("VELOCITY SOLVER", "NONE");
+        flow = 0;
+      } else if (!vsolver.empty()) {
+        options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
+        if (std::strstr(vsolver.c_str(), "block")) {
+          options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+        }
       }
     }
 

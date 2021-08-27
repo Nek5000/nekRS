@@ -44,7 +44,7 @@ struct nrs_t
   dlong fieldOffset;
   setupAide vOptions, pOptions, mOptions;
 
-  inipp::Ini<char> *par;
+  inipp::Ini *par;
 
   int NVfields, NTfields;
 

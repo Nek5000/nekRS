@@ -87,7 +87,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   nrs = new nrs_t();
 
-  nrs->par = new inipp::Ini<char>();	  
+  nrs->par = new inipp::Ini();	  
   string setupFile = _setupFile + ".par";
   options = parRead((void*) nrs->par, setupFile, comm);
 
@@ -337,7 +337,7 @@ void processUpdFile()
     MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
     stringstream is;
     is.write(rbuf, fsize);
-    inipp::Ini<char> ini;
+    inipp::Ini ini;
     ini.parse(is, false);
 
     string end;
