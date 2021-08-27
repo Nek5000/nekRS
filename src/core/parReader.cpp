@@ -650,8 +650,7 @@ void parseInitialGuess(const int rank, setupAide &options,
   }
 }
 void parseRegularization(const int rank, setupAide &options,
-                         inipp::Ini *par, bool isScalar = false,
-                         bool isTemperature = false, string sidPar = "") {
+                         inipp::Ini *par, string parSection){
   int N;
   options.getArgs("POLYNOMIAL DEGREE", N);
   const bool isScalar = (parSection.find("temperature") != std::string::npos) ||
