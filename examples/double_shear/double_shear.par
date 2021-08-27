@@ -1,7 +1,3 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL] 
 numSteps = 2000
 polynomialOrder = 5
