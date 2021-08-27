@@ -44,7 +44,6 @@ SOFTWARE.
         s_dot[t] += x[id+offset]*y[id];
       }
     }
-
     @barrier("local");
 
 #if p_blockSize>512

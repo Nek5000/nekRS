@@ -41,7 +41,6 @@ SOFTWARE.
         s_norm[t] += x[id]*x[id];
       }
     }
-
     @barrier("local");
 
 #if p_blockSize>512
@@ -100,7 +99,6 @@ SOFTWARE.
         }
       }
     }
-
     @barrier("local");
 
 #if p_blockSize>512

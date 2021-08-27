@@ -93,7 +93,6 @@ SOFTWARE.
         s_wx2[t] = w[id]*sum;
       }
     }
-
     @barrier("local");
 #if p_blockSize>512
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<512) s_wx2[t] += s_wx2[t+512];
@@ -112,14 +111,19 @@ SOFTWARE.
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 32) s_wx2[t] += s_wx2[t+32];
     @barrier("local");
+
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_wx2[t] += s_wx2[t+16];
     @barrier("local");
+
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_wx2[t] += s_wx2[t+8];
     @barrier("local");
+
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_wx2[t] += s_wx2[t+4];
     @barrier("local");
+
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_wx2[t] += s_wx2[t+2];
     @barrier("local");
+
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) wx2[b] = s_wx2[0] + s_wx2[1];
   }
 }
