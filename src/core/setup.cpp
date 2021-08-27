@@ -361,12 +361,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
   }
 
-  if(platform->options.compareArgs("REGULARIZATION METHOD", "RELAXATION")){
+  if(platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "RELAXATION")){
 
     nrs->filterNc = -1;
     dfloat filterS;
-    platform->options.getArgs("HPFRT STRENGTH", filterS);
-    platform->options.getArgs("HPFRT MODES", nrs->filterNc);
+    platform->options.getArgs("VELOCITY HPFRT STRENGTH", filterS);
+    platform->options.getArgs("VELOCITY HPFRT MODES", nrs->filterNc);
     filterS = -1.0 * fabs(filterS);
     nrs->filterS = filterS;
 
@@ -723,6 +723,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->vOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
                           options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
     nrs->vOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("VELOCITY MAXIMUM ITERATIONS"));
+    nrs->vOptions.setArgs("STABILIZATION METHOD", options.getArgs("VELOCITY STABILIZATION METHOD"));
+    nrs->vOptions.setArgs("HPFRT STRENGTH", options.getArgs("VELOCITY HPFRT STRENGTH"));
+    nrs->vOptions.setArgs("HPFRT MODES", options.getArgs("VELOCITY HPFRT MODES"));
 
     nrs->mOptions = options;
     nrs->mOptions.setArgs("PGMRES RESTART",        options.getArgs("MESH PGMRES RESTART"));

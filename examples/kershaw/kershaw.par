@@ -10,7 +10,7 @@ residualTol = 1e-8+relative
 # p-MG multiplicative V-cycle, coarse grid solve
 preconditioner = multigrid+coarse
 coarseSolver = FEM+BoomerAMG #+Galerkin
-smootherType = Chebyshev+RAS+2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
+smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
 
 # p-MG, smooth on coarsest level rather than solve
 #preconditioner = pmg
