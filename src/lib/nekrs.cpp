@@ -85,7 +85,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
 
-  auto par = new inipp::Ini<char>();	  
+  auto par = new inipp::Ini();	  
   string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
 

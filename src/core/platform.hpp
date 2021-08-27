@@ -86,7 +86,7 @@ struct platform_t{
   deviceMemPool_t o_mempool;
   void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _comm);
-  inipp::Ini<char> *par;
+  inipp::Ini *par;
 
   static platform_t* getInstance(setupAide& _options, MPI_Comm _comm){
     if(!singleton)
