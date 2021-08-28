@@ -418,29 +418,29 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   osize.open(SIZE, std::ifstream::in);
   if(osize.is_open()) {
     writeSize = 0;
-    string line;
+    std::string line;
     while(getline( osize, line )) {
-      if(line.find( "lelg=") != string::npos ) {
+      if(line.find( "lelg=") != std::string::npos ) {
 	hlong oldval;      
         sscanf(line.c_str(), "%*[^=]=%lld", &oldval);
         if(oldval < lelg) writeSize = 1;
       }
-      if(line.find( "lelt=") != string::npos ) {
+      if(line.find( "lelt=") != std::string::npos ) {
 	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < lelt) writeSize = 1;
       }
-      if(line.find( "lx1m=") != string::npos ) {
+      if(line.find( "lx1m=") != std::string::npos ) {
 	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < lx1m) writeSize = 1;
       }
-      if(line.find( "lx1=") != string::npos ) {
+      if(line.find( "lx1=") != std::string::npos ) {
 	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval != lx1) writeSize = 1;
       }
-      if(line.find( "ldimt=") != string::npos ) {
+      if(line.find( "ldimt=") != std::string::npos ) {
 	int oldval;      
         sscanf(line.c_str(), "%*[^=]=%d", &oldval);
         if(oldval < ldimt) writeSize = 1;
@@ -581,14 +581,14 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
      fflush(stdout);
     }
 
-    string usrname;
+    std::string usrname;
     options->getArgs("CASENAME", usrname);
-    string meshFile;
+    std::string meshFile;
     options->getArgs("MESH FILE", meshFile);
 
     char buf[FILENAME_MAX];
     getcwd(buf, sizeof(buf));
-    string cwd;
+    std::string cwd;
     cwd.assign(buf);
 
     MPI_Fint nek_comm = MPI_Comm_c2f(c);
@@ -609,13 +609,13 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   nrs = nrs_in;
   MPI_Comm_rank(c,&rank);
 
-  string casename;
+  std::string casename;
   options->getArgs("CASENAME", casename);
 
   int nscal = 0;
   options->getArgs("NUMBER OF SCALARS", nscal);
 
-  string velocitySolver;
+  std::string velocitySolver;
   int flow = 1;
   if(options->compareArgs("VELOCITY", "FALSE")) flow = 0;
 
@@ -723,7 +723,7 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
     for(int is = 0; is < nscal; is++) {
       std::stringstream ss;
       ss << std::setfill('0') << std::setw(2) << is;
-      string sid = ss.str();
+      std::string sid = ss.str();
 
       int isTMesh = 0;
       if (cht && is == 0) isTMesh = 1;

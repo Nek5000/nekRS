@@ -27,7 +27,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   int N, cubN;
   int buildOnly = 0;
-  string install_dir;
+  std::string install_dir;
   if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   platform->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
@@ -80,21 +80,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     int rank, size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
-    string casename;
+    std::string casename;
     platform->options.getArgs("CASENAME", casename);
 
     if (!buildOnly) {
       nek::setup(comm, platform->options, nrs);
       nek::setic();
       nek::userchk();
-      if (platform->comm.mpiRank == 0) cout << "\n";
+      if (platform->comm.mpiRank == 0) std::cout << "\n";
     }
   }
 
   nrs->cht = 0;
   if (nekData.nelv != nekData.nelt && nrs->Nscalar) nrs->cht = 1;
   if (nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
-    if (platform->comm.mpiRank == 0) cout << "Conjugate heat transfer requires solving for temperature!\n"; 
+    if (platform->comm.mpiRank == 0) std::cout << "Conjugate heat transfer requires solving for temperature!\n"; 
     ABORT(EXIT_FAILURE);;
   } 
 
@@ -172,7 +172,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->weightsRK, rkb, nrs->nRK * sizeof(dfloat));
       memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }else{
-      if(platform->comm.mpiRank == 0) cout << "Unsupported subcycling scheme!\n";
+      if(platform->comm.mpiRank == 0) std::cout << "Unsupported subcycling scheme!\n";
       ABORT(1);
     }
     nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
@@ -276,14 +276,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (udf.loadKernels) {
     occa::properties* tmpKernelInfo = nrs->kernelInfo;
     nrs->kernelInfo = &kernelInfoBC;
-    if (platform->comm.mpiRank == 0) cout << "loading udf kernels ... ";
+    if (platform->comm.mpiRank == 0) std::cout << "loading udf kernels ... ";
     udf.loadKernels(nrs);
-    if (platform->comm.mpiRank == 0) cout << "done" << endl;
+    if (platform->comm.mpiRank == 0) std::cout << "done" << std::endl;
     nrs->kernelInfo = tmpKernelInfo;
   }
-  const string bcDataFile = install_dir + "/include/core/bcData.h";
+  const std::string bcDataFile = install_dir + "/include/core/bcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
-  string boundaryHeaderFileName;
+  std::string boundaryHeaderFileName;
   platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
   kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
@@ -373,9 +373,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   // build kernels
-  string fileName, kernelName;
-  const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/";
+  std::string fileName, kernelName;
+  const std::string suffix = "Hex3D";
+  const std::string oklpath = install_dir + "/okl/";
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
@@ -628,7 +628,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     for (int is = 0; is < cds->NSfields; is++) {
       std::stringstream ss;
       ss << std::setfill('0') << std::setw(2) << is;
-      string sid = ss.str();
+      std::string sid = ss.str();
  
       if(!cds->compute[is]) continue;
  
@@ -636,14 +636,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
       if (platform->comm.mpiRank == 0)
-        cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
+        std::cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
 
       int nbrBIDs = bcMap::size(0);
       if(nrs->cht && is == 0) nbrBIDs = bcMap::size(1);
       int* sBCType = (int*) calloc(nbrBIDs + 1, sizeof(int));
  
       for (int bID = 1; bID <= nbrBIDs; bID++) {
-        string bcTypeText(bcMap::text(bID, "scalar" + sid));
+        std::string bcTypeText(bcMap::text(bID, "scalar" + sid));
         if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
         sBCType[bID] = bcMap::type(bID, "scalar" + sid);
       }
@@ -685,7 +685,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     int* vBCType = uvwBCType + 1 * NBCType;
     int* wBCType = uvwBCType + 2 * NBCType;
     for (int bID = 1; bID <= nbrBIDs; bID++) {
-      string bcTypeText(bcMap::text(bID, "velocity"));
+      std::string bcTypeText(bcMap::text(bID, "velocity"));
       if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
 
       uBCType[bID] = bcMap::type(bID, "x-velocity");
@@ -906,7 +906,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;
     nrs->pSolver->loffset = 0;
 
-    string p_mglevels;
+    std::string p_mglevels;
     if(nrs->pOptions.getArgs("MULTIGRID COARSENING", p_mglevels)) {
       std::vector<std::string> mgLevelList;
       mgLevelList = serializeString(p_mglevels,',');
@@ -1013,7 +1013,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       int* vMeshBCType = uvwMeshBCType + 1 * NBCType;
       int* wMeshBCType = uvwMeshBCType + 2 * NBCType;
       for (int bID = 1; bID <= nbrBIDs; bID++) {
-        string bcTypeText(bcMap::text(bID, "mesh"));
+        std::string bcTypeText(bcMap::text(bID, "mesh"));
         if(platform->comm.mpiRank == 0) printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
 
         uMeshBCType[bID] = bcMap::type(bID, "x-mesh");
@@ -1102,7 +1102,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   cds->mesh[0]     = nrs->_mesh;
@@ -1173,7 +1173,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   for(int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
-    string sid = ss.str();
+    std::string sid = ss.str();
 
     if(options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) continue;
 
@@ -1216,7 +1216,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   for (int is = 0; is < cds->NSfields; is++) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << is;
-    string sid = ss.str();
+    std::string sid = ss.str();
 
     cds->compute[is] = 1;
     if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
@@ -1303,9 +1303,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   occa::properties kernelInfo = *nrs->kernelInfo;
   //kernelInfo["defines/" "p_NSfields"]  = cds->NSfields;
 
-  string fileName, kernelName;
-  const string suffix = "Hex3D";
-  const string oklpath = install_dir + "/okl/";
+  std::string fileName, kernelName;
+  const std::string suffix = "Hex3D";
+  const std::string oklpath = install_dir + "/okl/";
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();

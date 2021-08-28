@@ -99,13 +99,13 @@ occa::kernel udfBuildKernel(nrs_t* nrs, const char* function)
   
   MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
-  string install_dir;
+  std::string install_dir;
   occa::properties kernelInfo = *nrs->kernelInfo;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string bcDataFile = install_dir + "/include/core/bcData.h";
+  const std::string bcDataFile = install_dir + "/include/core/bcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
-  string oudf;
+  std::string oudf;
   platform->options.getArgs("DATA FILE", oudf);
 
   return platform->device.buildKernel(oudf.c_str(), function, kernelInfo);

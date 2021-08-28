@@ -126,10 +126,8 @@ public:
   matrix <T> inverse();
 };
 
-using namespace std;
-
 template <class T>
-ostream & operator << (ostream &os, matrix <T> & A);
+std::ostream & operator << (std::ostream &os, matrix <T> & A);
 
 template <class T>
 matrix <T> operator* (const matrix <T> & A, const matrix <T> &B);

@@ -44,7 +44,7 @@ void velRecycling::buildKernel(nrs_t* nrs)
   mesh_t* mesh = nrs->meshV;
   
 
-  string fileName;
+  std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/velRecycling.okl";

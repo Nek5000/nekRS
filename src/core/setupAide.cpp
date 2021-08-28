@@ -28,16 +28,9 @@
 
 #include "setupAide.hpp"
 
-using std::stringstream;
-using std::fstream;
-using std::string;
-using std::vector;
-using std::cout;
-using std::endl;
-
 setupAide::setupAide(){}
 
-setupAide::setupAide(string setupFile)
+setupAide::setupAide(std::string setupFile)
 {
   read(setupFile);
 }
@@ -61,7 +54,7 @@ setupAide& setupAide::operator = (const setupAide& sa){
   return *this;
 }
 
-string setupAide::readFile(string filename)
+std::string setupAide::readFile(std::string filename)
 {
   struct stat statbuf;
 
@@ -76,27 +69,27 @@ string setupAide::readFile(string filename)
   size_t status = fread(source, statbuf.st_size, 1, fh);
   source[statbuf.st_size] = '\0';
 
-  string ret = source;
+  std::string ret = source;
 
   return ret;
 }
 
-void setupAide::read(string setupFile)
+void setupAide::read(std::string setupFile)
 {
-  vector < string > data2;
-  vector < string > keyword2;
+  std::vector < std::string > data2;
+  std::vector < std::string > keyword2;
 
-  string args = readFile(setupFile);
+  std::string args = readFile(setupFile);
 
   int size = args.length();
-  string current = "";
-  stringstream ss;
+  std::string current = "";
+  std::stringstream ss;
   char c;
 
   for(int i = 0; i < size; i++) {
     c = args[i];
 
-    // Batch strings together
+    // Batch std::strings together
     if(c == '\'' || c == '"') {
       current += c;
       i++;
@@ -167,7 +160,7 @@ void setupAide::read(string setupFile)
   }
 }
 
-string setupAide::getArgs(string key)
+std::string setupAide::getArgs(std::string key)
 {
   for(int i = 0; i < keyword.size(); i++) // TW
     if(!( keyword[i].compare(key) ))
@@ -177,7 +170,7 @@ string setupAide::getArgs(string key)
   return "";
 }
 
-void setupAide::setArgs(string key, string value)
+void setupAide::setArgs(std::string key, std::string value)
 {
   for(int i = 0; i < keyword.size(); i++) // TW
     if(!( keyword[i].compare(key) )) {
@@ -191,10 +184,10 @@ void setupAide::setArgs(string key, string value)
   return;
 }
 
-int setupAide::getArgs(string key, vector < string >& m, string delimeter)
+int setupAide::getArgs(std::string key, std::vector < std::string >& m, std::string delimeter)
 {
-  string args, current;
-  vector < string > argv;
+  std::string args, current;
+  std::vector < std::string > argv;
   int argc, size;
 
   args = getArgs(key);
@@ -204,7 +197,7 @@ int setupAide::getArgs(string key, vector < string >& m, string delimeter)
   current = "";
 
   for(int i = 0; i < size; i++) { // TW
-    while( i < size && delimeter.find(args[i]) == string::npos )
+    while( i < size && delimeter.find(args[i]) == std::string::npos )
       current += args[i++];
 
     if(current.length())
@@ -227,13 +220,13 @@ int setupAide::getArgs(string key, vector < string >& m, string delimeter)
   return 1;
 }
 
-int setupAide::compareArgs(string key, string token)
+int setupAide::compareArgs(std::string key, std::string token)
 {
-  string foundToken;
+  std::string foundToken;
   if(getArgs(key,foundToken)) {
     if(foundToken == token)
       return 1;
-    if(foundToken.find(token) != string::npos)
+    if(foundToken.find(token) != std::string::npos)
       return 2;
   }
 

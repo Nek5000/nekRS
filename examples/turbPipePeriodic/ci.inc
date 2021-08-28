@@ -10,14 +10,14 @@ static int ciMode = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("3"));
-  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("POLYNOMIAL DEGREE", std::string("3"));
+  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
-  options.setArgs("VISCOSITY", std::to_string(1.0 / 19000.0));
-  options.setArgs("DENSITY", string("1"));
-  options.setArgs("END TIME", string("6e-1"));
-  options.setArgs("DT", string("6e-3"));
-  options.setArgs("SUBCYCLING STEPS", string("1"));
+  options.setArgs("VISCOSITY", std::to_std::string(1.0 / 19000.0));
+  options.setArgs("DENSITY", std::string("1"));
+  options.setArgs("END TIME", std::string("6e-1"));
+  options.setArgs("DT", std::string("6e-3"));
+  options.setArgs("SUBCYCLING STEPS", std::string("1"));
   options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
@@ -25,8 +25,8 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-6"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-4"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-6"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-4"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
 

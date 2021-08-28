@@ -250,7 +250,7 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   }
 
   occa::properties deviceProps;
-  string requestedOccaMode; 
+  std::string requestedOccaMode; 
   options.getArgs("THREAD MODEL", requestedOccaMode);
 
   if(strcasecmp(requestedOccaMode.c_str(), "CUDA") == 0) {

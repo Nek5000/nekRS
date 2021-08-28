@@ -34,8 +34,8 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties k
   
   mesh_t* mesh      = elliptic->mesh;
 
-  string suffix = "Hex3D";
-  string filename, kernelName;
+  std::string prefix = "Hex3D";
+  std::string filename, kernelName;
 
   kernelInfo["defines/pfloat"] = pfloatString;
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
@@ -44,7 +44,7 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties k
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   MPI_Barrier(platform->comm.mpiComm);
@@ -55,8 +55,8 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties k
   const std::string orderSuffix = std::string("_") + std::to_string(mesh->N);
 
   {
-      const string oklpath = install_dir + "/okl/core/";
-      string filename;
+      const std::string oklpath = install_dir + "/okl/core/";
+      std::string filename;
 
       filename = oklpath + "mask.okl";
       mesh->maskKernel =

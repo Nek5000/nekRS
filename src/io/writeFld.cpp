@@ -21,7 +21,7 @@ void writeFld(nrs_t *nrs, dfloat t, int outXYZ, int FP64)
 
 void writeFld(nrs_t *nrs, dfloat t) 
 {
-  string precision;
+  std::string precision;
   platform->options.getArgs("CHECKPOINT PRECISION", precision);
   int FP64 = 0;
   if(precision == "DP") FP64 = 1;

@@ -10,33 +10,33 @@ static int ciMode = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("7"));
-  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
+  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
-  options.setArgs("NUMBER OF SCALARS", string("1"));
-  options.setArgs("END TIME", string("0.1"));
-  options.setArgs("DT", string("1e-3"));
-  options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("NUMBER OF SCALARS", std::string("1"));
+  options.setArgs("END TIME", std::string("0.1"));
+  options.setArgs("DT", std::string("1e-3"));
+  options.setArgs("SUBCYCLING STEPS", std::string("0"));
   options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-09"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
-  options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-09"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-10"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("MESH SOLVER", "USER");
   
   if(ciMode == 2){
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
   }
   if(ciMode == 3){
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("MESH INITIAL GUESS", "PREVIOUS");
     options.setArgs("MESH SOLVER", "ELASTICITY");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
   }
   if(ciMode == 4){
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("MESH SOLVER", "ELASTICITY");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
   }

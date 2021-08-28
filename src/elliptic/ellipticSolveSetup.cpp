@@ -75,10 +75,10 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   if(options.compareArgs("KRYLOV SOLVER", "PGMRES")){
     initializeGmresData(elliptic);
-    string install_dir;
+    std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    const string oklpath = install_dir + "/okl/elliptic/";
-    string filename;
+    const std::string oklpath = install_dir + "/okl/elliptic/";
+    std::string filename;
 
     occa::properties gmresKernelInfo = platform->kernelInfo;
     gmresKernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
@@ -261,8 +261,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
 
   elliptic->precon = new precon_t();
 
-  string suffix = "Hex3D";
-  string filename, kernelName;
+  std::string suffix = "Hex3D";
+  std::string filename, kernelName;
 
   kernelInfo["defines/pfloat"] = pfloatString;
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
@@ -271,7 +271,7 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   pfloatKernelInfo["defines/dfloat"] = pfloatString;
   pfloatKernelInfo["defines/pfloat"] = pfloatString;
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   MPI_Barrier(platform->comm.mpiComm);
@@ -280,8 +280,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   fflush(stdout);
 
   {
-      const string oklpath = install_dir + "/okl/core/";
-      string filename;
+      const std::string oklpath = install_dir + "/okl/core/";
+      std::string filename;
 
       filename = oklpath + "mask.okl";
       mesh->maskKernel =
@@ -302,8 +302,8 @@ void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo)
   occa::properties AxKernelInfo = dfloatKernelInfo;
 
   {
-      const string oklpath = install_dir + "/okl/elliptic/";
-      string filename;
+      const std::string oklpath = install_dir + "/okl/elliptic/";
+      std::string filename;
 
       filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;

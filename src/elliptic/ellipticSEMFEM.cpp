@@ -140,7 +140,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
       ABORT(1);
     } 
       
-    string configFile;
+    std::string configFile;
     elliptic->options.getArgs("AMGX CONFIG FILE", configFile);
     char *cfg = NULL;
     if(configFile.size()) cfg = (char*) configFile.c_str();

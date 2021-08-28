@@ -58,7 +58,7 @@ void UDF_Setup(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
   udf.sEqnSource = &userq;
-  if(platform->options.compareArgs("MOVING MESH", string("TRUE"))) {
+  if(platform->options.compareArgs("MOVING MESH", std::string("TRUE"))) {
     o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
     o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
     o_z0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_z);
@@ -77,7 +77,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->fieldOffset[0]*sizeof(dfloat));
   }
 
-  if(platform->options.compareArgs("MOVING MESH", string("TRUE")))
+  if(platform->options.compareArgs("MOVING MESH", std::string("TRUE")))
     userMeshVelocityKernel(
       mesh->Nlocal,
       nrs->fieldOffset,

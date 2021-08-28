@@ -78,11 +78,11 @@ void coarseSolver::setup(
     printf("Setting up coarse solver...");fflush(stdout);
 
   {
-    string install_dir;
+    std::string install_dir;
     install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    const string oklpath = install_dir + "/okl/";
-    string fileName = oklpath + "parAlmond/convertFP64ToFP32.okl";
-    string kernelName = "convertFP64ToFP32";
+    const std::string oklpath = install_dir + "/okl/";
+    std::string fileName = oklpath + "parAlmond/convertFP64ToFP32.okl";
+    std::string kernelName = "convertFP64ToFP32";
     convertFP64ToFP32Kernel = platform->device.buildKernel(
       fileName,
       kernelName,
@@ -168,7 +168,7 @@ void coarseSolver::setup(
       MPI_Barrier(platform->comm.mpiComm);
       ABORT(1);
     } 
-    string configFile;
+    std::string configFile;
     options.getArgs("AMGX CONFIG FILE", configFile);
     char *cfg = NULL;
     if(configFile.size()) cfg = (char*) configFile.c_str();

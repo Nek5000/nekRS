@@ -885,10 +885,10 @@ void MGLevel::build(
   free(casted_Sz);
   free(casted_D);
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
-  string filename, kernelName;
+  const std::string oklpath = install_dir + "/okl/elliptic/";
+  std::string filename, kernelName;
 
   {
       occa::properties properties = platform->kernelInfo;

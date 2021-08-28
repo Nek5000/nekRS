@@ -73,7 +73,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
                                        mesh->o_DT);
   }
 
-  string suffix;
+  std::string suffix;
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
@@ -82,11 +82,11 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 
   kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
 
-  string filename, kernelName;
+  std::string filename, kernelName;
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
+  const std::string oklpath = install_dir + "/okl/elliptic/";
 
   {
       occa::properties AxKernelInfo = kernelInfo;

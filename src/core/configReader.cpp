@@ -24,16 +24,16 @@ void configRead(MPI_Comm comm)
   char* nekrs_home = getenv("NEKRS_HOME");
   if (nekrs_home == nullptr) {
     if (rank == 0)
-      cout << "\nERROR: The environment variable NEKRS_HOME is not defined!\n";
+      std::cout << "\nERROR: The environment variable NEKRS_HOME is not defined!\n";
     EXIT(1);
   }
-  string install_dir{nekrs_home};
-  string configFile = install_dir + "/nekrs.conf";
+  std::string install_dir{nekrs_home};
+  std::string configFile = install_dir + "/nekrs.conf";
 
   const char* ptr = realpath(configFile.c_str(), NULL);
   if (!ptr) {
     if (rank == 0) 
-      cout << "\nERROR: Cannot find " << configFile << "!\n";
+      std::cout << "\nERROR: Cannot find " << configFile << "!\n";
     EXIT(1);
   }
 
@@ -51,14 +51,14 @@ void configRead(MPI_Comm comm)
   MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
   if(rank != 0) rbuf = new char[fsize];
   MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
-  stringstream is;
+  std::stringstream is;
   is.write(rbuf, fsize);
 
   inipp::Ini ini;
   ini.parse(is, false);
   ini.interpolate();
 
-  string buf;
+  std::string buf;
   ini.extract("general", "cxx", buf);
   setenv("NEKRS_CXX", buf.c_str(), 1);
 

@@ -63,7 +63,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     for(int i = 0; i < numMGLevels; ++i)
       levelDegree[i] = elliptic->levels[i];
   } else {
-    cout << "Unknown coarsening type!";
+    std::cout << "Unknown coarsening type!";
     MPI_Abort(platform->comm.mpiComm, 1);
   }
 

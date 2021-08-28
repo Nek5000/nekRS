@@ -227,20 +227,20 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   occa::properties kernelInfo = ellipticKernelInfo(mesh);
 
-  string suffix;
+  std::string suffix;
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
-  string filename, kernelName;
+  std::string filename, kernelName;
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
   if(platform->comm.mpiRank == 0) printf("loading elliptic MG kernels ... ");
   fflush(stdout);
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
+  const std::string oklpath = install_dir + "/okl/elliptic/";
   ellipticBuildPreconditionerKernels(elliptic, kernelInfo);
 
   {

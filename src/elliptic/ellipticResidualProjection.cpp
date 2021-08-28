@@ -180,10 +180,10 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
     Nfields * fieldOffset
     , sizeof(dfloat));
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
-  string filename, kernelName;
+  const std::string oklpath = install_dir + "/okl/elliptic/";
+  std::string filename, kernelName;
 
   {
     occa::properties properties = platform->kernelInfo;

@@ -27,10 +27,10 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
   if(nrs->Nscalar){
     cds_t* cds = nrs->cds;
     for(int is = 0 ; is < cds->NSfields; ++is){
-      string regularizationMethod;
+      std::string regularizationMethod;
       cds->options[is].getArgs("REGULARIZATION METHOD", regularizationMethod);
-      const bool applyAVM = regularizationMethod.find("HPF_RESIDUAL") != string::npos
-        || regularizationMethod.find("HIGHEST_MODAL_DECAY") != string::npos;
+      const bool applyAVM = regularizationMethod.find("HPF_RESIDUAL") != std::string::npos
+        || regularizationMethod.find("HIGHEST_MODAL_DECAY") != std::string::npos;
       if(applyAVM){
         avm::apply(nrs, timeNew, is, cds->o_S);
       }
@@ -1571,7 +1571,7 @@ void printInfo(
 
   if (cfl > 30 || std::isnan(cfl)) {
     if (platform->comm.mpiRank == 0)
-      cout << "Unreasonable CFL! Dying ...\n" << endl;
+      std::cout << "Unreasonable CFL! Dying ...\n" << std::endl;
     ABORT(1);
   }
 

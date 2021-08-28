@@ -10,19 +10,19 @@ static int ciMode = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("9"));
-  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("POLYNOMIAL DEGREE", std::string("9"));
+  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
-  options.setArgs("VISCOSITY", string("0.01"));
-  options.setArgs("DENSITY", string("1"));
-  options.setArgs("NUMBER OF SCALARS", string("2"));
-  options.setArgs("SCALAR00 DIFFUSIVITY", string("0.01"));
-  options.setArgs("SCALAR00 DENSITY", string("1"));
-  options.setArgs("SCALAR01 DIFFUSIVITY", string("0.01"));
-  options.setArgs("SCALAR01 DENSITY", string("1"));
-  options.setArgs("END TIME", string("0.06"));
-  options.setArgs("DT", string("2e-3"));
-  options.setArgs("SUBCYCLING STEPS", string("0"));
+  options.setArgs("VISCOSITY", std::string("0.01"));
+  options.setArgs("DENSITY", std::string("1"));
+  options.setArgs("NUMBER OF SCALARS", std::string("2"));
+  options.setArgs("SCALAR00 DIFFUSIVITY", std::string("0.01"));
+  options.setArgs("SCALAR00 DENSITY", std::string("1"));
+  options.setArgs("SCALAR01 DIFFUSIVITY", std::string("0.01"));
+  options.setArgs("SCALAR01 DENSITY", std::string("1"));
+  options.setArgs("END TIME", std::string("0.06"));
+  options.setArgs("DT", std::string("2e-3"));
+  options.setArgs("SUBCYCLING STEPS", std::string("0"));
   options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("VELOCITY BLOCK SOLVER", "FALSE");
@@ -31,7 +31,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 3) {
@@ -39,45 +39,45 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 4) {
-    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
   }
   if (ciMode == 5) {
-    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-    options.setArgs("SUBCYCLING STEPS", string("0"));
-    options.setArgs("MOVING MESH", string("TRUE"));
+    options.setArgs("SUBCYCLING STEPS", std::string("0"));
+    options.setArgs("MOVING MESH", std::string("TRUE"));
   }
   if (ciMode == 6) {
-    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-    options.setArgs("SUBCYCLING STEPS", string("1"));
-    options.setArgs("MOVING MESH", string("TRUE"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
+    options.setArgs("MOVING MESH", std::string("TRUE"));
   }
   if (ciMode == 7) {
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("PRESSURE MAXIMUM ITERATIONS", "1000");
     options.setArgs("PRESSURE PRECONDITIONER", "JACOBI");
-    options.setArgs("END TIME", string("0.012"));
+    options.setArgs("END TIME", std::string("0.012"));
   }
   if (ciMode == 8) {
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
     options.setArgs("VELOCITY INITIAL GUESS", "PROJECTION-ACONJ");
-    options.setArgs("END TIME", string("0.2"));
+    options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VARIABLE DT", "TRUE");
     options.setArgs("TARGET CFL", "0.5");
   }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-12"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
-  options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
-  options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-10"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
+  options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
 }
 

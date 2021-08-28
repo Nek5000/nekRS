@@ -50,7 +50,7 @@ void avg::buildKernel(nrs_t* nrs)
   mesh_t* mesh = nrs->meshV;
   
 
-  string fileName;
+  std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
@@ -93,7 +93,7 @@ void avg::EXY(dlong N,
 void avg::run(dfloat time)
 {
   if(!setupCalled || !buildKernelCalled) {
-    cout << "avg::run() was called prior to avg::setup()!\n";
+    std::cout << "avg::run() was called prior to avg::setup()!\n";
     ABORT(1);
   }
 
@@ -145,7 +145,7 @@ void avg::run(dfloat time)
 void avg::setup(nrs_t* nrs_)
 {
   if(!buildKernelCalled) {
-    cout << "avg::setup() was called prior avg::buildKernel()!\n";
+    std::cout << "avg::setup() was called prior avg::buildKernel()!\n";
     ABORT(1);
   }
 

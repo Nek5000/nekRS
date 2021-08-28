@@ -67,7 +67,7 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
 
   MPI_Barrier(comm);
@@ -76,8 +76,8 @@ void buildParAlmondKernels(MPI_Comm comm, occa::device device){
 
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
-      const string oklpath = install_dir + "/okl/parAlmond/";
-      string filename;
+      const std::string oklpath = install_dir + "/okl/parAlmond/";
+      std::string filename;
 
       filename = oklpath + "vectorDotStar.okl";
       vectorDotStarKernel1 = device.buildKernel(filename, "vectorDotStar1", kernelInfo);

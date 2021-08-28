@@ -64,7 +64,7 @@ void linAlg_t::setup() {
 
   reallocScratch(blocksize * sizeof(dfloat));
 
-  string oklDir;
+  std::string oklDir;
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
   oklDir += "/okl/linAlg/";
 

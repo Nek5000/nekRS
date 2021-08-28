@@ -9,18 +9,18 @@ static int ciMode = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("7"));
-  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
+  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
-  options.setArgs("END TIME", string("10"));
-  options.setArgs("DT", string("2e-2"));
-  options.setArgs("SUBCYCLING STEPS", string("0"));
-  if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", string("1"));
+  options.setArgs("END TIME", std::string("10"));
+  options.setArgs("DT", std::string("2e-2"));
+  options.setArgs("SUBCYCLING STEPS", std::string("0"));
+  if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", std::string("1"));
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-06"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-04"));
-  options.setArgs("SCALAR01 SOLVER TOLERANCE", string("1e-06"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-06"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-04"));
+  options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-06"));
   options.setArgs("VARIABLEPROPERTIES", "TRUE");
 }
 

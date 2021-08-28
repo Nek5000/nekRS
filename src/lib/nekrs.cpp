@@ -24,22 +24,22 @@ static dfloat lastOutputTime = 0;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
-static void setOccaVars(string dir);
+static void setOccaVars(std::string dir);
 static void setOUDF(setupAide &options);
 static void dryRun(setupAide &options, int npTarget);
 
 void printHeader()
 {
-  cout << R"(                 __    ____  _____)" << endl
-       << R"(   ____   ___   / /__ / __ \/ ___/)" << endl
-       << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << endl
-       << R"( / / / //  __// ,<  / _, _/___/ / )" << endl
+  std::cout << R"(                 __    ____  _____)" << std::endl
+       << R"(   ____   ___   / /__ / __ \/ ___/)" << std::endl
+       << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << std::endl
+       << R"( / / / //  __// ,<  / _, _/___/ / )" << std::endl
        << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
        << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
-       << " (" << GITCOMMITHASH << ")" << endl
-       << endl
-       << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << endl
-       << endl;
+       << " (" << GITCOMMITHASH << ")" << std::endl
+       << std::endl
+       << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << std::endl
+       << std::endl;
 }
 
 namespace nekrs
@@ -52,8 +52,8 @@ double startTime(void)
 }
 
 void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
-           int ciMode, string cacheDir, string _setupFile,
-           string _backend, string _deviceID)
+           int ciMode, std::string cacheDir, std::string _setupFile,
+           std::string _backend, std::string _deviceID)
 {
   if(buildOnly) {
     int rank, size;
@@ -76,18 +76,18 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
 
   auto par = new inipp::Ini();	  
-  string setupFile = _setupFile + ".par";
+  std::string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
 
   setOccaVars(cacheDir);
 
   if (rank == 0) {
     printHeader();
-    cout << "MPI tasks: " << size << endl << endl;
-    string install_dir;
+    std::cout << "MPI tasks: " << size << std::endl << std::endl;
+    std::string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
-    cout << "using NEKRS_HOME: " << install_dir << endl;
-    cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
+    std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
+    std::cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << std::endl << std::endl;
   }
 
   options.setArgs("BUILD ONLY", "FALSE");
@@ -117,7 +117,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform->linAlg = linAlg_t::getInstance();
 
   // jit compile udf
-  string udfFile;
+  std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
@@ -129,7 +129,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode)
-    cout << "enabling continous integration mode " << ciMode << "\n";
+    std::cout << "enabling continous integration mode " << ciMode << "\n";
 
   nek::bootstrap(comm, options);
 
@@ -154,9 +154,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
-    cout << "\nsettings:\n" << endl << options << endl;
-    cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << endl;
-    cout << "initialization took " << setupTime << " s" << endl;
+    std::cout << "\nsettings:\n" << std::endl << options << std::endl;
+    std::cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << std::endl;
+    std::cout << "initialization took " << setupTime << " s" << std::endl;
   }
   fflush(stdout);
 
@@ -320,7 +320,7 @@ void processUpdFile()
   long fsize = 0;
 
   if (rank == 0) {
-    const string cmdFile = "nekrs.upd";
+    const std::string cmdFile = "nekrs.upd";
     const char* ptr = realpath(cmdFile.c_str(), NULL);
     if (ptr) {
       if(rank == 0) std::cout << "processing " << cmdFile << " ...\n";
@@ -339,37 +339,37 @@ void processUpdFile()
   if (fsize) {
     if(rank != 0) rbuf = new char[fsize];
     MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
-    stringstream is;
+    std::stringstream is;
     is.write(rbuf, fsize);
     inipp::Ini ini;
     ini.parse(is, false);
 
-    string end;
+    std::string end;
     ini.extract("", "end", end);
     if (end == "true") {
       enforceLastStep = 1; 
       platform->options.setArgs("END TIME", "-1");
     }
 
-    string checkpoint;
+    std::string checkpoint;
     ini.extract("", "checkpoint", checkpoint);
     if (checkpoint == "true") enforceOutputStep = 1; 
 
-    string endTime;
+    std::string endTime;
     ini.extract("general", "endtime", endTime);
     if (!endTime.empty()) {
       if (rank == 0) std::cout << "  set endTime = " << endTime << "\n";
       platform->options.setArgs("END TIME", endTime);
     }
 
-    string numSteps;
+    std::string numSteps;
     ini.extract("general", "numsteps", numSteps);
     if (!numSteps.empty()) {
       if (rank == 0) std::cout << "  set numSteps = " << numSteps << "\n";
       platform->options.setArgs("NUMBER TIMESTEPS", numSteps);
     }
 
-    string writeInterval;
+    std::string writeInterval;
     ini.extract("general", "writeinterval", writeInterval);
     if(!writeInterval.empty()) {
       if(rank == 0) std::cout << "  set writeInterval = " << writeInterval << "\n";
@@ -384,9 +384,9 @@ void processUpdFile()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  cout << "performing dry-run to jit-compile for >="
+  std::cout << "performing dry-run to jit-compile for >="
        << npTarget 
-       << " MPI tasks ...\n" << endl;
+       << " MPI tasks ...\n" << std::endl;
   fflush(stdout);	
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
@@ -395,7 +395,7 @@ static void dryRun(setupAide &options, int npTarget)
   platform->linAlg = linAlg_t::getInstance();
 
   // jit compile udf
-  string udfFile;
+  std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
@@ -415,7 +415,7 @@ static void dryRun(setupAide &options, int npTarget)
   platform_t* platform = platform_t::getInstance();
   nrsSetup(comm, options, nrs);
 
-  cout << "\nBuild successful." << endl;
+  std::cout << "\nBuild successful." << std::endl;
 }
 
 static void setOUDF(setupAide &options)
@@ -427,17 +427,17 @@ static void setOUDF(setupAide &options)
 
   char* ptr = realpath(oklFile.c_str(), NULL);
   if(!ptr) {
-    if (rank == 0) cout << "ERROR: Cannot find " << oklFile << "!\n";
+    if (rank == 0) std::cout << "ERROR: Cannot find " << oklFile << "!\n";
     ABORT(EXIT_FAILURE);;
   }
   free(ptr);
 
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-  string casename;
+  std::string casename;
   options.getArgs("CASENAME", casename);
-  const string dataFileDir = cache_dir + "/udf/";
-  const string dataFile = dataFileDir + "udf.okl";
+  const std::string dataFileDir = cache_dir + "/udf/";
+  const std::string dataFile = dataFileDir + "udf.okl";
 
   if (rank == 0) {
     mkdir(dataFileDir.c_str(), S_IRWXU);
@@ -493,12 +493,12 @@ static void setOUDF(setupAide &options)
   options.setArgs("DATA FILE", dataFile);
 }
 
-static void setOccaVars(string dir)
+static void setOccaVars(std::string dir)
 {
   char buf[FILENAME_MAX];
   char * ret = getcwd(buf, sizeof(buf));
   if(!ret) ABORT(EXIT_FAILURE);;
-  string cwd;
+  std::string cwd;
   cwd.assign(buf);
 
   if (dir.empty())
@@ -507,7 +507,7 @@ static void setOccaVars(string dir)
     sprintf(buf,"%s/%s", cwd.c_str(), dir.c_str());
 
   setenv("NEKRS_CACHE_DIR", buf, 1);
-  string cache_dir;
+  std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
   if (rank == 0) mkdir(cache_dir.c_str(), S_IRWXU);
   MPI_Barrier(comm);
@@ -515,7 +515,7 @@ static void setOccaVars(string dir)
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
 
-  string install_dir;
+  std::string install_dir;
   install_dir.assign(getenv("NEKRS_HOME"));
 
   if (!getenv("OCCA_DIR"))

@@ -14,10 +14,10 @@
 #define NEUMANN 2
 
 // stores for every (field, boundaryID) pair a bcID
-static std::map<std::pair<string, int>, int> bToBc;
+static std::map<std::pair<std::string, int>, int> bToBc;
 static int nbid[] = {0, 0};
 
-static std::map<string, int> vBcTextToID = {
+static std::map<std::string, int> vBcTextToID = {
   {"periodic", 0},
   {"zerovalue", 1},
   {"fixedvalue", 2},
@@ -27,7 +27,7 @@ static std::map<string, int> vBcTextToID = {
   {"zerozvalue/zerogradient", 6}
 };
 
-static std::map<int, string> vBcIDToText = {
+static std::map<int, std::string> vBcIDToText = {
   {0, "periodic"               },
   {1, "zeroValue"              },
   {2, "fixedValue"             },
@@ -37,28 +37,28 @@ static std::map<int, string> vBcIDToText = {
   {6, "zeroZValue/zeroGradient"}
 };
 
-static std::map<string, int> sBcTextToID = {
+static std::map<std::string, int> sBcTextToID = {
   {"periodic", 0},
   {"fixedvalue", 1},
   {"zerogradient", 2},
   {"fixedgradient", 3}
 };
 
-static std::map<int, string> sBcIDToText = {
+static std::map<int, std::string> sBcIDToText = {
   {0, "periodic"     },
   {1, "fixedValue"   },
   {2, "zeroGradient" },
   {3, "fixedGradient"}
 };
 
-static void v_setup(string s);
-static void m_setup(string s);
-static void s_setup(string s);
+static void v_setup(std::string s);
+static void m_setup(std::string s);
+static void s_setup(std::string s);
 
-static void m_setup(string field, std::vector<std::string> slist)
+static void m_setup(std::string field, std::vector<std::string> slist)
 {
   for(int i = 0; i < slist.size(); i++) {
-    string key = slist[i];
+    std::string key = slist[i];
     if (key.compare("p") == 0) key = "periodic";
     if (key.compare("w") == 0) key = "zerovalue";
     if (key.compare("wall") == 0) key = "zerovalue";
@@ -76,7 +76,7 @@ static void m_setup(string field, std::vector<std::string> slist)
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
-      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
       ABORT(1);
     }
 
@@ -86,15 +86,15 @@ static void m_setup(string field, std::vector<std::string> slist)
     }
     catch (const std::out_of_range& oor)
     {
-      cout << "Out of Range error: " << oor.what() << "!\n";
+      std::cout << "Out of Range error: " << oor.what() << "!\n";
       ABORT(1);
     }
   }
 }
-static void v_setup(string field, std::vector<std::string> slist)
+static void v_setup(std::string field, std::vector<std::string> slist)
 {
   for(int i = 0; i < slist.size(); i++) {
-    string key = slist[i];
+    std::string key = slist[i];
     if (key.compare("p") == 0) key = "periodic";
     if (key.compare("w") == 0) key = "zerovalue";
     if (key.compare("wall") == 0) key = "zerovalue";
@@ -111,7 +111,7 @@ static void v_setup(string field, std::vector<std::string> slist)
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
-      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
       ABORT(1);
     }
 
@@ -121,16 +121,16 @@ static void v_setup(string field, std::vector<std::string> slist)
     }
     catch (const std::out_of_range& oor)
     {
-      cout << "Out of Range error: " << oor.what() << "!\n";
+      std::cout << "Out of Range error: " << oor.what() << "!\n";
       ABORT(1);
     }
   }
 }
 
-static void s_setup(string field, std::vector<std::string> slist)
+static void s_setup(std::string field, std::vector<std::string> slist)
 {
   for(int i = 0; i < slist.size(); i++) {
-    string key = slist[i];
+    std::string key = slist[i];
     if (key.compare("p") == 0) key = "periodic";
     if (key.compare("t") == 0) key = "fixedvalue";
     if (key.compare("inlet") == 0) key = "fixedvalue";
@@ -144,7 +144,7 @@ static void s_setup(string field, std::vector<std::string> slist)
     if (key.compare("o") == 0) key = "zerogradient";
 
     if (sBcTextToID.find(key) == sBcTextToID.end()) {
-      cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
+      std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
       ABORT(1);
     }
 
@@ -154,7 +154,7 @@ static void s_setup(string field, std::vector<std::string> slist)
     }
     catch (const std::out_of_range& oor)
     {
-      cout << "Out of Range error: " << oor.what() << "!\n";
+      std::cout << "Out of Range error: " << oor.what() << "!\n";
       ABORT(1);
     }
   }
@@ -162,7 +162,7 @@ static void s_setup(string field, std::vector<std::string> slist)
 
 namespace bcMap
 {
-void setup(std::vector<std::string> slist, string field)
+void setup(std::vector<std::string> slist, std::string field)
 {
   if (slist.size() == 0 || slist[0].compare("none") == 0) return;
 
@@ -177,14 +177,14 @@ void setup(std::vector<std::string> slist, string field)
     s_setup(field, slist);
 }
 
-int id(int bid, string field)
+int id(int bid, std::string field)
 {
   if (bid < 1) return NOTBOUNDARY;
 
   return bToBc[{field, bid - 1}];
 }
 
-int type(int bid, string field)
+int type(int bid, std::string field)
 {
   if (bid < 1) return NOTBOUNDARY;
 
@@ -251,12 +251,12 @@ int type(int bid, string field)
     if (bcID == 3) return NEUMANN;
   }
 
-  cout << __func__ << "(): Unexpected error occured!" << endl;
+  std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
   ABORT(1);
   return 0;
 }
 
-string text(int bid, string field)
+std::string text(int bid, std::string field)
 {
   if (bid < 1) return std::string();
 
@@ -270,7 +270,7 @@ string text(int bid, string field)
     return sBcIDToText[bcID];
 
 
-  cout << __func__ << "(): Unexpected error occured!" << endl;
+  std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
   ABORT(1);
   return 0;
 }
@@ -311,7 +311,7 @@ void check(mesh_t* mesh)
   }
 }
 
-void setBcMap(string field, int* map, int nIDs)
+void setBcMap(std::string field, int* map, int nIDs)
 {
   if (field.compare(0, 8, "scalar00") == 0)
     nbid[1] = nIDs;
@@ -324,7 +324,7 @@ void setBcMap(string field, int* map, int nIDs)
   }
   catch (const std::out_of_range& oor)
   {
-    cout << "Out of Range error: " << oor.what() << "!\n";
+    std::cout << "Out of Range error: " << oor.what() << "!\n";
     ABORT(1);
   }
 }

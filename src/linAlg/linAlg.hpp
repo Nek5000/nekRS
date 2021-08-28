@@ -31,8 +31,6 @@ SOFTWARE.
 
 //#define ENABLE_TIMER
 
-using std::string;
-
 class linAlg_t {
 private:
   occa::properties kernelInfo;

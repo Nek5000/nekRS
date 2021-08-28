@@ -191,9 +191,9 @@ struct nrs_t
 #include "io.hpp"
 
 // std::to_string might be not accurate enough
-static string to_string_f(double a)
+static std::string to_string_f(double a)
 {
-  stringstream s;
+  std::stringstream s;
   s << std::scientific << a;
   return s.str();
 }
@@ -201,7 +201,7 @@ static string to_string_f(double a)
 static std::vector<std::string> serializeString(const std::string sin, char dlim)
 {
   std::vector<std::string> slist;
-  string s(sin);
+  std::string s(sin);
   s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
   std::stringstream ss;
   ss.str(s);
