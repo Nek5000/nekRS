@@ -74,6 +74,11 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   configRead(comm);
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
+
+  auto par = new inipp::Ini();	  
+  string setupFile = _setupFile + ".par";
+  options = parRead((void*) par, setupFile, comm);
+
   setOccaVars(cacheDir);
 
   if (rank == 0) {
@@ -84,11 +89,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     cout << "using NEKRS_HOME: " << install_dir << endl;
     cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << endl << endl;
   }
-
-  nrs = new nrs_t();
-  auto par = new inipp::Ini();	  
-  string setupFile = _setupFile + ".par";
-  options = parRead((void*) par, setupFile, comm);
 
   options.setArgs("BUILD ONLY", "FALSE");
   if(buildOnly) options.setArgs("BUILD ONLY", "TRUE");
@@ -104,6 +104,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
   platform->par = par;
+
+  nrs = new nrs_t();
 
   if (buildOnly) {
     dryRun(options, commSizeTarget);
