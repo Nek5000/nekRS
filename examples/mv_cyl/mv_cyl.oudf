@@ -1,9 +1,8 @@
-#include <casedata.h>
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
   bc->u = 0.0;
-  bc->v = P_AMP*sin(P_OMEGA*bc->time);
+  bc->v = p_AMP*sin(p_OMEGA*bc->time);
   bc->w = 0.0;
 }
 

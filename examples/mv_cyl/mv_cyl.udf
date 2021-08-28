@@ -4,14 +4,20 @@
 #include <math.h>
 #include "udf.hpp"
 #include "plugins/lowMach.hpp"
-#include "casedata.h"
 
 #include "ci.inc"
 
-static constexpr int meshSolverMode = 3;
-
 static occa::kernel userVpKernel;
 static occa::kernel userMeshVelocityKernel;
+static dfloat XLEN;
+static dfloat YLEN;
+static dfloat ZLEN;
+
+static dfloat P_GAMMA;
+static dfloat P_DELTA;
+static dfloat P_PI;
+static dfloat P_OMEGA;
+static dfloat P_AMP;
  
 void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
@@ -60,6 +66,25 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "xlen",XLEN);
+  platform->par->extract("casedata", "ylen",YLEN);
+  platform->par->extract("casedata", "zlen",ZLEN);
+  platform->par->extract("casedata", "p_gamma",P_GAMMA);
+  platform->par->extract("casedata", "p_delta",P_DELTA);
+  platform->par->extract("casedata", "p_pi",P_PI);
+  platform->par->extract("casedata", "p_omega",P_OMEGA);
+  platform->par->extract("casedata", "p_amp",P_AMP);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = XLEN;
+    nek_cb_scnrs[1] = YLEN;
+    nek_cb_scnrs[2] = ZLEN;
+    nek_cb_scnrs[3] = P_GAMMA;
+    nek_cb_scnrs[4] = P_DELTA;
+    nek_cb_scnrs[5] = P_PI;
+    nek_cb_scnrs[6] = P_OMEGA;
+    nek_cb_scnrs[7] = P_AMP;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)

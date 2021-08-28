@@ -34,8 +34,8 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
 
-  platform->par->extract("caseparams", "re_tau",Re_tau);
-  platform->par->extract("caseparams", "zlength",zLength);
+  platform->par->extract("casedata", "re_tau",Re_tau);
+  platform->par->extract("casedata", "zlength",zLength);
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");

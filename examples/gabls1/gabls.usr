@@ -1,5 +1,3 @@
-#include "casedata.h"
-
 #define INTP_NMAX 200 /* number of sample points for 1D profile */
 #define PI (4.*atan(1.))
 
@@ -20,6 +18,36 @@ c-----------------------------------------------------------------------
       common /WFPAR/ gacc
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
+      COMMON /SCNRS/ sc_nrs(20)
+      real               sc_nrs
+      real NLAT
+      real UREF
+      real LREF
+      real TREF
+      real TS0
+      real SCR
+      real ILSTRENGTH
+      integer NUMBER_ELEMENTS_X
+      integer NUMBER_ELEMENTS_Y
+      integer NUMBER_ELEMENTS_Z
+      real XLEN
+      real YLEN
+      real ZLEN
+      real BETAM
+      NLAT              =     sc_nrs(2)
+      UREF              =     sc_nrs(3)
+      LREF              =     sc_nrs(4)
+      TREF              =     sc_nrs(5)
+      TS0               =     sc_nrs(6)
+      SCR               =     sc_nrs(7)
+      ILSTRENGTH        =     sc_nrs(8)
+      NUMBER_ELEMENTS_X = int(sc_nrs(9))
+      NUMBER_ELEMENTS_Y = int(sc_nrs(10))
+      NUMBER_ELEMENTS_Z = int(sc_nrs(11))
+      XLEN              =     sc_nrs(12)
+      YLEN              =     sc_nrs(13)
+      ZLEN              =     sc_nrs(14)
+      BETAM             =     sc_nrs(15)
 
       yarge  = YLEN*(YLEN-y)
       factor = exp(-yarge)
@@ -77,6 +105,36 @@ c-----------------------------------------------------------------------
 
       integer bIDs(1)
       save iobj_wall
+      COMMON /SCNRS/ sc_nrs(20)
+      real               sc_nrs
+      real NLAT
+      real UREF
+      real LREF
+      real TREF
+      real TS0
+      real SCR
+      real ILSTRENGTH
+      integer NUMBER_ELEMENTS_X
+      integer NUMBER_ELEMENTS_Y
+      integer NUMBER_ELEMENTS_Z
+      real XLEN
+      real YLEN
+      real ZLEN
+      real BETAM
+      NLAT              =     sc_nrs(2)
+      UREF              =     sc_nrs(3)
+      LREF              =     sc_nrs(4)
+      TREF              =     sc_nrs(5)
+      TS0               =     sc_nrs(6)
+      SCR               =     sc_nrs(7)
+      ILSTRENGTH        =     sc_nrs(8)
+      NUMBER_ELEMENTS_X = int(sc_nrs(9))
+      NUMBER_ELEMENTS_Y = int(sc_nrs(10))
+      NUMBER_ELEMENTS_Z = int(sc_nrs(11))
+      XLEN              =     sc_nrs(12)
+      YLEN              =     sc_nrs(13)
+      ZLEN              =     sc_nrs(14)
+      BETAM             =     sc_nrs(15)
 
       n     = nx1*ny1*nz1*nelv
 
@@ -253,6 +311,36 @@ c-----------------------------------------------------------------------
      $              ,fcor,  bcor
 
       real kx, ky
+      COMMON /SCNRS/ sc_nrs(20)
+      real               sc_nrs
+      real NLAT
+      real UREF
+      real LREF
+      real TREF
+      real TS0
+      real SCR
+      real ILSTRENGTH
+      integer NUMBER_ELEMENTS_X
+      integer NUMBER_ELEMENTS_Y
+      integer NUMBER_ELEMENTS_Z
+      real XLEN
+      real YLEN
+      real ZLEN
+      real BETAM
+      NLAT              =     sc_nrs(2)
+      UREF              =     sc_nrs(3)
+      LREF              =     sc_nrs(4)
+      TREF              =     sc_nrs(5)
+      TS0               =     sc_nrs(6)
+      SCR               =     sc_nrs(7)
+      ILSTRENGTH        =     sc_nrs(8)
+      NUMBER_ELEMENTS_X = int(sc_nrs(9))
+      NUMBER_ELEMENTS_Y = int(sc_nrs(10))
+      NUMBER_ELEMENTS_Z = int(sc_nrs(11))
+      XLEN              =     sc_nrs(12)
+      YLEN              =     sc_nrs(13)
+      ZLEN              =     sc_nrs(14)
+      BETAM             =     sc_nrs(15)
 
       ux = 1.0
       uy = 0.0
@@ -293,6 +381,36 @@ c-----------------------------------------------------------------------
       subroutine usrdat2   ! This routine to modify mesh coordinates
       include 'SIZE'
       include 'TOTAL'
+      COMMON /SCNRS/ sc_nrs(20)
+      real               sc_nrs
+      real NLAT
+      real UREF
+      real LREF
+      real TREF
+      real TS0
+      real SCR
+      real ILSTRENGTH
+      integer NUMBER_ELEMENTS_X
+      integer NUMBER_ELEMENTS_Y
+      integer NUMBER_ELEMENTS_Z
+      real XLEN
+      real YLEN
+      real ZLEN
+      real BETAM
+      NLAT              =     sc_nrs(2)
+      UREF              =     sc_nrs(3)
+      LREF              =     sc_nrs(4)
+      TREF              =     sc_nrs(5)
+      TS0               =     sc_nrs(6)
+      SCR               =     sc_nrs(7)
+      ILSTRENGTH        =     sc_nrs(8)
+      NUMBER_ELEMENTS_X = int(sc_nrs(9))
+      NUMBER_ELEMENTS_Y = int(sc_nrs(10))
+      NUMBER_ELEMENTS_Z = int(sc_nrs(11))
+      XLEN              =     sc_nrs(12)
+      YLEN              =     sc_nrs(13)
+      ZLEN              =     sc_nrs(14)
+      BETAM             =     sc_nrs(15)
 
       call rescale_x(xm1, 0.0, XLEN)
       call rescale_x(zm1, 0.0, ZLEN)
@@ -329,6 +447,36 @@ c-----------------------------------------------------------------------
       common /WFPAR/ gacc
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
+      COMMON /SCNRS/ sc_nrs(20)
+      real               sc_nrs
+      real NLAT
+      real UREF
+      real LREF
+      real TREF
+      real TS0
+      real SCR
+      real ILSTRENGTH
+      integer NUMBER_ELEMENTS_X
+      integer NUMBER_ELEMENTS_Y
+      integer NUMBER_ELEMENTS_Z
+      real XLEN
+      real YLEN
+      real ZLEN
+      real BETAM
+      NLAT              =     sc_nrs(2)
+      UREF              =     sc_nrs(3)
+      LREF              =     sc_nrs(4)
+      TREF              =     sc_nrs(5)
+      TS0               =     sc_nrs(6)
+      SCR               =     sc_nrs(7)
+      ILSTRENGTH        =     sc_nrs(8)
+      NUMBER_ELEMENTS_X = int(sc_nrs(9))
+      NUMBER_ELEMENTS_Y = int(sc_nrs(10))
+      NUMBER_ELEMENTS_Z = int(sc_nrs(11))
+      XLEN              =     sc_nrs(12)
+      YLEN              =     sc_nrs(13)
+      ZLEN              =     sc_nrs(14)
+      BETAM             =     sc_nrs(15)
 
       if(icalld.eq.0) then
         g       = 9.81 

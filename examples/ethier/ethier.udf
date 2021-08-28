@@ -4,9 +4,18 @@
 
 #include <math.h>
 #include "udf.hpp"
-#include "casedata.h"
 
 #include "ci.inc"
+
+static dfloat P_U0;
+static dfloat P_V0;
+static dfloat P_W0;
+
+static dfloat P_A0;
+static dfloat P_D0;
+
+static dfloat P_OMEGA;
+static dfloat P_AMP;
 
 /* UDF Functions */   
 
@@ -52,6 +61,24 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "p_u0", P_U0);
+  platform->par->extract("casedata", "p_v0", P_V0);
+  platform->par->extract("casedata", "p_w0", P_W0);
+  platform->par->extract("casedata", "p_a0", P_A0);
+  platform->par->extract("casedata", "p_d0", P_D0);
+  platform->par->extract("casedata", "p_omega", P_OMEGA);
+  platform->par->extract("casedata", "p_amp", P_AMP);
+
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_U0;
+    nek_cb_scnrs[1] = P_V0;
+    nek_cb_scnrs[2] = P_W0;
+    nek_cb_scnrs[3] = P_A0;
+    nek_cb_scnrs[4] = P_D0;
+    nek_cb_scnrs[5] = P_OMEGA;
+    nek_cb_scnrs[6] = P_AMP;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)

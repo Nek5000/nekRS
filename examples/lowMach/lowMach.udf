@@ -6,10 +6,12 @@
 #include "plugins/lowMach.hpp"
 #
 #include "ci.inc"
-#include "casedata.h"
 
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
+
+static dfloat P_DELTA;
+static dfloat P_GAMMA;
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
@@ -48,6 +50,13 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "p_delta", P_DELTA);
+  platform->par->extract("casedata", "p_gamma", P_GAMMA);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_DELTA;
+    nek_cb_scnrs[1] = P_GAMMA;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
