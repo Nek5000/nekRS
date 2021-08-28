@@ -181,7 +181,7 @@ c-----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
       subroutine nekf_setup(ifflow_in,
-     $                      npscal_in, p32, meshp_in,
+     $                      npscal_in, p32, mpart, contol,
      $                      rho, mue, rhoCp, lambda) 
 
       include 'SIZE'
@@ -189,8 +189,8 @@ c-----------------------------------------------------------------------
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer iftmsh_in, ifflow_in, meshp_in, p32
-      real rho, mue, rhoCp, lambda
+      integer iftmsh_in, ifflow_in, mpart, p32
+      real rho, mue, rhoCp, lambda, contol
 
       common /rdump/ ntdump
 
@@ -210,7 +210,9 @@ c-----------------------------------------------------------------------
       param(27) = 1  ! torder 1 to save mem
       param(32) = p32 ! number of BC fields read from re2
       param(99) = -1 ! no dealiasing to save mem
-      meshPartitioner = meshp_in 
+
+      meshPartitioner = mpart 
+      connectivityTol = contol
 
       ifflow = .true.
       if(ifflow_in.eq.0) ifflow = .false.

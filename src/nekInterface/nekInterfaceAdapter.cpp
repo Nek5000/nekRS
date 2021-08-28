@@ -37,7 +37,7 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
 static void (* nek_bootstrap_ptr)(int*, char*, char*, char*, int, int, int);
-static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*);
+static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*, double*);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
 static int (* nek_bcmap_ptr)(int*, int*,int*);
@@ -270,7 +270,7 @@ void set_usr_handles(const char* session_in,int verbose)
     (void (*)(int*, char*, char*, char*, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
   check_error(dlerror());
   nek_setup_ptr =
-    (void (*)(int*, int*, int*, int*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
+    (void (*)(int*, int*, int*, int*, double*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int*))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -623,6 +623,9 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   if(options->compareArgs("MESH PARTITIONER", "rcb")) meshPartType = 2;
   if(options->compareArgs("MESH PARTITIONER", "rcb+rsb")) meshPartType = 3;
 
+  double meshConTol = 0.2;
+  options->getArgs("MESH CONNECTIVITY TOL", meshConTol);
+
   int nBcRead = 1;
   int bcInPar = 1;
   if(bcMap::size(0) == 0 && bcMap::size(1) == 0) {
@@ -642,7 +645,7 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   dfloat lambda;
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
-  (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType,
+  (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType, &meshConTol,
 		           &rho, &mue, &rhoCp, &lambda); 
 
   nekData.param = (double*) ptr("param");

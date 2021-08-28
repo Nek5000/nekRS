@@ -1312,6 +1312,11 @@ setupAide parRead(void *ppar, string setupFile, MPI_Comm comm) {
     options.setArgs("MESH PARTITIONER", meshPartitioner);
   }
 
+  string meshConTol;
+  if (par->extract("mesh", "connectivitytol", meshConTol)){
+    options.setArgs("MESH CONNECTIVITY TOL", meshConTol);
+  }
+
   string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {
     options.setArgs("MOVING MESH", "TRUE");

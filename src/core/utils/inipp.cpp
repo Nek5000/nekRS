@@ -104,6 +104,7 @@ static std::vector<std::string> commonKeys = {
 static std::vector<std::string> meshKeys = {
   {"partitioner"},
   {"file"},
+  {"connectivitytol"},
 };
 
 static std::vector<std::string> velocityKeys = {
@@ -336,7 +337,7 @@ int Ini::validateKeys() const
     for (auto const & val : sec.second) {
       if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
         if (std::find(commonKeys.begin(), commonKeys.end(), val.first) == commonKeys.end()) {
-          std::cout << "par-file: " << sec.first << "." << val.first << " unknown!\n";
+          std::cout << "par-file: " << sec.first << "::" << val.first << " unknown!\n";
           err++;
         }
       }
@@ -350,7 +351,7 @@ void Ini::printDeprecation() const
   for (auto const & sec : sections) {
     for (auto const & val : sec.second) {
       if (std::find(deprecatedKeys.begin(), deprecatedKeys.end(), val.first) != deprecatedKeys.end()) {
-          std::cout << "par-file: " << sec.first << "." << val.first << " deprecated!\n";
+          std::cout << "par-file: " << sec.first << "::" << val.first << " deprecated!\n";
       }
     }
   }
