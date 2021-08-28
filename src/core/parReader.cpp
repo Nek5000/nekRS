@@ -1024,12 +1024,12 @@ void parseRegularization(const int rank, setupAide &options,
           int err = 0;
           double weight = te_interp(items[1].c_str(), &err);
           if (err)
-            exit("Invalid expression for filterWeight!", EXIT_FAILURE);
+            exit("Invalid expression for scalingCoeff!", EXIT_FAILURE);
           options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(weight));
         }
       }
       if (!setsStrength) {
-        exit("ERROR: required weight parameter for hpfrt regularization is not "
+        exit("ERROR: required parameter scalingCoeff for hpfrt regularization is not "
              "set!\n",
              EXIT_FAILURE);
       }
