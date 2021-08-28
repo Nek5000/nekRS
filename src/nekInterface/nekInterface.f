@@ -133,7 +133,7 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_bootstrap(comm_in,path_in,session_in)
+      subroutine nekf_bootstrap(comm_in,path_in,session_in,mesh_in)
 
       include 'SIZE'
       include 'TOTAL'
@@ -142,6 +142,7 @@ c-----------------------------------------------------------------------
 
       integer comm_in
       character session_in*(*),path_in*(*)
+      character mesh_in*(*)
 
       real rtest
       integer itest
@@ -167,6 +168,12 @@ c-----------------------------------------------------------------------
       call initdim ! Initialize / set default values.
       call initdat
       call files
+
+      LS=LTRUNC(SESSION,132)
+      LPP=LTRUNC(PATH,132)
+      ln = lpp+ls+4
+
+      call chcopy(re2fle    ,mesh_in,ln)
 
       return
       end

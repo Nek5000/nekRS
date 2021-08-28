@@ -60,6 +60,10 @@ static std::vector<std::string> generalKeys = {
   {"verbose"},
   {"variableDT"},
 
+  {"oudf"},
+  {"udf"},
+  {"usr"},
+
 };
 
 static std::vector<std::string> problemTypeKeys = {
@@ -99,6 +103,7 @@ static std::vector<std::string> commonKeys = {
 
 static std::vector<std::string> meshKeys = {
   {"partitioner"},
+  {"file"},
 };
 
 static std::vector<std::string> velocityKeys = {

@@ -98,11 +98,19 @@ jobs:
 
     - name: 'ethier default + moving mesh'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 5
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 5
 
-    - name: 'ethier subcycle + moving mesh'
+    - name: 'ethier subcycle + moving mesh + subcycling'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 6
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 6
+
+    - name: 'ethier gmres bug'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 7
+
+    - name: 'ethier variable dt'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 8
 
 
   lowMach:
