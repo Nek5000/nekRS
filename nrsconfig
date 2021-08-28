@@ -16,7 +16,7 @@ set -e -a
 : ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
 : ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
 
-: ${AMGX_ENABLED:=1}
+: ${AMGX_ENABLED:=0}
 
 : ${NEKRS_CXXFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
