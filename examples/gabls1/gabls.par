@@ -18,7 +18,6 @@ regularization = hpfrt + nModes = 1 + scalingCoeff = 0.05/${dt}
 residualTol = 1e-04
 
 [VELOCITY]
-solver = pcg+block
 boundaryTypeMap = wall, inlet
 residualTol = 1e-06
 density = 1.0

@@ -1,26 +1,24 @@
-------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 Key                         Value(s)                                   Description
-------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 [OCCA]
 
-backend                     SERIAL, CUDA, HIP, OPENCL                  OCCA backend
+backend                     SERIAL, CUDA, HIP, OPENCL
 
-deviceNumber                <int>, LOCAL-RANK                          number associated with the device, e.g. GPU
+deviceNumber                <int>, LOCAL-RANK [D]
 
 [GENERAL]
 
-verbose                     true, false [D]                            enable verbose output
+verbose                     true, false [D]                            verbose output
 
 polynomialOrder             <int>                                      polynomial order in r,s,t 
 
-dealiasing                  true [D], false                            enable dealiasing of advection term
+dealiasing                  true [D], false                            enable dealiasing for advection term
 
-  cubaturePolynomialPrder   <int>                                      polynomial order used for dealiasing 
+  cubaturePolynomialOrder   <int>                                      polynomial order used for dealiasing 
                             3/2*(polynomialOrder+1) -1 [D] 
 
 startFrom                   "<string>"                                 name of restart file
-
-stopAt                      numSteps [D], endTime                      stop criterion 
 
 timeStepper                 tombo2 [D], tombo3                         time stepping scheme
 
@@ -32,26 +30,30 @@ stopAt                      numSteps [D], endTime, elapsedTime         stop crit
 
   elapsedTime               <float>                                
 
-dt                          <float> [D]                                time step size
-                            targetCFL=<float>                          adjust time step to match CFL 
-                              +max=<float>                             maximum time step size
-                              +initial=<float>                         enforce initial time step
+dt                          <float> [D], targetCFL=<float>
+                              +max=<float>                             maximum step size
+                              +initial=<float>                         initial step size 
 
-subCycling                  auto                                       compute subcycling steps on targetCFL from dt
-
-subCyclingSteps             <int>                                      number of OIFS sub-steps for convertive terms
+subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection terms
                             0 [D]                             
 
 writeControl                steps [D], runTime                         checkpoint frequency unit
 
-writeInterval               <int> or <float>                           checkpoint frequency in writeControl units
-                            0 [D]                                      at the end of the simluation (default)
+writeInterval               <int>, <float>                             checkpoint frequency in writeControl units
+                            0 [D]                                      at the end of the simluation
                             -1                                         disable checkpointing 
 
 constFlowRate               meanVelocity=<float>                       set constant flow velocity
                             meanVolumetricFlow=<float>                 set constant volumetric flow rate
-                            + direction = <X,Y,Z>                      constant flow direction
-regularization                                                         see COMMON field settings                          
+                            + direction=<X,Y,Z>                        flow direction
+
+regularization                                                         see COMMON field settings
+
+udf                         "<string>"                                 name of .udf file
+
+oudf                        "<string>"                                 name of .oudf file
+
+usr                i        "<string>"                                 name of .usr file
 ----------------------------------------------------------------------------------------------------------------------
 [PROBLEMTYPE]
 stressFormulation           true, false [D]                            enable stress formulation 
@@ -61,11 +63,15 @@ advection                   true, false [D]                            enable ad
 ----------------------------------------------------------------------------------------------------------------------
 COMMON field settings:
 
-solver                      PFCG [D], PFGMRES [D for PRESSURE]         linear solver 
+solver                      PFCG [D], PFGMRES [D for PRESSURE], none   linear solver
                             +block [D for VELOCITY]                    use block formulation 
+                            +nVector=<int> [for PFGMRES]               dimension of Krylov space
 
 residualTol                 <float>                                    absolute residual tolerance  
                             +relative                                  use relative residual
+
+maxIterations               <int>                                      maximum number of iterations
+                            200 [D]
 
 initialGuess                previous [D] 
                             projectionAconj [D for PRESSURE]                           
@@ -106,7 +112,7 @@ boundaryTypeMap             <...>, <...>, ...                          boundary 
 regularization                                                         
                             hpfrt                                      HPF stabilization
                               +nModes=<int>                            number of modes                                 
-                              +strength=<float>                        filter strength
+                              +scalingCoeff=<float>                    filter strength
                             avm                                        artificial viscosity method
                               +c0                                      make viscosity C0 continous across elements
                               +scalingCoeff=<float>                    strength of artifical viscosity
@@ -118,8 +124,11 @@ regularization
 [MESH]
 
 solver                      elasticity                                 solver type 
-                            user                                       user provides mesh velocity
-partitioner                 rbc, rbc+rsb                               partitioner for mesh
+                            user                                       user mesh velocity
+
+partitioner                 rbc, rsb, rbc+rsb [D]                      partitioning method
+
+file                        "<string>"                                 name of .re2 file
 ----------------------------------------------------------------------------------------------------------------------
 [VELOCITY]
 
@@ -142,16 +151,16 @@ diffusivity                 <float>                                    diffusivi
 [SCALAR02]
 ...
 ----------------------------------------------------------------------------------------------------------------------
-[BOOMERAMG]                                                            settings for BoomerAMG solver
+[BOOMERAMG]
 
 coarsenType                 <int>                                      
 interpolationType           <int>                                      
 smootherType                <int>                                      
-iterations                  <int>                                      number of BoomerAMG V-cycle sweeps
+iterations                  <int>
 strongThreshold             <float>                                    
-nonGalerkinTol              <float>                                    
-aggressiveCoarseningLevels  <int>                                      number of levels to apply aggressive coarsening
+nonGalerkinTol              <float>                                    set 0 to classical Galerkin sparsification
+aggressiveCoarseningLevels  <int>
 ----------------------------------------------------------------------------------------------------------------------
-[AMGX]                                                                 settings for AmgX solver
+[AMGX]
 
 configFile                  <string>                                   AmgX JSON configuration file
