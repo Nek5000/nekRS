@@ -6,7 +6,6 @@ endTime = 100
 
 dt = targetCFL=4.0+max=0.05
 timeStepper = tombo2 
-extrapolation = subCycling
 subCyclingSteps = 2
 
 writeControl = runTime

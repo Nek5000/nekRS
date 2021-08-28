@@ -286,15 +286,33 @@ std::vector<int> checkForIntInInputs(const std::vector<string> &inputs) {
 
 void parseSmoother(const int rank, setupAide &options, inipp::Ini *par,
                    string parScope) {
+  string p_smoother;
+  if (!par->extract(parScope, "smoothertype", p_smoother)) return;
 
   string parSection = parScope;
   UPPER(parSection);
   string p_preconditioner;
   par->extract(parScope, "preconditioner", p_preconditioner);
 
-  string p_smoother;
-  if (par->extract(parScope, "smoothertype", p_smoother) &&
-      options.compareArgs(parSection + " PRECONDITIONER", "MULTIGRID")) {
+  const std::vector<std::string> validValues = {
+    {"asm"},
+    {"ras"},
+    {"cheby"},
+    {"jac"},
+    {"degree"},
+    {"mineigenvalueboundfactor"},
+    {"maxeigenvalueboundfactor"},
+  };
+
+  {
+    const std::vector<std::string> list = serializeString(p_smoother, '+');
+    for(const std::string s : list)
+    {
+      checkValidity(rank, validValues, s);
+    }
+  }
+
+  if (options.compareArgs(parSection + " PRECONDITIONER", "MULTIGRID")) {
     std::vector<string> list;
     list = serializeString(p_smoother, '+');
 
@@ -672,6 +690,24 @@ void parseRegularization(const int rank, setupAide &options,
 
   string regularization;
   if(par->extract(parSection, "regularization", regularization)){
+    const std::vector<std::string> validValues = {
+      {"hpfrt"},
+      {"none"},
+      {"avm"},
+      {"c0"},
+      {"highestmodaldecay"},
+      {"hpfresidual"},
+      {"nmodes"},
+      {"cutoffratio"},
+      {"scalingcoeff"},
+      {"vismaxcoeff"},
+      {"rampconstant"},
+    };
+    const std::vector<string> list = serializeString(regularization, '+');
+    for(const std::string s : list)
+    {
+      checkValidity(rank, validValues, s);
+    }
     if(regularization.find("none") != std::string::npos) return;
     // new command syntax
     string filtering;
@@ -680,7 +716,6 @@ void parseRegularization(const int rank, setupAide &options,
       exit("ERROR: cannot specify both regularization and filtering!\n",
            EXIT_FAILURE);
     }
-    const std::vector<string> list = serializeString(regularization, '+');
     const bool usesAVM =
         std::find(list.begin(), list.end(), "avm") != list.end();
     const bool usesHPFRT =

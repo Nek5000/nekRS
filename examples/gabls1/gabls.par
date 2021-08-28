@@ -7,7 +7,6 @@ endTime = 2600
 
 dt = 1.0e-2
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 1
 
 writeControl = runTime
