@@ -143,9 +143,6 @@ public:
 
   void parse(std::stringstream & is, bool lowerValue = true);
 
-  int validateKeys() const;
-  void printDeprecation() const;
-
   void interpolate();
 
   void default_section(const Section & sec);

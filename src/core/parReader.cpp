@@ -31,6 +31,216 @@
               std::ptr_fun<int, int>(std::tolower));                           \
   }
 
+namespace
+{
+
+static bool enforceLowerCase = false;
+
+static std::vector<std::string> nothing = {};
+static std::vector<std::string> generalKeys = {
+  {"dt"},
+  {"endTime"},
+  {"numSteps"},
+  {"polynomialOrder"},
+  {"dealiasing"},
+  {"cubaturePolynomialOrder"},
+  {"startFrom"},
+  {"stopAt"},
+  {"elapsedtime"},
+  {"timestepper"},
+  {"subCyclingSteps"},
+  {"subCycling"},
+  {"writeControl"},
+  {"writeInterval"},
+  {"constFlowRate"},
+  {"verbose"},
+  {"variableDT"},
+
+  {"oudf"},
+  {"udf"},
+  {"usr"},
+
+};
+
+static std::vector<std::string> problemTypeKeys = {
+  {"stressFormulation"},
+  {"equation"},
+};
+
+// common keys
+static std::vector<std::string> commonKeys = {
+  {"solver"},
+  {"residualTol"},
+  {"initialGuess"},
+  {"preconditioner"},
+  {"pMultigridCoarsening"},
+  {"smootherType"},
+  {"coarseSolver"},
+  {"boundaryTypeMap"},
+  {"maxIterations"},
+  {"regularization"},
+
+  // deprecated filter params
+  {"filtering"},
+  {"filterWeight"},
+  {"filterModes"},
+  {"filterCutoffRatio"},
+
+  // deprecated no-op extrapolation param
+  {"extrapolation"},
+
+
+  // deprecated projection params
+  {"residualProj"},
+  {"residualProjection"},
+  {"residualProjectionVectors"},
+  {"residualProjectionStart"},
+};
+
+static std::vector<std::string> meshKeys = {
+  {"partitioner"},
+  {"file"},
+  {"connectivitytol"},
+};
+
+static std::vector<std::string> velocityKeys = {
+  {"density"},
+  {"viscosity"},
+};
+
+static std::vector<std::string> temperatureKeys = {
+  {"rhoCp"},
+  {"conductivity"},
+};
+
+static std::vector<std::string> scalarKeys = {
+  {"rho"},
+  {"diffusivity"},
+};
+
+static std::vector<std::string> boomeramgKeys = {
+  {"coarsenType"},
+  {"interpolationType"},
+  {"smootherType"},
+  {"iterations"},
+  {"strongThreshold"},
+  {"nonGalerkinTol"},
+  {"aggressiveCoarseningLevels"},
+};
+
+static std::vector<std::string> amgxKeys = {
+  {"configFile"},
+};
+static std::vector<std::string> occaKeys = {
+  {"backend"},
+  {"deviceNumber"},
+};
+
+static std::vector<std::string> pressureKeys = {};
+
+static std::vector<std::string> deprecatedKeys = {
+  // deprecated filter params
+  {"filtering"},
+  {"filterWeight"},
+  {"filterModes"},
+  {"filterCutoffRatio"},
+
+  // deprecated no-op extrapolation param
+  {"extrapolation"},
+
+  // deprecated projection params
+  {"residualProj"},
+  {"residualProjection"},
+  {"residualProjectionVectors"},
+  {"residualProjectionStart"},
+};
+
+void convertToLowerCase(std::vector<std::string>& stringVec)
+{
+  for(auto && s : stringVec){
+    std::transform(s.begin(), s.end(), s.begin(),
+      [](unsigned char c){ return std::tolower(c); });
+  }
+}
+
+void makeStringsLowerCase()
+{
+  convertToLowerCase(generalKeys);
+  convertToLowerCase(problemTypeKeys);
+  convertToLowerCase(commonKeys);
+  convertToLowerCase(meshKeys);
+  convertToLowerCase(temperatureKeys);
+  convertToLowerCase(scalarKeys);
+  convertToLowerCase(deprecatedKeys);
+  convertToLowerCase(amgxKeys);
+  convertToLowerCase(boomeramgKeys);
+  convertToLowerCase(pressureKeys);
+  convertToLowerCase(occaKeys);
+}
+
+const std::vector<std::string>& getValidKeys(const std::string& section)
+{
+  if(!enforceLowerCase)
+  {
+    makeStringsLowerCase();
+    enforceLowerCase = true;
+  }
+
+  if(section == "general")
+    return generalKeys;
+  if(section == "problemtype")
+    return problemTypeKeys;
+  if(section == "mesh")
+    return meshKeys;
+  if(section == "temperature")
+    return temperatureKeys;
+  if(section == "pressure")
+    return pressureKeys;
+  if(section.find("scalar") != std::string::npos)
+    return scalarKeys;
+  if(section == "amgx")
+    return amgxKeys;
+  if(section == "boomeramg")
+    return boomeramgKeys;
+  if(section == "occa")
+    return occaKeys;
+  if(section == "velocity")
+    return velocityKeys;
+  else
+    return nothing;
+}
+
+int validateKeys(const inipp::Ini::Sections& sections)
+{
+  int err = 0;
+  for (auto const & sec : sections) {
+    if(sec.first.find("casedata") != std::string::npos) continue;
+    const auto& validKeys = getValidKeys(sec.first);
+    for (auto const & val : sec.second) {
+      if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
+        if (std::find(commonKeys.begin(), commonKeys.end(), val.first) == commonKeys.end()) {
+          std::cout << "par-file: " << sec.first << "::" << val.first << " unknown!\n";
+          err++;
+        }
+      }
+    }
+  }
+  return err;
+}
+
+void printDeprecation(const inipp::Ini::Sections& sections)
+{
+  for (auto const & sec : sections) {
+    for (auto const & val : sec.second) {
+      if (std::find(deprecatedKeys.begin(), deprecatedKeys.end(), val.first) != deprecatedKeys.end()) {
+          std::cout << "par-file: " << sec.first << "::" << val.first << " deprecated!\n";
+      }
+    }
+  }
+}
+
+}
+
 void checkValidity(
   const int rank,
   const std::vector<std::string>& validValues,
@@ -1011,13 +1221,13 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
   int keysInvalid = 0;
   if (rank == 0) {
-    keysInvalid = par->validateKeys();
+    keysInvalid = validateKeys(par->sections);
   }
   MPI_Bcast(&keysInvalid, sizeof(keysInvalid), MPI_BYTE, 0, comm);
   if(keysInvalid) ABORT(1);
 
   if (rank == 0) {
-    par->printDeprecation();
+    printDeprecation(par->sections);
   }
 
   std::string sbuf;
