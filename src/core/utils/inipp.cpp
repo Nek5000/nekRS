@@ -58,7 +58,6 @@ static std::vector<std::string> generalKeys = {
   {"writeInterval"},
   {"constFlowRate"},
   {"verbose"},
-  {"variableDT"},
 
   {"oudf"},
   {"udf"},
