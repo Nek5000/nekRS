@@ -1,10 +1,7 @@
 #ifndef _GENMAP_H_
 #define _GENMAP_H_
 
-#include "genmap-gslib.h"
-#include "genmap-types.h"
-#include <mpi.h>
-
+#include <genmap-types.h>
 #include <parRSB.h>
 
 typedef struct comm *genmap_comm;
@@ -12,7 +9,7 @@ typedef struct genmap_handle_private *genmap_handle;
 typedef struct genmap_vector_private *genmap_vector;
 
 /* genmap_handle */
-int genmap_init(genmap_handle *h, comm_ext ce, parRSB_options *options);
+int genmap_init(genmap_handle *h, comm_ext ce, parrsb_options *options);
 
 void *genmap_get_elements(genmap_handle h);
 void genmap_set_elements(genmap_handle h, struct array *elements);
@@ -22,13 +19,16 @@ genmap_comm genmap_global_comm(genmap_handle h);
 
 void genmap_set_nvertices(genmap_handle h, int nv);
 int genmap_get_nvertices(genmap_handle h);
+
 GenmapULong genmap_get_partition_nel(genmap_handle h);
 void genmap_set_partition_nel(genmap_handle h, GenmapULong globalElements);
+
+GenmapInt genmap_get_nel(genmap_handle h);
 
 GenmapLong genmap_get_local_start_index(genmap_handle h);
 void genmap_set_local_start_index(genmap_handle h, GenmapLong localStart);
 
-GenmapInt genmap_get_nel(genmap_handle h);
+void genmap_barrier(struct comm *c);
 
 int genmap_finalize(genmap_handle h);
 
@@ -66,16 +66,9 @@ int GenmapTQLI(genmap_handle h, genmap_vector diag, genmap_vector upper,
 int genmap_inverse_power(double *y, int N, double *A, int verbose);
 int genmap_power(double *y, int N, double *A, int verbose);
 
-/* Matrix inverse */
-void matrix_inverse(int N, double *A);
-
 /* Lanczos */
-int GenmapLanczosLegendary(genmap_handle h, struct comm *c, genmap_vector f,
-                           GenmapInt niter, genmap_vector **rr,
-                           genmap_vector diag, genmap_vector upper);
-int GenmapLanczos(genmap_handle h, struct comm *c, genmap_vector init,
-                  GenmapInt iter, genmap_vector **q, genmap_vector alpha,
-                  genmap_vector beta);
+int GenmapLanczos(genmap_handle h, struct comm *c, genmap_vector f, int niter,
+                  genmap_vector **rr, genmap_vector diag, genmap_vector upper);
 
 /* Fiedler */
 int GenmapFiedlerLanczos(genmap_handle h, struct comm *c, int maxIter,
@@ -83,8 +76,8 @@ int GenmapFiedlerLanczos(genmap_handle h, struct comm *c, int maxIter,
 int GenmapFiedlerRQI(genmap_handle h, struct comm *c, int maxIter, int global);
 
 /* RSB/RCB */
-void genmap_load_balance(struct array *eList, uint nel, int nv, double *coord,
-                         long long *vtx, struct crystal *cr, buffer *bfr);
+size_t genmap_load_balance(struct array *eList, uint nel, int nv, double *coord,
+                           long long *vtx, struct crystal *cr, buffer *bfr);
 int genmap_rsb(genmap_handle h);
 int genmap_rcb(genmap_handle h);
 int genmap_rib(genmap_handle h);
@@ -95,5 +88,6 @@ void genmap_restore_original(int *part, int *seq, struct crystal *cr,
 /* Misc */
 double GenmapGetMaxRss();
 void GenmapPrintStack();
+int log2ll(long long n);
 
 #endif

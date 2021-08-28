@@ -185,13 +185,13 @@ int findConnectedPeriodicPairs(Mesh mesh, BoundaryFace f_, BoundaryFace g_,
       k = nvf - 1 - k;
       if (nDim == 3)
         d2 += distance3D(f.face.vertex[j], g.face.vertex[k]);
-      if (nDim == 2)
+      else if (nDim == 2)
         d2 += distance2D(f.face.vertex[j], g.face.vertex[k]);
     }
     if (d2 < d2Min) {
       d2Min = d2;
       shift = i;
-    };
+    }
   }
   d2Min = sqrt(d2Min);
 
