@@ -230,7 +230,7 @@ DEFINE_USER_FUNC(useric)
 DEFINE_USER_FUNC(usrsetvert)
 DEFINE_USER_FUNC(userqtl)
 
-void set_function_handles(const char* session_in,int verbose)
+void set_usr_handles(const char* session_in,int verbose)
 {
   // load lib{session_in}.so
   char lib_session[BUFSIZ], * error;
@@ -462,7 +462,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   fflush(stdout);
 }
 
-int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide& options)
+int buildNekInterface(int ldimt, int N, int np, setupAide& options)
 {
   char buf[BUFSIZ];
   char cache_dir[BUFSIZ];
@@ -471,6 +471,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
   const char* nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
   const char* nek5000_dir = getenv("NEKRS_NEK5000_DIR");
 
+  const std::string usrname = options.getArgs("CASENAME");
   const std::string meshFile = options.getArgs("MESH FILE");
 
   // create SIZE
@@ -508,7 +509,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
     char usrFile[BUFSIZ];
     const std::string usrFileStr = options.getArgs("NEK USR FILE");
     char usrFileCaseName[BUFSIZ];
-    sprintf(usrFileCaseName,"%s.usr",casename);
+    sprintf(usrFileCaseName,"%s.usr",usrname.c_str());
     strcpy(usrFile, usrFileStr.c_str());
     if(!fileExists(usrFile) || isFileEmpty(usrFile))
       sprintf(usrFile, "%s/core/zero.usr", nek5000_dir);
@@ -520,7 +521,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
 
   // build
   char libFile[BUFSIZ];
-  sprintf(libFile,"%s/lib%s.so",cache_dir,casename);
+  sprintf(libFile,"%s/lib%s.so",cache_dir,usrname.c_str());
   int recompile = 0;
   if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
   sprintf(buf,"%s/SIZE",cache_dir);
@@ -531,7 +532,7 @@ int buildNekInterface(const char* casename, int ldimt, int N, int np, setupAide&
     sprintf(buf, "cd %s && cp %s/makefile.template makefile && \
 		 make -s -j4 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s NEKRS_NEKINTERFACE_DIR=%s \
 		 -f %s/Makefile lib usr libnekInterface",
-            cache_dir, nek5000_dir, nek5000_dir, casename, cache_dir, cache_dir, nekInterface_dir, nekInterface_dir);
+            cache_dir, nek5000_dir, nek5000_dir, usrname.c_str(), cache_dir, cache_dir, nekInterface_dir, nekInterface_dir);
     //printf("build cmd: %s\n", buf);
     if(system(buf)) return EXIT_FAILURE;
     printf("done (%gs)\n\n", MPI_Wtime() - tStart);
@@ -555,22 +556,10 @@ void gen_bcmap()
 void bootstrap(MPI_Comm c, setupAide &options_in)
 {
   options = &options_in;
-  MPI_Comm_rank(c,&rank);
-  
+
   int size;
+  MPI_Comm_rank(c,&rank);
   MPI_Comm_size(c,&size);
-  MPI_Fint nek_comm = MPI_Comm_c2f(c);
-
-  string casename;
-  options->getArgs("CASENAME", casename);
-
-  string meshFile;
-  options->getArgs("MESH FILE", meshFile);
-
-  char buf[FILENAME_MAX];
-  getcwd(buf, sizeof(buf));
-  string cwd;
-  cwd.assign(buf);
 
   int N;
   options->getArgs("POLYNOMIAL DEGREE", N);
@@ -580,10 +569,9 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
 
   int npTarget = size;
   options->getArgs("NP TARGET", npTarget);
-  std::cout << size << "," << npTarget << std::endl;
 
   int err = 0;
-  if (rank == 0) err = buildNekInterface(casename.c_str(), mymax(5, Nscalar), N, npTarget, *options);
+  if (rank == 0) err = buildNekInterface(mymax(5, Nscalar), N, npTarget, *options);
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, c);
   if (err) ABORT(EXIT_FAILURE);;
 
@@ -592,10 +580,25 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
      printf("loading nek ...\n"); 
      fflush(stdout);
     }
-    set_function_handles(casename.c_str(), 0);
-    (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), (char*)casename.c_str(),
+
+    string usrname;
+    options->getArgs("CASENAME", usrname);
+    string meshFile;
+    options->getArgs("MESH FILE", meshFile);
+
+    char buf[FILENAME_MAX];
+    getcwd(buf, sizeof(buf));
+    string cwd;
+    cwd.assign(buf);
+
+    MPI_Fint nek_comm = MPI_Comm_c2f(c);
+
+    set_usr_handles(usrname.c_str(), 0);
+
+    (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), 
+                         /* basename */ (char*)usrname.c_str(),
                          (char*)meshFile.c_str(),
-                         cwd.length(), casename.length(),
+                         cwd.length(), usrname.length(),
                          meshFile.length());
   }
 }

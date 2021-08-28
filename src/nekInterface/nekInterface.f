@@ -150,6 +150,9 @@ c-----------------------------------------------------------------------
       character ctest
       logical ltest 
 
+      character*1  re2fle1(132)
+      equivalence  (RE2FLE,re2fle1)
+
       ! set word size for REAL
       wdsize = sizeof(rtest)
       ! set word size for INTEGER
@@ -169,11 +172,10 @@ c-----------------------------------------------------------------------
       call initdat
       call files
 
-      LS=LTRUNC(SESSION,132)
-      LPP=LTRUNC(PATH,132)
-      ln = lpp+ls+4
-
-      call chcopy(re2fle    ,mesh_in,ln)
+      ls = ltrunc(PATH,132)
+      call chcopy(re2fle1(ls+1),mesh_in,len(mesh_in))
+      ls = ltrunc(PATH,132) + len(mesh_in)
+      call blank(re2fle1(ls+1),132-ls)
 
       return
       end
