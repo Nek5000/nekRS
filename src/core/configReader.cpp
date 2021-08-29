@@ -25,7 +25,7 @@ void configRead(MPI_Comm comm)
   if (nekrs_home == nullptr) {
     if (rank == 0)
       std::cout << "\nERROR: The environment variable NEKRS_HOME is not defined!\n";
-    EXIT(1);
+    EXIT_AND_FINALIZE(1);
   }
   std::string install_dir{nekrs_home};
   std::string configFile = install_dir + "/nekrs.conf";
@@ -34,7 +34,7 @@ void configRead(MPI_Comm comm)
   if (!ptr) {
     if (rank == 0) 
       std::cout << "\nERROR: Cannot find " << configFile << "!\n";
-    EXIT(1);
+    EXIT_AND_FINALIZE(1);
   }
 
   char* rbuf;
