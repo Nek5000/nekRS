@@ -235,8 +235,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0) printf("loading elliptic MG kernels ... ");
-  fflush(stdout);
 
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
