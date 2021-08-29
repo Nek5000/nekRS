@@ -1140,11 +1140,6 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("VELOCITY PRECONDITIONER", "JACOBI");
   options.setArgs("VELOCITY DISCRETIZATION", "CONTINUOUS");
 
-  options.setArgs("MESH KRYLOV SOLVER", "PCG");
-  options.setArgs("MESH BASIS", "NODAL");
-  options.setArgs("MESH PRECONDITIONER", "JACOBI");
-  options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
-
   options.setArgs("STRESSFORMULATION", "FALSE");
 
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
@@ -1522,6 +1517,10 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
   std::string meshSolver;
   if (par->extract("mesh", "solver", meshSolver)) {
+    options.setArgs("MESH KRYLOV SOLVER", "PCG");
+    options.setArgs("MESH BASIS", "NODAL");
+    options.setArgs("MESH PRECONDITIONER", "JACOBI");
+    options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
     else if(meshSolver == "elasticity") {
