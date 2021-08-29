@@ -15,7 +15,6 @@ static dfloat ZLEN;
 
 static dfloat P_GAMMA;
 static dfloat P_DELTA;
-static dfloat P_PI;
 static dfloat P_OMEGA;
 static dfloat P_AMP;
  
@@ -54,7 +53,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 void UDF_LoadKernels(nrs_t *nrs)
 {
   occa::properties& kernelInfo = *(nrs->kernelInfo);
-  kernelInfo["defines/" "p_PI"] = P_PI;
+  kernelInfo["defines/" "p_PI"] = M_PI;
   kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
   kernelInfo["defines/" "p_AMP"] = P_AMP;
   userVpKernel = udfBuildKernel(nrs, "userVp");
@@ -71,7 +70,6 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "zlen",ZLEN);
   platform->par->extract("casedata", "p_gamma",P_GAMMA);
   platform->par->extract("casedata", "p_delta",P_DELTA);
-  platform->par->extract("casedata", "p_pi",P_PI);
   platform->par->extract("casedata", "p_omega",P_OMEGA);
   platform->par->extract("casedata", "p_amp",P_AMP);
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
@@ -81,9 +79,8 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     nek_cb_scnrs[2] = ZLEN;
     nek_cb_scnrs[3] = P_GAMMA;
     nek_cb_scnrs[4] = P_DELTA;
-    nek_cb_scnrs[5] = P_PI;
-    nek_cb_scnrs[6] = P_OMEGA;
-    nek_cb_scnrs[7] = P_AMP;
+    nek_cb_scnrs[5] = P_OMEGA;
+    nek_cb_scnrs[6] = P_AMP;
   }
 }
 

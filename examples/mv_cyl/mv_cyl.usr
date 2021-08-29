@@ -86,7 +86,6 @@ C=======================================================================
 
       real P_GAMMA
       real P_DELTA
-      real P_PI
       real P_OMEGA
       real P_AMP
 
@@ -96,9 +95,8 @@ C=======================================================================
 
       P_GAMMA = sc_nrs(4)
       P_DELTA = sc_nrs(5)
-      P_PI = sc_nrs(6)
-      P_OMEGA = sc_nrs(7)
-      P_AMP = sc_nrs(8)
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       omega = P_OMEGA
       amp   = P_AMP
@@ -156,7 +154,6 @@ C=======================================================================
 
       real P_GAMMA
       real P_DELTA
-      real P_PI
       real P_OMEGA
       real P_AMP
 
@@ -166,9 +163,8 @@ C=======================================================================
 
       P_GAMMA = sc_nrs(4)
       P_DELTA = sc_nrs(5)
-      P_PI = sc_nrs(6)
-      P_OMEGA = sc_nrs(7)
-      P_AMP = sc_nrs(8)
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       call rescale_x(xm1, 0.0,XLEN)
       call rescale_x(ym1,-1.0,-1.0+YLEN)
@@ -236,7 +232,6 @@ C=======================================================================
 
       real P_GAMMA
       real P_DELTA
-      real P_PI
       real P_OMEGA
       real P_AMP
 
@@ -246,9 +241,8 @@ C=======================================================================
 
       P_GAMMA = sc_nrs(4)
       P_DELTA = sc_nrs(5)
-      P_PI = sc_nrs(6)
-      P_OMEGA = sc_nrs(7)
-      P_AMP = sc_nrs(8)
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       n    = nx1*ny1*nz1*nelv
       ymin = glmin(ym1,n)
@@ -279,7 +273,6 @@ C-----------------------------------------------------------------------
 
       real P_GAMMA
       real P_DELTA
-      real P_PI
       real P_OMEGA
       real P_AMP
 
@@ -289,9 +282,8 @@ C-----------------------------------------------------------------------
 
       P_GAMMA = sc_nrs(4)
       P_DELTA = sc_nrs(5)
-      P_PI = sc_nrs(6)
-      P_OMEGA = sc_nrs(7)
-      P_AMP = sc_nrs(8)
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       gam0   = P_GAMMA
       omega  = P_OMEGA
@@ -329,7 +321,6 @@ c
 
       real P_GAMMA
       real P_DELTA
-      real P_PI
       real P_OMEGA
       real P_AMP
 
@@ -339,9 +330,8 @@ c
 
       P_GAMMA = sc_nrs(4)
       P_DELTA = sc_nrs(5)
-      P_PI = sc_nrs(6)
-      P_OMEGA = sc_nrs(7)
-      P_AMP = sc_nrs(8)
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       nrs_scptr(1) = loc(err)
 
