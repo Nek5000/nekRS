@@ -1071,12 +1071,12 @@ void parseRegularization(const int rank, setupAide &options,
     // use default settings, if applicable
     std::string defaultSettings;
     if(par->extract("general", "filtering", defaultSettings)){
-      options.setArgs(parPrefix + "STABILIZATION METHOD", options.getArgs("STABILIZATION METHOD"));
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", options.getArgs("REGULARIZATION METHOD"));
       options.setArgs(parPrefix + "HPFRT MODES", options.getArgs("HPFRT MODES"));
       options.setArgs(parPrefix + "HPFRT STRENGTH", options.getArgs("HPFRT STRENGTH"));
     }
     if(par->extract("general", "regularization", defaultSettings)){
-      options.setArgs(parPrefix + "STABILIZATION METHOD", options.getArgs("STABILIZATION METHOD"));
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", options.getArgs("REGULARIZATION METHOD"));
       options.setArgs(parPrefix + "HPFRT MODES", options.getArgs("HPFRT MODES"));
 
       if(defaultSettings.find("hpfrt") != std::string::npos)
@@ -1088,10 +1088,10 @@ void parseRegularization(const int rank, setupAide &options,
           exit("ERROR: avm regularization is only enabled for scalars!\n",
                EXIT_FAILURE);
         }
-        options.setArgs(parPrefix + "STABILIZATION VISMAX COEFF", options.getArgs("STABILIZATION VISMAX COEFF"));
-        options.setArgs(parPrefix + "STABILIZATION SCALING COEFF", options.getArgs("STABILIZATION SCALING COEFF"));
-        options.setArgs(parPrefix + "STABILIZATION RAMP CONSTANT", options.getArgs("STABILIZATION RAMP CONSTANT"));
-        options.setArgs(parPrefix + "STABILIZATION AVM C0", options.getArgs("STABILIZATION AVM C0"));
+        options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", options.getArgs("REGULARIZATION VISMAX COEFF"));
+        options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", options.getArgs("REGULARIZATION SCALING COEFF"));
+        options.setArgs(parPrefix + "REGULARIZATION RAMP CONSTANT", options.getArgs("REGULARIZATION RAMP CONSTANT"));
+        options.setArgs(parPrefix + "REGULARIZATION AVM C0", options.getArgs("REGULARIZATION AVM C0"));
       }
     }
   }
