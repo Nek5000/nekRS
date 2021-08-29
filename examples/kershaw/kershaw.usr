@@ -1,5 +1,3 @@
-#define P_EPS (0.3)
-
 c-----------------------------------------------------------------------
       subroutine userbc(i,j,k,f,eg) ! set up boundary conditions
 c     NOTE ::: This routine MAY NOT be called by every process
@@ -197,6 +195,11 @@ c-----------------------------------------------------------------------
         real epsy, epsz
         real x, y, z, xx, yy, zz
         integer i
+        COMMON /SCNRS/ sc_nrs(10)
+        real                sc_nrs
+        real P_EPS
+        
+        P_EPS = sc_nrs(1)
 
         epsy = P_EPS
         epsz = P_EPS

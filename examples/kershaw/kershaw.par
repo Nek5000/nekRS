@@ -43,3 +43,6 @@ viscosity = 1.0
 
 #[AMGX]
 #configFile = "amgx.json"
+
+[CASEDATA]
+P_EPS = 0.3

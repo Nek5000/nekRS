@@ -2,9 +2,19 @@
 #include "udf.hpp"
 
 /* UDF Functions */                                                      
+static dfloat P_EPS;
 
 void UDF_LoadKernels(nrs_t *nrs)
 {
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "p_eps", P_EPS);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_EPS;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
