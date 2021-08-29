@@ -258,7 +258,7 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   }else if(strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
     sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
   }else if(strcasecmp(requestedOccaMode.c_str(), "OPENCL") == 0) {
-    int plat;
+    int plat = 0;
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
   }else if(strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {

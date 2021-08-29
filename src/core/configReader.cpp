@@ -116,5 +116,5 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "occa_mode_default", buf);
   if(!getenv("NEKRS_OCCA_MODE_DEFAULT")) setenv("NEKRS_OCCA_MODE_DEFAULT", buf.c_str(), 1);
 
-  setenv("OCCA_MEM_BYTE_ALIGN", "64", 1);
+  setenv("OCCA_MEM_BYTE_ALIGN", "1024", 1);
 }

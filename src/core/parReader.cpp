@@ -1121,7 +1121,6 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
 
   // options.setArgs("THREAD MODEL", "SERIAL");
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
-  options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
 
   options.setArgs("ADVECTION", "TRUE");
@@ -1255,6 +1254,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("DEVICE NUMBER", deviceNumber);
   }
 
+  std::string platformNumber;
+  if (par->extract("occa", "platformnumber", platformNumber)) {
+    UPPER(platformNumber);
+    options.setArgs("PLATFORM NUMBER", platformNumber);
+  }
+
   // GENERAL
   bool verbose = false;
   if (par->extract("general", "verbose", verbose))
@@ -1277,7 +1282,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
          EXIT_FAILURE);
   }
 
-  int cubN = round(3. / 2 * (N + 1) - 1) - 1;
+  int cubN = round((3./2) * (N + 1) - 1) - 1;
   par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 

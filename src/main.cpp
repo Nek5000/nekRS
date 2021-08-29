@@ -270,12 +270,15 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   strcpy(buf, cmdOpt->setupFile.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->setupFile.assign(buf);
+
   strcpy(buf, cmdOpt->deviceID.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->deviceID.assign(buf);
+
   strcpy(buf, cmdOpt->backend.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->backend.assign(buf);
+
   MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
@@ -287,10 +290,13 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
     std::string casepath, casename;
     size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
     casepath = cmdOpt->setupFile.substr(0,last_slash);
+    chdir(casepath.c_str()); 
     casename = cmdOpt->setupFile.substr(last_slash, cmdOpt->setupFile.length() - last_slash);
     if(casepath.length() > 0) chdir(casepath.c_str());
     cmdOpt->setupFile.assign(casename);
   }
+
+  std::cout << cmdOpt->deviceID.c_str() << std::endl; 
 
   MPI_Bcast(&printHelp, sizeof(printHelp), MPI_BYTE, 0, comm);
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
