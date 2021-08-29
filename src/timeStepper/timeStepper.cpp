@@ -364,6 +364,12 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
 
 void coeffs(nrs_t *nrs, double dt, int tstep) {
   nrs->dt[0] = dt;
+  if (std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0])) {
+    if (platform->comm.mpiRank == 0)
+      std::cout << "Unreasonable dt! Dying ...\n" << std::endl;
+    ABORT(1);
+  }
+
   nrs->idt = 1 / nrs->dt[0];
 
   const int bdfOrder = mymin(tstep, nrs->nBDF);
@@ -1569,7 +1575,7 @@ void printInfo(
     printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
   }
 
-  if (cfl > 30 || std::isnan(cfl)) {
+  if (cfl > 30 || std::isnan(cfl) || std::isinf(cfl)) {
     if (platform->comm.mpiRank == 0)
       std::cout << "Unreasonable CFL! Dying ...\n" << std::endl;
     ABORT(1);
