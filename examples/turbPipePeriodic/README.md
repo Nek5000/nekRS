@@ -1,7 +1,6 @@
 # LES of a round turbulent pipe flow at Re_tau=550.
 
-## Intra-Node Performance Results
-
+## Intra-Node Performance Results --cimode=1
 
 | CPU/GPU                | Total Solve [s] 200 steps | 
 | ---------------------- | --------------------------|
