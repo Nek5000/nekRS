@@ -212,7 +212,7 @@ double dt(int tstep)
   }
   
   {
-    double maxDt;
+    double maxDt = std::numeric_limits<double>::max();
     platform->options.getArgs("MAX DT", maxDt);
     nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
   }

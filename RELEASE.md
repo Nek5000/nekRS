@@ -11,6 +11,7 @@
 * FEMSEM preconditioner
 * NVIDIA AmgX solver 
 * Update file (nekrs.upd) for runtime modifications
+* Validate key/value input in par
 * Various bug fixes 
 
 ## What you may have to change to be compatible 

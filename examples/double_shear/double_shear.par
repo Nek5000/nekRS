@@ -2,7 +2,7 @@
 numSteps = 2000
 polynomialOrder = 5
 dt = 1e-03
-timestepper = bdf3
+timeStepper = tombo2
 
 [PRESSURE]
 residualTol = 1e-08
