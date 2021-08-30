@@ -217,8 +217,10 @@ const std::vector<std::string>& getValidKeys(const std::string& section)
 int validateKeys(const inipp::Ini::Sections& sections)
 {
   int err = 0;
+  bool generalExists = false;
   for (auto const & sec : sections) {
     if(sec.first.find("casedata") != std::string::npos) continue;
+    if(sec.first.find("general") != std::string::npos) generalExists = true;
     const auto& validKeys = getValidKeys(sec.first);
     for (auto const & val : sec.second) {
       if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
@@ -230,6 +232,12 @@ int validateKeys(const inipp::Ini::Sections& sections)
         }
       }
     }
+  }
+  if(!generalExists){
+    std::ostringstream error;
+    error << "[GENERAL] section not provided!\n";
+    append_error(error.str());
+    err++;
   }
   return err;
 }
