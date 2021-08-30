@@ -2,8 +2,7 @@
 #verbose = true
 polynomialOrder = 7
 stopAt = numSteps
-numSteps = 1
-dt = 1e-3
+numSteps = 0
 
 [PRESSURE]
 solver = pfgmres+nVector=20
