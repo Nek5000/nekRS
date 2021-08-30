@@ -16,12 +16,18 @@
 
 namespace{
 static std::ostringstream errorLogger;
+static std::ostringstream valueErrorLogger;
 }
 
 template<typename Printable>
 void append_error(Printable message)
 {
   errorLogger << "\t" << message << "\n";
+}
+template<typename Printable>
+void append_value_error(Printable message)
+{
+  valueErrorLogger << "\t" << message << "\n";
 }
 
 #define UPPER(a)                                                               \
@@ -271,7 +277,7 @@ void checkValidity(
     for(auto && v : validValues){
       ss << "\t\t\t" << v << "\n";
     }
-    append_error(ss.str());
+    append_value_error(ss.str());
   }
 }
 
@@ -1891,6 +1897,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
   // error checking
   {
+    const std::string valueErrors = valueErrorLogger.str();
+    errorLogger << valueErrors;
     const std::string errorMessage = errorLogger.str();
     int length = errorMessage.size();
     MPI_Bcast(&length, 1, MPI_INT, 0, comm);
