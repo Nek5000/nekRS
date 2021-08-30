@@ -1583,6 +1583,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         {"gmres"},
         {"nvector"},
         {"fgmres"},
+        {"pfgmres"},
         {"flexible"},
         {"cg"},
         {"fcg"},
@@ -1686,6 +1687,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         {"none"},
         {"block"},
         {"pcg"},
+        {"cg"},
+        {"pfcg"},
       };
       const std::vector<std::string> list = serializeString(vsolver, '+');
       for(const std::string s : list){
