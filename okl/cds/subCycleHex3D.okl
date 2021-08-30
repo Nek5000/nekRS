@@ -45,20 +45,14 @@
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
 
     @shared dfloat s_U[p_cubNq][p_cubNq];
-    @shared dfloat s_V[p_cubNq][p_cubNq];
-    @shared dfloat s_W[p_cubNq][p_cubNq];
 
     @shared dfloat s_Ud[p_cubNq][p_cubNq];
-    @shared dfloat s_Vd[p_cubNq][p_cubNq];
-    @shared dfloat s_Wd[p_cubNq][p_cubNq];
 
     @shared dfloat s_Ud1[p_Nq][p_cubNq];
-    @shared dfloat s_Vd1[p_Nq][p_cubNq];
-    @shared dfloat s_Wd1[p_Nq][p_cubNq];
 
     @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
-    @exclusive dfloat r_U2[p_cubNq], r_V2[p_cubNq], r_W2[p_cubNq];
-    @exclusive dfloat r_Ud[p_cubNq], r_Vd[p_cubNq], r_Wd[p_cubNq];
+    @exclusive dfloat r_U2[p_cubNq];
+    @exclusive dfloat r_Ud[p_cubNq];
 
     @exclusive dfloat r_c[p_nEXT];
 
@@ -99,8 +93,6 @@
           r_V[k] = Ve;
           r_W[k] = We;
           r_Ud[k] = 0;
-          r_Vd[k] = 0;
-          r_Wd[k] = 0;
         }
       }
     }
@@ -123,7 +115,7 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat Ud1 = 0,Vd1 = 0, Wd1 = 0;
+            dfloat Ud1 = 0;
 
             for(int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
@@ -138,7 +130,7 @@
       // interpolate in 's'
       for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat Ud2 = 0,Vd2 = 0, Wd2 = 0;
+          dfloat Ud2 = 0;
 
           // interpolate in b
           for(int b = 0; b < p_Nq; ++b) {
@@ -204,7 +196,7 @@
 
       for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat rhsU = 0, rhsV = 0, rhsW = 0;
+          dfloat rhsU = 0;
 
 #pragma unroll p_cubNq
           for(int k = 0; k < p_cubNq; ++k) {
@@ -221,7 +213,7 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat rhsU = 0, rhsV = 0, rhsW = 0;
+            dfloat rhsU = 0;
 
             for(int j = 0; j < p_cubNq; ++j) {
               dfloat Ijb = s_cubInterpT[b][j];
@@ -276,11 +268,7 @@
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_Ud[p_Nq][p_Nq];
-    @shared dfloat s_Vd[p_Nq][p_Nq];
-    @shared dfloat s_Wd[p_Nq][p_Nq];
     @exclusive dfloat s_Udloc[p_Nq];
-    @exclusive dfloat s_Vdloc[p_Nq];
-    @exclusive dfloat s_Wdloc[p_Nq];
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
@@ -305,7 +293,7 @@
           }
 
           if(k == 0)
-            s_D[0][id] = D[id];
+            s_D[j][i] = D[id];
 
           id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
