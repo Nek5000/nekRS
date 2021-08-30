@@ -1393,6 +1393,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     if (par->extract("general", "numsteps", numSteps)) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = -1;
+    } else {
+      append_error("Cannot find mandatory parameter GENERAL::numSteps!");
     }
     options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
   } else if (stopAt == "endtime") {
@@ -1865,6 +1867,24 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   if (nscal) {
     options.setArgs("SCALAR BASIS", "NODAL");
     options.setArgs("SCALAR DISCRETIZATION", "CONTINUOUS");
+  }
+
+  // check if dt is provided if numSteps or endTime > 0
+  {
+    int numSteps;
+    options.getArgs("NUMBER TIMESTEPS", numSteps);
+
+    double endTime;
+    options.getArgs("END TIME", numSteps);
+
+    if(numSteps > 0 || endTime > 0){
+      if(options.compareArgs("VARIABLE DT", "FALSE"))
+      {
+        const std::string dtString = options.getArgs("DT");
+        if(dtString.empty())
+          append_error("ERROR: dt not defined!\n");
+      }
+    }
   }
 
   // error checking
