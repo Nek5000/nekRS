@@ -49,7 +49,7 @@ int boomerAMGSetup(int nrows,
 
   if(sizeof(HYPRE_Real) != ((useFP32) ? sizeof(float) : sizeof(double))) {
     if(rank == 0) printf("HYPRE has not been built to support FP32.\n");
-    MPI_Abort(MPI_COMM_WORLD, 1);
+    MPI_Abort(ce, 1);
   } 
 
   long long rowStart = nrows;
@@ -242,22 +242,22 @@ int boomerAMGSetup(int nrows,
                   const double *param)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
   return 1;
 }
 int boomerAMGSolve(void *x, void *b)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
   return 1;
 }
 void boomerAMGFree()
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
-  MPI_Abort(MPI_COMM_WORLD, 1);
+  MPI_Abort(ce, 1);
 }
 #endif

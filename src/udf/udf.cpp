@@ -23,11 +23,15 @@ uint32_t fchecksum(std::ifstream& file)
     return checksum;
 }
 
-int udfBuild(const char* udfFile, int buildOnly)
+int udfBuild(const char* udfFile, setupAide& options)
 {
   double tStart = MPI_Wtime();
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* udf_dir = getenv("NEKRS_UDF_DIR");
+
+  int buildOnly = 0;
+  options.getArgs("BUILD ONLY", buildOnly);
+  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
   if(!fileExists(udfFile)) {
     printf("\nERROR: Cannot find %s!\n", udfFile);
@@ -47,12 +51,13 @@ int udfBuild(const char* udfFile, int buildOnly)
     sprintf(cmd,
             "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
              rm -rf *.so && cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
-	     -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
+	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
              cache_dir,
              cache_dir,
              udfFileResolved,
              udf_dir,
              udf_dir);
+    if(verbose) printf("%s\n", cmd);
     if(system(cmd)) return EXIT_FAILURE; 
   }
   sprintf(cmd, "cd %s/udf && make", cache_dir);

@@ -121,7 +121,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), 0);
+    if(rank == 0) err = udfBuild(udfFile.c_str(), options);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);;
     udfLoad();
@@ -399,7 +399,7 @@ static void dryRun(setupAide &options, int npTarget)
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), 1);
+    if(rank == 0) err = udfBuild(udfFile.c_str(), options);
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
     if(err) ABORT(EXIT_FAILURE);
     MPI_Barrier(comm);

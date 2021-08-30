@@ -42,7 +42,7 @@ struct UDF
 
 extern UDF udf;
 
-int udfBuild(const char* udfFile, int buildOnly);
+int udfBuild(const char* udfFile, setupAide& options);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
 occa::kernel udfBuildKernel(nrs_t* nrs, const char* function);

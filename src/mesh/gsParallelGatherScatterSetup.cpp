@@ -24,8 +24,6 @@
 
  */
 
-/* compile with C compiler (not C++) */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -43,8 +41,7 @@ void* gsParallelGatherScatterSetup(MPI_Comm meshComm,
   comm_ext world;
   struct comm com;
 
-  /*  MPI_Comm_dup(MPI_COMM_WORLD, (MPI_Comm*) &world); */
-  world = (comm_ext)meshComm; // MPI_COMM_WORLD;
+  world = (comm_ext)meshComm;
 
   comm_init(&com, world);
 

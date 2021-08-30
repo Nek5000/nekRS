@@ -236,7 +236,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
 
   {
     comm_ext world;
-    world = (comm_ext)mpiComm; // MPI_COMM_WORLD;
+    world = (comm_ext)mpiComm;
     comm_init(&comm, world);
     gsh = gs_setup(gatherGlobalNodes, NuniqueBases, &comm, 0, gs_pairwise,
                    /* mode */ 0);

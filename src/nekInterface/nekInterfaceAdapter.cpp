@@ -354,6 +354,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
   const char* nekrs_nek5000_dir = getenv("NEKRS_NEK5000_DIR");
 
+  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
+
   // Read and generate the new size file.
   sprintf(line,"%s/core/SIZE.template", nekrs_nek5000_dir);
   FILE* fp = fopen(line, "r");
@@ -454,9 +456,9 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     fputs(sizeFile, fp);
     fclose(fp);
     free(sizeFile);
-    //printf("using new SIZE\n");
+    if(verbose) printf("using new SIZE\n");
   } else {
-    //printf("using existing SIZE file %s/SIZE\n", cache_dir);
+    if(verbose) printf("using existing SIZE file %s/SIZE\n", cache_dir);
   }
 
   fflush(stdout);
@@ -470,6 +472,8 @@ int buildNekInterface(int ldimt, int N, int np, setupAide& options)
   mkdir(cache_dir, S_IRWXU); 
   const char* nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
   const char* nek5000_dir = getenv("NEKRS_NEK5000_DIR");
+
+  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
   const std::string usrname = options.getArgs("CASENAME");
   const std::string meshFile = options.getArgs("MESH FILE");
@@ -532,8 +536,9 @@ int buildNekInterface(int ldimt, int N, int np, setupAide& options)
     sprintf(buf, "cd %s && cp %s/makefile.template makefile && \
 		 make -s -j4 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s NEKRS_NEKINTERFACE_DIR=%s \
 		 -f %s/Makefile lib usr libnekInterface",
-            cache_dir, nek5000_dir, nek5000_dir, usrname.c_str(), cache_dir, cache_dir, nekInterface_dir, nekInterface_dir);
-    //printf("build cmd: %s\n", buf);
+         cache_dir, nek5000_dir, nek5000_dir, usrname.c_str(), cache_dir, cache_dir, 
+         nekInterface_dir, nekInterface_dir);
+    if(verbose) printf("%s\n", buf);
     if(system(buf)) return EXIT_FAILURE;
     printf("done (%gs)\n\n", MPI_Wtime() - tStart);
     fflush(stdout);
