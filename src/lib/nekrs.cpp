@@ -416,8 +416,10 @@ static void dryRun(setupAide &options, int npTarget)
   nrsSetup(comm, options, nrs);
 
   if(rank == 0) {
+    std::string cache_dir;
+    cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
     std::ofstream ofs;
-    ofs.open(occa::env::OCCA_CACHE_DIR + "/cache/build-only.timestamp", std::ofstream::out | std::ofstream::trunc);
+    ofs.open(cache_dir + "/build-only.timestamp", std::ofstream::out | std::ofstream::trunc);
     ofs.close();
   }
 
