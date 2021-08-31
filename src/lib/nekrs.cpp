@@ -262,6 +262,12 @@ void outfld(double time)
   lastOutputTime = time;
 }
 
+void outfld(double time, std::string suffix)
+{
+  writeFld(nrs, time, suffix);
+  lastOutputTime = time;
+}
+
 double endTime(void)
 {
   double endTime = -1;

@@ -24,7 +24,7 @@ static void (* usrsetvert_ptr)(void);
 
 static void (* nek_ptr_ptr)(void**, char*, int*);
 static void (* nek_scptr_ptr)(int*, void*);
-static void (* nek_outfld_ptr)(char*);
+static void (* nek_outfld_ptr)(char*, int);
 static void (* nek_resetio_ptr)(void);
 static void (* nek_setio_ptr)(double*, int*, int*, int*, int*, int*, int*);
 static void (* nek_uic_ptr)(int*);
@@ -78,9 +78,9 @@ void* scPtr(int id)
   return ptr;
 }
 
-void outfld(const char* suffix, dfloat t, int coords, int FP64,
-                void* o_uu, void* o_pp, void* o_ss,
-                int NSfields)
+void outfld(const char *filename, dfloat t, int coords, int FP64,
+            void *o_uu, void *o_pp, void *o_ss,
+            int NSfields)
 {
 
   mesh_t* mesh = nrs->meshV;
@@ -143,7 +143,7 @@ void outfld(const char* suffix, dfloat t, int coords, int FP64,
   }
 
   (*nek_setio_ptr)(&t, &xo, &vo, &po, &so, &NSfields, &FP64);
-  (*nek_outfld_ptr)((char*)suffix);
+  (*nek_outfld_ptr)((char*) filename, strlen(filename));
   (*nek_resetio_ptr)();
 
   platform->timer.toc("checkpointing");
@@ -276,7 +276,7 @@ void set_usr_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_end_ptr = (void (*)(void))dlsym(handle, fname("nekf_end"));
   check_error(dlerror());
-  nek_outfld_ptr = (void (*)(char*))dlsym(handle, fname("nekf_outfld"));
+  nek_outfld_ptr = (void (*)(char*, int))dlsym(handle, fname("nekf_outfld"));
   check_error(dlerror());
   nek_resetio_ptr = (void (*)(void))dlsym(handle, fname("nekf_resetio"));
   check_error(dlerror());

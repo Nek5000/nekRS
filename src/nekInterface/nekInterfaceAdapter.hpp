@@ -104,7 +104,7 @@ namespace nek{
 void*  ptr(const char* id);
 void*  scPtr(int id);
 void   outSolutionFld(double time, double outputTime);
-void   outfld(const char* suffix, dfloat t, int coords, int FP64,
+void   outfld(const char *filename, dfloat t, int coords, int FP64,
                   void* o_u, void* o_p, void* o_s,
                   int NSfields);
 void   uic(int ifield);

@@ -14,6 +14,7 @@ void runStep(double time, double dt, int tstep);
 void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);
 void outfld(double time);
+void outfld(double time, std::string suffix);
 int outputStep(double time, int tStep);
 void outputStep(int val);
 void finalize();

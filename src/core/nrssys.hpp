@@ -66,6 +66,8 @@
 #include "ogs.hpp"
 #include "setupAide.hpp"
 
+static occa::memory o_NULL;
+
 struct platform_t;
 extern platform_t* platform;
 
