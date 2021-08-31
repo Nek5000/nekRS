@@ -296,8 +296,6 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
     cmdOpt->setupFile.assign(casename);
   }
 
-  std::cout << cmdOpt->deviceID.c_str() << std::endl; 
-
   MPI_Bcast(&printHelp, sizeof(printHelp), MPI_BYTE, 0, comm);
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
   if (err | printHelp) {
