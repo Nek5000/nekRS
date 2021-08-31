@@ -415,6 +415,12 @@ static void dryRun(setupAide &options, int npTarget)
   platform_t* platform = platform_t::getInstance();
   nrsSetup(comm, options, nrs);
 
+  if(rank == 0) {
+    std::ofstream ofs;
+    ofs.open(occa::env::OCCA_CACHE_DIR + "/cache/build-only.timestamp", std::ofstream::out | std::ofstream::trunc);
+    ofs.close();
+  }
+
   std::cout << "\nBuild successful." << std::endl;
 }
 
