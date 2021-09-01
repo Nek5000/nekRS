@@ -49,13 +49,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("0"));
-    options.setArgs("MOVING MESH", std::string("TRUE"));
   }
   if (ciMode == 6) {
     options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
-    options.setArgs("MOVING MESH", std::string("TRUE"));
   }
   if (ciMode == 7) {
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
@@ -269,6 +267,16 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     if (rank == 0)
       printf("error in nSteps:  %d\n", errSteps);
     (errSteps <= 2) ? ({/** no-op **/}) : (FAIL);
+  }
+
+  if(ciMode == 5 || ciMode == 6)
+  {
+    if(platform->options.compareArgs("MOVING MESH", "FALSE"))
+    {
+      if(rank == 0)
+        printf("Unable to test moving mesh in ethier. Please re-run the case with mv_ethier!\n");
+      (FAIL);
+    }
   }
 
   if (rank == 0)
