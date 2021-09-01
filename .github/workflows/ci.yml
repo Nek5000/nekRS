@@ -6,11 +6,9 @@ on:
 
   pull_request:
     branches:
-      - master
       - next
   push:
     branches:
-      - master
       - next
 
 env:
@@ -53,9 +51,9 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: install-dir
+        retention-days: 2 
         path: ${{ env.NEKRS_INSTALL_DIR }}
         if-no-files-found: error
-    
 
   ethier:
     needs: install
