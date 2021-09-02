@@ -24,7 +24,7 @@ static dfloat lastOutputTime = 0;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
-static void setOccaVars(std::string dir);
+static void setOccaVars();
 static void setOUDF(setupAide &options);
 static void dryRun(setupAide &options, int npTarget);
 
@@ -79,14 +79,33 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   std::string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
 
-  setOccaVars(cacheDir);
+  {
+    char buf[FILENAME_MAX];
+    char * ret = getcwd(buf, sizeof(buf));
+    if(!ret) ABORT(EXIT_FAILURE);;
+    std::string cwd;
+    cwd.assign(buf);
+ 
+    std::string dir(cacheDir);
+    if (cacheDir.empty()) dir = cwd + "/.cache";
+    if(getenv("NEKRS_CACHE_DIR")) dir.assign(getenv("NEKRS_CACHE_DIR"));
+    setenv("NEKRS_CACHE_DIR", dir.c_str(), 1);
+  }
+
+  setOccaVars();
 
   if (rank == 0) {
     printHeader();
     std::cout << "MPI tasks: " << size << std::endl << std::endl;
+
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
     std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
+
+    std:: string cache_dir;
+    cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+    std::cout << "using NEKRS_CACHE_DIR: " << cache_dir << std::endl;
+
     std::cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << std::endl << std::endl;
   }
 
@@ -507,20 +526,8 @@ static void setOUDF(setupAide &options)
   options.setArgs("DATA FILE", dataFile);
 }
 
-static void setOccaVars(std::string dir)
+static void setOccaVars()
 {
-  char buf[FILENAME_MAX];
-  char * ret = getcwd(buf, sizeof(buf));
-  if(!ret) ABORT(EXIT_FAILURE);;
-  std::string cwd;
-  cwd.assign(buf);
-
-  if (dir.empty())
-    sprintf(buf,"%s/.cache", cwd.c_str());
-  else
-    sprintf(buf,"%s/%s", cwd.c_str(), dir.c_str());
-
-  setenv("NEKRS_CACHE_DIR", buf, 1);
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
   if (rank == 0) mkdir(cache_dir.c_str(), S_IRWXU);
