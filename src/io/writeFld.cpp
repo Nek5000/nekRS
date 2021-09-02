@@ -5,16 +5,7 @@ void writeFld(std::string suffix, dfloat t, int outXYZ, int FP64,
               void* o_u, void* o_p, void* o_s,
               int NSfields)
 {
-  std::string casename;
-  platform->options.getArgs("CASENAME", casename);
-
-  std::string filename; 
-  if(suffix.length())
-    filename = suffix + casename; 
-  else
-    filename = casename; 
-
-  nek::outfld(filename.c_str(), t, outXYZ, FP64, o_u, o_p, o_s, NSfields); 
+  nek::outfld(suffix.c_str(), t, outXYZ, FP64, o_u, o_p, o_s, NSfields); 
 }
 
 void writeFld(nrs_t *nrs, dfloat t, int outXYZ, int FP64, std::string suffix) 

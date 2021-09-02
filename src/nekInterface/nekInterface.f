@@ -398,20 +398,11 @@ c-----------------------------------------------------------------------
       include 'NEKINTF'
 
       character filename*(*)
-      character*1  session1(132)
-      equivalence  (session,session1)
-      character*1 session_save(132) 
 
       common /scrcg/ pm1(lx1,ly1,lz1,lelv)
 
-      call chcopy(session_save, session1, 132)
-      call blank(session1,132)
-      call chcopy(session1, filename, len(filename))
-
       call copy(pm1,pr,nx1*ny1*nz1*nelv)
-      call outfld('   ')
-
-      call chcopy(session1, session_save, 132)
+      call outfld(filename)
 
       return
       end
