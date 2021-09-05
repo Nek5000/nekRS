@@ -297,9 +297,6 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
     setenv("OCCA_CXXFLAGS", buf.c_str(), 1);
   }
 
-  int Nthreads = 1;
-  if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);
-
   bufferSize = 0;
 
   _device_id = device_id;

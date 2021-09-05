@@ -149,7 +149,6 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
       BuildLocalContinuousBlockDiagHex3D(elliptic, mesh, B, Br, Bs, Bt, diagA);
       break;
     }else{
-#pragma omp parallel for
       for(dlong eM = 0; eM < mesh->Nelements; ++eM)
         BuildLocalContinuousDiagHex3D(elliptic, mesh, eM, B, Br, Bs, Bt, diagA + eM * mesh->Np);
       break;
@@ -272,7 +271,6 @@ void BuildLocalContinuousBlockDiagHex3D(elliptic_t* elliptic,
                                         dfloat* A)
 {
   int var_coeff = elliptic->var_coeff;
-#pragma omp parallel for
   for(dlong eM = 0; eM < mesh->Nelements; ++eM) {
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
       const dlong offset = fld * elliptic->Ntotal;
