@@ -19,6 +19,7 @@
 * [par] You may have to remove or update invalid keys/values because par is now strongly typed
 * [par] Use `preconditioner = multigrid+coarse` instead of `multigrid` 
 * [udf] Add std namespace qualifier e.g. cout -> std::cout
+* Set NEKRS_GPU_MPI=0 in $NEKRS_HOME/nekrs.conf if MPI is not GPU aware (code will crash otherwise)
 
 ## Known Bugs / Restrictions
 
