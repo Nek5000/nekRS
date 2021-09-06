@@ -403,18 +403,19 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     }
 
     if (nrs->uvwSolver) {
-      nrs->maskKernel(
-          nrs->uvwSolver->Nmasked, nrs->uvwSolver->o_maskIds, o_RhsVel);
+      if(nrs->uvwSolver->Nmasked)
+        nrs->maskKernel(
+            nrs->uvwSolver->Nmasked, nrs->uvwSolver->o_maskIds, o_RhsVel);
     } else {
-      if (nrs->uSolver)
+      if (nrs->uSolver->Nmasked)
         nrs->maskKernel(nrs->uSolver->Nmasked,
             nrs->uSolver->o_maskIds,
             o_RhsVel + 0 * nrs->fieldOffset * sizeof(dfloat));
-      if (nrs->vSolver)
+      if (nrs->vSolver->Nmasked)
         nrs->maskKernel(nrs->vSolver->Nmasked,
             nrs->vSolver->o_maskIds,
             o_RhsVel + 1 * nrs->fieldOffset * sizeof(dfloat));
-      if (nrs->wSolver)
+      if (nrs->wSolver->Nmasked)
         nrs->maskKernel(nrs->wSolver->Nmasked,
             nrs->wSolver->o_maskIds,
             o_RhsVel + 2 * nrs->fieldOffset * sizeof(dfloat));
