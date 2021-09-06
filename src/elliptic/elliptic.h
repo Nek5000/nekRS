@@ -189,16 +189,15 @@ struct elliptic_t
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
-void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
-void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties kernelInfo);
+void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs);
+void ellipticBuildPreconditionerKernels(elliptic_t* elliptic);
 
 void ellipticSEMFEMSetup(elliptic_t*);
 void ellipticSEMFEMSolve(elliptic_t*, occa::memory&, occa::memory&);
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
 
-void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo);
-void ellipticBlockSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo);
+void ellipticSolveSetup(elliptic_t* elliptic);
 
 void ellipticStartHaloExchange(elliptic_t* elliptic,
                                occa::memory &o_q,
@@ -257,7 +256,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
                           occa::memory &o_x, occa::memory &o_r);
 
-occa::properties ellipticKernelInfo(mesh_t* mesh);
+occa::properties ellipticKernelInfo(int N);
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 

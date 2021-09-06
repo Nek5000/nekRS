@@ -46,9 +46,8 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  occa::properties& kernelInfo = *nrs->kernelInfo;
   setupAide &options = platform->options;
 
   dfloat cond;
@@ -65,7 +64,7 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
   kernelInfo["defines/p_YLEN"]      = YLEN;
 
-  coriolisKernel = udfBuildKernel(nrs, "coriolis");
+  coriolisKernel = udfBuildKernel(kernelInfo, "coriolis");
 }
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {

@@ -884,29 +884,13 @@ void MGLevel::build(
   free(casted_Sy);
   free(casted_Sz);
   free(casted_D);
-
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename, kernelName;
+  
+  const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
 
   {
-      occa::properties properties = platform->kernelInfo;
-      properties["defines/p_Nq"] = Nq;
-      properties["defines/p_Nq_e"] = Nq_e;
-      properties["defines/p_restrict"] = 0;
-      const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
-      properties["defines/p_overlap"] = (int) overlap;
-      if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
-        properties["defines/p_restrict"] = 1;
-
-      filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
-      if(serial) {
-        filename = oklpath + "ellipticSchwarzSolverHex3D.c";
-      }
-      preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties, suffix);
-      fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties, suffix);
-      postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties, suffix);
+    preFDMKernel = platform->kernels.get("preFDM" + suffix);
+    fusedFDMKernel = platform->kernels.get("fusedFDM" + suffix);
+    postFDMKernel = platform->kernels.get("postFDM" + suffix);
   }
 }
 

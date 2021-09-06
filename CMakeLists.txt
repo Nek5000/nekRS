@@ -203,6 +203,7 @@ set(SRC
     src/regularization/filter.cpp
     src/regularization/avm.cpp
     src/core/bcMap.cpp
+    src/core/compileKernels.cpp
     src/core/setup.cpp
     src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp

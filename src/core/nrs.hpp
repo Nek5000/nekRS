@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <getopt.h>
+#include <vector>
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
@@ -212,5 +213,10 @@ static std::vector<std::string> serializeString(const std::string sin, char dlim
 }
 
 void evaluateProperties(nrs_t* nrs, const double timeNew);
+
+void compileKernels();
+
+std::vector<int>
+determineMGLevels(std::string section);
 
 #endif

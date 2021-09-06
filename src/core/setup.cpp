@@ -7,13 +7,132 @@
 #include <map>
 #include "filter.hpp"
 #include "avm.hpp"
+#include <cctype>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties &kernelInfoBC);
+cds_t* cdsSetup(nrs_t* nrs, setupAide options);
+}
+
+std::vector<int>
+determineMGLevels(std::string section)
+{
+  const std::string optionsPrefix = [section](){
+    std::string prefix = section + std::string(" ");
+    if(section.find("temperature") != std::string::npos){
+      prefix = std::string("scalar00 ");
+    }
+    std::transform(prefix.begin(), prefix.end(), prefix.begin(), 
+               [](unsigned char c){ return std::toupper(c); });
+    return prefix;
+  }();
+
+  std::vector<int> levels;
+  int N;
+  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+
+  std::string p_mglevels;
+  if(platform->options.getArgs(optionsPrefix + "MULTIGRID COARSENING", p_mglevels)) {
+    const std::vector<std::string> mgLevelList = serializeString(p_mglevels,',');
+    for(auto && s : mgLevelList){
+      levels.push_back(std::stoi(s));
+    }
+
+    
+    bool invalid = false;
+    invalid |= (levels[0] != N); // top level order must match
+    for(unsigned i = 0U; i < levels.size(); ++i){
+      invalid |= (levels[i] < 0); // each level must be positive
+      if(i > 0)
+        invalid |= (levels[i] >= levels[i-1]); // each successive level must be smaller
+    }
+
+    if(invalid){
+      if(platform->comm.mpiRank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
+      ABORT(EXIT_FAILURE);;
+    }
+    if(levels.back() > 1)
+    {
+      if(platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")){
+        // if the coarse level has p > 1 and requires solving the coarsest level,
+        // rather than just smoothing, then use the SEMFEM discretization
+        platform->options.setArgs(optionsPrefix + "MULTIGRID COARSE SEMFEM", "TRUE");
+        platform->options.setArgs(optionsPrefix + "MULTIGRID COARSE SEMFEM", "TRUE");
+
+        // However, if the user explicitly asked for the FEM discretization, bail
+        if(platform->options.compareArgs(optionsPrefix + "USER SPECIFIED FEM COARSE SOLVER", "TRUE"))
+        {
+          if(platform->comm.mpiRank == 0){
+            printf("Error! FEM coarse discretization only supports p=1 for the coarsest level!\n");
+          }
+          ABORT(1);
+        }
+      }
+    }
+
+    return levels;
+
+  } else if(platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER","ASM") ||
+            platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER","RAS")) {
+    std::map<int,std::vector<int> > mg_level_lookup =
+    {
+      {1,{1}},
+      {2,{2,1}},
+      {3,{3,1}},
+      {4,{4,2,1}},
+      {5,{5,3,1}},
+      {6,{6,3,1}},
+      {7,{7,3,1}},
+      {8,{8,5,1}},
+      {9,{9,5,1}},
+      {10,{10,6,1}},
+      {11,{11,6,1}},
+      {12,{12,7,1}},
+      {13,{13,7,1}},
+      {14,{14,8,1}},
+      {15,{15,9,1}},
+    };
+
+    return mg_level_lookup.at(N);
+  } else if(platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER","JAC")) {
+    std::map<int,std::vector<int> > mg_level_lookup =
+    {
+      {1,{1}},
+      {2,{2,1}},
+      {3,{3,1}},
+      {4,{4,2,1}},
+      {5,{5,3,1}},
+      {6,{6,4,2,1}},
+      {7,{7,5,3,1}},
+      {8,{8,6,4,1}},
+      {9,{9,7,5,1}},
+      {10,{10,8,5,1}},
+      {11,{11,9,5,1}},
+      {12,{12,10,5,1}},
+      {13,{13,11,5,1}},
+      {14,{14,12,5,1}},
+      {15,{15,13,5,1}},
+    };
+
+    return mg_level_lookup.at(N);
+  }
+
+  return {};
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
+  {
+    int N;
+    platform->options.getArgs("POLYNOMIAL DEGREE", N);
+    const int Nq = N+1;
+    if( BLOCKSIZE < Nq * Nq ){
+      if(platform->comm.mpiRank == 0)
+        printf("ERROR: several kernels require BLOCKSIZE >= Nq * Nq."
+          "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, Nq * Nq);
+      ABORT(EXIT_FAILURE);
+    }
+  }
+
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
   nrs->kernelInfo = new occa::properties();
@@ -26,9 +145,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   kernelInfo["include_paths"].asArray();
 
   int N, cubN;
-  int buildOnly = 0;
   std::string install_dir;
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   platform->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
   platform->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
@@ -83,12 +200,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     std::string casename;
     platform->options.getArgs("CASENAME", casename);
 
-    if (!buildOnly) {
-      nek::setup(comm, platform->options, nrs);
-      nek::setic();
-      nek::userchk();
-      if (platform->comm.mpiRank == 0) std::cout << "\n";
-    }
+    nek::setup(comm, platform->options, nrs);
+    nek::setic();
+    nek::userchk();
+    if (platform->comm.mpiRank == 0) std::cout << "\n";
   }
 
   nrs->cht = 0;
@@ -266,28 +381,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
 
-  // define aux kernel constants
-  kernelInfo["defines/" "p_eNfields"] = nrs->NVfields;
-  kernelInfo["defines/" "p_NVfields"] = nrs->NVfields;
-
-  occa::properties kernelInfoBC = *(nrs->kernelInfo);
-
-  // jit compile udf kernels
-  if (udf.loadKernels) {
-    occa::properties* tmpKernelInfo = nrs->kernelInfo;
-    nrs->kernelInfo = &kernelInfoBC;
-    if (platform->comm.mpiRank == 0) std::cout << "loading udf kernels ... ";
-    udf.loadKernels(nrs);
-    if (platform->comm.mpiRank == 0) std::cout << "done" << std::endl;
-    nrs->kernelInfo = tmpKernelInfo;
-  }
-  const std::string bcDataFile = install_dir + "/include/core/bcData.h";
-  kernelInfoBC["includes"] += bcDataFile.c_str();
-  std::string boundaryHeaderFileName;
-  platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
-  kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
-
   meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
   oogs_mode oogsMode = OOGS_AUTO; 
   //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
@@ -295,40 +388,38 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   linAlg_t * linAlg = platform->linAlg;
 
-  if(!buildOnly) {
-    int err = 0;
-    dlong gNelements = mesh->Nelements;
-    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
-    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-    linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_mempool.slice0);
-    ogsGatherScatter(platform->o_mempool.slice0, ogsDfloat, ogsAdd, mesh->ogs);
-    linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_mempool.slice0); 
-    dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-    platform->o_mempool.slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
-    dfloat sum1 = 0;
-    for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    sum1 = abs(sum1 - sum2) / sum2;
-    if(sum1 > 1e-15) {
-      if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
-      fflush(stdout);
-      err++;
-    }
-
-    mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
-    double* vmult = (double*) nek::ptr("vmult");
-    sum1 = 0;
-    for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    if(sum1 > 1e-15) {
-      if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
-      fflush(stdout);
-      err++;
-    }
-
-    if(err) ABORT(1);
-    free(tmp);
+  int err = 0;
+  dlong gNelements = mesh->Nelements;
+  MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
+  const dfloat sum2 = (dfloat)gNelements * mesh->Np;
+  linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_mempool.slice0);
+  ogsGatherScatter(platform->o_mempool.slice0, ogsDfloat, ogsAdd, mesh->ogs);
+  linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_mempool.slice0); 
+  dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
+  platform->o_mempool.slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
+  dfloat sum1 = 0;
+  for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
+  MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+  sum1 = abs(sum1 - sum2) / sum2;
+  if(sum1 > 1e-15) {
+    if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
+    fflush(stdout);
+    err++;
   }
+
+  mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
+  double* vmult = (double*) nek::ptr("vmult");
+  sum1 = 0;
+  for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
+  MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+  if(sum1 > 1e-15) {
+    if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
+    fflush(stdout);
+    err++;
+  }
+
+  if(err) ABORT(1);
+  free(tmp);
 
   nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
   int cnt = 0;
@@ -373,239 +464,165 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   // build kernels
-  std::string fileName, kernelName;
+  std::string kernelName;
   const std::string suffix = "Hex3D";
-  const std::string oklpath = install_dir + "/okl/";
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
 
   {
-      fileName = oklpath + "core/nStagesSum.okl";
+      const std::string section = "nrs-";
       kernelName = "nStagesSum3";
       nrs->nStagesSum3Kernel =
-        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/computeFieldDotNormal.okl";
       kernelName = "computeFieldDotNormal";
       nrs->computeFieldDotNormalKernel =
-        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      occa::properties centroidProp = kernelInfo;
-      centroidProp["defines/" "p_Nfp"] = nrs->meshV->Nq * nrs->meshV->Nq;
-      centroidProp["defines/" "p_Nfaces"] = nrs->meshV->Nfaces;
-      fileName = oklpath + "nrs/computeFaceCentroid.okl";
       kernelName = "computeFaceCentroid";
       nrs->computeFaceCentroidKernel =
-        device.buildKernel(fileName, kernelName, centroidProp);
+        platform->kernels.get( section + kernelName);
 
       {
-        occa::properties prop = kernelInfo;
-        prop["defines/" "p_cubNq"] = nrs->meshV->cubNq;
-        prop["defines/" "p_cubNp"] = nrs->meshV->cubNp;
-	fileName = oklpath + "nrs/advection" + suffix + ".okl";
         kernelName = "strongAdvectionVolume" + suffix;
         nrs->advectionStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
         kernelName = "strongAdvectionCubatureVolume" + suffix;
         nrs->advectionStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
       }
 
-      fileName = oklpath + "nrs/curl" + suffix + ".okl";
       kernelName = "curl" + suffix;
       nrs->curlKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/gradient" + suffix + ".okl";
       kernelName = "gradientVolume" + suffix;
-      nrs->gradientVolumeKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
+      nrs->gradientVolumeKernel =  platform->kernels.get( section + kernelName);
 
       kernelName = "nrswGradientVolume" + suffix;
       nrs->wgradientVolumeKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
       {
-        occa::properties prop = kernelInfo;
-        const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-        prop["defines/" "p_nEXT"] =  nrs->nEXT;
-        prop["defines/" "p_nBDF"] =  nrs->nBDF;
-        prop["defines/" "p_MovingMesh"] = movingMesh;
-        if(nrs->Nsubsteps)
-          prop["defines/" "p_SUBCYCLING"] = 1;
-        else
-          prop["defines/" "p_SUBCYCLING"] = 0;
-          
-        fileName = oklpath + "nrs/sumMakef.okl";
         kernelName = "sumMakef";
-        nrs->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
+        nrs->sumMakefKernel =  platform->kernels.get( section + kernelName);
       }
 
-      fileName = oklpath + "nrs/divergence" + suffix + ".okl";
       kernelName = "nrswDivergenceVolume" + suffix;
       nrs->wDivergenceVolumeKernel =
-        platform->device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
       kernelName = "divergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
-        device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "divergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
-        device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/advectMeshVelocityHex3D.okl";
       kernelName = "advectMeshVelocityHex3D";
       nrs->advectMeshVelocityKernel =
-        platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      // nrsSurfaceFlux kernel requires that p_blockSize >= p_Nq * p_Nq
-      if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
-        if(platform->comm.mpiRank == 0)
-          printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
-            "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
-        ABORT(EXIT_FAILURE);
-      }
-
-      fileName = oklpath + "nrs/pressureRhs" + suffix + ".okl";
       kernelName = "pressureRhsTOMBO" + suffix;
       nrs->pressureRhsKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/pressureStress" + suffix + ".okl";
       kernelName = "pressureStress" + suffix;
       nrs->pressureStressKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/pressureBC" + suffix + ".okl";
       kernelName = "pressureDirichletBC" + suffix;
       nrs->pressureDirichletBCKernel =
-        device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/velocityRhs" + suffix + ".okl";
       kernelName = "velocityRhsTOMBO" + suffix;
       nrs->velocityRhsKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/velocityBC" + suffix + ".okl";
       kernelName = "velocityDirichletBC" + suffix;
       nrs->velocityDirichletBCKernel =
-        device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "velocityNeumannBC" + suffix;
       nrs->velocityNeumannBCKernel =
-        device.buildKernel(fileName, kernelName, kernelInfoBC);
+        platform->kernels.get( section + kernelName);
 
-      occa::properties prop = kernelInfo;
-      const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-      prop["defines/" "p_relative"] = movingMesh && nrs->Nsubsteps;
-      prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
-      prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
-      fileName = oklpath + "nrs/Urst" + suffix + ".okl";
       kernelName = "UrstCubature" + suffix;
       nrs->UrstCubatureKernel =
-        device.buildKernel(fileName, kernelName, prop);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "Urst" + suffix;
       nrs->UrstKernel =
-        device.buildKernel(fileName, kernelName, prop);
+        platform->kernels.get( section + kernelName);
 
 
       if(nrs->Nsubsteps){
-        occa::properties prop = kernelInfo;
-        const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-        prop["defines/" "p_MovingMesh"] = movingMesh;
-        prop["defines/" "p_nEXT"] =  nrs->nEXT;
-        prop["defines/" "p_nBDF"] =  nrs->nBDF;
-        prop["defines/" "p_cubNq"] =  nrs->meshV->cubNq;
-        prop["defines/" "p_cubNp"] =  nrs->meshV->cubNp;
-	
-        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
-        occa::properties subCycleStrongCubatureProps = prop;
-        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
-          fileName = oklpath + "nrs/subCycle" + suffix + ".c";
-        }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
-        fileName = oklpath + "nrs/subCycle" + suffix + ".okl";
+          platform->kernels.get( section + kernelName);
+        kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
 
-        fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
         kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
-          platform->device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
         kernelName = "subCycleRK";
         nrs->subCycleRKKernel =
-          platform->device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
 
         kernelName = "subCycleInitU0";
-        nrs->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
+        nrs->subCycleInitU0Kernel =  platform->kernels.get( section + kernelName);
       }
 
-      fileName = oklpath + "nrs/extrapolate" + ".okl";
       kernelName = "multiExtrapolate";
       nrs->extrapolateKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "core/mask" + ".okl";
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
       kernelName = "mask";
       nrs->maskKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/regularization/filterRT" + suffix + ".okl";
       kernelName = "filterRT" + suffix;
       nrs->filterRTKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      occa::properties cflProps = kernelInfo;
-      cflProps["defines/ " "p_MovingMesh"] = movingMesh;
-      fileName = oklpath + "nrs/cfl" + suffix + ".okl";
       kernelName = "cfl" + suffix;
-      if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
-        if(platform->comm.mpiRank == 0)
-          printf("ERROR: cfl kernel requires BLOCKSIZE >= Nq * Nq."
-            "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
-        ABORT(EXIT_FAILURE);
-      }
       nrs->cflKernel =
-        device.buildKernel(fileName, kernelName, cflProps);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "nrs/pressureAddQtl" + ".okl";
       kernelName = "pressureAddQtl";
       nrs->pressureAddQtlKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "core/setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
   }
 
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
-    nrs->cds = cdsSetup(nrs, platform->options, kernelInfoBC);
+    nrs->cds = cdsSetup(nrs, platform->options);
   }
 
-  if(!buildOnly) {
-    // get IC + t0 from nek
-    double startTime;
-    nek::copyFromNek(startTime);
-    platform->options.setArgs("START TIME", to_string_f(startTime));
+  // get IC + t0 from nek
+  double startTime;
+  nek::copyFromNek(startTime);
+  platform->options.setArgs("START TIME", to_string_f(startTime));
 
-    if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
-    udf.setup(nrs);
-    if(platform->comm.mpiRank == 0)  printf("done\n"); fflush(stdout);
-   }
+  if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
+  udf.setup(nrs);
+  if(platform->comm.mpiRank == 0)  printf("done\n"); fflush(stdout);
 
   // setup elliptic solvers
 
@@ -658,7 +675,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is]->loffset = 0;
  
       cds->solver[is]->options = cds->options[is];
-      ellipticSolveSetup(cds->solver[is], kernelInfoS);
+      ellipticSolveSetup(cds->solver[is]);
     }
   }
 
@@ -757,7 +774,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uvwSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
 
-      ellipticSolveSetup(nrs->uvwSolver, kernelInfoV);
+      ellipticSolveSetup(nrs->uvwSolver);
     } else {
       nrs->uSolver = new elliptic_t();
       nrs->uSolver->blockSolver = 0;
@@ -777,7 +794,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uSolver->loffset = 0;
 
-      ellipticSolveSetup(nrs->uSolver, kernelInfoV);
+      ellipticSolveSetup(nrs->uSolver);
 
       nrs->vSolver = new elliptic_t();
       nrs->vSolver->blockSolver = 0;
@@ -797,7 +814,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->vSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->vSolver->loffset = 0;
 
-      ellipticSolveSetup(nrs->vSolver, kernelInfoV);
+      ellipticSolveSetup(nrs->vSolver);
 
       if (nrs->dim == 3) {
         nrs->wSolver = new elliptic_t();
@@ -818,7 +835,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->wSolver->o_lambda = nrs->o_ellipticCoeff;
         nrs->wSolver->loffset = 0;
 
-        ellipticSolveSetup(nrs->wSolver, kernelInfoV);
+        ellipticSolveSetup(nrs->wSolver);
       }
     }
 
@@ -896,103 +913,16 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;
     nrs->pSolver->loffset = 0;
 
-    std::string p_mglevels;
-    if(nrs->pOptions.getArgs("MULTIGRID COARSENING", p_mglevels)) {
-      std::vector<std::string> mgLevelList;
-      mgLevelList = serializeString(p_mglevels,',');
-      nrs->pSolver->nLevels = mgLevelList.size();
-      nrs->pSolver->levels = (int*) calloc(nrs->pSolver->nLevels,sizeof(int));
-      for(int i = 0; i < nrs->pSolver->nLevels; ++i)
-        nrs->pSolver->levels[i] = std::atoi(mgLevelList.at(i).c_str());
-      
-      bool invalid = false;
-      invalid |= (nrs->pSolver->levels[0] != mesh->N); // top level order must match
-      for(int i = 0; i < nrs->pSolver->nLevels; ++i){
-        invalid |= (nrs->pSolver->levels[i] < 0); // each level must be positive
-        if(i > 0)
-          invalid |= (nrs->pSolver->levels[i] >= nrs->pSolver->levels[i-1]); // each successive level must be smaller
-      }
-
-      if(invalid){
-        if(platform->comm.mpiRank == 0) printf("ERROR: Invalid multigrid coarsening!\n");
-        ABORT(EXIT_FAILURE);;
-      }
-      if(nrs->pSolver->levels[nrs->pSolver->nLevels-1] > 1)
-      {
-        if(platform->options.compareArgs("PRESSURE MULTIGRID COARSE SOLVE", "TRUE")){
-          // if the coarse level has p > 1 and requires solving the coarsest level,
-          // rather than just smoothing, then use the SEMFEM discretization
-          platform->options.setArgs("PRESSURE MULTIGRID COARSE SEMFEM", "TRUE");
-          nrs->pOptions.setArgs("MULTIGRID COARSE SEMFEM", "TRUE");
-
-          // However, if the user explicitly asked for the FEM discretization, bail
-          if(platform->options.compareArgs("USER SPECIFIED FEM COARSE SOLVER", "TRUE"))
-          {
-            if(platform->comm.mpiRank == 0){
-              printf("Error! FEM coarse discretization only supports p=1 for the coarsest level!\n");
-            }
-            ABORT(1);
-          }
-        }
-      }
-      nrs->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
-    } else if(nrs->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","ASM") ||
-              nrs->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","RAS")) {
-      std::map<int,std::vector<int> > mg_level_lookup =
-      {
-        {1,{1}},
-        {2,{2,1}},
-        {3,{3,1}},
-        {4,{4,2,1}},
-        {5,{5,3,1}},
-        {6,{6,3,1}},
-        {7,{7,3,1}},
-        {8,{8,5,1}},
-        {9,{9,5,1}},
-        {10,{10,6,1}},
-        {11,{11,6,1}},
-        {12,{12,7,1}},
-        {13,{13,7,1}},
-        {14,{14,8,1}},
-        {15,{15,9,1}},
-      };
-
-      const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq - 1);
+    {
+      const std::vector<int> levels = determineMGLevels("pressure");
       nrs->pSolver->nLevels = levels.size();
       nrs->pSolver->levels = (int*) calloc(nrs->pSolver->nLevels,sizeof(int));
       for(int i = 0; i < nrs->pSolver->nLevels; ++i)
         nrs->pSolver->levels[i] = levels.at(i);
-      nrs->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
-    } else if(nrs->pOptions.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JAC")) {
-      std::map<int,std::vector<int> > mg_level_lookup =
-      {
-        {1,{1}},
-        {2,{2,1}},
-        {3,{3,1}},
-        {4,{4,2,1}},
-        {5,{5,3,1}},
-        {6,{6,4,2,1}},
-        {7,{7,5,3,1}},
-        {8,{8,6,4,1}},
-        {9,{9,7,5,1}},
-        {10,{10,8,5,1}},
-        {11,{11,9,5,1}},
-        {12,{12,10,5,1}},
-        {13,{13,11,5,1}},
-        {14,{14,12,5,1}},
-        {15,{15,13,5,1}},
-      };
-
-      const std::vector<int>& levels = mg_level_lookup.at(mesh->Nq - 1);
-      nrs->pSolver->nLevels = levels.size();
-      nrs->pSolver->levels = (int*) calloc(nrs->pSolver->nLevels,sizeof(int));
-      for(int i = 0; i < nrs->pSolver->nLevels; ++i)
-        nrs->pSolver->levels[i] = levels.at(i);
-      nrs->pOptions.setArgs("MULTIGRID COARSENING","CUSTOM");
     }
 
     nrs->pSolver->options = nrs->pOptions;
-    ellipticSolveSetup(nrs->pSolver, kernelInfoP);
+    ellipticSolveSetup(nrs->pSolver);
 
   } // flow
   if(nrs->flow){
@@ -1030,7 +960,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->meshSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->meshSolver->loffset = 0; // use same ellipticCoeff for u,v and w
 
-      ellipticSolveSetup(nrs->meshSolver, kernelInfoM);
+      ellipticSolveSetup(nrs->meshSolver);
     }
   }
   // set I.C. for U, W
@@ -1087,8 +1017,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 }
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
+cds_t* cdsSetup(nrs_t* nrs, setupAide options)
 {
+  const std::string section = "cds-";
   cds_t* cds = new cds_t();
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
@@ -1302,101 +1233,60 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
   if(platform->comm.mpiRank == 0)  printf("loading cds kernels ... "); fflush(stdout);
 
    {
-      {
-        occa::properties prop = kernelInfo;
-        prop["defines/" "p_cubNq"] = cds->mesh[0]->cubNq;
-        prop["defines/" "p_cubNp"] = cds->mesh[0]->cubNp;
-        fileName = oklpath + "cds/advection" + suffix + ".okl";
-
-	kernelName = "strongAdvectionVolume" + suffix;
+        kernelName = "strongAdvectionVolume" + suffix;
         cds->advectionStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
 
-	kernelName = "strongAdvectionCubatureVolume" + suffix;
+        kernelName = "strongAdvectionCubatureVolume" + suffix;
         cds->advectionStrongCubatureVolumeKernel =  
-          device.buildKernel(fileName, kernelName, prop);
-      }
+          platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "cds/advectMeshVelocityHex3D.okl";
   	kernelName = "advectMeshVelocityHex3D";
       cds->advectMeshVelocityKernel =
-        platform->device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "core/mask.okl";
       kernelName = "maskCopy";
       cds->maskCopyKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
       {
-        occa::properties prop = kernelInfo;
-        const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
-        prop["defines/" "p_MovingMesh"] = movingMesh;
-        prop["defines/" "p_nEXT"] =  cds->nEXT;
-        prop["defines/" "p_nBDF"] =  cds->nBDF;
-        if(cds->Nsubsteps)
-          prop["defines/" "p_SUBCYCLING"] = 1;
-        else
-          prop["defines/" "p_SUBCYCLING"] = 0;
-          
-        fileName   = oklpath + "cds/sumMakef.okl";
         kernelName = "sumMakef";
-        cds->sumMakefKernel =  device.buildKernel(fileName, kernelName, prop);
-
+        cds->sumMakefKernel =  platform->kernels.get( section + kernelName);
       }
 
-      fileName = oklpath + "cds/helmholtzBC" + suffix + ".okl";
       kernelName = "helmholtzBC" + suffix;
-      cds->helmholtzRhsBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
+      cds->helmholtzRhsBCKernel =  platform->kernels.get( section + kernelName);
       kernelName = "dirichletBC";
-      cds->dirichletBCKernel =  device.buildKernel(fileName, kernelName, kernelInfoBC);
+      cds->dirichletBCKernel =  platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "core/setEllipticCoeff.okl";
       kernelName = "setEllipticCoeff";
       cds->setEllipticCoeffKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "cds/regularization/filterRT" + suffix + ".okl";
       kernelName = "filterRT" + suffix;
       cds->filterRTKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
+        platform->kernels.get( section + kernelName);
 
-      fileName = oklpath + "core/nStagesSum.okl";
       kernelName = "nStagesSum3";
       cds->nStagesSum3Kernel =
-        device.buildKernel(fileName, kernelName, platform->kernelInfo);
+        platform->kernels.get( section + kernelName);
 
       if(cds->Nsubsteps) {
-        occa::properties prop = kernelInfo;
-        const int movingMesh = options.compareArgs("MOVING MESH", "TRUE");
-        prop["defines/" "p_MovingMesh"] = movingMesh;
-        prop["defines/" "p_nEXT"] =  cds->nEXT;
-        prop["defines/" "p_nBDF"] =  cds->nBDF;
-        prop["defines/" "p_cubNq"] =  cds->mesh[0]->cubNq;
-        prop["defines/" "p_cubNp"] =  cds->mesh[0]->cubNp;
- 
-
-        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
-        occa::properties subCycleStrongCubatureProps = prop;
-        if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP"){
-          fileName = oklpath + "cds/subCycle" + suffix + ".c";
-        }
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =
-          device.buildKernel(fileName, kernelName, subCycleStrongCubatureProps);
-        fileName = oklpath + "cds/subCycle" + suffix + ".okl";
+          platform->kernels.get( section + kernelName);
         kernelName = "subCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
-          device.buildKernel(fileName, kernelName, prop);
+          platform->kernels.get( section + kernelName);
 
 
-        fileName = oklpath + "cds/subCycleRKUpdate.okl";
         kernelName = "subCycleERKUpdate";
-        cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, prop);
+        cds->subCycleRKUpdateKernel =  platform->kernels.get( section + kernelName);
         kernelName = "subCycleRK";
-        cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, prop);
+        cds->subCycleRKKernel =  platform->kernels.get( section + kernelName);
 
         kernelName = "subCycleInitU0";
-        cds->subCycleInitU0Kernel =  platform->device.buildKernel(fileName, kernelName, prop);
+        cds->subCycleInitU0Kernel =  platform->kernels.get( section + kernelName);
       }
   }
 

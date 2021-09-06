@@ -3,7 +3,7 @@
 
 namespace avg
 {
-void buildKernel(nrs_t* nrs);
+void buildKernel(occa::properties kernelInfo);
 void run(dfloat time);
 void setup(nrs_t* nrs_);
 void outfld();

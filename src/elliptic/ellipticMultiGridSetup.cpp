@@ -54,18 +54,10 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   }
 
   //set the number of MG levels and their degree
-  int numMGLevels;
-  int* levelDegree;
-
-  if (options.compareArgs("MULTIGRID COARSENING","CUSTOM")) {
-    numMGLevels = elliptic->nLevels;
-    levelDegree = (int*) calloc(numMGLevels,sizeof(int));
-    for(int i = 0; i < numMGLevels; ++i)
-      levelDegree[i] = elliptic->levels[i];
-  } else {
-    std::cout << "Unknown coarsening type!";
-    MPI_Abort(platform->comm.mpiComm, 1);
-  }
+  int numMGLevels = elliptic->nLevels;
+  int* levelDegree = (int*) calloc(numMGLevels,sizeof(int));
+  for(int i = 0; i < numMGLevels; ++i)
+    levelDegree[i] = elliptic->levels[i];
 
   int Nmax = levelDegree[0];
   int Nmin = levelDegree[numMGLevels - 1];

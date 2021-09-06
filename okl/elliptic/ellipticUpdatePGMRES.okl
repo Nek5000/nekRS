@@ -37,8 +37,8 @@
       for(int j = 0; j < gmresSize; ++j){
         const dfloat yj = y[j];
         #pragma unroll
-        for(int fld = 0; fld < p_eNfields; fld++){
-          const dfloat Znj = Z[n + fld * offset + j * offset * p_eNfields];
+        for(int fld = 0; fld < p_Nfields; fld++){
+          const dfloat Znj = Z[n + fld * offset + j * offset * p_Nfields];
           x[n + fld * offset] += Znj * yj;
         }
       }

@@ -34,9 +34,8 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
   dpdxKernel(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1*cds->fieldOffset[0], o_FS);
 }                                                   
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  occa::properties& kernelInfo = *nrs->kernelInfo;
   setupAide &options = platform->options;
 
   dfloat mue, rho;
@@ -52,9 +51,9 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_omega"] = P_OMEGA;
   kernelInfo["defines/p_pi"] = M_PI;
 
-  dpdxKernel = udfBuildKernel(nrs, "dpdx");
-  exactUVWPKernel = udfBuildKernel(nrs, "exactUVWP"); 
-  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
+  dpdxKernel = udfBuildKernel(kernelInfo, "dpdx");
+  exactUVWPKernel = udfBuildKernel(kernelInfo, "exactUVWP"); 
+  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

@@ -12,9 +12,9 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   fillFUKernel(mesh->Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  fillFUKernel = udfBuildKernel(nrs, "fillFU");
+  fillFUKernel = udfBuildKernel(kernelInfo, "fillFU");
 }
 
 void UDF_Setup(nrs_t *nrs)

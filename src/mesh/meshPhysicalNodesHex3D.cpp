@@ -30,116 +30,34 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-void meshPhysicalBoxNodesHex3D(mesh3D* mesh)
-{
-  dlong cnt = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
-    dlong id = e * mesh->Nverts;
-
-    dfloat xe1 = mesh->EX[id + 0]; /* x-coordinates of vertices */
-    dfloat xe2 = mesh->EX[id + 1];
-    dfloat xe3 = mesh->EX[id + 2];
-    dfloat xe4 = mesh->EX[id + 3];
-    dfloat xe5 = mesh->EX[id + 4];
-    dfloat xe6 = mesh->EX[id + 5];
-    dfloat xe7 = mesh->EX[id + 6];
-    dfloat xe8 = mesh->EX[id + 7];
-
-    dfloat ye1 = mesh->EY[id + 0]; /* y-coordinates of vertices */
-    dfloat ye2 = mesh->EY[id + 1];
-    dfloat ye3 = mesh->EY[id + 2];
-    dfloat ye4 = mesh->EY[id + 3];
-    dfloat ye5 = mesh->EY[id + 4];
-    dfloat ye6 = mesh->EY[id + 5];
-    dfloat ye7 = mesh->EY[id + 6];
-    dfloat ye8 = mesh->EY[id + 7];
-
-    dfloat ze1 = mesh->EZ[id + 0]; /* z-coordinates of vertices */
-    dfloat ze2 = mesh->EZ[id + 1];
-    dfloat ze3 = mesh->EZ[id + 2];
-    dfloat ze4 = mesh->EZ[id + 3];
-    dfloat ze5 = mesh->EZ[id + 4];
-    dfloat ze6 = mesh->EZ[id + 5];
-    dfloat ze7 = mesh->EZ[id + 6];
-    dfloat ze8 = mesh->EZ[id + 7];
-
-    for(int n = 0; n < mesh->Np; ++n) { /* for each node */
-      /* (r,s,t) coordinates of interpolation nodes*/
-      dfloat rn = mesh->r[n];
-      dfloat sn = mesh->s[n];
-      dfloat tn = mesh->t[n];
-
-      /* physical coordinate of interpolation node */
-      mesh->x[cnt] =
-        +0.125 * (1 - rn) * (1 - sn) * (1 - tn) * xe1
-        + 0.125 * (1 + rn) * (1 - sn) * (1 - tn) * xe2
-        + 0.125 * (1 + rn) * (1 + sn) * (1 - tn) * xe3
-        + 0.125 * (1 - rn) * (1 + sn) * (1 - tn) * xe4
-        + 0.125 * (1 - rn) * (1 - sn) * (1 + tn) * xe5
-        + 0.125 * (1 + rn) * (1 - sn) * (1 + tn) * xe6
-        + 0.125 * (1 + rn) * (1 + sn) * (1 + tn) * xe7
-        + 0.125 * (1 - rn) * (1 + sn) * (1 + tn) * xe8;
-
-      mesh->y[cnt] =
-        +0.125 * (1 - rn) * (1 - sn) * (1 - tn) * ye1
-        + 0.125 * (1 + rn) * (1 - sn) * (1 - tn) * ye2
-        + 0.125 * (1 + rn) * (1 + sn) * (1 - tn) * ye3
-        + 0.125 * (1 - rn) * (1 + sn) * (1 - tn) * ye4
-        + 0.125 * (1 - rn) * (1 - sn) * (1 + tn) * ye5
-        + 0.125 * (1 + rn) * (1 - sn) * (1 + tn) * ye6
-        + 0.125 * (1 + rn) * (1 + sn) * (1 + tn) * ye7
-        + 0.125 * (1 - rn) * (1 + sn) * (1 + tn) * ye8;
-
-      mesh->z[cnt] =
-        +0.125 * (1 - rn) * (1 - sn) * (1 - tn) * ze1
-        + 0.125 * (1 + rn) * (1 - sn) * (1 - tn) * ze2
-        + 0.125 * (1 + rn) * (1 + sn) * (1 - tn) * ze3
-        + 0.125 * (1 - rn) * (1 + sn) * (1 - tn) * ze4
-        + 0.125 * (1 - rn) * (1 - sn) * (1 + tn) * ze5
-        + 0.125 * (1 + rn) * (1 - sn) * (1 + tn) * ze6
-        + 0.125 * (1 + rn) * (1 + sn) * (1 + tn) * ze7
-        + 0.125 * (1 - rn) * (1 + sn) * (1 + tn) * ze8;
-
-      ++cnt;
-    }
-  }
-}
-
 void meshPhysicalNodesHex3D(mesh3D* mesh)
 {
-  int buildOnly = 0;
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
-      
   mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->z = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
 
-  if (buildOnly) {
-    meshPhysicalBoxNodesHex3D(mesh);
-  } else {
-    dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
-    dfloat* ym1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
-    dfloat* zm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+  dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+  dfloat* ym1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
+  dfloat* zm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
  
-    int nx1 = nekData.nx1;
-    dlong cnt = 0;
-    for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
-      hlong offset = e * nx1 * nx1 * nx1;
-      nek::map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
-      nek::map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
-      nek::map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
+  int nx1 = nekData.nx1;
+  dlong cnt = 0;
+  for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
+    hlong offset = e * nx1 * nx1 * nx1;
+    nek::map_m_to_n(xm1, mesh->Nq, &nekData.xm1[offset], nx1);
+    nek::map_m_to_n(ym1, mesh->Nq, &nekData.ym1[offset], nx1);
+    nek::map_m_to_n(zm1, mesh->Nq, &nekData.zm1[offset], nx1);
  
-      for(int n = 0; n < mesh->Np; ++n) { /* for each node */
-        /* physical coordinate of interpolation node */
-        mesh->x[cnt] = xm1[n];
-        mesh->y[cnt] = ym1[n];
-        mesh->z[cnt] = zm1[n];
-        cnt++;
-      }
+    for(int n = 0; n < mesh->Np; ++n) { /* for each node */
+      /* physical coordinate of interpolation node */
+      mesh->x[cnt] = xm1[n];
+      mesh->y[cnt] = ym1[n];
+      mesh->z[cnt] = zm1[n];
+      cnt++;
     }
- 
-    free(xm1);
-    free(ym1);
-    free(zm1);
   }
+ 
+  free(xm1);
+  free(ym1);
+  free(zm1);
 }

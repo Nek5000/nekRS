@@ -27,7 +27,7 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
-void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo)
+void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
 {
   
   mesh_t* mesh = elliptic->mesh;

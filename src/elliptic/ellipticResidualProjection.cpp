@@ -180,21 +180,14 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
     Nfields * fieldOffset
     , sizeof(dfloat));
 
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename, kernelName;
+  std::string kernelName;
+  const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
   {
-    occa::properties properties = platform->kernelInfo;
-    properties["defines/p_Nfields"] = Nfields;
-
-    filename = oklpath + "ellipticResidualProjection.okl";
-    multiScaledAddwOffsetKernel = platform->device.buildKernel(filename,
-                                                                    "multiScaledAddwOffset",
-                                                                    properties);
-    accumulateKernel = platform->device.buildKernel(filename, "accumulate", properties);
+    multiScaledAddwOffsetKernel = platform->kernels.get(sectionIdentifier + "multiScaledAddwOffset");
+    accumulateKernel = platform->kernels.get(sectionIdentifier + "accumulate");
   }
+
   matvecOperator = [&](occa::memory& o_x, occa::memory & o_Ax)
                    {
                      ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);

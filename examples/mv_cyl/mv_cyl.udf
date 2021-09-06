@@ -50,15 +50,14 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  occa::properties& kernelInfo = *(nrs->kernelInfo);
   kernelInfo["defines/" "p_PI"] = M_PI;
   kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
   kernelInfo["defines/" "p_AMP"] = P_AMP;
-  userVpKernel = udfBuildKernel(nrs, "userVp");
-  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
-  lowMach::buildKernel(nrs);
+  userVpKernel = udfBuildKernel(kernelInfo, "userVp");
+  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
+  lowMach::buildKernel(kernelInfo);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

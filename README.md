@@ -71,7 +71,6 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 
 ```sh
 cd $NEKRS_HOME/examples/turbPipePeriodic
-nrspre turbPipe 2 # precompile JIT code
 nrsmpi turbPipe 2 # run on two MPI ranks
 ```
 You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment.

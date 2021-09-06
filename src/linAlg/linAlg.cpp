@@ -56,7 +56,7 @@ void linAlg_t::reallocScratch(const dlong Nbytes)
 }
 void linAlg_t::setup() {
 
-  device_t& device = platform->device;
+  auto& kernels = platform->kernels;
   int rank;
   MPI_Comm_rank(comm, &rank);
 
@@ -70,190 +70,40 @@ void linAlg_t::setup() {
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0)  printf("loading linAlg kernels ... "); fflush(stdout);
-
   {
-      if (fillKernel.isInitialized()==false)
-        fillKernel = device.buildKernel(oklDir + 
-                                        "linAlgFill.okl",
-                                        "fill",
-                                        kernelInfo);
-      if (absKernel.isInitialized()==false)
-        absKernel = device.buildKernel(oklDir + 
-                                        "linAlgAbs.okl",
-                                        "vabs",
-                                        kernelInfo);
-      if (addKernel.isInitialized()==false)
-        addKernel = device.buildKernel(oklDir + 
-                                        "linAlgAdd.okl",
-                                        "add",
-                                        kernelInfo);
-      if (scaleKernel.isInitialized()==false)
-        scaleKernel = device.buildKernel(oklDir + 
-                                        "linAlgScale.okl",
-                                        "scale",
-                                        kernelInfo);
-      if (scaleManyKernel.isInitialized()==false)
-        scaleManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgScale.okl",
-                                        "scaleMany",
-                                        kernelInfo);
-      if (axpbyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgAXPBY") + (serial ? std::string(".c") : std::string(".okl"));
-        axpbyKernel = device.buildKernel(oklDir + 
-                                         filename,
-                                         "axpby",
-                                         kernelInfo);
-      }
-      if (axpbyManyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgAXPBY") + (serial ? std::string(".c") : std::string(".okl"));
-        axpbyManyKernel = device.buildKernel(oklDir + 
-                                         filename,
-                                         "axpbyMany",
-                                         kernelInfo);
-      }
-      if (axpbyzKernel.isInitialized()==false)
-        axpbyzKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXPBY.okl",
-                                          "axpbyz",
-                                          kernelInfo);
-      if (axpbyzManyKernel.isInitialized()==false)
-        axpbyzManyKernel = device.buildKernel(oklDir + 
-                                          "linAlgAXPBY.okl",
-                                          "axpbyzMany",
-                                          kernelInfo);
-      if (axmyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgAXMY") + (serial ? std::string(".c") : std::string(".okl"));
-        axmyKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "axmy",
-                                        kernelInfo);
-      }
-      if (axmyManyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgAXMY") + (serial ? std::string(".c") : std::string(".okl"));
-        axmyManyKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "axmyMany",
-                                        kernelInfo);
-      }
-      if (axmyVectorKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgAXMY") + (serial ? std::string(".c") : std::string(".okl"));
-        axmyVectorKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "axmyVector",
-                                        kernelInfo);
-      }
-      if (axmyzKernel.isInitialized()==false)
-        axmyzKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXMY.okl",
-                                         "axmyz",
-                                         kernelInfo);
-      if (axmyzManyKernel.isInitialized()==false)
-        axmyzManyKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXMY.okl",
-                                         "axmyzMany",
-                                         kernelInfo);
-      if (adyKernel.isInitialized()==false)
-        adyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
-                                        "ady",
-                                        kernelInfo);
-      if (adyManyKernel.isInitialized()==false)
-        adyManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
-                                        "adyMany",
-                                        kernelInfo);
-      if (axdyKernel.isInitialized()==false)
-        axdyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
-                                        "axdy",
-                                        kernelInfo);
-      if (aydxKernel.isInitialized()==false)
-        aydxKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
-                                        "aydx",
-                                        kernelInfo);
-      if (aydxManyKernel.isInitialized()==false)
-        aydxManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgAXDY.okl",
-                                        "aydxMany",
-                                        kernelInfo);
-      if (axmyzKernel.isInitialized()==false)
-        axmyzKernel = device.buildKernel(oklDir + 
-                                         "linAlgAXDY.okl",
-                                         "axdyz",
-                                         kernelInfo);
-      if (sumKernel.isInitialized()==false)
-        sumKernel = device.buildKernel(oklDir + 
-                                        "linAlgSum.okl",
-                                        "sum",
-                                        kernelInfo);
-      if (sumManyKernel.isInitialized()==false)
-        sumManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgSum.okl",
-                                        "sumMany",
-                                        kernelInfo);
-      if (minKernel.isInitialized()==false)
-        minKernel = device.buildKernel(oklDir + 
-                                        "linAlgMin.okl",
-                                        "min",
-                                        kernelInfo);
-       if (maxKernel.isInitialized()==false)
-        maxKernel = device.buildKernel(oklDir + 
-                                        "linAlgMax.okl",
-                                        "max",
-                                        kernelInfo);
-      if (norm2Kernel.isInitialized()==false)
-        norm2Kernel = device.buildKernel(oklDir + 
-                                        "linAlgNorm2.okl",
-                                        "norm2",
-                                        kernelInfo);
-      if (norm2ManyKernel.isInitialized()==false)
-        norm2ManyKernel = device.buildKernel(oklDir + 
-                                        "linAlgNorm2.okl",
-                                        "norm2Many",
-                                        kernelInfo);
-      if (weightedNorm2Kernel.isInitialized()==false){
-        std::string filename = std::string("linAlgWeightedNorm2") + (serial ? std::string(".c") : std::string(".okl"));
-        weightedNorm2Kernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "weightedNorm2",
-                                        kernelInfo);
-      }
-      if (weightedNorm2ManyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgWeightedNorm2") + (serial ? std::string(".c") : std::string(".okl"));
-        weightedNorm2ManyKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "weightedNorm2Many",
-                                        kernelInfo);
-      }
-      if (innerProdKernel.isInitialized()==false)
-        innerProdKernel = device.buildKernel(oklDir + 
-                                        "linAlgInnerProd.okl",
-                                        "innerProd",
-                                        kernelInfo);
-      if (weightedInnerProdKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgWeightedInnerProd") + (serial ? std::string(".c") : std::string(".okl"));
-        weightedInnerProdKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "weightedInnerProd",
-                                        kernelInfo);
-      }
-      if (weightedInnerProdManyKernel.isInitialized()==false){
-        std::string filename = std::string("linAlgWeightedInnerProd") + (serial ? std::string(".c") : std::string(".okl"));
-        weightedInnerProdManyKernel = device.buildKernel(oklDir + 
-                                        filename,
-                                        "weightedInnerProdMany",
-                                        kernelInfo);
-      }
-      if (weightedInnerProdMultiKernel.isInitialized()==false)
-        weightedInnerProdMultiKernel = device.buildKernel(oklDir + 
-                                        "linAlgWeightedInnerProd.okl",
-                                        "weightedInnerProdMulti",
-                                        kernelInfo);
+    fillKernel = kernels.get("fill");
+    absKernel = kernels.get("vabs");
+    addKernel = kernels.get("add");
+    scaleKernel = kernels.get("scale");
+    scaleManyKernel = kernels.get("scaleMany");
+    axpbyKernel = kernels.get("axpby");
+    axpbyManyKernel = kernels.get("axpbyMany");
+    axpbyzKernel = kernels.get("axpbyz");
+    axpbyzManyKernel = kernels.get("axpbyzMany");
+    axmyKernel = kernels.get("axmy");
+    axmyManyKernel = kernels.get("axmyMany");
+    axmyVectorKernel = kernels.get("axmyVector");
+    axmyzKernel = kernels.get("axmyz");
+    axmyzManyKernel = kernels.get("axmyzMany");
+    adyKernel = kernels.get("ady");
+    adyManyKernel = kernels.get("adyMany");
+    axdyKernel = kernels.get("axdy");
+    aydxKernel = kernels.get("aydx");
+    aydxManyKernel = kernels.get("aydxMany");
+    axdyzKernel = kernels.get("axdyz");
+    sumKernel = kernels.get("sum");
+    sumManyKernel = kernels.get("sumMany");
+    minKernel = kernels.get("min");
+    maxKernel = kernels.get("max");
+    norm2Kernel = kernels.get("norm2");
+    norm2ManyKernel = kernels.get("norm2Many");
+    weightedNorm2Kernel = kernels.get("weightedNorm2");
+    weightedNorm2ManyKernel = kernels.get("weightedNorm2Many");
+    innerProdKernel = kernels.get("innerProd");
+    weightedInnerProdKernel = kernels.get("weightedInnerProd");
+    weightedInnerProdManyKernel = kernels.get("weightedInnerProdMany");
+    weightedInnerProdMultiKernel = kernels.get("weightedInnerProdMulti");
   }
-
-  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 }
 
 linAlg_t::~linAlg_t() {

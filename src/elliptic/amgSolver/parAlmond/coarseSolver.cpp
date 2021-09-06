@@ -78,24 +78,14 @@ void coarseSolver::setup(
     printf("Setting up coarse solver...");fflush(stdout);
 
   {
-    std::string install_dir;
-    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    const std::string oklpath = install_dir + "/okl/";
-    std::string fileName = oklpath + "parAlmond/convertFP64ToFP32.okl";
     std::string kernelName = "convertFP64ToFP32";
-    convertFP64ToFP32Kernel = platform->device.buildKernel(
-      fileName,
-      kernelName,
-      platform->kernelInfo
-    );
+    convertFP64ToFP32Kernel = platform->kernels.get(kernelName);
 
-    fileName = oklpath + "parAlmond/convertFP32ToFP64.okl";
     kernelName = "convertFP32ToFP64";
-    convertFP32ToFP64Kernel = platform->device.buildKernel(
-      fileName,
-      kernelName,
-      platform->kernelInfo
-    );
+    convertFP32ToFP64Kernel = platform->kernels.get(kernelName);
+
+    kernelName = "vectorDotStar2";
+    vectorDotStarKernel2 = platform->kernels.get(kernelName);
   }
 
 

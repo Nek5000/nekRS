@@ -35,7 +35,7 @@ extern "C" void FUNC(fusedResidualAndNorm)(const dlong & Nblocks, const dlong & 
                                     dfloat* __restrict__ reduction)
 {
   dfloat rdotr = 0.0;
-  for(int fld = 0 ; fld < p_eNfields; ++fld){
+  for(int fld = 0 ; fld < p_Nfields; ++fld){
     for(int id = 0 ; id < N; ++id){
       const dfloat rnew = b_vec[id + fld * offset] - Ax[id + fld * offset];
       r[id + fld * offset] = rnew;

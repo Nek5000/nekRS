@@ -1,5 +1,6 @@
 #include "nrs.hpp"
 
+void fileSync(const char *file);
 void copyFile(const char *srcName, const char* destName);
 bool isFileEmpty(const char *file);
 bool isFileNewer(const char *file1, const char* file2);

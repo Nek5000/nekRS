@@ -29,23 +29,13 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties kernelInfo)
+void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
 {
   
   mesh_t* mesh      = elliptic->mesh;
 
   std::string prefix = "Hex3D";
-  std::string filename, kernelName;
-
-  kernelInfo["defines/pfloat"] = pfloatString;
-  kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
-
-  occa::properties pfloatKernelInfo = kernelInfo;
-  pfloatKernelInfo["defines/dfloat"] = pfloatString;
-  pfloatKernelInfo["defines/pfloat"] = pfloatString;
-
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  std::string kernelName;
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
@@ -55,67 +45,42 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic, occa::properties k
   const std::string orderSuffix = std::string("_") + std::to_string(mesh->N);
 
   {
-      const std::string oklpath = install_dir + "/okl/core/";
-      std::string filename;
+    kernelName = "mask";
+    mesh->maskKernel =
+      platform->kernels.get(kernelName + orderSuffix);
 
-      filename = oklpath + "mask.okl";
-      mesh->maskKernel =
-        platform->device.buildKernel(filename,
-                                 "mask",
-                                 kernelInfo,
-                                 orderSuffix);
+    mesh->maskPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix + "pfloat");
+                                 kernelName = "fusedCopyDfloatToPfloat";
+    elliptic->fusedCopyDfloatToPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix);
+    kernelName = "copyDfloatToPfloat";
+    elliptic->copyDfloatToPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix);
 
-      filename = oklpath + "mask.okl";
-      mesh->maskPfloatKernel =
-        platform->device.buildKernel(filename,
-                                 "mask",
-                                 pfloatKernelInfo,
-                                 orderSuffix);
-        filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
-        elliptic->fusedCopyDfloatToPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "fusedCopyDfloatToPfloat",
-                                   kernelInfo,
-                                 orderSuffix);
-        elliptic->copyDfloatToPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "copyDfloatToPfloat",
-                                   kernelInfo,
-                                 orderSuffix);
+    kernelName = "copyPfloatToDfloat";
+    elliptic->copyPfloatToDPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix);
 
-        elliptic->copyPfloatToDPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "copyPfloatToDfloat",
-                                   kernelInfo,
-                                 orderSuffix);
+    kernelName = "scaledAdd";
+    elliptic->scaledAddPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix);
 
-        elliptic->scaledAddPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "scaledAdd",
-                                   kernelInfo,
-                                 orderSuffix);
-        elliptic->dotMultiplyPfloatKernel =
-          platform->device.buildKernel(filename,
-                                   "dotMultiply",
-                                   kernelInfo,
-                                 orderSuffix);
-        filename = install_dir + "/okl/elliptic/chebyshev.okl";
-        elliptic->updateSmoothedSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateSmoothedSolutionVec",
-                                   kernelInfo,
-                                 orderSuffix);
-        elliptic->updateChebyshevSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateChebyshevSolutionVec",
-                                   kernelInfo,
-                                 orderSuffix);
+    kernelName = "dotMultiply";
+    elliptic->dotMultiplyPfloatKernel =
+      platform->kernels.get(kernelName + orderSuffix);
 
-        elliptic->updateIntermediateSolutionVecKernel =
-          platform->device.buildKernel(filename,
-                                   "updateIntermediateSolutionVec",
-                                   kernelInfo,
-                                 orderSuffix);
+    kernelName = "updateSmoothedSolutionVec";
+    elliptic->updateSmoothedSolutionVecKernel =
+      platform->kernels.get(kernelName + orderSuffix);
+
+    kernelName = "updateChebyshevSolutionVec";
+    elliptic->updateChebyshevSolutionVecKernel =
+      platform->kernels.get(kernelName + orderSuffix);
+
+    kernelName = "updateIntermediateSolutionVec";
+    elliptic->updateIntermediateSolutionVecKernel =
+      platform->kernels.get(kernelName + orderSuffix);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

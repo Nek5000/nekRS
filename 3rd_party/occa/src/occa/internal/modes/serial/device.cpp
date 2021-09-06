@@ -359,6 +359,8 @@ namespace occa {
       const int compileError = system(("\"" +  sCommand + "\"").c_str());
 #endif
 
+      io::sync(binaryFilename);
+
       lock.release();
       if (compileError) {
         OCCA_FORCE_ERROR("Error compiling [" << kernelName << "],"

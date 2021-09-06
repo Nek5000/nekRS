@@ -48,8 +48,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 
   mesh_t* mesh = elliptic->mesh;
-  occa::properties kernelInfo = ellipticKernelInfo(mesh);
-  ellipticBuildPreconditionerKernels(elliptic, kernelInfo);
+  ellipticBuildPreconditionerKernels(elliptic);
 
   const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
 
@@ -77,36 +76,19 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   if(elliptic->elementType == HEXAHEDRA)
     suffix = "Hex3D";
 
-  // add custom defines
-  kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
-
-  kernelInfo["defines/" "p_eNfields"] = elliptic->Nfields;
-
-  std::string filename, kernelName;
-
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/elliptic/";
+  std::string kernelName;
 
   {
-      occa::properties AxKernelInfo = kernelInfo;
-
-      filename = oklpath + "ellipticAx" + suffix + ".okl";
       kernelName = "ellipticAx" + suffix;
-      if(serial) {
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-      }
       {
         const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-        elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
+        elliptic->AxKernel = platform->kernels.get(kernelName + kernelSuffix);
       }
 
       if(!strstr(pfloatString,dfloatString)) {
-        AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
         const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
-        AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        elliptic->AxPfloatKernel = platform->kernels.get(kernelName + kernelSuffix);
       }
 
       if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
@@ -117,14 +99,12 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       if(!serial) {
         {
           const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-          elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo, kernelSuffix);
+          elliptic->partialAxKernel = platform->kernels.get(kernelName + kernelSuffix);
         }
         if(!strstr(pfloatString,dfloatString)) {
-          AxKernelInfo["defines/" "dfloat"] = pfloatString;
           const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
           elliptic->partialAxPfloatKernel =
-            platform->device.buildKernel(filename, kernelName, AxKernelInfo, kernelSuffix);
-          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+            platform->kernels.get( kernelName + kernelSuffix);
         }
       }
   }

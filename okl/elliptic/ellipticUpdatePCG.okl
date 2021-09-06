@@ -42,7 +42,7 @@
         if(n < N) {
           dfloat sum = 0.0;
           #pragma unroll
-          for(int fld = 0; fld < p_eNfields; fld++) {
+          for(int fld = 0; fld < p_Nfields; fld++) {
             dfloat xn = x[n + fld * offset];
             dfloat rn = r[n + fld * offset];
  

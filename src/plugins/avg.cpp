@@ -45,16 +45,13 @@ static dfloat timel;
 static int outfldCounter = 0;
 }
 
-void avg::buildKernel(nrs_t* nrs)
+void avg::buildKernel(occa::properties kernelInfo)
 {
-  mesh_t* mesh = nrs->meshV;
-  
 
   std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
-  occa::properties& kernelInfo = *nrs->kernelInfo;
   {
       EXKernel  = platform->device.buildKernel(fileName, "EX", kernelInfo);
       EXXKernel = platform->device.buildKernel(fileName, "EXX", kernelInfo);

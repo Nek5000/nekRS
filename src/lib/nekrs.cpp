@@ -31,15 +31,15 @@ static void dryRun(setupAide &options, int npTarget);
 void printHeader()
 {
   std::cout << R"(                 __    ____  _____)" << std::endl
-       << R"(   ____   ___   / /__ / __ \/ ___/)" << std::endl
-       << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << std::endl
-       << R"( / / / //  __// ,<  / _, _/___/ / )" << std::endl
-       << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
-       << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
-       << " (" << GITCOMMITHASH << ")" << std::endl
-       << std::endl
-       << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << std::endl
-       << std::endl;
+            << R"(   ____   ___   / /__ / __ \/ ___/)" << std::endl
+            << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << std::endl
+            << R"( / / / //  __// ,<  / _, _/___/ / )" << std::endl
+            << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
+            << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
+            << " (" << GITCOMMITHASH << ")" << std::endl
+            << std::endl
+            << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << std::endl
+            << std::endl;
 }
 
 namespace nekrs
@@ -55,17 +55,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
            int ciMode, std::string cacheDir, std::string _setupFile,
            std::string _backend, std::string _deviceID)
 {
-  if(buildOnly) {
-    int rank, size;
-    MPI_Comm_rank(comm_in, &rank);
-    MPI_Comm_size(comm_in, &size);
-    int color = MPI_UNDEFINED;
-    if (rank == 0) color = 1;     
-    MPI_Comm_split(comm_in, color, 0, &comm);
-    if (rank != 0) return;
-  } else {
-    MPI_Comm_dup(comm_in, &comm);
-  }
+  MPI_Comm_dup(comm_in, &comm);
     
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -133,8 +123,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   platform->timer.tic("setup", 1);
 
-  platform->linAlg = linAlg_t::getInstance();
-
   // jit compile udf
   std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
@@ -153,6 +141,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   nek::bootstrap(comm, options);
 
   if(udf.setup0) udf.setup0(comm, options);
+
+  compileKernels();
+
+  platform->linAlg = linAlg_t::getInstance();
 
   nrsSetup(comm, options, nrs);
 
@@ -409,15 +401,15 @@ void processUpdFile()
 
 static void dryRun(setupAide &options, int npTarget)
 {
-  std::cout << "performing dry-run to jit-compile for >="
-       << npTarget 
-       << " MPI tasks ...\n" << std::endl;
+  if(platform->comm.mpiRank == 0){
+    std::cout << "performing dry-run to jit-compile for >="
+         << npTarget 
+         << " MPI tasks ...\n" << std::endl;
+  }
   fflush(stdout);	
 
   options.setArgs("NP TARGET", std::to_string(npTarget));
   options.setArgs("BUILD ONLY", "TRUE");
-
-  platform->linAlg = linAlg_t::getInstance();
 
   // jit compile udf
   std::string udfFile;
@@ -436,9 +428,9 @@ static void dryRun(setupAide &options, int npTarget)
 
   if(udf.setup0) udf.setup0(comm, options);
 
-  // init solver
   platform_t* platform = platform_t::getInstance();
-  nrsSetup(comm, options, nrs);
+
+  compileKernels();
 
   if(rank == 0) {
     std::string cache_dir;
@@ -446,9 +438,9 @@ static void dryRun(setupAide &options, int npTarget)
     std::ofstream ofs;
     ofs.open(cache_dir + "/build-only.timestamp", std::ofstream::out | std::ofstream::trunc);
     ofs.close();
+    std::cout << "\nBuild successful." << std::endl;
   }
 
-  std::cout << "\nBuild successful." << std::endl;
 }
 
 static void setOUDF(setupAide &options)

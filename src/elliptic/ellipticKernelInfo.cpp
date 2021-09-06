@@ -27,9 +27,8 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
-occa::properties ellipticKernelInfo(mesh_t* mesh)
+occa::properties ellipticKernelInfo(int N)
 {
-
   
   // info for kernel construction
   occa::properties kernelInfo = platform->kernelInfo;
@@ -39,19 +38,26 @@ occa::properties ellipticKernelInfo(mesh_t* mesh)
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
 
-  kernelInfo["defines/" "p_dim"] = mesh->dim;
-  kernelInfo["defines/" "p_Nfields"] = mesh->Nfields;
-  kernelInfo["defines/" "p_N"] = mesh->N;
-  kernelInfo["defines/" "p_Nq"] = mesh->N + 1;
-  kernelInfo["defines/" "p_Np"] = mesh->Np;
-  kernelInfo["defines/" "p_Nfp"] = mesh->Nfp;
-  kernelInfo["defines/" "p_Nfaces"] = mesh->Nfaces;
-  kernelInfo["defines/" "p_NfacesNfp"] = mesh->Nfp * mesh->Nfaces;
-  kernelInfo["defines/" "p_Nvgeo"] = mesh->Nvgeo;
-  kernelInfo["defines/" "p_Nsgeo"] = mesh->Nsgeo;
-  kernelInfo["defines/" "p_Nggeo"] = mesh->Nggeo;
+  const int Nq = N+1;
+  const int Np = Nq * Nq * Nq;
+  const int Nfp = Nq * Nq;
+  constexpr int Nfaces {6};
 
-  kernelInfo["defines/" "p_halfN"] = (int)((mesh->Nq + 1) / 2);
+  constexpr int Nvgeo {12};
+  constexpr int Nggeo {7};
+  constexpr int Nsgeo {17};
+
+  kernelInfo["defines/" "p_dim"] = 3;
+  kernelInfo["defines/" "p_Nfields"] = 1;
+  kernelInfo["defines/" "p_N"] = N;
+  kernelInfo["defines/" "p_Nq"] = Nq;
+  kernelInfo["defines/" "p_Np"] = Np;
+  kernelInfo["defines/" "p_Nfp"] = Nfp;
+  kernelInfo["defines/" "p_Nfaces"] = Nfaces;
+  kernelInfo["defines/" "p_NfacesNfp"] = Nfp * Nfaces;
+  kernelInfo["defines/" "p_Nvgeo"] = Nvgeo;
+  kernelInfo["defines/" "p_Nsgeo"] = Nsgeo;
+  kernelInfo["defines/" "p_Nggeo"] = Nggeo;
 
   kernelInfo["defines/" "p_NXID"] = NXID;
   kernelInfo["defines/" "p_NYID"] = NYID;

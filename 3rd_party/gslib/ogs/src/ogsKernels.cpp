@@ -157,7 +157,7 @@ namespace ogs {
 }
 
 
-void ogs::initKernels(MPI_Comm comm, occa::device device) {
+void ogs::initKernels(MPI_Comm comm, occa::device device, bool verbose) {
 
   ogs::kernelInfo["defines/ " "p_blockSize"] = BLOCKSIZE;
   ogs::kernelInfo["defines/ " "dlong"] = dlongString;
@@ -175,6 +175,12 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
   ogs::kernelInfo["header"].asArray();
   ogs::kernelInfo["flags"].asObject();
 
+  occa::properties props = ogs::kernelInfo;
+
+  if(verbose){
+    props["verbose"] = true;
+  }
+
   MPI_Barrier(comm);
   double tStartLoadKernel = MPI_Wtime();
   if(rank == 0)  printf("loading gs kernels ... "); fflush(stdout);
@@ -182,144 +188,144 @@ void ogs::initKernels(MPI_Comm comm, occa::device device) {
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
 
-      ogs::gatherScatterKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatAdd", ogs::kernelInfo);
-      ogs::gatherScatterKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMul", ogs::kernelInfo);
-      ogs::gatherScatterKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMin", ogs::kernelInfo);
-      ogs::gatherScatterKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMax", ogs::kernelInfo);
+      ogs::gatherScatterKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatAdd", props);
+      ogs::gatherScatterKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMul", props);
+      ogs::gatherScatterKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMin", props);
+      ogs::gatherScatterKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMax", props);
 
-      ogs::gatherScatterKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleAdd", ogs::kernelInfo);
-      ogs::gatherScatterKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMul", ogs::kernelInfo);
-      ogs::gatherScatterKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMin", ogs::kernelInfo);
-      ogs::gatherScatterKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMax", ogs::kernelInfo);
+      ogs::gatherScatterKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleAdd", props);
+      ogs::gatherScatterKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMul", props);
+      ogs::gatherScatterKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMin", props);
+      ogs::gatherScatterKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_doubleMax", props);
 
-      ogs::gatherScatterKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intAdd", ogs::kernelInfo);
-      ogs::gatherScatterKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMul", ogs::kernelInfo);
-      ogs::gatherScatterKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMin", ogs::kernelInfo);
-      ogs::gatherScatterKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMax", ogs::kernelInfo);
+      ogs::gatherScatterKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intAdd", props);
+      ogs::gatherScatterKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMul", props);
+      ogs::gatherScatterKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMin", props);
+      ogs::gatherScatterKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_intMax", props);
 
-      ogs::gatherScatterKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longAdd", ogs::kernelInfo);
-      ogs::gatherScatterKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMul", ogs::kernelInfo);
-      ogs::gatherScatterKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMin", ogs::kernelInfo);
-      ogs::gatherScatterKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMax", ogs::kernelInfo);
+      ogs::gatherScatterKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longAdd", props);
+      ogs::gatherScatterKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMul", props);
+      ogs::gatherScatterKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMin", props);
+      ogs::gatherScatterKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_longMax", props);
 
-      ogs::gatherScatterVecKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatAdd", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMul", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMin", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMax", ogs::kernelInfo);
+      ogs::gatherScatterVecKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatAdd", props);
+      ogs::gatherScatterVecKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMul", props);
+      ogs::gatherScatterVecKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMin", props);
+      ogs::gatherScatterVecKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_floatMax", props);
 
-      ogs::gatherScatterVecKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleAdd", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMul", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMin", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMax", ogs::kernelInfo);
+      ogs::gatherScatterVecKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleAdd", props);
+      ogs::gatherScatterVecKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMul", props);
+      ogs::gatherScatterVecKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMin", props);
+      ogs::gatherScatterVecKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_doubleMax", props);
 
-      ogs::gatherScatterVecKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intAdd", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMul", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMin", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMax", ogs::kernelInfo);
+      ogs::gatherScatterVecKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intAdd", props);
+      ogs::gatherScatterVecKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMul", props);
+      ogs::gatherScatterVecKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMin", props);
+      ogs::gatherScatterVecKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_intMax", props);
 
-      ogs::gatherScatterVecKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longAdd", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMul", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMin", ogs::kernelInfo);
-      ogs::gatherScatterVecKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMax", ogs::kernelInfo);
+      ogs::gatherScatterVecKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longAdd", props);
+      ogs::gatherScatterVecKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMul", props);
+      ogs::gatherScatterVecKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMin", props);
+      ogs::gatherScatterVecKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatterVec.okl", "gatherScatterVec_longMax", props);
 
-      ogs::gatherScatterManyKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatAdd", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMul", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMin", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMax", ogs::kernelInfo);
+      ogs::gatherScatterManyKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatAdd", props);
+      ogs::gatherScatterManyKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMul", props);
+      ogs::gatherScatterManyKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMin", props);
+      ogs::gatherScatterManyKernel_floatMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_floatMax", props);
 
-      ogs::gatherScatterManyKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleAdd", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMul", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMin", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMax", ogs::kernelInfo);
+      ogs::gatherScatterManyKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleAdd", props);
+      ogs::gatherScatterManyKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMul", props);
+      ogs::gatherScatterManyKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMin", props);
+      ogs::gatherScatterManyKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_doubleMax", props);
 
-      ogs::gatherScatterManyKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intAdd", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMul", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMin", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMax", ogs::kernelInfo);
+      ogs::gatherScatterManyKernel_intAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intAdd", props);
+      ogs::gatherScatterManyKernel_intMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMul", props);
+      ogs::gatherScatterManyKernel_intMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMin", props);
+      ogs::gatherScatterManyKernel_intMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_intMax", props);
 
-      ogs::gatherScatterManyKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longAdd", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMul", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMin", ogs::kernelInfo);
-      ogs::gatherScatterManyKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMax", ogs::kernelInfo);
-
-
-
-      ogs::gatherKernel_floatAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatAdd", ogs::kernelInfo);
-      ogs::gatherKernel_floatMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMul", ogs::kernelInfo);
-      ogs::gatherKernel_floatMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMin", ogs::kernelInfo);
-      ogs::gatherKernel_floatMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMax", ogs::kernelInfo);
-
-      ogs::gatherKernel_doubleAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleAdd", ogs::kernelInfo);
-      ogs::gatherKernel_doubleMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMul", ogs::kernelInfo);
-      ogs::gatherKernel_doubleMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMin", ogs::kernelInfo);
-      ogs::gatherKernel_doubleMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMax", ogs::kernelInfo);
-
-      ogs::gatherKernel_intAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_intAdd", ogs::kernelInfo);
-      ogs::gatherKernel_intMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMul", ogs::kernelInfo);
-      ogs::gatherKernel_intMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMin", ogs::kernelInfo);
-      ogs::gatherKernel_intMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMax", ogs::kernelInfo);
-
-      ogs::gatherKernel_longAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_longAdd", ogs::kernelInfo);
-      ogs::gatherKernel_longMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMul", ogs::kernelInfo);
-      ogs::gatherKernel_longMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMin", ogs::kernelInfo);
-      ogs::gatherKernel_longMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMax", ogs::kernelInfo);
-
-      ogs::gatherVecKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatAdd", ogs::kernelInfo);
-      ogs::gatherVecKernel_floatMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMul", ogs::kernelInfo);
-      ogs::gatherVecKernel_floatMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMin", ogs::kernelInfo);
-      ogs::gatherVecKernel_floatMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMax", ogs::kernelInfo);
-
-      ogs::gatherVecKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleAdd", ogs::kernelInfo);
-      ogs::gatherVecKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMul", ogs::kernelInfo);
-      ogs::gatherVecKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMin", ogs::kernelInfo);
-      ogs::gatherVecKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMax", ogs::kernelInfo);
-
-      ogs::gatherVecKernel_intAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intAdd", ogs::kernelInfo);
-      ogs::gatherVecKernel_intMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMul", ogs::kernelInfo);
-      ogs::gatherVecKernel_intMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMin", ogs::kernelInfo);
-      ogs::gatherVecKernel_intMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMax", ogs::kernelInfo);
-
-      ogs::gatherVecKernel_longAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longAdd", ogs::kernelInfo);
-      ogs::gatherVecKernel_longMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMul", ogs::kernelInfo);
-      ogs::gatherVecKernel_longMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMin", ogs::kernelInfo);
-      ogs::gatherVecKernel_longMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMax", ogs::kernelInfo);
-
-      ogs::gatherManyKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatAdd", ogs::kernelInfo);
-      ogs::gatherManyKernel_floatMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMul", ogs::kernelInfo);
-      ogs::gatherManyKernel_floatMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMin", ogs::kernelInfo);
-      ogs::gatherManyKernel_floatMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMax", ogs::kernelInfo);
-
-      ogs::gatherManyKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleAdd", ogs::kernelInfo);
-      ogs::gatherManyKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMul", ogs::kernelInfo);
-      ogs::gatherManyKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMin", ogs::kernelInfo);
-      ogs::gatherManyKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMax", ogs::kernelInfo);
-
-      ogs::gatherManyKernel_intAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intAdd", ogs::kernelInfo);
-      ogs::gatherManyKernel_intMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMul", ogs::kernelInfo);
-      ogs::gatherManyKernel_intMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMin", ogs::kernelInfo);
-      ogs::gatherManyKernel_intMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMax", ogs::kernelInfo);
-
-      ogs::gatherManyKernel_longAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longAdd", ogs::kernelInfo);
-      ogs::gatherManyKernel_longMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMul", ogs::kernelInfo);
-      ogs::gatherManyKernel_longMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMin", ogs::kernelInfo);
-      ogs::gatherManyKernel_longMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMax", ogs::kernelInfo);
+      ogs::gatherScatterManyKernel_longAdd = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longAdd", props);
+      ogs::gatherScatterManyKernel_longMul = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMul", props);
+      ogs::gatherScatterManyKernel_longMin = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMin", props);
+      ogs::gatherScatterManyKernel_longMax = device.buildKernel(DOGS "/okl/gatherScatterMany.okl", "gatherScatterMany_longMax", props);
 
 
 
-      ogs::scatterKernel_float = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_float", ogs::kernelInfo);
-      ogs::scatterKernel_double = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_double", ogs::kernelInfo);
-      ogs::scatterKernel_int = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_int", ogs::kernelInfo);
-      ogs::scatterKernel_long = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_long", ogs::kernelInfo);
+      ogs::gatherKernel_floatAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatAdd", props);
+      ogs::gatherKernel_floatMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMul", props);
+      ogs::gatherKernel_floatMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMin", props);
+      ogs::gatherKernel_floatMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_floatMax", props);
 
-      ogs::scatterVecKernel_float = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_float", ogs::kernelInfo);
-      ogs::scatterVecKernel_double = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_double", ogs::kernelInfo);
-      ogs::scatterVecKernel_int = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_int", ogs::kernelInfo);
-      ogs::scatterVecKernel_long = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_long", ogs::kernelInfo);
+      ogs::gatherKernel_doubleAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleAdd", props);
+      ogs::gatherKernel_doubleMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMul", props);
+      ogs::gatherKernel_doubleMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMin", props);
+      ogs::gatherKernel_doubleMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_doubleMax", props);
 
-      ogs::scatterManyKernel_float = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_float", ogs::kernelInfo);
-      ogs::scatterManyKernel_double = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_double", ogs::kernelInfo);
-      ogs::scatterManyKernel_int = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_int", ogs::kernelInfo);
-      ogs::scatterManyKernel_long = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_long", ogs::kernelInfo);
+      ogs::gatherKernel_intAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_intAdd", props);
+      ogs::gatherKernel_intMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMul", props);
+      ogs::gatherKernel_intMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMin", props);
+      ogs::gatherKernel_intMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_intMax", props);
+
+      ogs::gatherKernel_longAdd = device.buildKernel(DOGS "/okl/gather.okl", "gather_longAdd", props);
+      ogs::gatherKernel_longMul = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMul", props);
+      ogs::gatherKernel_longMin = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMin", props);
+      ogs::gatherKernel_longMax = device.buildKernel(DOGS "/okl/gather.okl", "gather_longMax", props);
+
+      ogs::gatherVecKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatAdd", props);
+      ogs::gatherVecKernel_floatMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMul", props);
+      ogs::gatherVecKernel_floatMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMin", props);
+      ogs::gatherVecKernel_floatMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_floatMax", props);
+
+      ogs::gatherVecKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleAdd", props);
+      ogs::gatherVecKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMul", props);
+      ogs::gatherVecKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMin", props);
+      ogs::gatherVecKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_doubleMax", props);
+
+      ogs::gatherVecKernel_intAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intAdd", props);
+      ogs::gatherVecKernel_intMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMul", props);
+      ogs::gatherVecKernel_intMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMin", props);
+      ogs::gatherVecKernel_intMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_intMax", props);
+
+      ogs::gatherVecKernel_longAdd = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longAdd", props);
+      ogs::gatherVecKernel_longMul = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMul", props);
+      ogs::gatherVecKernel_longMin = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMin", props);
+      ogs::gatherVecKernel_longMax = device.buildKernel(DOGS "/okl/gatherVec.okl", "gatherVec_longMax", props);
+
+      ogs::gatherManyKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatAdd", props);
+      ogs::gatherManyKernel_floatMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMul", props);
+      ogs::gatherManyKernel_floatMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMin", props);
+      ogs::gatherManyKernel_floatMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_floatMax", props);
+
+      ogs::gatherManyKernel_doubleAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleAdd", props);
+      ogs::gatherManyKernel_doubleMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMul", props);
+      ogs::gatherManyKernel_doubleMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMin", props);
+      ogs::gatherManyKernel_doubleMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_doubleMax", props);
+
+      ogs::gatherManyKernel_intAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intAdd", props);
+      ogs::gatherManyKernel_intMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMul", props);
+      ogs::gatherManyKernel_intMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMin", props);
+      ogs::gatherManyKernel_intMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_intMax", props);
+
+      ogs::gatherManyKernel_longAdd = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longAdd", props);
+      ogs::gatherManyKernel_longMul = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMul", props);
+      ogs::gatherManyKernel_longMin = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMin", props);
+      ogs::gatherManyKernel_longMax = device.buildKernel(DOGS "/okl/gatherMany.okl", "gatherMany_longMax", props);
+
+
+
+      ogs::scatterKernel_float = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_float", props);
+      ogs::scatterKernel_double = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_double", props);
+      ogs::scatterKernel_int = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_int", props);
+      ogs::scatterKernel_long = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_long", props);
+
+      ogs::scatterVecKernel_float = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_float", props);
+      ogs::scatterVecKernel_double = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_double", props);
+      ogs::scatterVecKernel_int = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_int", props);
+      ogs::scatterVecKernel_long = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_long", props);
+
+      ogs::scatterManyKernel_float = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_float", props);
+      ogs::scatterManyKernel_double = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_double", props);
+      ogs::scatterManyKernel_int = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_int", props);
+      ogs::scatterManyKernel_long = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_long", props);
     }
     MPI_Barrier(comm);
   }

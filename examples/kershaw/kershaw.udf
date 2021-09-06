@@ -4,7 +4,7 @@
 /* UDF Functions */                                                      
 static dfloat P_EPS;
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
 }
 

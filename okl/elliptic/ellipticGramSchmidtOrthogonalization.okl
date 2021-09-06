@@ -45,15 +45,15 @@
         for(int j = 0; j < gmresSize; ++j){
           const dfloat yj = y[j];
           #pragma unroll
-          for(int fld = 0; fld < p_eNfields; fld++){
-            const dfloat Vnj = V[n + fld * offset + j * offset * p_eNfields];
+          for(int fld = 0; fld < p_Nfields; fld++){
+            const dfloat Vnj = V[n + fld * offset + j * offset * p_Nfields];
             w[n + fld * offset] -= yj * Vnj;
           }
         }
         dfloat sum = 0.0;
         const dfloat weight = weights[n];
         #pragma unroll
-        for(int fld = 0 ; fld < p_eNfields; ++fld){
+        for(int fld = 0 ; fld < p_Nfields; ++fld){
             const dfloat w_curr = w[n + fld * offset];
             sum += w_curr * w_curr * weight;
         }

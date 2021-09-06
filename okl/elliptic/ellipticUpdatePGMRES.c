@@ -37,10 +37,10 @@ extern "C" void FUNC(updatePGMRESSolution)(const dlong & N,
 #endif
   for(int j = 0; j < gmresSize; ++j){
     #pragma unroll
-    for(int fld = 0; fld < p_eNfields; ++fld){
+    for(int fld = 0; fld < p_Nfields; ++fld){
       for(int n = 0 ; n < N; ++n){
         const dfloat yj = y[j];
-        const dfloat Znj = Z[n + fld * offset + j * offset * p_eNfields];
+        const dfloat Znj = Z[n + fld * offset + j * offset * p_Nfields];
         x[n + fld * offset] += Znj * yj;
       }
     }

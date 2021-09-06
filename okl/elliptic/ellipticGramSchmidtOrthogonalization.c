@@ -38,16 +38,16 @@ extern "C" void FUNC(gramSchmidtOrthogonalization)(const dlong & Nblock, const d
   for(int j = 0; j < gmresSize; ++j){
     const dfloat yj = y[j];
     #pragma unroll
-    for(int fld = 0; fld < p_eNfields; fld++){
+    for(int fld = 0; fld < p_Nfields; fld++){
       for(dlong n = 0; n < N; ++n) {
-        const dfloat Vnj = V[n + fld * offset + j * offset * p_eNfields];
+        const dfloat Vnj = V[n + fld * offset + j * offset * p_Nfields];
         w[n + fld * offset] -= yj * Vnj;
       }
     }
   }
   dfloat sum = 0.0;
   #pragma unroll
-  for(int fld = 0; fld < p_eNfields; fld++){
+  for(int fld = 0; fld < p_Nfields; fld++){
     for(dlong n = 0 ; n < N; ++n){
       const dfloat weight = weights[n];
       const dfloat w_curr = w[n + fld * offset];

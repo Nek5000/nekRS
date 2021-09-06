@@ -44,7 +44,7 @@
       if(id<N) {
         double sum = 0.0;
         #pragma unroll
-        for(int fld = 0 ; fld < p_eNfields; ++fld){
+        for(int fld = 0 ; fld < p_Nfields; ++fld){
           const dfloat rnew = b_vec[id + fld * offset] - Ax[id + fld * offset];
           r[id + fld * offset] = rnew;
           sum += rnew * rnew;

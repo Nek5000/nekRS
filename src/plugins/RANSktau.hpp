@@ -3,7 +3,7 @@
 
 namespace RANSktau
 {
-void buildKernel(nrs_t* nrs);
+void buildKernel(occa::properties kernelInfo);
 void updateSourceTerms();
 void setup(nrs_t* nrsIn, dfloat mue, dfloat rho, int startIndex);
 void setup(nrs_t* nrsIn, dfloat mue, dfloat rho, int startIndex, const dfloat* coeffIn);

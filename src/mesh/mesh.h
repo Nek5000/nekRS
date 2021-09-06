@@ -224,7 +224,7 @@ struct mesh_t
   occa::kernel velocityDirichletKernel;
 };
 
-occa::properties populateMeshProperties(mesh_t*);
+occa::properties populateMeshProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 

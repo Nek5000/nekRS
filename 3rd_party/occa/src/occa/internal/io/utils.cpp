@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <fcntl.h>
+
 #include <occa/defines.hpp>
 
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
@@ -23,6 +25,7 @@
 #include <occa/internal/utils/misc.hpp>
 #include <occa/internal/utils/string.hpp>
 #include <occa/internal/utils/sys.hpp>
+
 
 namespace occa {
   // Kernel Caching
@@ -428,6 +431,20 @@ namespace occa {
       return contents;
     }
 
+    void sync(const std::string &filename)
+    {
+      const std::string filedir(dirname(filename));
+      int fd;
+    
+      fd = open(filename.c_str(), O_RDONLY);
+      fsync(fd);
+      close(fd);
+    
+      fd = open(filedir.c_str(), O_RDONLY);
+      fsync(fd);
+      close(fd);
+    }
+
     void write(const std::string &filename,
                const std::string &content) {
       std::string expFilename = io::expandFilename(filename);
@@ -438,9 +455,8 @@ namespace occa {
                  fp != 0);
 
       fputs(content.c_str(), fp);
-
-      fsync(fileno(fp));
       fclose(fp);
+      io::sync(expFilename);
     }
   }
 }
