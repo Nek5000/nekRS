@@ -92,6 +92,8 @@ void avg::EXY(dlong N,
 
 void avg::run(dfloat time)
 {
+  if(!nrs->converged) return;
+
   if(!setupCalled || !buildKernelCalled) {
     std::cout << "avg::run() was called prior to avg::setup()!\n";
     ABORT(1);
@@ -179,6 +181,8 @@ void avg::setup(nrs_t* nrs_)
 
 void avg::outfld(int _outXYZ, int FP64)
 {
+  if(!nrs->converged) return;
+
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->meshV;
 

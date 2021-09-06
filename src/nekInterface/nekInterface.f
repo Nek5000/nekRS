@@ -391,18 +391,18 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_outfld(filename)
+      subroutine nekf_outfld(suffix)
 
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
 
-      character filename*(*)
+      character suffix*(*)
 
       common /scrcg/ pm1(lx1,ly1,lz1,lelv)
 
       call copy(pm1,pr,nx1*ny1*nz1*nelv)
-      call outfld(filename)
+      call outfld(suffix)
 
       return
       end

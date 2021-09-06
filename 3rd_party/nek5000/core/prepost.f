@@ -584,16 +584,21 @@ c
 c
       integer nprefix
       save    nprefix
-      data    nprefix /0/
+      data    nprefix /1/
 
       if (len(prefix) .gt. 20) then
          write(6,*) 'ERROR i_find_prefix: prefix too long!'
          call exitt
       endif
 c
+      if(len(prefix).eq.0) then
+        i_find_prefix = 1
+        return
+      endif
+c
 c     Scan existing list of prefixes for a match to "prefix"
 c
-      do i=1,nprefix
+      do i=2,nprefix
         if(indx1(prefix,prefixes(i),len(prefix)) .gt. 0) then
           i_find_prefix = i
           return

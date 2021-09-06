@@ -285,15 +285,15 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   MPI_Barrier(platform->comm.mpiComm);
   const double tPreStep = MPI_Wtime() - tStart;
 
-  const int isOutputStep = nrs->isOutputStep;
-  bool converged = false;
-  int stage = 0;
-
   const bool useConstantFlowRate =
       platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE");
   bool solveRequired = true;
 
+  const int isOutputStep = nrs->isOutputStep;
+  nrs->converged = false;
+
   double tElapsedStep = 0;
+  int stage = 0;
   do {
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -321,12 +321,8 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
-    converged = true;
-    if (udf.converged)
-      converged = udf.converged(nrs, stage);
-    if (useConstantFlowRate && stage == 1) {
-      converged = false;
-    }
+    nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
+    if (useConstantFlowRate && stage == 1) nrs->converged = false; 
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -339,16 +335,16 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed);
 
     platform->timer.tic("udfExecuteStep", 1);
-    if (isOutputStep && converged) {
+    nek::ifoutfld(0);
+    nrs->isOutputStep = 0;
+    if (isOutputStep && nrs->converged) {
       nek::ifoutfld(1);
       nrs->isOutputStep = 1;
     }
     if (udf.executeStep)
       udf.executeStep(nrs, timeNew, tstep);
-    nek::ifoutfld(0);
-    nrs->isOutputStep = 0;
     platform->timer.toc("udfExecuteStep");
-  } while (!converged);
+  } while (!nrs->converged);
 
   if(tstep > 9) {
     tElapsedStepMin = std::fmin(tElapsedStep, tElapsedStepMin); 

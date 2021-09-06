@@ -45,6 +45,7 @@ struct nrs_t
 
   int NVfields, NTfields;
 
+  int converged;
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};

@@ -253,7 +253,8 @@ void printDeprecation(const inipp::Ini::Sections& sections)
   for (auto const & sec : sections) {
     for (auto const & val : sec.second) {
       if (std::find(deprecatedKeys.begin(), deprecatedKeys.end(), val.first) != deprecatedKeys.end()) {
-          std::cout << sec.first << "::" << val.first << " deprecated!\n";
+          std::cout << sec.first << "::" << val.first 
+                    << " is deprecated and might be removed in the future!\n";
       }
     }
   }
