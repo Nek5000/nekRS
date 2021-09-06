@@ -80,7 +80,10 @@ void* udfLoadFunction(const char* fname, int errchk)
   if (!h) goto err;
 
   fptr = dlsym(h,fname);
-  if (!fptr && errchk) goto err;
+  if (!fptr) {
+    printf("Cannot find udf function: %s!\n", fname);
+    if(errchk) goto err;
+  }
 
   return fptr;
 

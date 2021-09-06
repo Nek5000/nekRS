@@ -276,6 +276,7 @@ void timer_t::printRunStat(int step)
 
   hEtime[2] = query("minSolveStep", "HOST:MAX");
   hEtime[3] = query("maxSolveStep", "HOST:MAX");
+  hEtime[4] = query("loadKernels", "HOST:MAX");
 
   if (rank == 0) {
     std::cout << "step=  " << step << " runtime statistics\n\n";
@@ -285,6 +286,7 @@ void timer_t::printRunStat(int step)
     std::cout.precision(5);
 
   	std::cout << "  setup                 " << dEtime[10] << "s " << printPercentage(dEtime[10],dEtime[9]) << "\n"; 
+  	std::cout << "    loadKernels         " << hEtime[4]  << "s " << printPercentage(hEtime[4],dEtime[9]) << "\n"; 
 
     if(dEtime[11] > 0)
     std::cout << "  checkpointing         " << dEtime[11]<< "s " << printPercentage(dEtime[11],dEtime[9]) << "\n"; 

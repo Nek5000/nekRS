@@ -1367,7 +1367,7 @@ void compileKernels() {
 
   {
     MPI_Barrier(platform->comm.mpiComm);
-    double tStart = MPI_Wtime();
+    const double tStart = MPI_Wtime();
     if (platform->comm.mpiRank == 0)
       printf("loading kernels ... ");
     fflush(stdout);
@@ -1375,8 +1375,10 @@ void compileKernels() {
     platform->kernels.compile();
 
     MPI_Barrier(platform->comm.mpiComm);
+    const double loadTime = MPI_Wtime() - tStart; 
+    platform->timer.set("loadKernels", loadTime);
     if (platform->comm.mpiRank == 0)
-      printf("done (%gs)\n", MPI_Wtime() - tStart);
+      printf("done (%gs)\n\n", loadTime);
     fflush(stdout);
   }
 }

@@ -171,7 +171,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   }
   fflush(stdout);
 
-  platform->timer.reset();
   platform->timer.set("setup", setupTime);
 }
 
