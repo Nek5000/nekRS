@@ -26,7 +26,9 @@ void FUNC(weightedNorm2)(const dlong & Nblocks, const dlong & N,
   
   dfloat wa2 = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for reduction(+:wa2)
+#endif
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat wi = cpu_w[i];
@@ -47,7 +49,9 @@ void FUNC(weightedNorm2Many)(const dlong & Nblocks, const dlong & N,
   
   dfloat wa2 = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2) reduction(+:wa2)
+#endif
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;

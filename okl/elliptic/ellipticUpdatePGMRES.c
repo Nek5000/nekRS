@@ -32,7 +32,9 @@ extern "C" void FUNC(updatePGMRESSolution)(const dlong & N,
                                     const dfloat*  __restrict__ Z,
                                     dfloat*  __restrict__ x)
 {
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(3)
+#endif
   for(int j = 0; j < gmresSize; ++j){
     #pragma unroll
     for(int fld = 0; fld < p_eNfields; ++fld){

@@ -42,7 +42,9 @@ extern "C" void FUNC(ellipticPreconProlongateHex3D)(const dlong& Nelements,
       s_R[j][i] = r;
     }
   }
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for private(s_Pq, r_q, s_q)
+#endif
   for(dlong e = 0; e < Nelements; ++e) {
 
 

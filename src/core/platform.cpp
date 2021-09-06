@@ -140,6 +140,8 @@ device_t::buildNativeKernel(const std::string &filename,
 {
   occa::properties nativeProperties = props;
   nativeProperties["okl/enabled"] = false;
+  if(platform->device.mode() == "OpenMP")
+    nativeProperties["defines/__NEKRS__OMP__"] = 1;
   return this->buildKernel(filename, kernelName, nativeProperties, comm);
 }
 occa::kernel

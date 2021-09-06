@@ -22,7 +22,9 @@ extern "C"
 void FUNC(axpby)(const dlong & N, const dlong & xOffset, const dlong& yOffset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
                const dfloat &beta, dfloat * __restrict__ cpu_b){
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for
+#endif
   for(dlong i=0;i<N;++i){
     const dfloat ai = cpu_a[i + xOffset];
     const dfloat bi = cpu_b[i + yOffset];
@@ -35,7 +37,9 @@ extern "C"
 void FUNC(axpbyMany)(const dlong & N, const dlong & Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
                     const dfloat & beta, dfloat * __restrict__ cpu_b){
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2)
+#endif
   for(int fld=0;fld<Nfields;fld++) { 
     for(dlong i=0;i<N;++i){
       const dlong id = i + fld*offset;

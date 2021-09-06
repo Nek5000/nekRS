@@ -16,8 +16,9 @@
 
 ## What you may have to change to be compatible 
 
+* [par] You may have to remove or update invalid keys/values because par is now strongly typed
 * [par] Use `preconditioner = multigrid+coarse` instead of `multigrid` 
-* [udf] Add namespace qualifier std e.g. std::cout instead of cout
+* [udf] Add std namespace qualifier e.g. cout -> std::cout
 
 ## Known Bugs / Restrictions
 

@@ -6,7 +6,10 @@ extern "C" void FUNC(preFDM) (const dlong& Nelements,
   #define getIdx2(k,j,i,e) ((k-1)*p_Nq*p_Nq+(j-1)*p_Nq+(i-1)+(e)*p_Nq*p_Nq*p_Nq)
   #define sWork1(k,j,i,e) (work1[(getIdx(k,j,i,e))])
   #define uArr(k,j,i,e) (u[(getIdx2(k,j,i,e))])
+
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for
+#endif
   for (dlong elem = 0; elem < Nelements; elem++) {
     #pragma unroll 
     for(int k = 0; k < p_Nq_e; ++k){

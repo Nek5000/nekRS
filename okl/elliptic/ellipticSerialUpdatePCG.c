@@ -37,7 +37,9 @@ void FUNC(ellipticBlockUpdatePCG)(const dlong & N,
 {
   dfloat rdotr = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2)
+#endif
   for(int fld = 0; fld < p_eNfields; fld++)
     for(int i = 0; i < N; ++i) {
       const dlong n = i + fld * offset;
