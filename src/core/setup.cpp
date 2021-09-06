@@ -482,10 +482,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->pressureDirichletBCKernel =
         device.buildKernel(fileName, kernelName, kernelInfoBC);
 
-      fileName = oklpath + "nrs/pressureUpdate" + ".okl";
-      kernelName = "pressureUpdate";
-      nrs->pressureUpdateKernel =  device.buildKernel(fileName, kernelName, kernelInfo);
-
       fileName = oklpath + "nrs/velocityRhs" + suffix + ".okl";
       kernelName = "velocityRhsTOMBO" + suffix;
       nrs->velocityRhsKernel =
@@ -537,8 +533,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
           device.buildKernel(fileName, kernelName, prop);
 
         fileName = oklpath + "nrs/subCycleRKUpdate" + ".okl";
-        kernelName = "subCycleLSERKUpdate";
-        if(nrs->nRK == 4) kernelName = "subCycleERKUpdate";
+        kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
           platform->device.buildKernel(fileName, kernelName, prop);
         kernelName = "subCycleRK";
@@ -591,11 +586,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.buildKernel(fileName, kernelName, kernelInfo);
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
-        device.buildKernel(fileName, kernelName, kernelInfo);
-
-      fileName = oklpath + "nrs/mueDiv.okl";
-      kernelName = "mueDiv";
-      nrs->mueDivKernel =
         device.buildKernel(fileName, kernelName, kernelInfo);
   }
 
@@ -1400,8 +1390,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options, occa::properties& kernelInfoBC)
 
 
         fileName = oklpath + "cds/subCycleRKUpdate.okl";
-        kernelName = "subCycleLSERKUpdate";
-        if(cds->nRK == 4) kernelName = "subCycleERKUpdate";
+        kernelName = "subCycleERKUpdate";
         cds->subCycleRKUpdateKernel =  platform->device.buildKernel(fileName, kernelName, prop);
         kernelName = "subCycleRK";
         cds->subCycleRKKernel =  platform->device.buildKernel(fileName, kernelName, prop);

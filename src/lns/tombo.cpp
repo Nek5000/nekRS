@@ -138,8 +138,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 
 
   nrs->pressureAddQtlKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
+    mesh->Nlocal,
+    mesh->o_LMM,
     nrs->g0 * nrs->idt,
     nrs->o_div,
     platform->o_mempool.slice3);
@@ -168,8 +168,8 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
   dfloat scale = -1./3;
   if(platform->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
-  nrs->mueDivKernel(
-       mesh->Nelements*mesh->Np,
+  platform->linAlg->axmyz(
+       mesh->Nlocal,
        scale,
        nrs->o_mue,
        nrs->o_div,
@@ -214,7 +214,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
        platform->o_mempool.slice0); 
 
   nrs->velocityRhsKernel(
-    mesh->Nelements,
+    mesh->Nlocal,
     nrs->fieldOffset,
     nrs->o_BF,
     platform->o_mempool.slice0,

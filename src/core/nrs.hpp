@@ -110,8 +110,6 @@ struct nrs_t
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
-  occa::kernel mueDivKernel;
-
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
@@ -164,7 +162,6 @@ struct nrs_t
   occa::kernel sumMakefKernel;
   occa::kernel pressureRhsKernel;
   occa::kernel pressureDirichletBCKernel;
-  occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
   occa::kernel velocityNeumannBCKernel;

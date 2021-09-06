@@ -1100,7 +1100,7 @@ occa::memory velocityStrongSubCycle(
             ogsAdd,
             nrs->gsh);
 
-        nrs->subCycleRKUpdateKernel(mesh->Nelements,
+        nrs->subCycleRKUpdateKernel(mesh->Nlocal,
             rk,
             sdt,
             nrs->fieldOffset,
@@ -1461,7 +1461,7 @@ occa::memory scalarStrongSubCycle(cds_t *cds,
         oogs::finish(
             o_rhs, 1, cds->fieldOffset[is], ogsDfloat, ogsAdd, cds->gsh);
 
-        cds->subCycleRKUpdateKernel(cds->meshV->Nelements,
+        cds->subCycleRKUpdateKernel(cds->meshV->Nlocal,
             rk,
             sdt,
             cds->fieldOffset[is],
