@@ -1321,7 +1321,7 @@ void compileKernels() {
     mangleOCCACacheDir();
   }
 
-  { registerLinAlgKernels(); }
+  registerLinAlgKernels();
 
   {
     const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
@@ -1331,9 +1331,9 @@ void compileKernels() {
         platform->device, platform->device.mode(), communicator, buildOnly);
   }
 
-  { registerMeshKernels(); }
+  registerMeshKernels();
 
-  { registerNrsKernels(); }
+  registerNrsKernels();
 
   {
     int Nscalars;
@@ -1350,17 +1350,6 @@ void compileKernels() {
     };
     for (auto &&section : sections) {
       registerEllipticKernels(section);
-    }
-  }
-
-  {
-    std::vector<std::string> sections = {
-        "pressure",
-        "velocity",
-    };
-    int Nscalar;
-    platform->options.getArgs("NUMBER OF SCALARS", Nscalar);
-    for (auto &&section : sections) {
       registerEllipticPreconditionerKernels(section);
     }
   }

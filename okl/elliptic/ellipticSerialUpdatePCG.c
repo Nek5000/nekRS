@@ -39,12 +39,8 @@ void FUNC(ellipticBlockUpdatePCG)(const dlong & N,
 
 #ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2)
-<<<<<<< HEAD
-  for(int fld = 0; fld < p_Nfields; fld++)
-=======
 #endif
-  for(int fld = 0; fld < p_eNfields; fld++)
->>>>>>> next
+  for(int fld = 0; fld < p_Nfields; fld++)
     for(int i = 0; i < N; ++i) {
       const dlong n = i + fld * offset;
       cpu_x[n] += alpha * cpu_p[n];

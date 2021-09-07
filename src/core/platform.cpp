@@ -326,6 +326,9 @@ kernelRequestManager_t::add_kernel(kernelRequest_t request, bool checkUnique)
       ABORT(1);
     }
   }
+
+  const std::string fileName = request.fileName;
+  fileNameToRequestMap[fileName].insert(request);
 }
 occa::kernel
 kernelRequestManager_t::get(const std::string& request, bool checkValid) const
@@ -377,35 +380,41 @@ kernelRequestManager_t::compile()
 
   const int rank = buildNodeLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
   const int ranksCompiling =
-#if 0
     std::min(
       maxCompilingRanks,
       buildNodeLocal ?
         platformRef.comm.localCommSize :
         platformRef.comm.mpiCommSize
     );
-#else
-    1;
-#endif
 
-  std::vector<kernelRequest_t> kernelRequestVec(kernels.begin(), kernels.end());
+  std::vector<std::string> kernelFiles(fileNameToRequestMap.size());
+  
+  unsigned ctr = 0;
+  for(auto&& fileNameAndRequests : fileNameToRequestMap)
+  {
+    kernelFiles[ctr] = fileNameAndRequests.first;
+    ctr++;
+  }
 
   const auto& device = platformRef.device;
   auto& requestToKernel = requestToKernelMap;
-  auto compileKernels = [&kernelRequestVec, &requestToKernel, &device, rank, ranksCompiling](){
+  auto& fileNameToRequest = fileNameToRequestMap;
+  auto compileKernels = [&kernelFiles, &requestToKernel, &fileNameToRequest, &device, rank, ranksCompiling](){
     if(rank >= ranksCompiling) return;
-    const unsigned nKernels = kernelRequestVec.size();
-    for(unsigned kernelId = 0; kernelId < nKernels; ++kernelId)
+    const unsigned nFiles = kernelFiles.size();
+    for(unsigned fileId = 0; fileId < nFiles; ++fileId)
     {
-      if(kernelId % ranksCompiling == rank){
-        const auto& kernelRequest = kernelRequestVec.at(kernelId);
-        const std::string requestName = kernelRequest.requestName;
-        const std::string fileName = kernelRequest.fileName;
-        const std::string kernelName = kernelRequest.kernelName;
-        const std::string suffix = kernelRequest.suffix;
-        const occa::properties props = kernelRequest.props;
-        auto kernel = device.buildKernel(fileName, kernelName, props, suffix);
-        requestToKernel[requestName] = kernel;
+      if(fileId % ranksCompiling == rank){
+        const std::string fileName = kernelFiles[fileId];
+        for(auto && kernelRequest : fileNameToRequest[fileName]){
+          const std::string requestName = kernelRequest.requestName;
+          const std::string fileName = kernelRequest.fileName;
+          const std::string kernelName = kernelRequest.kernelName;
+          const std::string suffix = kernelRequest.suffix;
+          const occa::properties props = kernelRequest.props;
+          auto kernel = device.buildKernel(fileName, kernelName, props, suffix);
+          requestToKernel[requestName] = kernel;
+        }
       }
     }
   };

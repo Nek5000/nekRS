@@ -116,6 +116,7 @@ private:
   bool kernelsProcessed;
   std::set<kernelRequest_t> kernels;
   std::map<std::string, occa::kernel> requestToKernelMap;
+  std::map<std::string, std::set<kernelRequest_t>> fileNameToRequestMap;
 
   void add_kernel(kernelRequest_t request, bool assertUnique = true);
 
