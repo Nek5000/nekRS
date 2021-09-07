@@ -20,6 +20,7 @@
 * [par] Use `preconditioner = multigrid+coarse` instead of just `multigrid` 
 * [udf] Add std namespace qualifier e.g. `std::cout` instead of `cout`
 * [udf] Change argument `nrs_t *nrs` to `occa::properties& kernelInfo` in `UDF_LoadKernels()`, `udfBuildKernel()`, `(plugin)::buildKernel()`
+* [udf] `UDF_LoadKernels(occa::properties& kernelInfo)` is mandatory
 * Set `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf` if your MPI installation is not GPU aware the code will crash trying to time the different oogs modes
 
 ## Known Bugs / Restrictions
