@@ -331,7 +331,7 @@ kernelRequestManager_t::add_kernel(kernelRequest_t request, bool checkUnique)
   fileNameToRequestMap[fileName].insert(request);
 }
 occa::kernel
-kernelRequestManager_t::get(const std::string& request, bool checkValid) const
+kernelRequestManager_t::getKernel(const std::string& request, bool checkValid) const
 {
   if(checkValid){
     bool issueError = 0;

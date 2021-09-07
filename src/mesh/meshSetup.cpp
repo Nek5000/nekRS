@@ -75,7 +75,7 @@ occa::properties populateMeshProperties(int N)
   meshProperties["defines/" "p_IJWID"] = IJWID;
   return meshProperties;
 }
-void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
+void loadKernels(mesh_t* mesh);
 
 mesh_t *createMesh(MPI_Comm comm,
                    int N,
@@ -112,8 +112,7 @@ mesh_t *createMesh(MPI_Comm comm,
 
   mesh->Nlocal = mesh->Nelements * mesh->Np;
 
-  occa::properties meshKernelInfo = populateMeshProperties(mesh->N);
-  loadKernels(mesh, meshKernelInfo);
+  loadKernels(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
@@ -182,8 +181,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
-  occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, meshKernelInfo);
+  loadKernels(mesh);
 
   meshHaloSetup(mesh);
   meshPhysicalNodesHex3D(mesh);
@@ -314,19 +312,19 @@ void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
     platform->device.malloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
 }
 
-void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
+void loadKernels(mesh_t* mesh)
 {
   const std::string meshPrefix = "mesh-";
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     {
         mesh->velocityDirichletKernel =
-          platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
+          platform->kernels.getKernel(meshPrefix + "velocityDirichletBCHex3D");
         mesh->geometricFactorsKernel =
-          platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
+          platform->kernels.getKernel(meshPrefix + "geometricFactorsHex3D");
         mesh->surfaceGeometricFactorsKernel =
-          platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
+          platform->kernels.getKernel(meshPrefix + "surfaceGeometricFactorsHex3D");
         mesh->nStagesSumVectorKernel =
-          platform->kernels.get(meshPrefix + "nStagesSumVector");
+          platform->kernels.getKernel(meshPrefix + "nStagesSumVector");
     }
   }
 }

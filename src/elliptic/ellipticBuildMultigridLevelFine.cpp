@@ -82,13 +82,13 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       kernelName = "ellipticAx" + suffix;
       {
         const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-        elliptic->AxKernel = platform->kernels.get(kernelName + kernelSuffix);
+        elliptic->AxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
       }
 
       if(!strstr(pfloatString,dfloatString)) {
         kernelName = "ellipticAx" + suffix;
         const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-        elliptic->AxPfloatKernel = platform->kernels.get(kernelName + kernelSuffix);
+        elliptic->AxPfloatKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
       }
 
       if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
@@ -99,12 +99,12 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
       if(!serial) {
         {
           const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-          elliptic->partialAxKernel = platform->kernels.get(kernelName + kernelSuffix);
+          elliptic->partialAxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
         }
         if(!strstr(pfloatString,dfloatString)) {
           const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
           elliptic->partialAxPfloatKernel =
-            platform->kernels.get( kernelName + kernelSuffix);
+            platform->kernels.getKernel( kernelName + kernelSuffix);
         }
       }
   }

@@ -79,18 +79,14 @@ void coarseSolver::setup(
 
   {
     std::string kernelName = "convertFP64ToFP32";
-    convertFP64ToFP32Kernel = platform->kernels.get(kernelName);
+    convertFP64ToFP32Kernel = platform->kernels.getKernel(kernelName);
 
     kernelName = "convertFP32ToFP64";
-    convertFP32ToFP64Kernel = platform->kernels.get(kernelName);
+    convertFP32ToFP64Kernel = platform->kernels.getKernel(kernelName);
 
     kernelName = "vectorDotStar2";
-    vectorDotStarKernel2 = platform->kernels.get(kernelName);
+    vectorDotStarKernel2 = platform->kernels.getKernel(kernelName);
   }
-
-
-   if(options.compareArgs("BUILD ONLY", "TRUE"))
-    return; // bail early as this will not get used
 
 
   if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){

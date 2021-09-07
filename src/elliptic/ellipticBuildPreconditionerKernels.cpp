@@ -47,40 +47,40 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
   {
     kernelName = "mask";
     mesh->maskKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     mesh->maskPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix + "pfloat");
+      platform->kernels.getKernel(kernelName + orderSuffix + "pfloat");
                                  kernelName = "fusedCopyDfloatToPfloat";
     elliptic->fusedCopyDfloatToPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
     kernelName = "copyDfloatToPfloat";
     elliptic->copyDfloatToPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "copyPfloatToDfloat";
     elliptic->copyPfloatToDPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "scaledAdd";
     elliptic->scaledAddPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "dotMultiply";
     elliptic->dotMultiplyPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "updateSmoothedSolutionVec";
     elliptic->updateSmoothedSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "updateChebyshevSolutionVec";
     elliptic->updateChebyshevSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
 
     kernelName = "updateIntermediateSolutionVec";
     elliptic->updateIntermediateSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+      platform->kernels.getKernel(kernelName + orderSuffix);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

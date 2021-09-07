@@ -21,19 +21,8 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
 
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
-  occa::properties SEMFEMKernelProps = platform->kernelInfo;
-  if(useFP32){
-    SEMFEMKernelProps["defines/" "pfloat"] = "float";
-  } else {
-    SEMFEMKernelProps["defines/" "pfloat"] = "double";
-  }
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename = oklpath + "ellipticGather.okl";
-  gatherKernel = platform->kernels.get("gather");
-  filename = oklpath + "ellipticScatter.okl";
-  scatterKernel = platform->kernels.get("scatter");
+  gatherKernel = platform->kernels.getKernel("gather");
+  scatterKernel = platform->kernels.getKernel("scatter");
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();
@@ -56,8 +45,6 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     platform->comm.mpiComm,
     mesh->globalIds
   );
-
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) return;
 
   const int sizeType = useFP32 ? sizeof(float) : sizeof(dfloat);
   const long long numRows = data->rowEnd - data->rowStart + 1;

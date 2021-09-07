@@ -106,7 +106,7 @@ public:
   void compile();
 
   occa::kernel
-  get(const std::string& request, bool checkValid = true) const;
+  getKernel(const std::string& request, bool checkValid = true) const;
 
   bool
   processed() const { return kernelsProcessed; }

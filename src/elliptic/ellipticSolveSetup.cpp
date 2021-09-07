@@ -77,11 +77,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     initializeGmresData(elliptic);
     const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
     elliptic->gramSchmidtOrthogonalizationKernel =
-      platform->kernels.get(sectionIdentifier + "gramSchmidtOrthogonalization");
+      platform->kernels.getKernel(sectionIdentifier + "gramSchmidtOrthogonalization");
     elliptic->updatePGMRESSolutionKernel =
-      platform->kernels.get(sectionIdentifier + "updatePGMRESSolution");
+      platform->kernels.getKernel(sectionIdentifier + "updatePGMRESSolution");
     elliptic->fusedResidualAndNormKernel =
-      platform->kernels.get(sectionIdentifier + "fusedResidualAndNorm");
+      platform->kernels.getKernel(sectionIdentifier + "fusedResidualAndNorm");
   }
 
   elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
@@ -255,13 +255,13 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   {
       mesh->maskKernel =
-        platform->kernels.get("mask");
+        platform->kernels.getKernel("mask");
   }
 
   {
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
-      elliptic->updateDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
+      elliptic->updateDiagonalKernel = platform->kernels.getKernel(sectionIdentifier + kernelName);
       if(elliptic->blockSolver) {
         if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA) {
           if(elliptic->stressForm)
@@ -280,7 +280,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
         else
           kernelName =  "ellipticAx" + suffix;
       }
-      elliptic->AxStressKernel = platform->kernels.get(kernelName);
+      elliptic->AxStressKernel = platform->kernels.getKernel(kernelName);
       if(elliptic->blockSolver) {
         if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
           kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
@@ -293,7 +293,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
           kernelName = "ellipticAx" + suffix;
       }
       // Keep other kernel around
-      elliptic->AxKernel = platform->kernels.get(kernelName);
+      elliptic->AxKernel = platform->kernels.getKernel(kernelName);
 
       if(!serial) {
         if(elliptic->elementType != HEXAHEDRA) {
@@ -327,11 +327,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
             }
           }
         }
-        elliptic->partialAxKernel = platform->kernels.get(kernelName);
-        elliptic->partialAxKernel2 = platform->kernels.get(kernelName);
+        elliptic->partialAxKernel = platform->kernels.getKernel(kernelName);
+        elliptic->partialAxKernel2 = platform->kernels.getKernel(kernelName);
       }
       elliptic->updatePCGKernel =
-        platform->kernels.get(sectionIdentifier + "ellipticBlockUpdatePCG");
+        platform->kernels.getKernel(sectionIdentifier + "ellipticBlockUpdatePCG");
   }
 
   MPI_Barrier(platform->comm.mpiComm);
