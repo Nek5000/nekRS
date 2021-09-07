@@ -1224,6 +1224,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   if (par->extract("occa", "backend", threadModel)) {
     const std::vector<std::string> validValues = {
       {"serial"},
+      {"cpu"},
       {"cuda"},
       {"hip"},
       {"opencl"},
