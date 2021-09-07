@@ -2,12 +2,19 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <stdlib.h>
+#include <regex>
 
 #include "udf.hpp"
 #include "io.hpp"
 #include "platform.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
+
+static int velocityDirichletConditions = 0;
+static int velocityNeumannConditions = 0;
+static int pressureDirichletConditions = 0;
+static int scalarDirichletConditions = 0;
+static int scalarNeumannConditions = 0;
 
 uint32_t fchecksum(std::ifstream& file) 
 {
@@ -22,6 +29,103 @@ uint32_t fchecksum(std::ifstream& file)
     }
     return checksum;
 }
+
+void oudfFindDirichlet(std::string &field)
+{
+  if (field.find("velocity") != std::string::npos && !velocityDirichletConditions) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: velocityDirichletConditions!\n";
+    ABORT(EXIT_FAILURE);
+  }
+  if (field.find("scalar") != std::string::npos && !scalarDirichletConditions) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: scalarDirichletConditions!\n";
+    ABORT(EXIT_FAILURE);
+  }
+  if(field == "pressure" && !pressureDirichletConditions) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: pressureDirichletConditions!\n";
+  }
+}
+
+void oudfFindNeumann(std::string &field)
+{
+  if (field.find("velocity") != std::string::npos && !velocityNeumannConditions) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: velocityNeumannConditions!\n";
+    ABORT(EXIT_FAILURE);
+  }
+  if (field.find("scalar") != std::string::npos && !scalarNeumannConditions) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: scalarNeumannConditions!\n";
+    ABORT(EXIT_FAILURE);
+  }
+}
+
+void oudfInit(setupAide &options)
+{
+  std::string oklFile;
+  options.getArgs("UDF OKL FILE",oklFile);
+
+  char* ptr = realpath(oklFile.c_str(), NULL);
+  if(!ptr) {
+    if (platform->comm.mpiRank == 0) std::cout << "ERROR: Cannot find " << oklFile << "!\n";
+    ABORT(EXIT_FAILURE);;
+  }
+  free(ptr);
+
+  std::string cache_dir;
+  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+  std::string casename;
+  options.getArgs("CASENAME", casename);
+  const std::string dataFileDir = cache_dir + "/udf/";
+  const std::string dataFile = dataFileDir + "udf.okl";
+
+  if (platform->comm.mpiRank == 0) {
+    mkdir(dataFileDir.c_str(), S_IRWXU);
+
+    std::ifstream in;
+    in.open(oklFile);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    in.close();
+
+    std::ofstream out;
+    out.open(dataFile, std::ios::trunc);
+
+    out << buffer.str();
+
+    bool found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityDirichletConditions)"));
+    velocityDirichletConditions = found;
+    if(!found)
+      out << "void velocityDirichletConditions(bcData *bc){}\n";
+
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
+    velocityNeumannConditions = found;
+    if(!found)
+      out << "void velocityNeumannConditions(bcData *bc){}\n";
+
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+pressureDirichletConditions)"));
+    pressureDirichletConditions = found;
+    if(!found)
+      out << "void pressureDirichletConditions(bcData *bc){}\n";
+
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarNeumannConditions)"));
+    scalarNeumannConditions = found;
+    if(!found)
+      out << "void scalarNeumannConditions(bcData *bc){}\n";
+
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarDirichletConditions)"));
+    scalarDirichletConditions = found;
+    if(!found)
+      out << "void scalarDirichletConditions(bcData *bc){}\n";
+
+    out <<
+      "@kernel void __dummy__(int N) {"
+      "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
+      "}";
+
+    out.close();
+  }
+
+  options.setArgs("DATA FILE", dataFile);
+}
+
 
 int udfBuild(const char* udfFile, setupAide& options)
 {

@@ -1,5 +1,5 @@
-#include "nrs.hpp"
 #include <stdlib.h>
+#include "nrs.hpp"
 #include "meshSetup.hpp"
 #include "setup.hpp"
 #include "nekInterfaceAdapter.hpp"
@@ -25,7 +25,6 @@ static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
 static void setOccaVars();
-static void setOUDF(setupAide &options);
 static void dryRun(setupAide &options, int npTarget);
 
 void printHeader()
@@ -107,12 +106,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
-  setOUDF(options);
-
   // setup device
   platform_t* _platform = platform_t::getInstance(options, comm);
   platform = _platform;
   platform->par = par;
+
+  oudfInit(options);
 
   nrs = new nrs_t();
 
@@ -442,80 +441,6 @@ static void dryRun(setupAide &options, int npTarget)
 
 }
 
-static void setOUDF(setupAide &options)
-{
-  std::string oklFile;
-  options.getArgs("UDF OKL FILE",oklFile);
-
-  // char buf[FILENAME_MAX];
-
-  char* ptr = realpath(oklFile.c_str(), NULL);
-  if(!ptr) {
-    if (rank == 0) std::cout << "ERROR: Cannot find " << oklFile << "!\n";
-    ABORT(EXIT_FAILURE);;
-  }
-  free(ptr);
-
-  std::string cache_dir;
-  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-  std::string casename;
-  options.getArgs("CASENAME", casename);
-  const std::string dataFileDir = cache_dir + "/udf/";
-  const std::string dataFile = dataFileDir + "udf.okl";
-
-  if (rank == 0) {
-    mkdir(dataFileDir.c_str(), S_IRWXU);
-
-    std::ifstream in;
-    in.open(oklFile);
-    std::stringstream buffer;
-    buffer << in.rdbuf();
-    in.close();
-
-    std::ofstream out;
-    out.open(dataFile, std::ios::trunc);
-
-    out << buffer.str();
-
-    std::size_t found;
-    found = buffer.str().find("void nrsVelocityDirichletConditions");
-    if (found == std::string::npos) found = buffer.str().find("void insVelocityDirichletConditions");
-    if (found == std::string::npos) found = buffer.str().find("void velocityDirichletConditions");
-    if (found == std::string::npos)
-      out << "void velocityDirichletConditions(bcData *bc){}\n";
-
-    found = buffer.str().find("void nrsVelocityNeumannConditions");
-    if (found == std::string::npos) found = buffer.str().find("void insVelocityNeumannConditions");
-    if (found == std::string::npos) found = buffer.str().find("void velocityNeumannConditions");
-    if (found == std::string::npos)
-      out << "void velocityNeumannConditions(bcData *bc){}\n";
-
-    found = buffer.str().find("void nrsPressureDirichletConditions");
-    if (found == std::string::npos) found = buffer.str().find("void insPressureDirichletConditions");
-    if (found == std::string::npos) found = buffer.str().find("void pressureDirichletConditions");
-    if (found == std::string::npos)
-      out << "void pressureDirichletConditions(bcData *bc){}\n";
-
-    found = buffer.str().find("void cdsNeumannConditions");
-    if (found == std::string::npos) found = buffer.str().find("void scalarNeumannConditions");
-    if (found == std::string::npos)
-      out << "void scalarNeumannConditions(bcData *bc){}\n";
-
-    found = buffer.str().find("void cdsDirichletConditions");
-    if (found == std::string::npos) found = buffer.str().find("void scalarDirichletConditions");
-    if (found == std::string::npos)
-      out << "void scalarDirichletConditions(bcData *bc){}\n";
-
-    out <<
-      "@kernel void __dummy__(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
-      "}";
-
-    out.close();
-  }
-
-  options.setArgs("DATA FILE", dataFile);
-}
 
 static void setOccaVars()
 {

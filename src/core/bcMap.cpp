@@ -8,6 +8,7 @@
 
 #include "nrs.hpp"
 #include "platform.hpp"
+#include "udf.hpp"
 
 #define NOTBOUNDARY 0
 #define DIRICHLET 1
@@ -188,72 +189,80 @@ int type(int bid, std::string field)
 {
   if (bid < 1) return NOTBOUNDARY;
 
+  int bcType = -1;
+
   if (field.compare("x-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return DIRICHLET;
-    if (bcID == 5) return NEUMANN;
-    if (bcID == 6) return NEUMANN;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = DIRICHLET;
+    if (bcID == 5) bcType = NEUMANN;
+    if (bcID == 6) bcType = NEUMANN;
   } else if (field.compare("y-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return NEUMANN;
-    if (bcID == 5) return DIRICHLET;
-    if (bcID == 6) return NEUMANN;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = NEUMANN;
+    if (bcID == 5) bcType = DIRICHLET;
+    if (bcID == 6) bcType = NEUMANN;
   } else if (field.compare("z-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return NEUMANN;
-    if (bcID == 5) return NEUMANN;
-    if (bcID == 6) return DIRICHLET;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = NEUMANN;
+    if (bcID == 5) bcType = NEUMANN;
+    if (bcID == 6) bcType = DIRICHLET;
   } else if (field.compare("x-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return DIRICHLET;
-    if (bcID == 5) return NEUMANN;
-    if (bcID == 6) return NEUMANN;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = DIRICHLET;
+    if (bcID == 5) bcType = NEUMANN;
+    if (bcID == 6) bcType = NEUMANN;
   } else if (field.compare("y-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return NEUMANN;
-    if (bcID == 5) return DIRICHLET;
-    if (bcID == 6) return NEUMANN;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = NEUMANN;
+    if (bcID == 5) bcType = DIRICHLET;
+    if (bcID == 6) bcType = NEUMANN;
   } else if (field.compare("z-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return DIRICHLET;
-    if (bcID == 3) return NEUMANN;
-    if (bcID == 4) return NEUMANN;
-    if (bcID == 5) return NEUMANN;
-    if (bcID == 6) return DIRICHLET;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = DIRICHLET;
+    if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 4) bcType = NEUMANN;
+    if (bcID == 5) bcType = NEUMANN;
+    if (bcID == 6) bcType = DIRICHLET;
   } else if (field.compare("pressure") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
-    if (bcID == 1) return NEUMANN;
-    if (bcID == 2) return NEUMANN;
-    if (bcID == 3) return DIRICHLET;
-    if (bcID == 4) return NEUMANN;
-    if (bcID == 5) return NEUMANN;
-    if (bcID == 6) return NEUMANN;
+    if (bcID == 1) bcType = NEUMANN;
+    if (bcID == 2) bcType = NEUMANN;
+    if (bcID == 3) bcType = DIRICHLET;
+    if (bcID == 4) bcType = NEUMANN;
+    if (bcID == 5) bcType = NEUMANN;
+    if (bcID == 6) bcType = NEUMANN;
   } else if (field.compare(0, 6, "scalar") == 0) {
     const int bcID = bToBc[{field, bid - 1}];
-    if (bcID == 1) return DIRICHLET;
-    if (bcID == 2) return NEUMANN;
-    if (bcID == 3) return NEUMANN;
+    if (bcID == 1) bcType = DIRICHLET;
+    if (bcID == 2) bcType = NEUMANN;
+    if (bcID == 3) bcType = NEUMANN;
   }
 
-  std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
-  ABORT(1);
-  return 0;
+  if(bcType > 0) {
+    if(bcType == DIRICHLET) oudfFindDirichlet(field);
+    if(bcType == NEUMANN) oudfFindNeumann(field);
+    return bcType;
+  } else {
+    std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
+    ABORT(1);
+    return 0;
+  }
 }
 
 std::string text(int bid, std::string field)
@@ -309,6 +318,8 @@ void check(mesh_t* mesh)
     if (platform->comm.mpiRank == 0) printf("Mesh has unmapped boundary IDs!\n");
     ABORT(1);
   }
+
+
 }
 
 void setBcMap(std::string field, int* map, int nIDs)
