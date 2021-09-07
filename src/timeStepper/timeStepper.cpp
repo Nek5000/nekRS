@@ -285,10 +285,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   MPI_Barrier(platform->comm.mpiComm);
   const double tPreStep = MPI_Wtime() - tStart;
 
-  const bool useConstantFlowRate =
-      platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE");
-  bool solveRequired = true;
-
   const int isOutputStep = nrs->isOutputStep;
   nrs->converged = false;
 
@@ -313,16 +309,11 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       udf.div(nrs, timeNew, nrs->o_div);
     }
 
-    if (useConstantFlowRate && stage > 1) {
-      solveRequired = ConstantFlowRate::apply(nrs, tstep, timeNew);
-    } else if (nrs->flow) {
-      fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage);
-    }
+    fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage, tstep);
     if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
     nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
-    if (useConstantFlowRate && stage == 1) nrs->converged = false; 
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -331,8 +322,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     tElapsedStep += tElapsedStage;
     tElapsed += tElapsedStage;
 
-    if (solveRequired)
-      printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed);
+    printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed);
 
     platform->timer.tic("udfExecuteStep", 1);
     nek::ifoutfld(0);
@@ -652,7 +642,7 @@ void makef(
 }
 
 void fluidSolve(
-    nrs_t *nrs, dfloat time, occa::memory o_P, occa::memory o_U, int stage) {
+    nrs_t *nrs, dfloat time, occa::memory o_P, occa::memory o_U, int stage, int tstep) {
   mesh_t *mesh = nrs->meshV;
   linAlg_t *linAlg = platform->linAlg;
 
@@ -674,7 +664,13 @@ void fluidSolve(
 
   occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);
   o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+
   platform->timer.toc("velocitySolve");
+
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")){
+    ConstantFlowRate::apply(nrs, tstep, time);
+  }
+
 }
 
 void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
