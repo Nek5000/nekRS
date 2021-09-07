@@ -191,7 +191,7 @@ void* udfLoadFunction(const char* fname, int errchk)
 
   fptr = dlsym(h,fname);
   if (!fptr) {
-    printf("Cannot find udf function: %s!\n", fname);
+    if(platform->comm.mpiRank == 0) printf("Cannot find udf function: %s!\n", fname);
     if(errchk) goto err;
   }
 
