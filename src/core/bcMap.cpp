@@ -199,6 +199,7 @@ int type(int bid, std::string field)
     if (bcID == 4) bcType = DIRICHLET;
     if (bcID == 5) bcType = NEUMANN;
     if (bcID == 6) bcType = NEUMANN;
+    if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("y-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
@@ -207,6 +208,7 @@ int type(int bid, std::string field)
     if (bcID == 4) bcType = NEUMANN;
     if (bcID == 5) bcType = DIRICHLET;
     if (bcID == 6) bcType = NEUMANN;
+    if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("z-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
@@ -215,6 +217,7 @@ int type(int bid, std::string field)
     if (bcID == 4) bcType = NEUMANN;
     if (bcID == 5) bcType = NEUMANN;
     if (bcID == 6) bcType = DIRICHLET;
+    if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("x-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
@@ -247,22 +250,22 @@ int type(int bid, std::string field)
     if (bcID == 4) bcType = NEUMANN;
     if (bcID == 5) bcType = NEUMANN;
     if (bcID == 6) bcType = NEUMANN;
+    if (bcID == 3) oudfFindDirichlet(field);
   } else if (field.compare(0, 6, "scalar") == 0) {
     const int bcID = bToBc[{field, bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
     if (bcID == 2) bcType = NEUMANN;
     if (bcID == 3) bcType = NEUMANN;
+    if (bcID == 1) oudfFindDirichlet(field);
+    if (bcID == 3) oudfFindNeumann(field);
   }
 
-  if(bcType > 0) {
-    if(bcType == DIRICHLET) oudfFindDirichlet(field);
-    if(bcType == NEUMANN) oudfFindNeumann(field);
-    return bcType;
-  } else {
+  if(bcType < 0) {
     std::cout << __func__ << "(): Unexpected error occured!" << std::endl;
     ABORT(1);
-    return 0;
   }
+
+  return bcType;
 }
 
 std::string text(int bid, std::string field)
