@@ -16,17 +16,11 @@
 
 ## What you may have to change to be compatible 
 
-* [par] You may have to remove or update invalid keys/values because par is now strongly typed
-* [par] Use `preconditioner = multigrid+coarse` instead of `multigrid` 
-* [udf] Add namespace qualifier std e.g. `std::cout` instead of `cout`
-* [udf] Change `void UDF_LoadKernels(nrs_t* nrs);` to
-               `void UDF_LoadKernels(occa::properties& kernelInfo);`
-* [udf] Change `occa::kernel udfBuildKernel(nrs_t* nrs, const char* function);` to
-               `occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function);` to
-* [udf] Change `(plugin)::buildKernel(nrs_t* nrs);`  to
-               `(plugin)::buildKernel(occa::properties kernelInfo);
-
-* Set NEKRS_GPU_MPI=0 in $NEKRS_HOME/nekrs.conf if MPI is not GPU aware (code will crash otherwise)
+* [par] Remove/Update invalid keys & values
+* [par] Use `preconditioner = multigrid+coarse` instead of just `multigrid` 
+* [udf] Add std namespace qualifier e.g. `std::cout` instead of `cout`
+* [udf] Change argument `nrs_t *nrs` to `occa::properties& kernelInfo` in `UDF_LoadKernels()`, `udfBuildKernel()`, `(plugin)::buildKernel()`
+* Set `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf` if your MPI installation is not GPU aware otherwise code will crash
 
 ## Known Bugs / Restrictions
 
