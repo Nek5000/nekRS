@@ -123,6 +123,12 @@ void oudfInit(setupAide &options)
     out.close();
   }
 
+  MPI_Bcast(&velocityDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+  MPI_Bcast(&velocityNeumannConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+  MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+  MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+  MPI_Bcast(&scalarDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+
   options.setArgs("DATA FILE", dataFile);
 }
 
