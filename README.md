@@ -19,9 +19,6 @@ Capabilities:
 * ALE formulation for moving mesh support
 * VisIt & Paraview support for data analysis and visualization
 
-Note, the code is an early state so it's very likely that you run into undiscovered issues. Moreover it's evolving quickly so things might change from one version to another without being backward compatible. 
-
-
 ## Build Instructions
 
 Requirements:
@@ -54,7 +51,7 @@ To build and install the code just run:
 cmake --build ./build --target install -j8
 ```
 Build settings can be customized by environment variables. 
-
+After installation you may want to adjust `$NEKRS_HOME/nekrs.conf` to your environment.
 
 ## Setting the Enviroment
 
@@ -67,14 +64,15 @@ export PATH=$NEKRS_HOME/bin:$PATH
 ```
 then type `source $HOME/.bash_profile` in the current terminal window. 
 
-## Run Example
+## Run the Code
+
+We try hard not to break userland but the code is evolving quickly so things might change from one version to another without being backward compatible (see release notes). 
 
 ```sh
 cd $NEKRS_HOME/examples/turbPipePeriodic
 nrsmpi turbPipe 2 # run on two MPI ranks
 ```
-You may have to adjust the example launch scripts `nrsmpi/nrsbmpi` to your environment.
-Please check the examples in `bin`.
+Note, `nrsmpi/nrsbmpi` are just basic launch scripts. Please check `bin` for more examples.
 
 ## Documentation
 For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/).
