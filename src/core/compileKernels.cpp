@@ -1294,12 +1294,9 @@ void registerLinAlgKernels() {
 
 void compileKernels() {
 
-  int buildNodeLocal;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL")) {
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
     buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
-  } else {
-    buildNodeLocal = 0;
-  }
 
   const int globalRank = platform->comm.mpiRank;
   MPI_Comm localComm = platform->comm.localComm;
@@ -1364,7 +1361,15 @@ void compileKernels() {
     platform->kernels.compile();
 
     MPI_Barrier(platform->comm.mpiComm);
-    const double loadTime = MPI_Wtime() - tStart; 
+    const double loadTime = MPI_Wtime() - tStart;
+
+    fflush(stdout);
+    if (platform->comm.mpiRank == 0) {
+      std::ofstream ofs;
+      ofs.open(occa::env::OCCA_CACHE_DIR + "cache/compile.timestamp", std::ofstream::out | std::ofstream::trunc);
+      ofs.close();
+    }
+ 
     platform->timer.set("loadKernels", loadTime);
     if (platform->comm.mpiRank == 0)
       printf("done (%gs)\n\n", loadTime);
