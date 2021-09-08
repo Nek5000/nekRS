@@ -538,10 +538,9 @@ int buildNekInterface(int ldimt, int N, int np, setupAide& options)
 		 -f %s/Makefile lib usr libnekInterface",
          cache_dir, nek5000_dir, nek5000_dir, usrname.c_str(), cache_dir, cache_dir, 
          nekInterface_dir, nekInterface_dir);
-    fileSync(usrFileCache);
-    fileSync(libFile);
     if(verbose) printf("%s\n", buf);
     if(system(buf)) return EXIT_FAILURE;
+    fileSync(libFile);
     printf("done (%gs)\n\n", MPI_Wtime() - tStart);
     fflush(stdout);
   }
