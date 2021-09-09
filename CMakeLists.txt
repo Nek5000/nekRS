@@ -328,33 +328,7 @@ message(NOTICE "-------------------------------------------")
 ### Install                                                                     #
 #################################################################################
 
-#install nekRS
-install(TARGETS nekrs-lib nekrs-bin
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
-
-# Trailing slash prevents parent directory from being copied
-install(DIRECTORY scripts/ DESTINATION bin
-  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
-install(FILES src/udf/CMakeLists.txt DESTINATION udf)
-install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
-
-# Examples will follow a different policy -- only copy if source tree is newer than install tree
-file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
-configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
-install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
-
-install(FILES src/core/parHelp.txt DESTINATION include)
-
-###############################################################################
 # Generate nekrs.conf                                                       #
-###############################################################################
-
 set(MPI_COMPILER_CMDLINE "")
 _MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
 if (NOT MPI_COMPILER_RETURN EQUAL 0)
@@ -380,6 +354,29 @@ configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
+
+#install nekRS
+install(TARGETS nekrs-lib nekrs-bin
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+
+# Trailing slash prevents parent directory from being copied
+install(DIRECTORY scripts/ DESTINATION bin
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
+install(FILES src/udf/CMakeLists.txt DESTINATION udf)
+install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
+
+# Examples will follow a different policy -- only copy if source tree is newer than install tree
+file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
+install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
+
+install(FILES src/core/parHelp.txt DESTINATION include)
 
 #################################################################################
 # Uninstall
