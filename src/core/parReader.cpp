@@ -1913,8 +1913,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     if(rank == 0 && length > 0)
     {
-      std::cout << "Encountered par file errors:\n";
+      std::cout << "Detected par file errors:\n";
       std::cout << errorMessage;
+      std::cout << "\nRun with `--help par` for more details\n";
     }
     fflush(stdout);
 

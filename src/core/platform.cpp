@@ -51,8 +51,6 @@ deviceVector_t::at(const int i)
 }
 
 
-
-
 platform_t* platform_t::singleton = nullptr;
 platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
 : options(_options),

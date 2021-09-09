@@ -55,13 +55,18 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
            std::string _backend, std::string _deviceID)
 {
   MPI_Comm_dup(comm_in, &comm);
-    
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+  if (rank == 0) {
+    printHeader();
+    std::cout << "MPI tasks: " << size << std::endl << std::endl;
+  }
 
   srand48((long int) rank);
 
   configRead(comm);
+
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
 
   auto par = new inipp::Ini();	  
@@ -84,9 +89,6 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   setOccaVars();
 
   if (rank == 0) {
-    printHeader();
-    std::cout << "MPI tasks: " << size << std::endl << std::endl;
-
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
     std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
