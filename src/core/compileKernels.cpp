@@ -708,7 +708,7 @@ void registerFineLevelKernels(const std::string &section, int N) {
     }
   }
 
-  { registerSchwarzKernels(section, N); }
+  registerSchwarzKernels(section, N);
 }
 void registerSEMFEMKernels(const std::string &section, int N);
 void registerLevelKernels(const std::string &section, int Nf, int N) {
@@ -1320,14 +1320,6 @@ void compileKernels() {
 
   registerLinAlgKernels();
 
-  {
-    const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
-    auto communicator = buildNodeLocal ? platform->comm.localComm : platform->comm.mpiComm;
-    ogs::initKernels(communicator, platform->device, buildOnly);
-    oogs::compile(
-        platform->device, platform->device.mode(), communicator, buildOnly);
-  }
-
   registerMeshKernels();
 
   registerNrsKernels();
@@ -1357,6 +1349,14 @@ void compileKernels() {
     if (platform->comm.mpiRank == 0)
       printf("loading kernels ... ");
     fflush(stdout);
+
+    {
+      const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
+      auto communicator = buildNodeLocal ? platform->comm.localComm : platform->comm.mpiComm;
+      ogs::initKernels(communicator, platform->device, buildOnly);
+      oogs::compile(
+          platform->device, platform->device.mode(), communicator, buildOnly);
+    }
 
     platform->kernels.compile();
 
