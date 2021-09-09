@@ -92,6 +92,10 @@ void configRead(MPI_Comm comm)
   //buf = install_dir + "/";
   //setenv("OCCA_DIR", buf.c_str(), 1);
 
+
+  ini.extract("general", "nekrs_mpi_underlying_compiler", buf);
+  if(!getenv("NEKRS_MPI_UNDERLYING_COMPILER")) setenv("NEKRS_MPI_UNDERLYING_COMPILER", buf.c_str(), 1);
+
   ini.extract("general", "occa_cxx", buf);
   if(!getenv("OCCA_CXX")) setenv("OCCA_CXX", buf.c_str(), 1);
 

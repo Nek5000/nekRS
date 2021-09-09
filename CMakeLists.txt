@@ -324,15 +324,6 @@ else(GPU_MPI)
 endif()
 message(NOTICE "-------------------------------------------")
 
-###############################################################################
-# Generate nekrs.conf                                                       #
-###############################################################################
-
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
-  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
-  @ONLY)
-
 #################################################################################
 ### Install                                                                     #
 #################################################################################
@@ -359,6 +350,36 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
 install(FILES src/core/parHelp.txt DESTINATION include)
+
+###############################################################################
+# Generate nekrs.conf                                                       #
+###############################################################################
+
+set(MPI_COMPILER_CMDLINE "")
+_MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
+_MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
+if (NOT MPI_COMPILER_RETURN EQUAL 0)
+  _MPI_check_compiler("CXX" "-showme" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
+endif()
+if (NOT MPI_COMPILER_RETURN EQUAL 0)
+  _MPI_check_compiler("CXX" "-craype-verbose" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
+endif()
+if (MPI_COMPILER_RETURN EQUAL 0 AND MPI_COMPILER_CMDLINE)
+  separate_arguments(MPI_COMPILER_CMDLINE)
+  list(GET MPI_COMPILER_CMDLINE 0 MPI_UNDERLYING_COMPILER)
+  if(EXISTS ${MPI_UNDERLYING_COMPILER})
+    message(NOTICE "-- Found MPI_UNDERLYING_COMPILER: ${MPI_UNDERLYING_COMPILER}")
+  else()
+    message(FATAL_ERROR "Cannot find ${MPI_UNDERLYING_COMPILER}")
+  endif()
+else()
+  message(FATAL_ERROR "Cannot identify underlying compiler used by ${CMAKE_CXX_COMPILER}")
+endif()
+
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
+  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
+  @ONLY)
 
 #################################################################################
 # Uninstall
