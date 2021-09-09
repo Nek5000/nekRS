@@ -42,6 +42,7 @@ void oudfFindDirichlet(std::string &field)
   }
   if(field == "pressure" && !pressureDirichletConditions) {
     if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: pressureDirichletConditions!\n";
+    // ABORT(EXIT_FAILURE); this bc is optional 
   }
 }
 
@@ -186,7 +187,7 @@ void* udfLoadFunction(const char* fname, int errchk)
 
   void* h, * fptr;
   h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);
-  if (!h) goto err;
+  if (!h) goto errOpen;
 
   fptr = dlsym(h,fname);
   if (!fptr) {
@@ -196,8 +197,10 @@ void* udfLoadFunction(const char* fname, int errchk)
 
   return fptr;
 
-err:
+errOpen:
   fprintf(stderr, "Error in %s(): %s\n", __func__, dlerror());
+
+err:
   ABORT(EXIT_FAILURE);
 }
 
