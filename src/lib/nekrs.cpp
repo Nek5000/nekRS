@@ -71,6 +71,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   auto par = new inipp::Ini();	  
   std::string setupFile = _setupFile + ".par";
+
+  if (rank == 0) std::cout << "reading par file ...\n"; 
   options = parRead((void*) par, setupFile, comm);
 
   {
@@ -91,6 +93,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   if (rank == 0) {
     std::string install_dir;
     install_dir.assign(getenv("NEKRS_HOME"));
+    std::cout << std::endl;
     std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
 
     std:: string cache_dir;

@@ -1050,7 +1050,7 @@ void parseRegularization(const int rank, setupAide &options,
         options.setArgs(parPrefix + "HPFRT STRENGTH", to_string_f(weight));
       } else {
         if (filtering == "hpfrt")
-          append_error("Cannot find mandatory parameter GENERAL:filterWeight");
+          append_error("cannot find mandatory parameter GENERAL:filterWeight");
       }
       double filterCutoffRatio;
       int NFilterModes;
@@ -1181,7 +1181,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   const char *ptr = realpath(setupFile.c_str(), NULL);
   if (!ptr) {
     std::ostringstream error;
-    error << "\nERROR: Cannot find " << setupFile << "!\n";
+    error << "\nERROR: cannot find " << setupFile << "!\n";
     append_error(error.str());
   }
 
@@ -1263,7 +1263,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("RESTART FROM FILE", "1");
     options.setArgs("RESTART FILE NAME", startFrom);
     const char *ptr = realpath(startFrom.c_str(), NULL);
-    if(!ptr) append_error("Cannot find startFrom file");
+    if(!ptr) append_error("cannot find startFrom file");
   }
 
   int N;
@@ -1272,7 +1272,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     if (N > 10)
       append_error("polynomialOrder > 10 is currently not supported");
   } else {
-    append_error("Cannot find mandatory parameter GENERAL::polynomialOrder");
+    append_error("cannot find mandatory parameter GENERAL::polynomialOrder");
   }
 
   int cubN = round((3./2) * (N + 1) - 1) - 1;
@@ -1407,17 +1407,17 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
       endTime = -1;
     } else {
-      append_error("Cannot find mandatory parameter GENERAL::numSteps");
+      append_error("cannot find mandatory parameter GENERAL::numSteps");
     }
     options.setArgs("NUMBER TIMESTEPS", std::to_string(numSteps));
   } else if (stopAt == "endtime") {
     if (!par->extract("general", "endtime", endTime))
-      append_error("Cannot find mandatory parameter GENERAL::endTime");
+      append_error("cannot find mandatory parameter GENERAL::endTime");
     options.setArgs("END TIME", to_string_f(endTime));
   } else if (stopAt == "elapsedtime") {
     double elapsedTime;
     if (!par->extract("general", "elapsedtime", elapsedTime))
-      append_error("Cannot find mandatory parameter GENERAL::elapsedTime");
+      append_error("cannot find mandatory parameter GENERAL::elapsedTime");
     options.setArgs("STOP AT ELAPSED TIME", to_string_f(elapsedTime));
   } else {
     std::ostringstream error;
@@ -1913,9 +1913,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     if(rank == 0 && length > 0)
     {
-      std::cout << "Detected par file errors:\n";
+      std::cout << "detected par file errors:\n";
       std::cout << errorMessage;
-      std::cout << "\nRun with `--help par` for more details\n";
+      std::cout << "\nrun with `--help par` for more details\n";
     }
     fflush(stdout);
 
