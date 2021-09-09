@@ -225,6 +225,15 @@ int validateKeys(const inipp::Ini::Sections& sections)
   int err = 0;
   bool generalExists = false;
   for (auto const & sec : sections) {
+    if(sec.first.find("general") != std::string::npos) generalExists = true;
+  }
+  if(!generalExists){
+    std::ostringstream error;
+    error << "mandatory section [GENERAL] not found!\n";
+    append_error(error.str());
+    err++;
+  }
+  for (auto const & sec : sections) {
     if(sec.first.find("casedata") != std::string::npos) continue;
     if(sec.first.find("general") != std::string::npos) generalExists = true;
     const auto& validKeys = getValidKeys(sec.first);
@@ -238,12 +247,6 @@ int validateKeys(const inipp::Ini::Sections& sections)
         }
       }
     }
-  }
-  if(!generalExists){
-    std::ostringstream error;
-    error << "mandatory section [GENERAL] not found!\n";
-    append_error(error.str());
-    err++;
   }
   return err;
 }
