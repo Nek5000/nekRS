@@ -357,7 +357,6 @@ install(FILES src/core/parHelp.txt DESTINATION include)
 
 set(MPI_COMPILER_CMDLINE "")
 _MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-_MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
 if (NOT MPI_COMPILER_RETURN EQUAL 0)
   _MPI_check_compiler("CXX" "-showme" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
 endif()
