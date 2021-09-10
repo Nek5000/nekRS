@@ -1311,9 +1311,9 @@ void compileDummyKernel()
   if (getenv("NEKRS_BUILD_NODE_LOCAL"))
     buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
   auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
-  const std::string dummyKernelName = "__dummy__";
+  const std::string dummyKernelName = "myDummyKernelName";
   const std::string dummyKernelStr = std::string(
-      "@kernel void __dummy__(int N) {"
+      "@kernel void myDummyKernelName(int N) {"
       "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
       "}"
   );
