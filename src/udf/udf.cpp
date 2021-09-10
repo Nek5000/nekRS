@@ -74,8 +74,7 @@ void oudfInit(setupAide &options)
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
   std::string casename;
   options.getArgs("CASENAME", casename);
-  std::string udf_dir;
-  udf_dir.assign(getenv("NEKRS_UDF_DIR"));
+  std::string udf_dir = cache_dir + "/udf";
   const std::string dataFile = udf_dir + "/udf.okl";
 
   int buildRank = platform->comm.mpiRank;

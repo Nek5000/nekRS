@@ -136,9 +136,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     std::string cache_dir;
     cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
     mkdir(cache_dir.c_str(), S_IRWXU);
-    std::string udf_dir;
-    udf_dir.assign(getenv("NEKRS_UDF_DIR"));
-    mkdir(udf_dir.c_str(), S_IRWXU);
+    std::string udf_cache_dir = cache_dir + "/udf";
+    mkdir(udf_cache_dir.c_str(), S_IRWXU);
   }
 
   oudfInit(options);
