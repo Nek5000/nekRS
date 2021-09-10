@@ -80,10 +80,10 @@
         }
 
         if (id < p_Nq * p_cubNq) {
-          s_cubInterpT[0][id] = cubInterpT[id];
+          s_cubInterpT[j][i] = cubInterpT[id];
         }
 
-        s_cubD[0][id] = cubD[id];
+        s_cubD[j][i] = cubD[id];
 #pragma unroll p_cubNq
         for(int k = 0; k < p_cubNq; ++k) {
           dfloat Ue = 0.0;
