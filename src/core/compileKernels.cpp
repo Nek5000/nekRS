@@ -92,44 +92,6 @@ void registerNrsKernels() {
   if (Nsubsteps)
     nEXT = nBDF;
 
-  constexpr int nRK = 4;
-
-  auto jit_compile_udf = [N, kernelInfo, install_dir]() {
-    auto bc_kernelInfo = kernelInfo;
-    if (udf.loadKernels) {
-      // side-effect: kernelInfoBC will include any relevant user-defined kernel
-      // info
-      udf.loadKernels(bc_kernelInfo);
-    }
-    const std::string bcDataFile = install_dir + "/include/core/bcData.h";
-    bc_kernelInfo["includes"] += bcDataFile.c_str();
-    std::string boundaryHeaderFileName;
-    platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
-    bc_kernelInfo["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
-    bc_kernelInfo += populateMeshProperties(N);
-
-    return bc_kernelInfo;
-  };
-  int buildNodeLocal;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL")) {
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
-  } else {
-    buildNodeLocal = 0;
-  }
-  auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
-  auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
-
-  if (rank == 0) {
-    kernelInfoBC = jit_compile_udf();
-  }
-
-  MPI_Barrier(communicator);
-
-  if (rank != 0) {
-    kernelInfoBC = jit_compile_udf();
-  }
-
   {
     fileName = oklpath + "core/nStagesSum.okl";
     kernelName = "nStagesSum3";
@@ -376,7 +338,6 @@ void registerCdsKernels() {
   if (Nsubsteps)
     nEXT = nBDF;
 
-  constexpr int nRK = 4;
 
   std::string fileName, kernelName;
   const std::string suffix = "Hex3D";
@@ -1290,16 +1251,65 @@ void registerLinAlgKernels() {
       "weightedInnerProdMulti",
       kernelInfo);
 }
-} // namespace
-
-void compileKernels() {
-
+void compileUDFKernels()
+{
   int buildNodeLocal = 0;
   if (getenv("NEKRS_BUILD_NODE_LOCAL"))
     buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
 
-  const int globalRank = platform->comm.mpiRank;
-  MPI_Comm mpiCommLocal = platform->comm.mpiCommLocal;
+  std::string install_dir;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  int N;
+  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+  occa::properties kernelInfo = platform->kernelInfo;
+  auto jit_compile_udf = [N, kernelInfo, install_dir]() {
+    auto bc_kernelInfo = kernelInfo;
+    if (udf.loadKernels) {
+      // side-effect: kernelInfoBC will include any relevant user-defined kernel
+      // info
+      udf.loadKernels(bc_kernelInfo);
+    }
+    const std::string bcDataFile = install_dir + "/include/core/bcData.h";
+    bc_kernelInfo["includes"] += bcDataFile.c_str();
+    std::string boundaryHeaderFileName;
+    platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
+    bc_kernelInfo["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
+
+    bc_kernelInfo += populateMeshProperties(N);
+
+    return bc_kernelInfo;
+  };
+
+  auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
+  auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
+
+  MPI_Barrier(platform->comm.mpiComm);
+  const double tStart = MPI_Wtime();
+  if (platform->comm.mpiRank == 0)
+    printf("loading udf kernels ... ");
+  fflush(stdout);
+
+  if (rank == 0) {
+    kernelInfoBC = jit_compile_udf();
+  }
+
+  MPI_Barrier(communicator);
+
+  if (rank != 0) {
+    kernelInfoBC = jit_compile_udf();
+  }
+
+  MPI_Barrier(platform->comm.mpiComm);
+  const double loadTime = MPI_Wtime() - tStart;
+  if (platform->comm.mpiRank == 0)
+    printf("done (%gs)\n\n", loadTime);
+  fflush(stdout);
+}
+} // namespace
+
+void compileKernels() {
+
+  compileUDFKernels();
 
   registerLinAlgKernels();
 
@@ -1333,10 +1343,10 @@ void compileKernels() {
       printf("loading kernels ... ");
     fflush(stdout);
 
-    MPI_Barrier(platform->comm.mpiComm);
-    const double loadTime = MPI_Wtime() - tStart;
-
     {
+      int buildNodeLocal = 0;
+      if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+        buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
       const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
       auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
       oogs::compile(
@@ -1344,6 +1354,10 @@ void compileKernels() {
     }
 
     platform->kernels.compile();
+
+    MPI_Barrier(platform->comm.mpiComm);
+    const double loadTime = MPI_Wtime() - tStart;
+
 
     fflush(stdout);
     if (platform->comm.mpiRank == 0) {
