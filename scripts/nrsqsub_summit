@@ -13,14 +13,10 @@ if [ $# -ne 3 ]; then
 fi
 
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
-: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 NVME_HOME="/mnt/bb/$USER/"
-
-mkdir -p $OCCA_CACHE_DIR 2>/dev/null
 
 : ${CPUONLY:=0}
 export NEKRS_HOME
-export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
 if [ $CPUONLY -eq 1 ]; then
@@ -114,7 +110,7 @@ while true; do
   esac
 done
 
-cpNVME="" # "jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME;"
+cpNVME="" # "jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a .cache $NVME_HOME; export NEKRS_CACHE_DIR=$NVME_HOME/.cache;"
 
 if [ $CPUONLY -eq 1 ]; then
   jsrun="jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup $case --backend $backend" 

@@ -3,9 +3,7 @@
 : ${PROJ_ID:=""}
 : ${QUEUE:=""}
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
-: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 
-mkdir -p $OCCA_CACHE_DIR 2>/dev/null
 export NVME_HOME="/mnt/bb/$USER/"
 
 if [ $# -ne 3 ]; then
@@ -106,7 +104,6 @@ echo "export ROMIO_FSTYPE_FORCE=\"ufs:\"" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
-echo "export OCCA_CACHE_DIR=$OCCA_CACHE_DIR" >>$SFILE
 echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
@@ -115,8 +112,8 @@ echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
 #echo "# precompile" >>$SFILE
 #echo "date" >>$SFILE
 #echo "srun -n 1 $bin --setup $1 --backend $backend --build-only $ntasks" >>$SFILE
-#echo "srun -n $nodes cp -a $OCCA_CACHE_DIR/* $NVME_HOME" >>$SFILE
-#echo "export OCCA_CACHE_DIR=$NVME_HOME" >>$SFILE
+#echo "srun -n $nodes cp -a .cache $NVME_HOME" >>$SFILE
+#echo "export NEKRS_CACHE_DIR=$NVME_HOME/.cache" >>$SFILE
 
 echo "# actual run" >>$SFILE
 echo "date" >>$SFILE
