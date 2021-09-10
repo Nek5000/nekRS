@@ -1333,6 +1333,9 @@ void compileKernels() {
       printf("loading kernels ... ");
     fflush(stdout);
 
+    MPI_Barrier(platform->comm.mpiComm);
+    const double loadTime = MPI_Wtime() - tStart;
+
     {
       const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
       auto communicator = buildNodeLocal ? platform->comm.localComm : platform->comm.mpiComm;
@@ -1343,13 +1346,11 @@ void compileKernels() {
 
     platform->kernels.compile();
 
-    MPI_Barrier(platform->comm.mpiComm);
-    const double loadTime = MPI_Wtime() - tStart;
-
     fflush(stdout);
     if (platform->comm.mpiRank == 0) {
       std::ofstream ofs;
-      ofs.open(occa::env::OCCA_CACHE_DIR + "cache/compile.timestamp", std::ofstream::out | std::ofstream::trunc);
+      ofs.open(occa::env::OCCA_CACHE_DIR + "cache/compile.timestamp", 
+	       std::ofstream::out | std::ofstream::trunc);
       ofs.close();
     }
  
