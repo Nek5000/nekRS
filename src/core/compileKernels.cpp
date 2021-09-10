@@ -1262,6 +1262,11 @@ void compileUDFKernels()
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   occa::properties kernelInfo = platform->kernelInfo;
+  kernelInfo["defines"].asObject();
+  kernelInfo["includes"].asArray();
+  kernelInfo["header"].asArray();
+  kernelInfo["flags"].asObject();
+  kernelInfo["include_paths"].asArray();
   auto jit_compile_udf = [N, kernelInfo, install_dir]() {
     auto bc_kernelInfo = kernelInfo;
     if (udf.loadKernels) {
