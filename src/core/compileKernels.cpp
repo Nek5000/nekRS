@@ -1267,23 +1267,6 @@ void compileUDFKernels()
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
   kernelInfo["include_paths"].asArray();
-  auto jit_compile_udf = [N, kernelInfo, install_dir]() {
-    auto bc_kernelInfo = kernelInfo;
-    if (udf.loadKernels) {
-      // side-effect: kernelInfoBC will include any relevant user-defined kernel
-      // info
-      udf.loadKernels(bc_kernelInfo);
-    }
-    const std::string bcDataFile = install_dir + "/include/core/bcData.h";
-    bc_kernelInfo["includes"] += bcDataFile.c_str();
-    std::string boundaryHeaderFileName;
-    platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
-    bc_kernelInfo["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
-
-    bc_kernelInfo += populateMeshProperties(N);
-
-    return bc_kernelInfo;
-  };
 
   auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
   auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
@@ -1294,14 +1277,26 @@ void compileUDFKernels()
     printf("loading udf kernels ... ");
   fflush(stdout);
 
-  if (rank == 0) {
-    kernelInfoBC = jit_compile_udf();
-  }
+  for(int pass = 0; pass < 2; ++pass)
+  {
+    bool executePass = (pass == 0) && (rank == 0);
+    executePass |= (pass == 1) && (rank != 0);
+    if(executePass){
+      kernelInfoBC = kernelInfo;
+      if (udf.loadKernels) {
+        // side-effect: kernelInfoBC will include any relevant user-defined kernel
+        // info
+        udf.loadKernels(kernelInfoBC);
+      }
+      const std::string bcDataFile = install_dir + "/include/core/bcData.h";
+      kernelInfoBC["includes"] += bcDataFile.c_str();
+      std::string boundaryHeaderFileName;
+      platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
+      kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-  MPI_Barrier(communicator);
-
-  if (rank != 0) {
-    kernelInfoBC = jit_compile_udf();
+      kernelInfoBC += populateMeshProperties(N);
+    }
+    MPI_Barrier(communicator);
   }
 
   MPI_Barrier(platform->comm.mpiComm);
