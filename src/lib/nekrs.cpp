@@ -25,7 +25,6 @@ static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
 static void setOccaVars();
-static void dryRun(setupAide &options, int npTarget);
 
 void printHeader()
 {
@@ -69,10 +68,9 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
 
+  if (rank == 0) std::cout << "reading par file ...\n"; 
   auto par = new inipp::Ini();	  
   std::string setupFile = _setupFile + ".par";
-
-  if (rank == 0) std::cout << "reading par file ...\n"; 
   options = parRead((void*) par, setupFile, comm);
 
   {
@@ -104,7 +102,16 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   }
 
   options.setArgs("BUILD ONLY", "FALSE");
-  if(buildOnly) options.setArgs("BUILD ONLY", "TRUE");
+  if(buildOnly) {
+    options.setArgs("BUILD ONLY", "TRUE");
+    options.setArgs("NP TARGET", std::to_string(commSizeTarget));
+    if(rank == 0){
+      std::cout << "jit-compiling for >="
+           << commSizeTarget 
+           << " MPI tasks ...\n" << std::endl;
+    }
+    fflush(stdout);	
+  }
 
   if (options.getArgs("THREAD MODEL").length() == 0) 
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
@@ -116,39 +123,69 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform = _platform;
   platform->par = par;
 
-  oudfInit(options);
+  platform->timer.tic("setup", 1);
 
-  nrs = new nrs_t();
+  int buildRank = rank;
+  if(getenv("NEKRS_BUILD_NODE_LOCAL"))
+    MPI_Comm_rank(platform->comm.localComm, &buildRank);    
 
-  if (buildOnly) {
-    dryRun(options, commSizeTarget);
-    return;
+  if(buildRank == 0) {
+    std::string cache_dir;
+    cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+    mkdir(cache_dir.c_str(), S_IRWXU);
+    std::string udf_dir;
+    udf_dir.assign(getenv("NEKRS_UDF_DIR"));
+    mkdir(udf_dir.c_str(), S_IRWXU);
   }
 
-  platform->timer.tic("setup", 1);
+  oudfInit(options);
 
   // jit compile udf
   std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), options);
+    if(buildRank == 0) err = udfBuild(udfFile.c_str(), options);
+
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) ABORT(EXIT_FAILURE);;
-    udfLoad();
+    if(err) ABORT(EXIT_FAILURE);
+
+    if(buildOnly) {
+      *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
+      *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
+    } else {
+      udfLoad();
+    }
   }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
   if(rank == 0 && ciMode)
     std::cout << "enabling continous integration mode " << ciMode << "\n";
 
-  nek::bootstrap(comm, options);
+  nek::bootstrap();
 
   if(udf.setup0) udf.setup0(comm, options);
 
   compileKernels();
 
+  if(buildOnly) {
+    MPI_Barrier(platform->comm.mpiComm);
+    if(buildRank == 0) {
+      std::string cache_dir;
+      cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+      std::string file = cache_dir + "/build-only.timestamp";
+      remove(file.c_str());
+      std::ofstream ofs;
+      ofs.open(file, std::ofstream::out);
+      ofs.close();
+      std::cout << "\nBuild successful." << std::endl;
+    }
+    return;
+  }
+
   platform->linAlg = linAlg_t::getInstance();
+
+  nrs = new nrs_t();
 
   nrsSetup(comm, options, nrs);
 
@@ -402,57 +439,10 @@ void processUpdFile()
 
 } // namespace
 
-static void dryRun(setupAide &options, int npTarget)
-{
-  if(platform->comm.mpiRank == 0){
-    std::cout << "performing dry-run to jit-compile for >="
-         << npTarget 
-         << " MPI tasks ...\n" << std::endl;
-  }
-  fflush(stdout);	
-
-  options.setArgs("NP TARGET", std::to_string(npTarget));
-  options.setArgs("BUILD ONLY", "TRUE");
-
-  // jit compile udf
-  std::string udfFile;
-  options.getArgs("UDF FILE", udfFile);
-  if (!udfFile.empty()) {
-    int err = 0;
-    if(rank == 0) err = udfBuild(udfFile.c_str(), options);
-    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) ABORT(EXIT_FAILURE);
-    MPI_Barrier(comm);
-    *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",0);
-    *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-  }
-
-  nek::bootstrap(comm, options);
-
-  if(udf.setup0) udf.setup0(comm, options);
-
-  platform_t* platform = platform_t::getInstance();
-
-  compileKernels();
-
-  if(rank == 0) {
-    std::string cache_dir;
-    cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-    std::ofstream ofs;
-    ofs.open(cache_dir + "/build-only.timestamp", std::ofstream::out | std::ofstream::trunc);
-    ofs.close();
-    std::cout << "\nBuild successful." << std::endl;
-  }
-
-}
-
-
 static void setOccaVars()
 {
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
-  if (rank == 0) mkdir(cache_dir.c_str(), S_IRWXU);
-  MPI_Barrier(comm);
 
   if (!getenv("OCCA_CACHE_DIR"))
     occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";

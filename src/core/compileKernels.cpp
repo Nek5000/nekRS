@@ -1300,23 +1300,6 @@ void compileKernels() {
 
   const int globalRank = platform->comm.mpiRank;
   MPI_Comm localComm = platform->comm.localComm;
-  auto mangleOCCACacheDir = [globalRank, localComm]() {
-    int minRankInGroup = globalRank;
-    MPI_Allreduce(
-        MPI_IN_PLACE, &minRankInGroup, 1, MPI_INT, MPI_MIN, localComm);
-
-    std::string previousCacheDir;
-    previousCacheDir = occa::env::OCCA_CACHE_DIR;
-
-    std::string newCacheDir =
-        previousCacheDir + "node/" + std::to_string(minRankInGroup) + "/";
-
-    occa::env::OCCA_CACHE_DIR = newCacheDir;
-  };
-
-  if (buildNodeLocal) {
-    mangleOCCACacheDir();
-  }
 
   registerLinAlgKernels();
 

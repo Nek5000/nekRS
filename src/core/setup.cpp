@@ -198,7 +198,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     std::string casename;
     platform->options.getArgs("CASENAME", casename);
 
-    nek::setup(comm, platform->options, nrs);
+    nek::setup(nrs);
     nek::setic();
     nek::userchk();
     if (platform->comm.mpiRank == 0) std::cout << "\n";

@@ -74,12 +74,18 @@ void oudfInit(setupAide &options)
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
   std::string casename;
   options.getArgs("CASENAME", casename);
-  const std::string dataFileDir = cache_dir + "/udf/";
-  const std::string dataFile = dataFileDir + "udf.okl";
+  std::string udf_dir;
+  udf_dir.assign(getenv("NEKRS_UDF_DIR"));
+  const std::string dataFile = udf_dir + "/udf.okl";
 
-  if (platform->comm.mpiRank == 0) {
-    mkdir(dataFileDir.c_str(), S_IRWXU);
+  int buildRank = platform->comm.mpiRank;
+  MPI_Comm comm = platform->comm.mpiComm;
+  if(getenv("NEKRS_BUILD_NODE_LOCAL")) {
+    MPI_Comm_rank(platform->comm.localComm, &buildRank);
+    comm = platform->comm.localComm;
+  }
 
+  if (buildRank == 0) {
     std::ifstream in;
     in.open(oklFile);
     std::stringstream buffer;
@@ -124,11 +130,11 @@ void oudfInit(setupAide &options)
     out.close();
   }
 
-  MPI_Bcast(&velocityDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
-  MPI_Bcast(&velocityNeumannConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
-  MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
-  MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
-  MPI_Bcast(&scalarDirichletConditions, 1, MPI_INT, 0, platform->comm.mpiComm);
+  MPI_Bcast(&velocityDirichletConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&velocityNeumannConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&scalarDirichletConditions, 1, MPI_INT, 0, comm);
 
   options.setArgs("DATA FILE", dataFile);
 }

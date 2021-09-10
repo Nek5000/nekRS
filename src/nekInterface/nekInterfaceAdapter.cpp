@@ -559,13 +559,17 @@ void gen_bcmap()
   (*nek_gen_bcmap_ptr)();
 }
 
-void bootstrap(MPI_Comm c, setupAide &options_in)
+void bootstrap()
 {
-  options = &options_in;
+  options = &platform->options;
 
   int size;
-  MPI_Comm_rank(c,&rank);
-  MPI_Comm_size(c,&size);
+  MPI_Comm_rank(platform->comm.mpiComm,&rank);
+  MPI_Comm_size(platform->comm.mpiComm,&size);
+
+  int buildRank = rank;
+  if(getenv("NEKRS_BUILD_NODE_LOCAL"))
+    MPI_Comm_rank(platform->comm.localComm, &buildRank);    
 
   int N;
   options->getArgs("POLYNOMIAL DEGREE", N);
@@ -577,8 +581,8 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
   options->getArgs("NP TARGET", npTarget);
 
   int err = 0;
-  if (rank == 0) err = buildNekInterface(mymax(5, Nscalar), N, npTarget, *options);
-  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, c);
+  if (buildRank == 0) err = buildNekInterface(mymax(5, Nscalar), N, npTarget, *options);
+  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM,  platform->comm.mpiComm);
   if (err) ABORT(EXIT_FAILURE);;
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
@@ -597,7 +601,7 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
     std::string cwd;
     cwd.assign(buf);
 
-    MPI_Fint nek_comm = MPI_Comm_c2f(c);
+    MPI_Fint nek_comm = MPI_Comm_c2f(platform->comm.mpiComm);
 
     set_usr_handles(usrname.c_str(), 0);
 
@@ -609,11 +613,10 @@ void bootstrap(MPI_Comm c, setupAide &options_in)
   }
 }
 
-int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
+int setup(nrs_t* nrs_in)
 {
-  options = &options_in;
   nrs = nrs_in;
-  MPI_Comm_rank(c,&rank);
+  MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
   std::string casename;
   options->getArgs("CASENAME", casename);
@@ -652,7 +655,7 @@ int setup(MPI_Comm c, setupAide &options_in, nrs_t* nrs_in)
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
   (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType, &meshConTol,
-		           &rho, &mue, &rhoCp, &lambda); 
+		   &rho, &mue, &rhoCp, &lambda); 
 
   nekData.param = (double*) ptr("param");
   nekData.ifield = (int*) ptr("ifield");
