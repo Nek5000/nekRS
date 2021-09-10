@@ -12,9 +12,9 @@ comm_t::comm_t(MPI_Comm _comm)
   MPI_Comm_rank(_comm, &mpiRank);
   MPI_Comm_size(_comm, &mpiCommSize);
 
-  MPI_Comm_split_type(_comm, MPI_COMM_TYPE_SHARED, mpiRank, MPI_INFO_NULL, &localComm);
-  MPI_Comm_rank(localComm, &localRank);
-  MPI_Comm_size(localComm, &localCommSize);
+  MPI_Comm_split_type(_comm, MPI_COMM_TYPE_SHARED, mpiRank, MPI_INFO_NULL, &mpiCommLocal);
+  MPI_Comm_rank(mpiCommLocal, &localRank);
+  MPI_Comm_size(mpiCommLocal, &mpiCommLocalSize);
 
 }
 
@@ -381,7 +381,7 @@ kernelRequestManager_t::compile()
     std::min(
       maxCompilingRanks,
       buildNodeLocal ?
-        platformRef.comm.localCommSize :
+        platformRef.comm.mpiCommLocalSize :
         platformRef.comm.mpiCommSize
     );
 

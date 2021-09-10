@@ -569,7 +569,7 @@ void bootstrap()
 
   int buildRank = rank;
   if(getenv("NEKRS_BUILD_NODE_LOCAL"))
-    MPI_Comm_rank(platform->comm.localComm, &buildRank);    
+    MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
   int N;
   options->getArgs("POLYNOMIAL DEGREE", N);

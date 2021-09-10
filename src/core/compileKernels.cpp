@@ -117,7 +117,7 @@ void registerNrsKernels() {
   } else {
     buildNodeLocal = 0;
   }
-  auto communicator = buildNodeLocal ? platform->comm.localComm : platform->comm.mpiComm;
+  auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
   auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
 
   if (rank == 0) {
@@ -1299,7 +1299,7 @@ void compileKernels() {
     buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
 
   const int globalRank = platform->comm.mpiRank;
-  MPI_Comm localComm = platform->comm.localComm;
+  MPI_Comm mpiCommLocal = platform->comm.mpiCommLocal;
 
   registerLinAlgKernels();
 
@@ -1338,7 +1338,7 @@ void compileKernels() {
 
     {
       const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
-      auto communicator = buildNodeLocal ? platform->comm.localComm : platform->comm.mpiComm;
+      auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
       ogs::initKernels(communicator, platform->device, buildOnly);
       oogs::compile(
           platform->device, platform->device.mode(), communicator, buildOnly);

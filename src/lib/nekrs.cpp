@@ -127,7 +127,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   int buildRank = rank;
   if(getenv("NEKRS_BUILD_NODE_LOCAL"))
-    MPI_Comm_rank(platform->comm.localComm, &buildRank);    
+    MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
   if(buildRank == 0) {
     std::string cache_dir;

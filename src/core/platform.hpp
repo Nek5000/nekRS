@@ -152,8 +152,8 @@ struct comm_t{
   int mpiRank;
   int mpiCommSize;
 
-  MPI_Comm localComm;
-  int localCommSize;
+  MPI_Comm mpiCommLocal;
+  int mpiCommLocalSize;
   int localRank;
 };
 struct platform_t{
