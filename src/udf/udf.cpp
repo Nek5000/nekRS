@@ -185,10 +185,10 @@ int udfBuild(const char* udfFile, setupAide& options)
              udf_dir);
     if(verbose) printf("%s\n", cmd);
     if(system(cmd)) return EXIT_FAILURE; 
-    fileSync(udfLib);
   }
   sprintf(cmd, "cd %s/udf && make", cache_dir);
   if(system(cmd)) return EXIT_FAILURE; 
+  fileSync(udfLib);
   printf("done (%gs)\n", MPI_Wtime() - tStart);
   fflush(stdout);
 
