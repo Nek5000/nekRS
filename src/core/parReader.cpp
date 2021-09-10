@@ -1178,12 +1178,17 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  const char *ptr = realpath(setupFile.c_str(), NULL);
-  if (!ptr) {
-    std::ostringstream error;
-    error << "\nERROR: cannot find " << setupFile << "!\n";
-    append_error(error.str());
+  int foundPar = 0;
+  if (rank == 0) {
+    foundPar = 1;
+    const char *ptr = realpath(setupFile.c_str(), NULL);
+    if (!ptr) {
+      std::cout << "ERROR: cannot find " << setupFile << "!\n";
+      foundPar = 0;
+    }
   }
+  MPI_Bcast(&foundPar, sizeof(foundPar), MPI_BYTE, 0, comm);
+  if (!foundPar) ABORT(EXIT_FAILURE);
 
   setupAide options;
   std::string casename = setupFile.substr(0, setupFile.find(".par"));
