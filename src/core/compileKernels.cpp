@@ -1339,7 +1339,6 @@ void compileKernels() {
     {
       const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
       auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
-      ogs::initKernels(communicator, platform->device, buildOnly);
       oogs::compile(
           platform->device, platform->device.mode(), communicator, buildOnly);
     }

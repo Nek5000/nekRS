@@ -175,6 +175,7 @@ int oogs::gpu_mpi()
 
 void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, bool verbose)
 {
+  ogs::initKernels(comm, device, verbose);
   occa::properties props = ogs::kernelInfo;
   if(verbose){
     props["verbose"] = true;
