@@ -80,7 +80,10 @@ void oudfInit(setupAide &options)
 
   int buildRank = platform->comm.mpiRank;
   MPI_Comm comm = platform->comm.mpiComm;
-  if(getenv("NEKRS_BUILD_NODE_LOCAL")) {
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if(buildNodeLocal) {
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);
     comm = platform->comm.mpiCommLocal;
   }

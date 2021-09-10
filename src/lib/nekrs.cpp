@@ -126,7 +126,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   platform->timer.tic("setup", 1);
 
   int buildRank = rank;
-  if(getenv("NEKRS_BUILD_NODE_LOCAL"))
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
   if(buildRank == 0) {

@@ -568,7 +568,10 @@ void bootstrap()
   MPI_Comm_size(platform->comm.mpiComm,&size);
 
   int buildRank = rank;
-  if(getenv("NEKRS_BUILD_NODE_LOCAL"))
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
   int N;
