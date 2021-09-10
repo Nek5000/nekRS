@@ -161,6 +161,13 @@ int udfBuild(const char* udfFile, setupAide& options)
   char udfLib[BUFSIZ];
   sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
+  char cwdBuf[FILENAME_MAX];
+  char * ret = getcwd(cwdBuf, sizeof(cwdBuf));
+  if(!ret) ABORT(EXIT_FAILURE);
+
+  std::string nekrs_case_dir;
+  nekrs_case_dir.assign(cwdBuf);
+
   char cmd[BUFSIZ];
   printf("building udf ... \n"); fflush(stdout);
   if(isFileNewer(udfFile, udfFileCache) || !fileExists(udfLib)) {
@@ -168,12 +175,13 @@ int udfBuild(const char* udfFile, setupAide& options)
     realpath(udfFile, udfFileResolved);
     sprintf(cmd,
             "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
-             rm -rf *.so && cmake -Wno-dev -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
+             rm -rf *.so && cmake -Wno-dev -DNEKRS_CASE_DIR=%s -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
 	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
              cache_dir,
              cache_dir,
              udfFileResolved,
              udf_dir,
+             nekrs_case_dir.c_str(),
              udf_dir);
     if(verbose) printf("%s\n", cmd);
     if(system(cmd)) return EXIT_FAILURE; 

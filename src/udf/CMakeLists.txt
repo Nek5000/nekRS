@@ -16,7 +16,7 @@ set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
 set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
 set(INCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/../..
+  ${NEKRS_CASE_DIR}
   ${CDSDIR}
   ${OGSDIR}
   ${GSDIR}
