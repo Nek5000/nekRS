@@ -145,8 +145,22 @@ void oudfInit(setupAide &options)
 int udfBuild(const char* udfFile, setupAide& options)
 {
   double tStart = MPI_Wtime();
-  const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  const char* udf_dir = getenv("NEKRS_UDF_DIR");
+
+  std::string install_dir;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  std::string udf_dir = install_dir + "/udf";
+
+  std::string cache_dir;
+  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+
+  std::string udfFileCache = cache_dir + "/udf/udf.cpp";
+  std::string udfLib = cache_dir + "/udf/libUDF.so";
+
+  char buf[FILENAME_MAX];
+  char * ret = getcwd(buf, sizeof(buf));
+  if(!ret) ABORT(EXIT_FAILURE);
+  std::string case_dir;
+  case_dir.assign(buf);
 
   const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
@@ -155,39 +169,26 @@ int udfBuild(const char* udfFile, setupAide& options)
     return EXIT_FAILURE;
   }
 
-  char udfFileCache[BUFSIZ];
-  sprintf(udfFileCache,"%s/udf/udf.cpp",cache_dir);
-  char udfLib[BUFSIZ];
-  sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
-
-  char cwdBuf[FILENAME_MAX];
-  char * ret = getcwd(cwdBuf, sizeof(cwdBuf));
-  if(!ret) ABORT(EXIT_FAILURE);
-
-  std::string nekrs_case_dir;
-  nekrs_case_dir.assign(cwdBuf);
-
   char cmd[BUFSIZ];
   printf("building udf ... \n"); fflush(stdout);
-  if(isFileNewer(udfFile, udfFileCache) || !fileExists(udfLib)) {
+  if(isFileNewer(udfFile, udfFileCache.c_str()) || !fileExists(udfLib.c_str())) {
     char udfFileResolved[BUFSIZ];
     realpath(udfFile, udfFileResolved);
     sprintf(cmd,
-            "mkdir -p %s/udf && cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
+            "cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
              rm -rf *.so && cmake -Wno-dev -DNEKRS_CASE_DIR=%s -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
 	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
-             cache_dir,
-             cache_dir,
+             cache_dir.c_str(),
              udfFileResolved,
-             udf_dir,
-             nekrs_case_dir.c_str(),
-             udf_dir);
+             udf_dir.c_str(),
+             case_dir.c_str(),
+             udf_dir.c_str());
     if(verbose) printf("%s\n", cmd);
     if(system(cmd)) return EXIT_FAILURE; 
   }
-  sprintf(cmd, "cd %s/udf && make", cache_dir);
+  sprintf(cmd, "cd %s/udf && make", cache_dir.c_str());
   if(system(cmd)) return EXIT_FAILURE; 
-  fileSync(udfLib);
+  fileSync(udfLib.c_str());
   printf("done (%gs)\n", MPI_Wtime() - tStart);
   fflush(stdout);
 
