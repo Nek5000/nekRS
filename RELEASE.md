@@ -9,19 +9,22 @@
 * Support for ROCm version > v4.0
 * AVM for scalars
 * FEMSEM preconditioner
-* NVIDIA AmgX solver 
 * Update file (nekrs.upd) for runtime modifications
 * Validate key/value input in par
 * Various bug fixes 
 
-## What you may have to change to be compatible 
+## Good to know 
+* [par] `preconditioner = multigrid` was replaced by `preconditioner = multigrid+coarse`
+* [par] Only valid `key/value` pairs will be accepted 
+* [par] Default smootherType is `ASM+Chebyshev+degree=2` (instead of degree=1)
+* [fld] Only first checkpoint will contain mesh coordinates 
 
-* [par] Remove/Update invalid keys & values
-* [par] Use `preconditioner = multigrid+coarse` instead of just `multigrid` 
-* [udf] Add std namespace qualifier e.g. `std::cout` instead of `cout`
-* [udf] Change argument `nrs_t *nrs` to `occa::properties& kernelInfo` in `UDF_LoadKernels()`, `udfBuildKernel()`, `(plugin)::buildKernel()`
-* [udf] `UDF_LoadKernels(occa::properties& kernelInfo)` is mandatory
-* Set `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf` if your MPI installation is not GPU aware the code will crash trying to time the different oogs modes
+## Breaking Changes 
+
+* [udf] Use std namespace qualifier e.g. `std::cout` instead of `cout`
+* [udf] Replace `nrs_t *nrs` by `occa::properties& kernelInfo` in `UDF_LoadKernels()`, `udfBuildKernel()`, `(plugin)::buildKernel()`
+* [udf] `UDF_LoadKernels(occa::properties& kernelInfo)` is no longer optional
+* Code crashes (Segmentation fault: invalid permissions) if MPI installation is not GPU aware unless you specify `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf`
 
 ## Known Bugs / Restrictions
 

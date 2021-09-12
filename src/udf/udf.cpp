@@ -126,7 +126,7 @@ void oudfInit(setupAide &options)
 
     out <<
       "@kernel void __dummy__(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
+      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
       "}";
 
     out.close();

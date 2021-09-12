@@ -1314,7 +1314,7 @@ void compileDummyKernel()
   const std::string dummyKernelName = "myDummyKernelName";
   const std::string dummyKernelStr = std::string(
       "@kernel void myDummyKernelName(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
+      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
       "}"
   );
 
@@ -1331,7 +1331,7 @@ void compileDummyKernel()
 
 void compileKernels() {
 
-  compileDummyKernel();
+  compileDummyKernel(); // trigger occa's compilerVendorTest
 
   compileUDFKernels();
 
