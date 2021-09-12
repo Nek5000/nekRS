@@ -318,7 +318,7 @@ void timer_t::printRunStat(int step)
     if(dEtime[4] > 0)
     std::cout << "    scalarSolve         " << dEtime[4] << "s " << printPercentage(dEtime[4],dEtime[9]) << "\n";
     if(dEtime[4] > 0) {
-    std::cout << "    makeq               " << dEtime[3] << "s " << printPercentage(dEtime[3],dEtime[9]) << "\n";
+    std::cout << "      makeq             " << dEtime[3] << "s " << printPercentage(dEtime[3],dEtime[9]) << "\n";
      if(dEtime[14] > 0)
     std::cout << "      udfSEqnSource     " << dEtime[14] << "s " << printPercentage(dEtime[14],dEtime[9]) << "\n";
     }
