@@ -111,6 +111,24 @@ int main(int argc, char** argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+  {
+    if(!getenv("NEKRS_HOME")) {
+      std::cout << "FATAL ERROR: Cannot find env variable NEKRS_HOME!" << "\n";
+      MPI_Finalize();
+      exit(EXIT_FAILURE);
+    }
+
+    std::string bin(getenv("NEKRS_HOME"));
+    bin += "/bin/nekrs";
+    const char* ptr = realpath(bin.c_str(), NULL);
+    if(!ptr) {
+      std::cout << "FATAL ERROR: Cannot find " << bin << "!\n";
+      MPI_Finalize();
+      exit(EXIT_FAILURE);
+    }
+  }
+
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) {
