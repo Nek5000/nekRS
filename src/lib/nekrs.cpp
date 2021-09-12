@@ -309,16 +309,25 @@ void outputStep(int val)
   nrs->isOutputStep = val;
 }
 
-void outfld(double time)
-{
-  writeFld(nrs, time);
-  lastOutputTime = time;
-}
-
 void outfld(double time, std::string suffix)
 {
+  std::string oldValue;
+  platform->options.getArgs("CHECKPOINT OUTPUT MESH", oldValue);
+
+  if(lastOutputTime == 0)
+    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+  else
+    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
+
   writeFld(nrs, time, suffix);
   lastOutputTime = time;
+
+  platform->options.setArgs("CHECKPOINT OUTPUT MESH", oldValue);
+}
+
+void outfld(double time)
+{
+  outfld(time, "");
 }
 
 double endTime(void)
