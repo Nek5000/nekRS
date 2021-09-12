@@ -1480,7 +1480,7 @@ void printInfo(
     nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed) {
   cds_t *cds = nrs->cds;
 
-  const int enforceVerbose = tstep < 101;
+  const int enforceVerbose = tstep < 1001;
   const dfloat cfl = computeCFL(nrs);
   if (platform->comm.mpiRank == 0) {
     if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") ||
