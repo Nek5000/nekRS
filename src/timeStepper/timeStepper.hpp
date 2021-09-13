@@ -4,7 +4,7 @@
 #include "nrs.hpp"
 
 namespace timeStepper {
-void computeTimeStepFromCFL(nrs_t *nrs, int tstep);
+void adjustDt(nrs_t *nrs, int tstep);
 
 void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep);
 void coeffs(nrs_t *nrs, dfloat dt, int tstep);

@@ -46,7 +46,7 @@ double tElapsed = 0;
 double tElapsedStepMin = std::numeric_limits<double>::max();
 double tElapsedStepMax = std::numeric_limits<double>::min();
 
-void computeTimeStepFromCFL(nrs_t* nrs, int tstep)
+void adjustDt(nrs_t* nrs, int tstep)
 {
   const double TOLToZero = 1e-12;
   bool initialTimeStepProvided = true;

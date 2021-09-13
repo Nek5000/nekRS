@@ -250,10 +250,7 @@ void nekUserchk(void)
 double dt(int tstep)
 {
   if(platform->options.compareArgs("VARIABLE DT", "TRUE")){
-
-    if(tstep == 1)
-    {
-      // use user-specified initial dt on startup
+    if(tstep == 1) {
       double initialDt = 0.0;
       platform->options.getArgs("DT", initialDt);
       if(initialDt > 0.0){
@@ -261,14 +258,15 @@ double dt(int tstep)
         return nrs->dt[0];
       }
     }
-    timeStepper::computeTimeStepFromCFL(nrs, tstep);
+    const double dtOld = nrs->dt[0];
+    timeStepper::adjustDt(nrs, tstep);
+    // limit relative change to control introduced error
+    if(tstep > 1) nrs->dt[0] = (nrs->dt[0] < 1.25*dtOld) ? nrs->dt[0] : 1.25*dtOld;
   }
   
-  {
-    double maxDt = std::numeric_limits<double>::max();
-    platform->options.getArgs("MAX DT", maxDt);
-    nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
-  }
+  double maxDt = std::numeric_limits<double>::max();
+  platform->options.getArgs("MAX DT", maxDt);
+  nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
 
   return nrs->dt[0];
 }
