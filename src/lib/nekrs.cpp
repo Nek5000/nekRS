@@ -268,6 +268,11 @@ double dt(int tstep)
   platform->options.getArgs("MAX DT", maxDt);
   nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
 
+  if(nrs->dt[0] < 1e-10 || std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0])) {
+    if(platform->comm.mpiRank == 0) std::cout << "Invalid time step size!\n";
+    ABORT(EXIT_FAILURE);
+  }
+
   return nrs->dt[0];
 }
 
