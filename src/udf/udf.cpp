@@ -175,14 +175,13 @@ int udfBuild(const char* udfFile, setupAide& options)
     char udfFileResolved[BUFSIZ];
     realpath(udfFile, udfFileResolved);
     sprintf(cmd,
-            "cd %s/udf && cp -f %s udf.cpp && cp %s/CMakeLists.txt . && \
-             rm -rf *.so && cmake -Wno-dev -DNEKRS_CASE_DIR=%s -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
-	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" -DUDF_DIR=\"%s\" .",
+            "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && \
+             rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
+	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" .",
              cache_dir.c_str(),
              udfFileResolved,
              udf_dir.c_str(),
-             case_dir.c_str(),
-             udf_dir.c_str());
+             case_dir.c_str());
     if(verbose) printf("%s\n", cmd);
     if(system(cmd)) return EXIT_FAILURE; 
   }
