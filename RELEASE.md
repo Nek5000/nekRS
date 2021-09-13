@@ -18,6 +18,7 @@
 * [par] Only valid `key/value` pairs will be accepted 
 * [par] Default smootherType is `ASM+Chebyshev+degree=2` (instead of degree=1)
 * [fld] Only first checkpoint will contain mesh coordinates 
+* GMRES is now the default linear solver for pressure (higher memory usage)
 
 ## Breaking Changes 
 
