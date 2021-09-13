@@ -1924,11 +1924,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
     fflush(stdout);
 
-    if(length > 0){
-      EXIT_AND_FINALIZE(1);
-    }
-    
-
+    if(length > 0) ABORT(EXIT_FAILURE);
   }
 
   return options;
