@@ -590,7 +590,7 @@ void bootstrap()
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     if (rank == 0) { 
-     printf("loading nek ...\n"); 
+     printf("loading nek ... \n"); 
      fflush(stdout);
     }
 
@@ -613,6 +613,12 @@ void bootstrap()
                          (char*)meshFile.c_str(),
                          cwd.length(), usrname.length(),
                          meshFile.length());
+    if (rank == 0) { 
+     printf("done\n"); 
+     fflush(stdout);
+    }
+
+
   }
 }
 
