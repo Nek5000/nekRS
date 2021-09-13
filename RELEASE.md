@@ -29,6 +29,7 @@
 
 ## Known Bugs / Restrictions
 
+* [383](https://github.com/Nek5000/nekRS/issues/383)
 * [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)
