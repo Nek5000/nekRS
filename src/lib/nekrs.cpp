@@ -319,8 +319,6 @@ void outfld(double time, std::string suffix)
 
   if(lastOutputTime == 0)
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
-  else
-    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
 
   writeFld(nrs, time, suffix);
   lastOutputTime = time;
