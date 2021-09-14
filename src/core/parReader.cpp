@@ -1267,8 +1267,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   if (par->extract("general", "startfrom", startFrom)) {
     options.setArgs("RESTART FROM FILE", "1");
     options.setArgs("RESTART FILE NAME", startFrom);
-    const char *ptr = realpath(startFrom.c_str(), NULL);
-    if(!ptr) append_error("cannot find startFrom file");
   }
 
   int N;
