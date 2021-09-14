@@ -41,6 +41,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
 
 void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
+  std::cout << "mesh->Nelements " << mesh->Nelements << std::endl;
   mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
  
@@ -94,16 +95,16 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   free(DT);
 
   mesh->o_vgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
+    platform->device.malloc(1LL * mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
                         mesh->vgeo);
   mesh->o_sgeo =
     platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
                         mesh->sgeo);
   mesh->o_ggeo =
-    platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+    platform->device.malloc(1LL * mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
   mesh->o_cubvgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
+    platform->device.malloc(1LL * mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
                         mesh->cubvgeo);
 
   mesh->o_vmapM =

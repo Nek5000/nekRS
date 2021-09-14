@@ -96,7 +96,12 @@ mesh_t *createMesh(MPI_Comm comm,
 
   if (platform->comm.mpiRank == 0)
     printf("generating mesh ... ");
-      
+
+  if (mesh->Nelements * mesh->Nvgeo * cubN > std::numeric_limits<int>::max()) {
+    if (platform->comm.mpiRank == 0) printf("FATAL ERROR: Local element count too large!");
+    ABORT(EXIT_FAILURE);
+  }
+
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
   // connect elements using parallel sort

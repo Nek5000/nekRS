@@ -126,12 +126,12 @@ class device_t : public occa::device{
   public:
     device_t(setupAide& options, MPI_Comm comm);
     MPI_Comm comm;
-    occa::memory malloc(const dlong Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
-    occa::memory malloc(const dlong Nbytes, const occa::properties& properties);
-    occa::memory malloc(const dlong Nwords, const dlong wordSize, occa::memory src);
-    occa::memory malloc(const dlong Nwords, const dlong wordSize);
+    occa::memory malloc(const hlong Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
+    occa::memory malloc(const hlong Nbytes, const occa::properties& properties);
+    occa::memory malloc(const hlong Nwords, const dlong wordSize, occa::memory src);
+    occa::memory malloc(const hlong Nwords, const dlong wordSize);
 
-    occa::memory mallocHost(const dlong Nbytes);
+    occa::memory mallocHost(const hlong Nbytes);
 
     int id() const { return _device_id; }
     occa::kernel buildNativeKernel(const std::string &filename,
@@ -142,7 +142,7 @@ class device_t : public occa::device{
                              const occa::properties &props,
                              std::string suffix = std::string()) const;
   private:
-    dlong bufferSize;
+    hlong bufferSize;
     int _device_id;
     void* _buffer;
 };

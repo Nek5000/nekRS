@@ -175,7 +175,7 @@ device_t::buildKernel(const std::string &filename,
   }
 }
 occa::memory
-device_t::mallocHost(const dlong Nbytes)
+device_t::mallocHost(const hlong Nbytes)
 {
   occa::properties props;
   props["host"] = true;
@@ -183,12 +183,12 @@ device_t::mallocHost(const dlong Nbytes)
   return h_scratch;
 }
 occa::memory
-device_t::malloc(const dlong Nbytes, const occa::properties& properties)
+device_t::malloc(const hlong Nbytes, const occa::properties& properties)
 {
   return occa::device::malloc(Nbytes, nullptr, properties);
 }
 occa::memory
-device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& properties)
+device_t::malloc(const hlong Nbytes, const void* src, const occa::properties& properties)
 {
   if(!src){
     if(Nbytes > bufferSize)
@@ -202,14 +202,14 @@ device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& pr
   return occa::device::malloc(Nbytes, init_ptr, properties);
 }
 occa::memory
-device_t::malloc(const dlong Nword , const dlong wordSize, occa::memory src)
+device_t::malloc(const hlong Nword , const dlong wordSize, occa::memory src)
 {
   return occa::device::malloc(Nword * wordSize, src);
 }
 occa::memory
-device_t::malloc(const dlong Nword , const dlong wordSize)
+device_t::malloc(const hlong Nword , const dlong wordSize)
 {
-  const dlong Nbytes = Nword * wordSize;
+  const hlong Nbytes = Nword * wordSize;
   if(Nbytes > bufferSize)
   {
     if(bufferSize > 0) std::free(_buffer);

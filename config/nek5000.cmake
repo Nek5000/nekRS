@@ -86,7 +86,7 @@ set(PARRSB_LIB_DIR ${PARRSB_DIR}/../lib)
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
   set(FPIC_FLAG "-fPIC")
 
-  set(MCMODEL_FLAG "-mcmodel=medium -mlarge-data-threshold=1")
+  set(MCMODEL_FLAG "-mcmodel=medium -mlarge-data-threshold=0")
   CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_MEDIUM)
   if(NOT COMPILER_C_SUPPORTS_MCMODEL_MEDIUM OR APPLE) 
     set(MCMODEL_FLAG "")

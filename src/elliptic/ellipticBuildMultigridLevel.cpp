@@ -137,7 +137,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     free(cubInterpT);
 
     mesh->o_vgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
+      platform->device.malloc(1LL * mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
                           mesh->vgeo);
 
     mesh->o_sgeo =
@@ -145,7 +145,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
                           mesh->sgeo);
 
     mesh->o_ggeo =
-      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+      platform->device.malloc(1LL * mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
 
     mesh->o_vmapM =
