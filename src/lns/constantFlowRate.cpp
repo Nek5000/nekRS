@@ -5,6 +5,7 @@
 #include <limits>
 
 namespace {
+static dfloat constantFlowScale = 0.0;
 inline dfloat distance(
     dfloat x1, dfloat x2, dfloat y1, dfloat y2, dfloat z1, dfloat z2) {
   const dfloat dist_x = x1 - x2;
@@ -330,19 +331,23 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
 
   const dfloat deltaFlowRate = volumetricFlowRate - currentFlowRate;
 
-  const dfloat scale = deltaFlowRate / baseFlowRate;
+  constantFlowScale = deltaFlowRate / baseFlowRate;
 
   // vx += scale * vxc
   platform->linAlg->axpbyMany(mesh->Nlocal,
       nrs->NVfields,
       nrs->fieldOffset,
-      scale,
+      constantFlowScale,
       nrs->o_Uc,
       1.0,
       nrs->o_U);
-  platform->linAlg->axpby(mesh->Nlocal, scale, nrs->o_Pc, 1.0, nrs->o_P);
+  platform->linAlg->axpby(mesh->Nlocal, constantFlowScale, nrs->o_Pc, 1.0, nrs->o_P);
 
   return recomputeBaseFlowRate;
+}
+
+dfloat scaleFactor(){
+  return constantFlowScale;
 }
 
 void compute(nrs_t *nrs, double lengthScale, dfloat time) {

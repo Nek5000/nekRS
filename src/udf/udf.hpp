@@ -6,6 +6,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "parReader.hpp"
+#include "constantFlowRate.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);
