@@ -23,7 +23,8 @@
 ## Breaking Changes 
 
 * [udf] Use std namespace qualifier e.g. `std::cout` instead of `cout`
-* [udf] Replace `nrs_t *nrs` by `occa::properties& kernelInfo` in `UDF_LoadKernels()`, `udfBuildKernel()`, `(plugin)::buildKernel()`
+* [udf] Rename `UDF_LoadKernels(nrs_t *nrs)` => `UDF_LoadKernels(occa::properties& kernelInfo)`
+* [udf] Replace argument `nrs_t *nrs` by `occa::properties& kernelInfo` in `udfBuildKernel()`, `(plugin)::buildKernel()`
 * [udf] `UDF_LoadKernels(occa::properties& kernelInfo)` is no longer optional
 * Code crashes (Segmentation fault: invalid permissions) if MPI installation is not GPU aware unless you specify `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf`
 
