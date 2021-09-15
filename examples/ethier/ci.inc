@@ -267,7 +267,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     MPI_Allreduce(MPI_IN_PLACE, &memoryUsage, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
     const dfloat expectedMemoryUsage = 0.0715437;
-    if(memoryUsage > 1.02 * expectedMemoryUsage && platform->mpiComm.mpiCommSize == 1)
+    if(memoryUsage > 1.02 * expectedMemoryUsage && platform->comm.mpiCommSize == 1)
     {
       printf("Expected memory usage exceeded!\n"
         "Expected : %g GB\n"
