@@ -531,7 +531,7 @@ int buildNekInterface(int ldimt, int N, int np, setupAide& options)
   sprintf(buf,"%s/SIZE",cache_dir);
   if(isFileNewer(buf, libFile)) recompile = 1;  
   if(recompile) {
-    printf("building nek for lelt=%d and lelg=%d ...", lelt, nelgt); fflush(stdout);
+    printf("building nek for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
     double tStart = MPI_Wtime();
     sprintf(buf, "cd %s && cp %s/makefile.template makefile && \
 		 make -s -j8 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s NEKRS_NEKINTERFACE_DIR=%s \
