@@ -62,10 +62,10 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     dfloat expectedUbar;
     platform->options.getArgs("FLOW RATE", expectedUbar);
 
-    if(platform->comm.mpiRank == 0){
+    if(platform->comm.mpiRank == 0 && tstep > 0){
       printf("constantFlowScale = %g, flowRateError = %g\n",
         ConstantFlowRate::scaleFactor(),
-        ubar - expectedUbar);
+        std::abs(ubar - expectedUbar));
     }
     fflush(stdout);
   }
