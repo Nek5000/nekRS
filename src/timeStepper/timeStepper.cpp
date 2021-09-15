@@ -1482,9 +1482,9 @@ void printInfo(
 
   const int enforceVerbose = tstep < 1001;
   const dfloat cfl = computeCFL(nrs);
-  dfloat divUErrL1, divUErrL2;
+  dfloat divUErrVolAvg, divUErrL2;
   if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose){
-    computeDivUErr(nrs, divUErrL1, divUErrL2);
+    computeDivUErr(nrs, divUErrVolAvg, divUErrL2);
   }
   if (platform->comm.mpiRank == 0) {
     if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") ||
@@ -1505,7 +1505,7 @@ void printInfo(
               solver->res00Norm,
               solver->res0Norm,
               solver->resNorm,
-              divUErrL1,
+              divUErrVolAvg,
               divUErrL2);
         } else {
           solver = nrs->uSolver;
@@ -1515,7 +1515,7 @@ void printInfo(
               solver->res00Norm,
               solver->res0Norm,
               solver->resNorm,
-              divUErrL1,
+              divUErrVolAvg,
               divUErrL2);
           solver = nrs->vSolver;
           printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  "
@@ -1585,7 +1585,7 @@ void printInfo(
     fflush(stdout);
 }
 
-void computeDivUErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
+void computeDivUErr(nrs_t* nrs, dfloat& divUErrVolAvg, dfloat& divUErrL2)
 {
   mesh_t* mesh = nrs->meshV;
   nrs->divergenceVolumeKernel(mesh->Nelements,
@@ -1600,19 +1600,20 @@ void computeDivUErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
 
   platform->linAlg->axpby(
     mesh->Nlocal,
-    -1.0,
-    nrs->o_div,
     1.0,
+    nrs->o_div,
+    -1.0,
     platform->o_mempool.slice0
   );
   divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
       mesh->o_LMM,
       platform->o_mempool.slice0,
       platform->comm.mpiComm) / sqrt(mesh->volume);
-  divUErrL1 = platform->linAlg->weightedNorm1(mesh->Nlocal,
+  divUErrVolAvg = platform->linAlg->innerProd(mesh->Nlocal,
       mesh->o_LMM,
       platform->o_mempool.slice0,
       platform->comm.mpiComm) / mesh->volume;
+  divUErrVolAvg = std::abs(divUErrVolAvg);
 }
 
 } // namespace timeStepper
