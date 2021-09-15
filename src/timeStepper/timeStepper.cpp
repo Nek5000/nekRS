@@ -1598,6 +1598,9 @@ void computeDivErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
       nrs->fieldOffset,
       nrs->o_U,
       platform->o_mempool.slice0);
+  oogs::startFinish(platform->o_mempool.slice0, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0,
+    mesh->o_invLMM, platform->o_mempool.slice0);
 
   platform->linAlg->axpby(
     mesh->Nlocal,
