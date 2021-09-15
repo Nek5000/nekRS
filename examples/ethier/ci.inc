@@ -264,16 +264,16 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (ciMode == 2){
     dfloat memoryUsage = platform->device.memoryAllocated()/1e9;
-    MPI_Allreduce(MPI_IN_PLACE, &memoryUsage, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-
-    const dfloat expectedMemoryUsage = 0.0715437;
-    if(memoryUsage > 1.02 * expectedMemoryUsage && platform->comm.mpiCommSize == 1)
+    const dfloat expectedMemoryUsage = 0.0515024;
+    if(memoryUsage > 1.02 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
-      printf("Expected memory usage exceeded!\n"
-        "Expected : %g GB\n"
-        "Actual   : %g GB\n",
-        expectedMemoryUsage, memoryUsage);
-      fflush(stdout);
+      if(platform->comm.mpiRank == 0){
+        printf("Expected memory usage exceeded!\n"
+          "Expected : %g GB\n"
+          "Actual   : %g GB\n",
+          expectedMemoryUsage, memoryUsage);
+        fflush(stdout);
+      }
       FAIL;
     }
   }
