@@ -25,7 +25,7 @@ void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage);
 void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep,
                double tElapsed);
 
-void computeDivErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2);
+void computeDivUErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2);
 
 }
 

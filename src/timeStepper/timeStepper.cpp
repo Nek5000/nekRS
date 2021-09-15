@@ -1484,7 +1484,7 @@ void printInfo(
   const dfloat cfl = computeCFL(nrs);
   dfloat divUErrL1, divUErrL2;
   if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose){
-    computeDivErr(nrs, divUErrL1, divUErrL2);
+    computeDivUErr(nrs, divUErrL1, divUErrL2);
   }
   if (platform->comm.mpiRank == 0) {
     if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") ||
@@ -1500,7 +1500,7 @@ void printInfo(
         if (nrs->uvwSolver) {
           solver = nrs->uvwSolver;
           printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e L1 div err %e L2 div err %e\n",
+                 "resNorm %e  divErrNorms %e %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
@@ -1510,7 +1510,7 @@ void printInfo(
         } else {
           solver = nrs->uSolver;
           printf("  U  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e L1 div err %e L2 div err %e\n",
+                 "resNorm %e  divErrNorms %e %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
@@ -1519,22 +1519,18 @@ void printInfo(
               divUErrL2);
           solver = nrs->vSolver;
           printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e L1 div err %e L2 div err %e\n",
+                 "resNorm %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm,
-              divUErrL1,
-              divUErrL2);
+              solver->resNorm);
           solver = nrs->wSolver;
           printf("  W  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e L1 div err %e L2 div err %e\n",
+                 "resNorm %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm,
-              divUErrL1,
-              divUErrL2);
+              solver->resNorm);
         }
       }
 
@@ -1589,7 +1585,7 @@ void printInfo(
     fflush(stdout);
 }
 
-void computeDivErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
+void computeDivUErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
 {
   mesh_t* mesh = nrs->meshV;
   nrs->divergenceVolumeKernel(mesh->Nelements,
