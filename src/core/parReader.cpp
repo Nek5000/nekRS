@@ -1353,6 +1353,13 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
           assert(cflAndValue.size() == 2);
           const double targetCFL = std::stod(cflAndValue[1]);
           options.setArgs("TARGET CFL", to_string_f(targetCFL));
+
+          int nSteps;
+          if (targetCFL <= 0.5){
+            nSteps = 0;
+          }
+          nSteps = std::ceil(targetCFL / 2.0);
+          options.setArgs("SUBCYCLING STEPS", std::to_string(nSteps));
         }
       }
 
@@ -1429,29 +1436,16 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
 
   std::string subCyclingString;
-  if(par->extract("general", "subcycling", subCyclingString))
+  if(par->extract("general", "subcyclingsteps", subCyclingString))
   {
     if(subCyclingString.find("auto") != std::string::npos)
     {
-      double targetCFL;
-      options.getArgs("TARGET CFL", targetCFL);
-      std::string dtString;
       if (par->extract("general", "dt", dtString)){
         if(dtString.find("targetcfl") == std::string::npos)
         {
-          append_error("subCycling = auto requires the targetCFL to be set");
+          append_error("subCyclingSteps = auto requires the targetCFL to be set");
         }
       }
-      const int nSteps = [targetCFL](){
-        if (targetCFL <= 0.5){
-          return 0;
-        } else if (targetCFL > 0.5 && targetCFL <= 2.0){
-          return 1;
-        } else {
-          return 2;
-        }
-      }();
-      options.setArgs("SUBCYCLING STEPS", std::to_string(nSteps));
     }
   }
 
