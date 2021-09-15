@@ -1482,6 +1482,10 @@ void printInfo(
 
   const int enforceVerbose = tstep < 1001;
   const dfloat cfl = computeCFL(nrs);
+  dfloat divUErrL1, divUErrL2;
+  if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") || enforceVerbose){
+    computeDivErr(nrs, divUErrL1, divUErrL2);
+  }
   if (platform->comm.mpiRank == 0) {
     if (platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE") ||
         enforceVerbose) {
@@ -1496,33 +1500,41 @@ void printInfo(
         if (nrs->uvwSolver) {
           solver = nrs->uvwSolver;
           printf("  UVW: iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e\n",
+                 "resNorm %e L1 div err %e L2 div err %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm);
+              solver->resNorm,
+              divUErrL1,
+              divUErrL2);
         } else {
           solver = nrs->uSolver;
           printf("  U  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e\n",
+                 "resNorm %e L1 div err %e L2 div err %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm);
+              solver->resNorm,
+              divUErrL1,
+              divUErrL2);
           solver = nrs->vSolver;
           printf("  V  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e\n",
+                 "resNorm %e L1 div err %e L2 div err %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm);
+              solver->resNorm,
+              divUErrL1,
+              divUErrL2);
           solver = nrs->wSolver;
           printf("  W  : iter %03d  resNorm00 %e  resNorm0 %e  "
-                 "resNorm %e\n",
+                 "resNorm %e L1 div err %e L2 div err %e\n",
               solver->Niter,
               solver->res00Norm,
               solver->res0Norm,
-              solver->resNorm);
+              solver->resNorm,
+              divUErrL1,
+              divUErrL2);
         }
       }
 
@@ -1575,6 +1587,36 @@ void printInfo(
 
   if (tstep % 10 == 0)
     fflush(stdout);
+}
+
+void computeDivErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2)
+{
+  mesh_t* mesh = nrs->meshV;
+  nrs->divergenceVolumeKernel(mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_D,
+      nrs->fieldOffset,
+      nrs->o_U,
+      platform->o_mempool.slice0);
+  oogs::startFinish(platform->o_mempool.slice0, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0,
+    mesh->o_invLMM, platform->o_mempool.slice0);
+
+  platform->linAlg->axpby(
+    mesh->Nlocal,
+    -1.0,
+    nrs->o_div,
+    1.0,
+    platform->o_mempool.slice0
+  );
+  divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
+      mesh->o_LMM,
+      platform->o_mempool.slice0,
+      platform->comm.mpiComm) / sqrt(mesh->volume);
+  divUErrL1 = platform->linAlg->weightedNorm1(mesh->Nlocal,
+      mesh->o_LMM,
+      platform->o_mempool.slice0,
+      platform->comm.mpiComm) / mesh->volume;
 }
 
 } // namespace timeStepper
