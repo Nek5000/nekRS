@@ -97,6 +97,10 @@ void linAlg_t::setup() {
     maxKernel = kernels.getKernel("max");
     norm2Kernel = kernels.getKernel("norm2");
     norm2ManyKernel = kernels.getKernel("norm2Many");
+    norm1Kernel = kernels.getKernel("norm1");
+    norm1ManyKernel = kernels.getKernel("norm1Many");
+    weightedNorm1Kernel = kernels.getKernel("weightedNorm1");
+    weightedNorm1ManyKernel = kernels.getKernel("weightedNorm1Many");
     weightedNorm2Kernel = kernels.getKernel("weightedNorm2");
     weightedNorm2ManyKernel = kernels.getKernel("weightedNorm2Many");
     innerProdKernel = kernels.getKernel("innerProd");
@@ -131,6 +135,11 @@ linAlg_t::~linAlg_t() {
   minKernel.free();
   maxKernel.free();
   norm2Kernel.free();
+  norm2ManyKernel.free();
+  norm1Kernel.free();
+  norm1ManyKernel.free();
+  weightedNorm1Kernel.free();
+  weightedNorm1ManyKernel.free();
   weightedNorm2Kernel.free();
   weightedNorm2ManyKernel.free();
   innerProdKernel.free();
@@ -363,6 +372,45 @@ dfloat linAlg_t::norm2Many(const dlong N, const dlong Nfields, const dlong field
 
   return sqrt(dot);
 }
+// ||o_a||_1
+dfloat linAlg_t::norm1(const dlong N, occa::memory& o_x, MPI_Comm _comm) {
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  norm1Kernel(Nblock, N, o_x, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  dfloat dot = 0;
+  for(dlong n=0;n<Nblock;++n){
+    dot += scratch[n];
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+  return dot;
+}
+dfloat linAlg_t::norm1Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_x, MPI_Comm _comm) {
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  norm1ManyKernel(Nblock, N, Nfields, fieldOffset, o_x, o_scratch);
+
+  o_scratch.copyTo(scratch, Nbytes);
+
+  dfloat dot = 0;
+  for(dlong n=0;n<Nblock;++n){
+    dot += scratch[n];
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+  return dot;
+}
 
 // o_x.o_y
 dfloat linAlg_t::innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
@@ -556,4 +604,70 @@ dfloat linAlg_t::weightedNorm2Many(const dlong N,
   platform->timer.toc("dotp");
 #endif
   return sqrt(norm);
+}
+
+// ||o_a||_w1
+dfloat linAlg_t::weightedNorm1(const dlong N, occa::memory& o_w,
+                               occa::memory& o_a, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  weightedNorm1Kernel(Nblock, N, o_w, o_a, o_scratch);
+
+
+
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
+
+  return norm;
+}
+dfloat linAlg_t::weightedNorm1Many(const dlong N,
+                                   const dlong Nfields,
+                                   const dlong fieldOffset,
+                                   occa::memory& o_w,
+                               occa::memory& o_a, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
+  int Nblock = (N+blocksize-1)/blocksize;
+  const dlong Nbytes = Nblock * sizeof(dfloat);
+  if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
+
+  weightedNorm1ManyKernel(Nblock, N, Nfields, fieldOffset, o_w, o_a, o_scratch);
+
+
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
+  }
+
+  if (_comm != MPI_COMM_NULL) 
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
+  return norm;
 }

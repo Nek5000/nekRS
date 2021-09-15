@@ -24,6 +24,9 @@ occa::memory scalarStrongSubCycle(cds_t *cds, int nEXT, dfloat time, int is,
 void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage);
 void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep,
                double tElapsed);
+
+void computeDivErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2);
+
 }
 
 #endif
