@@ -29,7 +29,7 @@ void writeFld(nrs_t *nrs, dfloat t, std::string suffix)
   std::string precision;
   platform->options.getArgs("CHECKPOINT PRECISION", precision);
   int FP64 = 0;
-  if(precision == "DP") FP64 = 1;
+  if(precision == "DP" || precision == "FP64") FP64 = 1;
 
   int outXYZ = 1;
   if(platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "FALSE")) outXYZ = 0;
