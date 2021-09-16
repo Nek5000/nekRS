@@ -33,25 +33,25 @@ conductivity = -50e3
 
 [CASEDATA]
 #/* latitude north */
-NLAT = 73.0
+nlat = 73.0
 #/* geostrophic wind speed [m/s] */
-UREF = 8.0
+uref = 8.0
 
-LREF = 100.0
+lref = 100.0
 #/* potential temperature */
-TREF = 263.5
+tref = 263.5
 #/* initial surface temperature */
-TS0  = 265.0
-#/* surface cooling rate [K/h] */
-SCR = -0.25
-#/* inversion layer strength [K/m]*/
-ILSTRENGTH = 0.01
+ts0  = 265.0
+#/* surface cooling rate [k/h] */
+scr = -0.25
+#/* inversion layer strength [k/m]*/
+ilstrength = 0.01
 
-NUMBER_ELEMENTS_X = 16 
-NUMBER_ELEMENTS_Y = 16
-NUMBER_ELEMENTS_Z = 16
-XLEN  = 4.0
-YLEN  = 4.0
-ZLEN  = 4.0
+number_elements_x = 16 
+number_elements_y = 16
+number_elements_z = 16
+xlen  = 4.0
+ylen  = 4.0
+zlen  = 4.0
 
-BETAM = 2.5
+betam = 2.5

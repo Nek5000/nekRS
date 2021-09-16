@@ -12,15 +12,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKUSE'
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real ZLENGTH
-      integer NSLABS
-      integer NELSLAB
-      ZLENGTH = sc_nrs(1)
-      NSLABS = int(sc_nrs(2))
-      NELSLAB = int(sc_nrs(3))
-
+      include 'CASEDATA'
 
       xr = x/0.5
       yr = y/0.5
@@ -72,14 +64,14 @@ c-----------------------------------------------------------------------
 
       include 'SIZE'
       include 'TOTAL'
-      COMMON /SCNRS/ sc_nrs(10)
+      include 'CASEDATA'
+
+      common /scnrs/ sc_nrs(10)
       real                sc_nrs
-      real ZLENGTH
-      integer NSLABS
-      integer NELSLAB
+      
       ZLENGTH = sc_nrs(1)
-      NSLABS = int(sc_nrs(2))
-      NELSLAB = int(sc_nrs(3))
+      NSLABS = sc_nrs(2)
+      NELSLAB = sc_nrs(3)
 
       z0 = 0.0
       z1 = ZLENGTH

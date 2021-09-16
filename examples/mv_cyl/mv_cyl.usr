@@ -78,25 +78,7 @@ C=======================================================================
       INCLUDE 'SIZE'
       INCLUDE 'TSTEP'
       INCLUDE 'NEKUSE'
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real XLEN
-      real YLEN
-      real ZLEN
-
-      real P_GAMMA
-      real P_DELTA
-      real P_OMEGA
-      real P_AMP
-
-      XLEN = sc_nrs(1)
-      YLEN = sc_nrs(2)
-      ZLEN = sc_nrs(3)
-
-      P_GAMMA = sc_nrs(4)
-      P_DELTA = sc_nrs(5)
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
+      include 'CASEDATA'
 
       omega = P_OMEGA
       amp   = P_AMP
@@ -146,16 +128,10 @@ C=======================================================================
 
       include 'SIZE'
       include 'TOTAL'
-      COMMON /SCNRS/ sc_nrs(10)
+      include 'CASEDATA'
+      
+      common /scnrs/ sc_nrs(10)
       real                sc_nrs
-      real XLEN
-      real YLEN
-      real ZLEN
-
-      real P_GAMMA
-      real P_DELTA
-      real P_OMEGA
-      real P_AMP
 
       XLEN = sc_nrs(1)
       YLEN = sc_nrs(2)
@@ -222,27 +198,9 @@ C=======================================================================
 
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       common /c_mybc/ omega, v_piston
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real XLEN
-      real YLEN
-      real ZLEN
-
-      real P_GAMMA
-      real P_DELTA
-      real P_OMEGA
-      real P_AMP
-
-      XLEN = sc_nrs(1)
-      YLEN = sc_nrs(2)
-      ZLEN = sc_nrs(3)
-
-      P_GAMMA = sc_nrs(4)
-      P_DELTA = sc_nrs(5)
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
 
       n    = nx1*ny1*nz1*nelv
       ymin = glmin(ym1,n)
@@ -265,25 +223,7 @@ C=======================================================================
       end
 C-----------------------------------------------------------------------
       subroutine exact_sol (time_, volex, vpex,pex,dpdtex,qtlex,ypex)
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real XLEN
-      real YLEN
-      real ZLEN
-
-      real P_GAMMA
-      real P_DELTA
-      real P_OMEGA
-      real P_AMP
-
-      XLEN = sc_nrs(1)
-      YLEN = sc_nrs(2)
-      ZLEN = sc_nrs(3)
-
-      P_GAMMA = sc_nrs(4)
-      P_DELTA = sc_nrs(5)
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
+      include 'CASEDATA'
 
       gam0   = P_GAMMA
       omega  = P_OMEGA
@@ -306,6 +246,7 @@ c =======================================================================
 c
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       real glcflux
       real tavg, tex, var
@@ -313,25 +254,6 @@ c
       save err
       COMMON /NRSSCPTR/ nrs_scptr(1)
       integer*8         nrs_scptr
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real XLEN
-      real YLEN
-      real ZLEN
-
-      real P_GAMMA
-      real P_DELTA
-      real P_OMEGA
-      real P_AMP
-
-      XLEN = sc_nrs(1)
-      YLEN = sc_nrs(2)
-      ZLEN = sc_nrs(3)
-
-      P_GAMMA = sc_nrs(4)
-      P_DELTA = sc_nrs(5)
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
 
       nrs_scptr(1) = loc(err)
 

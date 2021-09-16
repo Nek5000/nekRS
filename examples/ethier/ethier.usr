@@ -94,6 +94,20 @@ c-----------------------------------------------------------------------
       subroutine usrdat2()  ! This routine to modify mesh coordinates
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
+      
+      common /scnrs/ sc_nrs(10)
+      real               sc_nrs
+
+      P_U0 = sc_nrs(1)
+      P_V0 = sc_nrs(2)
+      P_W0 = sc_nrs(3)
+    
+      P_A0 = sc_nrs(4)
+      P_D0 = sc_nrs(5)
+   
+      P_OMEGA = sc_nrs(6)
+      P_AMP = sc_nrs(7)
 
       call rescale_x(xm1,-1.0,1.0)
       call rescale_x(ym1,-1.0,1.0)
@@ -130,34 +144,13 @@ c-----------------------------------------------------------------------
       subroutine exactu(uxe,uye,uze,x,y,z,n)
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       real uxe(n),uye(n),uze(n)
       real x(n),y(n),z(n)
 
 
       real w1(lx1*ly1*lz1*lelt)
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real P_U0
-      real P_V0
-      real P_W0
-     
-      real P_A0
-      real P_D0
-
-      real P_OMEGA
-      real P_AMP
-      
-      P_U0 = sc_nrs(1)
-      P_V0 = sc_nrs(2)
-      P_W0 = sc_nrs(3)
-    
-      P_A0 = sc_nrs(4)
-      P_D0 = sc_nrs(5)
-   
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
-
 
       a = P_A0*pi
       d = P_D0*pi
@@ -170,33 +163,12 @@ c-----------------------------------------------------------------------
       subroutine exactp(pre,x,y,z,n)
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       real pre(n)
       real x(n),y(n),z(n)
 
       real w1(lx1*ly1*lz1*lelt)
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real P_U0
-      real P_V0
-      real P_W0
-     
-      real P_A0
-      real P_D0
-
-      real P_OMEGA
-      real P_AMP
-      
-      P_U0 = sc_nrs(1)
-      P_V0 = sc_nrs(2)
-      P_W0 = sc_nrs(3)
-    
-      P_A0 = sc_nrs(4)
-      P_D0 = sc_nrs(5)
-   
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
-
       a = P_A0*pi
       d = P_D0*pi
 
@@ -210,6 +182,7 @@ c-----------------------------------------------------------------------
       subroutine uvwp_ethier (nu,a,d,n,x,y,z,t,u,v,w,p)
 
       implicit none
+      include 'CASEDATA'
 
       integer n
 
@@ -240,28 +213,6 @@ c-----------------------------------------------------------------------
       real z(n)
       
       real xx, yy, zz   
-      COMMON /SCNRS/ sc_nrs(10)
-      real                sc_nrs
-      real P_U0
-      real P_V0
-      real P_W0
-     
-      real P_A0
-      real P_D0
-
-      real P_OMEGA
-      real P_AMP
-      
-      P_U0 = sc_nrs(1)
-      P_V0 = sc_nrs(2)
-      P_W0 = sc_nrs(3)
-    
-      P_A0 = sc_nrs(4)
-      P_D0 = sc_nrs(5)
-   
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
- 
       do i = 1, n
 
         xx = x(i) - P_U0*t

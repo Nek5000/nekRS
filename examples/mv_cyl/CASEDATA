@@ -1,0 +1,5 @@
+      real xlen, ylen, zlen,
+     $ p_gamma, p_delta, p_omega, p_amp
+
+      common /casevars/ xlen, ylen, zlen,
+     $ p_gamma, p_delta, p_omega, p_amp

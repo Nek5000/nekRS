@@ -1,0 +1,7 @@
+      real p_u0, p_v0, p_w0,
+     $ p_a0, p_d0,
+     $ p_omega, p_amp
+
+      common /casevars/ p_u0, p_v0, p_w0,
+     $ p_a0, p_d0,
+     $ p_omega, p_amp

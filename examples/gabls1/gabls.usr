@@ -14,40 +14,12 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKUSE'
+      include 'CASEDATA'
 
       common /WFPAR/ gacc
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
-      COMMON /SCNRS/ sc_nrs(20)
-      real               sc_nrs
-      real NLAT
-      real UREF
-      real LREF
-      real TREF
-      real TS0
-      real SCR
-      real ILSTRENGTH
-      integer NUMBER_ELEMENTS_X
-      integer NUMBER_ELEMENTS_Y
-      integer NUMBER_ELEMENTS_Z
-      real XLEN
-      real YLEN
-      real ZLEN
-      real BETAM
-      NLAT              =     sc_nrs(1)
-      UREF              =     sc_nrs(2)
-      LREF              =     sc_nrs(3)
-      TREF              =     sc_nrs(4)
-      TS0               =     sc_nrs(5)
-      SCR               =     sc_nrs(6)
-      ILSTRENGTH        =     sc_nrs(7)
-      NUMBER_ELEMENTS_X = int(sc_nrs(8))
-      NUMBER_ELEMENTS_Y = int(sc_nrs(9))
-      NUMBER_ELEMENTS_Z = int(sc_nrs(10))
-      XLEN              =     sc_nrs(11)
-      YLEN              =     sc_nrs(12)
-      ZLEN              =     sc_nrs(13)
-      BETAM             =     sc_nrs(14)
+
 
       yarge  = YLEN*(YLEN-y)
       factor = exp(-yarge)
@@ -72,6 +44,7 @@ c-----------------------------------------------------------------------
       subroutine userchk
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       real x0(3)
       data x0 /0.0, 0.0, 0.0/ 
@@ -105,37 +78,6 @@ c-----------------------------------------------------------------------
 
       integer bIDs(1)
       save iobj_wall
-      COMMON /SCNRS/ sc_nrs(20)
-      real               sc_nrs
-      real NLAT
-      real UREF
-      real LREF
-      real TREF
-      real TS0
-      real SCR
-      real ILSTRENGTH
-      integer NUMBER_ELEMENTS_X
-      integer NUMBER_ELEMENTS_Y
-      integer NUMBER_ELEMENTS_Z
-      real XLEN
-      real YLEN
-      real ZLEN
-      real BETAM
-      NLAT              =     sc_nrs(1)
-      UREF              =     sc_nrs(2)
-      LREF              =     sc_nrs(3)
-      TREF              =     sc_nrs(4)
-      TS0               =     sc_nrs(5)
-      SCR               =     sc_nrs(6)
-      ILSTRENGTH        =     sc_nrs(7)
-      NUMBER_ELEMENTS_X = int(sc_nrs(8))
-      NUMBER_ELEMENTS_Y = int(sc_nrs(9))
-      NUMBER_ELEMENTS_Z = int(sc_nrs(10))
-      XLEN              =     sc_nrs(11)
-      YLEN              =     sc_nrs(12)
-      ZLEN              =     sc_nrs(13)
-      BETAM             =     sc_nrs(14)
-
       n     = nx1*ny1*nz1*nelv
 
       if (istep.eq.0) then
@@ -170,9 +112,9 @@ c
         call interp_nfld(uwhav,wo2,1,xint,yint,zint,nint,
      $                   iwk,rwk,INTP_NMAX,iffpts,intp_h)
         iffpts = .false.
-        nelx  = NUMBER_ELEMENTS_X
-        nely  = NUMBER_ELEMENTS_Y
-        nelz  = NUMBER_ELEMENTS_Z
+        nelx  = number_elements_x
+        nely  = number_elements_y
+        nelz  = number_elements_z
         call gtpp_gs_setup(igs_x,nelx     ,nely,nelz,1) ! x-avx
         call gtpp_gs_setup(igs_z,nelx*nely,1   ,nelz,3) ! z-avg
 
@@ -305,42 +247,13 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKUSE'
+      include 'CASEDATA'
 
       common /WFPAR/ gacc
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
 
       real kx, ky
-      COMMON /SCNRS/ sc_nrs(20)
-      real               sc_nrs
-      real NLAT
-      real UREF
-      real LREF
-      real TREF
-      real TS0
-      real SCR
-      real ILSTRENGTH
-      integer NUMBER_ELEMENTS_X
-      integer NUMBER_ELEMENTS_Y
-      integer NUMBER_ELEMENTS_Z
-      real XLEN
-      real YLEN
-      real ZLEN
-      real BETAM
-      NLAT              =     sc_nrs(1)
-      UREF              =     sc_nrs(2)
-      LREF              =     sc_nrs(3)
-      TREF              =     sc_nrs(4)
-      TS0               =     sc_nrs(5)
-      SCR               =     sc_nrs(6)
-      ILSTRENGTH        =     sc_nrs(7)
-      NUMBER_ELEMENTS_X = int(sc_nrs(8))
-      NUMBER_ELEMENTS_Y = int(sc_nrs(9))
-      NUMBER_ELEMENTS_Z = int(sc_nrs(10))
-      XLEN              =     sc_nrs(11)
-      YLEN              =     sc_nrs(12)
-      ZLEN              =     sc_nrs(13)
-      BETAM             =     sc_nrs(14)
 
       ux = 1.0
       uy = 0.0
@@ -381,36 +294,25 @@ c-----------------------------------------------------------------------
       subroutine usrdat2   ! This routine to modify mesh coordinates
       include 'SIZE'
       include 'TOTAL'
-      COMMON /SCNRS/ sc_nrs(20)
+      include 'CASEDATA'
+      
+      common /scnrs/ sc_nrs(20)
       real               sc_nrs
-      real NLAT
-      real UREF
-      real LREF
-      real TREF
-      real TS0
-      real SCR
-      real ILSTRENGTH
-      integer NUMBER_ELEMENTS_X
-      integer NUMBER_ELEMENTS_Y
-      integer NUMBER_ELEMENTS_Z
-      real XLEN
-      real YLEN
-      real ZLEN
-      real BETAM
-      NLAT              =     sc_nrs(1)
-      UREF              =     sc_nrs(2)
-      LREF              =     sc_nrs(3)
-      TREF              =     sc_nrs(4)
-      TS0               =     sc_nrs(5)
-      SCR               =     sc_nrs(6)
-      ILSTRENGTH        =     sc_nrs(7)
-      NUMBER_ELEMENTS_X = int(sc_nrs(8))
-      NUMBER_ELEMENTS_Y = int(sc_nrs(9))
-      NUMBER_ELEMENTS_Z = int(sc_nrs(10))
-      XLEN              =     sc_nrs(11)
-      YLEN              =     sc_nrs(12)
-      ZLEN              =     sc_nrs(13)
-      BETAM             =     sc_nrs(14)
+
+      nlat              = sc_nrs(1)
+      uref              = sc_nrs(2)
+      lref              = sc_nrs(3)
+      tref              = sc_nrs(4)
+      ts0               = sc_nrs(5)
+      scr               = sc_nrs(6)
+      ilstrength        = sc_nrs(7)
+      number_elements_x = sc_nrs(8)
+      number_elements_y = sc_nrs(9)
+      number_elements_z = sc_nrs(10)
+      xlen              = sc_nrs(11)
+      ylen              = sc_nrs(12)
+      zlen              = sc_nrs(13)
+      betam             = sc_nrs(14)
 
       call rescale_x(xm1, 0.0, XLEN)
       call rescale_x(zm1, 0.0, ZLEN)
@@ -439,6 +341,7 @@ c-----------------------------------------------------------------------
       subroutine usrdat3
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       integer icalld
       save    icalld
@@ -447,36 +350,6 @@ c-----------------------------------------------------------------------
       common /WFPAR/ gacc
      $              ,thts0, thts, ts_rate, ts_grad
      $              ,fcor,  bcor
-      COMMON /SCNRS/ sc_nrs(20)
-      real               sc_nrs
-      real NLAT
-      real UREF
-      real LREF
-      real TREF
-      real TS0
-      real SCR
-      real ILSTRENGTH
-      integer NUMBER_ELEMENTS_X
-      integer NUMBER_ELEMENTS_Y
-      integer NUMBER_ELEMENTS_Z
-      real XLEN
-      real YLEN
-      real ZLEN
-      real BETAM
-      NLAT              =     sc_nrs(1)
-      UREF              =     sc_nrs(2)
-      LREF              =     sc_nrs(3)
-      TREF              =     sc_nrs(4)
-      TS0               =     sc_nrs(5)
-      SCR               =     sc_nrs(6)
-      ILSTRENGTH        =     sc_nrs(7)
-      NUMBER_ELEMENTS_X = int(sc_nrs(8))
-      NUMBER_ELEMENTS_Y = int(sc_nrs(9))
-      NUMBER_ELEMENTS_Z = int(sc_nrs(10))
-      XLEN              =     sc_nrs(11)
-      YLEN              =     sc_nrs(12)
-      ZLEN              =     sc_nrs(13)
-      BETAM             =     sc_nrs(14)
 
       if(icalld.eq.0) then
         g       = 9.81 
