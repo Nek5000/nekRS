@@ -38,7 +38,7 @@ SOFTWARE.
       dlong id = t + b*p_blockSize;
       s_norm[t] = 0.0;
       if (id<N) {
-        s_norm[t] += abs(x[id]);
+        s_norm[t] += fabs(x[id]);
       }
     }
     @barrier("local");
@@ -95,7 +95,7 @@ SOFTWARE.
       s_norm[t] = 0.0;
       if (id<N) {
         for(int field = 0; field < Nfields; ++field){
-          s_norm[t] += abs(x[id + field*offset]);
+          s_norm[t] += fabs(x[id + field*offset]);
         }
       }
     }

@@ -1222,18 +1222,24 @@ void registerLinAlgKernels() {
       "min", oklDir + "linAlgMin.okl", "min", kernelInfo);
   platform->kernels.add_kernel(
       "max", oklDir + "linAlgMax.okl", "max", kernelInfo);
+  filename = std::string("linAlgNorm2") +
+             (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "norm2", oklDir + "linAlgNorm2.okl", "norm2", kernelInfo);
+      "norm2", oklDir + filename, "norm2", kernelInfo);
   platform->kernels.add_kernel(
-      "norm2Many", oklDir + "linAlgNorm2.okl", "norm2Many", kernelInfo);
+      "norm2Many", oklDir + filename, "norm2Many", kernelInfo);
+  filename = std::string("linAlgNorm1") +
+             (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "norm1", oklDir + "linAlgNorm1.okl", "norm1", kernelInfo);
+      "norm1", oklDir + filename, "norm1", kernelInfo);
   platform->kernels.add_kernel(
-      "norm1Many", oklDir + "linAlgNorm1.okl", "norm1Many", kernelInfo);
+      "norm1Many", oklDir + filename, "norm1Many", kernelInfo);
+  filename = std::string("linAlgWeightedNorm1") +
+             (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "weightedNorm1", oklDir + "linAlgWeightedNorm1.okl", "weightedNorm1", kernelInfo);
+      "weightedNorm1", oklDir + filename, "weightedNorm1", kernelInfo);
   platform->kernels.add_kernel(
-      "weightedNorm1Many", oklDir + "linAlgWeightedNorm1.okl", "weightedNorm1Many", kernelInfo);
+      "weightedNorm1Many", oklDir + filename, "weightedNorm1Many", kernelInfo);
   filename = std::string("linAlgWeightedNorm2") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(

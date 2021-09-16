@@ -335,81 +335,115 @@ dfloat linAlg_t::max(const dlong N, occa::memory& o_a, MPI_Comm _comm) {
 
 // ||o_a||_2
 dfloat linAlg_t::norm2(const dlong N, occa::memory& o_x, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   norm2Kernel(Nblock, N, o_x, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
-
-  dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
-    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 
-  return sqrt(dot);
+  return sqrt(norm);
 }
 dfloat linAlg_t::norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_x, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   norm2ManyKernel(Nblock, N, Nfields, fieldOffset, o_x, o_scratch);
-
-  o_scratch.copyTo(scratch, Nbytes);
-
-  dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
-    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 
-  return sqrt(dot);
+  return sqrt(norm);
 }
 // ||o_a||_1
 dfloat linAlg_t::norm1(const dlong N, occa::memory& o_x, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   norm1Kernel(Nblock, N, o_x, o_scratch);
-
-  o_scratch.copyTo(scratch, Nbytes);
-
-  dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
-    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
 
-  return dot;
+  return norm;
 }
 dfloat linAlg_t::norm1Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_x, MPI_Comm _comm) {
+#ifdef ENABLE_TIMER
+  platform->timer.tic("dotp",1);
+#endif
   int Nblock = (N+blocksize-1)/blocksize;
   const dlong Nbytes = Nblock * sizeof(dfloat);
   if(o_scratch.size() < Nbytes) reallocScratch(Nbytes);
 
   norm1ManyKernel(Nblock, N, Nfields, fieldOffset, o_x, o_scratch);
 
-  o_scratch.copyTo(scratch, Nbytes);
-
-  dfloat dot = 0;
-  for(dlong n=0;n<Nblock;++n){
-    dot += scratch[n];
+  dfloat norm = 0;
+  if(serial){
+    norm = *((dfloat*) o_scratch.ptr());
+  } else {
+    o_scratch.copyTo(scratch, Nbytes);
+    for(dlong n=0;n<Nblock;++n){
+      norm += scratch[n];
+    }
   }
 
   if (_comm != MPI_COMM_NULL) 
-    MPI_Allreduce(MPI_IN_PLACE, &dot, 1, MPI_DFLOAT, MPI_SUM, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, _comm);
 
-  return dot;
+#ifdef ENABLE_TIMER
+  platform->timer.toc("dotp");
+#endif
+  return norm;
 }
 
 // o_x.o_y

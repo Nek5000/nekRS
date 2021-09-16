@@ -103,6 +103,22 @@ dfloat min(dfloat const * const array, const int size, MPI_Comm comm)
   MPI_Allreduce(MPI_IN_PLACE, &minr, 1, MPI_DFLOAT, MPI_MIN, comm);
   return minr;
 }
+dfloat norm2(dfloat const * const array, const int size, MPI_Comm comm)
+{
+  dfloat norm = 0.0;
+  for(int i = 0 ; i < size; ++i)
+    norm += array[i] * array[i];
+  MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, comm);
+  return sqrt(norm);
+}
+dfloat norm1(dfloat const * const array, const int size, MPI_Comm comm)
+{
+  dfloat norm = 0.0;
+  for(int i = 0 ; i < size; ++i)
+    norm += fabs(array[i]);
+  MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, comm);
+  return norm;
+}
 void ciTestLinAlg(const int N)
 {
   linAlg_t* linAlg = platform->linAlg;
@@ -112,24 +128,46 @@ void ciTestLinAlg(const int N)
   for(int i = 0 ; i < N; ++i)
     x[i] = drand48();
   occa::memory o_x = platform->device.malloc(N*sizeof(dfloat), x);
-  const dfloat referenceSum = sum(x,N,comm);
-  const dfloat referenceMax = max(x,N,comm);
-  const dfloat referenceMin = min(x,N,comm);
-  const dfloat err_sum = abs(
-    (referenceSum - linAlg->sum(N, o_x, comm))/referenceSum
-  );
-  const dfloat err_max = abs(
-    (referenceMax - linAlg->max(N, o_x, comm))/referenceMax
-  );
-  const dfloat err_min = abs(
-    (referenceMin - linAlg->min(N, o_x, comm))/referenceMin
-  );
-  if(rank == 0) printf("linAlg errs (N=%d): max=%g, min=%g, sum=%g\n", N, err_max, err_min, err_sum);
+
+  const dfloat testTol = 50. * std::numeric_limits<dfloat>::epsilon();
+  auto evaluate_method = [&](auto linAlgMethod, auto referenceMethod, std::string id)
+  {
+    const dfloat reference = referenceMethod(x,N,comm);
+    const dfloat value = linAlgMethod(N, o_x, comm);
+    const dfloat err = abs(
+      (value - reference)/reference
+    );
+    if(rank == 0) printf("linAlg errs (N=%d): %s=%g\n", N, id.c_str(), err);
+    if(err > testTol) FAIL;
+  };
+
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->sum  (N, o_x, comm); 
+    },
+    sum, "sum");
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->max  (N, o_x, comm); 
+    },
+    max, "max");
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->min  (N, o_x, comm); 
+    },
+    min, "min");
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->norm2(N, o_x, comm); 
+    },
+    norm2, "norm2");
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->norm1(N, o_x, comm); 
+    },
+    norm1, "norm1");
   free(x);
   o_x.free();
-  const dfloat testTol = 50. * std::numeric_limits<dfloat>::epsilon();
-  if(err_max > testTol || err_min > testTol || err_sum > testTol)
-    FAIL;
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
