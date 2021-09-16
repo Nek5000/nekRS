@@ -12,7 +12,7 @@ subCyclingSteps = 2
 writeControl = runTime
 writeInterval = 1
 
-regularization = hpfrt + nModes = 2 + scalingCoeff = 0.2/${dt}
+regularization = hpfrt + nModes=2 + scalingCoeff=20 
 
 [PRESSURE]
 residualTol = 1e-04

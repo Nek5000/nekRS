@@ -6,13 +6,15 @@ stopAt = endTime
 endTime = 2600
 
 dt = 1.0e-2
+#dt = targetCFL=2 + max=5e-2
+
 timeStepper = tombo2
 subCyclingSteps = 1
 
 writeControl = runTime
 writeInterval = 100
 
-regularization = hpfrt + nModes = 1 + scalingCoeff = 0.05/${dt}
+regularization = hpfrt + nModes=1 + scalingCoeff=10
 
 [PRESSURE]
 residualTol = 1e-04
