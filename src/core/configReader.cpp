@@ -77,14 +77,8 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "fflags", buf);
   setenv("NEKRS_FFLAGS", buf.c_str(), 1);
 
-  buf = install_dir + "/nek5000";
-  setenv("NEKRS_NEK5000_DIR", buf.c_str(), 1);
-
   ini.extract("general", "nek5000_pplist", buf);
   setenv("NEKRS_NEK5000_PPLIST", buf.c_str(), 1);
-
-  buf = install_dir + "/nekInterface";
-  setenv("NEKRS_NEKINTERFACE_DIR", buf.c_str(), 1);
 
   ini.extract("general", "nekrs_mpi_underlying_compiler", buf);
   if(!getenv("NEKRS_MPI_UNDERLYING_COMPILER")) setenv("NEKRS_MPI_UNDERLYING_COMPILER", buf.c_str(), 1);

@@ -84,7 +84,9 @@ endif
 
 TMP1 = $(CORE) $(MXM) $(USR) $(COMM_MPI) $(VISITO)
 
-OPT_INCDIR += -I $S/core/experimental
+OPT_INCDIR += $S/core/experimental
+
+INCLUDES:= $(foreach dir,$(OPT_INCDIR),-I$(dir))
 
 NOBJS = $(patsubst %,$(OBJDIR)/%,$(TMP1))
 USRF = $(OBJDIR)/${CASENAME}.o
@@ -93,13 +95,13 @@ L0 = $(G) -O0
 L2 = $(G) -O2
 L3 = $(G) -O3
 
-FL0   = $(L0) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core -I$(OPT_INCDIR) 
-FL2   = $(L2) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core -I$(OPT_INCDIR)
-FL3   = $(L3) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core -I$(OPT_INCDIR)
+FL0   = $(L0) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core $(INCLUDES) 
+FL2   = $(L2) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core $(INCLUDES)   
+FL3   = $(L3) $(FFLAGS) $(PPS_F) -I$(CASEDIR) -I$S/core $(INCLUDES)   
 
-cFL0   = $(L0) $(CFLAGS) $(PPS_C) -I$S/core -I$(OPT_INCDIR)
-cFL2   = $(L2) $(CFLAGS) $(PPS_C) -I$S/core -I$(OPT_INCDIR)
-cFL3   = $(L3) $(CFLAGS) $(PPS_C) -I$S/core -I$(OPT_INCDIR)
+cFL0   = $(L0) $(CFLAGS) $(PPS_C) -I$S/core $(INCLUDES)   
+cFL2   = $(L2) $(CFLAGS) $(PPS_C) -I$S/core $(INCLUDES)   
+cFL3   = $(L3) $(CFLAGS) $(PPS_C) -I$S/core $(INCLUDES)   
 
 $(info $(shell mkdir -p $(OBJDIR)))
 

@@ -107,8 +107,8 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     options.setArgs("NP TARGET", std::to_string(commSizeTarget));
     if(rank == 0){
       std::cout << "jit-compiling for >="
-           << commSizeTarget 
-           << " MPI tasks ...\n" << std::endl;
+                << commSizeTarget 
+                << " MPI tasks ...\n" << std::endl;
     }
     fflush(stdout);	
   }
@@ -146,11 +146,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    int err = 0;
-    if(buildRank == 0) err = udfBuild(udfFile.c_str(), options);
-
-    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) ABORT(EXIT_FAILURE);
+    udfBuild(udfFile.c_str(), options);
 
     if(buildOnly) {
       *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
@@ -180,7 +176,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
       std::ofstream ofs;
       ofs.open(file, std::ofstream::out);
       ofs.close();
-      std::cout << "\nBuild successful." << std::endl;
+      if(rank == 0) std::cout << "\nBuild successful." << std::endl;
     }
     return;
   }

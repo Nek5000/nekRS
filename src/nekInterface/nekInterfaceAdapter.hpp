@@ -99,7 +99,7 @@ DECLARE_USER_FUNC(userqtl)
 }
 #endif
 
-int buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
+void buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
 namespace nek{
 void*  ptr(const char* id);
 void*  scPtr(int id);

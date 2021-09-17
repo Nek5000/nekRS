@@ -143,56 +143,74 @@ void oudfInit(setupAide &options)
 }
 
 
-int udfBuild(const char* udfFile, setupAide& options)
+void udfBuild(const char* udfFile, setupAide& options)
 {
-  double tStart = MPI_Wtime();
+  int buildRank = platform->comm.mpiRank;
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if(buildNodeLocal)
+    MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
+  
+  int err = [&](){
+    if(buildRank == 0){
+      double tStart = MPI_Wtime();
 
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  std::string udf_dir = install_dir + "/udf";
+      std::string install_dir;
+      install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+      std::string udf_dir = install_dir + "/udf";
 
-  std::string cache_dir;
-  cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
+      std::string cache_dir;
+      cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
 
-  std::string udfFileCache = cache_dir + "/udf/udf.cpp";
-  std::string udfLib = cache_dir + "/udf/libUDF.so";
+      std::string udfFileCache = cache_dir + "/udf/udf.cpp";
+      std::string udfLib = cache_dir + "/udf/libUDF.so";
 
-  char buf[FILENAME_MAX];
-  char * ret = getcwd(buf, sizeof(buf));
-  if(!ret) ABORT(EXIT_FAILURE);
-  std::string case_dir;
-  case_dir.assign(buf);
+      char buf[FILENAME_MAX];
+      char * ret = getcwd(buf, sizeof(buf));
+      if(!ret) ABORT(EXIT_FAILURE);
+      std::string case_dir;
+      case_dir.assign(buf);
 
-  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
+      const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
-  if(!fileExists(udfFile)) {
-    printf("\nERROR: Cannot find %s!\n", udfFile);
-    return EXIT_FAILURE;
-  }
+      if(!fileExists(udfFile)) {
+        if(platform->comm.mpiRank == 0) printf("\nERROR: Cannot find %s!\n", udfFile);
+        return EXIT_FAILURE;
+      }
 
-  char cmd[BUFSIZ];
-  printf("building udf ... \n"); fflush(stdout);
-  if(isFileNewer(udfFile, udfFileCache.c_str()) || !fileExists(udfLib.c_str())) {
-    char udfFileResolved[BUFSIZ];
-    realpath(udfFile, udfFileResolved);
-    sprintf(cmd,
-            "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && \
-             rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" \
-	         -DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" .",
-             cache_dir.c_str(),
-             udfFileResolved,
-             udf_dir.c_str(),
-             case_dir.c_str());
-    if(verbose) printf("%s\n", cmd);
-    if(system(cmd)) return EXIT_FAILURE; 
-  }
-  sprintf(cmd, "cd %s/udf && make", cache_dir.c_str());
-  if(system(cmd)) return EXIT_FAILURE; 
-  fileSync(udfLib.c_str());
-  printf("done (%gs)\n", MPI_Wtime() - tStart);
-  fflush(stdout);
+      char cmd[BUFSIZ];
+      if(platform->comm.mpiRank == 0) printf("building udf ... \n"); fflush(stdout);
+      std::string pipeToNull = (platform->comm.mpiRank == 0) ?
+        std::string("") :
+        std::string("> /dev/null 2>&1");
+      if(isFileNewer(udfFile, udfFileCache.c_str()) || !fileExists(udfLib.c_str())) {
+        char udfFileResolved[BUFSIZ];
+        realpath(udfFile, udfFileResolved);
+        sprintf(cmd,
+                "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && "
+                "rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
+	        "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" . %s",
+                 cache_dir.c_str(),
+                 udfFileResolved,
+                 udf_dir.c_str(),
+                 case_dir.c_str(),
+                 pipeToNull.c_str());
+        if(verbose && platform->comm.mpiRank == 0) printf("%s\n", cmd);
+        if(system(cmd)) return EXIT_FAILURE; 
+      }
+      sprintf(cmd, "cd %s/udf && make %s", cache_dir.c_str(), pipeToNull.c_str());
+      if(system(cmd)) return EXIT_FAILURE; 
+      fileSync(udfLib.c_str());
+      if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+      fflush(stdout);
+    }
 
-  return 0;
+    return 0;
+  }();
+
+  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
+  if(err) ABORT(EXIT_FAILURE);
 }
 
 void* udfLoadFunction(const char* fname, int errchk)

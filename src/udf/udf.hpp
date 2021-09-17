@@ -46,7 +46,7 @@ extern UDF udf;
 void oudfFindDirichlet(std::string &field);
 void oudfFindNeumann(std::string &field);
 void oudfInit(setupAide &options);
-int udfBuild(const char* udfFile, setupAide& options);
+void udfBuild(const char* udfFile, setupAide& options);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
 occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function);

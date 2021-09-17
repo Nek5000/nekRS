@@ -346,35 +346,32 @@ void set_usr_handles(const char* session_in,int verbose)
 
 void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt, setupAide& options, char* SIZE)
 {
-  //printf("generating SIZE file ... "); fflush(stdout);
-
   char line[BUFSIZ];
-  char cmd[BUFSIZ];
+  const char *cache_dir = getenv("NEKRS_CACHE_DIR");
 
-  const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  const char* nekrs_nek5000_dir = getenv("NEKRS_NEK5000_DIR");
+  const std::string install_dir(getenv("NEKRS_HOME"));
+  const std::string nek5000_dir = install_dir + "/nek5000";
 
   const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
   // Read and generate the new size file.
-  sprintf(line,"%s/core/SIZE.template", nekrs_nek5000_dir);
+  sprintf(line,"%s/core/SIZE.template", nek5000_dir.c_str());
   FILE* fp = fopen(line, "r");
-  char* sizeFile, * curSizeFile;
-  size_t result;
+  if (!fp) {
+    fprintf(stderr, "Error opening %s!\n", line);
+    ABORT(EXIT_FAILURE);
+  }
 
-  if (fp) {
+  char *sizeFile;
+  {
     fseek(fp, 0, SEEK_END);
-    long length = ftell(fp);
+    const long length = ftell(fp);
     rewind(fp);
-    // allocate actual length + some buffer
     sizeFile = (char*) calloc(length + 500,sizeof(char));
     if(!sizeFile) {
       fprintf(stderr, "Error allocating space for SIZE file.\n");
       ABORT(EXIT_FAILURE);
     }
-  } else {
-    fprintf(stderr, "Error opening %s/core/SIZE.template!\n", nekrs_nek5000_dir);
-    ABORT(EXIT_FAILURE);
   }
 
   const int lx1m = options.compareArgs("MOVING MESH", "TRUE") ? lx1 : 1;
@@ -464,88 +461,121 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   fflush(stdout);
 }
 
-int buildNekInterface(int ldimt, int N, int np, setupAide& options)
+void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 {
-  char buf[BUFSIZ];
-  char cache_dir[BUFSIZ];
-  sprintf(cache_dir,"%s/nek5000",getenv("NEKRS_CACHE_DIR"));
-  mkdir(cache_dir, S_IRWXU); 
-  const char* nekInterface_dir = getenv("NEKRS_NEKINTERFACE_DIR");
-  const char* nek5000_dir = getenv("NEKRS_NEK5000_DIR");
+  int buildRank = rank;
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if(buildNodeLocal)
+    MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
+  
+  int err = [&](){
+  
+    if(buildRank == 0){
+      const std::string cache_dir = std::string(getenv("NEKRS_CACHE_DIR")) + "/nek5000";
+      mkdir(cache_dir.c_str(), S_IRWXU); 
 
-  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
+      const std::string install_dir(getenv("NEKRS_HOME"));
+      const std::string nekInterface_dir = install_dir + "/nekInterface";
+      const std::string nek5000_dir = install_dir + "/nek5000";
 
-  const std::string usrname = options.getArgs("CASENAME");
-  const std::string meshFile = options.getArgs("MESH FILE");
+      char buf[BUFSIZ];
+      char *ret = getcwd(buf, sizeof(buf));
+      const std::string case_dir(buf);
 
-  // create SIZE
-  strcpy(buf, meshFile.c_str());
-  FILE *fp = fopen(buf, "r");
-  if (!fp) {
-    printf("\nERROR: Cannot find %s!\n", buf);
-    ABORT(EXIT_FAILURE);
-  }
-  fgets(buf, 80, fp);
-  fclose(fp);
+      const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
-  char ver[10];
-  int ndim;
-  hlong nelgv, nelgt;
-  // has to match header in re2
-  sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
-  if(ndim != 3) {
-    printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
-    ABORT(EXIT_FAILURE);
-  }
-  if(nelgt <= 0 || nelgv <=0 || nelgv > nelgt) {
-    printf("\nERROR: Invalid nelgt=%lld / nelgv=%lld read from re2 header!\n", nelgt, nelgv);
-    ABORT(EXIT_FAILURE);
-  }
+      const std::string usrname = options.getArgs("CASENAME");
+      const std::string meshFile = options.getArgs("MESH FILE");
 
-  int lelt = (int)(nelgt/np) + 3;
-  if(lelt > nelgt) lelt = (int)nelgt;
-  sprintf(buf,"%s/SIZE",cache_dir); 
-  mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
+      // create SIZE
+      strcpy(buf, meshFile.c_str());
+      FILE *fp = fopen(buf, "r");
+      if (!fp) {
+        if(rank == 0) printf("\nERROR: Cannot find %s!\n", buf);
+        ABORT(EXIT_FAILURE);
+      }
+      fgets(buf, 80, fp);
+      fclose(fp);
 
-  // generate usr
-  char usrFileCache[BUFSIZ];
-  {
-    char usrFile[BUFSIZ];
-    const std::string usrFileStr = options.getArgs("NEK USR FILE");
-    char usrFileCaseName[BUFSIZ];
-    sprintf(usrFileCaseName,"%s.usr",usrname.c_str());
-    strcpy(usrFile, usrFileStr.c_str());
-    if(!fileExists(usrFile) || isFileEmpty(usrFile))
-      sprintf(usrFile, "%s/core/zero.usr", nek5000_dir);
+      char ver[10];
+      int ndim;
+      hlong nelgv, nelgt;
+      // has to match header in re2
+      sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
+      if(ndim != 3) {
+        if(rank == 0) printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
+        ABORT(EXIT_FAILURE);
+      }
+      if(nelgt <= 0 || nelgv <=0 || nelgv > nelgt) {
+        if(rank == 0) printf("\nERROR: Invalid nelgt=%lld / nelgv=%lld read from re2 header!\n", nelgt, nelgv);
+        ABORT(EXIT_FAILURE);
+      }
 
-    sprintf(usrFileCache,"%s/%s",cache_dir,usrFileCaseName);
-    if(isFileNewer(usrFile, usrFileCache))
-      copyFile(usrFile, usrFileCache);
-  }
+      int lelt = (int)(nelgt/np) + 3;
+      if(lelt > nelgt) lelt = (int)nelgt;
+      sprintf(buf,"%s/SIZE",cache_dir.c_str()); 
+      mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
-  // build
-  char libFile[BUFSIZ];
-  sprintf(libFile,"%s/lib%s.so",cache_dir,usrname.c_str());
-  int recompile = 0;
-  if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
-  sprintf(buf,"%s/SIZE",cache_dir);
-  if(isFileNewer(buf, libFile)) recompile = 1;  
-  if(recompile) {
-    printf("building nek for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
-    double tStart = MPI_Wtime();
-    sprintf(buf, "cd %s && cp %s/makefile.template makefile && \
-		 make -s -j8 S=%s CASENAME=%s CASEDIR=%s NEKRS_WORKING_DIR=%s NEKRS_NEKINTERFACE_DIR=%s \
-		 -f %s/Makefile lib usr libnekInterface",
-         cache_dir, nek5000_dir, nek5000_dir, usrname.c_str(), cache_dir, cache_dir, 
-         nekInterface_dir, nekInterface_dir);
-    if(verbose) printf("%s\n", buf);
-    if(system(buf)) return EXIT_FAILURE;
-    fileSync(libFile);
-    printf("done (%gs)\n\n", MPI_Wtime() - tStart);
-    fflush(stdout);
-  }
+      // generate usr
+      char usrFileCache[BUFSIZ];
+      {
+        char usrFile[BUFSIZ];
+        const std::string usrFileStr = options.getArgs("NEK USR FILE");
+        char usrFileCaseName[BUFSIZ];
+        sprintf(usrFileCaseName,"%s.usr",usrname.c_str());
+        strcpy(usrFile, usrFileStr.c_str());
+        if(!fileExists(usrFile) || isFileEmpty(usrFile))
+          sprintf(usrFile, "%s/core/zero.usr", nek5000_dir.c_str());
 
-  return 0;
+        sprintf(usrFileCache,"%s/%s",cache_dir.c_str(),usrFileCaseName);
+        if(isFileNewer(usrFile, usrFileCache))
+          copyFile(usrFile, usrFileCache);
+      }
+
+      // build
+      char libFile[BUFSIZ];
+      sprintf(libFile,"%s/lib%s.so",cache_dir.c_str(),usrname.c_str());
+      int recompile = 0;
+      if(isFileNewer(usrFileCache, libFile)) recompile = 1;  
+      sprintf(buf,"%s/SIZE",cache_dir.c_str());
+      if(isFileNewer(buf, libFile)) recompile = 1;  
+      if(recompile) {
+        const double tStart = MPI_Wtime();
+        const std::string pipeToNull = (rank == 0) ? std::string("") :  std::string(">/dev/null 2>&1");
+	const std::string include_dirs = "./ " + case_dir; 
+        if(rank == 0) 
+	  printf("building nek for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
+
+        sprintf(buf, "cd %s && cp -f %s/makefile.template makefile && "
+		     "make -s -j8 " 
+		     "S=%s "
+		     "OPT_INCDIR=\"%s\" "
+		     "CASENAME=%s "
+		     "CASEDIR=%s "
+		     "-f %s/Makefile lib usr libnekInterface "
+		     "%s",
+                     cache_dir.c_str(), nek5000_dir.c_str(), 
+		     nek5000_dir.c_str(), 
+		     include_dirs.c_str(), 
+		     usrname.c_str(), 
+		     cache_dir.c_str(), 
+                     nekInterface_dir.c_str(), 
+		     pipeToNull.c_str());
+        if(verbose && rank == 0) printf("%s\n", buf);
+        if(system(buf)) return EXIT_FAILURE;
+        fileSync(libFile);
+
+        if(rank == 0) printf("done (%gs)\n\n", MPI_Wtime() - tStart);
+        fflush(stdout);
+      }
+    }
+
+    return 0;
+  }();
+  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
+  if(err) ABORT(EXIT_FAILURE);
 }
 
 namespace nek{
@@ -583,10 +613,7 @@ void bootstrap()
   int npTarget = size;
   options->getArgs("NP TARGET", npTarget);
 
-  int err = 0;
-  if (buildRank == 0) err = buildNekInterface(mymax(5, Nscalar), N, npTarget, *options);
-  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM,  platform->comm.mpiComm);
-  if (err) ABORT(EXIT_FAILURE);;
+  buildNekInterface(mymax(5, Nscalar), N, npTarget, *options);
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     if (rank == 0) { 
