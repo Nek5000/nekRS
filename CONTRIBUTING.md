@@ -9,13 +9,17 @@ Here are a few important things you should know about contributing:
 
 * If you are planning a large contribution, we encourage you to interact with us early on (via GitHub or email) to ensure that your effort is well-directed.
 
-* Respect our design, coding style and conventions.
-
-* Do not break the code. Any significant changes should be accompanied by tests. The project already has good test coverage, so look at some existing tests if you're unsure how to go about it. 
+* Mimic our coding style/conventions and respect our design. Your contribution should fit well in the existing source code. 
 
 * Update the surrounding e.g. examples, documentation (whatever is affected by your contribution).
 
-* Your PR will be reviewed by a maintainer. We will either merge it, request changes to it, or close it with an explanation.
+* Do not break the code. Any significant changes should be accompanied by tests. The project already has good test coverage, so look at some existing tests if you're unsure how to go about it. 
+
+* Provide evidence of correctness and performance. 
+
+* Comment on limitations and known issues. 
+
+* Your PR will be reviewed by subject matter experts and finally by the maintainer. We will either merge it, request changes to it, or close it with an explanation.
  
 * Be prepared to accept constructive criticism on your code and to work on improving it before it's merged.
 

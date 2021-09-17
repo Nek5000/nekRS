@@ -93,6 +93,9 @@ All new contributions must be made under the BSD 3-clause license.
 
 ## Acknowledgment
 This research was supported by the Exascale Computing Project (17-SC-20-SC), 
-a joint project of the U.S. Department of Energy’s Office of Science and National Nuclear Security 
+a joint project of the U.S. Department of Energy's Office of Science and National Nuclear Security 
 Administration, responsible for delivering a capable exascale ecosystem, including software, 
-applications, and hardware technology, to support the nation’s exascale computing imperative. 
+applications, and hardware technology, to support the nation's exascale computing imperative.
+
+## References
+* [NekRS, a GPU-Accelerated Spectral Element Navier-Stokes Solver](https://arxiv.org/abs/2104.05829) 
