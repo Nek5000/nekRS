@@ -144,6 +144,7 @@ static std::vector<std::string> amgxKeys = {
 static std::vector<std::string> occaKeys = {
   {"backend"},
   {"deviceNumber"},
+  {"platformNumber"}
 };
 
 static std::vector<std::string> pressureKeys = {};
@@ -1119,6 +1120,7 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
 
   // options.setArgs("THREAD MODEL", "SERIAL");
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
+  options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
 
   options.setArgs("ADVECTION", "TRUE");
