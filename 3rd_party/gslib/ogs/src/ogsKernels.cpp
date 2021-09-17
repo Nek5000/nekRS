@@ -163,6 +163,9 @@ void ogs::initKernels(MPI_Comm comm, occa::device device, bool verbose) {
   ogs::kernelInfo["defines/ " "dlong"] = dlongString;
   ogs::kernelInfo["defines/ " "hlong"] = hlongString;
 
+  if ("OpenCL" == device.mode())
+    ogs::kernelInfo["defines/" "hlong"]="long";
+
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
