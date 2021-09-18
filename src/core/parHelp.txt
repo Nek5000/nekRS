@@ -1,26 +1,29 @@
 ----------------------------------------------------------------------------------------------------------------------
-Key                         Value(s)                                   Description
+Key                         Value(s)                                   Description / Comment
 ----------------------------------------------------------------------------------------------------------------------
 [OCCA]
 
-backend                     SERIAL, CUDA, HIP, OPENCL
+backend                     SERIAL, CUDA, HIP, OPENCL                  default defined by env var OCCA_MODE_DEFAULT
 
 deviceNumber                <int>, LOCAL-RANK [D]
 
+platformNumber              <int>                                      only used by OOPENCL
+                            0 [D]
+
 [GENERAL]
 
-verbose                     true, false [D]                            verbose output
+verbose                     true, false [D]
 
-polynomialOrder             <int>                                      polynomial order in r,s,t 
+polynomialOrder             <int>
 
-dealiasing                  true [D], false                            enable dealiasing for advection term
+dealiasing                  true [D], false
 
-  cubaturePolynomialOrder   <int>                                      polynomial order used for dealiasing 
+  cubaturePolynomialOrder   <int>
                             3/2*(polynomialOrder+1) -1 [D] 
 
 startFrom                   "<string>"                                 name of restart file
 
-timeStepper                 tombo2 [D], tombo3                         time stepping scheme
+timeStepper                 tombo1, tombo2 [D], tombo3
 
 stopAt                      numSteps [D], endTime, elapsedTime         stop criterion 
 
@@ -28,13 +31,13 @@ stopAt                      numSteps [D], endTime, elapsedTime         stop crit
 
   endTime                   <float>                                
 
-  elapsedTime               <float>                                
+  elapsedTime               <float>                                    in minutes                                
 
 dt                          <float> [D], targetCFL=<float>
                               +max=<float>                             maximum step size
                               +initial=<float>                         initial step size 
 
-subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection terms
+subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection
                             0 [D]                             
 
 writeControl                steps [D], runTime                         checkpoint frequency unit
@@ -129,6 +132,7 @@ solver                      elasticity                                 solver ty
 partitioner                 rbc, rsb, rbc+rsb [D]                      partitioning method
 
 connectivityTol             <float>
+                            0.2 [D]
 
 file                        "<string>"                                 name of .re2 file
 ----------------------------------------------------------------------------------------------------------------------
