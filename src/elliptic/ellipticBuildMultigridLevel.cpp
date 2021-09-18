@@ -94,9 +94,11 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   // global nodes
   meshGlobalIds(mesh);
 
+#if 0
   mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
   mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
   mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
+#endif
 
   //dont need these once vmap is made
   free(mesh->x);
@@ -125,6 +127,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
     mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
 
+#if 0
     mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
 
     dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
@@ -135,18 +138,18 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_cubInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat), cubInterpT);
 
     free(cubInterpT);
-
-    mesh->o_vgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
-                          mesh->vgeo);
-
-    mesh->o_sgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
-                          mesh->sgeo);
+#endif
 
     mesh->o_ggeo =
       platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
+#if 0
+    mesh->o_vgeo =
+      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
+                          mesh->vgeo);
+    mesh->o_sgeo =
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
+                          mesh->sgeo);
 
     mesh->o_vmapM =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
@@ -155,16 +158,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_vmapP =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapP);
+#endif
 
   }
-
-  mesh->o_vmapM =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(int),
-                        mesh->vmapM);
-
-  mesh->o_vmapP =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(int),
-                        mesh->vmapP);
 
   //set the normalization constant for the allNeumann Poisson problem on this coarse mesh
   hlong localElements = (hlong) mesh->Nelements;
@@ -310,6 +306,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
                                        mesh->o_ggeo);
+#if 0    
+    mesh->o_ggeo.free();
+#endif    
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
                                        elliptic->mesh->o_DPfloat,
                                        mesh->o_D);

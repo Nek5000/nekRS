@@ -302,8 +302,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (ciMode == 2){
     dfloat memoryUsage = platform->device.memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0515024;
-    if(memoryUsage > 1.02 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
+    const dfloat expectedMemoryUsage = 0.0505191;
+    if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){
         printf("Expected memory usage exceeded!\n"
