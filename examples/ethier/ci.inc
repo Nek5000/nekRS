@@ -316,10 +316,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     }
   }
   if (ciMode == 8){
-    const int expectedSteps = 56;
+    const int expectedSteps = 68;
     const int errSteps = abs(expectedSteps - tstep);
     if (rank == 0)
-      printf("error in nSteps:  %d\n", errSteps);
+      printf("nSteps err variable dt:  %d\n", errSteps);
     (errSteps <= 2) ? ({/** no-op **/}) : (FAIL);
   }
 
