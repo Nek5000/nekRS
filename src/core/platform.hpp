@@ -32,15 +32,36 @@ private:
 
 struct memPool_t{
   void allocate(const dlong offset, const dlong fields);
-  dfloat* slice0, *slice1, *slice2, *slice3, *slice4, *slice5, *slice6, *slice7;
-  dfloat* slice9, *slice12, *slice15, *slice18, *slice19;
-  dfloat* ptr;
+  dfloat *slice0 = nullptr;
+  dfloat *slice1 = nullptr; 
+  dfloat *slice2 = nullptr; 
+  dfloat *slice3 = nullptr; 
+  dfloat *slice4 = nullptr; 
+  dfloat *slice5 = nullptr; 
+  dfloat *slice6 = nullptr; 
+  dfloat *slice7 = nullptr;
+  dfloat *slice9 = nullptr;
+  dfloat *slice12 = nullptr; 
+  dfloat *slice15 = nullptr; 
+  dfloat *slice18 = nullptr; 
+  dfloat *slice19 = nullptr;
+  dfloat *ptr = nullptr;
 };
 struct deviceMemPool_t{
-
   void allocate(memPool_t& hostMemory, const dlong offset, const dlong fields);
-  occa::memory slice0, slice1, slice2, slice3, slice4, slice5, slice6, slice7;
-  occa::memory slice9, slice12, slice15, slice18, slice19;
+  occa::memory slice0;
+  occa::memory slice1; 
+  occa::memory slice2; 
+  occa::memory slice3; 
+  occa::memory slice4; 
+  occa::memory slice5; 
+  occa::memory slice6; 
+  occa::memory slice7;
+  occa::memory slice9;
+  occa::memory slice12; 
+  occa::memory slice15; 
+  occa::memory slice18; 
+  occa::memory slice19;
   occa::memory o_ptr;
   long long bytesAllocated;
 };
