@@ -1280,10 +1280,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     append_error("cannot find mandatory parameter GENERAL::polynomialOrder");
   }
 
-  int cubN = round((3./2) * (N + 1) - 1) - 1;
-  par->extract("general", "cubaturepolynomialorder", cubN);
-  options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
-
   // udf file
   {
     std::string udfFile;
@@ -1482,6 +1478,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
     else
       options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+
+  int cubN = round((3./2) * (N+1) - 1) - 1;
+  if(!dealiasing) cubN = 0;
+  par->extract("general", "cubaturepolynomialorder", cubN);
+  options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
+
 
   {
     parseRegularization(rank, options, par, "general");

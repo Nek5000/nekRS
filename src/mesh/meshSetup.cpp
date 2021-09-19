@@ -112,8 +112,12 @@ mesh_t *createMesh(MPI_Comm comm,
 
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (platform->comm.mpiRank == 0)
-    printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
+  if (platform->comm.mpiRank == 0) {
+    if (cubN)
+      printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
+    else
+      printf("Nq: %d\n", mesh->Nq);
+  }
 
   mesh->Nlocal = mesh->Nelements * mesh->Np;
 
