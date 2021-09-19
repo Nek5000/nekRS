@@ -1472,7 +1472,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
   }
 
-  bool dealiasing;
+  bool dealiasing = true;
   if (par->extract("general", "dealiasing", dealiasing))
     if (dealiasing)
       options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
