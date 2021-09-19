@@ -84,6 +84,13 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       platform->kernels.getKernel(sectionIdentifier + "fusedResidualAndNorm");
   }
 
+  const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
+  if(elliptic->o_wrk.size() < 5 * offsetBytes) {
+    if(platform->comm.mpiRank == 0) printf("ERROR: mempool assigned for elliptic too small!");
+    ABORT(EXIT_FAILURE);
+  }
+
+#if 0  
   elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
   elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
   elliptic->Ap   = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
@@ -98,6 +105,13 @@ void ellipticSolveSetup(elliptic_t* elliptic)
                                          elliptic->p);
 
   elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields ,  sizeof(dfloat));
+#else
+  elliptic->o_p    = elliptic->o_wrk + 0*offsetBytes;
+  elliptic->o_z    = elliptic->o_wrk + 1*offsetBytes; 
+  elliptic->o_Ap   = elliptic->o_wrk + 2*offsetBytes; 
+  elliptic->o_rtmp = elliptic->o_wrk + 3*offsetBytes; 
+  elliptic->o_x0   = elliptic->o_wrk + 4*offsetBytes; 
+#endif
 
   dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));

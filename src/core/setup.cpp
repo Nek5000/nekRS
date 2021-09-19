@@ -289,13 +289,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->o_weightsRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->weightsRK);
   }
 
-  // setup scratch space
-  const int wrkNflds = 6;
-  const int ellipticWrkNflds = 15;
-  nrs->ellipticWrkOffset = wrkNflds * nrs->fieldOffset;
+  // setup mempool 
+  int ellipticMaxFields = 1;
+  if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    ellipticMaxFields = nrs->NVfields;
+  const int ellipticWrkFields = 5*ellipticMaxFields;
 
-  const int scratchNflds = wrkNflds + ellipticWrkNflds;
-  platform->create_mempool(nrs->fieldOffset, scratchNflds);
+  int wrkFields = 9;
+  if(nrs->Nsubsteps) wrkFields += 3*nrs->NVfields;
+  if(options.compareArgs("MOVING MESH", "TRUE")) wrkFields += nrs->NVfields;
+
+  const int mempoolNflds = std::max(wrkFields, 2*nrs->NVfields + ellipticWrkFields);
+  platform->create_mempool(nrs->fieldOffset, mempoolNflds);
+
+  // offset mempool available for elliptic because we pool is also used for ellipticSolve input/output  
+  auto const o_mempoolElliptic = 
+    platform->o_mempool.o_ptr.slice(2*nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
   if(options.compareArgs("MOVING MESH", "TRUE")){
     const int nBDF = std::max(nrs->nBDF, nrs->nEXT);
@@ -655,8 +664,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
       cds->solver[is]->Ntotal = nrs->fieldOffset;
-      cds->solver[is]->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-      cds->solver[is]->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      cds->solver[is]->o_wrk = o_mempoolElliptic;
       cds->solver[is]->mesh = mesh;
       cds->solver[is]->dim = cds->dim;
       cds->solver[is]->elementType = cds->elementType;
@@ -755,8 +763,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
       nrs->uvwSolver->Ntotal = nrs->fieldOffset;
-      nrs->uvwSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-      nrs->uvwSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uvwSolver->o_wrk = o_mempoolElliptic;
       nrs->uvwSolver->mesh = mesh;
       nrs->uvwSolver->options = nrs->vOptions;
       nrs->uvwSolver->dim = nrs->dim;
@@ -775,8 +782,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
       nrs->uSolver->Ntotal = nrs->fieldOffset;
-      nrs->uSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-      nrs->uSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->uSolver->o_wrk = o_mempoolElliptic;
       nrs->uSolver->mesh = mesh;
       nrs->uSolver->options = nrs->vOptions;
       nrs->uSolver->dim = nrs->dim;
@@ -795,8 +801,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
       nrs->vSolver->Ntotal = nrs->fieldOffset;
-      nrs->vSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-      nrs->vSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->vSolver->o_wrk = o_mempoolElliptic;
       nrs->vSolver->mesh = mesh;
       nrs->vSolver->options = nrs->vOptions;
       nrs->vSolver->dim = nrs->dim;
@@ -816,8 +821,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->wSolver->blockSolver = 0;
         nrs->wSolver->Nfields = 1;
         nrs->wSolver->Ntotal = nrs->fieldOffset;
-        nrs->wSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-        nrs->wSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+        nrs->wSolver->o_wrk = o_mempoolElliptic;
         nrs->wSolver->mesh = mesh;
         nrs->wSolver->options = nrs->vOptions;
         nrs->wSolver->dim = nrs->dim;
@@ -892,8 +896,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
     nrs->pSolver->Ntotal = nrs->fieldOffset;
-    nrs->pSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-    nrs->pSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+    nrs->pSolver->o_wrk = o_mempoolElliptic;
     nrs->pSolver->mesh = mesh;
     nrs->pSolver->dim = nrs->dim;
     nrs->pSolver->elementType = nrs->elementType;
@@ -941,8 +944,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->meshSolver->stressForm = 1;
       nrs->meshSolver->Nfields = nrs->NVfields;
       nrs->meshSolver->Ntotal = nrs->fieldOffset;
-      nrs->meshSolver->wrk = platform->mempool.slice0 + nrs->ellipticWrkOffset;
-      nrs->meshSolver->o_wrk = platform->o_mempool.o_ptr.slice(nrs->ellipticWrkOffset * sizeof(dfloat));
+      nrs->meshSolver->o_wrk = o_mempoolElliptic;
       nrs->meshSolver->mesh = mesh;
       nrs->meshSolver->options = nrs->mOptions;
       nrs->meshSolver->dim = nrs->dim;
