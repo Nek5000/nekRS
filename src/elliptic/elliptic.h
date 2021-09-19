@@ -99,7 +99,6 @@ struct elliptic_t
   dfloat allNeumannScale;
 
   // HOST shadow copies
-  dfloat* p, * z, * v, * Ap;
   dfloat* invDegree;
 
   int* EToB;

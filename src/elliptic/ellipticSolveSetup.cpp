@@ -91,20 +91,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   }
 
 #if 0  
-  elliptic->p    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-  elliptic->z    = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-  elliptic->Ap   = (dfloat*) calloc(elliptic->Ntotal * elliptic->Nfields,   sizeof(dfloat));
-
-  elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                         elliptic->p);
-  elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                         elliptic->z);
-  elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                         elliptic->Ap);
-  elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat),
-                                         elliptic->p);
-
-  elliptic->o_x0 = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields ,  sizeof(dfloat));
+  elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  elliptic->o_x0   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 #else
   elliptic->o_p    = elliptic->o_wrk + 0*offsetBytes;
   elliptic->o_z    = elliptic->o_wrk + 1*offsetBytes; 
@@ -113,7 +104,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   elliptic->o_x0   = elliptic->o_wrk + 4*offsetBytes; 
 #endif
 
-  dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
+  const dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));
   elliptic->o_tmpNormr = platform->device.malloc(Nblocks * sizeof(dfloat),
                                              elliptic->tmpNormr);
