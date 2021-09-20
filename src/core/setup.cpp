@@ -566,7 +566,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
           platform->kernels.getKernel( section + kernelName);
-        kernelName = "subCycleStrongCubatureVolume" + suffix;
+        kernelName = "subCycleStrongVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
           platform->kernels.getKernel( section + kernelName);
 

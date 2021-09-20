@@ -331,7 +331,7 @@
 
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
-          dfloat invLMM = 0.0;
+          dfloat invLMM = p_MovingMesh ? 0.0 : invLumpedMassMatrix[id];
           dfloat bdivw = 0.0;
           dfloat Ue = 0, Ve = 0, We = 0;
 #pragma unroll p_nEXT
@@ -342,8 +342,10 @@
             Ue += r_c[s] * Um;
             Ve += r_c[s] * Vm;
             We += r_c[s] * Wm;
-            invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-            bdivw += r_c[s] * BdivW[id + s * offset];
+            if(p_MovingMesh){
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
+              bdivw += r_c[s] * BdivW[id + s * offset];
+            }
           }
 
           NU[id + NSOffset] = (Ue * duddr + Ve * dudds + We * duddt - bdivw * S[id]) * invLMM;
