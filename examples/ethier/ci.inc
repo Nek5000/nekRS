@@ -302,7 +302,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (ciMode == 2){
     dfloat memoryUsage = platform->device.memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0437607;
+    const dfloat expectedMemoryUsage = 0.0430849;
     if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){

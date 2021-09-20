@@ -44,7 +44,7 @@ GmresData::GmresData(elliptic_t* elliptic)
     }()
   ),
   o_V(elliptic->Nfields * elliptic->Ntotal, restart, sizeof(dfloat)),
-  o_Z(flexible * elliptic->Nfields * elliptic->Ntotal, flexible * restart, sizeof(dfloat)),
+  o_Z(elliptic->Nfields * elliptic->Ntotal, flexible ? restart : 1, sizeof(dfloat)),
   o_y(platform->device.malloc(restart, sizeof(dfloat))),
   H((dfloat *) calloc((restart+1)*(restart+1), sizeof(dfloat))),
   sn((dfloat *) calloc(restart, sizeof(dfloat))),
@@ -138,7 +138,6 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
   occa::memory& o_w = elliptic->o_p;
 
-  occa::memory& o_z = elliptic->o_z;
   occa::memory& o_Ax = elliptic->o_Ap;
 
   deviceVector_t& o_V = elliptic->gmresData->o_V;
@@ -147,7 +146,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory& o_y = elliptic->gmresData->o_y;
   occa::memory& o_weight = elliptic->o_invDegree;
 
-  occa::memory& o_b = elliptic->o_rtmp;
+  occa::memory& o_b = elliptic->o_z;
   o_b.copyFrom(o_r, elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 
   dfloat* y = elliptic->gmresData->y;
@@ -197,7 +196,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     //Construct orthonormal basis via Gram-Schmidt
     for(int i=0;i<restart;++i){
 
-      occa::memory& o_Mv = flexible ? o_Z.at(i) : o_z;
+      occa::memory& o_Mv = flexible ? o_Z.at(i) : o_Z.at(0);
       // z := M^{-1} V(:,i)
       ellipticPreconditioner(elliptic, o_V.at(i), o_Mv);
 

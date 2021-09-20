@@ -164,7 +164,7 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
   fieldOffset(elliptic.Ntotal),
   Nfields(elliptic.Nfields),
   o_invDegree(elliptic.mesh->ogs->o_invDegree),
-  o_rtmp(elliptic.o_rtmp),
+  o_rtmp(elliptic.o_z),
   o_Ap(elliptic.o_Ap)
 {
   platform_t* platform = platform_t::getInstance();

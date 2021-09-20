@@ -293,7 +293,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   int ellipticMaxFields = 1;
   if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
     ellipticMaxFields = nrs->NVfields;
-  const int ellipticWrkFields = 5*ellipticMaxFields;
+  const int ellipticWrkFields = elliptic_t::NScratchFields*ellipticMaxFields;
 
   int wrkFields = 9;
   if(nrs->Nsubsteps) wrkFields += 3*nrs->NVfields;

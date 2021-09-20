@@ -85,7 +85,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   }
 
   const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
-  if(elliptic->o_wrk.size() < 5 * offsetBytes) {
+  if(elliptic->o_wrk.size() < elliptic_t::NScratchFields * offsetBytes) {
     if(platform->comm.mpiRank == 0) printf("ERROR: mempool assigned for elliptic too small!");
     ABORT(EXIT_FAILURE);
   }
@@ -94,14 +94,12 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
   elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
   elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  elliptic->o_rtmp = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
   elliptic->o_x0   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
 #else
   elliptic->o_p    = elliptic->o_wrk + 0*offsetBytes;
   elliptic->o_z    = elliptic->o_wrk + 1*offsetBytes; 
   elliptic->o_Ap   = elliptic->o_wrk + 2*offsetBytes; 
-  elliptic->o_rtmp = elliptic->o_wrk + 3*offsetBytes; 
-  elliptic->o_x0   = elliptic->o_wrk + 4*offsetBytes; 
+  elliptic->o_x0   = elliptic->o_wrk + 3*offsetBytes; 
 #endif
 
   const dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
