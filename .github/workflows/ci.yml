@@ -110,7 +110,6 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 8
 
-
   lowMach:
     needs: install
     runs-on: ubuntu-18.04
