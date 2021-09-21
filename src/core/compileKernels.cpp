@@ -212,10 +212,15 @@ void registerNrsKernels() {
     prop["defines/p_cubNq"] = cubNq;
     prop["defines/p_cubNp"] = cubNp;
     fileName = oklpath + "nrs/Urst" + suffix + ".okl";
+
+    const bool serial = (platform->device.mode() == "Serial" ||
+      platform->device.mode() == "OpenMP");
+    if(serial) fileName = oklpath + "nrs/Urst" + suffix + ".c";
     kernelName = "UrstCubature" + suffix;
     platform->kernels.add_kernel(
         section + kernelName, fileName, kernelName, prop);
 
+    fileName = oklpath + "nrs/Urst" + suffix + ".okl";
     kernelName = "Urst" + suffix;
     platform->kernels.add_kernel(
         section + kernelName, fileName, kernelName, prop);
