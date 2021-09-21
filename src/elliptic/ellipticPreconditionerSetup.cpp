@@ -44,7 +44,9 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
     ellipticSEMFEMSetup(elliptic);
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
-    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));
+    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(pfloat));
+    elliptic->axmyzManyPfloatKernel = platform->kernels.getKernel("axmyzManyPfloat");
+    elliptic->adyManyPfloatKernel = platform->kernels.getKernel("adyManyPfloat");
     ellipticUpdateJacobi(elliptic);
   } else if(options.compareArgs("PRECONDITIONER", "NONE")) {
     // nothing 

@@ -66,10 +66,10 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
                                  elliptic->o_lambda,
                                  precon->o_invDiagA);
 
-  oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+  oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
 
-  const dfloat one = 1.0;
-  platform->linAlg->adyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
+  const pfloat one = 1.0;
+  elliptic->adyManyPfloatKernel(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)

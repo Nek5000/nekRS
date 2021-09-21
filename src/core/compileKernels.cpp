@@ -899,6 +899,20 @@ void registerSEMFEMKernels(const std::string &section, int N) {
         stiffnessKernelInfo);
   }
 }
+void registerJacobiKernels(const std::string &section) {
+  const std::string optionsPrefix = createOptionsPrefix(section);
+  std::string install_dir;
+  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = install_dir + "/okl/";
+  std::string fileName = oklpath + "elliptic/ellipticJacobi.okl";
+  std::string kernelName = "axmyzManyPfloat";
+  platform->kernels.add_kernel(
+    kernelName, fileName, kernelName, platform->kernelInfo);
+
+  kernelName = "adyManyPfloat";
+  platform->kernels.add_kernel(
+    kernelName, fileName, kernelName, platform->kernelInfo);
+}
 void registerEllipticPreconditionerKernels(const std::string &section) {
   const std::string optionsPrefix = createOptionsPrefix(section);
   int N;
@@ -909,6 +923,7 @@ void registerEllipticPreconditionerKernels(const std::string &section) {
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "SEMFEM")) {
     registerSEMFEMKernels(section, N);
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "JACOBI")) {
+    registerJacobiKernels(section);
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "NONE")) {
     // nothing 
   } else {
@@ -993,7 +1008,6 @@ void registerEllipticKernels(const std::string &section) {
   occa::properties floatKernelInfo = kernelInfo;
   floatKernelInfo["defines/pfloat"] = pfloatString;
   floatKernelInfo["defines/dfloat"] = pfloatString;
-  dfloatKernelInfo["defines/pfloat"] = dfloatString;
 
   constexpr bool var_coeff = true;
   constexpr int elementType{HEXAHEDRA};
@@ -1008,8 +1022,11 @@ void registerEllipticKernels(const std::string &section) {
 
     filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
     kernelName = "ellipticBlockBuildDiagonal" + suffix;
+    dfloatKernelInfo["defines/dfloat"] = dfloatString;
+    dfloatKernelInfo["defines/pfloat"] = pfloatString;
     platform->kernels.add_kernel(
         sectionIdentifier + kernelName, filename, kernelName, dfloatKernelInfo);
+    dfloatKernelInfo["defines/pfloat"] = dfloatString;
     if (blockSolver) {
       filename = oklpath + "ellipticBlockAx" + suffix + ".okl";
       if (serial)

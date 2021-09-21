@@ -33,7 +33,7 @@
                                              @restrict const dfloat*  D,
                                              @restrict const dfloat*  S,
                                              @restrict const dfloat*  lambda,
-                                             @restrict dfloat*  Aq)
+                                             @restrict pfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
@@ -108,7 +108,7 @@
               if(allNeumann)
                 r_q += allNeumannScale;
             }
-            Aq[id + l * offset] = r_q;
+            Aq[id + l * offset] = (pfloat) r_q;
           }
         }
       }
