@@ -1352,11 +1352,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
           const double targetCFL = std::stod(cflAndValue[1]);
           options.setArgs("TARGET CFL", to_string_f(targetCFL));
 
-          int nSteps;
-          if (targetCFL <= 0.5){
-            nSteps = 0;
-          }
-          nSteps = std::ceil(targetCFL / 2.0);
+          int nSteps = std::ceil(targetCFL / 2.0);
+          if (targetCFL <= 0.51) nSteps = 0;
           options.setArgs("SUBCYCLING STEPS", std::to_string(nSteps));
         }
       }
