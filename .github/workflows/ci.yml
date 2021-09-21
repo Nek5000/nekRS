@@ -80,7 +80,8 @@ jobs:
 
     - name: 'ethier default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 1
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 1
 
     - name: 'ethier subcycle'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
