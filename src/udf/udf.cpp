@@ -179,7 +179,7 @@ void udfBuild(const char* udfFile, setupAide& options)
         return EXIT_FAILURE;
       }
 
-      char cmd[BUFSIZ];
+      char cmd[10*BUFSIZ];
       if(platform->comm.mpiRank == 0) printf("building udf ... \n"); fflush(stdout);
       std::string pipeToNull = (platform->comm.mpiRank == 0) ?
         std::string("") :
@@ -190,7 +190,7 @@ void udfBuild(const char* udfFile, setupAide& options)
         sprintf(cmd,
                 "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && "
                 "rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
-	        "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" . %s",
+	            "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" . %s",
                  cache_dir.c_str(),
                  udfFileResolved,
                  udf_dir.c_str(),

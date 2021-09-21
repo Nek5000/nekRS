@@ -480,7 +480,7 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const std::string nekInterface_dir = install_dir + "/nekInterface";
       const std::string nek5000_dir = install_dir + "/nek5000";
 
-      char buf[BUFSIZ];
+      char buf[10*BUFSIZ];
       char *ret = getcwd(buf, sizeof(buf));
       const std::string case_dir(buf);
 
