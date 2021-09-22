@@ -164,6 +164,7 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
   rho_np1 = 1.0 / (2. * sigma - rho_n);
   pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
   elliptic->updateChebyshevSolutionVecKernel(Nrows, rhoDivDelta, rho_np1, rho_n, o_Ad, o_res, o_d, o_x);
+  if (elliptic->Nmasked) mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_x);
 }
 void MGLevel::smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
@@ -211,6 +212,7 @@ void MGLevel::smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x,
   rhoDivDelta = 2.0 * rho_np1 / delta;
 
   elliptic->updateIntermediateSolutionVecKernel(Nrows, rhoDivDelta, rho_n, rho_np1, o_Ad, o_res, o_d, o_x);
+  if (elliptic->Nmasked) mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_x);
 
 }
 
@@ -274,6 +276,7 @@ void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZer
   }
   //x_k+1 = x_k + d_k
   elliptic->scaledAddPfloatKernel(Nrows, one, o_d, one, o_x);
+  if (elliptic->Nmasked) mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_x);
 }
 
 void MGLevel::smootherJacobi(occa::memory &o_r, occa::memory &o_Sr)
