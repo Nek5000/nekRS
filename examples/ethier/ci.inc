@@ -30,11 +30,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VELOCITY INITIAL GUESS","PREVIOUS");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
 
-  if (ciMode == 1) {
-    options.setArgs("ADVECTION TYPE", "CONVECTIVE");
-  }
   if (ciMode == 2) {
-    options.setArgs("ADVECTION TYPE", "CONVECTIVE");
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
@@ -303,11 +299,11 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s02IterErr = abs(NiterS02 - 10);
              break;
     case 8 : velIterErr = abs(NiterU - 10);
-             s1Err = abs((err[2] - 1.9E-11)/err[2]);
-             s2Err = abs((err[3] - 2.2E-11)/err[3]);
+             s1Err = abs((err[2] - 1.03E-11)/err[2]);
+             s2Err = abs((err[3] - 1.34E-11)/err[3]);
              pIterErr = abs(NiterP - 2);
-             vxErr = abs((err[0] - 3.2E-10)/err[0]);
-             prErr = abs((err[1] - 9E-10)/err[1]);
+             vxErr = abs((err[0] - 3.38E-10)/err[0]);
+             prErr = abs((err[1] - 7.8E-10)/err[1]);
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
