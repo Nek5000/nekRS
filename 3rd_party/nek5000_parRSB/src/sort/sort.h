@@ -1,6 +1,7 @@
 #ifndef _SORT_H_
 #define _SORT_H_
 
+/* FIXME: genmap-impl (GenmapMalloc, GENMAP_TOL) -> genmap */
 #include <genmap-impl.h>
 
 typedef enum { bin_sort = 0, hypercube_sort = 1 } sort_algo;
@@ -18,24 +19,12 @@ struct sort {
 
   buffer *buf;
 };
-//
-// parallel_bin_sort
-//
+
 int parallel_sort_private(struct sort *s, struct comm *c);
-int parallel_bin_sort(struct sort *s, struct comm *c);
-//
-// parallel_hypercube_sort
-//
-struct hypercube {
-  struct sort *data;
-  int nprobes;
-  double *probes;
-  ulong *probe_cnt;
-};
-int parallel_hypercube_sort(struct hypercube *h, struct comm *c);
-//
-// Uniform parallel sort
-//
+
+/*
+ * Uniform parallel sort
+ */
 #define parallel_sort(T, A, field, type, method, loadbalance, c, bufp)         \
   do {                                                                         \
     struct sort sd;                                                            \

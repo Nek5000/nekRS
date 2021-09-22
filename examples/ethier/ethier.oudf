@@ -45,31 +45,29 @@ void exact(dfloat *u, dfloat *v, dfloat *w, dfloat *p,
            const dfloat x, const dfloat y, const dfloat z,
            const dfloat t, const dfloat visc)
 {                                                                        
-  dfloat a = p_A;                                                   
-  dfloat d = p_D;                                                   
-  dfloat ex,ey,ez;                                                       
-  dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
+  const dfloat a = p_A;                                                   
+  const dfloat d = p_D;                                                   
 
   const dfloat xx = x - p_U0*t;
   const dfloat yy = y - p_V0*t;
   const dfloat zz = z - p_W0*t;
 
-  ex  = exp(a*xx);                                                        
-  ey  = exp(a*yy);                                                        
-  ez  = exp(a*zz);                                                        
-  e2t = exp(-visc*d*d*t);                                                  
+  const dfloat ex  = exp(a*xx);                                                        
+  const dfloat ey  = exp(a*yy);                                                        
+  const dfloat ez  = exp(a*zz);                                                        
+  const dfloat e2t = exp(-visc*d*d*t);                                                  
                                                                          
-  exy = exp(a*(xx + yy));                                                 
-  eyz = exp(a*(yy + zz));                                                  
-  ezx = exp(a*(zz + xx));                                                  
+  const dfloat exy = exp(a*(xx + yy));                                                 
+  const dfloat eyz = exp(a*(yy + zz));                                                  
+  const dfloat ezx = exp(a*(zz + xx));                                                  
                                                                          
-  sxy = sin(a*xx + d*yy);                                                  
-  syz = sin(a*yy + d*zz);                                                  
-  szx = sin(a*zz + d*xx);                                                  
-                                                                         
-  cxy = cos(a*xx + d*yy);                                                  
-  cyz = cos(a*yy + d*zz);                                                  
-  czx = cos(a*zz + d*xx);                                                  
+  const dfloat sxy = sin(a*xx + d*yy);                                                  
+  const dfloat syz = sin(a*yy + d*zz);                                                  
+  const dfloat szx = sin(a*zz + d*xx);                                                  
+  
+  const dfloat cxy = cos(a*xx + d*yy);                                                  
+  const dfloat cyz = cos(a*yy + d*zz);                                                  
+  const dfloat czx = cos(a*zz + d*xx);                                                  
                                                                          
   *(u)= -a*(ex*syz + ez*cxy)*e2t + p_U0;                                        
   *(v)= -a*(ey*szx + ex*cyz)*e2t + p_V0;                                        
@@ -84,31 +82,29 @@ void grad_u(dfloat *grad_u_x, dfloat *grad_u_y, dfloat *grad_u_z,
            const dfloat x, const dfloat y, const dfloat z,
            const dfloat t, const dfloat visc)
 {                                                                        
-  dfloat a = p_A;                                                   
-  dfloat d = p_D;                                                   
-  dfloat ex,ey,ez;                                                       
-  dfloat exy,eyz,ezx,sxy,syz,szx,cxy,cyz,czx,e2t;                        
+  const dfloat a = p_A;                                                   
+  const dfloat d = p_D;                                                   
 
   const dfloat xx = x - p_U0*t;
   const dfloat yy = y - p_V0*t;
   const dfloat zz = z - p_W0*t;
 
-  ex  = exp(a*xx);                                                        
-  ey  = exp(a*yy);                                                        
-  ez  = exp(a*zz);                                                        
-  e2t = exp(-visc*d*d*t);                                                  
+  const dfloat ex  = exp(a*xx);                                                        
+  const dfloat ey  = exp(a*yy);                                                        
+  const dfloat ez  = exp(a*zz);                                                        
+  const dfloat e2t = exp(-visc*d*d*t);                                                  
                                                                          
-  exy = exp(a*(xx + yy));                                                 
-  eyz = exp(a*(yy + zz));                                                  
-  ezx = exp(a*(zz + xx));                                                  
+  const dfloat exy = exp(a*(xx + yy));                                                 
+  const dfloat eyz = exp(a*(yy + zz));                                                  
+  const dfloat ezx = exp(a*(zz + xx));                                                  
                                                                          
-  sxy = sin(a*xx + d*yy);                                                  
-  syz = sin(a*yy + d*zz);                                                  
-  szx = sin(a*zz + d*xx);                                                  
+  const dfloat sxy = sin(a*xx + d*yy);                                                  
+  const dfloat syz = sin(a*yy + d*zz);                                                  
+  const dfloat szx = sin(a*zz + d*xx);                                                  
                                                                          
-  cxy = cos(a*xx + d*yy);                                                  
-  cyz = cos(a*yy + d*zz);                                                  
-  czx = cos(a*zz + d*xx);                                                  
+  const dfloat cxy = cos(a*xx + d*yy);                                                  
+  const dfloat cyz = cos(a*yy + d*zz);                                                  
+  const dfloat czx = cos(a*zz + d*xx);                                                  
                                                                          
   //*(u)= -a*(ex*syz + ez*cxy)*e2t;
   *(grad_u_x)= -a*((a*ex)*syz -a*ez*sxy)*e2t;
@@ -173,7 +169,7 @@ void scalarNeumannConditions(bcData *bc)
                     @restrict const dfloat * z,
                     @restrict dfloat * W)
 {
-  for(dlong n=0;n<Ntotal;++n;@tile(256,@outer,@inner)){
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
       const dfloat ampx = p_amp*cos(p_omega*time);
       const dfloat ampy = p_amp*cos(0.5*p_omega*time);
       const dfloat ampz = p_amp*cos(0.5*0.5*p_omega*time);

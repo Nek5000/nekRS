@@ -43,7 +43,7 @@ void matrix < float > ::symeig(matrix < float > &W, matrix < float > &V)
 
   //  ssyev_ (&JOBZ, &UPLO, &N, V.c_array(), &LDA, W.c_array(), WORK.c_array(), &LWORK, &INFO );
 
-  //  cout << "INFO: " << INFO << endl;
+  //  cout << "INFO: " << INFO << std::endl;
 }
 
 template < >
@@ -63,7 +63,7 @@ void matrix < double > ::symeig(matrix < double > &W, matrix < double > &V)
 
   //  dsyev_ (&JOBZ, &UPLO, &N, V.c_array(), &LDA, W.c_array(), WORK.c_array(), &LWORK, &INFO );
 
-  //  cout << "INFO: " << INFO << endl;
+  //  cout << "INFO: " << INFO << std::endl;
 }
 
 template < >
@@ -87,7 +87,7 @@ void matrix < float > ::eig(matrix < float > &WR, matrix < float > &WI,
 
   //  sgeev_ (&JOBVL, &JOBVR, &N, A.c_array(), &LDA, WR.c_array(), WI.c_array(), VL.c_array(), &LDA, VR.c_array(), &LDA, WORK.c_array(), &LWORK, &INFO);
 
-  //  cout << "INFO: " << INFO << endl;
+  //  cout << "INFO: " << INFO << std::endl;
 }
 
 template < >
@@ -111,7 +111,7 @@ void matrix < double > ::eig(matrix < double > &WR, matrix < double > &WI,
 
   //  dgeev_ (&JOBVL, &JOBVR, &N, A.c_array(), &LDA, WR.c_array(), WI.c_array(), VL.c_array(), &LDA, VR.c_array(), &LDA, WORK.c_array(), &LWORK, &INFO);
 
-  //  cout << "INFO: " << INFO << endl;
+  //  cout << "INFO: " << INFO << std::endl;
 }
 
 // general left matrix inverse not implemented
@@ -129,7 +129,7 @@ matrix < double > operator | (const matrix < double > &A, const matrix < double 
 
   matrix < int > IPIV(N,1);
 
-  //  cout << "NRHS: " << NRHS << endl;
+  //  cout << "NRHS: " << NRHS << std::endl;
 
   /* solve A*X = B for X */
 #if 0
@@ -161,8 +161,8 @@ matrix < float > operator | (const matrix < float > &A, const matrix < float > &
 
   matrix < int > IPIV(N,1);
 
-  //  cout << "NRHS: " << NRHS << endl;
-  //  cout << "Acopy: " << Acopy << endl;
+  //  cout << "NRHS: " << NRHS << std::endl;
+  //  cout << "Acopy: " << Acopy << std::endl;
 
   /* solve A*X = B for X */
 #if 0

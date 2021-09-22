@@ -25,8 +25,9 @@ export OMPI_MCA_io=romio321
 export UCX_TLS=rc,sm,cuda
 export UCX_RNDV_SCHEME=put_zcopy
 export UCX_RNDV_THRESH=1024
+export UCX_MEMTYPE_CACHE=n
 
-export OGS_MPI_SUPPORT=1 
+export NEKRS_GPU_MPI=1 
 
 export ROMIO_HINTS="$(pwd)/.romio_hint"
 if [ ! -f "$ROMIO_HINTS" ]; then
@@ -40,8 +41,8 @@ if [ ! -f "$ROMIO_HINTS" ]; then
 fi
 
 # precompile
-date
-mpirun -np 1 ${NEKRS_HOME}/bin/nekrs --setup $1 --backend CUDA --build-only $SLURM_NTASKS
+#date
+#mpirun -np 1 ${NEKRS_HOME}/bin/nekrs --setup $1 --backend CUDA --build-only $SLURM_NTASKS
 
 # actual run
 date

@@ -4,11 +4,12 @@ file(REMOVE_RECURSE ${DEST_DIR})
 file(MAKE_DIRECTORY ${DEST_DIR})
 file(COPY
   3rd_party
-  makenrs 
+  nrsconfig 
   CMakeLists.txt
   LICENSE
   README.md
   RELEASE.md
+  CONTRIBUTING.md
   config
   examples 
   okl 

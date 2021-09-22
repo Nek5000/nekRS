@@ -1,6 +1,5 @@
-project(libUDF)
-cmake_minimum_required(VERSION 2.8)
-enable_language(CXX)
+project(libUDF LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.11)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 
@@ -10,15 +9,13 @@ set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 #set(CMAKE_VERBOSE_MAKEFILE on)
 
-set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14)
 
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
-set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
 set(INCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/../..
-  ${CDSDIR}
+  ${CASE_DIR}
   ${OGSDIR}
   ${GSDIR}
   ${NEKRS_INSTALL_DIR}
@@ -29,6 +26,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/core/utils
   ${NEKRS_INSTALL_DIR}/include/timeStepper
   ${NEKRS_INSTALL_DIR}/include/udf
+  ${NEKRS_INSTALL_DIR}/include/lns
   ${NEKRS_INSTALL_DIR}/include/elliptic
   ${NEKRS_INSTALL_DIR}/include/elliptic/parAlmond
   ${NEKRS_INSTALL_DIR}/include/nekInterface
@@ -38,9 +36,11 @@ set(INCLUDE_DIRS
 )
 
 add_library(UDF SHARED udf.cpp)
-target_include_directories(UDF PRIVATE ${INCLUDE_DIRS} ${UDF_DIR})
+target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS})
 
 if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
+target_link_libraries(UDF "$ENV{NEKRS_UDF_LDFLAGS}")
+
 set_target_properties(UDF PROPERTIES LINKER_LANGUAGE CXX)

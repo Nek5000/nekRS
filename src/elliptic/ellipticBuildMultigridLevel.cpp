@@ -27,6 +27,20 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
+namespace{
+std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
+{
+  const std::string precision = std::string(floatString);
+  if(precision.find(pfloatString) != std::string::npos){
+    return std::string("_") + std::to_string(elliptic->mesh->N) + std::string("pfloat");
+  }
+  else{
+    return std::string("_") + std::to_string(elliptic->mesh->N);
+  }
+  
+}
+}
+
 // create elliptic and mesh structs for multigrid levels
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
@@ -80,6 +94,12 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   // global nodes
   meshGlobalIds(mesh);
 
+#if 0
+  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
+  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
+  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
+#endif
+
   //dont need these once vmap is made
   free(mesh->x);
   free(mesh->y);
@@ -107,6 +127,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
     mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
 
+#if 0
     mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
 
     dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
@@ -117,18 +138,18 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_cubInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat), cubInterpT);
 
     free(cubInterpT);
-
-    mesh->o_vgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
-                          mesh->vgeo);
-
-    mesh->o_sgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
-                          mesh->sgeo);
+#endif
 
     mesh->o_ggeo =
       platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                           mesh->ggeo);
+#if 0
+    mesh->o_vgeo =
+      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
+                          mesh->vgeo);
+    mesh->o_sgeo =
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
+                          mesh->sgeo);
 
     mesh->o_vmapM =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
@@ -137,16 +158,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_vmapP =
       platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
                           mesh->vmapP);
+#endif
 
   }
-
-  mesh->o_vmapM =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(int),
-                        mesh->vmapM);
-
-  mesh->o_vmapP =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(int),
-                        mesh->vmapP);
 
   //set the normalization constant for the allNeumann Poisson problem on this coarse mesh
   hlong localElements = (hlong) mesh->Nelements;
@@ -192,9 +206,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->Nmasked = 0; //reset
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
     if (elliptic->mapB[n] == 1) elliptic->maskIds[elliptic->Nmasked++] = n;
-  if (elliptic->Nmasked) elliptic->o_maskIds = platform->device.malloc(
-      elliptic->Nmasked * sizeof(dlong),
-      elliptic->maskIds);
+
+  if (elliptic->Nmasked) 
+     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
 
   //make a masked version of the global id numbering
   hlong* maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
@@ -207,38 +221,27 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   free(maskedGlobalIds);
 
-  occa::properties kernelInfo = ellipticKernelInfo(mesh);
+  std::string suffix = "Hex3D";
 
-  string suffix;
-  if(elliptic->elementType == HEXAHEDRA)
-    suffix = "Hex3D";
-
-  string filename, kernelName;
+  std::string kernelName;
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0) printf("loading elliptic MG kernels ... ");
-  fflush(stdout);
 
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
+  ellipticBuildPreconditionerKernels(elliptic);
 
   {
-      kernelInfo["defines/" "p_Nverts"] = mesh->Nverts;
-      occa::properties AxKernelInfo = kernelInfo;
-      filename = oklpath + "ellipticAx" + suffix + ".okl";
       kernelName = "ellipticAx" + suffix;
-      if(serial) {
-        AxKernelInfo["okl/enabled"] = false;
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
+      {
+        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+        elliptic->AxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
       }
-      elliptic->AxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
       if(!strstr(pfloatString,dfloatString)) {
-        AxKernelInfo["defines/" "dfloat"] = pfloatString;
         kernelName = "ellipticAx" + suffix;
-        elliptic->AxPfloatKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
-        AxKernelInfo["defines/" "dfloat"] = dfloatString;
+        {
+          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
+          elliptic->AxPfloatKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
+        }
       }
 
       // check for trilinear
@@ -252,12 +255,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
 
       if(!serial) {
-        elliptic->partialAxKernel = platform->device.buildKernel(filename,kernelName,AxKernelInfo);
+        {
+          const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+          elliptic->partialAxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
+        }
         if(!strstr(pfloatString,dfloatString)) {
-          AxKernelInfo["defines/" "dfloat"] = pfloatString;
+          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
           elliptic->partialAxPfloatKernel =
-            platform->device.buildKernel(filename, kernelName, AxKernelInfo);
-          AxKernelInfo["defines/" "dfloat"] = dfloatString;
+            platform->kernels.getKernel( kernelName + kernelSuffix);
         }
       }
   }
@@ -270,37 +275,13 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->precon = new precon_t();
 
   {
-      filename = oklpath + "ellipticBlockJacobiPrecon.okl";
-      kernelName = "ellipticBlockJacobiPrecon";
-      //sizes for the coarsen and prolongation kernels. degree NFine to degree N
-      int NqFine   = (Nf + 1);
-      int NqCoarse = (Nc + 1);
-      occa::properties coarsenProlongateKernelInfo = kernelInfo;
-      coarsenProlongateKernelInfo["defines/" "p_NqFine"] = Nf + 1;
-      coarsenProlongateKernelInfo["defines/" "p_NqCoarse"] = Nc + 1;
 
-      const int NpFine   = (Nf + 1) * (Nf + 1) * (Nf + 1);
-      const int NpCoarse = (Nc + 1) * (Nc + 1) * (Nc + 1);
-      coarsenProlongateKernelInfo["defines/" "p_NpFine"] = NpFine;
-      coarsenProlongateKernelInfo["defines/" "p_NpCoarse"] = NpCoarse;
+    const std::string kernelSuffix = std::string("_") + std::to_string(Nf);
 
-      if(serial){
-        filename = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
-        kernelName = "ellipticPreconCoarsen" + suffix;
-        occa::properties coarsenProlongateKernelInfoNoOKL = coarsenProlongateKernelInfo;
-        coarsenProlongateKernelInfoNoOKL["okl/enabled"] = false;
-        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfoNoOKL);
-        filename = oklpath + "ellipticPreconProlongate" + suffix + ".c";
-        kernelName = "ellipticPreconProlongate" + suffix;
-        elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfoNoOKL);
-      } else {
-        filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
-        kernelName = "ellipticPreconCoarsen" + suffix;
-        elliptic->precon->coarsenKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
-        filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
-        kernelName = "ellipticPreconProlongate" + suffix;
-        elliptic->precon->prolongateKernel = platform->device.buildKernel(filename,kernelName,coarsenProlongateKernelInfo);
-      }
+    kernelName = "ellipticPreconCoarsen" + suffix;
+    elliptic->precon->coarsenKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
+    kernelName = "ellipticPreconProlongate" + suffix;
+    elliptic->precon->prolongateKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
 
   }
 
@@ -325,6 +306,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        elliptic->mesh->o_ggeoPfloat,
                                        mesh->o_ggeo);
+#if 0    
+    mesh->o_ggeo.free();
+#endif    
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
                                        elliptic->mesh->o_DPfloat,
                                        mesh->o_D);
@@ -332,6 +316,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
                                        elliptic->mesh->o_DTPfloat,
                                        mesh->o_DT);
   }
+
 
   return elliptic;
 }

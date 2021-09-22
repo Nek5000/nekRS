@@ -18,11 +18,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
+extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
                                                   const int * __restrict__ elementList,
                                                   const dfloat * __restrict__ cubD,
                                                   const dfloat * __restrict__ cubInterpT,
-                                                  const dfloat * __restrict__ cubProjectT,
                                                   const int & offset,
                                                   const int & cubatureOffset,
                                                   const int & NUoffset,
@@ -38,7 +37,6 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
   dfloat r_c[3] = {c0, c1,c2};
   dfloat s_cubD[p_cubNq][p_cubNq];
   dfloat s_cubInterpT[p_Nq][p_cubNq];
-  dfloat s_cubProjectT[p_cubNq][p_Nq];
   dfloat s_U[p_cubNq][p_cubNq];
   dfloat s_V[p_cubNq][p_cubNq];
   dfloat s_W[p_cubNq][p_cubNq];
@@ -57,12 +55,14 @@ extern "C" void subCycleStrongCubatureVolumeHex3D(const int & Nelements,
       const int id = i + j * p_cubNq;
       if (id < p_Nq * p_cubNq) {
         s_cubInterpT[j][i] = cubInterpT[id];
-        s_cubProjectT[j][i] = cubProjectT[id];
       }
       s_cubD[j][i] = cubD[id];
     }
   }
+
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for private(s_U, s_V, s_W, s_Ud, s_Vd, s_Wd, s_Ud1, s_Vd1, s_Wd1, r_U2, r_V2, r_W2, r_Ud, r_Vd, r_Wd)
+#endif
   for (int e = 0; e < Nelements; ++e) {
     const int element = elementList[e];
     #pragma unroll

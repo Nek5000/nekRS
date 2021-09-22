@@ -10,23 +10,35 @@ static int ciMode = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("POLYNOMIAL DEGREE", string("7"));
-  options.setArgs("RESTART FROM FILE", string("0"));
+  options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
+  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
-  options.setArgs("NUMBER OF SCALARS", string("1"));
-  options.setArgs("END TIME", string("0.1"));
-  options.setArgs("DT", string("1e-3"));
-  options.setArgs("SUBCYCLING STEPS", string("0"));
-  options.setArgs("PRESSURE RESIDUAL PROJECTION", "FALSE");
+  options.setArgs("NUMBER OF SCALARS", std::string("1"));
+  options.setArgs("END TIME", std::string("0.1"));
+  options.setArgs("DT", std::string("1e-3"));
+  options.setArgs("SUBCYCLING STEPS", std::string("0"));
+  options.setArgs("PRESSURE INITIAL GUESS", "PREVIOUS");
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("VELOCITY SOLVER TOLERANCE", string("1e-09"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", string("1e-10"));
-  options.setArgs("SCALAR00 SOLVER TOLERANCE", string("1e-12"));
+  options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-09"));
+  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-10"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
+  options.setArgs("MESH SOLVER", "USER");
   
   if(ciMode == 2){
-    options.setArgs("SUBCYCLING STEPS", string("1"));
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
+  }
+  if(ciMode == 3){
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
+    options.setArgs("MESH INITIAL GUESS", "PREVIOUS");
+    options.setArgs("MESH SOLVER", "ELASTICITY");
+    options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
+  }
+  if(ciMode == 4){
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
+    options.setArgs("MESH SOLVER", "ELASTICITY");
+    options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
   }
 }
 
@@ -35,6 +47,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (!nrs->lastStep) return;
  
   const int rank = platform->comm.mpiRank;
+  mesh_t* mesh = nrs->meshV;
  
   nek::ocopyToNek(time, tstep);
   nek::userchk();
@@ -51,7 +64,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.1080412E-05;
-    expectedPIter = 10;
+    expectedPIter = 6;
   }
   if(ciMode == 2)
   {
@@ -61,11 +74,29 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErr[3] = 0.2144404E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
-    expectedPIter = 11;
+    expectedPIter = 7;
+  }
+  if(ciMode == 3)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.1966487E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.2443839E-05;
+  }
+  if(ciMode == 4)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3044039E-05;
+    expectedErr[3] = 0.1966487E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.2443839E-05;
   }
 
   const dfloat floor = 1e-12; // values below this threshold are ignored
-  const int expectedVIter = 3;
+  const int expectedVIter = 11;
 
   double vxErr, prErr;
   double s1Err;
@@ -86,8 +117,20 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
   pIterErr = abs(expectedPIter - nrs->pSolver->Niter);
   if(rank == 0) printf("velIter=%d pIter=%d\n", velIterErr, pIterErr);
-  if(velIterErr >= 2) passed = false;
+  if(velIterErr >= 3) passed = false;
   if(pIterErr >= 2) passed = false;
+
+  if(ciMode == 3)
+  {
+    const int expectedMeshIter =  265;
+    const int meshIterErr = abs(nrs->meshSolver->Niter - expectedMeshIter);
+    if(meshIterErr >= 3) passed = false;
+  }
+  if(ciMode == 4)
+  {
+    const int meshIterThreshold =  200;
+    if(nrs->meshSolver->Niter >= meshIterThreshold) passed = false;
+  }
 
   passed ? (PASS) : (FAIL);
 }

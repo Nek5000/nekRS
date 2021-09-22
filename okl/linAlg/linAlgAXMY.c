@@ -20,12 +20,14 @@ SOFTWARE.
 */
 
 extern "C" 
-void axmy(const dlong & N, 
+void FUNC(axmy)(const dlong & N, 
           const dfloat& alpha,
                  const dfloat * __restrict__ cpu_w,
                  dfloat * __restrict__ cpu_a){
-  
+ 
+#ifdef __NEKRS__OMP__ 
   #pragma omp parallel for
+#endif
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat wi = cpu_w[i];
@@ -35,15 +37,17 @@ void axmy(const dlong & N,
 }
 
 extern "C" 
-void axmyMany(const dlong & N, 
+void FUNC(axmyMany)(const dlong & N, 
                       const dlong & Nfields,
                       const dlong & offset,
                       const dlong & mode,
                       const dfloat & alpha,
                       const dfloat * __restrict__ cpu_w,
                       dfloat * __restrict__ cpu_a){
-  
+ 
+#ifdef __NEKRS__OMP__ 
   #pragma omp parallel for collapse(2)
+#endif
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;
@@ -55,14 +59,16 @@ void axmyMany(const dlong & N,
 
 }
 extern "C" 
-void axmyVector(const dlong & N, 
+void FUNC(axmyVector)(const dlong & N, 
                       const dlong & offset,
                       const dlong & mode,
                       const dfloat & alpha,
                       const dfloat * __restrict__ cpu_w,
                       dfloat * __restrict__ cpu_a){
-  
+
+#ifdef __NEKRS__OMP__ 
   #pragma omp parallel for collapse(2)
+#endif
   for(int fld=0;fld<p_NVec;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;

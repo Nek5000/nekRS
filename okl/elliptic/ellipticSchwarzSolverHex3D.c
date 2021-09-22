@@ -1,4 +1,4 @@
-extern "C" void preFDM(const dlong& Nelements,
+extern "C" void FUNC(preFDM) (const dlong& Nelements,
                     const pfloat* __restrict__ u,
                     pfloat* __restrict__ work1)
 {
@@ -6,7 +6,10 @@ extern "C" void preFDM(const dlong& Nelements,
   #define getIdx2(k,j,i,e) ((k-1)*p_Nq*p_Nq+(j-1)*p_Nq+(i-1)+(e)*p_Nq*p_Nq*p_Nq)
   #define sWork1(k,j,i,e) (work1[(getIdx(k,j,i,e))])
   #define uArr(k,j,i,e) (u[(getIdx2(k,j,i,e))])
+
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for
+#endif
   for (dlong elem = 0; elem < Nelements; elem++) {
     #pragma unroll 
     for(int k = 0; k < p_Nq_e; ++k){
@@ -92,7 +95,7 @@ extern "C" void preFDM(const dlong& Nelements,
   #undef uArr
 }
 
-extern "C" void postFDM(const dlong& Nelements,
+extern "C" void FUNC(postFDM) (const dlong& Nelements,
                      pfloat* __restrict__ my_work1,
                      pfloat* __restrict__ my_work2,
                      pfloat* __restrict__ Su,
@@ -243,7 +246,7 @@ extern "C" void postFDM(const dlong& Nelements,
   }
 }
 
-extern "C" void fusedFDM(
+extern "C" void FUNC(fusedFDM) (
   const dlong& Nelements,
   const dlong& localNelements,
   const dlong* __restrict__  elementList,

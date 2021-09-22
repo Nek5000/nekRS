@@ -34,12 +34,11 @@ void MGLevel::Ax(occa::memory o_x, occa::memory o_Ax)
 
 void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 {
-  if(stype != SCHWARZ) {
+  if(stype != SmootherType::SCHWARZ) {
     ellipticOperator(elliptic,o_x,o_res, dfloatString);
     // subtract r = b - A*x
-    const dlong Nlocal = mesh->Np * mesh->Nelements;
     platform->linAlg->axpbyMany(
-      Nlocal,
+      Nrows,
       elliptic->Nfields,
       elliptic->Ntotal,
       1.0,
@@ -54,15 +53,14 @@ void MGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
 
 void MGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
 {
-  
-  if (options.compareArgs("DISCRETIZATION","CONTINUOUS"))
+  if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) 
     platform->linAlg->axmy(mesh->Nelements * NpF, 1.0, o_invDegree, o_x);
 
   elliptic->precon->coarsenKernel(mesh->Nelements, o_R, o_x, o_Rx);
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     oogs::startFinish(o_Rx, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
-    if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
+    //if (elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Rx);
   }
 }
 
@@ -73,67 +71,66 @@ void MGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
 
 void MGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
-  if(!x_is_zero && stype == SCHWARZ) return;
+  platform->timer.tic(elliptic->name + " preconditioner smoother", 1);
+  if(!x_is_zero && stype == SmootherType::SCHWARZ) return;
   if(!strstr(pfloatString,dfloatString)) {
-    elliptic->copyDfloatToPfloatKernel(Nrows, o_xPfloat, o_x);
-    elliptic->copyDfloatToPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
-    if (stype == RICHARDSON)
-      this->smoothRichardson(o_rhsPfloat, o_xPfloat, x_is_zero);
-    else if (stype == CHEBYSHEV)
+    elliptic->fusedCopyDfloatToPfloatKernel(Nrows, o_x, o_rhs, o_xPfloat, o_rhsPfloat);
+    if (stype == SmootherType::CHEBYSHEV)
       this->smoothChebyshev(o_rhsPfloat, o_xPfloat, x_is_zero);
-    else if (stype == SCHWARZ)
+    else if (stype == SmootherType::SCHWARZ)
       this->smoothSchwarz(o_rhsPfloat, o_xPfloat, x_is_zero);
+    else if (stype == SmootherType::JACOBI)
+      this->smoothJacobi(o_rhsPfloat, o_xPfloat, x_is_zero);
+      
     elliptic->copyPfloatToDPfloatKernel(Nrows, o_xPfloat, o_x);
-    elliptic->copyPfloatToDPfloatKernel(Nrows, o_rhsPfloat, o_rhs);
   } else {
-    if (stype == RICHARDSON)
-      this->smoothRichardson(o_rhs, o_x, x_is_zero);
-    else if (stype == CHEBYSHEV)
+    if (stype == SmootherType::CHEBYSHEV)
       this->smoothChebyshev(o_rhs, o_x, x_is_zero);
-    else if (stype == SCHWARZ)
+    else if (stype == SmootherType::SCHWARZ)
       this->smoothSchwarz(o_rhs, o_x, x_is_zero);
+    else if (stype == SmootherType::JACOBI)
+      this->smoothJacobi(o_rhs, o_x, x_is_zero);
   }
+  platform->timer.toc(elliptic->name + " preconditioner smoother");
 }
 
 void MGLevel::smoother(occa::memory o_x, occa::memory o_Sx, bool x_is_zero)
 {
   // x_is_zero = true <-> downward leg
   if(x_is_zero) {
-    if (smtypeDown == JACOBI)
+    if (smtypeDown == SecondarySmootherType::JACOBI)
       this->smootherJacobi(o_x, o_Sx);
-    else if (smtypeDown == SCHWARZ_SMOOTH)
-      //this->smootherSchwarz(o_x, o_Sx);
+    else
       this->smoothSchwarz(o_x, o_Sx, true); // no-op if false
   } else {
-    if (smtypeUp == JACOBI)
+    if (smtypeUp == SecondarySmootherType::JACOBI)
       this->smootherJacobi(o_x, o_Sx);
-    else if (smtypeUp == SCHWARZ_SMOOTH)
-      //this->smootherSchwarz(o_x, o_Sx);
+    else
       this->smoothSchwarz(o_x, o_Sx, true); // no-op if false
   }
 }
 
-void MGLevel::smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+void MGLevel::smoothJacobi (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   occa::memory o_res = o_smootherResidual;
+  occa::memory o_Ad  = o_smootherResidual2;
+  occa::memory o_d   = o_smootherUpdate;
 
-  if (xIsZero) {
-    this->smoother(o_r, o_x, xIsZero);
-    return;
+  const pfloat one = 1.0;
+  const pfloat mone = -1.0;
+  const pfloat zero = 0.0;
+
+  if(xIsZero) { //skip the Ax if x is zero
+    //res = Sr
+    elliptic->dotMultiplyPfloatKernel(Nrows,o_invDiagA,o_r,o_x);
+  } else {
+    //res = S(r-Ax)
+    this->Ax(o_x,o_res);
+    elliptic->scaledAddPfloatKernel(Nrows, one, o_r, mone, o_res);
+    elliptic->dotMultiplyPfloatKernel(Nrows, o_invDiagA, o_res, o_d);
+    elliptic->scaledAddPfloatKernel(Nrows, one, o_d, one, o_x);
   }
-
-  pfloat one = 1.;
-  pfloat mone = -1.;
-
-  //res = r-Ax
-  this->Ax(o_x,o_res);
-  elliptic->scaledAddPfloatKernel(Nrows, one, o_r, mone, o_res);
-
-  //smooth the fine problem x = x + S(r-Ax)
-  this->smoother(o_res, o_res, xIsZero);
-  elliptic->scaledAddPfloatKernel(Nrows, one, o_res, one, o_x);
 }
-
 void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   const pfloat theta = 0.5 * (lambda1 + lambda0);
@@ -168,11 +165,62 @@ void MGLevel::smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x,
   pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
   elliptic->updateChebyshevSolutionVecKernel(Nrows, rhoDivDelta, rho_np1, rho_n, o_Ad, o_res, o_d, o_x);
 }
+void MGLevel::smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+{
+  const pfloat theta = 0.5 * (lambda1 + lambda0);
+  const pfloat delta = 0.5 * (lambda1 - lambda0);
+  const pfloat invTheta = 1.0 / theta;
+  const pfloat sigma = theta / delta;
+  pfloat rho_n = 1. / sigma;
+  pfloat rho_np1;
+
+  pfloat one = 1., mone = -1., zero = 0.0;
+
+  occa::memory o_res = o_smootherResidual;
+  occa::memory o_Ad  = o_smootherResidual2;
+  occa::memory o_d   = o_smootherUpdate;
+
+  if(xIsZero) { //skip the Ax if x is zero
+    //res = Sr
+    this->smoother(o_r, o_res, xIsZero);
+
+    elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, zero, o_x);
+  } else {
+    //res = S(r-Ax)
+    this->Ax(o_x,o_res);
+    elliptic->scaledAddPfloatKernel(Nrows, one, o_r, mone, o_res);
+    this->smoother(o_res, o_res, xIsZero);
+
+    elliptic->updateSmoothedSolutionVecKernel(Nrows, invTheta, o_res, one, o_d, one, o_x);
+  }
+
+
+  //r_k+1 = r_k - SAd_k
+  this->Ax(o_d,o_Ad);
+  this->smoother(o_Ad, o_Ad, xIsZero);
+  rho_np1 = 1.0 / (2. * sigma - rho_n);
+  pfloat rhoDivDelta = 2.0 * rho_np1 / delta;
+
+  elliptic->updateIntermediateSolutionVecKernel(Nrows, rhoDivDelta, rho_n, rho_np1, o_Ad, o_res, o_d, o_x);
+
+  rho_n = rho_np1;
+  //r_k+1 = r_k - SAd_k
+  this->Ax(o_d,o_Ad);
+  this->smoother(o_Ad, o_Ad, xIsZero);
+  rho_np1 = 1.0 / (2. * sigma - rho_n);
+  rhoDivDelta = 2.0 * rho_np1 / delta;
+
+  elliptic->updateIntermediateSolutionVecKernel(Nrows, rhoDivDelta, rho_n, rho_np1, o_Ad, o_res, o_d, o_x);
+
+}
 
 void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   if(ChebyshevIterations == 1) {
     smoothChebyshevOneIteration(o_r,o_x,xIsZero);
+    return;
+  } else if (ChebyshevIterations == 2) {
+    smoothChebyshevTwoIteration(o_r,o_x,xIsZero);
     return;
   }
   const pfloat theta = 0.5 * (lambda1 + lambda0);
@@ -230,5 +278,5 @@ void MGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZer
 
 void MGLevel::smootherJacobi(occa::memory &o_r, occa::memory &o_Sr)
 {
-  elliptic->dotMultiplyPfloatKernel(mesh->Np * mesh->Nelements,o_invDiagA,o_r,o_Sr);
+  elliptic->dotMultiplyPfloatKernel(Nrows, o_invDiagA, o_r, o_Sr);
 }

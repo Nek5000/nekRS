@@ -41,36 +41,9 @@ void reportMemoryUsage(occa::device &device, const char* mess)
 
 void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
-  
-  // find elements that have all neighbors on this process
-  dlong* internalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
-  dlong* notInternalElementIds = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
-
-  dlong Ninterior = 0, NnotInterior = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e) {
-    int flag = 0;
-    for(int f = 0; f < mesh->Nfaces; ++f)
-      if(mesh->EToP[e * mesh->Nfaces + f] != -1)
-        flag = 1;
-    if(!flag)
-      internalElementIds[Ninterior++] = e;
-    else
-      notInternalElementIds[NnotInterior++] = e;
-  }
-
   mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
  
-  mesh->NinternalElements = Ninterior;
-  mesh->NnotInternalElements = NnotInterior;
-  if(Ninterior)
-    mesh->o_internalElementIds    = platform->device.malloc(Ninterior * sizeof(dlong),
-                                                        internalElementIds);
-
-  if(NnotInterior > 0)
-    mesh->o_notInternalElementIds = platform->device.malloc(NnotInterior * sizeof(dlong),
-                                                        notInternalElementIds);
-
   dfloat* cubDWT = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
   dfloat* cubProjectT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
   dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
@@ -129,9 +102,10 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   mesh->o_ggeo =
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
-  mesh->o_cubvgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
-                        mesh->cubvgeo);
+  //if(mesh->cubNq - 1)
+  //  mesh->o_cubvgeo =
+  //    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
+  //                            mesh->cubvgeo);
 
   mesh->o_vmapM =
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
@@ -170,7 +144,7 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
       platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
-  kernelInfo += populateMeshProperties(mesh);
+  kernelInfo += populateMeshProperties(mesh->N);
 }
 
 void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)

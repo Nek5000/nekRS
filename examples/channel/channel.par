@@ -1,10 +1,6 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL] 
 polynomialOrder = 7
-#startFrom = restart.fld
+#startFrom = "restart.fld"
 numSteps = 100
 dt = 1e-03
 timeStepper = tombo2

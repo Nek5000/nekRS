@@ -34,21 +34,43 @@
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
-#include "parAlmond.hpp"
+#include "amgSolver/parAlmond/parAlmond.hpp"
 #include "ellipticPrecon.h"
 #include "platform.hpp"
 
 #include "timer.hpp"
+
 #define ELLIPTIC_ENABLE_TIMER
 
 class ResidualProjection;
+class elliptic_t;
+
+struct GmresData{
+  GmresData(elliptic_t*);
+  int restart;
+  int flexible;
+  deviceVector_t o_V;
+  deviceVector_t o_Z;
+  occa::memory o_y;
+  occa::memory o_scratch;
+  occa::memory h_scratch;
+  dfloat* y;
+  dfloat* H;
+  dfloat* sn;
+  dfloat* cs;
+  dfloat* s;
+  dfloat* scratch;
+};
 
 struct elliptic_t
 {
+  static constexpr int NScratchFields {4};
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
   int var_coeff;   // flag for variable coefficient
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
+
+  std::string name;
 
   int Niter;
   dfloat res00Norm, res0Norm, resNorm;
@@ -78,12 +100,10 @@ struct elliptic_t
   dfloat allNeumannScale;
 
   // HOST shadow copies
-  dfloat* p, * z, * v, * Ap;
   dfloat* invDegree;
 
   int* EToB;
 
-  dfloat* wrk;
   occa::memory o_wrk;
 
   //C0-FEM mask data
@@ -107,7 +127,6 @@ struct elliptic_t
   occa::memory o_z; // preconditioner solution
   occa::memory o_res;
   occa::memory o_Ap; // A*search direction
-  occa::memory o_rtmp;
   occa::memory o_invDegree;
   occa::memory o_EToB;
 
@@ -127,9 +146,22 @@ struct elliptic_t
   occa::kernel scaledAddPfloatKernel;
   occa::kernel dotMultiplyPfloatKernel;
   occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel fusedCopyDfloatToPfloatKernel;
   occa::kernel copyPfloatToDPfloatKernel;
+  occa::kernel axmyzManyPfloatKernel;
+  occa::kernel adyManyPfloatKernel;
+  
+  // special kernels for single Chebyshev iteration
   occa::kernel updateSmoothedSolutionVecKernel;
   occa::kernel updateChebyshevSolutionVecKernel;
+
+  // special kernel for two Chebyshev iterations
+  occa::kernel updateIntermediateSolutionVecKernel;
+
+  occa::kernel updatePGMRESSolutionKernel;
+  occa::kernel fusedResidualAndNormKernel;
+
+  occa::kernel gramSchmidtOrthogonalizationKernel;
 
   dfloat resNormFactor;
 
@@ -148,6 +180,7 @@ struct elliptic_t
   int* levels;
 
   ResidualProjection* residualProjection;
+  GmresData* gmresData;
 };
 
 #include "ellipticMultiGrid.h"
@@ -156,12 +189,15 @@ struct elliptic_t
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
-void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo);
+void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs);
+void ellipticBuildPreconditionerKernels(elliptic_t* elliptic);
+
+void ellipticSEMFEMSetup(elliptic_t*);
+void ellipticSEMFEMSolve(elliptic_t*, occa::memory&, occa::memory&);
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
 
-void ellipticSolveSetup(elliptic_t* elliptic, occa::properties kernelInfo);
-void ellipticBlockSolveSetup(elliptic_t* elliptic, occa::properties &kernelInfo);
+void ellipticSolveSetup(elliptic_t* elliptic);
 
 void ellipticStartHaloExchange(elliptic_t* elliptic,
                                occa::memory &o_q,
@@ -180,6 +216,9 @@ void ellipticEndHaloExchange(elliptic_t* elliptic,
 
 //Linear solvers
 int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
+        const dfloat tol, const int MAXIT, dfloat &res);
+void initializeGmresData(elliptic_t*);
+int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat tol, const int MAXIT, dfloat &res);
 
 void ellipticOperator(elliptic_t* elliptic,
@@ -217,7 +256,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
                           occa::memory &o_x, occa::memory &o_r);
 
-occa::properties ellipticKernelInfo(mesh_t* mesh);
+occa::properties ellipticKernelInfo(int N);
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 

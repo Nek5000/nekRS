@@ -47,6 +47,12 @@ struct cds_t
   //  dfloat *rhsS;
   dfloat* rkS;
 
+  // filter
+  int filterNc;
+  dfloat filterS[NSCALAR_MAX];
+  dfloat* filterM;
+  occa::memory o_filterMT;
+
   //RK Subcycle Data
   int nRK;
   dfloat* coeffsfRK, * weightsRK, * nodesRK;
@@ -58,8 +64,7 @@ struct cds_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* mapB[NSCALAR_MAX], * EToB[NSCALAR_MAX];
-  occa::memory o_mapB[NSCALAR_MAX];
+  int* EToB[NSCALAR_MAX];
   occa::memory o_EToB[NSCALAR_MAX];
 
   occa::memory* o_usrwrk;

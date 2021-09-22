@@ -47,7 +47,6 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
-  void solve();
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration
@@ -92,9 +91,6 @@ struct mesh_t
   void* haloSendRequests;
   void* haloRecvRequests;
 
-  dlong NinternalElements; // number of elements that can update without halo exchange
-  dlong NnotInternalElements; // number of elements that cannot update without halo exchange
-
   // CG gather-scatter info
   hlong* globalIds;
   void* gsh, * hostGsh; // gslib struct pointer
@@ -130,6 +126,11 @@ struct mesh_t
 
   // indices of vertex nodes
   int* vertexNodes;
+
+  // indices of edge nodes
+  int* edgeNodes;
+
+  int NedgeNodes;
 
   // quad specific quantity
   int Nq, NqP, NpP;
@@ -205,9 +206,6 @@ struct mesh_t
   occa::memory o_haloGetNodeIds;
   occa::memory o_haloPutNodeIds;
 
-  occa::memory o_internalElementIds;
-  occa::memory o_notInternalElementIds;
-
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
@@ -223,9 +221,10 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
+  occa::kernel velocityDirichletKernel;
 };
 
-occa::properties populateMeshProperties(mesh_t*);
+occa::properties populateMeshProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 

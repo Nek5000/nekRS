@@ -451,6 +451,7 @@ C     note, this usage of CTMP1 will be less than elsewhere if NELT ~> 9.
       real*4         tdump
 c
       REAL SDMP2(LXYZT,LDIMT)
+      common /cbresdmp/ SDMP2 
 
 c     cdump comes in via PARALLEL (->TOTAL)
 
@@ -1091,16 +1092,10 @@ C     If no fields were explicitly specified, assume getting all fields.
          ENDIF
          if (ifflow) ifgetp=.true.
          if (ifheat) ifgett=.true.
-#ifdef CMTNEK
-         ifgett=.true. ! CMT-nek still not compatible with IFHEAT
-#endif
          do 410 i=1,ldimt-1
             ifgtps(i)=.TRUE.
   410    continue
       endif
-
-
-
 
       return
       END
@@ -2495,10 +2490,10 @@ c               if(nid.eq.0) write(6,'(A,I2,A)') ' Reading ps',k,' field'
 
       if (tio.eq.0) tio=1
       if (nio.eq.0) write(6,7) istep,time,
-     &             nbyte/tio/1024/1024/10,
+     &             nbyte/tio/1e9/10,
      &             nfiler
     7 format(/,i9,1pe12.4,' done :: Read checkpoint data',/,
-     &       30X,'avg data-throughput = ',f7.1,'MBps',/,
+     &       30X,'avg data-throughput = ',f7.1,'GB/s',/,
      &       30X,'io-nodes = ',i5,/)
 
 

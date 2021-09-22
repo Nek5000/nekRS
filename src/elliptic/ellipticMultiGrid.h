@@ -27,11 +27,17 @@
 #ifndef ELLIPTIC_MGLEVEL_HPP
 #define ELLIPTIC_MGLEVEL_HPP
 
-typedef enum {RICHARDSON = 1,
-              CHEBYSHEV = 2,
-              SCHWARZ = 3} SmoothType;
-typedef enum {JACOBI = 1,
-              SCHWARZ_SMOOTH = 3} SmootherType;
+enum class SmootherType
+{
+  CHEBYSHEV,
+  SCHWARZ,
+  JACOBI,
+};
+enum class SecondarySmootherType
+{  
+  JACOBI,
+  SCHWARZ,
+};
 
 class MGLevel : public parAlmond::multigridLevel
 {
@@ -50,9 +56,9 @@ public:
   occa::memory o_invDegree;
 
   //smoothing params
-  SmoothType stype;
-  SmootherType smtypeUp;
-  SmootherType smtypeDown;
+  SmootherType stype;
+  SecondarySmootherType smtypeUp;
+  SecondarySmootherType smtypeDown;
 
   dfloat lambda1, lambda0;
   int ChebyshevIterations;
@@ -95,9 +101,12 @@ public:
 
   setupAide options;
 
+  bool isCoarse;
+
   //build a single level
   MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
-          setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_
+          setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_,
+          bool _isCoarse = false
           );
   //build a level and connect it to the previous one
   MGLevel(elliptic_t* ellipticBase, //finest level
@@ -108,7 +117,9 @@ public:
           int Nf, int Nc,
           setupAide options_,
           parAlmond::KrylovType ktype_,
-          MPI_Comm comm_);
+          MPI_Comm comm_,
+          bool _isCoarse = false
+          );
 
   void Ax(dfloat* /*x*/, dfloat* /*Ax*/) {}
   void Ax(occa::memory o_x, occa::memory o_Ax);
@@ -128,9 +139,9 @@ public:
 
   void smoother(occa::memory o_x, occa::memory o_Sx, bool xIsZero);
 
-  void smoothRichardson(occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
   void smoothSchwarz (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
+  void smoothJacobi (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 
   void smootherJacobi    (occa::memory &o_r, occa::memory &o_Sr);
 
@@ -139,10 +150,10 @@ public:
   void setupSmoother(elliptic_t* base);
   dfloat maxEigSmoothAx();
 
-  void buildCoarsenerTriTet(mesh_t** meshLevels, int Nf, int Nc);
   void buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc);
 private:
   void smoothChebyshevOneIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
+  void smoothChebyshevTwoIteration (occa::memory &o_r, occa::memory &o_x, bool xIsZero);
 };
 
 void MGLevelAllocateStorage(MGLevel* level, int k, parAlmond::CycleType ctype);

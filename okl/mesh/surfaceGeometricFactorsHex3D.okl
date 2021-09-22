@@ -117,7 +117,6 @@ SOFTWARE.
       @barrier("local");
       for(int j=0;j<p_Nq;++j;@inner(1)){
         for(int i=0;i<p_Nq;++i;@inner(0)){
-          const dlong id = k * p_Nq * p_Nq + j * p_Nq + i;
           #pragma unroll p_Nq
           for(int m=0;m<p_Nq;++m){
             const dfloat Dim = s_D[i][m];
@@ -202,7 +201,7 @@ SOFTWARE.
                  tz =  (xr * ys - yr * xs) / J;
 
           /* face f normal and length */
-          dfloat nx, ny, nz, d;
+          dfloat nx, ny, nz;
           switch(f) {
           case 0: nx = -tx;
             ny = -ty;

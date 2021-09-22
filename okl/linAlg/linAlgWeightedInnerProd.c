@@ -19,7 +19,7 @@ SOFTWARE.
 */
 
 extern "C" 
-void weightedInnerProd(
+void FUNC(weightedInnerProd)(
             const dlong & Nblocks,
             const dlong & N,
             const dfloat * __restrict__ cpu_w,
@@ -29,7 +29,9 @@ void weightedInnerProd(
 
   dfloat wab = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for reduction(+:wab)
+#endif
   for(int i=0;i<N;++i){
     const dfloat ai = cpu_a[i];
     const dfloat bi = cpu_b[i];
@@ -42,7 +44,7 @@ void weightedInnerProd(
 }
 
 extern "C" 
-void weightedInnerProdMany(
+void FUNC(weightedInnerProdMany)(
             const dlong & Nblocks,
             const dlong & N,
             const dlong & Nfields,
@@ -54,7 +56,9 @@ void weightedInnerProdMany(
 
   dfloat wab = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2) reduction(+:wab)
+#endif
   for(int fld=0;fld<Nfields;fld++) {
     for(int i=0;i<N;++i){
       const dlong id = i + fld*offset;

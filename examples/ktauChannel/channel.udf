@@ -44,11 +44,11 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   scalarScaledAddKernel(mesh->Nlocal, conductivity, 1/Pr_t, o_mue_t, o_temp_mue); 
 }
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  userfKernel = udfBuildKernel(nrs, "cfill");
-  scalarScaledAddKernel = udfBuildKernel(nrs, "scalarScaledAdd");
-  RANSktau::buildKernel(nrs);
+  userfKernel = udfBuildKernel(kernelInfo, "cfill");
+  scalarScaledAddKernel = udfBuildKernel(kernelInfo, "scalarScaledAdd");
+  RANSktau::buildKernel(kernelInfo);
 }
 
 void UDF_Setup(nrs_t *nrs)

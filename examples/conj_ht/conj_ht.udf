@@ -25,7 +25,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   cds_t *cds   = nrs->cds;
 
   if(updateProperties) {
-    if(platform->comm.mpiRank == 0) cout << "updating properties" << "\n";
+    if(platform->comm.mpiRank == 0) std::cout << "updating properties" << "\n";
     const dfloat rho = 1.0;
     const dfloat mue = 1/1000.0;
     const dfloat rhoCpFluid = rho*1.0;
@@ -41,17 +41,17 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     // temperature 
     const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset[0]*sizeof(dfloat));
     const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset[0]*sizeof(dfloat));
-    cFillKernel(cds->mesh[0]->Nelements, conFluid, conSolid, nrs->meshV->o_elementInfo, o_con);
-    cFillKernel(cds->mesh[0]->Nelements, rhoCpFluid, rhoCpSolid, nrs->meshV->o_elementInfo, o_rhoCp);
+    cFillKernel(cds->mesh[0]->Nelements, conFluid, conSolid, cds->mesh[0]->o_elementInfo, o_con);
+    cFillKernel(cds->mesh[0]->Nelements, rhoCpFluid, rhoCpSolid, cds->mesh[0]->o_elementInfo, o_rhoCp);
     updateProperties = 0;
   }
 }
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  cFillKernel = udfBuildKernel(nrs, "cFill");
+  cFillKernel = udfBuildKernel(kernelInfo, "cFill");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

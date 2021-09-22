@@ -4,11 +4,32 @@
 #include <math.h>
 #include "udf.hpp"
 
-#include "casedata.h"
-
 /* User Functions */
 
 occa::kernel coriolisKernel; 
+/* latitude north */
+static dfloat NLAT;
+/* geostrophic wind speed [m/s] */
+static dfloat UREF;
+
+static dfloat LREF;
+/* potential temperature */
+static dfloat TREF;
+/* initial surface temperature */
+static dfloat TS0;
+/* surface cooling rate [K/h] */
+static dfloat SCR;
+/* inversion layer strength [K/m]*/
+static dfloat ILSTRENGTH;
+
+static int NUMBER_ELEMENTS_X;
+static int NUMBER_ELEMENTS_Y;
+static int NUMBER_ELEMENTS_Z;
+static dfloat XLEN;
+static dfloat YLEN;
+static dfloat ZLEN;
+
+static dfloat BETAM;
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
@@ -25,9 +46,8 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  occa::properties& kernelInfo = *nrs->kernelInfo;
   setupAide &options = platform->options;
 
   dfloat cond;
@@ -44,7 +64,43 @@ void UDF_LoadKernels(nrs_t *nrs)
   kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
   kernelInfo["defines/p_YLEN"]      = YLEN;
 
-  coriolisKernel = udfBuildKernel(nrs, "coriolis");
+  coriolisKernel = udfBuildKernel(kernelInfo, "coriolis");
+}
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata","nlat",NLAT);
+  platform->par->extract("casedata","uref",UREF);
+  platform->par->extract("casedata","lref",LREF);
+  platform->par->extract("casedata","tref",TREF);
+  platform->par->extract("casedata","ts0",TS0);
+  platform->par->extract("casedata","scr",SCR);
+  platform->par->extract("casedata","ilstrength",ILSTRENGTH);
+  platform->par->extract("casedata","number_elements_x",NUMBER_ELEMENTS_X);
+  platform->par->extract("casedata","number_elements_y",NUMBER_ELEMENTS_Y);
+  platform->par->extract("casedata","number_elements_z",NUMBER_ELEMENTS_Z);
+  platform->par->extract("casedata","xlen",XLEN);
+  platform->par->extract("casedata","ylen",YLEN);
+  platform->par->extract("casedata","zlen",ZLEN);
+  platform->par->extract("casedata","betam",BETAM);
+
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = NLAT;
+    nek_cb_scnrs[1] = UREF;
+    nek_cb_scnrs[2] = LREF;
+    nek_cb_scnrs[3] = TREF;
+    nek_cb_scnrs[4] = TS0;
+    nek_cb_scnrs[5] = SCR;
+    nek_cb_scnrs[6] = ILSTRENGTH;
+    nek_cb_scnrs[7] = NUMBER_ELEMENTS_X;
+    nek_cb_scnrs[8] = NUMBER_ELEMENTS_Y;
+    nek_cb_scnrs[9] = NUMBER_ELEMENTS_Z;
+    nek_cb_scnrs[10] = XLEN;
+    nek_cb_scnrs[11] = YLEN;
+    nek_cb_scnrs[12] = ZLEN;
+    nek_cb_scnrs[13] = BETAM;
+
+  };
 }
 
 void UDF_Setup(nrs_t *nrs)

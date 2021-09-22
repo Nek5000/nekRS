@@ -1,0 +1,227 @@
+c-----------------------------------------------------------------------
+      subroutine userbc(i,j,k,f,eg) ! set up boundary conditions
+c     NOTE ::: This routine MAY NOT be called by every process
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer i,j,k,f,e,eg
+
+      ux   = 1.0
+      uy   = 0.0
+      uz   = 0.0
+      temp = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine uservp (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      udiff  = 0
+      utrans = 0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      qvol   = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer  idum 
+      save     idum 
+      data     idum  / 9 /
+
+      if (idum.eq.9) idum = idum+1+nid
+
+      ux = ran1(idum)
+      uy = ran1(idum)
+      uz = ran1(idum)
+      ux = sin(pi*x)*sin(pi*y)*sin(pi*z)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      call rescale_x(xm1,-0.5,0.5)
+      call rescale_x(ym1,-0.5,0.5)
+      call rescale_x(zm1,-0.5,0.5)
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'O  ') boundaryID(ifc,iel) = 1
+      enddo
+      enddo
+
+c     param(18) = 1     ! nekrs style norm
+c     param(21) = 1e-16 ! pressure tolerance
+c     param(22) = 1e-16 ! velocity tolerance
+c     param(40) = 2     ! hypre; 0 - xxt, 1 - semg_amg, 2 - semg_amg_hypre, 3 - fem_amg_hypre
+c     param(42) = 2     ! Flex-CG
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine right(eps, x, xx)
+        real eps, x, xx
+
+        if (x.le.0.5) then
+          xx = (2.0 - eps)*x
+        else
+          xx = 1.0 + eps*(x - 1.0)
+        endif
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine left(eps, x, xx)
+        real eps, x, xx
+
+        call right(eps, 1.0 - x, xx)
+        xx = 1.0 - xx
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine step(a, b, x, xx)
+        real a, b, x, xx
+
+        if (x.le.0.0) then
+          xx = a
+        else if (x.ge.1.0) then
+          xx = b
+        else
+          xx = a + (b - a)*x
+        endif
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine kershaw(epsy, epsz, x, y, z, xx, yy, zz)
+        real epsy, epsz, x, y, z, xx, yy, zz
+        real a, b
+        real lambda, t_lambda
+
+        integer layer
+
+        xx = x
+
+        layer = int(x*6.0)
+        lambda = (x - layer/6.0)*6.0
+        
+        if (layer.eq.0) then
+            call left(epsy, y, yy)
+            call left(epsz, z, zz)
+        else if ((layer.eq.1).or.(layer.eq.4)) then
+            call left(epsy, y, a)
+            call right(epsy, y, b)
+            call step(a, b, lambda, yy)
+
+            call left(epsz, z, a)
+            call right(epsz, z, b)
+            call step(a, b, lambda, zz)
+        else if (layer.eq.2) then
+            t_lambda = lambda/2.0
+
+            call left(epsy, y, b)
+            call right(epsy, y, a)
+            call step(a, b, t_lambda, yy)
+
+            call left(epsz, z, b)
+            call right(epsz, z, a)
+            call step(a, b, t_lambda, zz)
+        else if (layer.eq.3) then
+            t_lambda = (1.0 + lambda)/2.0
+
+            call left(epsy, y, b)
+            call right(epsy, y, a)
+            call step(a, b, t_lambda, yy)
+
+            call left(epsz, z, b)
+            call right(epsz, z, a)
+            call step(a, b, t_lambda, zz)
+        else
+            call right(epsy, y, yy)
+            call right(epsz, z, zz)
+        endif
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+        include 'SIZE'
+        include 'TOTAL'
+
+        real epsy, epsz
+        real x, y, z, xx, yy, zz
+        integer i
+        COMMON /SCNRS/ sc_nrs(10)
+        real                sc_nrs
+        real P_EPS
+        
+        P_EPS = sc_nrs(1)
+
+        epsy = P_EPS
+        epsz = P_EPS
+        if (nid.eq.0) then
+          write(6, *) 'epsy=',epsy,'epsz=',epsz
+        endif
+
+        n = nelt*(2**ldim)
+        xmax = glmax(xc,n)
+        ymax = glmax(yc,n)
+        zmax = glmax(zc,n)
+
+        do i = 1, n
+          x = xc(i, 1)/xmax
+          y = yc(i, 1)/ymax
+          z = zc(i, 1)/zmax
+          call kershaw(epsy, epsz, x, y, z, xx, yy, zz)
+          xc(i, 1) = xx
+          yc(i, 1) = yy
+          zc(i, 1) = zz
+        enddo
+
+        return
+      end
+c-----------------------------------------------------------------------

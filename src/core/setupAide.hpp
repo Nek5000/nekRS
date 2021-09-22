@@ -39,46 +39,38 @@ SOFTWARE.
 
 #include "nrssys.hpp"
 
-using std::stringstream;
-using std::fstream;
-using std::string;
-using std::vector;
-using std::cout;
-using std::endl;
-
-
 class setupAide {
 private:
-  vector<string> data;
-  vector<string> keyword;
+  std::vector<std::string> data;
+  std::vector<std::string> keyword;
 
 public:
   setupAide();
-  setupAide(string);
+  setupAide(std::string);
 
   setupAide(const setupAide&);
   setupAide& operator=(const setupAide&);
 
-  string readFile(string);
-  void read(string);
+  std::string readFile(std::string);
+  void read(std::string);
 
-  string getArgs(string);
+  std::string getArgs(std::string);
 
-  void setArgs(string key, string value);
-
-  template <class T>
-  int getArgs(string, T&);
+  void setArgs(std::string key, std::string value);
 
   template <class T>
-  int getArgs(string, vector<T>&);
+  int getArgs(std::string, T&);
 
-  int getArgs(string, vector<string>&, string);
+  template <class T>
+  int getArgs(std::string, std::vector<T>&);
+
+  int getArgs(std::string, std::vector<std::string>&, std::string);
 
 
-  int compareArgs(string key, string token);
+  int compareArgs(std::string key, std::string token);
 
-  vector<string> &getData(){ return data; }
-  vector<string> &getKeyword() { return keyword; }
+  std::vector<std::string> &getData(){ return data; }
+  std::vector<std::string> &getKeyword() { return keyword; }
 
   friend std::ostream & operator << (std::ostream &out, const setupAide &aide);  
 };

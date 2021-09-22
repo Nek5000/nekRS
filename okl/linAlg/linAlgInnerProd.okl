@@ -44,7 +44,6 @@ SOFTWARE.
         s_dot[t] += x[id+offset]*y[id];
       }
     }
-
     @barrier("local");
 
 #if p_blockSize>512
@@ -67,16 +66,16 @@ SOFTWARE.
     @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t< 16) s_dot[t] += s_dot[t+ 16];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  8) s_dot[t] += s_dot[t+  8];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  4) s_dot[t] += s_dot[t+  4];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  2) s_dot[t] += s_dot[t+  2];
-    //    @barrier("local");
+    @barrier("local");
 
     for(int t=0;t<p_blockSize;++t;@inner(0)) if(t<  1) dot[b] = s_dot[0] + s_dot[1];
   }

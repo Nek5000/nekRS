@@ -25,6 +25,7 @@
  */
 
 @kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
+                                           @restrict const dfloat*  vgeo,
                                            @restrict const dfloat*  D,
                                            const dlong voffset,
                                            const dlong soffset,
@@ -44,7 +45,7 @@
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           dlong id = i + j * p_Nq;
           if(k == 0)
-            s_D[0][id] = D[id];
+            s_D[j][i] = D[id];
 
           id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
@@ -64,7 +65,6 @@
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat dSdr = 0, dSds = 0, dSdt = 0;
 
@@ -83,8 +83,10 @@
           const dfloat What = Urst[id + 2 * voffset];
 
           const dfloat rhoM = RHO[id + soffset];
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat IJW   = vgeo[gid + p_IJWID * p_Np];
 
-          NS[id] =  rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
+          NS[id] =  IJW * rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
         }
       }
     }
@@ -108,7 +110,6 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_cubD[p_cubNq][p_cubNq];
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
-    @shared dfloat s_cubProjectT[p_cubNq][p_Nq];
 
     @shared dfloat s_S[p_cubNq][p_cubNq];
 
@@ -120,11 +121,10 @@
       for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
         const int id = i + j * p_cubNq;
         if (id < p_Nq * p_cubNq) {
-          s_cubInterpT[0][id] = cubInterpT[id];
-          s_cubProjectT[0][id] = cubProjectT[id];
+          s_cubInterpT[j][i] = cubInterpT[id];
         }
 
-        s_cubD[0][id] = cubD[id];
+        s_cubD[j][i] = cubD[id];
 
 #pragma unroll p_cubNq
         for(int k = 0; k < p_cubNq; ++k) {
@@ -152,7 +152,7 @@
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat U1  = 0, V1 = 0,  W1 = 0, S1 = 0;
+            dfloat S1 = 0;
             for(int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
               S1  += Iia * s_S[b][a];
@@ -166,7 +166,7 @@
       // interpolate in 's'
       for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat U2 = 0, V2 = 0,  W2 = 0, S2 = 0;
+          dfloat S2 = 0;
           // interpolate in b
           for(int b = 0; b < p_Nq; ++b) {
             dfloat Ijb = s_cubInterpT[b][j];

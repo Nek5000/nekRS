@@ -93,9 +93,6 @@ ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
   ogs->invDegree = NULL;
   ogs->gatherInvDegree = NULL;
   
-  //Keep track of how many gs handles we've created, and
-  // build kernels if this is the first
-  if (!ogs::Nrefs) ogs::initKernels(comm, device);
   ogs::Nrefs++;
 
   ogs->N = N;

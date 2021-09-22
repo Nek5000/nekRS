@@ -65,10 +65,7 @@ int GenmapTQLI(genmap_handle h, genmap_vector diagonal, genmap_vector upper,
     (*eVectors)[i]->data[i] = 1.0;
   }
 
-  parRSB_options *options = h->options;
-
   GenmapInt j, k, l, iter, m;
-
   for (l = 0; l < n; l++) {
     iter = 0;
     do {

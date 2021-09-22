@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "udf.hpp"
 #include "linAlg.hpp"
+#include <limits>
 
 namespace tombo
 {
@@ -8,9 +9,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 {
   mesh_t* mesh = nrs->meshV;
   
-
   //enforce Dirichlet BCs
-  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, std::numeric_limits<dfloat>::min(), platform->o_mempool.slice6);
+  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice6);
   for (int sweep = 0; sweep < 2; sweep++) {
     nrs->pressureDirichletBCKernel(mesh->Nelements,
                                    time,
@@ -24,7 +24,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    nrs->o_EToB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
-                                   nrs->o_P,
                                    platform->o_mempool.slice6);
 
     nrs->velocityDirichletBCKernel(mesh->Nelements,
@@ -37,7 +36,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    mesh->o_vmapM,
                                    mesh->o_EToB,
                                    nrs->o_EToB,
-                                   nrs->o_VmapB,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    platform->o_mempool.slice7);
@@ -140,8 +138,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 
 
   nrs->pressureAddQtlKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
+    mesh->Nlocal,
+    mesh->o_LMM,
     nrs->g0 * nrs->idt,
     nrs->o_div,
     platform->o_mempool.slice3);
@@ -170,8 +168,8 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
   dfloat scale = -1./3;
   if(platform->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
-  nrs->mueDivKernel(
-       mesh->Nelements*mesh->Np,
+  platform->linAlg->axmyz(
+       mesh->Nlocal,
        scale,
        nrs->o_mue,
        nrs->o_div,
@@ -216,29 +214,14 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
        platform->o_mempool.slice0); 
 
   nrs->velocityRhsKernel(
-    mesh->Nelements,
+    mesh->Nlocal,
     nrs->fieldOffset,
     nrs->o_BF,
     platform->o_mempool.slice0,
     nrs->o_rho,
     platform->o_mempool.slice3);
 
-  if(platform->options.compareArgs("VELOCITY INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) { 
-    platform->o_mempool.slice0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-    if (nrs->uvwSolver) {
-      if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
-                                                       nrs->o_U, platform->o_mempool.slice0);
-    } else {
-      if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds,
-                                                     nrs->o_U, platform->o_mempool.slice0);
-      if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds,
-                                                     nrs->o_U, platform->o_mempool.slice0);
-      if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds,
-                                                     nrs->o_U, platform->o_mempool.slice0);
-    }
-  } else {
-    platform->o_mempool.slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  }
+  platform->o_mempool.slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
   if(nrs->uvwSolver) {
     ellipticSolve(nrs->uvwSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);

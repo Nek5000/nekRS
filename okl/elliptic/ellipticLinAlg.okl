@@ -37,6 +37,18 @@ SOFTWARE.
   }
 }
 
+@kernel void fusedCopyDfloatToPfloat(const dlong N,
+                      @restrict const dfloat * x_dfloat,
+                      @restrict const dfloat * y_dfloat,
+                      @restrict pfloat * x_pfloat,
+                      @restrict pfloat * y_pfloat){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<N){
+      x_pfloat[n] = x_dfloat[n];
+      y_pfloat[n] = y_dfloat[n];
+    }
+  }
+}
 @kernel void copyDfloatToPfloat(const dlong N,
                       @restrict pfloat *  y,
                       @restrict const dfloat * x){

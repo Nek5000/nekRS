@@ -41,18 +41,17 @@ static int counter = 0;
 
 static dfloat atime;
 static dfloat timel;
+
+static int outfldCounter = 0;
 }
 
-void avg::buildKernel(nrs_t* nrs)
+void avg::buildKernel(occa::properties kernelInfo)
 {
-  mesh_t* mesh = nrs->meshV;
-  
 
-  string fileName;
+  std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/avg.okl";
-  occa::properties& kernelInfo = *nrs->kernelInfo;
   {
       EXKernel  = platform->device.buildKernel(fileName, "EX", kernelInfo);
       EXXKernel = platform->device.buildKernel(fileName, "EXX", kernelInfo);
@@ -90,8 +89,10 @@ void avg::EXY(dlong N,
 
 void avg::run(dfloat time)
 {
+  if(!nrs->converged) return;
+
   if(!setupCalled || !buildKernelCalled) {
-    cout << "avg::run() was called prior to avg::setup()!\n";
+    std::cout << "avg::run() was called prior to avg::setup()!\n";
     ABORT(1);
   }
 
@@ -143,7 +144,7 @@ void avg::run(dfloat time)
 void avg::setup(nrs_t* nrs_)
 {
   if(!buildKernelCalled) {
-    cout << "avg::setup() was called prior avg::buildKernel()!\n";
+    std::cout << "avg::setup() was called prior avg::buildKernel()!\n";
     ABORT(1);
   }
 
@@ -175,12 +176,15 @@ void avg::setup(nrs_t* nrs_)
   setupCalled = 1;
 }
 
-void avg::outfld()
+void avg::outfld(int _outXYZ, int FP64)
 {
+  if(!nrs->converged) return;
+
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->meshV;
-  const int FP64 = 1;
-  const int coords = 0;
+
+  int outXYZ = _outXYZ;
+  if(!outfldCounter) outXYZ = 1;
 
   occa::memory o_null;
   occa::memory o_Tavg, o_Trms;
@@ -191,23 +195,30 @@ void avg::outfld()
     o_Trms = o_Srms;
   }
 
-  writeFld("avg", atime, coords, FP64,
+  writeFld("avg", atime, outXYZ, FP64,
            &o_Uavg,
            &o_Pavg,
            &o_Tavg,
            Nscalar);
 
-  writeFld("rms", atime, coords, FP64,
+  writeFld("rms", atime, outXYZ, FP64,
            &o_Urms,
            &o_Prms,
            &o_Trms,
            Nscalar);
 
-  writeFld("rm2", atime, coords, FP64,
+  writeFld("rm2", atime, outXYZ, FP64,
            &o_Urm2,
            &o_null,
            &o_null,
            0);
 
   atime = 0;
+  outfldCounter++;
+}
+
+
+void avg::outfld()
+{
+  avg::outfld(/* outXYZ */ 0, /* FP64 */ 1);
 }

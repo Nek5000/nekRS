@@ -1,24 +1,17 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL]
 polynomialOrder = 7
-#startFrom = restart.fld
+#startFrom = "restart.fld"
 stopAt = endTime
 endTime = 20
 
 dt = 2.0e-2
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 1
 
 writeControl = runTime
 writeInterval = 1
 
-filtering = hpfrt
-filterWeight = 2
-filterModes = 1
+regularization = hpfrt + nModes=1 + scalingCoeff=10 
 
 [PRESSURE]
 residualTol = 1e-04

@@ -19,23 +19,19 @@ static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
 static occa::kernel surfaceFluxKernel;
 
-
 }
 
-void lowMach::buildKernel(nrs_t* nrs)
+void lowMach::buildKernel(occa::properties kernelInfo)
 {
-  mesh_t* mesh = nrs->meshV;
-  occa::properties kernelInfo = *(nrs->kernelInfo);
-  string fileName;
+  int N;
+  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+
+  kernelInfo += populateMeshProperties(N);
+
+  std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));
   fileName += "/okl/plugins/lowMach.okl";
-  if( BLOCKSIZE < mesh->Nq * mesh->Nq ){
-    if(rank == 0)
-      printf("ERROR: nrsSurfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
-        "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, mesh->Nq * mesh->Nq);
-    ABORT(EXIT_FAILURE);
-  }
   {
     qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
     p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
@@ -52,7 +48,7 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   int err = 1;
   if(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) err = 0;
   if(err) {
-    if(platform->comm.mpiRank == 0) cout << "lowMach requires solving for temperature!\n";
+    if(platform->comm.mpiRank == 0) std::cout << "lowMach requires solving for temperature!\n";
     ABORT(1);
   } 
   platform->options.setArgs("LOWMACH", "TRUE"); 

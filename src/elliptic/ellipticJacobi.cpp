@@ -66,10 +66,10 @@ void ellipticUpdateJacobi(elliptic_t* elliptic)
                                  elliptic->o_lambda,
                                  precon->o_invDiagA);
 
-  oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+  oogs::startFinish(precon->o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
 
-  const dfloat one = 1.0;
-  platform->linAlg->adyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
+  const pfloat one = 1.0;
+  elliptic->adyManyPfloatKernel(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, precon->o_invDiagA);
 }
 
 void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
@@ -149,7 +149,6 @@ void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA)
       BuildLocalContinuousBlockDiagHex3D(elliptic, mesh, B, Br, Bs, Bt, diagA);
       break;
     }else{
-#pragma omp parallel for
       for(dlong eM = 0; eM < mesh->Nelements; ++eM)
         BuildLocalContinuousDiagHex3D(elliptic, mesh, eM, B, Br, Bs, Bt, diagA + eM * mesh->Np);
       break;
@@ -272,7 +271,6 @@ void BuildLocalContinuousBlockDiagHex3D(elliptic_t* elliptic,
                                         dfloat* A)
 {
   int var_coeff = elliptic->var_coeff;
-#pragma omp parallel for
   for(dlong eM = 0; eM < mesh->Nelements; ++eM) {
     for(int fld = 0; fld < elliptic->Nfields; fld++) {
       const dlong offset = fld * elliptic->Ntotal;

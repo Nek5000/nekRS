@@ -6,4 +6,4 @@ for x in "$@"; do
   fi
 done
 
-make -j install
+make install

@@ -25,7 +25,7 @@
  */
 
 extern "C"
-void ellipticUpdatePCG(const dlong & N,
+void FUNC(ellipticBlockUpdatePCG)(const dlong & N,
                        const dlong & offset,
                        const dfloat* __restrict__ cpu_invDegree,
                        const dfloat* __restrict__ cpu_p,
@@ -37,8 +37,10 @@ void ellipticUpdatePCG(const dlong & N,
 {
   dfloat rdotr = 0;
 
+#ifdef __NEKRS__OMP__
   #pragma omp parallel for collapse(2)
-  for(int fld = 0; fld < p_eNfields; fld++)
+#endif
+  for(int fld = 0; fld < p_Nfields; fld++)
     for(int i = 0; i < N; ++i) {
       const dlong n = i + fld * offset;
       cpu_x[n] += alpha * cpu_p[n];

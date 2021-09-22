@@ -35,3 +35,11 @@ double GenmapGetMaxRss() {
   return (double)(r_usage.ru_maxrss * 1024L);
 #endif
 }
+
+int log2ll(long long n) {
+  int k = 0;
+  while (n > 1)
+    n /= 2, k++;
+
+  return k;
+}

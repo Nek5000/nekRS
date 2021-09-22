@@ -117,6 +117,7 @@ SOFTWARE.
 #include <math.h>
 #include <stdlib.h>
 #include <occa.hpp>
+#include <string>
 
 #include "mpi.h"
 
@@ -236,6 +237,15 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 #define USE_OOGS
 
 enum oogs_mode { OOGS_AUTO, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI };
+enum oogs_modeExchange { OOGS_EX_PW, OOGS_EX_NBC };
+
+typedef struct {
+  int* sendcounts;
+  int* senddispls;
+  int* recvcounts;
+  int* recvdispls;
+  MPI_Comm comm;
+} nbc_t;
 
 typedef struct {
 
@@ -261,6 +271,9 @@ typedef struct {
   int earlyPrepostRecv;
 
   oogs_mode mode;
+  oogs_modeExchange modeExchange;
+
+  nbc_t nbc;
 
 } oogs_t;
 
@@ -270,9 +283,12 @@ void start(occa::memory &o_v, const int k, const int stride, const char *type, c
 void finish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 void startFinish(void *v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 void startFinish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
+void compile(const occa::device& device, std::string mode, MPI_Comm comm, bool verbose = false);
 oogs_t *setup(ogs_t *ogs, int nVec, int stride, const char *type, std::function<void()> callback, oogs_mode gsMode);
 oogs_t *setup(int N, long long int *ids, const int k, const int stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);
+void gpu_mpi(int val);
+int gpu_mpi();
 void destroy(oogs_t *h);
 
 }

@@ -146,6 +146,7 @@ C
       enddo 
 
       meshPartitioner=3 ! HYBRID (RSB+RCB)
+      connectivityTol=0.2
 
       ifprojfld(0) = .false. 
       ifprojfld(1) = .false. 
@@ -680,14 +681,9 @@ c set logical flags
             goto 999
          endif
       else if (index(c_out,'COMPNS') .eq. 1) then
-#ifdef CMTNEK
-         continue
-#else
          write(6,*) 'value: ',trim(c_out)
          write(6,*) 'not supported for problemType:equation!'
-         write(6,*) 'Recompile with CMTNEK ...'
          goto 999
-#endif
       else if (index(c_out,'INCOMPMHD') .eq. 1) then
          write(6,*) 'value: ',trim(c_out)
          write(6,*) 'not yet supported for problemType:equation!'
@@ -837,6 +833,10 @@ c set partitioner options
          meshPartitioner=4
       endif
 
+c set connectivity tolerance
+      call finiparser_getDbl(d_out,'mesh:connectivityTol',ifnd)
+      if(ifnd .eq. 1) connectivityTol = d_out
+
 100   if(ierr.eq.0) call finiparser_dump()
       return
 
@@ -898,6 +898,7 @@ C
       call bcast(idpss    ,  ldimt*isize)
 
       call bcast(meshPartitioner,isize)
+      call bcast(connectivityTol,wdsize)
 
       call bcast(iftmsh   , (ldimt1+1)*lsize)
       call bcast(ifprojfld, (ldimt1+1)*lsize)

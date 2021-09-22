@@ -50,7 +50,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
 
   dfloat rdotr1 = 0;
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform->timer.tic("dotp",1);
+    //platform->timer.tic("dotp",1);
 #endif
   if(serial) {
     rdotr1 = *((dfloat *) elliptic->o_tmpNormr.ptr());
@@ -62,7 +62,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   }
   MPI_Allreduce(MPI_IN_PLACE, &rdotr1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 #ifdef ELLIPTIC_ENABLE_TIMER
-    platform->timer.toc("dotp");
+    //platform->timer.toc("dotp");
 #endif
 
   return rdotr1;

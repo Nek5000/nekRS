@@ -46,5 +46,16 @@ dfloat computeCFL(nrs_t* nrs)
                  mesh->o_U,
                  platform->o_mempool.slice0);
 
-  return platform->linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+  // find the local maximum of CFL number
+  platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
+
+  // finish reduction
+  dfloat cfl = 0.f;
+  for(dlong n = 0; n < mesh->Nelements; ++n)
+    cfl  = mymax(cfl, platform->mempool.slice0[n]);
+
+  dfloat gcfl = 0.f;
+  MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+  return gcfl;
 }

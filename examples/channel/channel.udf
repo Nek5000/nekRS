@@ -25,7 +25,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     o_mue.copyFrom(o_nekMue, mesh->Nlocal*sizeof(dfloat));
 }
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
 }
 

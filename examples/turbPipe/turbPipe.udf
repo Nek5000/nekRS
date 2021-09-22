@@ -6,14 +6,16 @@
 #include "plugins/velRecycling.hpp"
 #include "plugins/avg.hpp"
 
-#include "casedata.h"
+static dfloat ZLENGTH;
+static int NSLABS;
+static int NELSLAB;
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  velRecycling::buildKernel(nrs);
-  avg::buildKernel(nrs);
+  velRecycling::buildKernel(kernelInfo);
+  avg::buildKernel(kernelInfo);
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -30,6 +32,18 @@ void UDF_Setup(nrs_t *nrs)
   velRecycling::setup(nrs, nrs->o_usrwrk, offset, bID, wbar);
 
   avg::setup(nrs);
+}
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "zlength", ZLENGTH);
+  platform->par->extract("casedata", "nslabs", NSLABS);
+  platform->par->extract("casedata", "nelslab", NELSLAB);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = ZLENGTH;
+    nek_cb_scnrs[1] = NSLABS;
+    nek_cb_scnrs[2] = NELSLAB;
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

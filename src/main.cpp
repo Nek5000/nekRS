@@ -62,6 +62,7 @@
 
 #include <mpi.h>
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -110,13 +111,33 @@ int main(int argc, char** argv)
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+
+  {
+    if(!getenv("NEKRS_HOME")) {
+      std::cout << "FATAL ERROR: Cannot find env variable NEKRS_HOME!" << "\n";
+      MPI_Finalize();
+      exit(EXIT_FAILURE);
+    }
+
+    std::string bin(getenv("NEKRS_HOME"));
+    bin += "/bin/nekrs";
+    const char* ptr = realpath(bin.c_str(), NULL);
+    if(!ptr) {
+      std::cout << "FATAL ERROR: Cannot find " << bin << "!\n";
+      MPI_Finalize();
+      exit(EXIT_FAILURE);
+    }
+  }
+
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv);
 
   if (cmdOpt->debug) {
-    if (rank == 0) {
-      std::cout << "Attach debugger, then press enter to continue\n";
-      std::cin.get();
-    }
+    for(int currRank = 0; currRank < size; ++currRank)
+      if(rank == currRank) printf("rank %d: pid<%d>\n", rank, ::getpid());
+    fflush(stdout); 
+    MPI_Barrier(comm);
+    if (rank == 0) std::cout << "Attach debugger, then press enter to continue\n";
+    if (rank == 0) std::cin.get(); 
     MPI_Barrier(comm);
   }
   if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
@@ -130,6 +151,7 @@ int main(int argc, char** argv)
                cmdOpt->backend, cmdOpt->deviceID);
 
   if (cmdOpt->buildOnly) {
+    nekrs::finalize();
     MPI_Finalize();
     return EXIT_SUCCESS;
   }
@@ -138,6 +160,8 @@ int main(int argc, char** argv)
   double elapsedTime = (MPI_Wtime() - time0);
 
   const int runTimeStatFreq = 500;
+  const int updCheckFreq = 20;
+
   int tStep = 0;
   double time = nekrs::startTime();
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
@@ -162,7 +186,7 @@ int main(int argc, char** argv)
     if (lastStep && nekrs::endTime() > 0) 
       dt = nekrs::endTime() - time;
     else
-      dt = nekrs::dt();
+      dt = nekrs::dt(tStep);
 
     int outputStep = nekrs::outputStep(time+dt, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
@@ -175,10 +199,12 @@ int main(int argc, char** argv)
 
     if (outputStep) nekrs::outfld(time); 
 
-    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics();
+    if (tStep%runTimeStatFreq == 0 || lastStep) nekrs::printRuntimeStatistics(tStep);
 
     MPI_Barrier(comm);
     elapsedTime += (MPI_Wtime() - timeStart);
+
+    if(tStep%updCheckFreq) nekrs::processUpdFile();
   }
   MPI_Pcontrol(0);
 
@@ -188,6 +214,7 @@ int main(int argc, char** argv)
   }
   fflush(stdout);
 
+  nekrs::finalize();
   MPI_Finalize();
   return EXIT_SUCCESS;
 }
@@ -200,6 +227,8 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   cmdOptions* cmdOpt = new cmdOptions();
 
   int err = 0;
+  int printHelp = 0;
+  std::string helpCat;
 
   if (rank == 0) {
     while(1) {
@@ -207,14 +236,15 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       {
         {"setup", required_argument, 0, 's'},
         {"cimode", required_argument, 0, 'c'},
-	{"build-only", required_argument, 0, 'b'},
+    	{"build-only", required_argument, 0, 'b'},
         {"debug", no_argument, 0, 'd'},
         {"backend", required_argument, 0, 't'},
         {"device-id", required_argument, 0, 'i'},
+        {"help", optional_argument, 0, 'h'},
         {0, 0, 0, 0}
       };
       int option_index = 0;
-      int c = getopt_long (argc, argv, "s:", long_options, &option_index);
+      int c = getopt_long (argc, argv, "", long_options, &option_index);
 
       if (c == -1)
         break;
@@ -225,13 +255,13 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
         break;
       case 'b':
         cmdOpt->buildOnly = 1;
-	cmdOpt->sizeTarget = atoi(optarg);
+	    cmdOpt->sizeTarget = atoi(optarg);
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
         if (cmdOpt->ciMode < 1) {
           std::cout << "ERROR: ci test id has to be >0!\n";
-          err = 1;
+          printHelp = 1;
         }
         break;
       case 'd':
@@ -243,6 +273,11 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
       case 't':
         cmdOpt->backend.assign(optarg);
         break;
+      case 'h':
+        if(!optarg && argv[optind] != NULL && argv[optind][0] != '-') {
+          helpCat.assign(argv[optind++]);
+        }
+        break;
       default:
         err = 1;
       }
@@ -253,37 +288,52 @@ static cmdOptions* processCmdLineOptions(int argc, char** argv)
   strcpy(buf, cmdOpt->setupFile.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->setupFile.assign(buf);
+
   strcpy(buf, cmdOpt->deviceID.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->deviceID.assign(buf);
+
   strcpy(buf, cmdOpt->backend.c_str());
   MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
   cmdOpt->backend.assign(buf);
+
   MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->ciMode, sizeof(cmdOpt->ciMode), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->debug, sizeof(cmdOpt->debug), MPI_BYTE, 0, comm);
 
   if(cmdOpt->setupFile.empty()){
-    err++;
+    printHelp++;
   } else {
     std::string casepath, casename;
     size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
     casepath = cmdOpt->setupFile.substr(0,last_slash);
+    chdir(casepath.c_str()); 
     casename = cmdOpt->setupFile.substr(last_slash, cmdOpt->setupFile.length() - last_slash);
     if(casepath.length() > 0) chdir(casepath.c_str());
     cmdOpt->setupFile.assign(casename);
   }
 
+  MPI_Bcast(&printHelp, sizeof(printHelp), MPI_BYTE, 0, comm);
   MPI_Bcast(&err, sizeof(err), MPI_BYTE, 0, comm);
-  if (err) {
-    if (rank == 0)
-      std::cout << "usage: ./nekrs --setup <case name> "
-                << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
-                << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
-                << "\n";
+  if (err | printHelp) {
+    if (rank == 0) {
+      if (helpCat == "par") {
+        std::string install_dir;
+        install_dir.assign(getenv("NEKRS_HOME"));
+        std::ifstream f(install_dir + "/include/parHelp.txt");
+        if (f.is_open()) std::cout << f.rdbuf();
+        f.close();
+      } else {
+        std::cout << "usage: ./nekrs [--help <par>] "
+                  << "--setup <case name> "
+                  << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
+                  << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
+                 << "\n";
+      }
+    }
     MPI_Finalize();
-    exit(EXIT_FAILURE);
+    exit((err) ? EXIT_FAILURE : EXIT_SUCCESS);
   }
 
   return cmdOpt;

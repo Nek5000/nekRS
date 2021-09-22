@@ -665,15 +665,27 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   //use the bc flags to find masked ids
   dlong Nmasked = 0;
   for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-    if (mapB[n] == bigNum)
+    const dlong node = n % mesh->Np;
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
+    if (isEdgeNode)
+      Nmasked++;
+    else if (mapB[n] == bigNum)
       mapB[n] = 0.;
     else if (mapB[n] == 1)     //Dirichlet boundary
       Nmasked++;
   }
   dlong* maskIds = (dlong*) calloc(Nmasked, sizeof(dlong));
   Nmasked = 0;
-  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
+  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++){
+    const dlong node = n % mesh->Np;
+    bool isEdgeNode = false;
+    for(int edge = 0 ; edge < mesh->NedgeNodes; ++edge)
+      if(mesh->edgeNodes[edge] == node) isEdgeNode = true;
     if (mapB[n] == 1) maskIds[Nmasked++] = n;
+    else if (isEdgeNode) maskIds[Nmasked++] = n;
+  }
   //make a masked version of the global id numbering
   memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)
@@ -872,29 +884,13 @@ void MGLevel::build(
   free(casted_Sy);
   free(casted_Sz);
   free(casted_D);
-
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const string oklpath = install_dir + "/okl/elliptic/";
-  string filename, kernelName;
+  
+  const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
 
   {
-      occa::properties properties = platform->kernelInfo;
-      properties["defines/p_Nq"] = Nq;
-      properties["defines/p_Nq_e"] = Nq_e;
-      properties["defines/p_restrict"] = 0;
-      properties["defines/p_overlap"] = (int) overlap;
-      if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
-        properties["defines/p_restrict"] = 1;
-
-      filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
-      if(serial) {
-        filename = oklpath + "ellipticSchwarzSolverHex3D.c";
-        properties["okl/enabled"] = false;
-      }
-      preFDMKernel = platform->device.buildKernel(filename, "preFDM", properties);
-      fusedFDMKernel = platform->device.buildKernel(filename, "fusedFDM", properties);
-      postFDMKernel = platform->device.buildKernel(filename, "postFDM", properties);
+    preFDMKernel = platform->kernels.getKernel("preFDM" + suffix);
+    fusedFDMKernel = platform->kernels.getKernel("fusedFDM" + suffix);
+    postFDMKernel = platform->kernels.getKernel("postFDM" + suffix);
   }
 }
 
@@ -945,4 +941,5 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
     oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   }
+  if (elliptic->Nmasked) mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Su);
 }

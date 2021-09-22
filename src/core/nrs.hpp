@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <getopt.h>
+#include <vector>
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
@@ -15,7 +16,6 @@
 #include "cds.hpp"
 #include "linAlg.hpp"
 #include "timer.hpp"
-#include "inipp.hpp"
 #include "platform.hpp"
 
 struct nrs_t
@@ -30,6 +30,7 @@ struct nrs_t
   elliptic_t* wSolver;
   elliptic_t* uvwSolver;
   elliptic_t* pSolver;
+  elliptic_t* meshSolver;
 
   cds_t* cds;
 
@@ -41,15 +42,17 @@ struct nrs_t
 
   int Nscalar;
   dlong fieldOffset;
-  setupAide vOptions, pOptions;
-
-  inipp::Ini<char> *par;
+  setupAide vOptions, pOptions, mOptions;
 
   int NVfields, NTfields;
 
+  int converged;
 
   dfloat dt[3], idt;
   dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat CFL;
+  dfloat unitTimeCFL;
+
   dfloat dp0thdt;
   int tstep;
   int lastStep;
@@ -65,6 +68,12 @@ struct nrs_t
   dfloat* U, * P;
   dfloat* BF, * FU;
 
+  // unit normal flow direction for constant flow rate
+  dfloat flowDirection[3];
+  int fromBID;
+  int toBID;
+  dfloat flowRate;
+
   //RK Subcycle Data
   int nRK;
   dfloat* coeffsfRK, * weightsRK, * nodesRK;
@@ -77,9 +86,6 @@ struct nrs_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* VmapB;
-  occa::memory o_VmapB;
-
   int Nsubsteps;
   dfloat* Ue, sdt;
   occa::memory o_Ue;
@@ -89,6 +95,7 @@ struct nrs_t
 
   dfloat rho, mue;
   occa::memory o_rho, o_mue;
+  occa::memory o_meshRho, o_meshMue;
 
   dfloat* usrwrk;
   occa::memory o_usrwrk;
@@ -104,8 +111,6 @@ struct nrs_t
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
 
-  occa::kernel mueDivKernel;
-
   occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
   occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
   occa::kernel subCycleRKUpdateKernel;
@@ -119,7 +124,13 @@ struct nrs_t
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 
+  occa::kernel computeFaceCentroidKernel;
+  occa::kernel computeFieldDotNormalKernel;
+
   occa::memory o_U, o_P;
+
+  occa::memory o_Uc, o_Pc;
+  occa::memory o_prevProp;
 
   occa::memory o_relUrst;
   occa::memory o_Urst;
@@ -152,7 +163,6 @@ struct nrs_t
   occa::kernel sumMakefKernel;
   occa::kernel pressureRhsKernel;
   occa::kernel pressureDirichletBCKernel;
-  occa::kernel pressureUpdateKernel;
 
   occa::kernel velocityRhsKernel;
   occa::kernel velocityNeumannBCKernel;
@@ -166,9 +176,12 @@ struct nrs_t
   occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
   occa::kernel maskCopyKernel;
+  occa::kernel maskKernel;
 
   int* EToB;
+  int* EToBMesh;
   occa::memory o_EToB;
+  occa::memory o_EToBMesh;
 
   occa::properties* kernelInfo;
 };
@@ -177,26 +190,33 @@ struct nrs_t
 #include "io.hpp"
 
 // std::to_string might be not accurate enough
-static string to_string_f(double a)
+static std::string to_string_f(double a)
 {
-  stringstream s;
+  std::stringstream s;
   s << std::scientific << a;
   return s.str();
 }
 
-static std::vector<std::string> serializeString(const std::string sin)
+static std::vector<std::string> serializeString(const std::string sin, char dlim)
 {
   std::vector<std::string> slist;
-  string s(sin);
+  std::string s(sin);
   s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
   std::stringstream ss;
   ss.str(s);
   while( ss.good() ) {
     std::string substr;
-    std::getline(ss, substr, ',');
+    std::getline(ss, substr, dlim);
     slist.push_back(substr);
   }
   return slist;
 }
+
+void evaluateProperties(nrs_t* nrs, const double timeNew);
+
+void compileKernels();
+
+std::vector<int>
+determineMGLevels(std::string section);
 
 #endif

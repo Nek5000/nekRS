@@ -1,0 +1,61 @@
+#!/bin/bash
+set -e -a
+
+: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+: ${NEKRS_CC:="mpicc"}
+: ${NEKRS_CXX:="mpic++"}
+: ${NEKRS_FC:="mpif77"}
+: ${NEKRS_COMPILER_FLAGS:=""}
+
+: ${NEKRS_GPU_MPI:=1}
+
+: ${OCCA_CXX:="g++"}
+: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native"}
+: ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast"}
+: ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
+
+: ${OCCA_ENABLE_CUDA:=1}
+: ${OCCA_ENABLE_HIP:=1}
+: ${OCCA_ENABLE_OPENCL:=1}
+: ${AMGX_ENABLED:=0}
+
+: ${NEKRS_CXXFLAGS:="${NEKRS_COMPILER_FLAGS}"}
+: ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
+: ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
+
+mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
+NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
+
+NEKRS_BUILD_DIR=`pwd`/build
+mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
+cd ${NEKRS_BUILD_DIR}
+
+cmake -Wno-dev \
+      -Wfatal-errors \
+      -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+      -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
+      -DCMAKE_C_COMPILER="${NEKRS_CC}" \
+      -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
+      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
+      -DOCCA_CXX="${OCCA_CXX}" \
+      -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
+      -DOCCA_CUDA_COMPILER_FLAGS="${OCCA_CUDA_COMPILER_FLAGS}" \
+      -DOCCA_HIP_COMPILER_FLAGS="${OCCA_HIP_COMPILER_FLAGS}" \
+      -DOCCA_OPENCL_COMPILER_FLAGS="${OCCA_OPENCL_COMPILER_FLAGS}" \
+      -DENABLE_CUDA="${OCCA_ENABLE_CUDA}" \
+      -DENABLE_HIP="${OCCA_ENABLE_HIP}" \
+      -DENABLE_OPENCL="${OCCA_ENABLE_OPENCL}" \
+      -DGPU_MPI="${NEKRS_GPU_MPI}" \
+      -DHYPRE_BIGINT=1 \
+      -DENABLE_AMGX="${AMGX_ENABLED}" \
+      .. 
+
+if [ $? -eq 0 ]; then
+  echo ""        
+  echo "--> Now just run \`cmake --build ./build --target install -j8\`"
+fi

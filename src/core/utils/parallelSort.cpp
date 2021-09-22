@@ -76,12 +76,6 @@ void parallelSort(int size, int rank, MPI_Comm comm,
                   void (* match)(void*, void*)
                   )
 {
-#if 0
-  int rank, size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-#endif
-
   /* cast void * to char * */
   char* v = (char*) vv;
 
