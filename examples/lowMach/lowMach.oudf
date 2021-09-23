@@ -1,17 +1,3 @@
-// 'device function' to return real gas properties
-// as functions of temperature
-void usrRealGasProperty(dfloat& T, dfloat& rho, dfloat& visc, dfloat& cond, dfloat& Cp)
-{
-
-}
-
-// 'device function' to return real gas thermal expension coefficient 
-// alpha =  -(1/rho)*(drho/dT)
-void usrRealGasAlphav(dfloat& T, dfloat& alpha)
-{ 
-
-}
-
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
@@ -50,41 +36,16 @@ void scalarDirichletConditions(bcData *bc)
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const int id = e*p_Np + n;
-	  
-	  
-	  // for original lowMach example case 
+
       UPROP[id + 0*uOffset] = 1.0;
       SPROP[id + 0*sOffset] = 1.0;
       UPROP[id + 1*uOffset] = 1/TEMP[id];
-      SPROP[id + 1*sOffset] = 1/TEMP[id];
-	  
-	  
-      // for real gas case 
-	  
-	  //dfloat rho;
-      //dfloat visc;
-      //dfloat cond;
-	  //dfloat Cp;
-	  //dfloat T = TEMP[id];
-	  
-	  //usrRealGasProperty(T,rho,visc,cond,Cp);
-	  // if solving enthalpy
-      //UPROP[id + 0*uOffset] = visc;
-      //SPROP[id + 0*sOffset] = cond/Cp; 
-      //UPROP[id + 1*uOffset] = rho;
-      //SPROP[id + 1*sOffset] = rho;
-
-	  // if solving temperature
-	  //UPROP[id + 0*uOffset] = visc;
-      //SPROP[id + 0*sOffset] = cond; 
-      //UPROP[id + 1*uOffset] = rho;
-      //SPROP[id + 1*sOffset] = rho*Cp;
-	  
+      SPROP[id + 1*sOffset] = 1/TEMP[id];	  
     }
   }
 }
 
-@kernel void alphav(const dlong Nelements,
+@kernel void expansionCoeff(const dlong Nelements,
                     @restrict const dfloat * TEMP,
                     @restrict dfloat * ALPHAV)
 {
@@ -92,11 +53,7 @@ void scalarDirichletConditions(bcData *bc)
     for(int n=0;n<p_Np;++n;@inner(0)){
       const int id = e*p_Np + n;
 
-	  dfloat alpha;
-	  dfloat T = TEMP[id];
-	  	  
-	  usrRealGasAlphav(T,alpha);
-	  ALPHAV[id] = alpha;
+	  ALPHAV[id] = 1.0/ TEMP[id];
       }    
   }
 }

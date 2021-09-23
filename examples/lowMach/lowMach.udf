@@ -9,34 +9,25 @@
 
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
-static occa::kernel alphavKernel;
-occa::memory o_alphav;
+static occa::kernel expansionCoeffKernel;
+occa::memory o_expansionCoeff;
 
 static dfloat P_DELTA;
 static dfloat P_GAMMA;
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
+// ideal gas
+  lowMach::qThermalIdealGasSingleComponent(time, o_div);
+
+// real gas
   mesh_t *mesh = nrs->meshV;
   platform_t* platform = platform_t::getInstance();  
   cds_t* cds = nrs->cds;
+  o_expansionCoeff = platform->device.malloc(nrs->fieldOffset*sizeof(dfloat));
+  expansionCoeffKernel(mesh->Nelements, cds->o_S, o_expansionCoeff);
+  lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
 
-  o_alphav = platform->device.malloc(nrs->fieldOffset*sizeof(dfloat));
-   
-// option 1 , for ideal gas
-//for ideal gas, alphav =  1/T
-//qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-// copy T to alphav
-  o_alphav.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat)); 
-// take inverse of 1/T
-  platform->linAlg->ady(mesh->Nlocal,1.0,o_alphav);
-  
-// option 2, for real Gas
-// alphav = -(1/rho)(drho/dT)  ! thermal expension coefficient
-// define alphav as a function of T in usrRealGasAlphav in .oudf file
-//  alphavKernel(mesh->Nelements, cds->o_S, o_alphav);
-
-  lowMach::qThermalIdealGasSingleComponent(time, o_div,o_alphav);
 }
 
 
@@ -63,7 +54,7 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/p_DELTA"] = P_DELTA;
   userQKernel = udfBuildKernel(kernelInfo, "userQ");
   userVpKernel = udfBuildKernel(kernelInfo, "userVp");
-  alphavKernel = udfBuildKernel(kernelInfo, "alphav");
+  expansionCoeffKernel = udfBuildKernel(kernelInfo, "expansionCoeff");
   lowMach::buildKernel(kernelInfo);
 }
 
