@@ -32,7 +32,7 @@
                          @restrict const dfloat*  Q,
                          @restrict const dfloat*  DIFF,
                          @restrict const dfloat*  RHOCP,
-						 @restrict const dfloat*  ALPHAV,
+                         @restrict const dfloat*  ALPHAV,
                          @restrict const dfloat*  SRC,
                          @restrict dfloat*  QTL)
 {
