@@ -54,8 +54,13 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   platform->options.setArgs("LOWMACH", "TRUE"); 
 }
 
+// qtl = (-1/(rho**2.0*Cp))*(drho/dt)*(div[k*grad[T] ] + qvol)
+// alphav = -(1/rho)(drho/dT)  ! thermal expension coefficient
+// for general real gas/fluid 
+// qtl = (alphav/(rho*Cp))*(div[k*grad[T] ] + qvol)
+// for ideal gas, alphav =  1/T
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
+void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div,occa::memory o_alphav)
 {
   qThermal = 1;
   nrs_t* nrs = the_nrs;
@@ -98,6 +103,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     cds->o_S,
     cds->o_diff,
     cds->o_rho,
+    o_alphav,
     platform->o_mempool.slice3,
     o_div);
 

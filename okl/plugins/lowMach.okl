@@ -32,6 +32,7 @@
                          @restrict const dfloat*  Q,
                          @restrict const dfloat*  DIFF,
                          @restrict const dfloat*  RHOCP,
+						 @restrict const dfloat*  ALPHAV,
                          @restrict const dfloat*  SRC,
                          @restrict dfloat*  QTL)
 {
@@ -79,7 +80,8 @@
           const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
           const dfloat JW   = vgeo[gid + p_JWID * p_Np];
 
-          const dfloat iRhoCpT = 1 / (RHOCP[id] * Q[id]);
+          //const dfloat iRhoCpT = 1 / (RHOCP[id] * Q[id]);
+		  const dfloat alpha = ALPHAV[id]/RHOCP[id];
           const dfloat qvol    = SRC[id];
 
           dfloat dudr = 0, duds = 0, dudt = 0;
@@ -108,7 +110,8 @@
           div += (drdy * dvdr + dsdy * dvds + dtdy * dvdt);
           div += (drdz * dwdr + dsdz * dwds + dtdz * dwdt);
 
-          QTL[id] += JW * iRhoCpT * (div + qvol);
+          //QTL[id] += JW * iRhoCpT * (div + qvol);
+		  QTL[id] += JW * alpha * (div + qvol);
         }
       }
     }
