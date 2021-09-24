@@ -242,7 +242,7 @@ err:
 void udfLoad(void)
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-  *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",1);
+  *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",0);
   *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
   *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
 }

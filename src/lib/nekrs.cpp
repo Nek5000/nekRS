@@ -147,13 +147,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     udfBuild(udfFile.c_str(), options);
-
-    if(buildOnly) {
-      *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
-      *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-    } else {
-      udfLoad();
-    }
+    udfLoad();
   }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
