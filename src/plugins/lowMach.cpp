@@ -14,6 +14,7 @@ namespace{
 static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
 static int qThermal = 0;
+static int irFlag = 0;
 static dfloat gamma0 = 1;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
@@ -54,120 +55,14 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
   platform->options.setArgs("LOWMACH", "TRUE"); 
 }
 
-// qtl = (-1/(rho**2.0*Cp))*(drho/dt)*(div[k*grad[T] ] + qvol)
-// alphav = -(1/rho)(drho/dT)  ! thermal expension coefficient
-// for general real gas/fluid 
-// qtl = (alphav/(rho*Cp))*(div[k*grad[T] ] + qvol)
-// for ideal gas, alphav =  1/T
-// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-
 void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 {
-  qThermal = 1;
-  nrs_t* nrs = the_nrs;
-  cds_t* cds = nrs->cds;
-  mesh_t* mesh = nrs->meshV;
-  linAlg_t * linAlg = platform->linAlg;
-
-  nrs->gradientVolumeKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_D,
-    nrs->fieldOffset,
-    cds->o_S,
-    platform->o_mempool.slice0);
-
-  oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
-
-  platform->linAlg->axmyVector(
-    mesh->Nlocal,
-    nrs->fieldOffset,
-    0,
-    1.0,
-    nrs->meshV->o_invLMM,
-    platform->o_mempool.slice0);
-
-  if(udf.sEqnSource) {
-    platform->timer.tic("udfSEqnSource", 1);
-    udf.sEqnSource(nrs, time, cds->o_S, platform->o_mempool.slice3);
-    platform->timer.toc("udfSEqnSource");
-  } else {
-    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
-  }
+	irFlag = 1;
+    qThermalRealGasSingleComponent(time,o_div,cds->o_S);
+} 
 
 
-  o_expansionCoeff = platform->device.malloc(nrs->fieldOffset*sizeof(dfloat));
-  o_expansionCoeff.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat));
-  platform->linAlg->ady(mesh->Nlocal,1.0,o_expansionCoeff);
-
-  qtlKernel(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_D,
-    nrs->fieldOffset,
-    platform->o_mempool.slice0,
-    cds->o_S,
-    cds->o_diff,
-    cds->o_rho,
-    o_expansionCoeff,
-    platform->o_mempool.slice3,
-    o_div);
-
-  oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-
-  platform->linAlg->axmy(
-    mesh->Nlocal,
-    1.0,
-    nrs->meshV->o_invLMM,
-    o_div);
-  
-  if(nrs->pSolver->allNeumann){
-    const dfloat dd = (1.0 - gamma0) / gamma0;
-    const dlong Nlocal = mesh->Nlocal;
-
-    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, platform->o_mempool.slice0);
-    const dfloat termQ = linAlg->sum(Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
-
-    surfaceFluxKernel(
-      mesh->Nelements,
-      mesh->o_sgeo,
-      mesh->o_vmapM,
-      nrs->o_EToB,
-      nrs->fieldOffset,
-      nrs->o_Ue,
-      platform->o_mempool.slice0
-    );
-    platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
-    dfloat termV = 0.0;
-    for(int i = 0 ; i < mesh->Nelements; ++i) termV += platform->mempool.slice0[i];
-    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-
-    p0thHelperKernel(Nlocal,
-      dd,
-      cds->o_rho,
-      nrs->o_rho,
-      nrs->meshV->o_LMM,
-      platform->o_mempool.slice0,
-      platform->o_mempool.slice1 
-    );
-    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
-    linAlg->axpby(Nlocal, -prhs, platform->o_mempool.slice1, 1.0, o_div);
-
-    dfloat Saqpq = 0.0;
-    for(int i = 0 ; i < nrs->nBDF; ++i){
-      Saqpq += nrs->coeffBDF[i] * nrs->p0th[i];
-    }
-    nrs->p0th[2] = nrs->p0th[1];
-    nrs->p0th[1] = nrs->p0th[0];
-
-    nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
-    nrs->dp0thdt = prhs * nrs->p0th[0];
-  }
-  qThermal = 0;
-}
-
-
-void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div,occa::memory o_expansionCoeff)
+void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div,occa::memory o_Q)
 {
   qThermal = 1;
   nrs_t* nrs = the_nrs;
@@ -207,10 +102,10 @@ void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div,occ
     mesh->o_D,
     nrs->fieldOffset,
     platform->o_mempool.slice0,
-    cds->o_S,
+	irFlag,
+    o_Q,
     cds->o_diff,
     cds->o_rho,
-    o_expansionCoeff,
     platform->o_mempool.slice3,
     o_div);
 
