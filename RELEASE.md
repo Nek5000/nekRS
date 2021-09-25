@@ -1,3 +1,8 @@
+# Hofix Release v21.1.1
+
+* Fix various potential race conditions 
+* Fix `mcmodel` issue on ppc 
+
 # Release v21.1
 
 ## What is new? 
