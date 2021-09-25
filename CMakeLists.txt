@@ -199,6 +199,7 @@ set(SRC
     src/core/utils/parallelSort.cpp
     src/core/utils/tinyexpr.c
     src/core/setupAide.cpp
+    src/core/printHeader.cpp
     src/core/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
@@ -234,7 +235,7 @@ set(SRC
 )
 
 set_property(
-   SOURCE src/lib/nekrs.cpp 
+   SOURCE src/core/printHeader.cpp 
    APPEND PROPERTY COMPILE_DEFINITIONS
    GITCOMMITHASH="${GIT_COMMIT_HASH}"
    NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
