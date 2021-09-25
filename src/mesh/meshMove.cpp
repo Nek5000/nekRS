@@ -52,12 +52,9 @@ void mesh_t::update(){
     computeInvLMM();
     surfaceGeometricFactorsKernel(
         Nelements,
-        o_D,
         o_gllw,
         o_faceNodes,
-        o_x,
-        o_y,
-        o_z,
+        o_vgeo,
         o_sgeo
     );
 }
