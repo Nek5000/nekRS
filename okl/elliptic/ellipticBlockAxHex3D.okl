@@ -168,6 +168,8 @@
       }
     }
 
+    @barrier("local");
+
     // write out
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -356,6 +358,8 @@
         }
       }
     }
+
+    @barrier("local");
 
     // write out
 
@@ -549,6 +553,8 @@
       }
     }
 
+    @barrier("local");
+
     // write out
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -738,6 +744,8 @@
         }
       }
     }
+
+    @barrier("local");
 
     // write out
 
@@ -936,6 +944,7 @@
     }
 
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
@@ -1007,6 +1016,7 @@
 
     // prefetch q
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           element = elementList[e];
@@ -1139,6 +1149,7 @@
 
 // loop over slabs
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
@@ -1209,6 +1220,7 @@
 
     // prefetch q
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           if(k == 0) s_D[j][i] = D[p_Nq * j + i];
@@ -1332,6 +1344,7 @@
     }
 
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
@@ -1403,6 +1416,7 @@
 
     // prefetch q
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           element = elementList[e];
@@ -1525,6 +1539,7 @@
       }
     }
     for(int k = 0; k < p_Nq; ++k) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq

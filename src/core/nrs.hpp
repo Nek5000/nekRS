@@ -173,7 +173,6 @@ struct nrs_t
   occa::kernel setEllipticCoeffKernel;
   occa::kernel setEllipticCoeffPressureKernel;
 
-  occa::kernel pressureAxKernel;
   occa::kernel curlKernel;
   occa::kernel maskCopyKernel;
   occa::kernel maskKernel;

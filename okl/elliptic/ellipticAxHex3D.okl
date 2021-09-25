@@ -65,6 +65,7 @@
     // Layer by layer
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           // prefetch geometric factors
@@ -133,8 +134,8 @@
         }
       }
     }
-
-    // write out
+    
+    @barrier("local");
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
@@ -191,6 +192,7 @@
     // Layer by layer
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           // prefetch geometric factors
@@ -264,6 +266,8 @@
       }
     }
 
+    @barrier("local");
+
     // write out
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -313,6 +317,8 @@
         element = elementList[e];
       }
 
+    @barrier("local");
+
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         // load pencil of u into register
@@ -325,9 +331,12 @@
       }
     }
 
+    @barrier("local");
+
     // Layer by layer
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           // prefetch geometric factors
@@ -401,6 +410,8 @@
       }
     }
 
+    @barrier("local");
+
     // write out
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -451,6 +462,8 @@
         element = elementList[e];
       }
 
+    @barrier("local");
+
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         // load pencil of u into register
@@ -463,9 +476,12 @@
       }
     }
 
+    @barrier("local");
+
     // Layer by layer
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           // prefetch geometric factors
@@ -534,6 +550,8 @@
         }
       }
     }
+
+    @barrier("local");
 
     // write out
 
@@ -612,6 +630,7 @@
     // Layer by layer
 //    #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
+      @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dfloat rn = s_gllwz[0][i];
@@ -747,6 +766,7 @@
           r_Aq[k] += r_Auk;
         }
     }
+    @barrier("local");
 
     // write out
 
