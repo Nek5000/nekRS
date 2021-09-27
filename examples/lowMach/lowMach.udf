@@ -9,7 +9,6 @@
 
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
-static occa::kernel expansionCoeffKernel;
 occa::memory o_expansionCoeff;
 
 static dfloat P_DELTA;
@@ -21,8 +20,9 @@ void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
   lowMach::qThermalIdealGasSingleComponent(time, o_div);
 
 // real gas
-//  expansionCoeffKernel(mesh->Nelements, cds->o_S, o_expansionCoeff);
-//  lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
+// o_expansionCoeff.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat)); 
+// platform->linAlg_t->ady(mesh->Nlocal,1.0,o_expansionCoeff);
+// lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
 }
 
 
@@ -49,7 +49,6 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/p_DELTA"] = P_DELTA;
   userQKernel = udfBuildKernel(kernelInfo, "userQ");
   userVpKernel = udfBuildKernel(kernelInfo, "userVp");
-  expansionCoeffKernel = udfBuildKernel(kernelInfo, "expansionCoeff");
   lowMach::buildKernel(kernelInfo);
 }
 

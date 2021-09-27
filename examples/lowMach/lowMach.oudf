@@ -44,16 +44,3 @@ void scalarDirichletConditions(bcData *bc)
     }
   }
 }
-
-@kernel void expansionCoeff(const dlong Nelements,
-                    @restrict const dfloat * TEMP,
-                    @restrict dfloat * ALPHAV)
-{
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
-
-	  ALPHAV[id] = 1.0/ TEMP[id];
-      }    
-  }
-}

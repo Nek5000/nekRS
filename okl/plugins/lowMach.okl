@@ -29,11 +29,10 @@
                          @restrict const dfloat*  D,
                          const dlong offset,
                          @restrict const dfloat*  gradQ,
-                         const dlong irFlag,
+                         const dlong expansionCoeff,
                          @restrict const dfloat*  Q,
                          @restrict const dfloat*  DIFF,
                          @restrict const dfloat*  RHOCP,
-						 @restrict const dfloat*  expansionCoeff,
                          @restrict const dfloat*  SRC,
                          @restrict dfloat*  QTL)
 {
@@ -82,9 +81,9 @@
           const dfloat JW   = vgeo[gid + p_JWID * p_Np];
 
 
-          const dfloat alpha  = 0.0;
-          if (irFlag == 0)  alpha = Q[id]/RHOCP[id];
-          if (irFlag == 1)  alpha = 1.0/(RHOCP[id] * Q[id]);
+          dfloat alpha  = 0.0;
+          if (expansionCoeff == 0) {  alpha = Q[id]/RHOCP[id]; }
+          else { alpha = 1.0/(RHOCP[id] * Q[id]); }
 
           const dfloat qvol    = SRC[id];
 

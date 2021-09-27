@@ -14,7 +14,7 @@ namespace{
 static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
 static int qThermal = 0;
-static int irFlag = 0;
+static int expansionCoeff = 0;
 static dfloat gamma0 = 1;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
@@ -57,7 +57,7 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
 
 void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 {
-	irFlag = 1;
+	expansionCoeff = 1; 
     qThermalRealGasSingleComponent(time,o_div,cds->o_S);
 } 
 
@@ -102,7 +102,7 @@ void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div,occ
     mesh->o_D,
     nrs->fieldOffset,
     platform->o_mempool.slice0,
-	irFlag,
+	expansionCoeff,
     o_Q,
     cds->o_diff,
     cds->o_rho,
