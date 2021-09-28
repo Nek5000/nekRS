@@ -281,8 +281,11 @@ namespace occa {
         sys::addCompilerLibraryFlags(compilerFlags);
       }
 
-      //---[ PTX Check Command ]--------
       std::stringstream command;
+
+#if 0
+
+      //---[ PTX Check Command ]--------
       if (allProps.has("compiler_env_script")) {
         command << allProps["compiler_env_script"] << " && ";
       }
@@ -314,13 +317,13 @@ namespace occa {
 #endif
       io::sync(ptxBinaryFilename);
 
-      //================================
+#endif
 
       //---[ Compiling Command ]--------
       command.str("");
       command << allProps["compiler"]
               << ' ' << compilerFlags
-              << " -ptx"
+              << " -fatbin -Xptxas -v"
 #if (OCCA_OS == OCCA_WINDOWS_OS)
               << " -D OCCA_OS=OCCA_WINDOWS_OS -D _MSC_VER=1800"
 #endif
