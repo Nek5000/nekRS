@@ -107,9 +107,6 @@ mesh_t *createMesh(MPI_Comm comm,
   // connect elements using parallel sort
   meshParallelConnect(mesh);
 
-  // connect elements to boundary faces
-  meshConnectBoundary(mesh);
-
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (platform->comm.mpiRank == 0) {
@@ -249,9 +246,6 @@ mesh_t *createMeshV(
 
   // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
   meshParallelConnect(mesh);
-
-  // find mesh->EToB, required mesh->EToV and mesh->boundaryInfo
-  meshConnectBoundary(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);

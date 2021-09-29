@@ -174,11 +174,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  //copy boundary flags
-  elliptic->o_EToB = platform->device.malloc(
-    mesh->Nelements * mesh->Nfaces * elliptic->Nfields * sizeof(int),
-    elliptic->EToB);
-
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);

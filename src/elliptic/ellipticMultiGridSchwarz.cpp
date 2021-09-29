@@ -607,8 +607,6 @@ void gen_operators(FDMOperators* op, ElementLengths* lengths, elliptic_t* ellipt
 
 mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
 {
-
-  //platform_t* platform = platform_t::getInstance();
   mesh_t* meshRoot = elliptic->mesh;
 
   mesh_t* mesh = new mesh_t();
@@ -634,7 +632,10 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   memcpy(mesh->EToV, meshRoot->EToV, mesh->Nverts * mesh->Nelements * sizeof(hlong));
 
   meshParallelConnect(mesh);
-  meshConnectBoundary(mesh);
+
+  mesh->EToB = (int*) calloc(mesh->Nfaces * mesh->Nelements, sizeof(int));
+  memcpy(mesh->EToB, meshRoot->EToB, mesh->Nfaces * mesh->Nelements * sizeof(int));
+
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
   meshHaloSetup(mesh);
   meshPhysicalNodesHex3D(mesh);
@@ -651,11 +652,11 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   for (dlong e = 0; e < mesh->Nelements; e++) {
     for (int n = 0; n < mesh->Np; n++) mapB[n + e * mesh->Np] = bigNum;
     for (int f = 0; f < mesh->Nfaces; f++) {
-      int bc = mesh->EToB[f + e * mesh->Nfaces];
+      const int bc = mesh->EToB[f + e * mesh->Nfaces];
       if (bc > 0) {
         for (int n = 0; n < mesh->Nfp; n++) {
-          int BCFlag = elliptic->BCType[bc];
-          int fid = mesh->faceNodes[n + f * mesh->Nfp];
+          const int BCFlag = elliptic->BCType[bc];
+          const int fid = mesh->faceNodes[n + f * mesh->Nfp];
           mapB[fid + e * mesh->Np] = mymin(BCFlag,mapB[fid + e * mesh->Np]);
         }
       }

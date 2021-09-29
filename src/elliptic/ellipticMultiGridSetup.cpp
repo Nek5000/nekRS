@@ -29,8 +29,6 @@
 
 void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
-  
-
   // setup new object with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
   mesh_t* mesh = elliptic->mesh;

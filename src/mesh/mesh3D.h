@@ -42,9 +42,6 @@ mesh3D* meshParallelReaderHex3D(char* fileName);
 // build connectivity in serial
 void meshConnect3D(mesh3D* mesh);
 
-// build element-boundary connectivity
-void meshConnectBoundary3D(mesh3D* mesh);
-
 // build connectivity in parallel
 void meshParallelConnect3D(mesh3D* mesh);
 

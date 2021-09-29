@@ -75,10 +75,6 @@ struct mesh_t
   dlong* elementInfo; //type of element
   occa::memory o_elementInfo;
 
-  // boundary faces
-  hlong NboundaryFaces; // number of boundary faces
-  hlong* boundaryInfo; // list of all boundary faces (type, vertex-1, vertex-2, vertex-3) in the mesh
-
   // MPI halo exchange info
   dlong totalHaloPairs;   // number of elements to be sent in halo exchange
   dlong* haloElementList; // sorted list of elements to be sent in halo exchange
@@ -273,9 +269,6 @@ void meshHaloExchangeBlocking(mesh_t* mesh,
 
 // print out parallel partition i
 void meshPartitionStatistics(mesh_t* mesh);
-
-// build element-boundary connectivity
-void meshConnectBoundary(mesh_t* mesh);
 
 void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,

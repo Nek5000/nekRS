@@ -9,7 +9,6 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshBasisHex3D.cpp
     ${MESH_SOURCE_DIR}/meshApplyElementMatrix.cpp
     ${MESH_SOURCE_DIR}/meshConnect.cpp
-    ${MESH_SOURCE_DIR}/meshConnectBoundary.cpp
     ${MESH_SOURCE_DIR}/meshConnectFaceNodes3D.cpp
     ${MESH_SOURCE_DIR}/meshConnectPeriodicFaceNodes3D.cpp
     ${MESH_SOURCE_DIR}/meshFree.cpp

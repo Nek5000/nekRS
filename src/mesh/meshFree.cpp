@@ -41,9 +41,6 @@ void meshFree(mesh_t* mesh)
 
   if(mesh->elementInfo) free(mesh->elementInfo);   //type of element
 
-  // boundary faces
-  if(mesh->boundaryInfo) free(mesh->boundaryInfo);   // list of boundary faces (type, vertex-1, vertex-2, vertex-3)
-
   // MPI halo exchange info
   if(mesh->haloElementList) free(mesh->haloElementList);   // sorted list of elements to be sent in halo exchange
   if(mesh->NhaloPairs) free(mesh->NhaloPairs);        // number of elements worth of data to send/recv
