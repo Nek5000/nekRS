@@ -9,6 +9,8 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
+include(config/utils.cmake)
+
 #set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -306,27 +308,8 @@ endif()
 ### Install                                                                     #
 #################################################################################
 
-# Generate nekrs.conf                                                       #
-set(MPI_COMPILER_CMDLINE "")
-_MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-if (NOT MPI_COMPILER_RETURN EQUAL 0)
-  _MPI_check_compiler("CXX" "-showme" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-endif()
-if (NOT MPI_COMPILER_RETURN EQUAL 0)
-  _MPI_check_compiler("CXX" "-craype-verbose" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-endif()
-if (MPI_COMPILER_RETURN EQUAL 0 AND MPI_COMPILER_CMDLINE)
-  separate_arguments(MPI_COMPILER_CMDLINE)
-  list(GET MPI_COMPILER_CMDLINE 0 _MPI_UNDERLYING_COMPILER)
-  find_program(MPI_UNDERLYING_COMPILER ${_MPI_UNDERLYING_COMPILER})
-  if(EXISTS ${MPI_UNDERLYING_COMPILER})
-    message(NOTICE "-- Found MPI_UNDERLYING_COMPILER: ${MPI_UNDERLYING_COMPILER}")
-  else()
-    message(FATAL_ERROR "Cannot find ${MPI_UNDERLYING_COMPILER}")
-  endif()
-else()
-  message(FATAL_ERROR "Cannot identify underlying compiler used by ${CMAKE_CXX_COMPILER}")
-endif()
+# Generate nekrs.conf
+__MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
 
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
