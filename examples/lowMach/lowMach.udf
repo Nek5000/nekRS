@@ -21,8 +21,9 @@ void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 
 // real gas
 // cds_t *cds   = nrs->cds;
+// mesh_t *mesh = nrs->meshV;
 // o_expansionCoeff.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat)); 
-// platform->linAlg_t->ady(mesh->Nlocal,1.0,o_expansionCoeff);
+// platform->linAlg->ady(mesh->Nlocal,1.0,o_expansionCoeff);
 // lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
 }
 
