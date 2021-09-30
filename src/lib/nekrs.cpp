@@ -294,6 +294,9 @@ void outfld(double time, std::string suffix)
   if(lastOutputTime == 0)
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
+  if(platform->options.compareArgs("MOVING MESH", "TRUE"))
+    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+
   writeFld(nrs, time, suffix);
   lastOutputTime = time;
 
