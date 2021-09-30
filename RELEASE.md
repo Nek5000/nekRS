@@ -1,7 +1,10 @@
-# Hofix Release v21.1.1
+# Release v21.1.1
 
+* Multi-session (uncoupled) support
 * Fix various potential race conditions 
 * Fix `mcmodel` issue on ppc 
+* Fix Dirichlet handling in Jacobi smoother
+* Fix minor performance regression in pressure solve
 
 # Release v21.1
 
