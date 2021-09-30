@@ -162,8 +162,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
        platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
-  platform->options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
-
   if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE"))
   {
     platform->options.getArgs("FLOW RATE", nrs->flowRate);

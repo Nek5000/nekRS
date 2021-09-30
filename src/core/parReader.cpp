@@ -111,6 +111,7 @@ static std::vector<std::string> meshKeys = {
   {"partitioner"},
   {"file"},
   {"connectivitytol"},
+  {"writetofieldfile"},
 };
 
 static std::vector<std::string> velocityKeys = {
@@ -1096,6 +1097,7 @@ void parseRegularization(const int rank, setupAide &options,
   }
 }
 void setDefaultSettings(setupAide &options, std::string casename, int rank) {
+  options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
   options.setArgs("FORMAT", std::string("1.0"));
 
   options.setArgs("CONSTANT FLOW RATE", "FALSE");
@@ -1525,6 +1527,27 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       std::ostringstream error;
       error << "Could not parse mesh::solver = " << meshSolver;
       append_error(error.str());
+    }
+  }
+
+  {
+    const std::vector<std::string> validValues = {
+      {"yes"},
+      {"true"},
+      {"1"},
+      {"no"},
+      {"false"},
+      {"0"},
+    };
+    std::string checkpointOutputMesh;
+    if(par->extract("mesh", "writetofieldfile", checkpointOutputMesh)){
+
+      checkValidity(rank, validValues, checkpointOutputMesh);
+      if(checkForTrue(checkpointOutputMesh)){
+        options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+      } else {
+        options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
+      }
     }
   }
 

@@ -135,6 +135,8 @@ connectivityTol             <float>
                             0.2 [D]
 
 file                        "<string>"                                 name of .re2 file
+
+writeToFieldFile            true, false [D]                            output mesh in all field writes
 ----------------------------------------------------------------------------------------------------------------------
 [VELOCITY]
 
