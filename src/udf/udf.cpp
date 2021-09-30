@@ -81,8 +81,8 @@ void oudfInit(setupAide &options)
   int buildRank = platform->comm.mpiRank;
   MPI_Comm comm = platform->comm.mpiComm;
   int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if (getenv("NEKRS_CACHE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
   if(buildNodeLocal) {
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);
     comm = platform->comm.mpiCommLocal;
@@ -147,8 +147,8 @@ void udfBuild(const char* udfFile, setupAide& options)
 {
   int buildRank = platform->comm.mpiRank;
   int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  if (getenv("NEKRS_CACHE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
   
