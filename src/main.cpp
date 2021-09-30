@@ -74,6 +74,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <fcntl.h>
 
 #include "nekrs.hpp"
 
@@ -330,7 +331,9 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
     if(rank == 0) {
       const std::string outputFile = cmdOpt->setupFile + ".log";
       std::cout << "redirecting output to " << outputFile << " ...\n";
-      std::freopen(outputFile.c_str(), "a", stdout);
+      const int fd = open(outputFile.c_str(), O_WRONLY | O_CREAT | O_APPEND);
+      dup2(fd, fileno(stderr));
+      dup2(fd, fileno(stdout));
     }
   }
   return newComm;
