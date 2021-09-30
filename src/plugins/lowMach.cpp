@@ -57,8 +57,10 @@ void lowMach::setup(nrs_t* nrs, dfloat gamma)
 
 void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 {
-	expansionCoeff = 1; 
-    qThermalRealGasSingleComponent(time,o_div,cds->o_S);
+  nrs_t* nrs = the_nrs;
+  cds_t* cds = nrs->cds;
+  expansionCoeff = 1; 
+  qThermalRealGasSingleComponent(time,o_div,cds->o_S);
 } 
 
 
