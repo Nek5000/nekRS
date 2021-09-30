@@ -6,10 +6,10 @@
 
 namespace nekrs
 {
-void setup(MPI_Comm comm, int buildOnly, int targetSize,
-           int ciMode, std::string cacheDir, std::string setupFile,
-           std::string backend, std::string deviceID);
-
+void setup(MPI_Comm commg_in, MPI_Comm comm_in,
+           int buildOnly, int commSizeTarget,
+           int ciMode, std::string _setupFile,
+           std::string _backend, std::string _deviceID);
 void runStep(double time, double dt, int tstep);
 void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);

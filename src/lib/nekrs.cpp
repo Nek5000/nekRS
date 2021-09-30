@@ -18,7 +18,7 @@
 platform_t* platform;
 
 static int rank, size;
-static MPI_Comm comm;
+static MPI_Comm commg, comm;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
@@ -36,10 +36,12 @@ double startTime(void)
   return val;
 }
 
-void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
-           int ciMode, std::string cacheDir, std::string _setupFile,
+void setup(MPI_Comm commg_in, MPI_Comm comm_in, 
+    	   int buildOnly, int commSizeTarget,
+           int ciMode, std::string _setupFile,
            std::string _backend, std::string _deviceID)
 {
+  MPI_Comm_dup(commg_in, &commg);
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -63,12 +65,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   {
     char buf[FILENAME_MAX];
     char * ret = getcwd(buf, sizeof(buf));
-    if(!ret) ABORT(EXIT_FAILURE);;
-    std::string cwd;
-    cwd.assign(buf);
- 
-    std::string dir(cacheDir);
-    if (cacheDir.empty()) dir = cwd + "/.cache";
+    std::string dir = std::string(buf) + "/.cache";
     if(getenv("NEKRS_CACHE_DIR")) dir.assign(getenv("NEKRS_CACHE_DIR"));
     setenv("NEKRS_CACHE_DIR", dir.c_str(), 1);
   }
@@ -106,7 +103,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
   // setup device
-  platform_t* _platform = platform_t::getInstance(options, comm);
+  platform_t* _platform = platform_t::getInstance(options, commg, comm);
   platform = _platform;
   platform->par = par;
 
@@ -356,7 +353,6 @@ void finalize(void)
 
 void printRuntimeStatistics(int step)
 {
-  platform_t* platform = platform_t::getInstance(options, comm);
   platform->timer.printRunStat(step);
 }
 

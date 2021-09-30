@@ -9,7 +9,7 @@ class setupAide;
 
 class device_t : public occa::device{
   public:
-    device_t(setupAide& options, MPI_Comm comm);
+    device_t(setupAide& options, MPI_Comm commg, MPI_Comm comm);
     MPI_Comm comm;
     occa::memory malloc(const hlong Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
     occa::memory malloc(const hlong Nbytes, const occa::properties& properties);

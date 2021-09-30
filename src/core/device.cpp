@@ -85,7 +85,7 @@ device_t::malloc(const hlong Nword , const dlong wordSize)
   std::free(buffer);
   return o_returnValue;
 }
-device_t::device_t(setupAide& options, MPI_Comm comm)
+device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
 {
   // OCCA build stuff
   char deviceConfig[BUFSIZ];
@@ -96,16 +96,15 @@ device_t::device_t(setupAide& options, MPI_Comm comm)
   int device_id = 0;
 
   if(options.compareArgs("DEVICE NUMBER", "LOCAL-RANK")) {
-    long int hostId = gethostid();
+    int worldRank;
+    MPI_Comm_rank(commParent, &worldRank);
 
-    long int* hostIds = (long int*) std::calloc(size,sizeof(long int));
-    MPI_Allgather(&hostId,1,MPI_LONG,hostIds,1,MPI_LONG,comm);
+    MPI_Comm commLocal;
+    MPI_Comm_split_type(commParent, MPI_COMM_TYPE_SHARED, worldRank, MPI_INFO_NULL, &commLocal);
 
-    int totalDevices = 0;
-    for (int r = 0; r < rank; r++)
-      if (hostIds[r] == hostId) device_id++;
-    for (int r = 0; r < size; r++)
-      if (hostIds[r] == hostId) totalDevices++;
+    int localRank;
+    MPI_Comm_rank(commLocal, &localRank);
+    device_id = localRank;
   } else {
     options.getArgs("DEVICE NUMBER",device_id);
   }

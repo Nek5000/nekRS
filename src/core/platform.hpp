@@ -145,7 +145,8 @@ private:
 };
 
 struct comm_t{
-  comm_t(MPI_Comm);
+  comm_t(MPI_Comm, MPI_Comm);
+  MPI_Comm mpiCommParent;
   MPI_Comm mpiComm;
   int mpiRank;
   int mpiCommSize;
@@ -167,12 +168,12 @@ struct platform_t{
   deviceMemPool_t o_mempool;
   kernelRequestManager_t kernels;
   void create_mempool(const dlong offset, const dlong fields);
-  platform_t(setupAide& _options, MPI_Comm _comm);
+  platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
   inipp::Ini *par;
 
-  static platform_t* getInstance(setupAide& _options, MPI_Comm _comm){
+  static platform_t* getInstance(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm){
     if(!singleton)
-      singleton = new platform_t(_options, _comm);
+      singleton = new platform_t(_options, _commg, _comm);
     return singleton;
   }
   static platform_t* getInstance(){

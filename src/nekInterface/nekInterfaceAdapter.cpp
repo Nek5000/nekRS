@@ -546,7 +546,7 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
         const std::string pipeToNull = (rank == 0) ? std::string("") :  std::string(">/dev/null 2>&1");
 	const std::string include_dirs = "./ " + case_dir; 
         if(rank == 0) 
-	  printf("building nek for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
+	  printf("building nekInterface for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
 
         sprintf(buf, "cd %s && cp -f %s/makefile.template makefile && "
 		     "make -s -j8 " 
@@ -567,13 +567,16 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
         if(system(buf)) return EXIT_FAILURE;
         fileSync(libFile);
 
-        if(rank == 0) printf("done (%gs)\n\n", MPI_Wtime() - tStart);
+        if(rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+        fflush(stdout);
+      } else {
+        if(rank == 0) printf("skip building nekInterface (SIZE has not changed)\n");
         fflush(stdout);
       }
-    }
-
+    } 
     return 0;
   }();
+
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
   if(err) ABORT(EXIT_FAILURE);
 }
