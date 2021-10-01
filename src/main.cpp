@@ -112,7 +112,7 @@ struct cmdOptions
 struct session
 {
   int size;
-  char setupFile[FILENAME_MAX];
+  std::string setupFile;
 };
 
 cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
@@ -280,7 +280,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
         fflush(stdout);
         MPI_Abort(comm, EXIT_FAILURE);
       }
-      std::strncpy(sessionList[nSessions].setupFile, items[0].c_str(), items[0].size());
+      sessionList[nSessions].setupFile = items[0];
       sessionList[nSessions].size = std::stoi(items[1]);
       rankSum += sessionList[nSessions].size;
       nSessions++;
@@ -315,7 +315,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
       MPI_Abort(comm, EXIT_FAILURE);
     }
 
-    cmdOpt->setupFile = std::string(sessionList[color].setupFile);
+    cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;
 
     if(cmdOpt->debug) {
@@ -331,7 +331,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
     if(rank == 0) {
       const std::string outputFile = cmdOpt->setupFile + ".log";
       std::cout << "redirecting output to " << outputFile << " ...\n";
-      const int fd = open(outputFile.c_str(), O_WRONLY | O_CREAT | O_APPEND);
+      const int fd = open(outputFile.c_str(), O_WRONLY|O_CREAT|O_APPEND, S_IWUSR|S_IRUSR);
       dup2(fd, fileno(stderr));
       dup2(fd, fileno(stdout));
     }
