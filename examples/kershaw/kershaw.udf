@@ -59,13 +59,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
   const double precoTime = platform->timer.query("pressure preconditioner", "DEVICE:MAX")/Nrep;
   const double smootherTime = platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX")/Nrep;
-  const double crsTime = [&](){
-    const double tBoomerAMG = platform->timer.query("BoomerAMGSolve", "HOST:MAX")/Nrep;
-    const double tAMGX = platform->timer.query("AmgXSolve", "DEVICE:MAX")/Nrep;
-    const double tCrsSEMFEM = platform->timer.query("Coarse SEMFEM Solve", "DEVICE:MAX")/Nrep;
-    const double maxTime = tBoomerAMG > tAMGX ? tBoomerAMG : tAMGX;
-    return maxTime > tCrsSEMFEM ? maxTime : tCrsSEMFEM;
-  }();
+  const double crsTime = platform->timer.query("coarseSolve", "DEVICE:MAX");
   if(platform->comm.mpiRank == 0) {
     const double throughput = (double)Ntotal/solveTime;
     printf("iterations: %d\n", nrs->pSolver->Niter);

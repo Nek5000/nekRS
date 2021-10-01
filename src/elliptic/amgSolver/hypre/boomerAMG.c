@@ -7,6 +7,7 @@
 
 #include "boomerAMG.h"
 
+static int _Nthreads = 1;
 static double boomerAMGParam[BOOMERAMG_NPARAM];
 
 #ifdef HYPRE
@@ -159,7 +160,6 @@ int boomerAMGSetup(int nrows,
   HYPRE_ParCSRMatrix par_A;
   HYPRE_IJMatrixGetObject(data->A,(void**) &par_A);
 
-  int _Nthreads = 1;
   #pragma omp parallel
   {
     int tid = omp_get_thread_num();
@@ -180,10 +180,9 @@ int boomerAMGSetup(int nrows,
 
 int boomerAMGSolve(void *x, void *b)
 {
-  int i; 
   int err;
 
-  const HYPRE_Real *xx = (HYPRE_Real*) x; 
+  HYPRE_Real *xx = (HYPRE_Real*) x; 
   const HYPRE_Real *bb = (HYPRE_Real*) b; 
 
   HYPRE_ParVector par_x;
@@ -199,12 +198,6 @@ int boomerAMGSolve(void *x, void *b)
 
   HYPRE_IJMatrixGetObject(data->A,(void**) &par_A);
 
-  int _Nthreads = 1;
-  #pragma omp parallel
-  {
-    int tid = omp_get_thread_num();
-    if(tid==0) _Nthreads = omp_get_num_threads();
-  }
   omp_set_num_threads(data->Nthreads);
   err = HYPRE_BoomerAMGSolve(data->solver,par_A,par_b,par_x);
   if(err > 0) { 
@@ -215,7 +208,7 @@ int boomerAMGSolve(void *x, void *b)
   }
   omp_set_num_threads(_Nthreads);
 
-  HYPRE_IJVectorGetValues(data->x,data->nRows,data->ii,(HYPRE_Real*)xx);
+  HYPRE_IJVectorGetValues(data->x,data->nRows,data->ii,xx);
 
   return 0; 
 }
