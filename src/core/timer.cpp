@@ -242,6 +242,7 @@ void timer_t::printRunStat(int step)
 
   double dEtime[20];
   dEtime[0] = query("makef", "DEVICE:MAX");
+
   dEtime[1] = query("velocitySolve", "DEVICE:MAX");
   dEtime[17] = query("velocity proj pre", "DEVICE:MAX");
   dEtime[17]+= query("velocity proj post", "DEVICE:MAX");
@@ -253,20 +254,18 @@ void timer_t::printRunStat(int step)
   dEtime[16] = query("pressure preconditioner smoother", "DEVICE:MAX");
   dEtime[6] = query("pressure proj pre", "DEVICE:MAX");
   dEtime[6]+= query("pressure proj post", "DEVICE:MAX");
-
   dEtime[8] = query("dotp", "DEVICE:MAX");
-
   dEtime[9] = query("solve", "DEVICE:MAX");
   dEtime[10] = query("setup", "DEVICE:MAX");
   dEtime[11] = query("checkpointing", "DEVICE:MAX");
-
   dEtime[12] = query("udfExecuteStep", "DEVICE:MAX");
   dEtime[13] = query("udfUEqnSource", "DEVICE:MAX");
   dEtime[14] = query("udfSEqnSource", "DEVICE:MAX");
   dEtime[15] = query("udfProperties", "DEVICE:MAX");
 
+  dEtime[19] = query("coarseSolve", "DEVICE:MAX");
+
   double hEtime[10];
-  hEtime[0] = query("coarseSolve", "DEVICE:MAX");
   hEtime[1] = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &hEtime[1], 1, MPI_DOUBLE, MPI_MAX, comm_);
 
@@ -307,7 +306,7 @@ void timer_t::printRunStat(int step)
     if(dEtime[16] > 0)
     std::cout << "        pMG smoother    " << dEtime[16] << "s " << printPercentage(dEtime[16],dEtime[9]) << "\n"; 
     if(hEtime[0] > 0)
-    std::cout << "        coarse grid     " << hEtime[0] << "s " << printPercentage(hEtime[0],dEtime[9]) << "\n"; 
+    std::cout << "        coarse grid     " << dEtime[19] << "s " << printPercentage(dEtime[19],dEtime[9]) << "\n"; 
     if(dEtime[6] > 0)
     std::cout << "      projection        " << dEtime[6] << "s " << printPercentage(dEtime[6],dEtime[9]) << "\n"; 
 
