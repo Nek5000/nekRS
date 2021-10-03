@@ -2,6 +2,7 @@
 #define nekrs_nrssys_hpp_
 
 #define BLOCKSIZE 256
+#define ALIGN_SIZE 4096
 
 //float data type
 #if 0

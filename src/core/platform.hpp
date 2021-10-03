@@ -64,7 +64,7 @@ struct deviceMemPool_t{
   occa::memory slice18; 
   occa::memory slice19;
   occa::memory o_ptr;
-  long long bytesAllocated;
+  size_t bytesAllocated;
 };
 
 class kernelRequestManager_t

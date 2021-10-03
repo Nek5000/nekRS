@@ -26,11 +26,16 @@ deviceVector_t::deviceVector_t(const dlong _vectorSize, const dlong _nVectors, c
   wordSize(_wordSize),
   vectorName(_vectorName)
 {
-  if(vectorSize <= 0 || nVectors <= 0 || wordSize <= 0) return; // bail
-  o_vector = platform->device.malloc(vectorSize * nVectors, wordSize);
-  // set slices
-  for(int s = 0 ; s < nVectors; ++s){
-    slices.push_back(o_vector + s * vectorSize * wordSize);
+  if(vectorSize <= 0 || nVectors <= 0 || wordSize <= 0) {
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: deviceVector_t invalid input!\n");
+    ABORT(EXIT_FAILURE);
+  }
+
+  const size_t offset = vectorSize * (size_t)wordSize;
+  o_vector = platform->device.malloc(nVectors * offset);
+  for(int s = 0; s < nVectors; ++s){
+    slices.push_back(o_vector + s * offset);
   }
 }
 
@@ -48,7 +53,6 @@ deviceVector_t::at(const int i)
     ABORT(EXIT_FAILURE);
     return o_vector;
   }
-  occa::memory slice = o_vector + i * vectorSize * wordSize;
   return slices[i];
 }
 

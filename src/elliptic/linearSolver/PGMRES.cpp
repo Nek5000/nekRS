@@ -53,7 +53,7 @@ GmresData::GmresData(elliptic_t* elliptic)
   y((dfloat *) calloc(restart, sizeof(dfloat)))
 {
   int Nblock = (elliptic->mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
-  const dlong Nbytes = restart * Nblock * sizeof(dfloat);
+  const size_t Nbytes = restart * Nblock * sizeof(dfloat);
   //pinned scratch buffer
   {
     h_scratch = platform->device.mallocHost(Nbytes);

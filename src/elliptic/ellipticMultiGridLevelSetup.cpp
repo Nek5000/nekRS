@@ -312,28 +312,48 @@ dfloat MGLevel::maxEigSmoothAx()
 
   // allocate memory for basis
   dfloat* Vx = (dfloat*) calloc(M, sizeof(dfloat));
-  //  occa::memory *o_V = (occa::memory *) calloc(k+1, sizeof(occa::memory));
   occa::memory* o_V = new occa::memory[k + 1];
 
-  occa::memory o_Vx  = platform->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_AVx = platform->device.malloc(M * sizeof(dfloat),Vx);
-  occa::memory o_AVxPfloat = platform->device.malloc(M ,  sizeof(pfloat));
-  occa::memory o_VxPfloat = platform->device.malloc(M ,  sizeof(pfloat));
+  size_t offset = 0;
+  const size_t vectorSize = ((M * sizeof(dfloat))/ALIGN_SIZE + 1) * ALIGN_SIZE ;
 
-  for(int i = 0; i <= k; i++)
-    o_V[i] = platform->device.malloc(M * sizeof(dfloat),Vx);
+  for(int i = 0; i <= k; i++) {
+    if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
+      o_V[i] = platform->o_mempool.o_ptr.slice(offset, vectorSize);
+      offset += vectorSize;
+    } else {
+      o_V[i]  = platform->device.malloc(vectorSize);
+    }
+  }
+
+  occa::memory o_Vx;
+  if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
+    o_Vx = platform->o_mempool.o_ptr.slice(offset, vectorSize);
+    offset += vectorSize;
+  } else {
+    o_Vx  = platform->device.malloc(vectorSize);
+  }
+
+  occa::memory o_AVx;
+  if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
+    o_AVx = platform->o_mempool.o_ptr.slice(offset, vectorSize);
+    offset += vectorSize;
+  } else {
+    o_AVx  = platform->device.malloc(vectorSize);
+  }
+
+  occa::memory o_AVxPfloat = platform->device.malloc(M, sizeof(pfloat));
+  occa::memory o_VxPfloat = platform->device.malloc(M, sizeof(pfloat));
 
   // generate a random vector for initial basis vector
   for (dlong i = 0; i < N; i++) Vx[i] = (dfloat) drand48();
 
-  //gather-scatter
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     ogsGatherScatter(Vx, ogsDfloat, ogsAdd, mesh->ogs);
-
     for (dlong i = 0; i < elliptic->Nmasked; i++) Vx[elliptic->maskIds[i]] = 0.;
   }
 
-  o_Vx.copyFrom(Vx); //copy to device
+  o_Vx.copyFrom(Vx);
   dfloat norm_vo = platform->linAlg->weightedInnerProdMany(
     Nlocal,
     elliptic->Nfields,
@@ -428,7 +448,6 @@ dfloat MGLevel::maxEigSmoothAx()
       rho = rho_i;
   }
 
-  // free memory
   free(H);
   free(WR);
   free(WI);
@@ -438,8 +457,8 @@ dfloat MGLevel::maxEigSmoothAx()
   o_AVx.free();
   o_AVxPfloat.free();
   o_VxPfloat.free();
+
   for(int i = 0; i <= k; i++) o_V[i].free();
-  //free((void*)o_V);
   delete[] o_V;
 
   MPI_Barrier(platform->comm.mpiComm);

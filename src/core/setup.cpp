@@ -256,11 +256,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh_t* meshT = nrs->_mesh; 
     nrs->fieldOffset = mymax(nrs->fieldOffset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
 
-    int PAGESIZE = 4096; // default is 4kB
-    char* tmp;
-    tmp = getenv("NEKRS_PAGE_SIZE");
-    if (tmp != NULL) PAGESIZE = std::stoi(tmp);
-    const int pageW = PAGESIZE / sizeof(dfloat);
+    const int pageW = ALIGN_SIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW) nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
   }
 
@@ -300,7 +296,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   const int mempoolNflds = std::max(wrkFields, 2*nrs->NVfields + ellipticWrkFields);
   platform->create_mempool(nrs->fieldOffset, mempoolNflds);
 
-  // offset mempool available for elliptic because we pool is also used for ellipticSolve input/output  
+  // offset mempool available for elliptic because also used it for ellipticSolve input/output  
   auto const o_mempoolElliptic = 
     platform->o_mempool.o_ptr.slice(2*nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
