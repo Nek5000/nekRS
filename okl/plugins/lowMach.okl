@@ -82,8 +82,10 @@
 
 
           dfloat alpha  = 0.0;
-          if (expansionCoeff == 0) {  alpha = Q[id]/RHOCP[id]; }
-          else { alpha = 1.0/(RHOCP[id] * Q[id]); }
+          if (expansionCoeff) 
+              alpha = Q[id]/RHOCP[id];
+          else 
+              alpha = 1.0/(RHOCP[id] * Q[id]);
 
           const dfloat qvol    = SRC[id];
 

@@ -36,11 +36,10 @@ void scalarDirichletConditions(bcData *bc)
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const int id = e*p_Np + n;
-
       UPROP[id + 0*uOffset] = 1.0;
       SPROP[id + 0*sOffset] = 1.0;
       UPROP[id + 1*uOffset] = 1/TEMP[id];
-      SPROP[id + 1*sOffset] = 1/TEMP[id];	  
+      SPROP[id + 1*sOffset] = 1/TEMP[id];
     }
   }
 }
