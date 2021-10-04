@@ -23,11 +23,11 @@ void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
   bool realGas = false;
 
   if (!realGas) {
-  lowMach::qThermalIdealGasSingleComponent(time, o_div);
+    lowMach::qThermalIdealGasSingleComponent(time, o_div);
   } else {
-  o_expansionCoeff.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat)); 
-  platform->linAlg->ady(mesh->Nlocal,1.0,o_expansionCoeff);
-  lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
+    o_expansionCoeff.copyFrom(cds->o_S, nrs->fieldOffset * sizeof(dfloat)); 
+    platform->linAlg->ady(mesh->Nlocal,1.0,o_expansionCoeff);
+    lowMach::qThermalRealGasSingleComponent(time, o_div, o_expansionCoeff);
   }
 }
 
