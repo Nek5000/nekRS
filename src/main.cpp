@@ -240,8 +240,9 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
 
 MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 {
-  int rank;
+  int rank, size;
   MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
   MPI_Comm newComm = comm;
 
   if(cmdOpt->multiSessionFile.size()) {
@@ -286,6 +287,15 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
       nSessions++;
     }
 
+    int err = 0;
+    if(rankSum != size) err = 1;
+    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
+    if(err) {
+      if(rank == 0) std::cout << "FATAL ERROR: size of sub-communicators does not match parent!\n";
+      fflush(stdout);
+      MPI_Abort(comm, EXIT_FAILURE);
+    }
+
     int color = MPI_UNDEFINED;
     int rankOffsetSession = 0;
     for(int i = 0; i < nSessions; i++) {
@@ -302,18 +312,8 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 
     MPI_Comm_split(comm, color, rankGlobal, &newComm);
 
-    int size;
     MPI_Comm_rank(newComm, &rank);
     MPI_Comm_size(newComm, &size);
-
-    int err = 0;
-    if(rankSum != sizeGlobal) err = 1;
-    MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
-    if(err) {
-      if(rankGlobal == 0) std::cout << "FATAL ERROR: size of sub-communicators does not match global!\n";
-      fflush(stdout);
-      MPI_Abort(comm, EXIT_FAILURE);
-    }
 
     cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;
