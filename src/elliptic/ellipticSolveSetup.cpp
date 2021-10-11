@@ -260,74 +260,26 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
       elliptic->updateDiagonalKernel = platform->kernels.getKernel(sectionIdentifier + kernelName);
-      if(elliptic->blockSolver) {
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA) {
-          if(elliptic->stressForm)
-            kernelName = "ellipticStressAxVar" + suffix;
-          else
-            kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-        }else {
-          if(elliptic->stressForm)
-            kernelName = "ellipticStressAx" + suffix;
-          else
-            kernelName = "ellipticBlockAx", suffix + "_N" + std::to_string(elliptic->Nfields);
-        }
-      }else{
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticAxVar" + suffix;
-        else
-          kernelName =  "ellipticAx" + suffix;
-      }
-      elliptic->AxStressKernel = platform->kernels.getKernel(kernelName);
-      if(elliptic->blockSolver) {
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-        else
-          kernelName = "ellipticBlockAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
-      }else{
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticAxVar" + suffix;
-        else
-          kernelName = "ellipticAx" + suffix;
-      }
-      // Keep other kernel around
-      elliptic->AxKernel = platform->kernels.getKernel(kernelName);
+
+      std::string kernelNamePrefix = "elliptic";
+      if (elliptic->blockSolver)
+        kernelNamePrefix += (elliptic->stressForm) ? "Stress" : "Block";
+ 
+      kernelName = "Ax";
+      if (elliptic->var_coeff) kernelName += "Var";
+      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
+      kernelName += suffix; 
+      if (elliptic->blockSolver && !elliptic->stressForm) 
+        kernelName += "_N" + std::to_string(elliptic->Nfields);
+
+      elliptic->AxKernel = platform->kernels.getKernel(kernelNamePrefix + kernelName);
 
       if(!serial) {
-        if(elliptic->elementType != HEXAHEDRA) {
-          kernelName = "ellipticPartialAx" + suffix;
-        }else {
-          if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
-            if(elliptic->var_coeff || elliptic->blockSolver) {
-              printf(
-                "ERROR: TRILINEAR form is not implemented for varibale coefficient and block solver yet \n");
-              ABORT(EXIT_FAILURE);
-            }
-            kernelName = "ellipticPartialAxTrilinear" + suffix;
-          }else {
-            if(elliptic->blockSolver) {
-              if(elliptic->var_coeff) {
-                if(elliptic->stressForm)
-                  kernelName = "ellipticStressPartialAxVar" + suffix;
-                else
-                  kernelName = "ellipticBlockPartialAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-              }else {
-                if(elliptic->stressForm)
-                  kernelName = "ellipticStessPartialAx" + suffix;
-                else
-                  kernelName = "ellipticBlockPartialAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
-              }
-            }else {
-              if(elliptic->var_coeff)
-                kernelName = "ellipticPartialAxVar" + suffix;
-              else
-                kernelName = "ellipticPartialAx" + suffix;
-            }
-          }
-        }
-        elliptic->partialAxKernel = platform->kernels.getKernel(kernelName);
-        elliptic->partialAxKernel2 = platform->kernels.getKernel(kernelName);
+        elliptic->partialAxKernel = 
+          platform->kernels.getKernel(kernelNamePrefix + "Partial" + kernelName);
+        elliptic->partialAxKernel2 = elliptic->partialAxKernel;
       }
+
       elliptic->updatePCGKernel =
         platform->kernels.getKernel(sectionIdentifier + "ellipticBlockUpdatePCG");
   }

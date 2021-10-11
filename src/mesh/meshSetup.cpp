@@ -10,9 +10,9 @@ mesh_t *createMeshV(MPI_Comm comm,
                     mesh_t* meshT,
                     occa::properties& kernelInfo);
 
-occa::properties populateMeshProperties(int N)
+occa::properties meshKernelProperties(int N)
 {
-  occa::properties meshProperties = platform->kernelInfo;
+  occa::properties meshProperties;
   const int Nq = N+1;
   const int Np = Nq * Nq * Nq;
   const int Nfp = Nq * Nq;
@@ -23,10 +23,13 @@ occa::properties populateMeshProperties(int N)
   constexpr int Nsgeo {17};
 
   meshProperties["defines/" "p_dim"] = 3;
+  meshProperties["defines/" "p_Nverts"] = 8;
   meshProperties["defines/" "p_Nfields"] = 1;
   meshProperties["defines/" "p_N"] = N;
   meshProperties["defines/" "p_Nq"] = Nq;
+  meshProperties["defines/" "p_Nq_g"] = Nq;
   meshProperties["defines/" "p_Np"] = Np;
+  meshProperties["defines/" "p_Np_g"] = Np;
   meshProperties["defines/" "p_Nfp"] = Nfp;
   meshProperties["defines/" "p_Nfaces"] = Nfaces;
   meshProperties["defines/" "p_NfacesNfp"] = Nfp * Nfaces;

@@ -570,7 +570,7 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
         if(rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
         fflush(stdout);
       } else {
-        if(rank == 0) printf("skip building nekInterface (SIZE has not changed)\n");
+        if(rank == 0) printf("skip building nekInterface (SIZE requires no update)\n");
         fflush(stdout);
       }
     } 

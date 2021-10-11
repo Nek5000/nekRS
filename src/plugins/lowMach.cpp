@@ -23,11 +23,6 @@ static occa::kernel surfaceFluxKernel;
 
 void lowMach::buildKernel(occa::properties kernelInfo)
 {
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
-
-  kernelInfo += populateMeshProperties(N);
-
   std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));

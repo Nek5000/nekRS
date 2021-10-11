@@ -74,12 +74,12 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
   kernelInfo["defines/" "hlong"] = hlongString;
 
   if(device.mode() == "CUDA" && !getenv("OCCA_CUDA_COMPILER_FLAGS")) {
+    kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += "--ftz=true ";
     kernelInfo["compiler_flags"] += "--prec-div=false ";
     kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
     kernelInfo["compiler_flags"] += "--use_fast_math ";
     kernelInfo["compiler_flags"] += "--fmad=true ";
-
     //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
   }
 
@@ -191,11 +191,10 @@ kernelRequestManager_t::getKernel(const std::string& request, bool checkValid) c
       if(platformRef.comm.mpiRank == 0)
       {
         std::cout << "\n";
-        std::cout << "===========================================================\n";
-        std::cout << "Error in kernelRequestManager_t::get. Failing now.\n";
-        std::cout << "Requested kernel : " << request << "\n";
+        std::cout << "Error in kernelRequestManager_t::getKernel():\n";
+        std::cout << "Cannot find requested kernel " << request << "!\n";
 
-        std::cout << "All entries:\n";
+        std::cout << "Available:\n";
         for(auto&& keyAndValue : requestToKernelMap)
         {
           std::cout << "\t" << keyAndValue.first << "\n";

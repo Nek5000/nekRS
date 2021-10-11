@@ -64,11 +64,6 @@ void RANSktau::buildKernel(occa::properties kernelInfo)
   kernelInfo["defines/p_alp_inf"]       = coeff[12];
   kernelInfo["defines/p_tiny"]          = coeff[13];
 
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
-
-  kernelInfo += populateMeshProperties(N);
-
   std::string fileName;
   int rank = platform->comm.mpiRank;
   fileName.assign(getenv("NEKRS_INSTALL_DIR"));

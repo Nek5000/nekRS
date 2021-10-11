@@ -83,9 +83,9 @@ void ellipticAx(elliptic_t* elliptic,
                                mesh->o_D, mesh->o_DT, elliptic->o_lambda,
                                o_q, o_Aq);
           else
-            elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                                     mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                                     o_q, o_Aq);
+            elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
+                               mesh->o_D, mesh->o_DT, elliptic->o_lambda,
+                               o_q, o_Aq);
         }else {
           elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, mesh->o_ggeo, mesh->o_D,
                              mesh->o_DT, elliptic->o_lambda, o_q, o_Aq);
@@ -99,9 +99,9 @@ void ellipticAx(elliptic_t* elliptic,
                                mesh->o_D, mesh->o_DT, elliptic->o_lambda,
                                o_q, o_Aq);
           else
-            elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                                     mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                                     o_q, o_Aq);
+            elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
+                               mesh->o_D, mesh->o_DT, elliptic->o_lambda,
+                               o_q, o_Aq);
         }else {
           occa::memory &o_ggeo = (!strstr(precision,dfloatString)) ? mesh->o_ggeoPfloat : mesh->o_ggeo;
           occa::memory &o_D = (!strstr(precision,dfloatString)) ? mesh->o_DPfloat : mesh->o_D;

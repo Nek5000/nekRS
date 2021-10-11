@@ -1,36 +1,12 @@
-/*
-
-   The MIT License (MIT)
-
-   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
-
- */
-
-@kernel void ellipticAxHex3D(const dlong Nelements,
-                             @restrict const dfloat*  ggeo,
-                             @restrict const dfloat*  D,
-                             @restrict const dfloat*  S,
-                             const dfloat lambda,
-                             @restrict const dfloat*  q,
-                             @restrict dfloat*  Aq)
+@kernel void ellipticPartialAxVarHex3D(const dlong Nelements,
+                                       const dlong offset,
+                                       @restrict const dlong*  elementList,
+                                       @restrict const dfloat*  ggeo,
+                                       @restrict const dfloat*  D,
+                                       @restrict const dfloat*  S,
+                                       @restrict const dfloat*  lambda,
+                                       @restrict const dfloat*  q,
+                                       @restrict dfloat*  Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
 #if (p_Nq % 2 == 0)
@@ -39,6 +15,7 @@
     @shared dfloat s_D[p_Nq][p_Nq];
 #endif
     @shared dfloat s_q[p_Nq][p_Nq];
+
     @shared dfloat s_Gqr[p_Nq][p_Nq];
     @shared dfloat s_Gqs[p_Nq][p_Nq];
 
@@ -46,27 +23,38 @@
     @exclusive dfloat r_q[p_Nq];
     @exclusive dfloat r_Aq[p_Nq];
 
+    @exclusive dlong element;
+
     @exclusive dfloat r_G00, r_G01, r_G02, r_G11, r_G12, r_G22, r_GwJ;
+    @exclusive dfloat r_lam0, r_lam1;
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1))
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        s_D[j][i] = D[p_Nq * j + i];
+        element = elementList[e];
+      }
+
+    @barrier("local");
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-        s_D[j][i] = D[p_Nq * j + i];
-
-        const dlong base = i + j * p_Nq + e * p_Np;
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; k++) {
+          const dlong base = i + j * p_Nq + element * p_Np;
           r_q[k] = q[base + k * p_Nq * p_Nq];
           r_Aq[k] = 0;
         }
       }
     }
+
     @barrier("local");
 
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; k++) {
-      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      @barrier("local");
+      for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          const dlong gbase = e * p_Nggeo * p_Np_g + k * p_Nq_g * p_Nq_g + j * p_Nq_g + i;
+          const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
           r_G00 = ggeo[gbase + p_G00ID * p_Np];
           r_G01 = ggeo[gbase + p_G01ID * p_Np];
@@ -76,13 +64,18 @@
           r_G12 = ggeo[gbase + p_G12ID * p_Np];
           r_G22 = ggeo[gbase + p_G22ID * p_Np];
 
-#ifdef p_poisson
-          r_GwJ = 0;
-#else 
           r_GwJ = ggeo[gbase + p_GWJID * p_Np];
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          r_lam0 = lambda[id + 0 * offset];
+
+#ifdef p_poisson
+          r_lam1 = 0;
+#else
+          r_lam1 = lambda[id + 1 * offset];
 #endif
         }
-      }
+
       @barrier("local");
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -96,6 +89,7 @@
             r_qt += s_D[k][m] * r_q[m];
         }
       }
+
       @barrier("local");
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -109,13 +103,14 @@
             qs += s_D[j][m] * s_q[m][i];
           }
 
-          s_Gqs[j][i] = (r_G01 * qr + r_G11 * qs + r_G12 * r_qt);
-          s_Gqr[j][i] = (r_G00 * qr + r_G01 * qs + r_G02 * r_qt);
+          s_Gqs[j][i] = r_lam0 * (r_G01 * qr + r_G11 * qs + r_G12 * r_qt);
+          s_Gqr[j][i] = r_lam0 * (r_G00 * qr + r_G01 * qs + r_G02 * r_qt);
 
-          r_Gqt = (r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
-          r_Auk = r_GwJ * lambda * r_q[k];
+          r_Gqt = r_lam0 * (r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
+          r_Auk = r_lam1 * r_GwJ * r_q[k];
         }
       }
+
       @barrier("local");
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -130,14 +125,15 @@
           r_Aq[k] += r_Auk;
         }
       }
-      @barrier("local");
     }
+
+    @barrier("local");
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
         for(int k = 0; k < p_Nq; k++) {
-          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           Aq[id] = r_Aq[k];
         }
       }

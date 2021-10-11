@@ -133,7 +133,6 @@ struct elliptic_t
   occa::memory o_gllzw; // GLL nodes and weights
 
   occa::kernel AxKernel;
-  occa::kernel AxStressKernel;
   occa::kernel AxPfloatKernel;
   occa::kernel partialAxKernel;
   occa::kernel partialAxKernel2;
@@ -254,8 +253,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
                           occa::memory &o_x, occa::memory &o_r);
-
-occa::properties ellipticKernelInfo(int N);
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 

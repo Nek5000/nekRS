@@ -24,29 +24,30 @@ void registerGMRESKernels(const std::string &section, int Nfields) {
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename;
+  std::string fileName;
   const bool serial = (platform->device.mode() == "Serial" ||
                        platform->device.mode() == "OpenMP");
 
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
   occa::properties gmresKernelInfo = platform->kernelInfo;
   gmresKernelInfo["defines/p_Nfields"] = Nfields;
+
   std::string kernelName = "gramSchmidtOrthogonalization";
-  filename = serial ? oklpath + "ellipticGramSchmidtOrthogonalization.c"
-                    : oklpath + "ellipticGramSchmidtOrthogonalization.okl";
+  fileName = oklpath + "ellipticGramSchmidtOrthogonalization" + fileNameExtension;
   platform->kernels.add_kernel(
-      sectionIdentifier + kernelName, filename, kernelName, gmresKernelInfo);
-  filename = serial ? oklpath + "ellipticUpdatePGMRES.c"
-                    : oklpath + "ellipticUpdatePGMRES.okl";
+      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
+
   kernelName = "updatePGMRESSolution";
+  fileName = oklpath + "ellipticUpdatePGMRES" + fileNameExtension;
   platform->kernels.add_kernel(
-      sectionIdentifier + kernelName, filename, kernelName, gmresKernelInfo);
-  filename = serial ? oklpath + "ellipticFusedResidualAndNorm.c"
-                    : oklpath + "ellipticFusedResidualAndNorm.okl";
+      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
+
   kernelName = "fusedResidualAndNorm";
+  fileName = oklpath + "ellipticFusedResidualAndNorm" + fileNameExtension;
   platform->kernels.add_kernel(
-      sectionIdentifier + kernelName, filename, kernelName, gmresKernelInfo);
+      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
 }
 
 void registerNrsKernels() {
@@ -113,7 +114,7 @@ void registerNrsKernels() {
         section + kernelName, fileName, kernelName, centroidProp);
 
     occa::properties meshProps = kernelInfo;
-    meshProps += populateMeshProperties(N);
+    meshProps += meshKernelProperties(N);
 
     {
       occa::properties prop = meshProps;
@@ -349,7 +350,7 @@ void registerCdsKernels() {
   const std::string oklpath = install_dir + "/okl/";
   const std::string section = "cds-";
   occa::properties meshProps = kernelInfo;
-  meshProps += populateMeshProperties(N);
+  meshProps += meshKernelProperties(N);
   {
     {
       occa::properties prop = meshProps;
@@ -459,7 +460,7 @@ void registerCdsKernels() {
 }
 void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
   const std::string prefix = "Hex3D";
-  std::string filename, kernelName;
+  std::string fileName, kernelName;
 
   kernelInfo["defines/pfloat"] = pfloatString;
 
@@ -476,72 +477,72 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
 
   {
     const std::string oklpath = install_dir + "/okl/core/";
-    std::string filename;
+    std::string fileName;
 
-    filename = oklpath + "mask.okl";
+    fileName = oklpath + "mask.okl";
     kernelName = "mask";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
 
-    filename = oklpath + "mask.okl";
+    fileName = oklpath + "mask.okl";
     platform->kernels.add_kernel(kernelName + orderSuffix + "pfloat",
-        filename,
+        fileName,
         kernelName,
         pfloatKernelInfo,
         orderSuffix + "pfloat");
-    filename = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
+    fileName = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
     kernelName = "fusedCopyDfloatToPfloat";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
     kernelName = "copyDfloatToPfloat";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
 
     kernelName = "copyPfloatToDfloat";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
 
     kernelName = "scaledAdd";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
     kernelName = "dotMultiply";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
-    filename = install_dir + "/okl/elliptic/chebyshev.okl";
+    fileName = install_dir + "/okl/elliptic/chebyshev.okl";
     kernelName = "updateSmoothedSolutionVec";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
     kernelName = "updateChebyshevSolutionVec";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
 
     kernelName = "updateIntermediateSolutionVec";
     platform->kernels.add_kernel(kernelName + orderSuffix,
-        filename,
+        fileName,
         kernelName,
         kernelInfo,
         orderSuffix);
@@ -564,7 +565,7 @@ void registerSchwarzKernels(const std::string &section, int N) {
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename, kernelName;
+  std::string fileName, kernelName;
 
   {
     occa::properties properties = platform->kernelInfo;
@@ -578,16 +579,16 @@ void registerSchwarzKernels(const std::string &section, int N) {
             optionsPrefix + "MULTIGRID SMOOTHER", "RAS"))
       properties["defines/p_restrict"] = 1;
 
-    filename = oklpath + "ellipticSchwarzSolverHex3D.okl";
+    fileName = oklpath + "ellipticSchwarzSolverHex3D.okl";
     if (serial) {
-      filename = oklpath + "ellipticSchwarzSolverHex3D.c";
+      fileName = oklpath + "ellipticSchwarzSolverHex3D.c";
     }
     platform->kernels.add_kernel(
-        "preFDM" + suffix, filename, "preFDM", properties, suffix);
+        "preFDM" + suffix, fileName, "preFDM", properties, suffix);
     platform->kernels.add_kernel(
-        "fusedFDM" + suffix, filename, "fusedFDM", properties, suffix);
+        "fusedFDM" + suffix, fileName, "fusedFDM", properties, suffix);
     platform->kernels.add_kernel(
-        "postFDM" + suffix, filename, "postFDM", properties, suffix);
+        "postFDM" + suffix, fileName, "postFDM", properties, suffix);
   }
 }
 void registerFineLevelKernels(const std::string &section, int N) {
@@ -600,36 +601,33 @@ void registerFineLevelKernels(const std::string &section, int N) {
     }
   };
 
-  auto kernelInfo = ellipticKernelInfo(N);
+  auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
   registerCommonMGPreconditionerKernels(N, kernelInfo);
 
   const std::string suffix = "Hex3D";
-  constexpr int Nverts{8};
   constexpr int Nfields{1};
 
-  kernelInfo["defines/p_Nverts"] = Nverts;
   kernelInfo["defines/p_Nfields"] = Nfields;
 
-  std::string filename, kernelName;
+  std::string fileName, kernelName;
 
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
   const bool serial = platform->device.mode() == "Serial" ||
                       platform->device.mode() == "OpenMP";
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
   {
     occa::properties AxKernelInfo = kernelInfo;
+    AxKernelInfo["defines/p_poisson"] = 1;
 
-    filename = oklpath + "ellipticAx" + suffix + ".okl";
     kernelName = "ellipticAx" + suffix;
-    if (serial) {
-      filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-    }
+    fileName = oklpath + kernelName + fileNameExtension;
     {
       const std::string kernelSuffix = gen_suffix(dfloatString);
       platform->kernels.add_kernel(kernelName + kernelSuffix,
-          filename,
+          fileName,
           kernelName,
           AxKernelInfo,
           kernelSuffix);
@@ -637,10 +635,9 @@ void registerFineLevelKernels(const std::string &section, int N) {
 
     if (!strstr(pfloatString, dfloatString)) {
       AxKernelInfo["defines/dfloat"] = pfloatString;
-      kernelName = "ellipticAx" + suffix;
       const std::string kernelSuffix = gen_suffix(pfloatString);
       platform->kernels.add_kernel(kernelName + kernelSuffix,
-          filename,
+          fileName,
           kernelName,
           AxKernelInfo,
           kernelSuffix);
@@ -652,11 +649,13 @@ void registerFineLevelKernels(const std::string &section, int N) {
     else
       kernelName = "ellipticPartialAx" + suffix;
 
+    fileName = oklpath + kernelName + fileNameExtension;
+
     if (!serial) {
       {
         const std::string kernelSuffix = gen_suffix(dfloatString);
         platform->kernels.add_kernel(kernelName + kernelSuffix,
-            filename,
+            fileName,
             kernelName,
             AxKernelInfo,
             kernelSuffix);
@@ -665,7 +664,7 @@ void registerFineLevelKernels(const std::string &section, int N) {
         AxKernelInfo["defines/dfloat"] = pfloatString;
         const std::string kernelSuffix = gen_suffix(pfloatString);
         platform->kernels.add_kernel(kernelName + kernelSuffix,
-            filename,
+            fileName,
             kernelName,
             AxKernelInfo,
             kernelSuffix);
@@ -677,6 +676,7 @@ void registerFineLevelKernels(const std::string &section, int N) {
   registerSchwarzKernels(section, N);
 }
 void registerSEMFEMKernels(const std::string &section, int N);
+
 void registerLevelKernels(const std::string &section, int Nf, int N) {
   const int Nc = N;
   auto gen_suffix = [N](const char *floatString) {
@@ -688,46 +688,45 @@ void registerLevelKernels(const std::string &section, int Nf, int N) {
     }
   };
 
-  occa::properties kernelInfo = ellipticKernelInfo(N);
+  occa::properties kernelInfo = platform->kernelInfo + meshKernelProperties(N);
 
   const std::string suffix = "Hex3D";
 
-  std::string filename, kernelName;
+  std::string fileName, kernelName;
 
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
   registerCommonMGPreconditionerKernels(N, kernelInfo);
 
-  constexpr int Nverts{8};
   const bool serial = platform->device.mode() == "Serial" ||
                       platform->device.mode() == "OpenMP";
+
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
   constexpr int elementType = HEXAHEDRA;
 
   {
-    kernelInfo["defines/p_Nverts"] = Nverts;
     occa::properties AxKernelInfo = kernelInfo;
-    filename = oklpath + "ellipticAx" + suffix + ".okl";
+    AxKernelInfo["defines/p_poisson"] = 1;
+
     kernelName = "ellipticAx" + suffix;
-    if (serial) {
-      filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-    }
+    fileName = oklpath + kernelName + fileNameExtension;
+
     {
       const std::string kernelSuffix = gen_suffix(dfloatString);
       platform->kernels.add_kernel(kernelName + kernelSuffix,
-          filename,
+          fileName,
           kernelName,
           AxKernelInfo,
           kernelSuffix);
     }
     if (!strstr(pfloatString, dfloatString)) {
       AxKernelInfo["defines/dfloat"] = pfloatString;
-      kernelName = "ellipticAx" + suffix;
       {
         const std::string kernelSuffix = gen_suffix(pfloatString);
         platform->kernels.add_kernel(kernelName + kernelSuffix,
-            filename,
+            fileName,
             kernelName,
             AxKernelInfo,
             kernelSuffix);
@@ -735,21 +734,18 @@ void registerLevelKernels(const std::string &section, int Nf, int N) {
       AxKernelInfo["defines/dfloat"] = dfloatString;
     }
 
-    // check for trilinear
-    if (elementType != HEXAHEDRA) {
+    if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
+      kernelName = "ellipticPartialAxTrilinear" + suffix;
+    else
       kernelName = "ellipticPartialAx" + suffix;
-    } else {
-      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-        kernelName = "ellipticPartialAxTrilinear" + suffix;
-      else
-        kernelName = "ellipticPartialAx" + suffix;
-    }
+
+    fileName = oklpath + kernelName + fileNameExtension;
 
     if (!serial) {
       {
         const std::string kernelSuffix = gen_suffix(dfloatString);
         platform->kernels.add_kernel(kernelName + kernelSuffix,
-            filename,
+            fileName,
             kernelName,
             AxKernelInfo,
             kernelSuffix);
@@ -758,7 +754,7 @@ void registerLevelKernels(const std::string &section, int Nf, int N) {
         AxKernelInfo["defines/dfloat"] = pfloatString;
         const std::string kernelSuffix = gen_suffix(pfloatString);
         platform->kernels.add_kernel(kernelName + kernelSuffix,
-            filename,
+            fileName,
             kernelName,
             AxKernelInfo,
             kernelSuffix);
@@ -768,7 +764,7 @@ void registerLevelKernels(const std::string &section, int Nf, int N) {
   }
 
   {
-    filename = oklpath + "ellipticBlockJacobiPrecon.okl";
+    fileName = oklpath + "ellipticBlockJacobiPrecon.okl";
     kernelName = "ellipticBlockJacobiPrecon";
     // sizes for the coarsen and prolongation kernels. degree NFine to degree N
     int NqFine = (Nf + 1);
@@ -785,32 +781,32 @@ void registerLevelKernels(const std::string &section, int Nf, int N) {
     const std::string orderSuffix = std::string("_") + std::to_string(Nf);
 
     if (serial) {
-      filename = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
+      fileName = oklpath + "ellipticPreconCoarsen" + suffix + ".c";
       kernelName = "ellipticPreconCoarsen" + suffix;
       platform->kernels.add_kernel(kernelName + orderSuffix,
-          filename,
+          fileName,
           kernelName,
           coarsenProlongateKernelInfo,
           orderSuffix);
-      filename = oklpath + "ellipticPreconProlongate" + suffix + ".c";
+      fileName = oklpath + "ellipticPreconProlongate" + suffix + ".c";
       kernelName = "ellipticPreconProlongate" + suffix;
       platform->kernels.add_kernel(kernelName + orderSuffix,
-          filename,
+          fileName,
           kernelName,
           coarsenProlongateKernelInfo,
           orderSuffix);
     } else {
-      filename = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
+      fileName = oklpath + "ellipticPreconCoarsen" + suffix + ".okl";
       kernelName = "ellipticPreconCoarsen" + suffix;
       platform->kernels.add_kernel(kernelName + orderSuffix,
-          filename,
+          fileName,
           kernelName,
           coarsenProlongateKernelInfo,
           orderSuffix);
-      filename = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
+      fileName = oklpath + "ellipticPreconProlongate" + suffix + ".okl";
       kernelName = "ellipticPreconProlongate" + suffix;
       platform->kernels.add_kernel(kernelName + orderSuffix,
-          filename,
+          fileName,
           kernelName,
           coarsenProlongateKernelInfo,
           orderSuffix);
@@ -875,13 +871,13 @@ void registerSEMFEMKernels(const std::string &section, int N) {
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = install_dir + "/okl/elliptic/";
-  std::string filename = oklpath + "ellipticGather.okl";
-  platform->kernels.add_kernel("gather", filename, "gather", SEMFEMKernelProps);
-  filename = oklpath + "ellipticScatter.okl";
+  std::string fileName = oklpath + "ellipticGather.okl";
+  platform->kernels.add_kernel("gather", fileName, "gather", SEMFEMKernelProps);
+  fileName = oklpath + "ellipticScatter.okl";
   platform->kernels.add_kernel(
-      "scatter", filename, "scatter", SEMFEMKernelProps);
+      "scatter", fileName, "scatter", SEMFEMKernelProps);
   occa::properties stiffnessKernelInfo = platform->kernelInfo;
-  filename = oklpath + "ellipticSEMFEMStiffness.okl";
+  fileName = oklpath + "ellipticSEMFEMStiffness.okl";
   stiffnessKernelInfo["defines/p_Nq"] = Nq;
   stiffnessKernelInfo["defines/p_Np"] = Np;
   stiffnessKernelInfo["defines/p_rows_sorted"] = 1;
@@ -894,7 +890,7 @@ void registerSEMFEMKernels(const std::string &section, int N) {
 
   if (!constructOnHost) {
     platform->kernels.add_kernel("computeStiffnessMatrix",
-        filename,
+        fileName,
         "computeStiffnessMatrix",
         stiffnessKernelInfo);
   }
@@ -944,8 +940,7 @@ void registerEllipticKernels(const std::string &section) {
   kernelInfo["header"].asArray();
   kernelInfo["flags"].asObject();
   kernelInfo["include_paths"].asArray();
-  kernelInfo += ellipticKernelInfo(N);
-  constexpr int Nverts{8};
+  kernelInfo += meshKernelProperties(N);
 
   const bool blockSolver = [&section]() {
     if (section.find("velocity") == std::string::npos)
@@ -967,6 +962,9 @@ void registerEllipticKernels(const std::string &section) {
 
   const bool serial = platform->device.mode() == "Serial" ||
                       platform->device.mode() == "OpenMP";
+
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
+
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
   if (platform->options.compareArgs(
@@ -977,31 +975,30 @@ void registerEllipticKernels(const std::string &section) {
   // solution projection kernels
   {
     const std::string oklpath = install_dir + "/okl/elliptic/";
-    std::string filename, kernelName;
+    std::string fileName, kernelName;
 
     {
       occa::properties properties = platform->kernelInfo;
       properties["defines/p_Nfields"] = Nfields;
 
-      filename = oklpath + "ellipticResidualProjection.okl";
+      fileName = oklpath + "ellipticResidualProjection.okl";
       kernelName = "multiScaledAddwOffset";
       platform->kernels.add_kernel(
-          sectionIdentifier + kernelName, filename, kernelName, properties);
+          sectionIdentifier + kernelName, fileName, kernelName, properties);
       kernelName = "accumulate";
       platform->kernels.add_kernel(
-          sectionIdentifier + kernelName, filename, kernelName, properties);
+          sectionIdentifier + kernelName, fileName, kernelName, properties);
     }
   }
 
   {
     const std::string oklpath = install_dir + "/okl/core/";
-    std::string filename;
+    std::string fileName;
 
-    filename = oklpath + "mask.okl";
-    platform->kernels.add_kernel("mask", filename, "mask", kernelInfo);
+    fileName = oklpath + "mask.okl";
+    platform->kernels.add_kernel("mask", fileName, "mask", kernelInfo);
   }
 
-  kernelInfo["defines/p_Nverts"] = Nverts;
   kernelInfo["defines/p_Nfields"] = Nfields;
 
   occa::properties dfloatKernelInfo = kernelInfo;
@@ -1017,115 +1014,51 @@ void registerEllipticKernels(const std::string &section) {
   occa::properties AxKernelInfo = dfloatKernelInfo;
   {
     const std::string oklpath = install_dir + "/okl/elliptic/";
-    std::string filename;
+    std::string fileName;
     std::string kernelName;
 
-    filename = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
+    fileName = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
     kernelName = "ellipticBlockBuildDiagonal" + suffix;
     dfloatKernelInfo["defines/dfloat"] = dfloatString;
     dfloatKernelInfo["defines/pfloat"] = pfloatString;
     platform->kernels.add_kernel(
-        sectionIdentifier + kernelName, filename, kernelName, dfloatKernelInfo);
+        sectionIdentifier + kernelName, fileName, kernelName, dfloatKernelInfo);
+
+    // Ax
     dfloatKernelInfo["defines/pfloat"] = dfloatString;
-    if (blockSolver) {
-      filename = oklpath + "ellipticBlockAx" + suffix + ".okl";
-      if (serial)
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-      if (var_coeff && elementType == HEXAHEDRA) {
-        if (stressForm)
-          kernelName = "ellipticStressAxVar" + suffix;
-        else
-          kernelName =
-              "ellipticBlockAxVar" + suffix + "_N" + std::to_string(Nfields);
-      } else {
-        if (stressForm)
-          kernelName = "ellipticStressAx" + suffix;
-        else
-          kernelName = "ellipticBlockAx",
-          suffix + "_N" + std::to_string(Nfields);
-      }
-    } else {
-      filename = oklpath + "ellipticAx" + suffix + ".okl";
-      if (serial)
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-      if (var_coeff && elementType == HEXAHEDRA)
-        kernelName = "ellipticAxVar" + suffix;
-      else
-        kernelName = "ellipticAx" + suffix;
+
+    std::string kernelNamePrefix = "elliptic";
+    if (blockSolver)
+      kernelNamePrefix += (stressForm) ? "Stress" : "Block";
+
+    kernelName = "Ax";
+    if (var_coeff) kernelName += "Var";
+    if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
+    kernelName += suffix; 
+    if (blockSolver && !stressForm) kernelName += "_N" + std::to_string(Nfields);
+
+    {
+      std::string _kernelName = kernelNamePrefix + kernelName;
+      fileName = oklpath + _kernelName + fileNameExtension; 
+      platform->kernels.add_kernel(
+        _kernelName, fileName, _kernelName, AxKernelInfo);
     }
-    platform->kernels.add_kernel(
-        kernelName, filename, kernelName, AxKernelInfo);
-    if (blockSolver) {
-      filename = oklpath + "ellipticBlockAx" + suffix + ".okl";
-      if (serial)
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-      if (var_coeff && elementType == HEXAHEDRA)
-        kernelName =
-            "ellipticBlockAxVar" + suffix + "_N" + std::to_string(Nfields);
-      else
-        kernelName =
-            "ellipticBlockAx" + suffix + "_N" + std::to_string(Nfields);
-    } else {
-      filename = oklpath + "ellipticAx" + suffix + ".okl";
-      if (serial)
-        filename = oklpath + "ellipticSerialAx" + suffix + ".c";
-      if (var_coeff && elementType == HEXAHEDRA)
-        kernelName = "ellipticAxVar" + suffix;
-      else
-        kernelName = "ellipticAx" + suffix;
-    }
-    // Keep other kernel around
-    platform->kernels.add_kernel(
-        kernelName, filename, kernelName, AxKernelInfo);
 
     if (!serial) {
-      if (elementType != HEXAHEDRA) {
-        kernelName = "ellipticPartialAx" + suffix;
-      } else {
-        if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
-          if (var_coeff || blockSolver) {
-            printf(
-                "ERROR: TRILINEAR form is not implemented for varibale coefficient and block solver yet \n");
-            ABORT(EXIT_FAILURE);
-          }
-          kernelName = "ellipticPartialAxTrilinear" + suffix;
-        } else {
-          if (blockSolver) {
-            if (var_coeff) {
-              if (stressForm)
-                kernelName = "ellipticStressPartialAxVar" + suffix;
-              else
-                kernelName = "ellipticBlockPartialAxVar" + suffix + "_N" +
-                             std::to_string(Nfields);
-            } else {
-              if (stressForm)
-                kernelName = "ellipticStessPartialAx" + suffix;
-              else
-                kernelName = "ellipticBlockPartialAx" + suffix + "_N" +
-                             std::to_string(Nfields);
-            }
-          } else {
-            if (var_coeff)
-              kernelName = "ellipticPartialAxVar" + suffix;
-            else
-              kernelName = "ellipticPartialAx" + suffix;
-          }
-        }
-      }
+      std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
+      fileName = oklpath + _kernelName + fileNameExtension; 
       platform->kernels.add_kernel(
-          kernelName, filename, kernelName, AxKernelInfo);
-      platform->kernels.add_kernel(
-          kernelName, filename, kernelName, AxKernelInfo);
+        _kernelName, fileName, _kernelName, AxKernelInfo);
     }
 
-    // combined PCG update and r.r kernel
+    // PCG update
     if (serial) {
-      filename = oklpath + "ellipticSerialUpdatePCG.c";
+      fileName = oklpath + "ellipticSerialUpdatePCG.c";
     } else {
-      filename = oklpath + "ellipticUpdatePCG.okl";
+      fileName = oklpath + "ellipticUpdatePCG.okl";
     }
     platform->kernels.add_kernel(sectionIdentifier + "ellipticBlockUpdatePCG",
-        filename,
+        fileName,
         "ellipticBlockUpdatePCG",
         dfloatKernelInfo);
   }
@@ -1145,7 +1078,7 @@ void registerMeshKernels() {
   int nAB;
   platform->options.getArgs("MESH INTEGRATION ORDER", nAB);
 
-  auto kernelInfo = populateMeshProperties(N);
+  auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
   std::string install_dir;
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   std::string oklpath = install_dir + "/okl/";
@@ -1153,28 +1086,28 @@ void registerMeshKernels() {
 
   const std::string meshPrefix = "mesh-";
   {
-    std::string filename = oklpath + "mesh/velocityBCHex3D.okl";
+    std::string fileName = oklpath + "mesh/velocityBCHex3D.okl";
     kernelName = "velocityDirichletBCHex3D";
-    platform->kernels.add_kernel(meshPrefix + kernelName, filename, kernelName, kernelInfo);
+    platform->kernels.add_kernel(meshPrefix + kernelName, fileName, kernelName, kernelInfo);
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_cubNq"] = cubNq;
     meshKernelInfo["defines/p_cubNp"] = cubNp;
 
-    filename = oklpath + "mesh/geometricFactorsHex3D.okl";
+    fileName = oklpath + "mesh/geometricFactorsHex3D.okl";
     kernelName = "geometricFactorsHex3D";
     platform->kernels.add_kernel(
-        meshPrefix + kernelName, filename, kernelName, meshKernelInfo);
-    filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
+        meshPrefix + kernelName, fileName, kernelName, meshKernelInfo);
+    fileName = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
     kernelName = "surfaceGeometricFactorsHex3D";
     platform->kernels.add_kernel(
-        meshPrefix + kernelName, filename, kernelName, meshKernelInfo);
+        meshPrefix + kernelName, fileName, kernelName, meshKernelInfo);
 
     meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_nAB"] = nAB;
-    filename = oklpath + "core/nStagesSum.okl";
+    fileName = oklpath + "core/nStagesSum.okl";
     kernelName = "nStagesSumVector";
     platform->kernels.add_kernel(
-        meshPrefix + kernelName, filename, kernelName, meshKernelInfo);
+        meshPrefix + kernelName, fileName, kernelName, meshKernelInfo);
   }
 }
 
@@ -1184,7 +1117,7 @@ void registerLinAlgKernels() {
   std::string oklDir;
   oklDir.assign(getenv("NEKRS_INSTALL_DIR"));
   oklDir += "/okl/linAlg/";
-  std::string filename;
+  std::string fileName;
   const bool serial = (platform->device.mode() == "Serial" ||
                        platform->device.mode() == "OpenMP");
 
@@ -1198,28 +1131,28 @@ void registerLinAlgKernels() {
       "scale", oklDir + "linAlgScale.okl", "scale", kernelInfo);
   platform->kernels.add_kernel(
       "scaleMany", oklDir + "linAlgScale.okl", "scaleMany", kernelInfo);
-  filename = std::string("linAlgAXPBY") +
+  fileName = std::string("linAlgAXPBY") +
              (serial ? std::string(".c") : std::string(".okl"));
-  platform->kernels.add_kernel("axpby", oklDir + filename, "axpby", kernelInfo);
-  filename = std::string("linAlgAXPBY") +
+  platform->kernels.add_kernel("axpby", oklDir + fileName, "axpby", kernelInfo);
+  fileName = std::string("linAlgAXPBY") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "axpbyMany", oklDir + filename, "axpbyMany", kernelInfo);
+      "axpbyMany", oklDir + fileName, "axpbyMany", kernelInfo);
   platform->kernels.add_kernel(
       "axpbyz", oklDir + "linAlgAXPBY.okl", "axpbyz", kernelInfo);
   platform->kernels.add_kernel(
       "axpbyzMany", oklDir + "linAlgAXPBY.okl", "axpbyzMany", kernelInfo);
-  filename = std::string("linAlgAXMY") +
+  fileName = std::string("linAlgAXMY") +
              (serial ? std::string(".c") : std::string(".okl"));
-  platform->kernels.add_kernel("axmy", oklDir + filename, "axmy", kernelInfo);
-  filename = std::string("linAlgAXMY") +
-             (serial ? std::string(".c") : std::string(".okl"));
-  platform->kernels.add_kernel(
-      "axmyMany", oklDir + filename, "axmyMany", kernelInfo);
-  filename = std::string("linAlgAXMY") +
+  platform->kernels.add_kernel("axmy", oklDir + fileName, "axmy", kernelInfo);
+  fileName = std::string("linAlgAXMY") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "axmyVector", oklDir + filename, "axmyVector", kernelInfo);
+      "axmyMany", oklDir + fileName, "axmyMany", kernelInfo);
+  fileName = std::string("linAlgAXMY") +
+             (serial ? std::string(".c") : std::string(".okl"));
+  platform->kernels.add_kernel(
+      "axmyVector", oklDir + fileName, "axmyVector", kernelInfo);
   platform->kernels.add_kernel(
       "axmyz", oklDir + "linAlgAXMY.okl", "axmyz", kernelInfo);
   platform->kernels.add_kernel(
@@ -1244,42 +1177,42 @@ void registerLinAlgKernels() {
       "min", oklDir + "linAlgMin.okl", "min", kernelInfo);
   platform->kernels.add_kernel(
       "max", oklDir + "linAlgMax.okl", "max", kernelInfo);
-  filename = std::string("linAlgNorm2") +
+  fileName = std::string("linAlgNorm2") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "norm2", oklDir + filename, "norm2", kernelInfo);
+      "norm2", oklDir + fileName, "norm2", kernelInfo);
   platform->kernels.add_kernel(
-      "norm2Many", oklDir + filename, "norm2Many", kernelInfo);
-  filename = std::string("linAlgNorm1") +
+      "norm2Many", oklDir + fileName, "norm2Many", kernelInfo);
+  fileName = std::string("linAlgNorm1") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "norm1", oklDir + filename, "norm1", kernelInfo);
+      "norm1", oklDir + fileName, "norm1", kernelInfo);
   platform->kernels.add_kernel(
-      "norm1Many", oklDir + filename, "norm1Many", kernelInfo);
-  filename = std::string("linAlgWeightedNorm1") +
+      "norm1Many", oklDir + fileName, "norm1Many", kernelInfo);
+  fileName = std::string("linAlgWeightedNorm1") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "weightedNorm1", oklDir + filename, "weightedNorm1", kernelInfo);
+      "weightedNorm1", oklDir + fileName, "weightedNorm1", kernelInfo);
   platform->kernels.add_kernel(
-      "weightedNorm1Many", oklDir + filename, "weightedNorm1Many", kernelInfo);
-  filename = std::string("linAlgWeightedNorm2") +
+      "weightedNorm1Many", oklDir + fileName, "weightedNorm1Many", kernelInfo);
+  fileName = std::string("linAlgWeightedNorm2") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "weightedNorm2", oklDir + filename, "weightedNorm2", kernelInfo);
-  filename = std::string("linAlgWeightedNorm2") +
+      "weightedNorm2", oklDir + fileName, "weightedNorm2", kernelInfo);
+  fileName = std::string("linAlgWeightedNorm2") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "weightedNorm2Many", oklDir + filename, "weightedNorm2Many", kernelInfo);
+      "weightedNorm2Many", oklDir + fileName, "weightedNorm2Many", kernelInfo);
   platform->kernels.add_kernel(
       "innerProd", oklDir + "linAlgInnerProd.okl", "innerProd", kernelInfo);
-  filename = std::string("linAlgWeightedInnerProd") +
+  fileName = std::string("linAlgWeightedInnerProd") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel(
-      "weightedInnerProd", oklDir + filename, "weightedInnerProd", kernelInfo);
-  filename = std::string("linAlgWeightedInnerProd") +
+      "weightedInnerProd", oklDir + fileName, "weightedInnerProd", kernelInfo);
+  fileName = std::string("linAlgWeightedInnerProd") +
              (serial ? std::string(".c") : std::string(".okl"));
   platform->kernels.add_kernel("weightedInnerProdMany",
-      oklDir + filename,
+      oklDir + fileName,
       "weightedInnerProdMany",
       kernelInfo);
   platform->kernels.add_kernel("weightedInnerProdMulti",
@@ -1297,7 +1230,7 @@ void compileUDFKernels()
   install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
-  occa::properties kernelInfo = platform->kernelInfo;
+  occa::properties kernelInfo = platform->kernelInfo + meshKernelProperties(N);
   kernelInfo["defines"].asObject();
   kernelInfo["includes"].asArray();
   kernelInfo["header"].asArray();
@@ -1320,8 +1253,7 @@ void compileUDFKernels()
     if(executePass){
       kernelInfoBC = kernelInfo;
       if (udf.loadKernels) {
-        // side-effect: kernelInfoBC will include any relevant user-defined kernel
-        // info
+        // side-effect: kernelInfoBC will include any relevant user-defined kernel props
         udf.loadKernels(kernelInfoBC);
       }
       const std::string bcDataFile = install_dir + "/include/core/bcData.h";
@@ -1330,7 +1262,7 @@ void compileUDFKernels()
       platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
       kernelInfoBC["includes"] += realpath(boundaryHeaderFileName.c_str(), NULL);
 
-      kernelInfoBC += populateMeshProperties(N);
+      kernelInfoBC += meshKernelProperties(N);
     }
     MPI_Barrier(communicator);
   }
