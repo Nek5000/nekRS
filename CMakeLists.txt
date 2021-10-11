@@ -294,7 +294,12 @@ endif()
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-bin nekrs-lib)
+target_link_libraries(nekrs-bin PRIVATE nekrs-lib)
+
+add_executable(axhelm-bin src/bench/axHelm/main.cpp)
+#target_include_directories(axhelm-bin PRIVATE src/core)
+set_target_properties(axhelm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-axhelm)
+target_link_libraries(axhelm-bin PRIVATE nekrs-lib)
 
 if(ENABLE_CUDA)
   set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
@@ -317,7 +322,7 @@ configure_file(
   @ONLY)
 
 #install nekRS
-install(TARGETS nekrs-lib nekrs-bin
+install(TARGETS nekrs-lib nekrs-bin axhelm-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
