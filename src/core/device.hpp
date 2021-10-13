@@ -25,8 +25,13 @@ class device_t : public occa::device{
     occa::kernel buildKernel(const std::string &filename,
                              const std::string &kernelName,
                              const occa::properties &props,
-                             std::string suffix = std::string()) const;
+                             std::string suffix = std::string(),
+                             bool buildRank0 = false) const;
   private:
+    occa::kernel doBuildKernel(const std::string &filename,
+                             const std::string &kernelName,
+                             const occa::properties &props,
+                             std::string suffix = std::string()) const;
     int _device_id;
 };
 #endif

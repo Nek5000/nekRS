@@ -15,8 +15,9 @@ device_t::buildNativeKernel(const std::string &filename,
     nativeProperties["defines/__NEKRS__OMP__"] = 1;
   return occa::device::buildKernel(filename, kernelName, nativeProperties);
 }
+
 occa::kernel
-device_t::buildKernel(const std::string &filename,
+device_t::doBuildKernel(const std::string &filename,
                          const std::string &kernelName,
                          const occa::properties &props,
                          std::string suffix) const
@@ -38,6 +39,35 @@ device_t::buildKernel(const std::string &filename,
     return this->buildNativeKernel(filename, alteredName, propsWithSuffix);
   }
 }
+
+occa::kernel
+device_t::buildKernel(const std::string &filename,
+                         const std::string &kernelName,
+                         const occa::properties &props,
+                         std::string suffix,
+                         bool buildRank0) const
+{
+
+  if(buildRank0){
+
+    const bool buildNodeLocal = useNodeLocalCache();
+    const int rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
+    MPI_Comm localCommunicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
+    occa::kernel constructedKernel;
+    for(int pass = 0; pass < 2; ++pass){
+      if((pass == 0 && rank == 0) || (pass == 1 && rank != 0)){
+        constructedKernel = doBuildKernel(filename, kernelName, props, suffix);
+      }
+      MPI_Barrier(localCommunicator);
+    }
+    return constructedKernel;
+
+  }
+
+  return doBuildKernel(filename, kernelName, props, suffix);
+
+}
+
 occa::memory
 device_t::mallocHost(const size_t Nbytes)
 {
@@ -49,6 +79,7 @@ device_t::mallocHost(const size_t Nbytes)
   std::free(buffer);
   return h_scratch;
 }
+
 occa::memory
 device_t::malloc(const size_t Nbytes, const occa::properties& properties)
 {
@@ -57,6 +88,7 @@ device_t::malloc(const size_t Nbytes, const occa::properties& properties)
   std::free(buffer);
   return o_returnValue;
 }
+
 occa::memory
 device_t::malloc(const size_t Nbytes, const void* src, const occa::properties& properties)
 {
@@ -67,11 +99,13 @@ device_t::malloc(const size_t Nbytes, const void* src, const occa::properties& p
   std::free(buffer);
   return o_returnValue;
 }
+
 occa::memory
 device_t::malloc(const hlong Nword , const dlong wordSize, occa::memory src)
 {
   return occa::device::malloc(Nword * wordSize, src);
 }
+
 occa::memory
 device_t::malloc(const hlong Nword , const dlong wordSize)
 {
@@ -81,6 +115,7 @@ device_t::malloc(const hlong Nword , const dlong wordSize)
   std::free(buffer);
   return o_returnValue;
 }
+
 device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
 {
   // OCCA build stuff

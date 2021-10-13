@@ -464,9 +464,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
 void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 {
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
   
@@ -601,9 +599,7 @@ void bootstrap()
   MPI_Comm_size(platform->comm.mpiComm,&size);
 
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 

@@ -27,6 +27,13 @@ static int enforceOutputStep = 0;
 
 static void setOccaVars();
 
+bool useNodeLocalCache(){
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_CACHE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  return (buildNodeLocal > 0);
+}
+
 namespace nekrs
 {
 double startTime(void)
@@ -110,9 +117,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform->timer.tic("setup", 1);
 
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 

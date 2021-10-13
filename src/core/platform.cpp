@@ -219,9 +219,7 @@ kernelRequestManager_t::compile()
 
   constexpr int maxCompilingRanks {100};
 
-  int buildNodeLocal = 0;
-  if(getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
 
   const int rank = buildNodeLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
   const int ranksCompiling =
