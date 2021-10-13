@@ -47,7 +47,7 @@ class elliptic_t;
 
 struct GmresData{
   GmresData(elliptic_t*);
-  int restart;
+  int nRestartVectors;
   int flexible;
   deviceVector_t o_V;
   deviceVector_t o_Z;
