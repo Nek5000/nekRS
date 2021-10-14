@@ -49,8 +49,7 @@ GmresData::GmresData(elliptic_t* elliptic)
   H((dfloat *) calloc((nRestartVectors+1)*(nRestartVectors+1), sizeof(dfloat))),
   sn((dfloat *) calloc(nRestartVectors, sizeof(dfloat))),
   cs((dfloat *) calloc(nRestartVectors, sizeof(dfloat))),
-  s((dfloat *) calloc(nRestartVectors+1, sizeof(dfloat))),
-  y((dfloat *) calloc(nRestartVectors, sizeof(dfloat)))
+  s((dfloat *) calloc(nRestartVectors+1, sizeof(dfloat)))
 {
   int Nblock = (elliptic->mesh->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
   const size_t Nbytes = nRestartVectors * Nblock * sizeof(dfloat);
@@ -58,6 +57,9 @@ GmresData::GmresData(elliptic_t* elliptic)
   {
     h_scratch = platform->device.mallocHost(Nbytes);
     scratch = (dfloat*) h_scratch.ptr();
+
+    h_y = platform->device.mallocHost(nRestartVectors * sizeof(dfloat));
+    y = (dfloat*) h_y.ptr();
   }
   o_scratch = platform->device.malloc(Nbytes);
 }

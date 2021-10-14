@@ -54,6 +54,7 @@ struct GmresData{
   occa::memory o_y;
   occa::memory o_scratch;
   occa::memory h_scratch;
+  occa::memory h_y;
   dfloat* y;
   dfloat* H;
   dfloat* sn;
