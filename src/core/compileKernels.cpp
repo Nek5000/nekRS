@@ -475,6 +475,8 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
 
   const std::string orderSuffix = std::string("_") + std::to_string(N);
 
+  const bool serial = useSerial();
+
   {
     const std::string oklpath = install_dir + "/okl/core/";
     std::string fileName;
@@ -493,7 +495,7 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
         kernelName,
         pfloatKernelInfo,
         orderSuffix + "pfloat");
-    fileName = install_dir + "/okl/elliptic/ellipticLinAlg.okl";
+    fileName = install_dir + "/okl/elliptic/ellipticLinAlg" + (serial ? ".c" : ".okl");
     kernelName = "fusedCopyDfloatToPfloat";
     platform->kernels.add_kernel(kernelName + orderSuffix,
         fileName,

@@ -34,6 +34,11 @@ bool useNodeLocalCache(){
   return (buildNodeLocal > 0);
 }
 
+bool useSerial(){
+  return (platform->device.mode() == "Serial" ||
+          platform->device.mode() == "OpenMP");
+}
+
 namespace nekrs
 {
 double startTime(void)

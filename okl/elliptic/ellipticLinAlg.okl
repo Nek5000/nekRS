@@ -50,8 +50,8 @@ SOFTWARE.
   }
 }
 @kernel void copyDfloatToPfloat(const dlong N,
-                      @restrict pfloat *  y,
-                      @restrict const dfloat * x){
+                      @restrict const dfloat * x,
+                      @restrict pfloat *  y){
   
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
