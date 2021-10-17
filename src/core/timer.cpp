@@ -238,20 +238,32 @@ std::string printPercentage(double num, double dom)
 
 void timer_t::printStatEntry(std::string name, std::string tag, std::string type) 
 {
-  if(timer_t::query(tag, type) > 0) {
-    std::cout << name 
-              << query(tag, "DEVICE:MAX") << "s"  
-              << "  " << printPercentage(query(tag, "DEVICE:MAX"), query("solve", "DEVICE:MAX"))
-              << "  " << count(tag) << "\n";
+  int rank;
+  MPI_Comm_rank(comm_, &rank);
+  const double tTag = query(tag, type);
+  const double tSolve = query("solve", type);
+  const long long int nCalls = count(tag);
+  if(tTag > 0) {
+    if(rank == 0){
+      std::cout << name 
+                << tTag << "s"  
+                << "  " << printPercentage(tTag, tSolve)
+                << "  " << nCalls << "\n";
+    }
   } 
 }
 
 void timer_t::printStatEntry(std::string name, double time) 
 {
+  int rank;
+  MPI_Comm_rank(comm_, &rank);
+  const double tSolve = query("solve", "DEVICE:MAX");
   if(time > 0) {
-    std::cout << name 
-              << time << "s"  
-              << "  " << printPercentage(time, query("solve", "DEVICE:MAX")) << "\n";
+    if(rank == 0){
+      std::cout << name 
+                << time << "s"  
+                << "  " << printPercentage(time, tSolve) << "\n";
+    } 
   } 
 }
 
@@ -276,60 +288,61 @@ void timer_t::printRunStat(int step)
   double gsTime = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &gsTime, 1, MPI_DOUBLE, MPI_MAX, comm_);
 
-  if (rank == 0) {
-    std::cout << ">>> runtime statistics (step = " << step << "):\n";
+  if(rank == 0) std::cout << ">>> runtime statistics (step = " << step << "):\n";
 
-    std::cout.setf(std::ios::scientific);
-    int outPrecisionSave = std::cout.precision();
-    std::cout.precision(5);
+  std::cout.setf(std::ios::scientific);
+  int outPrecisionSave = std::cout.precision();
+  std::cout.precision(5);
 
-    std::cout <<   "name                    " << "time          " << "time(%)  " << "calls\n";
+  if(rank == 0) std::cout <<   "name                    " << "time          " << "time(%)  " << "calls\n";
 
-    printStatEntry("  setup                 ", "setup", "DEVICE:MAX");
+  printStatEntry("  setup                 ", "setup", "DEVICE:MAX");
 
-    printStatEntry("    loadKernels         ", "loadKernels", "HOST:MAX");
+  printStatEntry("    loadKernels         ", "loadKernels", "HOST:MAX");
 
-    printStatEntry("  checkpointing         ", "checkpointing", "DEVICE:MAX");
+  printStatEntry("  checkpointing         ", "checkpointing", "DEVICE:MAX");
 
-    printStatEntry("  udfExecuteStep        ", "udfExecuteStep", "DEVICE:MAX");
+  printStatEntry("  udfExecuteStep        ", "udfExecuteStep", "DEVICE:MAX");
 
-    if(query("solve", "DEVICE:MAX")) {
-    std::cout <<   "  total solve           " << query("solve", "DEVICE:MAX") << "s\n";
-    std::cout <<   "    step min            " << query("minSolveStep", "HOST:MAX") << "s\n";
-    std::cout <<   "    step max            " << query("maxSolveStep", "HOST:MAX") << "s\n";
-    }
-
-    printStatEntry("    makef               ", "makef", "DEVICE:MAX");
-    printStatEntry("      udfUEqnSource     ", "udfUEqnSource", "DEVICE:MAX");
-
-    printStatEntry("    makeq               ", "makeq", "DEVICE:MAX");
-    printStatEntry("      udfSEqnSource     ", "udfSEqnSource", "DEVICE:MAX");
-
-    printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
- 
-    printStatEntry("    velocitySolve       ", "velocitySolve", "DEVICE:MAX");
-    printStatEntry("      projection        ", "velocity proj", "DEVICE:MAX");
-
-    printStatEntry("    pressureSolve       ", "pressureSolve", "DEVICE:MAX");
-    printStatEntry("      preconditioner    ", "pressure preconditioner", "DEVICE:MAX");
-    printStatEntry("        pMG smoother    ", "pressure preconditioner smoother", "DEVICE:MAX");
-    printStatEntry("        coarse grid     ", "coarseSolve", "DEVICE:MAX");
-    printStatEntry("      projection        ", "pressure proj", "DEVICE:MAX");
-
-    printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
-    printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
-
-    printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
-
-    printStatEntry("    gsMPI               ", gsTime);
-
-    printStatEntry("    dotp                ", "dotp", "DEVICE:MAX");
-
-    std::cout << std::endl;
-
-    std::cout.unsetf(std::ios::scientific);
-    std::cout.precision(outPrecisionSave);
+  const double tSolve        = query("solve", "DEVICE:MAX");
+  const double tMinSolveStep = query("minSolveStep", "HOST:MAX");
+  const double tMaxSolveStep = query("maxSolveStep", "HOST:MAX");
+  if(tSolve > 0 && rank == 0) {
+    std::cout <<   "  total solve           " << tSolve << "s\n";
+    std::cout <<   "    step min            " << tMinSolveStep << "s\n";
+    std::cout <<   "    step max            " << tMaxSolveStep << "s\n";
   }
+
+  printStatEntry("    makef               ", "makef", "DEVICE:MAX");
+  printStatEntry("      udfUEqnSource     ", "udfUEqnSource", "DEVICE:MAX");
+
+  printStatEntry("    makeq               ", "makeq", "DEVICE:MAX");
+  printStatEntry("      udfSEqnSource     ", "udfSEqnSource", "DEVICE:MAX");
+
+  printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
+ 
+  printStatEntry("    velocitySolve       ", "velocitySolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "velocity proj", "DEVICE:MAX");
+
+  printStatEntry("    pressureSolve       ", "pressureSolve", "DEVICE:MAX");
+  printStatEntry("      preconditioner    ", "pressure preconditioner", "DEVICE:MAX");
+  printStatEntry("        pMG smoother    ", "pressure preconditioner smoother", "DEVICE:MAX");
+  printStatEntry("        coarse grid     ", "coarseSolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "pressure proj", "DEVICE:MAX");
+
+  printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
+
+  printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
+
+  printStatEntry("    gsMPI               ", gsTime);
+
+  printStatEntry("    dotp                ", "dotp", "DEVICE:MAX");
+
+  if(rank == 0) std::cout << std::endl;
+
+  std::cout.unsetf(std::ios::scientific);
+  std::cout.precision(outPrecisionSave);
 }
 
 } // namespace
