@@ -268,6 +268,11 @@ void timer_t::printRunStat(int step)
       query("pressure proj pre", "DEVICE:MAX") + query("pressure proj post", "DEVICE:MAX"),
       count("pressure proj pre"));
 
+  set("scalar proj", 
+      query("scalar proj pre", "DEVICE:MAX") + query("scalar proj post", "DEVICE:MAX"),
+      count("scalar proj pre"));
+
+
   double gsTime = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &gsTime, 1, MPI_DOUBLE, MPI_MAX, comm_);
 
@@ -297,7 +302,10 @@ void timer_t::printRunStat(int step)
     printStatEntry("    makef               ", "makef", "DEVICE:MAX");
     printStatEntry("      udfUEqnSource     ", "udfUEqnSource", "DEVICE:MAX");
 
-    printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
+    printStatEntry("    makeq               ", "makeq", "DEVICE:MAX");
+    printStatEntry("      udfSEqnSource     ", "udfSEqnSource", "DEVICE:MAX");
+
+    printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
  
     printStatEntry("    velocitySolve       ", "velocitySolve", "DEVICE:MAX");
     printStatEntry("      projection        ", "velocity proj", "DEVICE:MAX");
@@ -309,10 +317,9 @@ void timer_t::printRunStat(int step)
     printStatEntry("      projection        ", "pressure proj", "DEVICE:MAX");
 
     printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
-    printStatEntry("      makeq             ", "makeq", "DEVICE:MAX");
-    printStatEntry("      udfSEqnSource     ", "udfSEqnSource", "DEVICE:MAX");
+    printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
 
-    printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
+    printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
 
     printStatEntry("    gsMPI               ", gsTime);
 
