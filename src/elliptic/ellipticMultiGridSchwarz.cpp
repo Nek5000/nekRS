@@ -907,33 +907,33 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
   if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
 
     oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
 
     oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   } else {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     }
 
     oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
     oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);

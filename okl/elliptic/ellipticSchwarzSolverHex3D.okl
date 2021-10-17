@@ -187,8 +187,9 @@
 
 @kernel void fusedFDM(
   const dlong Nelements,
-  const dlong localNelements,
+#if p_overlap
   @restrict const dlong*  elementList,
+#endif
   @restrict pfloat* Su,
   @restrict const pfloat* S_x,
   @restrict const pfloat* S_y,
@@ -200,11 +201,7 @@
   @restrict pfloat* u
   )
 {
-#if p_overlap
-  for (dlong my_elem = 0; my_elem < localNelements; ++my_elem; @outer) {
-#else
   for (dlong my_elem = 0; my_elem < Nelements; ++my_elem; @outer) {
-#endif
     @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
