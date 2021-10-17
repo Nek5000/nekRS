@@ -145,17 +145,17 @@ platform_t::create_mempool(const dlong offset, const dlong fields)
 }
 
 void
-kernelRequestManager_t::add_kernel(const std::string& m_requestName,
+kernelRequestManager_t::add(const std::string& m_requestName,
                 const std::string& m_fileName,
                 const std::string& m_kernelName,
                 const occa::properties& m_props,
                 std::string m_suffix,
                 bool checkUnique)
 {
-  this->add_kernel(kernelRequest_t{m_requestName, m_fileName, m_kernelName, m_props, m_suffix}, checkUnique);
+  this->add(kernelRequest_t{m_requestName, m_fileName, m_kernelName, m_props, m_suffix}, checkUnique);
 }
 void
-kernelRequestManager_t::add_kernel(kernelRequest_t request, bool checkUnique)
+kernelRequestManager_t::add(kernelRequest_t request, bool checkUnique)
 {
   auto iterAndBoolPair = kernels.insert(request);
   if(checkUnique)
@@ -165,7 +165,7 @@ kernelRequestManager_t::add_kernel(kernelRequest_t request, bool checkUnique)
     if(!unique){
       if(platformRef.comm.mpiRank == 0)
       {
-        std::cout << "Error in kernelRequestManager_t::add_kernel\n";
+        std::cout << "Error in kernelRequestManager_t::add\n";
         std::cout << "Request details:\n";
         std::cout << request.to_string();
       }

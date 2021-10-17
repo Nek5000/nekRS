@@ -208,10 +208,12 @@ set(SRC
     src/core/bcMap.cpp
     src/core/compileKernels.cpp
     src/core/setup.cpp
+    src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp
     src/lns/constantFlowRate.cpp
     src/cds/cds.cpp
+    src/cds/registerCdsKernels.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
@@ -223,11 +225,13 @@ set(SRC
     src/linAlg/matrixEig.cpp
     src/linAlg/matrixTranspose.cpp
     src/linAlg/matrixRightSolve.cpp
+    src/linAlg/registerLinAlgKernels.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
+    src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}

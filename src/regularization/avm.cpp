@@ -39,9 +39,9 @@ void allocateMemory(cds_t* cds)
 void compileKernels(cds_t* cds)
 {
   mesh_t* mesh = cds->mesh[0];
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/cds/regularization/";
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = installDir + "/okl/cds/regularization/";
   std::string filename = oklpath + "relativeMassHighestMode.okl";
   occa::properties info = platform->kernelInfo;
   info["defines/" "p_Nq"] = cds->mesh[0]->Nq;

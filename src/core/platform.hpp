@@ -118,7 +118,7 @@ public:
   : kernelsProcessed(false),
     platformRef(m_platform)
   {}
-  void add_kernel(const std::string& m_requestName,
+  void add(const std::string& m_requestName,
                   const std::string& m_fileName,
                   const std::string& m_kernelName,
                   const occa::properties& m_props,
@@ -140,7 +140,7 @@ private:
   std::map<std::string, occa::kernel> requestToKernelMap;
   std::map<std::string, std::set<kernelRequest_t>> fileNameToRequestMap;
 
-  void add_kernel(kernelRequest_t request, bool assertUnique = true);
+  void add(kernelRequest_t request, bool assertUnique = true);
 
 };
 

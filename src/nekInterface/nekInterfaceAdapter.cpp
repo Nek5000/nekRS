@@ -349,8 +349,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   char line[BUFSIZ];
   const char *cache_dir = getenv("NEKRS_CACHE_DIR");
 
-  const std::string install_dir(getenv("NEKRS_HOME"));
-  const std::string nek5000_dir = install_dir + "/nek5000";
+  const std::string installDir(getenv("NEKRS_HOME"));
+  const std::string nek5000_dir = installDir + "/nek5000";
 
   const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
@@ -474,9 +474,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const std::string cache_dir = std::string(getenv("NEKRS_CACHE_DIR")) + "/nek5000";
       mkdir(cache_dir.c_str(), S_IRWXU); 
 
-      const std::string install_dir(getenv("NEKRS_HOME"));
-      const std::string nekInterface_dir = install_dir + "/nekInterface";
-      const std::string nek5000_dir = install_dir + "/nek5000";
+      const std::string installDir(getenv("NEKRS_HOME"));
+      const std::string nekInterface_dir = installDir + "/nekInterface";
+      const std::string nek5000_dir = installDir + "/nek5000";
 
       char buf[10*BUFSIZ];
       char *ret = getcwd(buf, sizeof(buf));
