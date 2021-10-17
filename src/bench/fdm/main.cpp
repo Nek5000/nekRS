@@ -138,8 +138,6 @@ int main(int argc, char** argv)
   Nelements = std::max(1, Nelements/size);
   const int Nq = N + 1;
   const int Np = Nq * Nq * Nq;
-  const int Nq_e = Nq + 2;
-  const int Np_e = Nq_e * Nq_e * Nq_e;
 
   platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD); 
   const int Nthreads =  omp_get_max_threads();
@@ -149,8 +147,8 @@ int main(int argc, char** argv)
   if(wordSize == 4) props["defines/pfloat"] = "float";
   else props["defines/pfloat"] = "dfloat";
 
-  props["defines/p_Nq_e"] = Nq_e;
-  props["defines/p_Np_e"] = Np_e;
+  props["defines/p_Nq_e"] = Nq;
+  props["defines/p_Np_e"] = Np;
   props["defines/p_overlap"] = 0;
 
   // always benchmark ASM
@@ -167,24 +165,24 @@ int main(int argc, char** argv)
   randAlloc = &rand64Alloc; 
   if(wordSize == 4) randAlloc = &rand32Alloc;
 
-  void *Sx   = randAlloc(Nelements * Nq_e * Nq_e);
-  void *Sy   = randAlloc(Nelements * Nq_e * Nq_e);
-  void *Sz   = randAlloc(Nelements * Nq_e * Nq_e);
-  void *invL = randAlloc(Nelements * Np_e);
-  void *Su   = randAlloc(Nelements * Np_e);
-  void *u    = randAlloc(Nelements * Np_e);
+  void *Sx   = randAlloc(Nelements * Nq * Nq);
+  void *Sy   = randAlloc(Nelements * Nq * Nq);
+  void *Sz   = randAlloc(Nelements * Nq * Nq);
+  void *invL = randAlloc(Nelements * Np);
+  void *Su   = randAlloc(Nelements * Np);
+  void *u    = randAlloc(Nelements * Np);
 
-  o_Sx = platform->device.malloc(Nelements * Nq_e * Nq_e * wordSize, Sx);
+  o_Sx = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sx);
   free(Sx);
-  o_Sy = platform->device.malloc(Nelements * Nq_e * Nq_e * wordSize, Sy);
+  o_Sy = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sy);
   free(Sy);
-  o_Sz = platform->device.malloc(Nelements * Nq_e * Nq_e * wordSize, Sz);
+  o_Sz = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sz);
   free(Sz);
-  o_invL = platform->device.malloc(Nelements * Np_e * wordSize, invL);
+  o_invL = platform->device.malloc(Nelements * Np * wordSize, invL);
   free(invL);
-  o_Su = platform->device.malloc(Nelements * Np_e * wordSize, Su);
+  o_Su = platform->device.malloc(Nelements * Np * wordSize, Su);
   free(Su);
-  o_u = platform->device.malloc(Nelements * Np_e * wordSize, u);
+  o_u = platform->device.malloc(Nelements * Np * wordSize, u);
   free(u);
 
   // warm-up
@@ -197,13 +195,12 @@ int main(int argc, char** argv)
   // ***** 
  
   // print statistics
-  const dlong Ne = (N+2);
-  const dfloat GDOFPerSecond = (size * Nelements * (Ne * Ne * Ne) / elapsed) / 1.e9;
+  const dfloat GDOFPerSecond = (size * Nelements * (N* N * N) / elapsed) / 1.e9;
 
-  size_t bytesPerElem = (3 * Np_e + 3 * Nq_e * Nq_e) * wordSize;
+  size_t bytesPerElem = (3 * Np + 3 * Nq * Nq) * wordSize;
   const double bw = (size * Nelements * bytesPerElem / elapsed) / 1.e9;
 
-  double flopsPerElem = 12 * Nq_e * Np_e + Np_e;
+  double flopsPerElem = 12 * Nq * Np + Np;
   const double gflops = (size * flopsPerElem * Nelements / elapsed) / 1.e9;
 
   if(rank == 0)
