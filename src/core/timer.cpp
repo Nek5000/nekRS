@@ -232,7 +232,7 @@ std::string printPercentage(double num, double dom)
 {
   char buf[4096];
   double frac = num/dom;
-  snprintf(buf, sizeof(buf), "%.2f", frac);
+  snprintf(buf, sizeof(buf), "%7.2f", frac);
   return std::string(buf);
 }
 
@@ -242,7 +242,7 @@ void timer_t::printStatEntry(std::string name, std::string tag, std::string type
     std::cout << name 
               << query(tag, "DEVICE:MAX") << "s"  
               << "  " << printPercentage(query(tag, "DEVICE:MAX"), query("solve", "DEVICE:MAX"))
-              << "     " << count(tag) << "\n";
+              << "  " << count(tag) << "\n";
   } 
 }
 
