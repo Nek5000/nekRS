@@ -166,7 +166,7 @@ int main(int argc, char** argv)
 
   if(err || cmdCheck != 3) {
     if(rank == 0)
-      printf("Usage: ./nrs-axhelm  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OPENCL>\n"
+      printf("Usage: ./nekrs-axhelm  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OPENCL>\n"
              "                    [--block-dim <n>]\n"
              "                    [--g-order <n>] [--computeGeom]\n"
              "                    [--bk-mode] [--fp32] [--iterations <n>]\n"); 
