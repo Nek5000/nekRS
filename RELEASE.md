@@ -1,10 +1,19 @@
-# Release v21.1.1
+# Release v21.2
+
+## What is new? 
 
 * Multi-session (uncoupled) support
 * Fix various potential race conditions 
 * Fix `mcmodel` issue on ppc 
 * Fix Dirichlet handling in Jacobi smoother
 * Fix minor performance regression in pressure solve
+
+## Known Bugs / Restrictions
+
+* [383](https://github.com/Nek5000/nekRS/issues/383)
+* [300](https://github.com/Nek5000/nekRS/issues/300)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
+* [201](https://github.com/Nek5000/nekRS/issues/201)
 
 # Release v21.1
 
