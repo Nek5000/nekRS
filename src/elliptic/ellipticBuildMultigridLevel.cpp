@@ -160,55 +160,16 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
-  //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
-  //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
-  elliptic->mapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
-  for (dlong e = 0; e < mesh->Nelements; e++) {
-    for (int n = 0; n < mesh->Np; n++) elliptic->mapB[n + e * mesh->Np] = 1E9;
-    for (int f = 0; f < mesh->Nfaces; f++) {
-      int bc = mesh->EToB[f + e * mesh->Nfaces];
-      if (bc > 0) {
-        for (int n = 0; n < mesh->Nfp; n++) {
-          int BCFlag = elliptic->BCType[bc];
-          int fid = mesh->faceNodes[n + f * mesh->Nfp];
-          elliptic->mapB[fid + e * mesh->Np] = mymin(BCFlag,elliptic->mapB[fid + e * mesh->Np]);
-        }
-      }
-    }
+  { // setup an unmasked gs handle
+    ogs_t *ogs = NULL;
+    ellipticOgs(mesh, Ntotal, /* nFields */ 1, /* offset */ 0, elliptic->BCType, /* BCTypeOffset */ 0,
+                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    elliptic->ogs = ogs;
+    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
-  ogsGatherScatter(elliptic->mapB, ogsInt, ogsMin, mesh->ogs);
-
-  //use the bc flags to find masked ids
-  elliptic->Nmasked = 0;
-  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-    if (elliptic->mapB[n] == 1E9)
-      elliptic->mapB[n] = 0.;
-    else if (elliptic->mapB[n] == 1)     //Dirichlet boundary
-      elliptic->Nmasked++;
-  }
-  elliptic->o_mapB = platform->device.malloc(mesh->Nelements * mesh->Np * sizeof(int), elliptic->mapB);
-
-  elliptic->maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-  elliptic->Nmasked = 0; //reset
-  for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
-    if (elliptic->mapB[n] == 1) elliptic->maskIds[elliptic->Nmasked++] = n;
-
-  if (elliptic->Nmasked) 
-     elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
-
-  //make a masked version of the global id numbering
-  hlong* maskedGlobalIds = (hlong*) calloc(Ntotal,sizeof(hlong));
-  memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
-  for (dlong n = 0; n < elliptic->Nmasked; n++)
-    maskedGlobalIds[elliptic->maskIds[n]] = 0;
-
-  //use the masked ids to make another gs handle
-  elliptic->ogs = ogsSetup(Ntotal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device.occaDevice());
-  elliptic->o_invDegree = elliptic->ogs->o_invDegree;
-  free(maskedGlobalIds);
 
   std::string suffix = "Hex3D";
 

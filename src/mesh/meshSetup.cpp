@@ -119,8 +119,6 @@ mesh_t *createMesh(MPI_Comm comm,
       printf("Nq: %d\n", mesh->Nq);
   }
 
-  mesh->Nlocal = mesh->Nelements * mesh->Np;
-
   loadKernels(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
@@ -214,12 +212,6 @@ mesh_t* duplicateMesh(MPI_Comm comm,
       mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
-
-  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-    const int maxTemporalOrder = 3;
-    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
-  }
 
   return mesh;
 }

@@ -9,28 +9,14 @@ Usage: ./nekrs-bench-advsub --p-order <n> --elements <n> --backend <CPU|CUDA|HIP
 
 # Examples
 
-### Nvidia V100 
+### NVIDIA A100 
 ```
->mpirun -np 1 nekrs-bench-advsub --p-order 7 --elements 4096 --backend CUDA
-
-MPItasks=1 OMPthreads=2 NRepetitions=7690 N=7 cubN=10 Nelements=4096 elapsed time=0.00116347 wordSize=64 GDOF/s=1.20753 GB/s=438.319 GFLOPS/s=2043.27
-```
-
-```
->mpirun -np 1 nekrs-bench-advsub --p-order 7 --no-cubature --elements 4096 --backend CUDA
-
-MPItasks=1 OMPthreads=2 NRepetitions=21249 N=7 cubN=7 Nelements=4096 elapsed time=0.000460606 wordSize=64 GDOF/s=3.05017 GB/s=582.788 GFLOPS/s=846.863
+> mpirun -np 1 nekrs-bench-advsub --p-order 7 --elements 4096 --backend CUDA
+MPItasks=1 OMPthreads=1 NRepetitions=12768 N=7 cubN=10 Nelements=4096 elapsed time=0.00061705 wordSize=64 GDOF/s=2.27685 GB/s=614.419 GFLOPS/s=3799.65
 ```
 
-### AMD EPYC 7402 24-Core Processor
+### AMD EPYC 7742 64-Core Processor
 ```
->OCCA_CXXFLAGS='-O3 -march=native -mtune=native' mpirun -np 24 --bind-to core --map-by ppr:24:socket nekrs-bench-advsub --p-order 7 --elements 4096 --backend CPU
-
-MPItasks=24 OMPthreads=1 NRepetitions=646 N=7 cubN=10 Nelements=4080 elapsed time=0.0156808 wordSize=64 GDOF/s=0.0892453 GB/s=32.397 GFLOPS/s=151.012
-```
-
-```
->OCCA_CXXFLAGS='-O3 -march=native -mtune=native' mpirun -np 24 --bind-to core --map-by ppr:24:socket nekrs-bench-advsub --p-order 7 --no-cubature --elements 4096 --backend CPU
-
-MPItasks=24 OMPthreads=1 NRepetitions=1823 N=7 cubN=7 Nelements=4080 elapsed time=0.00546482 wordSize=64 GDOF/s=0.256081 GB/s=48.930 GFLOPS/s=71.0995
+> OCCA_CXXFLAGS='-O3 -march=native -mtune=native' mpirun -np 64 --bind-to core --map-by ppr:64:socket nekrs-bench-advsub --p-order 7 --elements 1024 --backend CPU
+MPItasks=64 OMPthreads=2 NRepetitions=7396 N=7 cubN=10 Nelements=1024 elapsed time=0.00132257 wordSize=64 GDOF/s=0.265569 GB/s=71.7457 GFLOPS/s=443.187
 ```

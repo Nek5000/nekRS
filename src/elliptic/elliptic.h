@@ -252,4 +252,6 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &
 
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 
+void ellipticOgs(mesh_t *mesh, dlong _Nlocal, int nFields, dlong offset, int *BCType, int BCTypeOffset,
+                 dlong& Nmasked, occa::memory& o_mapB, occa::memory& o_maskIds, ogs_t **ogs);
 #endif

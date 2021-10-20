@@ -98,7 +98,7 @@ int main(int argc, char** argv)
   int cubN = -1;
   int okl = 1;
   int Ntests = -1;
-  int nEXT = 3;
+  int nEXT = 2;
   dealias = true;
   static constexpr size_t wordSize = 8;
 
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
   if(err || cmdCheck != 3) {
     if(rank == 0)
       printf("Usage: ./nekrs-bench-advsub  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OPENCL>\n"
-             "                    [--no-cubature] [--ext-order <n>] [--c-order <n>] [--iterations <n>]\n"); 
+             "                    [--c-order <n>] [--no-cubature] [--ext-order <n>] [--iterations <n>]\n"); 
     exit(1); 
   }
 
@@ -210,7 +210,7 @@ int main(int argc, char** argv)
 
   const std::string ext = (platform->device.mode() == "Serial") ? ".c" : ".okl";
   std::string fileName = 
-    installDir + "/okl/nrs/subCycleHex3D" + ext;
+    installDir + "/okl/nrs/" + kernelName + ext;
   
   // currently lacking a native implementation of the non-dealiased kernel
   if(!dealias) fileName = installDir + "/okl/nrs/subCycleHex3D.okl";

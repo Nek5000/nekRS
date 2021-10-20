@@ -164,72 +164,17 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
-  //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
-  const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
-  elliptic->mapB = (int*) calloc(mapSize,sizeof(int));
-  const int largeNumber = 1 << 20;
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong e = 0; e < mesh->Nelements; e++) {
-      for (int n = 0; n < mesh->Np; n++)
-        elliptic->mapB[n + e * mesh->Np + fld * elliptic->Ntotal] = largeNumber;
-      for (int f = 0; f < mesh->Nfaces; f++) {
-        int bc = mesh->EToB[f + e * mesh->Nfaces];
-        if (bc > 0) {
-          int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = 
-              mymin(BCFlag, elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal]);
-          }
-        }
-      }
-    }
-  ogsGatherScatterMany(elliptic->mapB,
-                       elliptic->Nfields,
-                       elliptic->Ntotal,
-                       ogsInt,
-                       ogsMin,
-                       mesh->ogs);
-
-  // Create mask Ids
-  elliptic->Nmasked  = 0;
-  elliptic->fNmasked = (dlong*)calloc(elliptic->Nfields, sizeof(dlong));
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-      if (elliptic->mapB[n + fld * elliptic->Ntotal] == largeNumber) {
-        elliptic->mapB[n + fld * elliptic->Ntotal] = 0.;
-      } else if (elliptic->mapB[n + fld * elliptic->Ntotal] == 1) { //Dirichlet boundary
-        elliptic->Nmasked++; // increase global accumulator
-        elliptic->fNmasked[fld]++; // increase local accumulator
-      }
-    }
-  elliptic->o_mapB = platform->device.malloc(mapSize * sizeof(int), elliptic->mapB);
-
-  elliptic->maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-  elliptic->Nmasked = 0;
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (elliptic->mapB[n + fld * elliptic->Ntotal] == 1)
-        elliptic->maskIds[elliptic->Nmasked++] = n + fld * elliptic->Ntotal;
-  if (elliptic->Nmasked) 
-    elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
-
-  if(elliptic->blockSolver) {
-    elliptic->ogs = mesh->ogs; // cannot use masked version as mixed BC's possible in each field
-  } else {
-    hlong* maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
-    memcpy(maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
-    for (dlong n = 0; n < elliptic->Nmasked; n++)
-      maskedGlobalIds[elliptic->maskIds[n]] = 0;
-
-    elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device.occaDevice());
-    free(maskedGlobalIds);
+  { //setup an unmasked gs handle
+    ogs_t *ogs = NULL;
+    if(elliptic->blockSolver) ogs = mesh->ogs; 
+    ellipticOgs(mesh, elliptic->Ntotal, elliptic->Nfields, elliptic->Ntotal, elliptic->BCType, elliptic->NBCType, 
+                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    elliptic->ogs = ogs;
+    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
-  elliptic->o_invDegree = elliptic->ogs->o_invDegree;
 
   elliptic->precon = new precon_t();
 

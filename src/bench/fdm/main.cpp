@@ -157,7 +157,7 @@ int main(int argc, char** argv)
   std::string kernelName = "fusedFDM";
   const std::string ext = (platform->device.mode() == "Serial") ? ".c" : ".okl";
   const std::string fileName = 
-    installDir + "/okl/elliptic/ellipticSchwarzSolverHex3D" + ext;
+    installDir + "/okl/elliptic/" + kernelName + ext;
 
   fdmKernel = platform->device.buildKernel(fileName, props, true);
 
