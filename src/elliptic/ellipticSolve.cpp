@@ -34,6 +34,11 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
+  std::string name = elliptic->name;
+  if(name.find("scalar") != std::string::npos){
+    name = "scalar";
+  }
+
   int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
   const int verbose = options.compareArgs("VERBOSE", "TRUE");
@@ -90,7 +95,8 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   platform->linAlg->fill(elliptic->Ntotal * elliptic->Nfields, 0.0, o_x);
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) {
-    platform->timer.tic(elliptic->name + " proj pre",1);
+    
+    platform->timer.tic(name + " proj pre",1);
     elliptic->res00Norm = 
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
@@ -106,7 +112,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       ABORT(EXIT_FAILURE);
     }
     elliptic->residualProjection->pre(o_r);
-    platform->timer.toc(elliptic->name + " proj pre");
+    platform->timer.toc(name + " proj pre");
   }
 
   elliptic->res0Norm = 
@@ -147,9 +153,9 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) { 
-    platform->timer.tic(elliptic->name + " proj post",1);
+    platform->timer.tic(name + " proj post",1);
     elliptic->residualProjection->post(o_x);
-    platform->timer.toc(elliptic->name + " proj post");
+    platform->timer.toc(name + " proj post");
   } else {
     elliptic->res00Norm = elliptic->res0Norm;
   }
