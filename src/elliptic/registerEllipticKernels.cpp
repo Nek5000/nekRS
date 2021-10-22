@@ -8,7 +8,7 @@ void registerGMRESKernels(const std::string &section, int Nfields) {
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = installDir + "/okl/elliptic/";
   std::string fileName;
-  const bool serial = useSerial();
+  const bool serial = platform->serial;
 
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
@@ -67,7 +67,7 @@ void registerEllipticKernels(std::string section) {
     return false;
   }();
 
-  const bool serial = useSerial();
+  const bool serial = platform->serial;
 
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 

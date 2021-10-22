@@ -189,4 +189,6 @@ device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
   }
 
   _device_id = device_id;
+
+  deviceAtomic = this->mode() == "CUDA";
 }

@@ -118,7 +118,7 @@ void registerSchwarzKernels(const std::string &section, int N) {
   const int Np_e = Nq_e * Nq_e * Nq_e;
 
   bool overlap = false;
-  const bool serial = useSerial();
+  const bool serial = platform->serial;
   if (Nq >= 5 && !serial)
     overlap = true;
 
@@ -174,7 +174,7 @@ void registerFineLevelKernels(const std::string &section, int N) {
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = installDir + "/okl/elliptic/";
-  const bool serial = useSerial();
+  const bool serial = platform->serial;
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
   {
@@ -258,7 +258,7 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
   const std::string oklpath = installDir + "/okl/elliptic/";
   registerCommonMGPreconditionerKernels(N, kernelInfo);
 
-  const bool serial = useSerial();
+  const bool serial = platform->serial;
 
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
@@ -441,7 +441,7 @@ void registerSEMFEMKernels(const std::string &section, int N) {
   stiffnessKernelInfo["defines/p_rows_sorted"] = 1;
   stiffnessKernelInfo["defines/p_cols_sorted"] = 0;
 
-  const bool constructOnHost = !supportsAtomicReductions();
+  const bool constructOnHost = !platform->device.deviceAtomic;
 
   if (!constructOnHost) {
     platform->kernels.add("computeStiffnessMatrix",

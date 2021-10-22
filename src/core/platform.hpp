@@ -170,6 +170,7 @@ struct platform_t{
   void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
   inipp::Ini *par;
+  bool serial;
 
   static platform_t* getInstance(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm){
     if(!singleton)

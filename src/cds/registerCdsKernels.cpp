@@ -126,7 +126,7 @@ void registerCdsKernels(occa::properties kernelInfoBC) {
       fileName = oklpath + "cds/subCycle" + suffix + ".okl";
       occa::properties subCycleStrongCubatureProps = prop;
 
-      if(useSerial())
+      if(platform->serial)
         fileName = oklpath + "cds/subCycle" + suffix + ".c";
 
       kernelName = "subCycleStrongCubatureVolume" + suffix;

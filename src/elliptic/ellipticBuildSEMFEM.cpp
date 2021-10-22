@@ -242,12 +242,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
                    /* mode */ 0);
   }
 
-  constructOnHost = 
-    platform->device.mode() == std::string("OpenCL")
-    ||
-    platform->device.mode() == std::string("HIP")
-    ||
-    platform->device.mode() == std::string("Serial");
+  constructOnHost = !platform->device.deviceAtomic;
 
   if(!constructOnHost) load();
 

@@ -167,7 +167,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     prop["defines/p_cubNp"] = cubNp;
     fileName = oklpath + "nrs/Urst" + suffix + ".okl";
 
-    const bool serial = useSerial();
+    const bool serial = platform->serial;
     if(serial) fileName = oklpath + "nrs/Urst" + suffix + ".c";
     kernelName = "UrstCubature" + suffix;
     platform->kernels.add(

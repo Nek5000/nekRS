@@ -27,6 +27,8 @@ class device_t : public occa::device{
                              const occa::properties &props,
                              std::string suffix = std::string(),
                              bool buildRank0 = false) const;
+    bool deviceAtomic;
+
   private:
     occa::kernel doBuildKernel(const std::string &filename,
                              const std::string &kernelName,

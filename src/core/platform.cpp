@@ -101,6 +101,9 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
     kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
     kernelInfo["compiler_flags"] += " -ffast-math ";
   }
+
+  serial = platform->device.mode() == "Serial" ||
+           platform->device.mode() == "OpenMP";
 }
 void memPool_t::allocate(const dlong offset, const dlong fields)
 {

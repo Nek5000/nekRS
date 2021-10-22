@@ -34,15 +34,6 @@ bool useNodeLocalCache(){
   return (buildNodeLocal > 0);
 }
 
-bool useSerial(){
-  return (platform->device.mode() == "Serial" ||
-          platform->device.mode() == "OpenMP");
-}
-
-bool supportsAtomicReductions(){
-  return platform->device.mode() == "CUDA";
-}
-
 namespace nekrs
 {
 double startTime(void)
