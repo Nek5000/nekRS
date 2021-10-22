@@ -20,7 +20,7 @@ void compileDummyKernel()
   );
 
   if(rank == 0){
-    platform->device.buildKernelFromString(
+    platform->device.occaDevice().buildKernelFromString(
       dummyKernelStr,
       dummyKernelName,
       platform->kernelInfo
@@ -83,7 +83,7 @@ void compileKernels() {
       const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
       auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
       oogs::compile(
-          platform->device, platform->device.mode(), communicator, buildOnly);
+          platform->device.occaDevice(), platform->device.mode(), communicator, buildOnly);
     }
 
   platform->kernels.compile();

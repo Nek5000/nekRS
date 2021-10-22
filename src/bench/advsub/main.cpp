@@ -215,7 +215,7 @@ int main(int argc, char** argv)
   // currently lacking a native implementation of the non-dealiased kernel
   if(!dealias) fileName = installDir + "/okl/nrs/subCycleHex3D.okl";
 
-  subcyclingKernel = platform->device.buildKernel(fileName, kernelName, props);
+  subcyclingKernel = platform->device.buildKernel(fileName, props, true);
 
   // populate arrays
 

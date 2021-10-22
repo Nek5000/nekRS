@@ -17,19 +17,19 @@ void registerGMRESKernels(const std::string &section, int Nfields) {
   gmresKernelInfo["defines/p_Nfields"] = Nfields;
 
   std::string kernelName = "gramSchmidtOrthogonalization";
-  fileName = oklpath + "ellipticGramSchmidtOrthogonalization" + fileNameExtension;
+  fileName = oklpath + kernelName + fileNameExtension;
   platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
+      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 
   kernelName = "updatePGMRESSolution";
-  fileName = oklpath + "ellipticUpdatePGMRES" + fileNameExtension;
+  fileName = oklpath + kernelName + fileNameExtension;
   platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
+      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 
   kernelName = "fusedResidualAndNorm";
-  fileName = oklpath + "ellipticFusedResidualAndNorm" + fileNameExtension;
+  fileName = oklpath + kernelName + fileNameExtension;
   platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, kernelName, gmresKernelInfo);
+      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 }
 
 }
@@ -84,16 +84,18 @@ void registerEllipticKernels(std::string section) {
     std::string fileName, kernelName;
 
     {
+      const std::string extension = ".okl";
       occa::properties properties = platform->kernelInfo;
       properties["defines/p_Nfields"] = Nfields;
 
-      fileName = oklpath + "ellipticResidualProjection.okl";
       kernelName = "multiScaledAddwOffset";
+      fileName = oklpath + kernelName + extension;
       platform->kernels.add(
-          sectionIdentifier + kernelName, fileName, kernelName, properties);
+          sectionIdentifier + kernelName, fileName, properties);
       kernelName = "accumulate";
+      fileName = oklpath + kernelName + extension;
       platform->kernels.add(
-          sectionIdentifier + kernelName, fileName, kernelName, properties);
+          sectionIdentifier + kernelName, fileName, properties);
     }
   }
 
@@ -102,7 +104,7 @@ void registerEllipticKernels(std::string section) {
     std::string fileName;
 
     fileName = oklpath + "mask.okl";
-    platform->kernels.add("mask", fileName, "mask", kernelInfo);
+    platform->kernels.add("mask", fileName, kernelInfo);
   }
 
   kernelInfo["defines/p_Nfields"] = Nfields;
@@ -123,12 +125,12 @@ void registerEllipticKernels(std::string section) {
     std::string fileName;
     std::string kernelName;
 
-    fileName = oklpath + "ellipticBuildDiagonal" + suffix + ".okl";
     kernelName = "ellipticBlockBuildDiagonal" + suffix;
+    fileName = oklpath + kernelName + ".okl";
     dfloatKernelInfo["defines/dfloat"] = dfloatString;
     dfloatKernelInfo["defines/pfloat"] = pfloatString;
     platform->kernels.add(
-        sectionIdentifier + kernelName, fileName, kernelName, dfloatKernelInfo);
+        sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
 
     // Ax
     dfloatKernelInfo["defines/pfloat"] = dfloatString;
@@ -147,28 +149,20 @@ void registerEllipticKernels(std::string section) {
       std::string _kernelName = kernelNamePrefix + kernelName;
       fileName = oklpath + _kernelName + fileNameExtension; 
       platform->kernels.add(
-        _kernelName, fileName, _kernelName, AxKernelInfo);
+        _kernelName, fileName, AxKernelInfo);
     }
 
     if (!serial) {
       std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
       fileName = oklpath + _kernelName + fileNameExtension; 
       platform->kernels.add(
-        _kernelName, fileName, _kernelName, AxKernelInfo);
+        _kernelName, fileName, AxKernelInfo);
     }
 
     // PCG update
-    if (serial) {
-      fileName = oklpath + "ellipticSerialUpdatePCG.c";
-    } else {
-      fileName = oklpath + "ellipticUpdatePCG.okl";
-    }
+    fileName = oklpath + "ellipticBlockUpdatePCG" + fileNameExtension;
     platform->kernels.add(sectionIdentifier + "ellipticBlockUpdatePCG",
         fileName,
-        "ellipticBlockUpdatePCG",
-        dfloatKernelInfo);
+        kernelInfo);
   }
-
-  // projection
-  {}
 }

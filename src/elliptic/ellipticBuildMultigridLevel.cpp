@@ -217,7 +217,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
   //use the masked ids to make another gs handle
-  elliptic->ogs = ogsSetup(Ntotal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
+  elliptic->ogs = ogsSetup(Ntotal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device.occaDevice());
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   free(maskedGlobalIds);
 

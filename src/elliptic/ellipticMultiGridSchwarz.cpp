@@ -643,7 +643,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   meshConnectFaceNodes3D(mesh);
   meshGlobalIds(mesh);
 
-  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
+  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device.occaDevice());
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
@@ -825,7 +825,7 @@ void MGLevel::build(
   //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
-                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device,
+                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device.occaDevice(),
                                     NULL, oogsMode);
   meshFree(extendedMesh);
 

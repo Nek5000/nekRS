@@ -1,5 +1,4 @@
-extern "C"
-void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
+extern "C" void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
                               const dlong &offset,
                               const dlong &loffset,
                               const dfloat* __restrict__ vgeo,

@@ -218,6 +218,7 @@ set(SRC
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/kernelRequestManager.cpp
     src/core/device.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp

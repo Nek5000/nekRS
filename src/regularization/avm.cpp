@@ -42,25 +42,26 @@ void compileKernels(cds_t* cds)
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = installDir + "/okl/cds/regularization/";
-  std::string filename = oklpath + "relativeMassHighestMode.okl";
+  std::string fileName, kernelName;
+  const std::string extension = ".okl";
   occa::properties info = platform->kernelInfo;
   info["defines/" "p_Nq"] = cds->mesh[0]->Nq;
   info["defines/" "p_Np"] = cds->mesh[0]->Np;
-  relativeMassHighestModeKernel =
-    platform->device.buildKernel(filename,
-                             "relativeMassHighestMode",
-                             info);
 
-  filename = oklpath + "computeMaxVisc.okl";
+  kernelName = "relativeMassHighestMode";
+  fileName = oklpath + kernelName + extension;
+  relativeMassHighestModeKernel =
+    platform->device.buildKernel(fileName, info);
+
+  kernelName = "computeMaxVisc";
+  fileName = oklpath + kernelName + extension;
   computeMaxViscKernel =
-    platform->device.buildKernel(filename,
-                             "computeMaxVisc",
-                             info);
-  filename = oklpath + "interpolateP1.okl";
+    platform->device.buildKernel(fileName, info);
+
+  kernelName = "interpolateP1";
+  fileName = oklpath + kernelName + extension;
   interpolateP1Kernel =
-    platform->device.buildKernel(filename,
-      "interpolateP1",
-      info);
+    platform->device.buildKernel(fileName, info);
 }
 
 }

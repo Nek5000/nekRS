@@ -1,3 +1,4 @@
+
 @kernel void setEllipticCoeff(const dlong N,
                               const dfloat lambda,
                               const dlong fieldOffset,
@@ -10,17 +11,5 @@
     if(n < N) {
       coeff[0 * offset + n] = val0[fieldOffset + n];
       coeff[1 * offset + n] = lambda * val1[fieldOffset + n];
-    }
-}
-
-@kernel void setEllipticCoeffPressure(const dlong N,
-                                      const dlong offset,
-                                      @restrict const dfloat* rho,
-                                      @restrict dfloat* coeff)
-{
-  for(dlong n = 0; n < N; ++n; @tile(p_blockSize,@outer,@inner))
-    if(n < N) {
-      coeff[0 * offset + n] = 1 / rho[n];
-      coeff[1 * offset + n] = 0;
     }
 }

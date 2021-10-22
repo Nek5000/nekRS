@@ -24,8 +24,7 @@
 
  */
 
-extern "C"
-void FUNC(ellipticAxHex3D)(const dlong & Nelements,
+extern "C" void FUNC(ellipticAxHex3D)(const dlong & Nelements,
                      const dfloat* __restrict__ ggeo,
                      const dfloat* __restrict__ D,
                      const dfloat* __restrict__ S,

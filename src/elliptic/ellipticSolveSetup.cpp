@@ -236,7 +236,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     for (dlong n = 0; n < elliptic->Nmasked; n++)
       maskedGlobalIds[elliptic->maskIds[n]] = 0;
 
-    elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
+    elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device.occaDevice());
     free(maskedGlobalIds);
   }
   elliptic->o_invDegree = elliptic->ogs->o_invDegree;
@@ -298,10 +298,10 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
-  long long int pre = platform->device.memoryAllocated();
+  long long int pre = platform->device.occaDevice().memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs);
 
-  long long int usedBytes = platform->device.memoryAllocated() - pre;
+  long long int usedBytes = platform->device.occaDevice().memoryAllocated() - pre;
 
   elliptic->precon->preconBytes = usedBytes;
 

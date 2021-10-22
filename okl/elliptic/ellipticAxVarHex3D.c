@@ -1,5 +1,4 @@
-extern "C"
-void FUNC(ellipticAxVarHex3D)(const dlong & Nelements,
+extern "C" void FUNC(ellipticAxVarHex3D)(const dlong & Nelements,
                         const dlong & offset,
                         const dfloat* __restrict__ ggeo,
                         const dfloat* __restrict__ D,

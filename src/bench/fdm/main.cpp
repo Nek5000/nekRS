@@ -159,7 +159,7 @@ int main(int argc, char** argv)
   const std::string fileName = 
     installDir + "/okl/elliptic/ellipticSchwarzSolverHex3D" + ext;
 
-  fdmKernel = platform->device.buildKernel(fileName, kernelName, props);
+  fdmKernel = platform->device.buildKernel(fileName, props, true);
 
   // populate arrays
   randAlloc = &rand64Alloc; 

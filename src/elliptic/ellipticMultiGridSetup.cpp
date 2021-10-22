@@ -61,7 +61,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   int Nmin = levelDegree[numMGLevels - 1];
 
   //initialize parAlmond
-  precon->parAlmond = parAlmond::Init(platform->device, platform->comm.mpiComm, options);
+  precon->parAlmond = parAlmond::Init(platform->device.occaDevice(), platform->comm.mpiComm, options);
   parAlmond::multigridLevel** levels = precon->parAlmond->levels;
 
   oogs_mode oogsMode = OOGS_AUTO;

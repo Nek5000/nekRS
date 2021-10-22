@@ -64,16 +64,32 @@ void RANSktau::buildKernel(occa::properties kernelInfo)
   kernelInfo["defines/p_alp_inf"]       = coeff[12];
   kernelInfo["defines/p_tiny"]          = coeff[13];
 
-  std::string fileName;
+  std::string path;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/RANSktau.okl";
+  path.assign(getenv("NEKRS_INSTALL_DIR"));
+  path += "/okl/plugins";
+  std::string fileName, kernelName;
+  const std::string extension = ".okl";
   {
-      computeKernel    = platform->device.buildKernel(fileName, "computeHex3D", kernelInfo);
-      SijOijKernel     = platform->device.buildKernel(fileName, "SijOijHex3D", kernelInfo);
-      SijOijMag2Kernel = platform->device.buildKernel(fileName, "SijOijMag2", kernelInfo);
-      limitKernel      = platform->device.buildKernel(fileName, "limit", kernelInfo);
-      mueKernel        = platform->device.buildKernel(fileName, "mue", kernelInfo);
+      kernelName = "computeHex3D";
+      fileName = path + kernelName + extension;
+      computeKernel    = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "SijOijHex3D";
+      fileName = path + kernelName + extension;
+      SijOijKernel     = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "SijOijMag2";
+      fileName = path + kernelName + extension;
+      SijOijMag2Kernel = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "limit";
+      fileName = path + kernelName + extension;
+      limitKernel      = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "mue";
+      fileName = path + kernelName + extension;
+      mueKernel        = platform->device.buildKernel(fileName, kernelInfo);
   }
 
   int Nscalar;

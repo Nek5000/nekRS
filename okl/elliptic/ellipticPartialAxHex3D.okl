@@ -1,5 +1,4 @@
-#define ellipticPartialAxHex3D_v0 ellipticPartialAxHex3D
-@kernel void ellipticPartialAxHex3D_v0(const dlong Nelements,
+@kernel void ellipticPartialAxHex3D(const dlong Nelements,
                                        @restrict const dlong*  elementList,
                                        @restrict const dfloat*  ggeo,
                                        @restrict const dfloat*  D,

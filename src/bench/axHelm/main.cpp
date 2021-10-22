@@ -218,7 +218,7 @@ int main(int argc, char** argv)
   const std::string fileName = 
     installDir + "/okl/elliptic/" + kernelName + ext;
 
-  axKernel = platform->device.buildKernel(fileName, kernelName, props, "", true);
+  axKernel = platform->device.buildKernel(fileName, props, true);
 
   // populate arrays
   randAlloc = &rand64Alloc; 

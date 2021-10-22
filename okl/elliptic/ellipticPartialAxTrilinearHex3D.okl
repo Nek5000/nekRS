@@ -1,7 +1,6 @@
-#define ellipticPartialAxTrilinearHex3D_v0 ellipticPartialAxTrilinearHex3D
 #define p_eighth ((dfloat)0.125)
 
-@kernel void ellipticPartialAxTrilinearHex3D_v0(const dlong Nelements,
+@kernel void ellipticPartialAxTrilinearHex3D(const dlong Nelements,
                                                 @restrict const dlong*  elementList,
                                                 @restrict const dfloat*  EXYZ,
                                                 @restrict const dfloat*  gllzw,

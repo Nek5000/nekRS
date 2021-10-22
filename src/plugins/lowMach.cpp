@@ -23,14 +23,24 @@ static occa::kernel surfaceFluxKernel;
 
 void lowMach::buildKernel(occa::properties kernelInfo)
 {
-  std::string fileName;
+  std::string path;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/lowMach.okl";
+  path.assign(getenv("NEKRS_INSTALL_DIR"));
+  path += "/okl/plugins/";
+  std::string kernelName, fileName;
+  const std::string extension = ".okl";
   {
-    qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
-    p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
-    surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
+    kernelName = "qtlHex3D";
+    fileName = path + kernelName + extension;
+    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo);
+
+    kernelName = "p0thHelper";
+    fileName = path + kernelName + extension;
+    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo);
+
+    kernelName = "surfaceFlux";
+    fileName = path + kernelName + extension;
+    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo);
   }
 }
 

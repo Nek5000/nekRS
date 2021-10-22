@@ -48,14 +48,24 @@ static int outfldCounter = 0;
 void avg::buildKernel(occa::properties kernelInfo)
 {
 
-  std::string fileName;
+  std::string path;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/avg.okl";
+  path.assign(getenv("NEKRS_INSTALL_DIR"));
+  path += "/okl/plugins/";
+  std::string kernelName, fileName;
+  const std::string extension = ".okl";
   {
-      EXKernel  = platform->device.buildKernel(fileName, "EX", kernelInfo);
-      EXXKernel = platform->device.buildKernel(fileName, "EXX", kernelInfo);
-      EXYKernel = platform->device.buildKernel(fileName, "EXY", kernelInfo);
+      kernelName = "EX";
+      fileName = path + kernelName + extension;
+      EXKernel  = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "EXX";
+      fileName = path + kernelName + extension;
+      EXXKernel = platform->device.buildKernel(fileName, kernelInfo);
+
+      kernelName = "EXY";
+      fileName = path + kernelName + extension;
+      EXYKernel = platform->device.buildKernel(fileName, kernelInfo);
   }
   buildKernelCalled = 1;
 }
