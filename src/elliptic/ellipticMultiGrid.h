@@ -52,6 +52,7 @@ public:
   //coarsener
   dfloat* R;
   occa::memory o_R;
+  occa::memory o_interp; // interpolate (r,s,t)F -> (r,s,t)C for variable properties
   int NpF;
   occa::memory o_invDegree;
 

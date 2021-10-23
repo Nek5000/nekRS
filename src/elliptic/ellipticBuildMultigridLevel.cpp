@@ -45,8 +45,6 @@ std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
   
-  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
-
   elliptic_t* elliptic = new elliptic_t();
 
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
@@ -162,15 +160,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
-  //set the normalization constant for the allNeumann Poisson problem on this coarse mesh
-  hlong localElements = (hlong) mesh->Nelements;
-  hlong totalElements = 0;
-  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  elliptic->allNeumannScale = 1.0 / sqrt(mesh->Np * totalElements);
-
-  elliptic->allNeumannPenalty = 0;
-  elliptic->allNeumannScale = 0;
-
   //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, platform->comm.mpiComm, verbose);
@@ -230,20 +219,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   ellipticBuildPreconditionerKernels(elliptic);
 
-  {
-      kernelName = "ellipticAx" + suffix;
-      {
-        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-        elliptic->AxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-      }
-      if(!strstr(pfloatString,dfloatString)) {
-        kernelName = "ellipticAx" + suffix;
-        {
-          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-          elliptic->AxPfloatKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-        }
-      }
+  const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
 
+  {
       // check for trilinear
       if(elliptic->elementType != HEXAHEDRA) {
         kernelName = "ellipticPartialAx" + suffix;
@@ -254,16 +232,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
           kernelName = "ellipticPartialAx" + suffix;
       }
 
-      if(!serial) {
-        {
-          const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-          elliptic->partialAxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-        }
-        if(!strstr(pfloatString,dfloatString)) {
-          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-          elliptic->partialAxPfloatKernel =
-            platform->kernels.getKernel( kernelName + kernelSuffix);
-        }
+      {
+        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+        elliptic->AxKernel = platform->kernels.getKernel(poissonPrefix + kernelName + kernelSuffix);
+      }
+      if(!strstr(pfloatString,dfloatString)) {
+        const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
+        elliptic->AxPfloatKernel =
+          platform->kernels.getKernel(poissonPrefix + kernelName + kernelSuffix);
       }
   }
 
@@ -300,6 +276,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   }
 
   if(!strstr(pfloatString,dfloatString)) {
+    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
+    const pfloat one = 1.0;
+    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
     mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
     mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));

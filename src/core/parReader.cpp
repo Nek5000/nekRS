@@ -1176,6 +1176,9 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("ENABLE OVERLAP", "TRUE");
 
   options.setArgs("VARIABLE DT", "FALSE");
+
+  // coeff fields
+  options.setArgs("VELOCITY COEFF FIELD", "TRUE");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
@@ -1565,6 +1568,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
     else if(meshSolver == "elasticity") {
+      options.setArgs("MESH COEFF FIELD", "TRUE");
       options.setArgs("MESH SOLVER", "ELASTICITY");
       options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
@@ -1837,6 +1841,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
+      options.setArgs("SCALAR00 COEFF FIELD", "TRUE");
 
       parseInitialGuess(rank, options, par, "temperature");
 
@@ -1897,6 +1902,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (par->extract("scalar" + sidPar, "maxiterations", keyValue))
         options.setArgs("SCALAR" + sid + " MAXIMUM ITERATIONS", keyValue);
     }
+
+    options.setArgs("SCALAR" + sid + " COEFF FIELD", "TRUE");
 
     { 
       parseRegularization(rank, options, par, "scalar" + sidPar);

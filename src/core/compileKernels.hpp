@@ -9,8 +9,8 @@ void registerLinAlgKernels();
 void registerMeshKernels(occa::properties kernelInfoBC);
 void registerNrsKernels(occa::properties kernelInfoBC);
 void registerCdsKernels(occa::properties kernelInfoBC);
-void registerEllipticKernels(std::string section);
-void registerEllipticPreconditionerKernels(std::string section);
+void registerEllipticKernels(std::string section, int poissonEquation);
+void registerEllipticPreconditionerKernels(std::string section, int poissonEquation);
 
 std::string createOptionsPrefix(std::string section);
 #endif

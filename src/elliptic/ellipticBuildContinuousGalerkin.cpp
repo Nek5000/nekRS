@@ -217,9 +217,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                  meshf->Np * sizeof(dfloat));
 
         o_q.copyFrom(q);
-        ellipticFine->AxKernel(mesh->Nelements,meshf->o_ggeo,
-                               meshf->o_D,meshf->o_DT,
-                               lambda,o_q,o_Aq);
+        ellipticOperator(ellipticFine, o_q, o_Aq, dfloatString, false);
         o_Aq.copyTo(Aq);
 
         for(dlong e = 0; e < mesh->Nelements; e++)

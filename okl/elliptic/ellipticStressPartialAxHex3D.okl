@@ -1,6 +1,7 @@
-@kernel void ellipticStressAxHex3D(const dlong Nelements,
+@kernel void ellipticStressPartialAxHex3D(const dlong Nelements,
                                    const dlong offset,
                                    const dlong loffset,
+                                   @restrict const dlong* elementList,
                                    @restrict const dfloat* vgeo,
                                    @restrict const dfloat* D,
                                    @restrict const dfloat*  S,
@@ -8,7 +9,7 @@
                                    @restrict const dfloat* q,
                                    @restrict dfloat* Aq)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+  for(dlong elem = 0; elem < Nelements; ++elem; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
 
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -41,11 +42,16 @@
     @exclusive dfloat r_Av[p_Nq];
     @exclusive dfloat r_Aw[p_Nq];
 
+    @exclusive dlong e;
+
     for(int k = 0; k < p_Nq; ++k) {
       @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1))
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
-          if(k == 0) s_D[j][i] = D[p_Nq * j + i];
+          if(k == 0) {
+            e = elementList[elem];
+            s_D[j][i] = D[p_Nq * j + i];
+          }
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           s_U[j][i] = q[id + 0 * offset];
           s_V[j][i] = q[id + 1 * offset];
@@ -112,17 +118,21 @@
           const dfloat dwdy = ry * wr + sy * ws + ty * wt;
           const dfloat dwdz = rz * wr + sz * ws + tz * wt;
 
-          s11 = JW * (dudx + dudx);
-          s12 = JW * (dudy + dvdx);
-          s13 = JW * (dudz + dwdx);
+          const dfloat u_lam0 = lambda[0 * offset + 0 * loffset];
+          const dfloat v_lam0 = lambda[0 * offset + 1 * loffset];
+          const dfloat w_lam0 = lambda[0 * offset + 2 * loffset];
 
-          s21 = JW * (dvdx + dudy);
-          s22 = JW * (dvdy + dvdy);
-          s23 = JW * (dvdz + dwdy);
+          s11 = u_lam0 * JW * (dudx + dudx);
+          s12 = u_lam0 * JW * (dudy + dvdx);
+          s13 = u_lam0 * JW * (dudz + dwdx);
 
-          s31 = JW * (dwdx + dudz);
-          s32 = JW * (dwdy + dvdz);
-          s33 = JW * (dwdz + dwdz)
+          s21 = v_lam0 * JW * (dvdx + dudy);
+          s22 = v_lam0 * JW * (dvdy + dvdy);
+          s23 = v_lam0 * JW * (dvdz + dwdy);
+
+          s31 = w_lam0 * JW * (dwdx + dudz);
+          s32 = w_lam0 * JW * (dwdy + dvdz);
+          s33 = w_lam0 * JW * (dwdz + dwdz)
 ;
           r_Au[k] =  lambda[id + 1 * offset + 0 * loffset] * JW * s_U[j][i];
           r_Av[k] =  lambda[id + 1 * offset + 1 * loffset] * JW * s_V[j][i];

@@ -4,7 +4,7 @@
 
 namespace {
 
-void registerJacobiKernels(const std::string &section) {
+void registerJacobiKernels(const std::string &section, int poissonEquation) {
   const std::string optionsPrefix = createOptionsPrefix(section);
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -24,7 +24,7 @@ void registerJacobiKernels(const std::string &section) {
     kernelName, fileName, pfloatProps);
 }
 
-void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
+void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, int poissonEquation) {
   const std::string prefix = "Hex3D";
   std::string fileName, kernelName;
 
@@ -112,6 +112,15 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo) {
         fileName,
         kernelInfo,
         orderSuffix);
+
+    occa::properties buildDiagInfo = kernelInfo;
+    if(poissonEquation) buildDiagInfo["defines/p_poisson"] = 1;
+    kernelName = "ellipticBlockBuildDiagonalHex3D";
+    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
+    platform->kernels.add(kernelName + orderSuffix,
+        fileName,
+        buildDiagInfo,
+        orderSuffix);
   }
 }
 
@@ -158,7 +167,7 @@ void registerSchwarzKernels(const std::string &section, int N) {
         "postFDM" + suffix, fileName, properties, suffix);
   }
 }
-void registerFineLevelKernels(const std::string &section, int N) {
+void registerFineLevelKernels(const std::string &section, int N, int poissonEquation) {
   auto gen_suffix = [N](const char *floatString) {
     const std::string precision = std::string(floatString);
     if (precision.find(pfloatString) != std::string::npos) {
@@ -169,9 +178,8 @@ void registerFineLevelKernels(const std::string &section, int N) {
   };
 
   auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
-  registerCommonMGPreconditionerKernels(N, kernelInfo);
+  registerCommonMGPreconditionerKernels(N, kernelInfo, poissonEquation);
 
-  const std::string suffix = "Hex3D";
   constexpr int Nfields{1};
 
   kernelInfo["defines/p_Nfields"] = Nfields;
@@ -183,50 +191,31 @@ void registerFineLevelKernels(const std::string &section, int N) {
   const std::string oklpath = installDir + "/okl/elliptic/";
   const bool serial = platform->serial;
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
-
+  const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
   {
     occa::properties AxKernelInfo = kernelInfo;
-    AxKernelInfo["defines/p_poisson"] = 1;
+    if(poissonEquation) AxKernelInfo["defines/p_poisson"] = 1;
+    for(auto&& coeffField : {true,false}){
+      const std::string suffix = coeffField ? "VarHex3D" : "Hex3D";
 
-    kernelName = "ellipticAx" + suffix;
-    fileName = oklpath + kernelName + fileNameExtension;
-    {
-      const std::string kernelSuffix = gen_suffix(dfloatString);
-      platform->kernels.add(kernelName + kernelSuffix,
-          fileName,
-          AxKernelInfo,
-          kernelSuffix);
-    }
+      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
+        kernelName = "ellipticPartialAxTrilinear" + suffix;
+      else
+        kernelName = "ellipticPartialAx" + suffix;
 
-    if (!strstr(pfloatString, dfloatString)) {
-      AxKernelInfo["defines/dfloat"] = pfloatString;
-      const std::string kernelSuffix = gen_suffix(pfloatString);
-      platform->kernels.add(kernelName + kernelSuffix,
-          fileName,
-          AxKernelInfo,
-          kernelSuffix);
-      AxKernelInfo["defines/dfloat"] = dfloatString;
-    }
+      fileName = oklpath + kernelName + fileNameExtension;
 
-    if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-      kernelName = "ellipticPartialAxTrilinear" + suffix;
-    else
-      kernelName = "ellipticPartialAx" + suffix;
-
-    fileName = oklpath + kernelName + fileNameExtension;
-
-    if (!serial) {
       {
         const std::string kernelSuffix = gen_suffix(dfloatString);
-        platform->kernels.add(kernelName + kernelSuffix,
+        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
             fileName,
             AxKernelInfo,
             kernelSuffix);
       }
-      if (!strstr(pfloatString, dfloatString)) {
+      {
         AxKernelInfo["defines/dfloat"] = pfloatString;
         const std::string kernelSuffix = gen_suffix(pfloatString);
-        platform->kernels.add(kernelName + kernelSuffix,
+        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
             fileName,
             AxKernelInfo,
             kernelSuffix);
@@ -237,9 +226,9 @@ void registerFineLevelKernels(const std::string &section, int N) {
 
   registerSchwarzKernels(section, N);
 }
-void registerSEMFEMKernels(const std::string &section, int N);
+void registerSEMFEMKernels(const std::string &section, int N, int poissonEquation);
 
-void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
+void registerMultigridLevelKernels(const std::string &section, int Nf, int N, int poissonEquation) {
   const int Nc = N;
   auto gen_suffix = [N](const char *floatString) {
     const std::string precision = std::string(floatString);
@@ -259,7 +248,7 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = installDir + "/okl/elliptic/";
-  registerCommonMGPreconditionerKernels(N, kernelInfo);
+  registerCommonMGPreconditionerKernels(N, kernelInfo, poissonEquation);
 
   const bool serial = platform->serial;
 
@@ -269,29 +258,9 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
 
   {
     occa::properties AxKernelInfo = kernelInfo;
-    AxKernelInfo["defines/p_poisson"] = 1;
 
-    kernelName = "ellipticAx" + suffix;
-    fileName = oklpath + kernelName + fileNameExtension;
-
-    {
-      const std::string kernelSuffix = gen_suffix(dfloatString);
-      platform->kernels.add(kernelName + kernelSuffix,
-          fileName,
-          AxKernelInfo,
-          kernelSuffix);
-    }
-    if (!strstr(pfloatString, dfloatString)) {
-      AxKernelInfo["defines/dfloat"] = pfloatString;
-      {
-        const std::string kernelSuffix = gen_suffix(pfloatString);
-        platform->kernels.add(kernelName + kernelSuffix,
-            fileName,
-            AxKernelInfo,
-            kernelSuffix);
-      }
-      AxKernelInfo["defines/dfloat"] = dfloatString;
-    }
+    if(poissonEquation) AxKernelInfo["defines/p_poisson"] = 1;
+    const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
 
     if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
       kernelName = "ellipticPartialAxTrilinear" + suffix;
@@ -300,18 +269,18 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
 
     fileName = oklpath + kernelName + fileNameExtension;
 
-    if (!serial) {
+    {
       {
         const std::string kernelSuffix = gen_suffix(dfloatString);
-        platform->kernels.add(kernelName + kernelSuffix,
+        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
             fileName,
             AxKernelInfo,
             kernelSuffix);
       }
-      if (!strstr(pfloatString, dfloatString)) {
+      {
         AxKernelInfo["defines/dfloat"] = pfloatString;
         const std::string kernelSuffix = gen_suffix(pfloatString);
-        platform->kernels.add(kernelName + kernelSuffix,
+        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
             fileName,
             AxKernelInfo,
             kernelSuffix);
@@ -334,6 +303,7 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
     coarsenProlongateKernelInfo["defines/p_NpCoarse"] = NpCoarse;
 
     const std::string orderSuffix = std::string("_") + std::to_string(Nf);
+    const std::string fileExtension = serial ? ".c" : ".okl";
 
     fileName = oklpath + "ellipticPreconCoarsen" + suffix + fileNameExtension;
     kernelName = "ellipticPreconCoarsen" + suffix;
@@ -350,26 +320,26 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N) {
   }
   registerSchwarzKernels(section, N);
 }
-void registerMultiGridKernels(const std::string &section) {
+void registerMultiGridKernels(const std::string &section, int poissonEquation) {
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   const std::string optionsPrefix = createOptionsPrefix(section);
 
-  registerFineLevelKernels(section, N);
+  registerFineLevelKernels(section, N, poissonEquation);
 
   std::vector<int> levels = determineMGLevels(section);
 
   for (unsigned levelIndex = 1U; levelIndex < levels.size(); ++levelIndex) {
     const int levelFine = levels[levelIndex - 1];
     const int levelCoarse = levels[levelIndex];
-    registerMultigridLevelKernels(section, levelFine, levelCoarse);
+    registerMultigridLevelKernels(section, levelFine, levelCoarse, poissonEquation);
   }
   const int coarseLevel = levels.back();
   if (platform->options.compareArgs(
           optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")) {
     if (platform->options.compareArgs(
             optionsPrefix + "MULTIGRID COARSE SEMFEM", "TRUE")) {
-      registerSEMFEMKernels(section, coarseLevel);
+      registerSEMFEMKernels(section, coarseLevel, poissonEquation);
     } else {
       {
         std::string installDir;
@@ -392,7 +362,7 @@ void registerMultiGridKernels(const std::string &section) {
     }
   }
 }
-void registerSEMFEMKernels(const std::string &section, int N) {
+void registerSEMFEMKernels(const std::string &section, int N, int poissonEquation) {
   const int Nq = N + 1;
   const int Np = Nq * Nq * Nq;
   const std::string optionsPrefix = createOptionsPrefix(section);
@@ -430,17 +400,17 @@ void registerSEMFEMKernels(const std::string &section, int N) {
 
 }
 
-void registerEllipticPreconditionerKernels(std::string section) {
+void registerEllipticPreconditionerKernels(std::string section, int poissonEquation) {
   const std::string optionsPrefix = createOptionsPrefix(section);
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
 
   if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "MULTIGRID")) {
-    registerMultiGridKernels(section);
+    registerMultiGridKernels(section, poissonEquation);
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "SEMFEM")) {
-    registerSEMFEMKernels(section, N);
+    registerSEMFEMKernels(section, N, poissonEquation);
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "JACOBI")) {
-    registerJacobiKernels(section);
+    registerJacobiKernels(section, poissonEquation);
   } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "NONE")) {
     // nothing 
   } else {

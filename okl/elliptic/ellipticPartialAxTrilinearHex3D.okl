@@ -1,12 +1,14 @@
 #define p_eighth ((dfloat)0.125)
 
 @kernel void ellipticPartialAxTrilinearHex3D(const dlong Nelements,
+                                                const dlong offset,
+                                                const dlong loffset,
                                                 @restrict const dlong*  elementList,
                                                 @restrict const dfloat*  EXYZ,
                                                 @restrict const dfloat*  gllzw,
                                                 @restrict const dfloat*  D,
                                                 @restrict const dfloat*  S,
-                                                const dfloat lambda,
+                                                @restrict const dfloat*  lambda,
                                                 @restrict const dfloat*  q,
                                                 @restrict dfloat*  Aq)
 {
@@ -136,7 +138,11 @@
           r_G12 = sc * (sx * tx + sy * ty + sz * tz);
           r_G22 = sc * (tx * tx + ty * ty + tz * tz);
 
+#ifndef p_poisson
           r_GwJ = W * J;
+#else
+          r_GwJ = 0.0;
+#endif
         }
       }
 
@@ -169,8 +175,8 @@
           s_Gqs[j][i] = (r_G01 * qr + r_G11 * qs + r_G12 * r_qt);
           s_Gqr[j][i] = (r_G00 * qr + r_G01 * qs + r_G02 * r_qt);
 
-          r_Gqt = (r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
-          r_Auk = r_GwJ * lambda * r_q[k];
+          r_Gqt = lambda[0*loffset] * (r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
+          r_Auk = r_GwJ * lambda[1*loffset] * r_q[k];
         }
 
       @barrier("local");

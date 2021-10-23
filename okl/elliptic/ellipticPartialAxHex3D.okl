@@ -1,11 +1,13 @@
 @kernel void ellipticPartialAxHex3D(const dlong Nelements,
-                                       @restrict const dlong*  elementList,
-                                       @restrict const dfloat*  ggeo,
-                                       @restrict const dfloat*  D,
-                                       @restrict const dfloat*  S,
-                                       const dfloat lambda,
-                                       @restrict const dfloat*  q,
-                                       @restrict dfloat*  Aq)
+                                    const dlong offset,
+                                    const dlong loffset,
+                                    @restrict const dlong*  elementList,
+                                    @restrict const dfloat* ggeo,
+                                    @restrict const dfloat* D,
+                                    @restrict const dfloat* S,
+                                    @restrict const dfloat* lambda,
+                                    @restrict const dfloat* q,
+                                    @restrict       dfloat* Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
 #if (p_Nq % 2 == 0)
@@ -99,8 +101,15 @@
           s_Gqs[j][i] = (r_G01 * qr + r_G11 * qs + r_G12 * r_qt);
           s_Gqr[j][i] = (r_G00 * qr + r_G01 * qs + r_G02 * r_qt);
 
-          r_Gqt = (r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
-          r_Auk = r_GwJ * lambda * r_q[k];
+          const dfloat lambda0 = lambda[0*loffset];
+
+          r_Gqt = lambda0*(r_G02 * qr + r_G12 * qs + r_G22 * r_qt);
+#ifdef p_poisson
+          r_Auk = 0.0;
+#else
+          const dfloat lambda1 = lambda[1*loffset];
+          r_Auk = r_GwJ * lambda1 * r_q[k];
+#endif
         }
       }
 

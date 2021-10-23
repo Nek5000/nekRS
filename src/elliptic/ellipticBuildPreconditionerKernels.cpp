@@ -81,6 +81,13 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
     kernelName = "updateIntermediateSolutionVec";
     elliptic->updateIntermediateSolutionVecKernel =
       platform->kernels.getKernel(kernelName + orderSuffix);
+
+    kernelName = "ellipticBlockBuildDiagonalHex3D";
+    elliptic->updateDiagonalKernel =
+      platform->kernels.getKernel(kernelName + orderSuffix);
+
+    elliptic->axmyzManyPfloatKernel = platform->kernels.getKernel("axmyzManyPfloat");
+    elliptic->adyManyPfloatKernel = platform->kernels.getKernel("adyManyPfloat");
   }
 
   MPI_Barrier(platform->comm.mpiComm);

@@ -1,6 +1,8 @@
-extern "C" void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
+extern "C"
+void FUNC(ellipticStressPartialAxHex3D)(const dlong &Nelements,
                               const dlong &offset,
                               const dlong &loffset,
+                              const dlong* __restrict__ elementList,
                               const dfloat* __restrict__ vgeo,
                               const dfloat* __restrict__ D,
                               const dfloat* __restrict__ S,
@@ -33,7 +35,8 @@ extern "C" void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
 #ifdef __NEKRS__OMP__
   #pragma omp parallel for private(s_U, s_V, s_W, s_SUr, s_SUs, s_SUt, s_SVr, s_SVs, s_SVt, s_SWr, s_SWs, s_SWt)
 #endif
-  for(dlong e = 0; e < Nelements; ++e) {
+  for(dlong elem = 0; elem < Nelements; ++elem) {
+    dlong e = elementList[elem];
     for(int k = 0; k < p_Nq; ++k)
       for(int j = 0; j < p_Nq; ++j)
         for(int i = 0; i < p_Nq; ++i) {
@@ -85,12 +88,9 @@ extern "C" void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
           }
 
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat u_lam0 = lambda[id + 0 * offset + 0 * loffset];
-          // const dfloat u_lam1 = lambda[id + 1*offset + 0*loffset];
-          const dfloat v_lam0 = lambda[id + 0 * offset + 1 * loffset];
-          // const dfloat v_lam1 = lambda[id + 1*offset + 1*loffset];
-          const dfloat w_lam0 = lambda[id + 0 * offset + 2 * loffset];
-          // const dfloat w_lam1 = lambda[id + 1*offset + 2*loffset];
+          const dfloat u_lam0 = lambda[0 * offset + 0 * loffset];
+          const dfloat v_lam0 = lambda[0 * offset + 1 * loffset];
+          const dfloat w_lam0 = lambda[0 * offset + 2 * loffset];
 
           const dfloat dudx = rx * ur + sx * us + tx * ut;
           const dfloat dudy = ry * ur + sy * us + ty * ut;
@@ -152,13 +152,12 @@ extern "C" void FUNC(ellipticStressAxVarHex3D)(const dlong &Nelements,
             r_Aw += Dkm * s_SWt[m][j][i];
           }
           const dlong id      = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat u_lam1 = lambda[id + 1 * offset + 0 * loffset];
-          const dfloat v_lam1 = lambda[id + 1 * offset + 1 * loffset];
-          const dfloat w_lam1 = lambda[id + 1 * offset + 2 * loffset];
+          const dfloat u_lam1 = lambda[1 * offset + 0 * loffset];
+          const dfloat v_lam1 = lambda[1 * offset + 1 * loffset];
+          const dfloat w_lam1 = lambda[1 * offset + 2 * loffset];
 
           const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + e * p_Np * p_Nvgeo;
           const dfloat JW = vgeo[gid + p_JWID * p_Np];
-          // store in register
           Aq[id + 0 * offset] =  r_Au + u_lam1 * JW * s_U[k][j][i];
           Aq[id + 1 * offset] =  r_Av + v_lam1 * JW * s_V[k][j][i];
           Aq[id + 2 * offset] =  r_Aw + w_lam1 * JW * s_W[k][j][i];

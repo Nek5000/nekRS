@@ -74,7 +74,6 @@ struct cds_t
   dfloat* Ue;
   occa::memory o_Ue;
 
-  int var_coeff;
   dfloat* prop, * ellipticCoeff;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;

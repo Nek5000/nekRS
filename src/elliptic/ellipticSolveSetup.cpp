@@ -42,8 +42,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
-  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
-
   if (elliptic->blockSolver &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION",
                            "CONTINUOUS") && !options.compareArgs("PRECONDITIONER","JACOBI") ) {
@@ -119,20 +117,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   elliptic->NelementsGlobal = NelementsGlobal;
 
-  elliptic->allNeumannPenalty = 1.;
-  hlong localElements = (hlong) mesh->Nelements;
-  hlong totalElements = 0;
-  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  elliptic->allNeumannScale = 1. / sqrt((dfloat)mesh->Np * totalElements);
-
-  elliptic->allNeumannPenalty = 0;
-  elliptic->allNeumannScale = 0;
-
   elliptic->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces * elliptic->Nfields,sizeof(int));
   int* allNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
   // check based on the coefficient
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
-    if(elliptic->var_coeff) {
+    if(elliptic->coeffField) {
       int allzero = 1;
       for(int n = 0; n < Nlocal; n++) { // check any non-zero value for each field
         const dfloat lambda = elliptic->lambda[n + elliptic->Ntotal + fld * elliptic->loffset];
@@ -160,16 +149,17 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       }
 
   elliptic->allNeumann = 0;
-  elliptic->allBlockNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
+  int* allBlockNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
     int lallNeumann, gallNeumann;
     lallNeumann = allNeumann[fld] ? 0:1;
     MPI_Allreduce(&lallNeumann, &gallNeumann, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
-    elliptic->allBlockNeumann[fld] = (gallNeumann > 0) ? 0: 1;
+    allBlockNeumann[fld] = (gallNeumann > 0) ? 0: 1;
     // even if there is a single allNeumann activate Null space correction
-    if(elliptic->allBlockNeumann[fld])
+    if(allBlockNeumann[fld])
       elliptic->allNeumann = 1;
   }
+  free(allBlockNeumann);
 
   if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
@@ -260,25 +250,24 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
       elliptic->updateDiagonalKernel = platform->kernels.getKernel(sectionIdentifier + kernelName);
+      elliptic->axmyzManyPfloatKernel = platform->kernels.getKernel("axmyzManyPfloat");
+      elliptic->adyManyPfloatKernel = platform->kernels.getKernel("adyManyPfloat");
 
-      std::string kernelNamePrefix = "elliptic";
+      std::string kernelNamePrefix = "";
+      if(elliptic->poisson) kernelNamePrefix += "poisson-";
+      kernelNamePrefix += "elliptic";
       if (elliptic->blockSolver)
         kernelNamePrefix += (elliptic->stressForm) ? "Stress" : "Block";
  
       kernelName = "Ax";
-      if (elliptic->var_coeff) kernelName += "Var";
+      if (elliptic->coeffField) kernelName += "Var";
       if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
       kernelName += suffix; 
       if (elliptic->blockSolver && !elliptic->stressForm) 
         kernelName += "_N" + std::to_string(elliptic->Nfields);
 
-      elliptic->AxKernel = platform->kernels.getKernel(kernelNamePrefix + kernelName);
-
-      if(!serial) {
-        elliptic->partialAxKernel = 
-          platform->kernels.getKernel(kernelNamePrefix + "Partial" + kernelName);
-        elliptic->partialAxKernel2 = elliptic->partialAxKernel;
-      }
+      elliptic->AxKernel = 
+        platform->kernels.getKernel(kernelNamePrefix + "Partial" + kernelName);
 
       elliptic->updatePCGKernel =
         platform->kernels.getKernel(sectionIdentifier + "ellipticBlockUpdatePCG");
@@ -289,7 +278,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   fflush(stdout);
 
   oogs_mode oogsMode = OOGS_AUTO;
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
                   {
                     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,

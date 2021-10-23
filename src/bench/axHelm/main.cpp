@@ -23,6 +23,7 @@ occa::memory o_Aq;
 occa::memory o_lambda;
 occa::memory o_exyz;
 occa::memory o_gllwz;
+occa::memory o_elementList;
 
 int Np; 
 int Ng = -1;
@@ -31,23 +32,17 @@ int Nelements;
 double run(int Ntests, int BKmode, int Ndim, int computeGeom)
 {
   const int offset = Nelements * Np;
+  const int loffset = 0;
 
   platform->device.finish();
   MPI_Barrier(MPI_COMM_WORLD);
   const double start = MPI_Wtime();
 
   for(int test = 0; test < Ntests; ++test) {
-    if(BKmode) {
-      if(computeGeom == 1) {
-        axKernel(Nelements, o_exyz, o_gllwz, o_D, o_S, 1.0, o_q, o_Aq);
-      } else {
-        axKernel(Nelements, o_ggeo, o_D, o_S, 1.0, o_q, o_Aq);
-      }
+    if(computeGeom){
+      axKernel(Nelements, offset, loffset, o_elementList, o_exyz, o_gllwz, o_D, o_S, o_lambda, o_q, o_Aq);
     } else {
-      if(Ndim > 1)
-        axKernel(Nelements, offset, 0, o_ggeo, o_D, o_S, o_lambda, o_q, o_Aq);
-      else
-        axKernel(Nelements, offset, o_ggeo, o_D, o_S, o_lambda, o_q, o_Aq);
+      axKernel(Nelements, offset, loffset, o_elementList, o_ggeo, o_D, o_S, o_lambda, o_q, o_Aq);
     }
   }
 
@@ -195,7 +190,7 @@ int main(int argc, char** argv)
 
   std::string kernelName = "elliptic";
   if(Ndim > 1) kernelName += "Block";
-  kernelName += "Ax";
+  kernelName += "PartialAx";
   if(!BKmode) kernelName += "Var";
   if(Ng != N) {
     if(computeGeom) {
@@ -224,6 +219,12 @@ int main(int argc, char** argv)
   randAlloc = &rand64Alloc; 
   if(wordSize == 4) randAlloc = &rand32Alloc;
 
+  dlong* elementList = (dlong*) calloc(Nelements, sizeof(dlong));
+  for(int e = 0; e < Nelements; ++e)
+    elementList[e] = e;
+  o_elementList = platform->device.malloc(Nelements * sizeof(dlong), elementList);
+  free(elementList);
+
   void *DrV   = randAlloc(Nq * Nq);
   void *ggeo  = randAlloc(Np_g * Nelements * p_Nggeo);
   void *q     = randAlloc((Ndim * Np) * Nelements);
@@ -245,11 +246,9 @@ int main(int argc, char** argv)
   o_gllwz = platform->device.malloc(2 * Nq_g * wordSize, gllwz);
   free(gllwz);
 
-  if(!BKmode) {
-    void *lambda = randAlloc(2 * Np * Nelements);
-    o_lambda = platform->device.malloc(2 * Np * Nelements * wordSize, lambda);
-    free(lambda);
-  }
+  void *lambda = randAlloc(2 * Np * Nelements);
+  o_lambda = platform->device.malloc(2 * Np * Nelements * wordSize, lambda);
+  free(lambda);
 
   // warm-up
   double elapsed = run(10, BKmode, Ndim, computeGeom);

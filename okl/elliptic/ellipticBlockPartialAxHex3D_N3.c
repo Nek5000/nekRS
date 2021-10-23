@@ -1,6 +1,8 @@
-extern "C" void FUNC(ellipticBlockAxVarHex3D_N3)(const dlong & Nelements,
+extern "C"
+void FUNC(ellipticBlockPartialAxHex3D_N3)(const dlong & Nelements,
                                 const dlong & offset,
                                 const dlong & loffset,
+                                const dlong* __restrict__ elementList,
                                 const dfloat* __restrict__ ggeo,
                                 const dfloat* __restrict__ D,
                                 const dfloat* __restrict__ S,
@@ -26,7 +28,7 @@ extern "C" void FUNC(ellipticBlockAxVarHex3D_N3)(const dlong & Nelements,
   #pragma omp parallel for private(s_q, s_Gqr, s_Gqs, s_Gqt)
 #endif
   for(dlong e = 0; e < Nelements; ++e) {
-    const dlong element = e;
+    const dlong element = elementList[e];
 
     for(int k = 0; k < p_Nq; k++)
       for(int j = 0; j < p_Nq; ++j)
@@ -50,9 +52,9 @@ extern "C" void FUNC(ellipticBlockAxVarHex3D_N3)(const dlong & Nelements,
 
           const dlong id      = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
-          const dfloat r_lam00 = lambda[id + 0 * offset + 0 * loffset];
-          const dfloat r_lam10 = lambda[id + 0 * offset + 1 * loffset];
-          const dfloat r_lam20 = lambda[id + 0 * offset + 2 * loffset];
+          const dfloat r_lam00 = lambda[0 * loffset];
+          const dfloat r_lam10 = lambda[1 * loffset];
+          const dfloat r_lam20 = lambda[2 * loffset];
 
           dfloat qr0 = 0.f, qr1 = 0.f, qr2 = 0.f;
           dfloat qs0 = 0.f, qs1 = 0.f, qs2 = 0.f;

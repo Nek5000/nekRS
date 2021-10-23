@@ -51,6 +51,11 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
   degree = Nc;
   weighted = false;
 
+  elliptic->o_lambdaPfloat = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(pfloat));
+  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np,
+    elliptic->o_lambda,
+    elliptic->o_lambdaPfloat);
+
   //use weighted inner products
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     weighted = true;
@@ -102,11 +107,29 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
     o_invDegree = ellipticFine->ogs->o_invDegree;
   }
 
+  /* build coarsening and prologation operators to connect levels */
+  this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
+
+  elliptic->o_lambdaPfloat = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(pfloat));
+  elliptic->o_lambda = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+
+  const int Nfq = Nf+1;
+  const int Ncq = Nc+1;
+  dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+  InterpolationMatrix1D(Nf, Nfq, ellipticFine->mesh->r, Ncq, mesh->r, fToCInterp);
+  o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
+
+  elliptic->precon->coarsenKernel(mesh->Nelements, o_interp, ellipticFine->o_lambda, elliptic->o_lambda);
+
+  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np,
+    elliptic->o_lambda,
+    elliptic->o_lambdaPfloat);
+  
+  free(fToCInterp);
+
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
     this->setupSmoother(ellipticBase);
 
-  /* build coarsening and prologation operators to connect levels */
-  this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
   o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
   o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
@@ -141,12 +164,8 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     }
     if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
        options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
-      dfloat* invDiagA;
-      std::vector<pfloat> casted_invDiagA(mesh->Np * mesh->Nelements, 0.0);
-      ellipticBuildJacobi(elliptic,&invDiagA);
-      for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
-        casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
-      o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
+      o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat));
+      ellipticUpdateJacobi(elliptic,o_invDiagA);
       if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
         smtypeUp = SecondarySmootherType::JACOBI;
       if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI"))
@@ -156,13 +175,9 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
     stype = SmootherType::JACOBI;
     smtypeUp = SecondarySmootherType::JACOBI;
     smtypeDown = SecondarySmootherType::JACOBI;
-    dfloat* invDiagA;
-    ellipticBuildJacobi(elliptic,&invDiagA);
-    std::vector<pfloat> casted_invDiagA(mesh->Np * mesh->Nelements, 0.0);
-    for(dlong i = 0; i < mesh->Np * mesh->Nelements; ++i)
-      casted_invDiagA[i] = static_cast<pfloat>(invDiagA[i]);
 
-    o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat), casted_invDiagA.data());
+    o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat));
+    ellipticUpdateJacobi(elliptic,o_invDiagA);
 
     if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
       stype = SmootherType::CHEBYSHEV;
@@ -176,7 +191,6 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       lambda1 = maxMultiplier * rho;
       lambda0 = minMultiplier * rho;
     }
-    free(invDiagA);
   }
 }
 

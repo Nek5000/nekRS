@@ -34,7 +34,7 @@ void registerGMRESKernels(const std::string &section, int Nfields) {
 
 }
 
-void registerEllipticKernels(std::string section) {
+void registerEllipticKernels(std::string section, int poissonEquation) {
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   const std::string optionsPrefix = createOptionsPrefix(section);
@@ -114,55 +114,55 @@ void registerEllipticKernels(std::string section) {
   floatKernelInfo["defines/pfloat"] = pfloatString;
   floatKernelInfo["defines/dfloat"] = pfloatString;
 
-  constexpr bool var_coeff = true;
   constexpr int elementType{HEXAHEDRA};
 
   const std::string suffix = "Hex3D";
 
   occa::properties AxKernelInfo = dfloatKernelInfo;
-  {
-    const std::string oklpath = installDir + "/okl/elliptic/";
-    std::string fileName;
-    std::string kernelName;
+  const std::string oklpath = installDir + "/okl/elliptic/";
+  std::string fileName;
+  std::string kernelName;
 
-    kernelName = "ellipticBlockBuildDiagonal" + suffix;
-    fileName = oklpath + kernelName + ".okl";
-    dfloatKernelInfo["defines/dfloat"] = dfloatString;
-    dfloatKernelInfo["defines/pfloat"] = pfloatString;
-    platform->kernels.add(
-        sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
+  kernelName = "ellipticBlockBuildDiagonal" + suffix;
+  fileName = oklpath + kernelName + ".okl";
+  dfloatKernelInfo["defines/dfloat"] = dfloatString;
+  dfloatKernelInfo["defines/pfloat"] = pfloatString;
+  platform->kernels.add(
+      sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
 
-    // Ax
-    dfloatKernelInfo["defines/pfloat"] = dfloatString;
+  if(poissonEquation){
+    AxKernelInfo["defines/p_poisson"] = 1;
+  }
 
+  for(auto&& coeffField : {true, false}){
     std::string kernelNamePrefix = "elliptic";
     if (blockSolver)
       kernelNamePrefix += (stressForm) ? "Stress" : "Block";
 
     kernelName = "Ax";
-    if (var_coeff) kernelName += "Var";
+    if (coeffField) kernelName += "Var";
     if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
     kernelName += suffix; 
     if (blockSolver && !stressForm) kernelName += "_N" + std::to_string(Nfields);
 
-    {
-      std::string _kernelName = kernelNamePrefix + kernelName;
-      fileName = oklpath + _kernelName + fileNameExtension; 
-      platform->kernels.add(
-        _kernelName, fileName, AxKernelInfo);
-    }
-
-    if (!serial) {
-      std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
-      fileName = oklpath + _kernelName + fileNameExtension; 
-      platform->kernels.add(
-        _kernelName, fileName, AxKernelInfo);
-    }
-
-    // PCG update
-    fileName = oklpath + "ellipticBlockUpdatePCG" + fileNameExtension;
-    platform->kernels.add(sectionIdentifier + "ellipticBlockUpdatePCG",
-        fileName,
-        kernelInfo);
+    const std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
+    const std::string prefix = (poissonEquation) ? "poisson-" : "";
+    fileName = oklpath + _kernelName + fileNameExtension; 
+    platform->kernels.add(
+      prefix + _kernelName, fileName, AxKernelInfo);
   }
+
+  kernelName = "ellipticBlockBuildDiagonal" + suffix;
+  fileName = oklpath + kernelName + ".okl";
+  dfloatKernelInfo["defines/dfloat"] = dfloatString;
+  dfloatKernelInfo["defines/pfloat"] = pfloatString;
+  platform->kernels.add(
+      sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
+  dfloatKernelInfo["defines/pfloat"] = dfloatString;
+
+  // PCG update
+  fileName = oklpath + "ellipticBlockUpdatePCG" + fileNameExtension;
+  platform->kernels.add(sectionIdentifier + "ellipticBlockUpdatePCG",
+      fileName,
+      kernelInfo);
 }

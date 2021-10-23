@@ -1,5 +1,7 @@
-extern "C" void FUNC(ellipticAxVarHex3D)(const dlong & Nelements,
+extern "C" void FUNC(ellipticPartialAxVarHex3D)(const dlong & Nelements,
                         const dlong & offset,
+                        const dlong & loffset,
+                        const dlong* __restrict__ elementList,
                         const dfloat* __restrict__ ggeo,
                         const dfloat* __restrict__ D,
                         const dfloat* __restrict__ S,
@@ -16,7 +18,7 @@ extern "C" void FUNC(ellipticAxVarHex3D)(const dlong & Nelements,
   #pragma omp parallel for private(s_q, s_Gqr, s_Gqs, s_Gqt)
 #endif
   for(dlong e = 0; e < Nelements; ++e) {
-    const dlong element = e;
+    const dlong element = elementList[e];
 
 #pragma unroll
     for(int k = 0; k < p_Nq; k++)

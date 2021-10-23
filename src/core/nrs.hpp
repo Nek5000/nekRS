@@ -140,7 +140,6 @@ struct nrs_t
   occa::memory o_BF;
   occa::memory o_FU;
 
-  int var_coeff;
   dfloat* prop, * ellipticCoeff;
   occa::memory o_prop, o_ellipticCoeff;
 

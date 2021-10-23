@@ -68,8 +68,10 @@ struct elliptic_t
   static constexpr int NScratchFields {4};
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
-  int var_coeff;   // flag for variable coefficient
+  int coeffField;        // flag for variable coefficient (solver)
+  int coeffFieldPreco;   // flag for variable coefficient (preconditioner)
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
+  int poisson; 
 
   std::string name;
 
@@ -95,10 +97,7 @@ struct elliptic_t
   int* BCType;
   int NBCType;
 
-  int* allBlockNeumann;
   bool allNeumann;
-  dfloat allNeumannPenalty;
-  dfloat allNeumannScale;
 
   // HOST shadow copies
   dfloat* invDegree;
@@ -135,13 +134,7 @@ struct elliptic_t
 
   occa::kernel AxKernel;
   occa::kernel AxPfloatKernel;
-  occa::kernel partialAxKernel;
-  occa::kernel partialAxKernel2;
-  occa::kernel partialAxPfloatKernel;
-  occa::kernel partialCubatureAxKernel;
 
-  occa::kernel rhsBCKernel;
-  occa::kernel addBCKernel;
   occa::kernel scaledAddPfloatKernel;
   occa::kernel dotMultiplyPfloatKernel;
   occa::kernel copyDfloatToPfloatKernel;
@@ -173,6 +166,7 @@ struct elliptic_t
 
   occa::kernel updateDiagonalKernel;
   occa::memory o_lambda;
+  occa::memory o_lambdaPfloat;
   dfloat* lambda;
   dlong loffset;
   int nLevels;
@@ -223,7 +217,8 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,
-                      const char* precision);
+                      const char* precision,
+                      bool masked = true);
 
 void ellipticAx(elliptic_t* elliptic,
                 dlong NelementsList,
@@ -243,8 +238,8 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           ogs_t** ogs,
                                           hlong* globalStarts);
 
-void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA);
-void ellipticUpdateJacobi(elliptic_t* elliptic);
+void ellipticUpdateLambda(elliptic_t* elliptic);
+void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA);
 
 void ellipticBuildLocalPatches(elliptic_t* elliptic, dfloat lambda, dfloat rateTolerance,
                                dlong* Npataches, dlong** patchesIndex, dfloat** patchesInvA);

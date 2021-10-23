@@ -23,11 +23,11 @@
    SOFTWARE.
 
  */
+#define p_MaxNFields (3)
 @kernel void ellipticBlockBuildDiagonalHex3D(const dlong Nelements,
+                                             const dlong Nfields,
                                              const dlong offset,
                                              const dlong loffset,
-                                             const int allNeumann,
-                                             const dfloat allNeumannScale,
                                              @restrict const int*  mapB,
                                              @restrict const dfloat*  ggeo,
                                              @restrict const dfloat*  D,
@@ -38,11 +38,11 @@
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_D[p_Nq][p_Nq];
 
-    @shared dfloat s_lambda0[p_Nfields][p_Nq][p_Nq];
+    @shared dfloat s_lambda0[p_MaxNFields][p_Nq][p_Nq];
     @shared dfloat s_Grr[p_Nq][p_Nq];
     @shared dfloat s_Gss[p_Nq][p_Nq];
     @exclusive dfloat s_Gtt[p_Nq];
-    @exclusive dfloat s_lambdat[p_Nfields][p_Nq];
+    @exclusive dfloat s_lambdat[p_MaxNFields][p_Nq];
     // prefetch lamda 0
 #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; ++k) {
@@ -57,7 +57,7 @@
           s_Grr[j][i] = ggeo[base + p_G00ID * p_Np];
           s_Gss[j][i] = ggeo[base + p_G11ID * p_Np];
 
-          for(int l = 0; l < p_Nfields; l++)
+          for(int l = 0; l < Nfields; l++)
             s_lambda0[l][j][i] = lambda[id + 0 * offset + l * loffset];
           if( k == 0 ) {
 #pragma unroll p_Nq
@@ -65,7 +65,7 @@
               const dlong other_base = e * p_Nggeo * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               const dlong other_id    = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
               s_Gtt[l] = ggeo[other_base + p_G22ID * p_Np];
-              for(int field = 0; field < p_Nfields; field++)
+              for(int field = 0; field < Nfields; field++)
                 s_lambdat[field][l] = lambda[other_id + 0 * offset + field * loffset];
             }
           }
@@ -78,7 +78,7 @@
           const dlong id          = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           dfloat r_q              = 1.0;
 
-          for(int l = 0; l < p_Nfields; l++) {
+          for(int l = 0; l < Nfields; l++) {
             const int if_not_masked = (mapB[id + l * offset] != 1 ) ? 1:0;
 
             if(if_not_masked) {
@@ -90,7 +90,6 @@
               dfloat gst      = ggeo[base + p_G12ID * p_Np];
               dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
 
-              dfloat lambda_1 = lambda[id + 1 * offset + l * loffset];
               dfloat lambda_0 = s_lambda0[l][j][i];
 
               r_q += 2.0 * grs * lambda_0 * s_D[i][i] * s_D[j][j];
@@ -103,10 +102,11 @@
                 r_q += s_Gtt[m] * s_lambdat[l][m] * s_D[m][k] * s_D[m][k];
               }
 
+#ifndef p_poisson
+              dfloat lambda_1 = lambda[id + 1 * offset + l * loffset];
               r_q  += gwJ * lambda_1;
+#endif
 
-              if(allNeumann)
-                r_q += allNeumannScale;
             }
             Aq[id + l * offset] = (pfloat) r_q;
           }
