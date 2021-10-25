@@ -251,15 +251,6 @@ mesh_t *createMeshMG(mesh_t* _mesh,
   mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                                          mesh->ggeo);
 
-  dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
-  int sk = 0;
-  for(int n = 0; n < mesh->Nq; ++n)
-    gllzw[sk++] = mesh->gllz[n];
-  for(int n = 0; n < mesh->Nq; ++n)
-    gllzw[sk++] = mesh->gllw[n];
-  mesh->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
-  free(gllzw);
-
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
     mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
