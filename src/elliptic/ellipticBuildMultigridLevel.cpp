@@ -83,17 +83,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
     mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                                            mesh->ggeo);
-
-    dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
-
-    int sk = 0;
-    for(int n = 0; n < mesh->Nq; ++n)
-      gllzw[sk++] = mesh->gllz[n];
-    for(int n = 0; n < mesh->Nq; ++n)
-      gllzw[sk++] = mesh->gllw[n];
-
-    elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
-    free(gllzw);
   }
 
   if(!strstr(pfloatString,dfloatString)) {
@@ -117,6 +106,12 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 #else
   mesh_t* mesh = meshCreateMG(baseElliptic->mesh, Nc);
   elliptic->mesh = mesh;
+
+  if(!strstr(pfloatString,dfloatString)) {
+    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
+    const pfloat one = 1.0;
+    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
+  }
 #endif
 
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;

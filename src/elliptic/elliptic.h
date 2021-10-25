@@ -130,7 +130,6 @@ struct elliptic_t
   occa::memory o_invDegree;
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
-  occa::memory o_gllzw; // GLL nodes and weights
 
   occa::kernel AxKernel;
   occa::kernel AxPfloatKernel;
