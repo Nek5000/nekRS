@@ -28,6 +28,7 @@
 #include "platform.hpp"
 
 namespace{
+
 std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
 {
   const std::string precision = std::string(floatString);
@@ -39,133 +40,91 @@ std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
   }
   
 }
+
 }
 
-// create elliptic and mesh structs for multigrid levels
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
 {
   
   elliptic_t* elliptic = new elliptic_t();
-
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
 
-  //populate the mini-mesh using the mesh struct
+#if 1
   mesh_t* mesh = new mesh_t();
   memcpy(mesh,baseElliptic->mesh,sizeof(mesh_t));
-
   elliptic->mesh = mesh;
 
   setupAide options = elliptic->options;
 
-  switch(elliptic->elementType) {
-  case HEXAHEDRA:
-    meshLoadReferenceNodesHex3D(mesh, Nc, 1);
-    meshHaloSetup(mesh);
-    meshPhysicalNodesHex3D(mesh);
-    meshHaloPhysicalNodes(mesh);
-    meshGeometricFactorsHex3D(mesh);
+  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
 
-    if(!options.compareArgs("BOX DOMAIN", "TRUE")) {
-      meshConnectFaceNodes3D(mesh);
-    }else {
-      if(platform->comm.mpiRank == 0)
-        printf("WARNING: connecting periodic box\n");
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
 
-      dfloat XMIN = -1, XMAX = +1; // default bi-unit cube
-      dfloat YMIN = -1, YMAX = +1;
-      dfloat ZMIN = -1, ZMAX = +1;
-
-      options.getArgs("BOX XMIN", XMIN);
-      options.getArgs("BOX YMIN", YMIN);
-      options.getArgs("BOX ZMIN", ZMIN);
-
-      options.getArgs("BOX XMAX", XMAX);
-      options.getArgs("BOX YMAX", YMAX);
-      options.getArgs("BOX ZMAX", ZMAX);
-
-      meshConnectPeriodicFaceNodes3D(mesh, XMAX - XMIN, YMAX - YMIN, ZMAX - ZMIN);
-    }
-    meshSurfaceGeometricFactorsHex3D(mesh);
-    break;
-  }
-
-  // global nodes
   meshGlobalIds(mesh);
-
-#if 0
-  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
-  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
-  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
-#endif
 
   //dont need these once vmap is made
   free(mesh->x);
   free(mesh->y);
-  if (elliptic->dim == 3)
-    free(mesh->z);
-
-  dlong Ntotal = mesh->Np * mesh->Nelements;
+  if (elliptic->dim == 3) free(mesh->z);
 
   if (elliptic->elementType == HEXAHEDRA) {
-    //lumped mass matrix
-    mesh->MM = (dfloat*) calloc(mesh->Np * mesh->Np, sizeof(dfloat));
     dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
 
     for (int j = 0; j < mesh->Nq; j++)
       for (int i = 0; i < mesh->Nq; i++)
         DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
 
-    for (int k = 0; k < mesh->Nq; k++)
-      for (int j = 0; j < mesh->Nq; j++)
-        for (int i = 0; i < mesh->Nq; i++) {
-          int n = i + j * mesh->Nq + k * mesh->Nq * mesh->Nq;
-          mesh->MM[n + n * mesh->Np] = mesh->gllw[i] * mesh->gllw[j] * mesh->gllw[k];
-        }
-
     mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); // transpose(D)
+    mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
+    mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+                                           mesh->ggeo);
 
-#if 0
-    mesh->o_cubD = platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), mesh->cubD);
+    dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
 
-    dfloat* cubInterpT = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
+    int sk = 0;
     for(int n = 0; n < mesh->Nq; ++n)
-      for(int m = 0; m < mesh->cubNq; ++m)
-        cubInterpT[m + n * mesh->cubNq] = mesh->cubInterp[m * mesh->Nq + n];
+      gllzw[sk++] = mesh->gllz[n];
+    for(int n = 0; n < mesh->Nq; ++n)
+      gllzw[sk++] = mesh->gllw[n];
 
-    mesh->o_cubInterpT = platform->device.malloc(mesh->cubNq * mesh->Nq * sizeof(dfloat), cubInterpT);
-
-    free(cubInterpT);
-#endif
-
-    mesh->o_ggeo =
-      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
-                          mesh->ggeo);
-#if 0
-    mesh->o_vgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->Np * sizeof(dfloat),
-                          mesh->vgeo);
-    mesh->o_sgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
-                          mesh->sgeo);
-
-    mesh->o_vmapM =
-      platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
-                          mesh->vmapM);
-
-    mesh->o_vmapP =
-      platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
-                          mesh->vmapP);
-#endif
-
+    elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
+    free(gllzw);
   }
 
+  if(!strstr(pfloatString,dfloatString)) {
+    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
+    const pfloat one = 1.0;
+    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
+
+    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+                                       mesh->o_ggeo,
+                                       elliptic->mesh->o_ggeoPfloat);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_D,
+                                       elliptic->mesh->o_DPfloat);
+    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_DT,
+                                       elliptic->mesh->o_DTPfloat);
+  }
+#else
+  mesh_t* mesh = meshCreateMG(baseElliptic->mesh, Nc);
+  elliptic->mesh = mesh;
+#endif
+
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  meshParallelGatherScatterSetup(mesh, Ntotal, mesh->globalIds, platform->comm.mpiComm, verbose);
+  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
   { // setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    ellipticOgs(mesh, Ntotal, /* nFields */ 1, /* offset */ 0, elliptic->BCType, /* BCTypeOffset */ 0,
+    ellipticOgs(mesh, mesh->Nlocal, /* nFields */ 1, /* offset */ 0, elliptic->BCType, /* BCTypeOffset */ 0,
                 elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
     elliptic->ogs = ogs;
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
@@ -204,15 +163,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
   }
 
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
-  fflush(stdout);
-
-  //new precon struct
   elliptic->precon = new precon_t();
 
   {
-
     const std::string kernelSuffix = std::string("_") + std::to_string(Nf);
 
     kernelName = "ellipticPreconCoarsen" + suffix;
@@ -222,41 +175,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
-  if(elliptic->elementType == HEXAHEDRA) {
-    // pack gllz, gllw, and elementwise EXYZ
-    dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
-
-    int sk = 0;
-    for(int n = 0; n < mesh->Nq; ++n)
-      gllzw[sk++] = mesh->gllz[n];
-    for(int n = 0; n < mesh->Nq; ++n)
-      gllzw[sk++] = mesh->gllw[n];
-
-    elliptic->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
-    free(gllzw);
-  }
-
-  if(!strstr(pfloatString,dfloatString)) {
-    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
-    const pfloat one = 1.0;
-    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
-    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
-    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
-    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
-    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-                                       mesh->o_ggeo,
-                                       elliptic->mesh->o_ggeoPfloat);
-#if 0    
-    mesh->o_ggeo.free();
-#endif    
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_D,
-                                       elliptic->mesh->o_DPfloat);
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_DT,
-                                       elliptic->mesh->o_DTPfloat);
-  }
-
+  MPI_Barrier(platform->comm.mpiComm);
+  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
+  fflush(stdout);
 
   return elliptic;
 }

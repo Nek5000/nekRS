@@ -217,6 +217,66 @@ mesh_t* duplicateMesh(MPI_Comm comm,
 }
 */
 
+/*
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc)
+{
+  mesh_t* mesh = new mesh_t();
+  memcpy(mesh, _mesh, sizeof(mesh_t));
+
+  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
+
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
+
+  meshGlobalIds(mesh);
+
+  free(mesh->x);
+  free(mesh->y);
+  free(mesh->z);
+
+  mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+
+  dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
+  for (int j = 0; j < mesh->Nq; j++)
+    for (int i = 0; i < mesh->Nq; i++)
+      DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
+  mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
+  free(DT);
+
+  mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+                                         mesh->ggeo);
+
+  dfloat* gllzw = (dfloat*) calloc(2 * mesh->Nq, sizeof(dfloat));
+  int sk = 0;
+  for(int n = 0; n < mesh->Nq; ++n)
+    gllzw[sk++] = mesh->gllz[n];
+  for(int n = 0; n < mesh->Nq; ++n)
+    gllzw[sk++] = mesh->gllw[n];
+  mesh->o_gllzw = platform->device.malloc(2 * mesh->Nq * sizeof(dfloat), gllzw);
+  free(gllzw);
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+                                       mesh->o_ggeo,
+                                       mesh->o_ggeoPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_D,
+                                       mesh->o_DPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_DT,
+                                       mesh->o_DTPfloat);
+  }
+}
+*/
+
 mesh_t *createMeshV(
                     MPI_Comm comm,
                     int N,
