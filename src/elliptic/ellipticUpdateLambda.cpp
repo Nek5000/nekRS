@@ -19,7 +19,9 @@ ellipticUpdateLambda(elliptic_t* elliptic)
     auto mgLevel = dynamic_cast<MGLevel*>(levels[levelIndex]);
 
     if(updateDiag){
-      ellipticUpdateJacobi(mgLevel->elliptic,mgLevel->o_invDiagA);
+      const bool coarsestLevel = levelIndex == numMGLevels-1;
+      if(!coarsestLevel || elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
+        ellipticUpdateJacobi(mgLevel->elliptic,mgLevel->o_invDiagA);
     }
     
     if(levelIndex == 0){

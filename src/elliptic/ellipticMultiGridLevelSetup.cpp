@@ -63,7 +63,7 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
     weight   = elliptic->invDegree;
   }
 
-  if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "TRUE"))
+  if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
     this->setupSmoother(ellipticBase);
 
   o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
