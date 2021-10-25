@@ -1,6 +1,6 @@
 #include <elliptic.h>
 
-bool updateDiagonal(setupAide& options)
+static bool updateDiagonal(setupAide& options)
 {
   return options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
          options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI") ||
