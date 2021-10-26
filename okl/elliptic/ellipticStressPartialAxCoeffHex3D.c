@@ -1,4 +1,4 @@
-extern "C" void FUNC(ellipticStressPartialAxVarHex3D)(const dlong &Nelements,
+extern "C" void FUNC(ellipticStressPartialAxCoeffHex3D)(const dlong &Nelements,
                               const dlong &offset,
                               const dlong &loffset,
                               const dlong* __restrict__ elementList,

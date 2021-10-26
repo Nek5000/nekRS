@@ -344,9 +344,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
   nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
-  nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
-                                             nrs->ellipticCoeff);
+  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat));
 
   int nProperties = 2;
   if(options.compareArgs("MESH SOLVER", "ELASTICITY")) nProperties = 4;
@@ -683,8 +681,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is]->coeffField = coeffField;
       cds->solver[is]->coeffFieldPreco = coeffField;
       cds->solver[is]->poisson = 0;
-      for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
-      cds->solver[is]->lambda = cds->ellipticCoeff;
+
+      platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
       cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
       cds->solver[is]->loffset = 0;
  
@@ -765,7 +763,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->mOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("MESH MAXIMUM ITERATIONS"));
 
     // coeff used by ellipticSetup to detect allNeumann
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
+    platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
     
     const int velCoeffField = platform->options.compareArgs("VELOCITY COEFF FIELD", "TRUE");
 
@@ -786,7 +784,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->uvwSolver->BCType,uvwBCType,nrs->NVfields * NBCType * sizeof(int));
       nrs->uvwSolver->coeffField = velCoeffField;
       nrs->uvwSolver->coeffFieldPreco = velCoeffField;
-      nrs->uvwSolver->lambda = nrs->ellipticCoeff;
       nrs->uvwSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
       nrs->uvwSolver->poisson = 0;
@@ -807,7 +804,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->uSolver->BCType,uBCType,NBCType * sizeof(int));
       nrs->uSolver->coeffField = velCoeffField;
       nrs->uSolver->coeffFieldPreco = velCoeffField;
-      nrs->uSolver->lambda = nrs->ellipticCoeff;
       nrs->uSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uSolver->loffset = 0;
       nrs->uSolver->poisson = 0;
@@ -828,7 +824,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->vSolver->BCType,vBCType,NBCType * sizeof(int));
       nrs->vSolver->coeffField = velCoeffField;
       nrs->vSolver->coeffFieldPreco = velCoeffField;
-      nrs->vSolver->lambda = nrs->ellipticCoeff;
       nrs->vSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->vSolver->loffset = 0;
       nrs->vSolver->poisson = 0;
@@ -850,7 +845,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         memcpy(nrs->wSolver->BCType,wBCType,NBCType * sizeof(int));
         nrs->wSolver->coeffField = velCoeffField;
         nrs->wSolver->coeffFieldPreco = velCoeffField;
-        nrs->wSolver->lambda = nrs->ellipticCoeff;
         nrs->wSolver->o_lambda = nrs->o_ellipticCoeff;
         nrs->wSolver->loffset = 0;
         nrs->wSolver->poisson = 0;
@@ -933,10 +927,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->coeffFieldPreco = pCoeffField;
     nrs->pSolver->poisson = 1;
 
-    // coeff used by ellipticSetup to detect allNeumann
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 0;
-    nrs->pSolver->lambda = nrs->ellipticCoeff;
-
     // lambda0 = 1/rho
     // lambda1 = 0
     platform->linAlg->fill(2*nrs->fieldOffset, 0.0, nrs->o_ellipticCoeff);
@@ -974,6 +964,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       }
 
       const int meshCoeffField = platform->options.compareArgs("MESH COEFF FIELD", "TRUE");
+      platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
 
       nrs->meshSolver = new elliptic_t();
       nrs->meshSolver->name = "mesh";
@@ -991,7 +982,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->meshSolver->BCType,uvwMeshBCType,nrs->NVfields * NBCType * sizeof(int));
       nrs->meshSolver->coeffField = meshCoeffField;
       nrs->meshSolver->coeffFieldPreco = meshCoeffField;
-      nrs->meshSolver->lambda = nrs->ellipticCoeff;
       nrs->meshSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->meshSolver->loffset = 0; // use same ellipticCoeff for u,v and w
       nrs->meshSolver->poisson = 0;
@@ -1150,7 +1140,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
   cds->o_rho  = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
-  cds->ellipticCoeff   = nrs->ellipticCoeff;
   cds->o_ellipticCoeff = nrs->o_ellipticCoeff;
 
   cds->o_U  = nrs->o_U;

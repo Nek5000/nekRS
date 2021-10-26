@@ -140,7 +140,7 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
       kernelNamePrefix += (stressForm) ? "Stress" : "Block";
 
     kernelName = "Ax";
-    if (coeffField) kernelName += "Var";
+    if (coeffField) kernelName += "Coeff";
     if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
     kernelName += suffix; 
     if (blockSolver && !stressForm) kernelName += "_N" + std::to_string(Nfields);

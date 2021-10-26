@@ -1,4 +1,4 @@
-@kernel void ellipticStressPartialAxVarHex3D(const dlong Nelements,
+@kernel void ellipticStressPartialAxCoeffHex3D(const dlong Nelements,
                                              const dlong offset,
                                              const dlong loffset,
                                              @restrict const dlong* elementList,

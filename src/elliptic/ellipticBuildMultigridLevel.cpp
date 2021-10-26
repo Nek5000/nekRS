@@ -63,7 +63,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
 
-  std::string suffix = "Hex3D";
+  const std::string suffix = "Hex3D";
 
   std::string kernelName;
 
@@ -75,21 +75,22 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
 
   {
+      const std::string AxSuffix = elliptic->coeffFieldPreco ? "CoeffHex3D" : "Hex3D";
       // check for trilinear
       if(elliptic->elementType != HEXAHEDRA) {
-        kernelName = "ellipticPartialAx" + suffix;
+        kernelName = "ellipticPartialAx" + AxSuffix;
       }else {
         if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-          kernelName = "ellipticPartialAxTrilinear" + suffix;
+          kernelName = "ellipticPartialAxTrilinear" + AxSuffix;
         else
-          kernelName = "ellipticPartialAx" + suffix;
+          kernelName = "ellipticPartialAx" + AxSuffix;
       }
 
       {
         const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
         elliptic->AxKernel = platform->kernels.getKernel(poissonPrefix + kernelName + kernelSuffix);
       }
-      if(!strstr(pfloatString,dfloatString)) {
+      {
         const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
         elliptic->AxPfloatKernel =
           platform->kernels.getKernel(poissonPrefix + kernelName + kernelSuffix);

@@ -40,6 +40,7 @@ void compileKernels() {
       const std::string section = "scalar" + sid;
       const int poisson = 0;
       registerEllipticKernels(section, poisson);
+      registerEllipticPreconditionerKernels(section, poisson);
     }
   }
 

@@ -52,7 +52,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 
   elliptic->coeffField = baseElliptic->coeffField;
   elliptic->coeffFieldPreco = baseElliptic->coeffFieldPreco;
-  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0
 
 
   if(!strstr(pfloatString,dfloatString)) {
@@ -71,7 +70,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
                                        elliptic->mesh->o_DTPfloat);
   }
 
-  std::string suffix = elliptic->coeffFieldPreco ? "VarHex3D" : "Hex3D";
+  std::string suffix = elliptic->coeffFieldPreco ? "CoeffHex3D" : "Hex3D";
 
   std::string kernelName;
 

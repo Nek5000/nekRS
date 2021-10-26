@@ -1,4 +1,4 @@
-@kernel void ellipticBlockPartialAxVarHex3D_N3(const dlong Nelements,
+@kernel void ellipticBlockPartialAxCoeffHex3D_N3(const dlong Nelements,
                                                const dlong offset,
                                                const dlong loffset,
                                                @restrict const dlong* elementList,

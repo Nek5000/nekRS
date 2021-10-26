@@ -166,7 +166,6 @@ struct elliptic_t
   occa::kernel updateDiagonalKernel;
   occa::memory o_lambda;
   occa::memory o_lambdaPfloat;
-  dfloat* lambda;
   dlong loffset;
   int nLevels;
   int* levels;
@@ -231,7 +230,6 @@ void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
 
 void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           elliptic_t* ellipticFine,
-                                          dfloat lambda,
                                           nonZero_t** A,
                                           dlong* nnz,
                                           ogs_t** ogs,
@@ -239,9 +237,6 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
 
 void ellipticMultiGridUpdateLambda(elliptic_t* elliptic);
 void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA);
-
-void ellipticBuildLocalPatches(elliptic_t* elliptic, dfloat lambda, dfloat rateTolerance,
-                               dlong* Npataches, dlong** patchesIndex, dfloat** patchesInvA);
 
 void ellipticMultiGridSetup(elliptic_t* elliptic, precon_t* precon);
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf);

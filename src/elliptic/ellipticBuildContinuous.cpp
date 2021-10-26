@@ -79,8 +79,9 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   
   mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
-  // currently constant coefficient case only
-  const dfloat lambda = elliptic->lambda[0];
+
+  // Poisson only
+  const dfloat lambda = 0.0;
 
   int rank = platform->comm.mpiRank;
 

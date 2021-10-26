@@ -1,4 +1,4 @@
-extern "C" void FUNC(ellipticBlockPartialAxVarHex3D_N3)(const dlong & Nelements,
+extern "C" void FUNC(ellipticBlockPartialAxCoeffHex3D_N3)(const dlong & Nelements,
                                 const dlong & offset,
                                 const dlong & loffset,
                                 const dlong* __restrict__ elementList,

@@ -35,7 +35,7 @@ occa::memory MGLevel::o_smootherResidual2;
 occa::memory MGLevel::o_smootherUpdate;
 
 //build a single level
-MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
+MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
                  setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_, bool _isCoarse) :
   multigridLevel(ellipticBase->mesh->Nelements * ellipticBase->mesh->Np,
                  (ellipticBase->mesh->Nelements + ellipticBase->mesh->totalHaloPairs) * ellipticBase->mesh->Np,
@@ -47,12 +47,11 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
   elliptic = ellipticBase;
   mesh = elliptic->mesh;
   options = options_;
-  lambda = lambda_;
   degree = Nc;
   weighted = false;
 
-  elliptic->o_lambdaPfloat = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(pfloat));
-  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np,
+  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
+  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
     elliptic->o_lambda,
     elliptic->o_lambdaPfloat);
 
@@ -75,7 +74,6 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
                  mesh_t** meshLevels,
                  elliptic_t* ellipticFine, //previous level
                  elliptic_t* ellipticCoarse, //current level
-                 dfloat lambda_,
                  int Nf, int Nc,
                  setupAide options_,
                  parAlmond::KrylovType ktype_,
@@ -93,7 +91,6 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   elliptic = ellipticCoarse;
   mesh = elliptic->mesh;
   options = options_;
-  lambda = lambda_;
   degree = Nc;
   weighted = false;
 
@@ -110,8 +107,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  elliptic->o_lambdaPfloat = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(pfloat));
-  elliptic->o_lambda = platform->device.malloc(mesh->Nelements * mesh->Np, sizeof(dfloat));
+  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
+  elliptic->o_lambda = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(dfloat));
 
   const int Nfq = Nf+1;
   const int Ncq = Nc+1;
@@ -119,9 +116,9 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   InterpolationMatrix1D(Nf, Nfq, ellipticFine->mesh->r, Ncq, mesh->r, fToCInterp);
   o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
 
-  elliptic->precon->coarsenKernel(mesh->Nelements, o_interp, ellipticFine->o_lambda, elliptic->o_lambda);
+  elliptic->precon->coarsenKernel(2 * mesh->Nelements, o_interp, ellipticFine->o_lambda, elliptic->o_lambda);
 
-  elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np,
+  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
     elliptic->o_lambda,
     elliptic->o_lambdaPfloat);
   

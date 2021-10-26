@@ -140,7 +140,7 @@ struct nrs_t
   occa::memory o_BF;
   occa::memory o_FU;
 
-  dfloat* prop, * ellipticCoeff;
+  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
 
   //EXTBDF data

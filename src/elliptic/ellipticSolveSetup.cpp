@@ -119,22 +119,26 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   elliptic->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces * elliptic->Nfields,sizeof(int));
   int* allNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
+
+  dfloat* lambda = (dfloat*) calloc(2*elliptic->Ntotal, sizeof(dfloat));
+  elliptic->o_lambda.copyTo(lambda, 2*elliptic->Ntotal*sizeof(dfloat));
   // check based on the coefficient
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
     if(elliptic->coeffField) {
       int allzero = 1;
       for(int n = 0; n < Nlocal; n++) { // check any non-zero value for each field
-        const dfloat lambda = elliptic->lambda[n + elliptic->Ntotal + fld * elliptic->loffset];
-        if(lambda) {
+        if(lambda[n + elliptic->Ntotal + fld * elliptic->loffset]) {
           allzero = 0;
           break;
         }
       }
       allNeumann[fld] = allzero;
     }else{
-      allNeumann[fld] = (elliptic->lambda[fld] == 0) ? 1 : 0;
+      allNeumann[fld] = (lambda[elliptic->Ntotal + fld * elliptic->loffset] == 0) ? 1 : 0;
     }
   }
+
+  free(lambda);
 
   // check based on BC
   for(int fld = 0; fld < elliptic->Nfields; fld++)
@@ -205,7 +209,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
         kernelNamePrefix += (elliptic->stressForm) ? "Stress" : "Block";
  
       kernelName = "Ax";
-      if (elliptic->coeffField) kernelName += "Var";
+      if (elliptic->coeffField) kernelName += "Coeff";
       if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
       kernelName += suffix; 
       if (elliptic->blockSolver && !elliptic->stressForm) 

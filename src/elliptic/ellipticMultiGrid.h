@@ -45,7 +45,6 @@ public:
 
   elliptic_t* elliptic;
   mesh_t* mesh;
-  dfloat lambda;
 
   int degree;
 
@@ -93,7 +92,6 @@ public:
 
   //local patch data
   occa::memory o_invAP, o_patchesIndex, o_invDegreeAP;
-  //ogs_t* extendedOgs = nullptr;
   void* extendedOgs;
   void* ogs;
   void build(
@@ -105,7 +103,7 @@ public:
   bool isCoarse;
 
   //build a single level
-  MGLevel(elliptic_t* ellipticBase, dfloat lambda_, int Nc,
+  MGLevel(elliptic_t* ellipticBase, int Nc,
           setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_,
           bool _isCoarse = false
           );
@@ -114,7 +112,6 @@ public:
           mesh_t** meshLevels,
           elliptic_t* ellipticFine,          //previous level
           elliptic_t* ellipticCoarse,          //current level
-          dfloat lambda_,
           int Nf, int Nc,
           setupAide options_,
           parAlmond::KrylovType ktype_,

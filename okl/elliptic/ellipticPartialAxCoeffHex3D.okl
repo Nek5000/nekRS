@@ -1,4 +1,4 @@
-@kernel void ellipticPartialAxVarHex3D(const dlong Nelements,
+@kernel void ellipticPartialAxCoeffHex3D(const dlong Nelements,
                                        const dlong offset,
                                        const dlong loffset,
                                        @restrict const dlong*  elementList,
