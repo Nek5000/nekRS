@@ -820,12 +820,18 @@ void parseInitialGuess(const int rank, setupAide &options,
                       "PROJECTION");
     } else if (initialGuess.find("previous") != std::string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+      // removeArgs any default entries associated with projection initial guess
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
     } else if (checkForTrue(initialGuess)) {
       const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
       options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
     } else if (checkForFalse(initialGuess)) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+      // removeArgs any default entries associated with projection initial guess
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
     } else {
       std::ostringstream error;
       error << "Could not parse initialGuess string" << initialGuess << "!\n";
@@ -868,9 +874,13 @@ void parseInitialGuess(const int rank, setupAide &options,
         options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
                         std::to_string(defaultNumVectors));
         options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+      } else {
+        options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+        
+        // removeArgs any default entries associated with projection initial guess
+        options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+        options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
       }
-
-      return;
     }
 
     int nVectors;

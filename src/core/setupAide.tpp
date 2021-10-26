@@ -1,5 +1,5 @@
 template <class T>
-int setupAide::getArgs(std::string key, T& t){
+int setupAide::getArgs(std::string key, T& t) const{
   std::vector<T> m;
 
   getArgs(key,m);
@@ -10,12 +10,11 @@ int setupAide::getArgs(std::string key, T& t){
     return 1;
   }
 
-  //printf("Failed to find [%s].\n", key.c_str());
   return 0;
 }
 
 template <class T>
-int setupAide::getArgs(std::string key, std::vector<T>& m){
+int setupAide::getArgs(std::string key, std::vector<T>& m) const {
   std::stringstream args;
   std::vector<T> argv;
   int argc;
@@ -29,7 +28,6 @@ int setupAide::getArgs(std::string key, std::vector<T>& m){
   argc = argv.size();
 
   if(!argc){
-    //printf("Failed to find [%s].\n", key.c_str());
     return 0;
   }
 
