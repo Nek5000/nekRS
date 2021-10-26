@@ -35,7 +35,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "JACOBI"))
     ellipticUpdateJacobi(elliptic, elliptic->precon->o_invDiagA);
   else if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "MULTIGRID"))
-    ellipticUpdateLambda(elliptic);
+    ellipticMultiGridUpdateLambda(elliptic);
 
   mesh_t* mesh = elliptic->mesh;
 

@@ -14,7 +14,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildPreconditionerKernels.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevelFine.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildMultigridLevel.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateLambda.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridUpdateLambda.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridLevel.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridLevelSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticMultiGridSchwarz.cpp

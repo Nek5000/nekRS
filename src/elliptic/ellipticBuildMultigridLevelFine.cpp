@@ -56,9 +56,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 
 
   if(!strstr(pfloatString,dfloatString)) {
-    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
-    const pfloat one = 1.0;
-    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
     mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
     mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));

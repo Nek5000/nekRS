@@ -6,6 +6,31 @@
 #include "omp.h"
 #include <iostream>
 
+namespace{
+
+static void compileDummyKernel(const platform_t& plat)
+{
+  const bool buildNodeLocal = useNodeLocalCache();
+  auto rank = buildNodeLocal ? plat.comm.localRank : plat.comm.mpiRank;
+  const std::string dummyKernelName = "myDummyKernelName";
+  const std::string dummyKernelStr = std::string(
+      "@kernel void myDummyKernelName(int N) {"
+      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
+      "}"
+  );
+
+  if(rank == 0){
+    plat.device.occaDevice().buildKernelFromString(
+      dummyKernelStr,
+      dummyKernelName,
+      plat.kernelInfo
+    );
+  }
+
+}
+
+}
+
 comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
 {
 
@@ -61,9 +86,9 @@ platform_t* platform_t::singleton = nullptr;
 platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
 : options(_options),
   warpSize(32),
-  device(options, _commg, _comm),
-  timer(_comm, device.occaDevice(), 0),
   comm(_commg, _comm),
+  device(options, comm),
+  timer(_comm, device.occaDevice(), 0),
   kernels(*this)
 {
   kernelInfo["defines/" "p_NVec"] = 3;
@@ -104,6 +129,21 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
 
   serial = device.mode() == "Serial" ||
            device.mode() == "OpenMP";
+  
+  const std::string extension = serial ? ".c" : ".okl";
+  
+  compileDummyKernel(*this);
+
+  std::string installDir, kernelName, fileName;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = installDir + "/okl/";
+  kernelName = "copyDfloatToPfloat";
+  fileName = installDir + "/okl/core/" + kernelName + extension;
+  this->copyDfloatToPfloatKernel = this->device.buildKernel(fileName, this->kernelInfo);
+
+  kernelName = "copyPfloatToDfloat";
+  fileName = installDir + "/okl/core/" + kernelName + extension;
+  this->copyPfloatToDfloatKernel = this->device.buildKernel(fileName, this->kernelInfo);
 }
 void memPool_t::allocate(const dlong offset, const dlong fields)
 {

@@ -237,7 +237,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           ogs_t** ogs,
                                           hlong* globalStarts);
 
-void ellipticUpdateLambda(elliptic_t* elliptic);
+void ellipticMultiGridUpdateLambda(elliptic_t* elliptic);
 void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA);
 
 void ellipticBuildLocalPatches(elliptic_t* elliptic, dfloat lambda, dfloat rateTolerance,

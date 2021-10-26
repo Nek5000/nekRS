@@ -7,31 +7,6 @@
 #include <vector>
 #include <tuple>
 
-namespace {
-
-void compileDummyKernel()
-{
-  const bool buildNodeLocal = useNodeLocalCache();
-  auto rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
-  const std::string dummyKernelName = "myDummyKernelName";
-  const std::string dummyKernelStr = std::string(
-      "@kernel void myDummyKernelName(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
-      "}"
-  );
-
-  if(rank == 0){
-    platform->device.occaDevice().buildKernelFromString(
-      dummyKernelStr,
-      dummyKernelName,
-      platform->kernelInfo
-    );
-  }
-
-}
-
-} // namespace
-
 std::string createOptionsPrefix(std::string section) {
   std::string prefix = section + std::string(" ");
   if (section.find("temperature") != std::string::npos) {
@@ -45,8 +20,6 @@ std::string createOptionsPrefix(std::string section) {
 }
 
 void compileKernels() {
-
-  compileDummyKernel(); // trigger occa's compilerVendorTest
 
   const occa::properties kernelInfoBC = compileUDFKernels();
 

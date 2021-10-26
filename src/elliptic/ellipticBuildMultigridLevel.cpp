@@ -49,72 +49,10 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
 
-#if 1
-  mesh_t* mesh = new mesh_t();
-  memcpy(mesh,baseElliptic->mesh,sizeof(mesh_t));
+  mesh_t* mesh = createMeshMG(baseElliptic->mesh, Nc);
   elliptic->mesh = mesh;
 
-  setupAide options = elliptic->options;
-
-  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
-  meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
-  meshGeometricFactorsHex3D(mesh);
-
-  meshConnectFaceNodes3D(mesh);
-  meshSurfaceGeometricFactorsHex3D(mesh);
-
-  meshGlobalIds(mesh);
-
-  //dont need these once vmap is made
-  free(mesh->x);
-  free(mesh->y);
-  if (elliptic->dim == 3) free(mesh->z);
-
-  if (elliptic->elementType == HEXAHEDRA) {
-    dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
-
-    for (int j = 0; j < mesh->Nq; j++)
-      for (int i = 0; i < mesh->Nq; i++)
-        DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
-
-    mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-    mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
-    mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
-                                           mesh->ggeo);
-  }
-
-  if(!strstr(pfloatString,dfloatString)) {
-    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
-    const pfloat one = 1.0;
-    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
-    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
-    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
-    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
-
-    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-                                       mesh->o_ggeo,
-                                       elliptic->mesh->o_ggeoPfloat);
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_D,
-                                       elliptic->mesh->o_DPfloat);
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_DT,
-                                       elliptic->mesh->o_DTPfloat);
-  }
-#else
-  mesh_t* mesh = meshCreateMG(baseElliptic->mesh, Nc);
-  elliptic->mesh = mesh;
-
-  if(!strstr(pfloatString,dfloatString)) {
-    elliptic->o_lambdaPfloat = platform->device.malloc(1,  sizeof(pfloat));
-    const pfloat one = 1.0;
-    elliptic->o_lambdaPfloat.copyFrom(&one, sizeof(pfloat));
-  }
-#endif
-
-  int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
+  int verbose = elliptic->options.compareArgs("VERBOSE","TRUE") ? 1:0;
   meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
   { // setup an unmasked gs handle

@@ -10,9 +10,9 @@ device_t::buildNativeKernel(const std::string &fileName,
 {
   occa::properties nativeProperties = props;
   nativeProperties["okl/enabled"] = false;
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE"))
+  if(_verbose)
     nativeProperties["verbose"] = true;
-  if(platform->device.mode() == "OpenMP")
+  if(this->mode() == "OpenMP")
     nativeProperties["defines/__NEKRS__OMP__"] = 1;
   return _device.buildKernel(fileName, kernelName, nativeProperties);
 }
@@ -65,7 +65,7 @@ device_t::buildKernel(const std::string &fileName,
   if(fileName.find(".okl") != std::string::npos){
     occa::properties propsWithSuffix = props;
     propsWithSuffix["kernelNameSuffix"] = suffix;
-    if(platform->options.compareArgs("BUILD ONLY", "TRUE"))
+    if(_verbose)
       propsWithSuffix["verbose"] = true;
     return _device.buildKernel(fileName, kernelName, propsWithSuffix);
   }
@@ -90,8 +90,8 @@ device_t::buildKernel(const std::string &fullPath,
   if(buildRank0){
 
     const bool buildNodeLocal = useNodeLocalCache();
-    const int rank = buildNodeLocal ? platform->comm.localRank : platform->comm.mpiRank;
-    MPI_Comm localCommunicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
+    const int rank = buildNodeLocal ? _comm.localRank : _comm.mpiRank;
+    MPI_Comm localCommunicator = buildNodeLocal ? _comm.mpiCommLocal : _comm.mpiComm;
     occa::kernel constructedKernel;
     for(int pass = 0; pass < 2; ++pass){
       if((pass == 0 && rank == 0) || (pass == 1 && rank != 0)){
@@ -164,26 +164,19 @@ device_t::malloc(const hlong Nword , const dlong wordSize)
   return o_returnValue;
 }
 
-device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
+device_t::device_t(setupAide& options, comm_t& comm)
+:_comm(comm)
 {
+  _verbose = options.compareArgs("BUILD ONLY", "TRUE");
+
   // OCCA build stuff
   char deviceConfig[BUFSIZ];
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
+  int worldRank = _comm.mpiRank;
 
   int device_id = 0;
 
   if(options.compareArgs("DEVICE NUMBER", "LOCAL-RANK")) {
-    int worldRank;
-    MPI_Comm_rank(commParent, &worldRank);
-
-    MPI_Comm commLocal;
-    MPI_Comm_split_type(commParent, MPI_COMM_TYPE_SHARED, worldRank, MPI_INFO_NULL, &commLocal);
-
-    int localRank;
-    MPI_Comm_rank(commLocal, &localRank);
-    device_id = localRank;
+    device_id = _comm.localRank;
   } else {
     options.getArgs("DEVICE NUMBER",device_id);
   }
@@ -201,7 +194,7 @@ device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
     options.getArgs("PLATFORM NUMBER", plat);
     sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
   }else if(strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
-    if(rank == 0) printf("OpenMP backend currently not supported!\n");
+    if(worldRank == 0) printf("OpenMP backend currently not supported!\n");
     ABORT(EXIT_FAILURE);
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
   }else if(strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
@@ -210,19 +203,18 @@ device_t::device_t(setupAide& options, MPI_Comm commParent, MPI_Comm comm)
     options.setArgs("THREAD MODEL", "SERIAL");
     options.getArgs("THREAD MODEL", requestedOccaMode);
   } else {
-    if(rank == 0) printf("Invalid requested backend!\n");
+    if(worldRank == 0) printf("Invalid requested backend!\n");
     ABORT(EXIT_FAILURE);
   }
 
-  if(rank == 0) printf("Initializing device \n");
+  if(worldRank == 0) printf("Initializing device \n");
   this->_device.setup((std::string)deviceConfig);
-  this->comm = comm;
  
-  if(rank == 0)
+  if(worldRank == 0)
     std::cout << "active occa mode: " << this->mode() << "\n\n";
 
   if(strcasecmp(requestedOccaMode.c_str(), this->mode().c_str()) != 0) {
-    if(rank == 0) printf("active occa mode does not match selected backend!\n");
+    if(worldRank == 0) printf("active occa mode does not match selected backend!\n");
     ABORT(EXIT_FAILURE);
   } 
 

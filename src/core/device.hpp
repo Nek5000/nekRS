@@ -6,11 +6,11 @@
 #include "nrssys.hpp"
 
 class setupAide;
+class comm_t;
 
 class device_t {
   public:
-    device_t(setupAide& options, MPI_Comm commg, MPI_Comm comm);
-    MPI_Comm comm;
+    device_t(setupAide& options, comm_t& comm);
     occa::memory malloc(const size_t Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
     occa::memory malloc(const size_t Nbytes, const occa::properties& properties);
     occa::memory malloc(const hlong Nwords, const dlong wordSize, occa::memory src);
@@ -47,7 +47,9 @@ class device_t {
     occa::kernel buildNativeKernel(const std::string &fileName,
                              const std::string &kernelName,
                              const occa::properties &props) const;
+    comm_t& _comm;
     occa::device _device;
     int _device_id;
+    bool _verbose;
 };
 #endif

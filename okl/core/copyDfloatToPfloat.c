@@ -24,10 +24,6 @@ SOFTWARE.
 
 */
 
-
-
-
-
 extern "C" void FUNC(copyDfloatToPfloat) (const dlong & N,
   const dfloat * __restrict__ x,
   pfloat *  __restrict__ y){

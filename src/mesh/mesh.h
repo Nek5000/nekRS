@@ -222,6 +222,9 @@ struct mesh_t
   occa::kernel velocityDirichletKernel;
 };
 
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc);
+
 occa::properties meshKernelProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);

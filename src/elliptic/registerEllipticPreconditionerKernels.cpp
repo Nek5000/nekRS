@@ -66,15 +66,16 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
         fileName,
         kernelInfo,
         orderSuffix);
+
     kernelName = "copyDfloatToPfloat";
-    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
+    fileName = installDir + "/okl/core/" + kernelName + extension;
     platform->kernels.add(kernelName + orderSuffix,
         fileName,
         kernelInfo,
         orderSuffix);
 
     kernelName = "copyPfloatToDfloat";
-    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
+    fileName = installDir + "/okl/core/" + kernelName + extension;
     platform->kernels.add(kernelName + orderSuffix,
         fileName,
         kernelInfo,

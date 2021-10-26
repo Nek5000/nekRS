@@ -217,7 +217,6 @@ mesh_t* duplicateMesh(MPI_Comm comm,
 }
 */
 
-/*
 mesh_t *createMeshMG(mesh_t* _mesh,
                      int Nc)
 {
@@ -264,9 +263,14 @@ mesh_t *createMeshMG(mesh_t* _mesh,
     platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
                                        mesh->o_DT,
                                        mesh->o_DTPfloat);
+
+    // TODO: once full preconditioner is in FP32, uncomment below
+    //mesh->o_D.free();
+    //mesh->o_DT.free();
+    //mesh->o_ggeo.free();
   }
+  return mesh;
 }
-*/
 
 mesh_t *createMeshV(
                     MPI_Comm comm,

@@ -90,6 +90,8 @@ struct platform_t{
   memPool_t mempool;
   deviceMemPool_t o_mempool;
   kernelRequestManager_t kernels;
+  occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel copyPfloatToDfloatKernel;
   void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
   inipp::Ini *par;

@@ -8,7 +8,7 @@ static bool updateDiagonal(setupAide& options)
 }
 
 void
-ellipticUpdateLambda(elliptic_t* elliptic)
+ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
 {
   const bool updateDiag = updateDiagonal(elliptic->options);
   mesh_t* mesh = elliptic->mesh;
