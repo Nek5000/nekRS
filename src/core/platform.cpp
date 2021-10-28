@@ -91,6 +91,7 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
   timer(_comm, device.occaDevice(), 0),
   kernels(*this)
 {
+
   kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   kernelInfo["defines/" "dfloat"] = dfloatString;

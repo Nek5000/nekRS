@@ -70,6 +70,11 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     if(platform->comm.mpiRank == 0)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nmax);
 
+    elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
+    elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
+      elliptic->o_lambda,
+      elliptic->o_lambdaPfloat);
+
     auto callback = [&]()
                     {
                       ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
@@ -89,11 +94,12 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   for (int n = 1; n < numMGLevels - 1; n++) {
     int Nc = levelDegree[n];
     int Nf = levelDegree[n - 1];
+    elliptic_t* ellipticFine = ((MGLevel*) levels[n - 1])->elliptic;
     //build elliptic struct for this degree
     if(platform->comm.mpiRank == 0)
       printf("=============BUILDING MULTIGRID LEVEL OF DEGREE %d==================\n", Nc);
 
-    elliptic_t* ellipticC = ellipticBuildMultigridLevel(elliptic,Nc,Nf);
+    elliptic_t* ellipticC = ellipticBuildMultigridLevel(ellipticFine,Nc,Nf);
 
     auto callback = [&]()
                     {
@@ -110,7 +116,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
     //add the level manually
     levels[n] = new MGLevel(elliptic,
                             meshLevels,
-                            ((MGLevel*) levels[n - 1])->elliptic,
+                            ellipticFine,
                             ellipticC,
                             Nf, Nc,
                             options,

@@ -50,11 +50,6 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
   degree = Nc;
   weighted = false;
 
-  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
-  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
-    elliptic->o_lambda,
-    elliptic->o_lambdaPfloat);
-
   //use weighted inner products
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     weighted = true;
@@ -107,26 +102,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
-  elliptic->o_lambda = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(dfloat));
-
-  const int Nfq = Nf+1;
-  const int Ncq = Nc+1;
-  dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
-  InterpolationMatrix1D(Nf, Nfq, ellipticFine->mesh->r, Ncq, mesh->r, fToCInterp);
-  o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
-
-  elliptic->precon->coarsenKernel(2 * mesh->Nelements, o_interp, ellipticFine->o_lambda, elliptic->o_lambda);
-
-  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
-    elliptic->o_lambda,
-    elliptic->o_lambdaPfloat);
-  
-  free(fToCInterp);
-
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
     this->setupSmoother(ellipticBase);
-
 
   o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
   o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
@@ -361,7 +338,13 @@ dfloat MGLevel::maxEigSmoothAx()
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     ogsGatherScatter(Vx, ogsDfloat, ogsAdd, mesh->ogs);
-    for (dlong i = 0; i < elliptic->Nmasked; i++) Vx[elliptic->maskIds[i]] = 0.;
+
+    if(elliptic->Nmasked > 0){
+      dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
+      elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+      for (dlong i = 0; i < elliptic->Nmasked; i++) Vx[maskIds[i]] = 0.;
+      free(maskIds);
+    }
   }
 
   o_Vx.copyFrom(Vx, M*sizeof(dfloat));

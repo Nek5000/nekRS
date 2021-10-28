@@ -77,25 +77,21 @@ struct comm_t{
   MPI_Comm mpiCommLocal;
   int mpiCommLocalSize;
   int localRank;
+
+  std::string to_string() const {
+    std::ostringstream ss;
+    ss << "mpiRank = " << mpiRank << std::endl;
+    ss << "mpiCommSize = " << mpiCommSize << std::endl;
+    ss << "mpiCommLocalSize = " << mpiCommLocalSize << std::endl;
+    ss << "localRank = " << localRank << std::endl;
+    return ss.str();
+  }
 };
 
 struct platform_t{
-  setupAide& options;
-  int warpSize;
-  device_t device;
-  occa::properties kernelInfo;
-  timer::timer_t timer;
-  comm_t comm;
-  linAlg_t* linAlg;
-  memPool_t mempool;
-  deviceMemPool_t o_mempool;
-  kernelRequestManager_t kernels;
-  occa::kernel copyDfloatToPfloatKernel;
-  occa::kernel copyPfloatToDfloatKernel;
+public:
   void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
-  inipp::Ini *par;
-  bool serial;
 
   static platform_t* getInstance(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm){
     if(!singleton)
@@ -105,7 +101,24 @@ struct platform_t{
   static platform_t* getInstance(){
     return singleton;
   }
-  private:
+private:
   static platform_t * singleton;
+
+public:
+  setupAide& options;
+  int warpSize;
+  comm_t comm;
+  device_t device;
+  occa::properties kernelInfo;
+  timer::timer_t timer;
+  deviceMemPool_t o_mempool;
+  kernelRequestManager_t kernels;
+  inipp::Ini *par;
+  bool serial;
+  linAlg_t* linAlg;
+  memPool_t mempool;
+
+  occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel copyPfloatToDfloatKernel;
 };
 #endif

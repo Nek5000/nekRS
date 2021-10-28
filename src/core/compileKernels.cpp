@@ -39,8 +39,11 @@ void compileKernels() {
       std::string sid = ss.str();
       const std::string section = "scalar" + sid;
       const int poisson = 0;
-      registerEllipticKernels(section, poisson);
-      registerEllipticPreconditionerKernels(section, poisson);
+
+      if(!platform->options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")){
+        registerEllipticKernels(section, poisson);
+        registerEllipticPreconditionerKernels(section, poisson);
+      }
     }
   }
 

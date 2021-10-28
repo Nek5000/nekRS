@@ -109,16 +109,9 @@ struct elliptic_t
   //C0-FEM mask data
   int* mapB;      // boundary flag of face nodes
   dlong Nmasked;
-  dlong* fNmasked;
-
-  dlong* maskIds;
-  hlong* maskedGlobalIds;
 
   occa::memory o_maskIds;
   occa::memory o_mapB;
-
-  occa::stream defaultStream;
-  occa::stream dataStream;
 
   occa::memory o_x;
   occa::memory o_x0;
@@ -128,6 +121,7 @@ struct elliptic_t
   occa::memory o_res;
   occa::memory o_Ap; // A*search direction
   occa::memory o_invDegree;
+  occa::memory o_interp; // interpolate (r,s,t)F -> (r,s,t)C for variable properties
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
 

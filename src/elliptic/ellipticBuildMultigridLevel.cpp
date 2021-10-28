@@ -109,6 +109,24 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
+  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
+  elliptic->o_lambda = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(dfloat));
+
+  const int Nfq = Nf+1;
+  const int Ncq = Nc+1;
+  dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+  InterpolationMatrix1D(Nf, Nfq, baseElliptic->mesh->r, Ncq, mesh->r, fToCInterp);
+  elliptic->o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
+
+  elliptic->precon->coarsenKernel(2 * mesh->Nelements, elliptic->o_interp, baseElliptic->o_lambda, elliptic->o_lambda);
+
+  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
+    elliptic->o_lambda,
+    elliptic->o_lambdaPfloat);
+  
+  free(fToCInterp);
+
+
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
   fflush(stdout);

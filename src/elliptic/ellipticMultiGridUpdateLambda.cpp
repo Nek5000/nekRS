@@ -26,7 +26,7 @@ ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
         ellipticFine->o_lambdaPfloat,
         ellipticFine->o_lambda);
 
-      ellipticCoarse->precon->coarsenKernel(2 * ellipticCoarse->mesh->Nelements, mgLevel->o_interp, ellipticFine->o_lambda, ellipticCoarse->o_lambda);
+      ellipticCoarse->precon->coarsenKernel(2 * ellipticCoarse->mesh->Nelements, ellipticCoarse->o_interp, ellipticFine->o_lambda, ellipticCoarse->o_lambda);
 
       ellipticCoarse->copyDfloatToPfloatKernel(2 * ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
         ellipticCoarse->o_lambda,
