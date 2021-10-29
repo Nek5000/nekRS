@@ -1,4 +1,5 @@
 #include <math.h>
+#include <numeric>
 #include "udf.hpp"
 
 /* UDF Functions */                                                      
@@ -35,9 +36,14 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   // warm-up
   ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
-  platform->timer.reset("pressureSolve");
+  platform->timer.reset();
 
-  const int Nrep = 10; 
+  std::vector<double> eTime; 
+  std::vector<double> precoTime; 
+  std::vector<double> smootherTime; 
+  std::vector<double> crsTime;
+
+  const int Nrep = 25;
   if(platform->comm.mpiRank == 0) printf("solving "); 
   for (int i = 0; i < Nrep; i++) { 
     platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);
@@ -46,7 +52,17 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     platform->timer.tic("pressureSolve", 1);
     ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
     platform->timer.toc("pressureSolve");
-    
+
+    eTime.push_back(platform->timer.query("pressureSolve", "DEVICE:MAX"));
+    precoTime.push_back(platform->timer.query("pressure preconditioner", "DEVICE:MAX"));
+    smootherTime.push_back(platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX"));
+    crsTime.push_back(platform->timer.query("coarseSolve", "DEVICE:MAX"));
+ 
+    platform->timer.reset("pressureSolve");
+    platform->timer.reset("pressure preconditioner");
+    platform->timer.reset("pressure preconditioner smoother");
+    platform->timer.reset("coarseSolve");
+   
     if(platform->comm.mpiRank == 0) {
       printf(".");
       fflush(stdout); 
@@ -56,18 +72,23 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   hlong Ntotal = mesh->Nelements * (mesh->N * mesh->N * mesh->N);
   MPI_Allreduce(MPI_IN_PLACE, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
-  const double precoTime = platform->timer.query("pressure preconditioner", "DEVICE:MAX")/Nrep;
-  const double smootherTime = platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX")/Nrep;
-  const double crsTime = platform->timer.query("coarseSolve", "DEVICE:MAX");
-  if(platform->comm.mpiRank == 0) {
-    const double throughput = (double)Ntotal/solveTime;
+
+  const auto minEntry = std::distance(eTime.begin(), std::min_element(eTime.begin(), eTime.end()));
+  const double solveTime = eTime.at(minEntry);
+  const double solveTimeMax = *std::max_element(eTime.begin(), eTime.end()); 
+  const double solveTimeAvg = std::accumulate(eTime.begin(), eTime.end(), 0.0) / Nrep; 
+  const double throughput = (double)Ntotal/solveTime;
+
+ if(platform->comm.mpiRank == 0) {
+    printf("repetitions: %d\n", Nrep);
     printf("iterations: %d\n", nrs->pSolver->Niter);
-    printf("avg solve time: %g s\n", solveTime);
-    printf("  preconditioner %g s\n", precoTime);
-    if(smootherTime > 0) printf("    smoother %g s\n", smootherTime);
-    if(crsTime > 0) printf("    coarse grid %g s\n", crsTime);
-    printf("avg throughput: %g DOF/s\n", throughput);
-    printf("avg throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
+    printf("min solve time: %g s (avg: %g s, max: %g s)\n", solveTime, solveTimeAvg, solveTimeMax);
+    printf("  preconditioner %g s\n", precoTime.at(minEntry));
+    if(smootherTime.at(minEntry) > 0) printf("    smoother %g s\n", smootherTime.at(minEntry));
+    if(crsTime.at(minEntry) > 0) printf("    coarse grid %g s\n", crsTime.at(minEntry));
+    printf("aggregated throughput: %g DOF/s\n", throughput);
+    printf("aggregated throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
   }
+  EXIT_AND_FINALIZE(0);
+  
 }
