@@ -73,21 +73,14 @@
 #include <math.h>
 #include <unistd.h>
 #include <vector>
-<<<<<<< HEAD
-=======
 #include <algorithm>
 #include <sstream>
 #include <fcntl.h>
->>>>>>> next
 
 #include "nekrs.hpp"
 
 #define DEBUG
 
-<<<<<<< HEAD
-static MPI_Comm globalComm;
-static MPI_Comm comm;
-=======
 namespace {
 
 std::vector<std::string> serializeString(const std::string sin, char dlim)
@@ -104,7 +97,6 @@ std::vector<std::string> serializeString(const std::string sin, char dlim)
   }
   return slist;
 }
->>>>>>> next
 
 struct cmdOptions
 {
@@ -252,7 +244,7 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
   return cmdOpt;
 }
 
-MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
+MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm, neknek_t* neknek)
 {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -301,6 +293,8 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
       nSessions++;
     }
 
+    neknek->nsessions = nSessions;
+
     int err = 0;
     if(rankSum != size) err = 1;
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
@@ -328,6 +322,9 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 
     MPI_Comm_rank(newComm, &rank);
     MPI_Comm_size(newComm, &size);
+
+    neknek->sessionID = color;
+    neknek->globalComm = comm;
 
     cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;
@@ -393,7 +390,8 @@ int main(int argc, char** argv)
   }
 
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv, commGlobal);
-  MPI_Comm comm = setupSession(cmdOpt, commGlobal);
+  neknek_t *neknek = new neknek_t();
+  MPI_Comm comm = setupSession(cmdOpt, commGlobal, neknek);
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -426,7 +424,7 @@ int main(int argc, char** argv)
   nekrs::setup(commGlobal, comm, 
 	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID);
+               cmdOpt->backend, cmdOpt->deviceID, neknek);
 
   if (cmdOpt->buildOnly) {
     nekrs::finalize();

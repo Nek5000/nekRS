@@ -204,12 +204,12 @@ void udfBuild(const char* udfFile, setupAide& options)
   if(err) ABORT(EXIT_FAILURE);
 }
 
-void* udfLoadFunction(const char* casename, const char* fname, int errchk)
+void* udfLoadFunction(const char* fname, int errchk)
 {
   char udfLib[BUFSIZ];
 
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(udfLib, "%s/udf/libUDF-%s.so", cache_dir, casename);
+  sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
   void* h, * fptr;
   h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);
@@ -230,7 +230,7 @@ err:
   ABORT(EXIT_FAILURE);
 }
 
-void udfLoad(const char* casename)
+void udfLoad()
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",0);

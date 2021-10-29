@@ -8,7 +8,7 @@
 static void reserveAllocation(nrs_t *nrs, dlong npt) {
   neknek_t *neknek = nrs->neknek;
   const dlong D = nrs->dim;
-  occa::device &device = platform_t::getInstance()->device;
+  occa::device &device = platform_t::getInstance()->device.occaDevice();
 
   if(neknek->valInterp == nullptr || neknek->npt != npt) {
     if(neknek->valInterp != nullptr) {
@@ -54,7 +54,7 @@ static void findInterpPoints(nrs_t* nrs){
   const dlong nfac = mesh->Nfaces;
   const dlong nfpt = mesh->Nfp;
 
-  occa::device &device = platform_t::getInstance()->device;
+  occa::device &device = platform_t::getInstance()->device.occaDevice();
 
   // Setup findpts
   dfloat tol = 5e-13;
@@ -182,7 +182,7 @@ void neknekSetup(nrs_t *nrs)
     int maxSessions;
     platform->options.getArgs("NEKNEK MAX NUM SESSIONS", maxSessions);
     if (maxSessions >= 2) {
-      occa::device device = platform_t::getInstance()->device;
+      occa::device device = platform_t::getInstance()->device.occaDevice();
       dlong n1[3] = {nrs->meshV->N+1, nrs->meshV->N+1, nrs->meshV->N+1};
       MPI_Comm comm = platform->comm.mpiComm;
 

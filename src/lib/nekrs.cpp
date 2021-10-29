@@ -134,8 +134,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   // jit compile udf
   std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
-  string casename;
-  options.getArgs("CASENAME", casename);
   if (!udfFile.empty()) {
     udfBuild(udfFile.c_str(), options);
     udfLoad();
@@ -169,6 +167,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform->linAlg = linAlg_t::getInstance();
 
   nrs = new nrs_t();
+  nrs->neknek = neknek;
   nrsSetup(comm, options, nrs);
   neknekSetup(nrs);
 
