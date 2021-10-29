@@ -281,8 +281,11 @@ namespace occa {
         sys::addCompilerLibraryFlags(compilerFlags);
       }
 
-      //---[ PTX Check Command ]--------
       std::stringstream command;
+
+#if 0
+
+      //---[ PTX Check Command ]--------
       if (allProps.has("compiler_env_script")) {
         command << allProps["compiler_env_script"] << " && ";
       }
@@ -312,13 +315,15 @@ namespace occa {
 #else
       ignoreResult( system(("\"" +  ptxCommand + "\"").c_str()) );
 #endif
-      //================================
+      io::sync(ptxBinaryFilename);
+
+#endif
 
       //---[ Compiling Command ]--------
       command.str("");
       command << allProps["compiler"]
               << ' ' << compilerFlags
-              << " -ptx"
+              << " -fatbin -Xptxas -v"
 #if (OCCA_OS == OCCA_WINDOWS_OS)
               << " -D OCCA_OS=OCCA_WINDOWS_OS -D _MSC_VER=1800"
 #endif
@@ -337,6 +342,8 @@ namespace occa {
       }
 
       const int compileError = system(sCommand.c_str());
+
+      io::sync(binaryFilename);
 
       lock.release();
       if (compileError) {
@@ -382,7 +389,7 @@ namespace occa {
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(
-        kernelName,
+        kernelName + kernelProps.get<std::string>("kernelNameSuffix", ""),
         deviceMetadata
       );
 

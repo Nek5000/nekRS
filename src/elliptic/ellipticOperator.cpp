@@ -25,10 +25,7 @@
  */
 
 #include "elliptic.h"
-//#include "ogsInterface.h"
 #include <iostream>
-
-#include "omp.h"
 void ellipticAx(elliptic_t* elliptic,
                 dlong NelementsList,
                 occa::memory &o_elementsList,
@@ -36,186 +33,65 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_Aq,
                 const char* precision)
 {
+
+  if(NelementsList == 0) return;
+
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
 
-  const int continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
-  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
+  const bool continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
   const int mapType = (elliptic->elementType == HEXAHEDRA &&
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
   const int integrationType = (elliptic->elementType == HEXAHEDRA &&
                                options.compareArgs("ELLIPTIC INTEGRATION", "CUBATURE")) ? 1:0;
+  const std::string precisionStr(precision);
+  const std::string dFloatStr(dfloatString);
 
-  {
-    bool valid = true;
-    valid &= continuous;
-    if(!strstr(precision, dfloatString)) {
-      valid &= !elliptic->var_coeff;
-      valid &= !elliptic->blockSolver;
-      if(!serial) {
-        valid &= mapType == 0;
-        valid &= integrationType == 0;
-      }
-    }
-    if(!valid) {
-      printf("Encountered invalid configuration inside ellipticAx!\n");
-      if(elliptic->var_coeff)
-        printf("Precision level (%s) does not support variable coefficient\n", precision);
-      if(elliptic->blockSolver)
-        printf("Precision level (%s) does not support block solver\n", precision);
-      if(!serial) {
-        if(mapType != 0)
-          printf("Precision level (%s) does not support mapType %d\n", precision, mapType);
-        if(integrationType != 0)
-          printf("Precision level (%s) does not support integrationType %d\n", precision, integrationType);
-      }
-      ABORT(EXIT_FAILURE);
-    }
+  bool valid = true;
+  valid &= continuous;
+  if(precisionStr != dFloatStr) {
+    valid &= !elliptic->blockSolver;
+    valid &= mapType == 0;
+    valid &= integrationType == 0;
+  }
+  if(!valid) {
+    printf("Encountered invalid configuration inside ellipticAx!\n");
+    if(elliptic->blockSolver)
+      printf("Precision level (%s) does not support block solver\n", precision);
+    if(mapType != 0)
+      printf("Precision level (%s) does not support mapType %d\n", precision, mapType);
+    if(integrationType != 0)
+      printf("Precision level (%s) does not support integrationType %d\n", precision, integrationType);
+    ABORT(EXIT_FAILURE);
   }
 
-  if(serial) {
-    if(continuous) {
-      if(elliptic->var_coeff) {
-        if(elliptic->blockSolver) {
-          occa::memory & o_geom_factors = elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
-          if(!elliptic->stressForm)
-            elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                               mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                               o_q, o_Aq);
-          else
-            elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                                     mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                                     o_q, o_Aq);
-        }else {
-          elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, mesh->o_ggeo, mesh->o_D,
-                             mesh->o_DT, elliptic->o_lambda, o_q, o_Aq);
-        }
-      }else{
-        const dfloat lambda = elliptic->lambda[0];
-        if(elliptic->blockSolver) {
-          occa::memory & o_geom_factors = elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
-          if(!elliptic->stressForm)
-            elliptic->AxKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                               mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                               o_q, o_Aq);
-          else
-            elliptic->AxStressKernel(mesh->Nelements, elliptic->Ntotal, elliptic->loffset, o_geom_factors,
-                                     mesh->o_D, mesh->o_DT, elliptic->o_lambda,
-                                     o_q, o_Aq);
-        }else {
-          occa::memory &o_ggeo = (!strstr(precision,dfloatString)) ? mesh->o_ggeoPfloat : mesh->o_ggeo;
-          occa::memory &o_D = (!strstr(precision,dfloatString)) ? mesh->o_DPfloat : mesh->o_D;
-          occa::memory &o_DT = (!strstr(precision,dfloatString)) ? mesh->o_DTPfloat : mesh->o_DT;
-          occa::kernel &AxKernel = (!strstr(precision,dfloatString)) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
-          AxKernel(mesh->Nelements, o_ggeo, o_D, o_DT, elliptic->lambda[0],
-                   o_q, o_Aq);
-        }
-      }
-    } else {
-      ABORT(EXIT_FAILURE);
-    }
-    return;
-  }
+  occa::memory & o_geom_factors =
+    (precisionStr != dFloatStr) ? mesh->o_ggeoPfloat :
+      elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
+  occa::memory & o_D = (precisionStr != dFloatStr) ? mesh->o_DPfloat : mesh->o_D;
+  occa::memory & o_DT = (precisionStr != dFloatStr) ? mesh->o_DTPfloat : mesh->o_DT;
+  occa::memory & o_lambda = (precisionStr != dFloatStr) ? elliptic->o_lambdaPfloat : elliptic->o_lambda;
+  occa::kernel &AxKernel =
+      (precisionStr != dFloatStr) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
 
-  if(continuous) {
-    occa::kernel &partialAxKernel =
-      (!strstr(precision, dfloatString)) ? elliptic->partialAxPfloatKernel : elliptic->partialAxKernel;
+  AxKernel(NelementsList,
+                  elliptic->Ntotal,
+                  elliptic->loffset,
+                  o_elementsList,
+                  o_geom_factors,
+                  o_D,
+                  o_DT,
+                  o_lambda,
+                  o_q,
+                  o_Aq);
 
-    if(NelementsList) {
-      if(integrationType == 0) { // GLL or non-hex
-        if(mapType == 0) {
-          if(elliptic->var_coeff) {
-            if(elliptic->blockSolver) {
-              occa::memory & o_geom_factors = elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
-              partialAxKernel(NelementsList,
-                              elliptic->Ntotal,
-                              elliptic->loffset,
-                              o_elementsList,
-                              o_geom_factors,
-                              mesh->o_D,
-                              mesh->o_DT,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-            }else {
-              partialAxKernel(NelementsList,
-                              elliptic->Ntotal,
-                              o_elementsList,
-                              mesh->o_ggeo,
-                              mesh->o_D,
-                              mesh->o_DT,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-            }
-          }else{
-            if(elliptic->blockSolver) {
-              occa::memory & o_geom_factors = elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
-              partialAxKernel(NelementsList,
-                              elliptic->Ntotal,
-                              elliptic->loffset,
-                              o_elementsList,
-                              o_geom_factors,
-                              mesh->o_D,
-                              mesh->o_DT,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-            }else {
-              occa::memory &o_ggeo = (!strstr(precision,dfloatString)) ? mesh->o_ggeoPfloat : mesh->o_ggeo;
-              occa::memory &o_D =
-                (!strstr(precision,dfloatString)) ? mesh->o_DPfloat : mesh->o_D;
-              occa::memory &o_DT =
-                (!strstr(precision,dfloatString)) ? mesh->o_DTPfloat : mesh->o_DT;
-              partialAxKernel(NelementsList,
-                              o_elementsList,
-                              o_ggeo,
-                              o_D,
-                              o_DT,
-                              elliptic->lambda[0],
-                              o_q,
-                              o_Aq);
-            }
-          }
-        }else{
-          if(elliptic->var_coeff) {
-            if(elliptic->blockSolver)
-              printf("Trilinear version for block solver is not avalibale yet\n");
-            else
-              partialAxKernel(NelementsList,
-                              elliptic->Ntotal,
-                              o_elementsList,
-                              elliptic->o_EXYZ,
-                              elliptic->o_gllzw,
-                              mesh->o_D,
-                              mesh->o_DT,
-                              elliptic->o_lambda,
-                              o_q,
-                              o_Aq);
-          }else{
-            if(elliptic->blockSolver)
-              printf("Trilinear version for block solver is not avalibale yet\n");
-            else
-              partialAxKernel(NelementsList,
-                              o_elementsList,
-                              elliptic->o_EXYZ,
-                              elliptic->o_gllzw,
-                              mesh->o_D,
-                              mesh->o_DT,
-                              elliptic->lambda[0],
-                              o_q,
-                              o_Aq);
-          }
-        }
-      }
-    }
-  }
 }
 
 void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,
-                      const char* precision)
+                      const char* precision,
+                      bool masked)
 {
   mesh_t* mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
@@ -225,17 +101,13 @@ void ellipticOperator(elliptic_t* elliptic,
                                                       "TRUE") ? ogsFloatCommHalf : ogsPfloat
     :
                                   ogsDfloat;
-  int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
-  if(serial) {
-    occa::memory o_dummy;
-    ellipticAx(elliptic, mesh->Nelements, o_dummy, o_q, o_Aq, precision);
-    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
-  } else {
-    ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
-    oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
-    ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
-    oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+  ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
+  oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+  ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
+  oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+
+  if(masked){
+    occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;
+    if (elliptic->Nmasked) maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
   }
-  occa::kernel &maskKernel = (!strstr(precision, dfloatString)) ? mesh->maskPfloatKernel : mesh->maskKernel;
-  if (elliptic->Nmasked) maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_Aq);
 }

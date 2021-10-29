@@ -10,22 +10,33 @@ mesh_t *createMeshV(MPI_Comm comm,
                     mesh_t* meshT,
                     occa::properties& kernelInfo);
 
-occa::properties populateMeshProperties(mesh_t* mesh)
+occa::properties meshKernelProperties(int N)
 {
-  occa::properties meshProperties = platform->kernelInfo;
+  occa::properties meshProperties;
+  const int Nq = N+1;
+  const int Np = Nq * Nq * Nq;
+  const int Nfp = Nq * Nq;
+  constexpr int Nfaces {6};
+
+  constexpr int Nvgeo {12};
+  constexpr int Nggeo {7};
+  constexpr int Nsgeo {17};
 
   meshProperties["defines/" "p_dim"] = 3;
-  meshProperties["defines/" "p_Nfields"] = mesh->Nfields;
-  meshProperties["defines/" "p_N"] = mesh->N;
-  meshProperties["defines/" "p_Nq"] = mesh->N + 1;
-  meshProperties["defines/" "p_Np"] = mesh->Np;
-  meshProperties["defines/" "p_Nfp"] = mesh->Nfp;
-  meshProperties["defines/" "p_Nfaces"] = mesh->Nfaces;
-  meshProperties["defines/" "p_NfacesNfp"] = mesh->Nfp * mesh->Nfaces;
+  meshProperties["defines/" "p_Nverts"] = 8;
+  meshProperties["defines/" "p_Nfields"] = 1;
+  meshProperties["defines/" "p_N"] = N;
+  meshProperties["defines/" "p_Nq"] = Nq;
+  meshProperties["defines/" "p_Nq_g"] = Nq;
+  meshProperties["defines/" "p_Np"] = Np;
+  meshProperties["defines/" "p_Np_g"] = Np;
+  meshProperties["defines/" "p_Nfp"] = Nfp;
+  meshProperties["defines/" "p_Nfaces"] = Nfaces;
+  meshProperties["defines/" "p_NfacesNfp"] = Nfp * Nfaces;
 
-  meshProperties["defines/" "p_Nvgeo"] = mesh->Nvgeo;
-  meshProperties["defines/" "p_Nsgeo"] = mesh->Nsgeo;
-  meshProperties["defines/" "p_Nggeo"] = mesh->Nggeo;
+  meshProperties["defines/" "p_Nvgeo"] = Nvgeo;
+  meshProperties["defines/" "p_Nsgeo"] = Nsgeo;
+  meshProperties["defines/" "p_Nggeo"] = Nggeo;
 
   meshProperties["defines/" "p_NXID"] = NXID;
   meshProperties["defines/" "p_NYID"] = NYID;
@@ -67,118 +78,7 @@ occa::properties populateMeshProperties(mesh_t* mesh)
   meshProperties["defines/" "p_IJWID"] = IJWID;
   return meshProperties;
 }
-void loadKernels(mesh_t* mesh, occa::properties kernelInfo);
-
-void meshDummyHex3D(int N, mesh_t* mesh)
-{
-  mesh->cht = 0;
-  mesh->Nfields = 1;
-  mesh->dim = 3;
-  mesh->Nverts = 8; // number of vertices per element
-  mesh->Nfaces = 6;
-  mesh->NfaceVertices = 4;
-
-  // vertices on each face
-  int faceVertices[6][4] =
-  {{0,1,2,3},{0,1,5,4},{1,2,6,5},{2,3,7,6},{3,0,4,7},{4,5,6,7}};
-
-  mesh->faceVertices =
-    (int*) calloc(mesh->NfaceVertices * mesh->Nfaces, sizeof(int));
-  memcpy(mesh->faceVertices, faceVertices[0], mesh->NfaceVertices * mesh->Nfaces * sizeof(int));
-
-  // build an NX x NY x NZ box grid
-  hlong NX = 3, NY = 3, NZ = 3;
-  dfloat XMIN = -1, XMAX = +1;
-  dfloat YMIN = -1, YMAX = +1;
-  dfloat ZMIN = -1, ZMAX = +1;
-
-  hlong allNelements = NX * NY * NZ;
-
-  hlong chunkNelements = allNelements / platform->comm.mpiCommSize;
-
-  hlong start = chunkNelements * platform->comm.mpiRank;
-  hlong end   = chunkNelements * (platform->comm.mpiRank + 1);
-
-  if(platform->comm.mpiRank == (platform->comm.mpiCommSize - 1))
-    end = allNelements;
-
-  mesh->Nnodes = NX * NY * NZ;
-  mesh->Nelements = end - start;
-  mesh->NboundaryFaces = 0;
-
-  mesh->EToV = (hlong*) calloc(mesh->Nelements * mesh->Nverts, sizeof(hlong));
-
-  mesh->EX = (dfloat*) calloc(mesh->Nelements * mesh->Nverts, sizeof(dfloat));
-  mesh->EY = (dfloat*) calloc(mesh->Nelements * mesh->Nverts, sizeof(dfloat));
-  mesh->EZ = (dfloat*) calloc(mesh->Nelements * mesh->Nverts, sizeof(dfloat));
-
-  mesh->elementInfo = (dlong*) calloc(mesh->Nelements, sizeof(dlong));
-
-  // [0,NX]
-  dfloat dx = (XMAX - XMIN) / NX; // xmin+0*dx, xmin + NX*(XMAX-XMIN)/NX
-  dfloat dy = (YMAX - YMIN) / NY;
-  dfloat dz = (ZMAX - ZMIN) / NZ;
-  for(hlong n = start; n < end; ++n) {
-    int i = n % NX;        // [0, NX)
-    int j = (n / NY) % NZ; // [0, NY)
-    int k = n / (NX * NY); // [0, NZ)
-
-    hlong e = n - start;
-
-    int ip = (i + 1) % NX;
-    int jp = (j + 1) % NY;
-    int kp = (k + 1) % NZ;
-
-    mesh->EToV[e * mesh->Nverts + 0] = i  +  j * NX + k * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 1] = ip +  j * NX + k * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 2] = ip + jp * NX + k * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 3] = i  + jp * NX + k * NX * NY;
-
-    mesh->EToV[e * mesh->Nverts + 4] = i  +  j * NX + kp * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 5] = ip +  j * NX + kp * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 6] = ip + jp * NX + kp * NX * NY;
-    mesh->EToV[e * mesh->Nverts + 7] = i  + jp * NX + kp * NX * NY;
-
-    dfloat xo = XMIN + dx * i;
-    dfloat yo = YMIN + dy * j;
-    dfloat zo = ZMIN + dz * k;
-
-    dfloat* ex = mesh->EX + e * mesh->Nverts;
-    dfloat* ey = mesh->EY + e * mesh->Nverts;
-    dfloat* ez = mesh->EZ + e * mesh->Nverts;
-
-    ex[0] = xo;
-    ey[0] = yo;
-    ez[0] = zo;
-    ex[1] = xo + dx;
-    ey[1] = yo;
-    ez[1] = zo;
-    ex[2] = xo + dx;
-    ey[2] = yo + dy;
-    ez[2] = zo;
-    ex[3] = xo;
-    ey[3] = yo + dy;
-    ez[3] = zo;
-
-    ex[4] = xo;
-    ey[4] = yo;
-    ez[4] = zo + dz;
-    ex[5] = xo + dx;
-    ey[5] = yo;
-    ez[5] = zo + dz;
-    ex[6] = xo + dx;
-    ey[6] = yo + dy;
-    ez[6] = zo + dz;
-    ex[7] = xo;
-    ey[7] = yo + dy;
-    ez[7] = zo + dz;
-
-    mesh->elementInfo[e] = 0;
-  }
-
-  mesh->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-  mesh->boundaryInfo = NULL; // no boundaries
-}
+void loadKernels(mesh_t* mesh);
 
 mesh_t *createMesh(MPI_Comm comm,
                    int N,
@@ -187,8 +87,6 @@ mesh_t *createMesh(MPI_Comm comm,
                    occa::properties& kernelInfo)
 {
   mesh_t *mesh = new mesh_t();
-  int buildOnly = 0;
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")) buildOnly = 1;
   platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -197,31 +95,31 @@ mesh_t *createMesh(MPI_Comm comm,
   mesh->cht  = cht;
 
   // get mesh from nek
-  if(buildOnly)
-    meshDummyHex3D(N, mesh);
-  else
-    meshNekReaderHex3D(N, mesh);
+  meshNekReaderHex3D(N, mesh);
 
   if (platform->comm.mpiRank == 0)
     printf("generating mesh ... ");
-      
+
+  if (mesh->Nelements * mesh->Nvgeo * cubN > std::numeric_limits<int>::max()) {
+    if (platform->comm.mpiRank == 0) printf("FATAL ERROR: Local element count too large!");
+    ABORT(EXIT_FAILURE);
+  }
+
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
   // connect elements using parallel sort
   meshParallelConnect(mesh);
 
-  // connect elements to boundary faces
-  if(!buildOnly) meshConnectBoundary(mesh);
-
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (platform->comm.mpiRank == 0)
-    printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
+  if (platform->comm.mpiRank == 0) {
+    if (cubN)
+      printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
+    else
+      printf("Nq: %d\n", mesh->Nq);
+  }
 
-  mesh->Nlocal = mesh->Nelements * mesh->Np;
-
-  occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, meshKernelInfo);
+  loadKernels(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
@@ -242,7 +140,7 @@ mesh_t *createMesh(MPI_Comm comm,
 
   // global nodes
   meshGlobalIds(mesh);
-  if(!buildOnly) bcMap::check(mesh);
+  bcMap::check(mesh);
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
@@ -290,8 +188,7 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   if (platform->comm.mpiRank == 0)
     printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
 
-  occa::properties meshKernelInfo = populateMeshProperties(mesh);
-  loadKernels(mesh, meshKernelInfo);
+  loadKernels(mesh);
 
   meshHaloSetup(mesh);
   meshPhysicalNodesHex3D(mesh);
@@ -316,15 +213,64 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
-  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-    const int maxTemporalOrder = 3;
-    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
-  }
-
   return mesh;
 }
 */
+
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc)
+{
+  mesh_t* mesh = new mesh_t();
+  memcpy(mesh, _mesh, sizeof(mesh_t));
+
+  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
+
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
+
+  meshGlobalIds(mesh);
+
+  free(mesh->x);
+  free(mesh->y);
+  free(mesh->z);
+
+  mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+
+  dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
+  for (int j = 0; j < mesh->Nq; j++)
+    for (int i = 0; i < mesh->Nq; i++)
+      DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
+  mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
+  free(DT);
+
+  mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+                                         mesh->ggeo);
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+                                       mesh->o_ggeo,
+                                       mesh->o_ggeoPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_D,
+                                       mesh->o_DPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_DT,
+                                       mesh->o_DTPfloat);
+
+    // TODO: once full preconditioner is in FP32, uncomment below
+    //mesh->o_D.free();
+    //mesh->o_DT.free();
+    //mesh->o_ggeo.free();
+  }
+  return mesh;
+}
 
 mesh_t *createMeshV(
                     MPI_Comm comm,
@@ -350,9 +296,6 @@ mesh_t *createMeshV(
 
   // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
   meshParallelConnect(mesh);
-
-  // find mesh->EToB, required mesh->EToV and mesh->boundaryInfo
-  meshConnectBoundary(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
@@ -422,35 +365,19 @@ void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
     platform->device.malloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
 }
 
-void loadKernels(mesh_t* mesh, occa::properties kernelInfo)
+void loadKernels(mesh_t* mesh)
 {
+  const std::string meshPrefix = "mesh-";
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-    std::string install_dir;
-    install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-    std::string oklpath = install_dir + "/okl/";
     {
-        occa::properties meshKernelInfo = kernelInfo;
-        meshKernelInfo["defines/" "p_cubNq"] = mesh->cubNq;
-        meshKernelInfo["defines/" "p_cubNp"] = mesh->cubNp;
-
-        std::string filename = oklpath + "mesh/geometricFactorsHex3D.okl";
+        mesh->velocityDirichletKernel =
+          platform->kernels.getKernel(meshPrefix + "velocityDirichletBCHex3D");
         mesh->geometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "geometricFactorsHex3D",
-                                   meshKernelInfo);
-        filename = oklpath + "mesh/surfaceGeometricFactorsHex3D.okl";
+          platform->kernels.getKernel(meshPrefix + "geometricFactorsHex3D");
         mesh->surfaceGeometricFactorsKernel =
-          platform->device.buildKernel(filename,
-                                   "surfaceGeometricFactorsHex3D",
-                                   meshKernelInfo);
-
-        meshKernelInfo = kernelInfo;
-        meshKernelInfo["defines/" "p_nAB"] = mesh->nAB;
-        filename = oklpath + "core/nStagesSum.okl";
+          platform->kernels.getKernel(meshPrefix + "surfaceGeometricFactorsHex3D");
         mesh->nStagesSumVectorKernel =
-          platform->device.buildKernel(filename,
-                                   "nStagesSumVector",
-                                   meshKernelInfo);
+          platform->kernels.getKernel(meshPrefix + "nStagesSumVector");
     }
   }
 }

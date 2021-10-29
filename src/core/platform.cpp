@@ -4,25 +4,63 @@
 #include "nrs.hpp"
 #include "linAlg.hpp"
 #include "omp.h"
+#include <iostream>
 
-comm_t::comm_t(MPI_Comm _comm)
+namespace{
+
+static void compileDummyKernel(const platform_t& plat)
 {
+  const bool buildNodeLocal = useNodeLocalCache();
+  auto rank = buildNodeLocal ? plat.comm.localRank : plat.comm.mpiRank;
+  const std::string dummyKernelName = "myDummyKernelName";
+  const std::string dummyKernelStr = std::string(
+      "@kernel void myDummyKernelName(int N) {"
+      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
+      "}"
+  );
+
+  if(rank == 0){
+    plat.device.occaDevice().buildKernelFromString(
+      dummyKernelStr,
+      dummyKernelName,
+      plat.kernelInfo
+    );
+  }
+
+}
+
+}
+
+comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
+{
+
+  mpiCommParent = _commg;
   mpiComm = _comm;
   MPI_Comm_rank(_comm, &mpiRank);
   MPI_Comm_size(_comm, &mpiCommSize);
+
+  MPI_Comm_split_type(_comm, MPI_COMM_TYPE_SHARED, mpiRank, MPI_INFO_NULL, &mpiCommLocal);
+  MPI_Comm_rank(mpiCommLocal, &localRank);
+  MPI_Comm_size(mpiCommLocal, &mpiCommLocalSize);
+
 }
 
-deviceVector_t::deviceVector_t(const dlong _vectorSize, const dlong _nVectors, const dlong _wordSize, const std::string _vectorName)
-: vectorSize(_vectorSize),
+deviceVector_t::deviceVector_t(const size_t _offset, const size_t _nVectors, const size_t _wordSize, const std::string _vectorName)
+: 
   nVectors(_nVectors),
   wordSize(_wordSize),
-  vectorName(_vectorName)
+  vectorName(_vectorName),
+  offset(_offset)
 {
-  if(vectorSize <= 0 || nVectors <= 0 || wordSize <= 0) return; // bail
-  o_vector = platform->device.malloc(vectorSize * nVectors, wordSize);
-  // set slices
-  for(int s = 0 ; s < nVectors; ++s){
-    slices.push_back(o_vector + s * vectorSize * wordSize);
+  if(offset <= 0 || nVectors <= 0 || wordSize <= 0) {
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: deviceVector_t invalid input!\n");
+    ABORT(EXIT_FAILURE);
+  }
+
+  o_vector = platform->device.malloc(nVectors * offset * wordSize);
+  for(int s = 0; s < nVectors; ++s){
+    slices.push_back(o_vector + s * offset * wordSize);
   }
 }
 
@@ -40,21 +78,20 @@ deviceVector_t::at(const int i)
     ABORT(EXIT_FAILURE);
     return o_vector;
   }
-  occa::memory slice = o_vector + i * vectorSize * wordSize;
   return slices[i];
 }
 
 
-
-
 platform_t* platform_t::singleton = nullptr;
-platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
+platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
 : options(_options),
-  warpSize(32), // CUDA specific warp size
-  device(options, _comm),
-  timer(_comm, device, 0),
-  comm(_comm)
+  warpSize(32),
+  comm(_commg, _comm),
+  device(options, comm),
+  timer(_comm, device.occaDevice(), 0),
+  kernels(*this)
 {
+
   kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;
   kernelInfo["defines/" "dfloat"] = dfloatString;
@@ -63,12 +100,12 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
   kernelInfo["defines/" "hlong"] = hlongString;
 
   if(device.mode() == "CUDA" && !getenv("OCCA_CUDA_COMPILER_FLAGS")) {
+    kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += "--ftz=true ";
     kernelInfo["compiler_flags"] += "--prec-div=false ";
     kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
     kernelInfo["compiler_flags"] += "--use_fast_math ";
     kernelInfo["compiler_flags"] += "--fmad=true ";
-
     //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
   }
 
@@ -84,194 +121,69 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _comm)
   }
 
   if(device.mode() == "HIP" && !getenv("OCCA_HIP_COMPILER_FLAGS")) {
-    warpSize = 64;
+    warpSize = 64; // can be arch specific
     kernelInfo["compiler_flags"] += " -O3 ";
     kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
     kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
     kernelInfo["compiler_flags"] += " -ffast-math ";
   }
+
+  serial = device.mode() == "Serial" ||
+           device.mode() == "OpenMP";
+  
+  const std::string extension = serial ? ".c" : ".okl";
+  
+  compileDummyKernel(*this);
+
+  std::string installDir, kernelName, fileName;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = installDir + "/okl/";
+  kernelName = "copyDfloatToPfloat";
+  fileName = installDir + "/okl/core/" + kernelName + extension;
+  this->copyDfloatToPfloatKernel = this->device.buildKernel(fileName, this->kernelInfo);
+
+  kernelName = "copyPfloatToDfloat";
+  fileName = installDir + "/okl/core/" + kernelName + extension;
+  this->copyPfloatToDfloatKernel = this->device.buildKernel(fileName, this->kernelInfo);
 }
 void memPool_t::allocate(const dlong offset, const dlong fields)
 {
   ptr = (dfloat*) calloc(offset*fields, sizeof(dfloat));
-  slice0 = ptr + 0 * offset;
-  slice1 = ptr + 1 * offset;
-  slice2 = ptr + 2 * offset;
-  slice3 = ptr + 3 * offset;
-  slice4 = ptr + 4 * offset;
-  slice5 = ptr + 5 * offset;
-  slice6 = ptr + 6 * offset;
-  slice7 = ptr + 7 * offset;
-  slice9 = ptr + 9 * offset;
-  slice12 = ptr + 12 * offset;
-  slice15 = ptr + 15 * offset;
-  slice18 = ptr + 18 * offset;
-  slice19 = ptr + 19 * offset;
+  if(fields > 0) slice0 = ptr + 0 * offset;
+  if(fields > 1) slice1 = ptr + 1 * offset;
+  if(fields > 2) slice2 = ptr + 2 * offset;
+  if(fields > 3) slice3 = ptr + 3 * offset;
+  if(fields > 4) slice4 = ptr + 4 * offset;
+  if(fields > 5) slice5 = ptr + 5 * offset;
+  if(fields > 6) slice6 = ptr + 6 * offset;
+  if(fields > 7) slice7 = ptr + 7 * offset;
+  if(fields > 9) slice9 = ptr + 9 * offset;
+  if(fields > 12) slice12 = ptr + 12 * offset;
+  if(fields > 15) slice15 = ptr + 15 * offset;
+  if(fields > 18) slice18 = ptr + 18 * offset;
+  if(fields > 19) slice19 = ptr + 19 * offset;
 }
 void deviceMemPool_t::allocate(memPool_t& hostMemory, const dlong offset, const dlong fields)
 {
   bytesAllocated = fields * offset * sizeof(dfloat);
   o_ptr = platform->device.malloc(offset*fields*sizeof(dfloat), hostMemory.slice0);
-  slice0 = o_ptr.slice(0 * offset * sizeof(dfloat));
-  slice1 = o_ptr.slice(1 * offset * sizeof(dfloat));
-  slice2 = o_ptr.slice(2 * offset * sizeof(dfloat));
-  slice3 = o_ptr.slice(3 * offset * sizeof(dfloat));
-  slice4 = o_ptr.slice(4 * offset * sizeof(dfloat));
-  slice5 = o_ptr.slice(5 * offset * sizeof(dfloat));
-  slice6 = o_ptr.slice(6 * offset * sizeof(dfloat));
-  slice7 = o_ptr.slice(7 * offset * sizeof(dfloat));
-  slice9 = o_ptr.slice(9 * offset * sizeof(dfloat));
-  slice12 = o_ptr.slice(12 * offset * sizeof(dfloat));
-  slice15 = o_ptr.slice(15 * offset * sizeof(dfloat));
-  slice18 = o_ptr.slice(18 * offset * sizeof(dfloat));
-  slice19 = o_ptr.slice(19 * offset * sizeof(dfloat));
+  if(fields > 0) slice0 = o_ptr.slice(0 * offset * sizeof(dfloat));
+  if(fields > 1) slice1 = o_ptr.slice(1 * offset * sizeof(dfloat));
+  if(fields > 2) slice2 = o_ptr.slice(2 * offset * sizeof(dfloat));
+  if(fields > 3) slice3 = o_ptr.slice(3 * offset * sizeof(dfloat));
+  if(fields > 4) slice4 = o_ptr.slice(4 * offset * sizeof(dfloat));
+  if(fields > 5) slice5 = o_ptr.slice(5 * offset * sizeof(dfloat));
+  if(fields > 6) slice6 = o_ptr.slice(6 * offset * sizeof(dfloat));
+  if(fields > 7) slice7 = o_ptr.slice(7 * offset * sizeof(dfloat));
+  if(fields > 9) slice9 = o_ptr.slice(9 * offset * sizeof(dfloat));
+  if(fields > 12) slice12 = o_ptr.slice(12 * offset * sizeof(dfloat));
+  if(fields > 15) slice15 = o_ptr.slice(15 * offset * sizeof(dfloat));
+  if(fields > 18) slice18 = o_ptr.slice(18 * offset * sizeof(dfloat));
+  if(fields > 19) slice19 = o_ptr.slice(19 * offset * sizeof(dfloat));
 }
 void
 platform_t::create_mempool(const dlong offset, const dlong fields)
 {
   mempool.allocate(offset, fields);
   o_mempool.allocate(mempool, offset, fields);
-}
-
-occa::kernel
-device_t::buildNativeKernel(const std::string &filename,
-                         const std::string &kernelName,
-                         const occa::properties &props) const
-{
-  occa::properties nativeProperties = props;
-  nativeProperties["okl/enabled"] = false;
-  return this->buildKernel(filename, kernelName, nativeProperties, comm);
-}
-occa::kernel
-device_t::buildKernel(const std::string &filename,
-                         const std::string &kernelName,
-                         const occa::properties &props) const
-{
-  return this->buildKernel(filename, kernelName, props, comm);
-}
-occa::kernel
-device_t::buildKernel(const std::string &filename,
-                         const std::string &kernelName,
-                         const occa::properties &props,
-                         MPI_Comm comm) const
-{
-  int rank;
-  MPI_Comm_rank(comm, &rank);
-  occa::kernel _kernel;
-  for (int r = 0; r < 2; r++) {
-    if ((r == 0 && rank == 0) || (r == 1 && rank > 0)) {
-      _kernel = occa::device::buildKernel(filename, kernelName, props);
-    }
-    MPI_Barrier(comm);
-  }
-  return _kernel;
-}
-occa::memory
-device_t::malloc(const dlong Nbytes, const occa::properties& properties)
-{
-  return occa::device::malloc(Nbytes, nullptr, properties);
-}
-occa::memory
-device_t::malloc(const dlong Nbytes, const void* src, const occa::properties& properties)
-{
-  if(!src){
-    if(Nbytes > bufferSize)
-    {
-      if(bufferSize > 0) std::free(_buffer);
-      _buffer = std::calloc(Nbytes, 1);
-      bufferSize = Nbytes;
-    }
-  }
-  const void* init_ptr = (src) ? src : _buffer;
-  return occa::device::malloc(Nbytes, init_ptr, properties);
-}
-occa::memory
-device_t::malloc(const dlong Nword , const dlong wordSize, occa::memory src)
-{
-  return occa::device::malloc(Nword * wordSize, src);
-}
-occa::memory
-device_t::malloc(const dlong Nword , const dlong wordSize)
-{
-  const dlong Nbytes = Nword * wordSize;
-  if(Nbytes > bufferSize)
-  {
-    if(bufferSize > 0) std::free(_buffer);
-    _buffer = std::calloc(Nword, wordSize);
-    bufferSize = Nbytes;
-  }
-  return occa::device::malloc(Nword * wordSize, _buffer);
-}
-device_t::device_t(setupAide& options, MPI_Comm comm)
-{
-  // OCCA build stuff
-  char deviceConfig[BUFSIZ];
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-
-  int device_id = 0;
-
-  if(options.compareArgs("DEVICE NUMBER", "LOCAL-RANK")) {
-    long int hostId = gethostid();
-
-    long int* hostIds = (long int*) std::calloc(size,sizeof(long int));
-    MPI_Allgather(&hostId,1,MPI_LONG,hostIds,1,MPI_LONG,comm);
-
-    int totalDevices = 0;
-    for (int r = 0; r < rank; r++)
-      if (hostIds[r] == hostId) device_id++;
-    for (int r = 0; r < size; r++)
-      if (hostIds[r] == hostId) totalDevices++;
-  } else {
-    options.getArgs("DEVICE NUMBER",device_id);
-  }
-
-  occa::properties deviceProps;
-  string requestedOccaMode; 
-  options.getArgs("THREAD MODEL", requestedOccaMode);
-
-  if(strcasecmp(requestedOccaMode.c_str(), "CUDA") == 0) {
-    sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
-    sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}",device_id);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENCL") == 0) {
-    int plat;
-    options.getArgs("PLATFORM NUMBER", plat);
-    sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
-  }else if(strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
-    if(rank == 0) printf("OpenMP backend currently not supported!\n");
-    ABORT(EXIT_FAILURE);
-    sprintf(deviceConfig, "{mode: 'OpenMP'}");
-  }else if(strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
-           strcasecmp(requestedOccaMode.c_str(), "SERIAL") == 0) {
-    sprintf(deviceConfig, "{mode: 'Serial', memory: { use_host_pointer: true }}");
-    sprintf(deviceConfig, "{mode: 'Serial'}");
-    options.setArgs("THREAD MODEL", "SERIAL");
-    options.getArgs("THREAD MODEL", requestedOccaMode);
-  } else {
-    if(rank == 0) printf("Invalid requested backend!\n");
-    ABORT(EXIT_FAILURE);
-  }
-
-  if(rank == 0) printf("Initializing device \n");
-  this->setup((std::string)deviceConfig);
-  this->comm = comm;
- 
-  if(rank == 0)
-    std::cout << "active occa mode: " << this->mode() << "\n\n";
-
-  if(strcasecmp(requestedOccaMode.c_str(), this->mode().c_str()) != 0) {
-    if(rank == 0) printf("active occa mode does not match selected backend!\n");
-    ABORT(EXIT_FAILURE);
-  } 
-
-
-
-  int Nthreads = 1;
-  if(this->mode() != "OpenMP") omp_set_num_threads(Nthreads);
-
-  bufferSize = 0;
-
-  _device_id = device_id;
 }

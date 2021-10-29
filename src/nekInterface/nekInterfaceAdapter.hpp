@@ -38,8 +38,6 @@ struct nekdata_private
 
   int* ifgetu, * ifgetp, * ifgett, * ifgetps;
 
-  double* cbscnrs;
-
   /* global vertex ids */
   long long* glo_num;
 
@@ -101,12 +99,12 @@ DECLARE_USER_FUNC(userqtl)
 }
 #endif
 
-int buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
+void buildNekInterface(const char* casename, int nFields, int N, int np, setupAide& options);
 namespace nek{
 void*  ptr(const char* id);
 void*  scPtr(int id);
 void   outSolutionFld(double time, double outputTime);
-void   outfld(const char* suffix, dfloat t, int coords, int FP64,
+void   outfld(const char *filename, dfloat t, int coords, int FP64,
                   void* o_u, void* o_p, void* o_s,
                   int NSfields);
 void   uic(int ifield);
@@ -115,7 +113,8 @@ void   map_m_to_n(double* a, int na, double* b, int nb);
 void   outpost(double* v1, double* v2, double* v3, double* vp, double* vt, char* name);
 int    lglel(int e);
 void   uf(double* u, double* v, double* w);
-int    setup(MPI_Comm c, MPI_Comm gc, setupAide &options_in, nrs_t* nrs_in);
+int    setup(nrs_t* nrs);
+void   bootstrap();
 void   ifoutfld(int i);
 void   setic(void);
 void   userchk(void);

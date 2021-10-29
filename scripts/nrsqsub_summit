@@ -13,28 +13,27 @@ if [ $# -ne 3 ]; then
 fi
 
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
-: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 NVME_HOME="/mnt/bb/$USER/"
-
-# temporary load xl modules for OLCF_XLC_ROOT
-module load xl
-XL_HOME="$OLCF_XLC_ROOT"
-
-# reload previously used module
-module load gcc
 
 : ${CPUONLY:=0}
 export NEKRS_HOME
-export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
 if [ $CPUONLY -eq 1 ]; then
+  module load xl
+  XL_HOME="$OLCF_XLC_ROOT"
   export OCCA_CXX="$XL_HOME/bin/xlc++" 
   export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
   export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 fi
 
+module load gcc
+module unload darshan-runtime
+
 #export OMPI_LD_PRELOAD_POSTPEND=$OLCF_SPECTRUM_MPI_ROOT/lib/libmpitrace.so
+
+# work-around for barrier issue
+export OMPI_MCA_coll_ibm_collselect_mode_barrier=failsafe
 
 # optimize for BW
 export PAMI_ENABLE_STRIPING=1
@@ -53,9 +52,6 @@ if [ ! -f "$ROMIO_HINTS" ]; then
   echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
   echo "cb_config_list *:1"      >>$ROMIO_HINTS
 fi
-
-module unload darshan-runtime
-module load gcc
 
 bin=$NEKRS_HOME/bin/nekrs
 case=$1
@@ -98,7 +94,6 @@ if [ ! -f $case.re2 ]; then
   exit 1
 fi
 
-mkdir -p $OCCA_CACHE_DIR 2>/dev/null
 
 while true; do
   read -p "Do you want precompile (recommended)? [N]" yn
@@ -115,12 +110,14 @@ while true; do
   esac
 done
 
+cpNVME="" # "jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a .cache $NVME_HOME; export NEKRS_CACHE_DIR=$NVME_HOME/.cache;"
+
 if [ $CPUONLY -eq 1 ]; then
-  jsrun="jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME; jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup $case --backend $backend" 
+  jsrun="jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup $case --backend $backend" 
 else
-  jsrun="jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME; jsrun --smpiargs='-gpu' -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup $case --backend $backend --device-id 0" 
+  jsrun="jsrun --smpiargs='-gpu' -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup $case --backend $backend --device-id 0" 
 fi
 
-cmd="bsub -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_$case \"${jsrun}\""
+cmd="bsub -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_$case \"${cpNVME}${jsrun}\""
 echo $cmd
 $cmd

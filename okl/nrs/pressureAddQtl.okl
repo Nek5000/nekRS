@@ -24,21 +24,13 @@
 
  */
 
-@kernel void pressureAddQtl(const dlong Nelements,
-                               @restrict const dfloat* vgeo,
+@kernel void pressureAddQtl(const dlong N,
+                               @restrict const dfloat* massMatrix,
                                const dfloat lambda,
                                @restrict const dfloat* qtl,
                                @restrict dfloat* rhs)
 {
-  for(dlong e = 0; e < Nelements; ++e; @outer(0)){
-    #pragma unroll p_Nq
-    for(int i = 0 ; i < p_Nq; ++i){
-      for(int j = 0; j < p_Nq*p_Nq; ++j; @inner(0)) {
-        const int id = e * p_Np + i*p_Nq*p_Nq+j;
-        const dlong gid = e * p_Np * p_Nvgeo + i*p_Nq*p_Nq+j;
-        const dfloat JW = vgeo[gid + p_JWID * p_Np];
-        rhs[id] += JW * lambda * qtl[id];
-      }
-    }
+  for(dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)){
+    rhs[id] += lambda * massMatrix[id] *  qtl[id];
   }
 }

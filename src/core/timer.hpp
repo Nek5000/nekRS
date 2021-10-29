@@ -24,13 +24,15 @@ void deviceTic(const std::string tag);
 void deviceTic(const std::string tag,int ifSync);
 void deviceToc(const std::string tag);
 
-void set(const std::string tag, double time);
+void set(const std::string tag, double time, long long int count = 1);
 
 double hostElapsed(const std::string tag);
 double deviceElapsed(const std::string tag);
-int count(const std::string tag);
+long long int count(const std::string tag);
 double query(const std::string tag,std::string metric);
-void printRunStat();
+void printRunStat(int step);
+void printStatEntry(std::string name, std::string tag, std::string type);
+void printStatEntry(std::string name, double time);
 };
 }
 

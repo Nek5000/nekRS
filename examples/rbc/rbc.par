@@ -4,17 +4,14 @@ polynomialOrder = 9
 stopAt = endTime
 endTime = 100 
 
-dt = 3e-03
+dt = targetCFL=4.0+max=0.05
 timeStepper = tombo2 
-extrapolation = subCycling # disable after transition
-subCyclingSteps = 1
+subCyclingSteps = 2
 
 writeControl = runTime
 writeInterval = 5
 
-filtering = hpfrt
-filterWeight = 15
-filterModes = 1
+regularization = hpfrt + nModes = 1 + scalingCoeff = 15
 
 [PRESSURE]
 residualTol = 1e-04
@@ -30,11 +27,3 @@ boundaryTypeMap = inlet, insulated
 conductivity = 1/sqrt(7*1e8) # 1/sqrt(RA*PRA)
 rhoCp = 1.0
 residualTol = 1e-06
-
-[BOOMERAMG]
-coarsenType = 10
-interpolationType = 6
-#smootherType = -1
-iterations = 1
-strongThreshold = 0.25
-#nonGalerkinTol = 0.1

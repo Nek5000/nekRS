@@ -14,10 +14,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
-set(CDSDIR      ${NEKRS_INSTALL_DIR}/cds)
 set(INCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/../..
-  ${CDSDIR}
+  ${CASE_DIR}
   ${OGSDIR}
   ${OGSDIR}/include
   ${GSDIR}
@@ -40,9 +38,8 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 
-add_library(UDF SHARED udf-${CASENAME}.cpp)
-set_target_properties(UDF PROPERTIES LIBRARY_OUTPUT_NAME UDF-${CASENAME})
-target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${UDF_DIR})
+add_library(UDF SHARED udf.cpp)
+target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS})
 
 if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")

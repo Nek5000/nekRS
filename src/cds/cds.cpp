@@ -20,7 +20,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
   platform->o_mempool.slice0.copyFrom(cds->o_S, cds->fieldOffset[is] * sizeof(dfloat), 0, cds->fieldOffsetScan[is] * sizeof(dfloat));
 
   //enforce Dirichlet BCs
-  platform->linAlg->fill(cds->fieldOffset[is], std::numeric_limits<dfloat>::min(), platform->o_mempool.slice2);
+  platform->linAlg->fill(cds->fieldOffset[is], -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice2); 
   for (int sweep = 0; sweep < 2; sweep++) {
     cds->dirichletBCKernel(mesh->Nelements,
                            cds->fieldOffset[is],
@@ -58,17 +58,9 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                             mesh->o_z,
                             platform->o_mempool.slice0,
                             cds->o_EToB[is],
-                            cds->o_mapB[is],
                             *(cds->o_usrwrk),
                             platform->o_mempool.slice1);
 
-  std::stringstream ss;
-  ss << std::setfill('0') << std::setw(2) << is;
-  string sid = ss.str();
-  if(cds->options[is].compareArgs("SCALAR" + sid + " INITIAL GUESS DEFAULT", "EXTRAPOLATION") && stage == 1) {
-    platform->o_mempool.slice0.copyFrom(cds->o_Se, cds->fieldOffset[is] * sizeof(dfloat), 0, cds->fieldOffsetScan[is] * sizeof(dfloat));
-    if (solver->Nmasked) cds->maskCopyKernel(solver->Nmasked, 0, solver->o_maskIds, platform->o_mempool.slice2, platform->o_mempool.slice0);
-  }
   ellipticSolve(solver, platform->o_mempool.slice1, platform->o_mempool.slice0);
 
   return platform->o_mempool.slice0;

@@ -31,8 +31,18 @@
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 {
-  mesh_t* mesh = elliptic->mesh;
   setupAide options = elliptic->options;
+  if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "JACOBI"))
+    ellipticUpdateJacobi(elliptic, elliptic->precon->o_invDiagA);
+  else if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "MULTIGRID"))
+    ellipticMultiGridUpdateLambda(elliptic);
+
+  mesh_t* mesh = elliptic->mesh;
+
+  std::string name = elliptic->name;
+  if(name.find("scalar") != std::string::npos){
+    name = "scalar";
+  }
 
   int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
@@ -50,18 +60,22 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
         platform->comm.mpiComm
       )
       * sqrt(elliptic->resNormFactor); 
-    if(platform->comm.mpiRank == 0) printf("RHS norm: %.15e\n", rhsNorm);
+    if(platform->comm.mpiRank == 0) printf("%s RHS norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
   }
 
-  if(options.compareArgs("KRYLOV SOLVER", "PGMRES")){
-    elliptic->o_rtmp.copyFrom(o_r, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-    if(elliptic->allNeumann) ellipticZeroMean(elliptic, elliptic->o_rtmp);
-    oogs::startFinish(elliptic->o_rtmp, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
-    if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, elliptic->o_rtmp);
+  if(verbose) {
+    const dfloat rhsNorm = 
+      platform->linAlg->weightedNorm2Many(
+        mesh->Nlocal,
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        elliptic->o_invDegree,
+        o_x,
+        platform->comm.mpiComm
+      )
+      * sqrt(elliptic->resNormFactor); 
+    if(platform->comm.mpiRank == 0) printf("%s x0 norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
   }
-
-  if(elliptic->var_coeff && options.compareArgs("PRECONDITIONER", "JACOBI"))
-    ellipticUpdateJacobi(elliptic);
 
   // compute initial residual r = rhs - Ax0
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_x, elliptic->o_Ap, dfloatString);
@@ -79,9 +93,12 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
   if(elliptic->Nmasked) mesh->maskKernel(elliptic->Nmasked, elliptic->o_maskIds, o_r);
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) {
-    platform->timer.tic(elliptic->name + " proj pre",1);
-    elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
+  elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
+  platform->linAlg->fill(elliptic->Ntotal * elliptic->Nfields, 0.0, o_x);
+  if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
+     options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) {
+    
+    platform->timer.tic(name + " proj pre",1);
     elliptic->res00Norm = 
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
@@ -97,7 +114,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       ABORT(EXIT_FAILURE);
     }
     elliptic->residualProjection->pre(o_r);
-    platform->timer.toc(elliptic->name + " proj pre");
+    platform->timer.toc(name + " proj pre");
   }
 
   elliptic->res0Norm = 
@@ -136,31 +153,24 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   }
 
 
-  if(options.compareArgs("RESIDUAL PROJECTION","TRUE")) { 
-    platform->linAlg->axpbyMany(
-      mesh->Nlocal,
-      elliptic->Nfields,
-      elliptic->Ntotal,
-      -1.0,
-      elliptic->o_x0,
-      1.0,
-      o_x
-    );
-    platform->timer.tic(elliptic->name + " proj post",1);
+  if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
+     options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) { 
+    platform->timer.tic(name + " proj post",1);
     elliptic->residualProjection->post(o_x);
-    platform->timer.toc(elliptic->name + " proj post");
-    platform->linAlg->axpbyMany(
-      mesh->Nlocal,
-      elliptic->Nfields,
-      elliptic->Ntotal,
-      1.0,
-      elliptic->o_x0,
-      1.0,
-      o_x
-    );
+    platform->timer.toc(name + " proj post");
   } else {
     elliptic->res00Norm = elliptic->res0Norm;
   }
+
+  platform->linAlg->axpbyMany(
+    mesh->Nlocal,
+    elliptic->Nfields,
+    elliptic->Ntotal,
+    1.0,
+    elliptic->o_x0,
+    1.0,
+    o_x
+  );
 
   if(elliptic->allNeumann)
     ellipticZeroMean(elliptic, o_x);

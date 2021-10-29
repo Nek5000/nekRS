@@ -4,11 +4,8 @@
 #include <assert.h>
 #include <math.h>
 #include <stddef.h>
-#include <stdlib.h>
-
-#ifdef GENMAP_DEBUG
 #include <stdio.h>
-#endif
+#include <stdlib.h>
 
 #include <genmap-multigrid-precon.h>
 #include <genmap.h>
@@ -31,7 +28,7 @@ struct rcb_element {
   GenmapInt proc;
   GenmapInt origin;
   GenmapInt seq;
-  GenmapLong globalId;
+  GenmapULong globalId;
   GenmapScalar coord[MAXDIM];
   GenmapScalar fiedler;
 };
@@ -42,12 +39,11 @@ struct rsb_element {
   GenmapInt proc;
   GenmapInt origin;
   GenmapInt seq;
-  GenmapLong globalId;
+  GenmapULong globalId;
   GenmapScalar coord[MAXDIM];
   GenmapScalar fiedler;
   GenmapLong vertices[8];
   GenmapInt part;
-  GenmapULong globalId0;
 };
 
 int rcb(struct comm *ci, struct array *elements, int ndim, buffer *bfr);
@@ -75,7 +71,8 @@ struct genmap_handle_private {
   csr_mat M;
   GenmapScalar *b;
 
-  parRSB_options *options;
+  parrsb_options *options;
+  size_t elem_size;
 };
 
 struct genmap_vector_private {
@@ -95,29 +92,19 @@ int GenmapFree(void *p);
 /* Genmap Metrics */
 typedef enum {
   RCB,
-  WEIGHTEDLAPLACIANSETUP,
   FIEDLER,
-  NFIEDLER,
-  FIEDLERSORT,
-  BISECTANDREPAIR,
+  FIEDLER_NITER,
   LANCZOS,
-  NLANCZOS,
-  LANCZOSTOLFINAL,
-  LANCZOSTOLTARGET,
-  WEIGHTEDLAPLACIAN,
-  TQLI,
-  LAPLACIANSETUP,
-  FINDNBRS,
-  CSRMATSETUP,
-  CSRTOPSETUP,
-  PRECONDSETUP,
-  RQI,
-  NRQI,
-  PROJECT,
-  NPROJECT,
-  GRAMMIAN,
+  LANCZOS_NITER,
+  LANCZOS_TOL_FINAL,
+  LANCZOS_TOL_TARGET,
   LAPLACIAN,
-  VCYCLE,
+  LAPLACIAN_INIT,
+  RQI,
+  RQI_NITER,
+  PROJECT,
+  PROJECT_NITER,
+  COMPONENTS,
   END
 } metric;
 
@@ -140,19 +127,21 @@ typedef struct {
   uint workProc;
 } vertex;
 
-/* Components */
+/* Repair and balance */
 sint get_components(sint *component, struct rsb_element *elements,
                     struct comm *c, buffer *buf, uint nelt, uint nv);
 
-void split_and_repair_partitions(genmap_handle h, struct comm *lc, int level,
-                                 struct comm *gc);
+int repair_partitions(genmap_handle h, struct comm *tc, struct comm *lc,
+                      int bin, struct comm *gc);
+int balance_partitions(genmap_handle h, struct comm *lc, int bin,
+                       struct comm *gc);
+
 /* Matrix inverse */
 void matrix_inverse(int N, double *A);
 
 /* Dump data */
-int GenmapFiedlerDump(const char *fname, genmap_handle h, slong start,
-                      struct comm *c);
-int GenmapVectorDump(const char *fname, GenmapScalar *y, uint size,
+int GenmapFiedlerDump(const char *fname, genmap_handle h, struct comm *c);
+int GenmapVectorDump(const char *fname, GenmapScalar *y, genmap_handle h,
                      struct comm *c);
 int GenmapCentroidDump(const char *fname, genmap_handle h, sint g_id,
                        struct comm *c);

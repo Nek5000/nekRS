@@ -127,18 +127,11 @@ if(ENABLE_CUDA)
     set(OCCA_CUDA_ENABLED 1)
     set(OCCA_CUDA_ENABLED 1 PARENT_SCOPE)
 
-    # Find the shared library rather than the static that find_package returns
-    find_library(CUDA_LIB
-      NAMES         cuda
-      PATHS         ${CUDA_TOOLKIT_ROOT_DIR}
-      PATH_SUFFIXES lib64 lib lib64/stubs lib/stubs
-      DOC           "CUDA driver lib location")
-
-    message("-- CUDA include dirs: ${CUDA_INCLUDE_DIRS}")
-    message("-- CUDA driver library: ${CUDA_LIB}")
+    set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+    find_package(CUDA)
 
     target_include_directories(libocca PRIVATE ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(libocca PUBLIC ${CUDA_LIB})
+    target_link_libraries(libocca PUBLIC ${CUDA_LIBRARIES} ${CUDA_CUDA_LIBRARY})
   else (CUDA_FOUND)
     set(OCCA_CUDA_ENABLED 0)
     set(OCCA_CUDA_ENABLED 0 PARENT_SCOPE)
@@ -173,9 +166,6 @@ if(ENABLE_OPENCL)
     set(OCCA_OPENCL_ENABLED 1)
     set(OCCA_OPENCL_ENABLED 1 PARENT_SCOPE)
 
-    message("-- OpenCL include dirs: ${OpenCL_INCLUDE_DIRS}")
-    message("-- OpenCL libraries:    ${OpenCL_LIBRARIES}")
-
     target_include_directories(libocca PRIVATE ${OpenCL_INCLUDE_DIRS})
     target_link_libraries(libocca PUBLIC ${OpenCL_LIBRARIES})
   else (OpenCL_FOUND)
@@ -192,11 +182,6 @@ if(ENABLE_HIP)
   if(HIP_FOUND)
     set(OCCA_HIP_ENABLED 1)
     set(OCCA_HIP_ENABLED 1 PARENT_SCOPE)
-
-    message("-- HIP version:      ${HIP_VERSION_STRING}")
-    message("-- HIP platform:     ${HIP_PLATFORM}")
-    message("-- HIP include dirs: ${HIP_INCLUDE_DIRS}")
-    message("-- HIP libraries:    ${HIP_LIBRARIES}")
 
     target_compile_definitions(libocca PRIVATE -D${HIP_RUNTIME_DEFINE})
     target_include_directories(libocca PRIVATE ${HIP_INCLUDE_DIRS})

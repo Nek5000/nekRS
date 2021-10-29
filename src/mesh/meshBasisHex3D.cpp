@@ -351,7 +351,7 @@ void mesh_t::InterpolationMatrixHex3D(int _N,
 
   // need NpointsIn = _Np
   if (NpointsIn != _Np)
-    LIBP_ABORT(string("Invalid Interplation operator requested."))
+    LIBP_ABORT(std::string("Invalid Interplation operator requested."))
 
     dfloat* VIn = (dfloat*) malloc(NpointsIn * _Np * sizeof(dfloat));
   dfloat* VOut = (dfloat*) malloc(NpointsOut * _Np * sizeof(dfloat));

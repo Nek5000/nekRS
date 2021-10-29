@@ -56,37 +56,7 @@ occa::kernel vectorAddInnerProdKernel;
 occa::kernel vectorAddWeightedInnerProdKernel;
 
 void buildParAlmondKernels(MPI_Comm comm, occa::device device){
-
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-
-  occa::properties kernelInfo = platform->kernelInfo;
-  kernelInfo["defines"].asObject();
-  kernelInfo["includes"].asArray();
-  kernelInfo["header"].asArray();
-  kernelInfo["flags"].asObject();
-
-  string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-
-  MPI_Barrier(comm);
-  const double tStart = MPI_Wtime();
-  if (rank==0) printf("loading parALMOND kernels ... ");fflush(stdout);
-
-  for (int r=0;r<2;r++){
-    if ((r==0 && rank==0) || (r==1 && rank>0)) {      
-      const string oklpath = install_dir + "/okl/parAlmond/";
-      string filename;
-
-      filename = oklpath + "vectorDotStar.okl";
-      vectorDotStarKernel1 = device.buildKernel(filename, "vectorDotStar1", kernelInfo);
-      vectorDotStarKernel2 = device.buildKernel(filename, "vectorDotStar2", kernelInfo);
-    }
-    MPI_Barrier(comm);
-  }
-  MPI_Barrier(comm);
-  if(rank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
+  // TODO: cleanup
 }
 
 void freeParAlmondKernels() {

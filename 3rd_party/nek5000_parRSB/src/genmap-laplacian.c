@@ -43,7 +43,7 @@ static void genmap_find_neighbors(struct array *nbrs, genmap_handle h,
   struct array a;
   array_init(csr_entry, &a, 10);
 
-  // FIXME: Assumes quads or hexes
+  /* FIXME: Assumes quads or hexes */
   sint s = 0, e;
   csr_entry t;
   while (s < size) {
@@ -64,9 +64,7 @@ static void genmap_find_neighbors(struct array *nbrs, genmap_handle h,
   }
 
   sarray_transfer(csr_entry, &a, proc, 1, &cr);
-  // TODO: Check if the last line is redundant
   sarray_sort_2(csr_entry, a.ptr, a.n, r, 1, c, 1, &h->buf);
-  // sarray_sort(csr_entry, a.ptr, a.n, r, 1, &h->buf);
 
   array_init(entry, nbrs, lelt);
 
@@ -103,33 +101,12 @@ static void genmap_find_neighbors(struct array *nbrs, genmap_handle h,
 int GenmapInitLaplacian(genmap_handle h, struct comm *c) {
   struct array entries;
 
-  metric_tic(c, FINDNBRS);
   genmap_find_neighbors(&entries, h, c);
-  metric_toc(c, FINDNBRS);
-
-  metric_tic(c, CSRMATSETUP);
   csr_mat_setup(&entries, c, &h->M);
-  metric_toc(c, CSRMATSETUP);
-
-  array_free(&entries);
-
-  metric_toc(c, CSRTOPSETUP);
   h->gsh = get_csr_top(h->M, c);
-  metric_toc(c, CSRTOPSETUP);
-
   GenmapRealloc(h->M->row_off[h->M->rn], &h->b);
 
-#if defined(GENMAP_DEBUG)
-  int nnz = h->M->row_off[h->M->rn];
-  double fro[2] = {0.0, 0.0}, buf[2];
-  for (int i = 0; i < nnz; i++) {
-    fro[0] += h->M->v[i];
-    fro[1] += h->M->v[i] * h->M->v[i];
-  }
-  comm_allreduce(c, gs_double, gs_add, &fro, 2, &buf);
-  if (c->gsc.id == 0)
-    printf("nrom(G,'1')=%g\nnorm(G,'fro')=%g\n", fro[0], fro[1]);
-#endif
+  array_free(&entries);
 
   return 0;
 }
@@ -137,6 +114,74 @@ int GenmapInitLaplacian(genmap_handle h, struct comm *c) {
 int GenmapLaplacian(genmap_handle h, GenmapScalar *u, GenmapScalar *v) {
   csr_mat_gather(h->M, h->gsh, u, h->b, &h->buf);
   csr_mat_apply(v, h->M, h->b);
+
+  return 0;
+}
+
+int GenmapInitLaplacianWeighted(genmap_handle h, struct comm *c) {
+  GenmapInt lelt = genmap_get_nel(h);
+  GenmapInt nv = genmap_get_nvertices(h);
+
+  GenmapRealloc(lelt, &h->weights);
+  GenmapUInt numPoints = (GenmapUInt)nv * lelt;
+
+  GenmapLong *vertices;
+  GenmapMalloc(numPoints, &vertices);
+
+  struct rsb_element *elements = genmap_get_elements(h);
+  GenmapInt i, j;
+  for (i = 0; i < lelt; i++) {
+    for (j = 0; j < nv; j++)
+      vertices[i * nv + j] = elements[i].vertices[j];
+  }
+
+  if (h->gsw != NULL)
+    gs_free(h->gsw);
+
+  h->gsw = gs_setup(vertices, numPoints, c, 0, gs_crystal_router, 0);
+
+  GenmapScalar *u;
+  GenmapMalloc(numPoints, &u);
+
+  for (i = 0; i < lelt; i++)
+    for (j = 0; j < nv; j++)
+      u[nv * i + j] = 1.0;
+
+  gs(u, gs_double, gs_add, 0, h->gsw, &h->buf);
+
+  for (i = 0; i < lelt; i++) {
+    h->weights[i] = 0.0;
+    for (j = 0; j < nv; j++)
+      h->weights[i] += u[nv * i + j];
+  }
+
+  GenmapFree(u);
+  GenmapFree(vertices);
+
+  return 0;
+}
+
+int GenmapLaplacianWeighted(genmap_handle h, GenmapScalar *u, GenmapScalar *v) {
+  GenmapInt lelt = genmap_get_nel(h);
+  GenmapInt nv = genmap_get_nvertices(h);
+
+  GenmapScalar *ucv;
+  GenmapMalloc((size_t)(nv * lelt), &ucv);
+
+  GenmapInt i, j;
+  for (i = 0; i < lelt; i++)
+    for (j = 0; j < nv; j++)
+      ucv[nv * i + j] = u[i];
+
+  gs(ucv, gs_double, gs_add, 0, h->gsw, &h->buf);
+
+  for (i = 0; i < lelt; i++) {
+    v[i] = h->weights[i] * u[i];
+    for (j = 0; j < nv; j++)
+      v[i] -= ucv[nv * i + j];
+  }
+
+  GenmapFree(ucv);
 
   return 0;
 }

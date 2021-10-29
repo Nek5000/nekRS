@@ -1,0 +1,3 @@
+      real p_delta, p_gamma
+
+      common /casevars/ p_delta, p_gamma

@@ -178,8 +178,9 @@ int rcb(struct comm *ci, struct array *elements, int ndim, buffer *bfr) {
   while (size > 1) {
     rcb_level(&c, elements, ndim, bfr);
 
-    int p = (size + 1) / 2;
-    int bin = (rank >= p);
+    int bin = 1;
+    if (rank < (size + 1) / 2)
+      bin = 0;
 
     comm_ext comm_rcb;
 #ifdef MPI
@@ -213,10 +214,12 @@ int genmap_rcb(genmap_handle h) {
 
   rcb(lc, h->elements, ndim, &h->buf);
 
+#if 0
   struct rcb_element *eptr = h->elements->ptr;
   int e;
   for (e = 0; e < h->elements->n; e++)
     eptr[e].seq = e;
+#endif
 
   return 0;
 }

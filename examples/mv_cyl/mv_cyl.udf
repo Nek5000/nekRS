@@ -4,12 +4,19 @@
 #include <math.h>
 #include "udf.hpp"
 #include "plugins/lowMach.hpp"
-#include "casedata.h"
 
 #include "ci.inc"
 
 static occa::kernel userVpKernel;
 static occa::kernel userMeshVelocityKernel;
+static dfloat XLEN;
+static dfloat YLEN;
+static dfloat ZLEN;
+
+static dfloat P_GAMMA;
+static dfloat P_DELTA;
+static dfloat P_OMEGA;
+static dfloat P_AMP;
  
 void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
@@ -28,25 +35,52 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
   userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
                o_S, o_UProp, o_SProp);
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")){
+    // moving mesh parameters
+    const dfloat vnu = 0.4;
+    const dfloat ce = 1.0 / (1.0 + vnu);
+    const dfloat c2 = vnu * ce / (1.0 - 2.0 * vnu);
+    const dfloat c3 = 0.5 * ce;
+    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_mesh_rho  = o_UProp + 3 * nrs->fieldOffset * sizeof(dfloat);
+    platform->linAlg->fill(nrs->meshV->Nlocal, c2, o_mesh_diff);
+    platform->linAlg->fill(nrs->meshV->Nlocal, c3, o_mesh_rho);
+  }
 }
 
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  occa::properties& kernelInfo = *(nrs->kernelInfo);
-  kernelInfo["defines/" "p_PI"] = P_PI;
+  kernelInfo["defines/" "p_PI"] = M_PI;
   kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
   kernelInfo["defines/" "p_AMP"] = P_AMP;
-  userVpKernel = udfBuildKernel(nrs, "userVp");
-  userMeshVelocityKernel = udfBuildKernel(nrs, "userMeshVelocity");
-  lowMach::buildKernel(nrs);
+  userVpKernel = udfBuildKernel(kernelInfo, "userVp");
+  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
+  lowMach::buildKernel(kernelInfo);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "xlen",XLEN);
+  platform->par->extract("casedata", "ylen",YLEN);
+  platform->par->extract("casedata", "zlen",ZLEN);
+  platform->par->extract("casedata", "p_gamma",P_GAMMA);
+  platform->par->extract("casedata", "p_delta",P_DELTA);
+  platform->par->extract("casedata", "p_omega",P_OMEGA);
+  platform->par->extract("casedata", "p_amp",P_AMP);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = XLEN;
+    nek_cb_scnrs[1] = YLEN;
+    nek_cb_scnrs[2] = ZLEN;
+    nek_cb_scnrs[3] = P_GAMMA;
+    nek_cb_scnrs[4] = P_DELTA;
+    nek_cb_scnrs[5] = P_OMEGA;
+    nek_cb_scnrs[6] = P_AMP;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -62,15 +96,17 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   mesh_t* mesh = nrs->meshV;
   cds_t* cds = nrs->cds;
   linAlg_t* linAlg = platform->linAlg;
-  const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
-  const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
-  userMeshVelocityKernel(mesh->Nelements,
-    nrs->fieldOffset,
-    ymin,
-    ymax,
-    time,
-    mesh->o_y,
-    mesh->o_U);
+  if(platform->options.compareArgs("MESH SOLVER", "USER")){
+    const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    userMeshVelocityKernel(mesh->Nelements,
+      nrs->fieldOffset,
+      ymin,
+      ymax,
+      time,
+      mesh->o_y,
+      mesh->o_U);
+  }
 
   if(nrs->isOutputStep){
     nek::ocopyToNek(time, tstep);

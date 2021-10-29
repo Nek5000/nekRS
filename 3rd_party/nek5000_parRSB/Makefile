@@ -3,8 +3,11 @@ DEBUG ?= 0
 MPI ?= 1
 CC ?= mpicc
 CFLAGS ?= -g -O0
-BLAS ?= 1
 UNDERSCORE ?= 1
+SYNC_BY_REDUCTION ?= 1
+BLAS ?= 0
+BLASDIR ?=
+BLASFLAGS ?= -lblas -llapack
 
 ## Don't touch what follows ##
 MKFILEPATH = $(abspath $(lastword $(MAKEFILE_LIST)))
@@ -29,10 +32,6 @@ GENCONDIR = $(SRCROOT)/src/gencon
 GENCONSRCS = $(wildcard $(GENCONDIR)/*.c)
 SRCOBJS += $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%.o,$(GENCONSRCS))
 
-TESTDIR = $(SRCROOT)/tests
-TESTSRCS = $(wildcard $(TESTDIR)/*.c)
-TESTOBJS = $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(TESTSRCS))
-
 EXAMPLEDIR = $(SRCROOT)/examples
 EXAMPLESRCS = $(wildcard $(EXAMPLEDIR)/*.c)
 EXAMPLEOBJS = $(patsubst $(SRCROOT)/%.c,$(BUILDDIR)/%,$(EXAMPLESRCS))
@@ -55,20 +54,18 @@ endif
 
 ifneq ($(BLAS),0)
   PP += -DGENMAP_BLAS
-  LDFLAGS += -L$(BLASLIBPATH) -lblasLapack -lgfortran
-endif
-
-ifneq ($(UNDERSCORE),0)
-  PP += -DGENMAP_UNDERSCORE
-endif
-
-ifneq ($(BLAS),0)
-  PP += -DGENMAP_BLAS
-  LDFLAGS += -L$(BLASLIBPATH) -lblasLapack
+  ifneq ($(BLASDIR),)
+    LDFLAGS+= -L$(BLASDIR)
+  endif
+  LDFLAGS += $(BLASFLAGS)
 endif
 
 ifneq ($(MPI),0)
   PP += -DMPI
+endif
+
+ifneq ($(SYNC_BY_REDUCTION),0)
+  PP += -DGENMAP_SYNC_BY_REDUCTION
 endif
 
 INSTALLDIR=
@@ -76,11 +73,8 @@ ifneq (,$(strip $(DESTDIR)))
   INSTALLDIR = $(realpath $(DESTDIR))
 endif
 
-.PHONY: default
-default: check lib examples install
-
 .PHONY: all
-all: check lib tests examples install
+all: check lib examples install
 
 .PHONY: check
 check:
@@ -132,5 +126,4 @@ print-%:
 $(shell mkdir -p $(BUILDDIR)/src/sort)
 $(shell mkdir -p $(BUILDDIR)/src/precond)
 $(shell mkdir -p $(BUILDDIR)/src/gencon)
-$(shell mkdir -p $(BUILDDIR)/tests)
 $(shell mkdir -p $(BUILDDIR)/examples)

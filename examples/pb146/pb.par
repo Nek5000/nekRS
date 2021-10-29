@@ -7,15 +7,12 @@ endTime = 20
 
 dt = 2.0e-3
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 2
 
 writeControl = runTime
 writeInterval = 1
 
-filtering = hpfrt
-filterWeight = 0.2/${dt} 
-filterModes = 2
+regularization = hpfrt + nModes=2 + scalingCoeff=20 
 
 [PRESSURE]
 residualTol = 1e-04

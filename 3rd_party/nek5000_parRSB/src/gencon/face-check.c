@@ -18,7 +18,7 @@ typedef struct {
   ulong procId;
 } ProcID;
 
-VToEMap *getVToEMap(Mesh m, struct comm *c) {
+VToEMap *getVToEMap(Mesh m, struct comm *c, buffer *bfr) {
   sint nelt = m->nelt;
   sint nv = m->nVertex;
 
@@ -31,8 +31,7 @@ VToEMap *getVToEMap(Mesh m, struct comm *c) {
   struct array vertices;
   array_init(vertex, &vertices, size);
 
-  // create (globalId, elementId) pairs and send them to
-  // globalId % np
+  /* Create (globalId, elementId) pairs and send them to globalId % np */
   Point ptr = m->elements.ptr;
   sint i, j;
   for (i = 0; i < nelt; i++) {
@@ -45,13 +44,12 @@ VToEMap *getVToEMap(Mesh m, struct comm *c) {
       array_cat(vertex, &vertices, &t, 1);
       sequenceId++;
     }
+
     elemId++;
   }
 
-  buffer bfr;
-  buffer_init(&bfr, 1024);
   sarray_sort_2(vertex, vertices.ptr, vertices.n, vertexId, 1, elementId, 1,
-                &bfr);
+                bfr);
 
   struct array vtcsCmpct;
   array_init(vertex, &vtcsCmpct, 10);
@@ -79,7 +77,7 @@ VToEMap *getVToEMap(Mesh m, struct comm *c) {
   // back to all the processors which has globalId
   // FIXME: Assumes quads or hexes
   vPtr = vtcsCmpct.ptr;
-  sarray_sort_2(vertex, vPtr, vtcsCmpct.n, vertexId, 1, workProc, 0, &bfr);
+  sarray_sort_2(vertex, vPtr, vtcsCmpct.n, vertexId, 1, workProc, 0, bfr);
 
   struct array a;
   array_init(vertex, &a, 10);
@@ -120,8 +118,7 @@ VToEMap *getVToEMap(Mesh m, struct comm *c) {
   array_free(&procs);
 
   sarray_transfer(vertex, &a, workProc, 1, &cr);
-  sarray_sort_2(vertex, a.ptr, a.n, vertexId, 1, elementId, 1, &bfr);
-  buffer_free(&bfr);
+  sarray_sort_2(vertex, a.ptr, a.n, vertexId, 1, elementId, 1, bfr);
 
   // create the map
   if (a.n == 0)
@@ -170,8 +167,8 @@ int getPosition(VToEMap *map, ulong key) {
 
   int begin = 0;
   int end = map->size;
-  int mid;
-  while (begin <= end) {
+  int mid = 0;
+  while (begin < end) {
     mid = (begin + end) / 2;
 
     if (key == globalIds[mid])
@@ -182,6 +179,8 @@ int getPosition(VToEMap *map, ulong key) {
       begin = mid;
   };
 
+  if (globalIds[mid] != key)
+    return -1;
   return mid;
 }
 
@@ -192,8 +191,8 @@ void freeVToEMap(VToEMap *map) {
   free(map);
 }
 
-int faceCheck(Mesh mesh, struct comm *c) {
-  VToEMap *map = getVToEMap(mesh, c);
+int faceCheck(Mesh mesh, struct comm *c, buffer *bfr) {
+  VToEMap *map = getVToEMap(mesh, c, bfr);
 
   sint nelt = mesh->nelt;
   sint ndim = mesh->nDim;
@@ -212,9 +211,6 @@ int faceCheck(Mesh mesh, struct comm *c) {
   struct array shared;
   array_init(LongID, &shared, 200);
 
-  buffer bfr;
-  buffer_init(&bfr, 1024);
-
   int err = 0;
 
   int i, j, k, l;
@@ -225,6 +221,7 @@ int faceCheck(Mesh mesh, struct comm *c) {
       for (k = 0; k < nfv; k++) {
         ulong globalId = ptr[i * nv + faces[j][k] - 1].globalId + 1;
         int indx = getPosition(map, globalId);
+        assert(indx >= 0);
         LongID elemId;
         for (l = map->offsets[indx]; l < map->offsets[indx + 1]; l++) {
           elemId.id = map->elements[l];
@@ -232,40 +229,40 @@ int faceCheck(Mesh mesh, struct comm *c) {
         }
       }
 
-      sarray_sort(LongID, shared.ptr, shared.n, id, 1, &bfr);
+      sarray_sort(LongID, shared.ptr, shared.n, id, 1, bfr);
 
       ulong prev = 0;
       int ncount = 1;
-      LongID *ptr = shared.ptr;
+      LongID *sptr = shared.ptr;
       for (l = 1; l < shared.n; l++) {
-        if (ptr[l].id != ptr[prev].id) {
-          if (ncount == 3)
+        if (sptr[l].id != sptr[prev].id) {
+          if (ncount == 3) {
             err = 1;
+            break;
+          }
           prev = l;
           ncount = 1;
         } else
           ncount++;
       }
 
-      if (ncount == 3)
+      if (ncount == 3) {
         err = 1;
+        break;
+      }
     }
   }
 
-  buffer_free(&bfr);
   array_free(&shared);
   freeVToEMap(map);
 
   return err;
 }
 
-int elementCheck(Mesh mesh, struct comm *c) {
+int elementCheck(Mesh mesh, struct comm *c, buffer *bfr) {
   uint nelt = mesh->nelt;
   uint ndim = mesh->nDim;
   int nv = (ndim == 3) ? 8 : 4;
-
-  buffer bfr;
-  buffer_init(&bfr, 1024);
 
   LongID globalIds[8];
   Point ptr = mesh->elements.ptr;
@@ -275,7 +272,7 @@ int elementCheck(Mesh mesh, struct comm *c) {
     for (j = 0; j < nv; j++)
       globalIds[j].id = ptr[i * nv + j].globalId + 1;
 
-    sarray_sort(LongID, globalIds, nv, id, 1, &bfr);
+    sarray_sort(LongID, globalIds, nv, id, 1, bfr);
 
     for (j = 0; j < nv - 1; j++) {
       if (globalIds[j].id == globalIds[j + 1].id) {
@@ -284,8 +281,6 @@ int elementCheck(Mesh mesh, struct comm *c) {
       }
     }
   }
-
-  buffer_free(&bfr);
 
   return err;
 }

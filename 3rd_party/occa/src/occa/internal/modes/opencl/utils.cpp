@@ -433,6 +433,8 @@ namespace occa {
       fwrite(binary, 1, binaryBytes, fp);
       fclose(fp);
 
+      io::sync(binaryFile);
+
       delete [] binary;
 
       return true;

@@ -27,7 +27,7 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
-void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::properties &kernelInfo)
+void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
 {
   
   mesh_t* mesh = elliptic->mesh;
@@ -44,8 +44,8 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs, occa::propert
     ellipticSEMFEMSetup(elliptic);
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
-    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(dfloat));
-    ellipticUpdateJacobi(elliptic);
+    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(pfloat));
+    ellipticUpdateJacobi(elliptic, precon->o_invDiagA);
   } else if(options.compareArgs("PRECONDITIONER", "NONE")) {
     // nothing 
   } else {

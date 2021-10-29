@@ -7,27 +7,28 @@
 
 namespace nekrs
 {
-void setup(MPI_Comm comm, int buildOnly, int targetSize,
-           int ciMode, std::string cacheDir, std::string setupFile,
-           std::string backend, std::string deviceID,
-           neknek_t *neknek);
-
+void setup(MPI_Comm commg_in, MPI_Comm comm_in,
+           int buildOnly, int commSizeTarget,
+           int ciMode, std::string _setupFile,
+           std::string _backend, std::string _deviceID, neknek_t* neknek);
 void runStep(double time, double dt, int tstep);
 void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);
 void outfld(double time);
+void outfld(double time, std::string suffix);
 int outputStep(double time, int tStep);
 void outputStep(int val);
 void finalize();
 void nekUserchk(void);
-void printRuntimeStatistics(void);
+void printRuntimeStatistics(int step);
 double writeInterval(void);
-double dt(void);
+double dt(int tStep);
 double startTime(void);
 double endTime(void);
 int numSteps(void);
 int lastStep(double time, int tstep, double elapsedTime);
 int writeControlRunTime(void);
+void processUpdFile();
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);

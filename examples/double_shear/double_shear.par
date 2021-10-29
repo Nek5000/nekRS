@@ -1,12 +1,8 @@
-[OCCA]
-backend = CUDA
-deviceNumber = LOCAL-RANK
-
 [GENERAL] 
 numSteps = 2000
 polynomialOrder = 5
 dt = 1e-03
-timestepper = bdf3
+timeStepper = tombo2
 
 [PRESSURE]
 residualTol = 1e-08
@@ -17,23 +13,26 @@ density = 1.
 viscosity = -100000
 
 [TEMPERATURE]
-residualProj = true
 residualTol = 1e-8
 rhocp = 1
 conductivity = -100000
 regularization=none
 
 [SCALAR01]
-residualProj = true
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
 regularization=none
 
 [SCALAR02]
-dt = 1e-03
+residualTol = 1e-8
+rho = 1
+diffusivity = -100000
+regularization=avm+c0+highestModalDecay+scalingCoeff=0.5+rampconstant=1
+
+[SCALAR03]
 residualProj = true
 residualTol = 1e-8
 rho = 1
 diffusivity = -100000
-regularization=avm+c0
+regularization=avm+c0+hpfResidual+nmodes=1+scalingCoeff=1.0

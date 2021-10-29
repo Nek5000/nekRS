@@ -1,4 +1,4 @@
-[OCCA]
+#[OCCA]
 #backend = CUDA
 #deviceNumber = LOCAL-RANK
 
@@ -10,35 +10,37 @@ stopAt = endTime
 endTime = 200
 
 dt = 6.0e-3
+#dt = targetCFL=4 + max=1e-2 + initial=6e-3
+
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 2
 
 writeControl = runTime
 writeInterval = 1
 
-filtering = hpfrt
-filterWeight = 0.1/${dt}
-filterModes = 1
+regularization = hpfrt + nModes=1 + scalingCoeff=10
 
 [PRESSURE]
 residualTol = 1e-04
-#preconditioner = multigrid+additive+overlapCrsSolve
-#smootherType = Chebyshev+ASM
-#pMultigridCoarsening = 7,3,1
-#galerkinCoarseOperator = true
+#initialGuess = projectionAconj+nVector=10
 
 [VELOCITY]
-#solver = pcg
+#solver = pfcg+block
 boundaryTypeMap = inlet, outlet, wall
 density = 1.0
-viscosity = -19000
+viscosity = 1/19000
 residualTol = 1e-06
 
-[BOOMERAMG]
+#[BOOMERAMG]
 #coarsenType = 10
 #interpolationType = 6
 #smootherType = -1
 #iterations = 1
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.1
+#
+[CASEDATA]
+#/* diameters  */
+ZLENGTH = 20.0
+NSLABS  = 60
+NELSLAB = 108

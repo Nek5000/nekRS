@@ -111,11 +111,11 @@ namespace occa {
 
 #ifdef CL_VERSION_1_2
       OCCA_OPENCL_ERROR("Device: Tagging Stream",
-                        clEnqueueMarkerWithWaitList(getCommandQueue(),
+                        clEnqueueBarrierWithWaitList(getCommandQueue(),
                                                     0, NULL, &clEvent));
 #else
       OCCA_OPENCL_ERROR("Device: Tagging Stream",
-                        clEnqueueMarker(getCommandQueue(),
+                        clEnqueueBarrier(getCommandQueue(),
                                         &clEvent));
 #endif
 
@@ -139,9 +139,9 @@ namespace occa {
         dynamic_cast<occa::opencl::streamTag*>(endTag.getModeStreamTag())
       );
 
-      finish();
+      waitFor(clEndTag);
 
-      return (clEndTag->getTime() - clStartTag->getTime());
+      return (clEndTag->endTime() - clStartTag->startTime());
     }
 
     cl_command_queue& device::getCommandQueue() const {
@@ -263,7 +263,7 @@ namespace occa {
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(
-        kernelName,
+        kernelName + kernelProps.get<std::string>("kernelNameSuffix", ""),
         deviceMetadata
       );
 

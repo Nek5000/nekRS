@@ -6,22 +6,23 @@ endTime = 200
 
 dt = 6.0e-3
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 2
 
 writeControl = runTime
 writeInterval = 20
 
-filtering = hpfrt
-filterWeight = 0.1/${dt}
-filterModes = 1
+regularization = hpfrt + nModes=1 + scalingCoeff=10
+constFlowRate = meanVelocity=1.0 + direction=Z
 
 [PRESSURE]
 residualTol = 1e-04
 
 [VELOCITY]
-solver = pcg+block
 boundaryTypeMap = wall
 viscosity = -19000
 density = 1.0
 residualTol = 1e-06
+
+[CASEDATA]
+Re_tau = 550
+zLength = 6

@@ -138,7 +138,7 @@ void csr_mat_print(csr_mat M, struct comm *c) {
   uint i, j, k;
 
   for (k = 0; k < c->np; k++) {
-    comm_barrier(c);
+    genmap_barrier(c);
     if (c->id == k) {
       for (i = 0; i < rn; i++) {
         for (j = offsets[i]; j < offsets[i + 1]; j++)

@@ -47,7 +47,6 @@ struct mesh_t
   void move();
   void update();
   void computeInvLMM();
-  void solve();
 
   int nAB;
   dfloat* coeffAB; // coefficients for AB integration
@@ -75,10 +74,6 @@ struct mesh_t
 
   dlong* elementInfo; //type of element
   occa::memory o_elementInfo;
-
-  // boundary faces
-  hlong NboundaryFaces; // number of boundary faces
-  hlong* boundaryInfo; // list of all boundary faces (type, vertex-1, vertex-2, vertex-3) in the mesh
 
   // MPI halo exchange info
   dlong totalHaloPairs;   // number of elements to be sent in halo exchange
@@ -210,6 +205,8 @@ struct mesh_t
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
+  occa::memory o_gllzw;
+
   occa::memory o_gllw;
   occa::memory o_cubw;
   occa::memory o_faceNodes;
@@ -222,9 +219,13 @@ struct mesh_t
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
+  occa::kernel velocityDirichletKernel;
 };
 
-occa::properties populateMeshProperties(mesh_t*);
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc);
+
+occa::properties meshKernelProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 
@@ -273,9 +274,6 @@ void meshHaloExchangeBlocking(mesh_t* mesh,
 
 // print out parallel partition i
 void meshPartitionStatistics(mesh_t* mesh);
-
-// build element-boundary connectivity
-void meshConnectBoundary(mesh_t* mesh);
 
 void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,

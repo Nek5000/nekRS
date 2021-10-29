@@ -3,7 +3,7 @@
 
 #include <genmap-impl.h>
 
-int genmap_init(genmap_handle *h_, comm_ext ce, parRSB_options *options) {
+int genmap_init(genmap_handle *h_, comm_ext ce, parrsb_options *options) {
   GenmapMalloc(1, h_);
   genmap_handle h = *h_;
 
@@ -57,6 +57,16 @@ int genmap_finalize(genmap_handle h) {
   GenmapFree(h);
 
   return 0;
+}
+
+void genmap_barrier(struct comm *c) {
+#if defined(GENMAP_SYNC_BY_REDUCTION)
+  sint dummy = c->id;
+  sint buf;
+  comm_allreduce(c, gs_int, gs_max, &dummy, 1, &buf);
+#else
+  comm_barrier(c);
+#endif
 }
 
 void *genmap_get_elements(genmap_handle h) {

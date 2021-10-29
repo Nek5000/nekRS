@@ -27,6 +27,7 @@ SOFTWARE.
 // slightly brittle
 #define p_maxNconn 64
 
+
 @kernel void gatherNodes(const int NuniqueBases,
 			@restrict const  int *  gatherStarts,
 			@restrict const  int *  gatherIds,
@@ -66,4 +67,3 @@ SOFTWARE.
     }
   }
 }
-

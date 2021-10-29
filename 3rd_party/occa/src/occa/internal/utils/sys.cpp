@@ -734,11 +734,18 @@ namespace occa {
         && io::isFile(outFilename)
       );
 
+      std::string compilerFlags;
+      if (env::var("OCCA_CC").size())
+        compilerFlags = env::var("OCCA_CFLAGS");
+      else
+        compilerFlags = env::var("OCCA_CXXFLAGS");
+
       // Avoid creating lockfile if possible
       if (!foundOutput) {
         io::lock_t lock(hash, "compiler");
         if (lock.isMine()) {
           ss << compiler
+             << ' '    << compilerFlags 
              << ' '    << srcFilename
              << " -o " << binaryFilename
              << " > " << buildLogFilename << " 2>&1";

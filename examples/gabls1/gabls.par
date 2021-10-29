@@ -6,22 +6,20 @@ stopAt = endTime
 endTime = 2600
 
 dt = 1.0e-2
+#dt = targetCFL=2 + max=5e-2
+
 timeStepper = tombo2
-extrapolation = subCycling
 subCyclingSteps = 1
 
 writeControl = runTime
 writeInterval = 100
 
-filtering = hpfrt
-filterWeight = 0.05/${dt}
-filterModes = 1
+regularization = hpfrt + nModes=1 + scalingCoeff=10
 
 [PRESSURE]
 residualTol = 1e-04
 
 [VELOCITY]
-solver = pcg+block
 boundaryTypeMap = wall, inlet
 residualTol = 1e-06
 density = 1.0
@@ -32,3 +30,28 @@ boundaryTypeMap = inlet, flux
 residualTol = 1e-06
 rhoCp = 1.0
 conductivity = -50e3
+
+[CASEDATA]
+#/* latitude north */
+nlat = 73.0
+#/* geostrophic wind speed [m/s] */
+uref = 8.0
+
+lref = 100.0
+#/* potential temperature */
+tref = 263.5
+#/* initial surface temperature */
+ts0  = 265.0
+#/* surface cooling rate [k/h] */
+scr = -0.25
+#/* inversion layer strength [k/m]*/
+ilstrength = 0.01
+
+number_elements_x = 16 
+number_elements_y = 16
+number_elements_z = 16
+xlen  = 4.0
+ylen  = 4.0
+zlen  = 4.0
+
+betam = 2.5

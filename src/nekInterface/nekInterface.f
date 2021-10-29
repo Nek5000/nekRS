@@ -21,8 +21,10 @@ c-----------------------------------------------------------------------
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
       elseif (id .eq. 'lelt') then 
+         llelt = lelt
          ptr = loc(llelt)
       elseif (id .eq. 'ldimt') then 
+         lldimt = ldimt            
          ptr = loc(lldimt)
       elseif (id .eq. 'nekcomm') then 
          ptr = loc(nekcomm)
@@ -134,29 +136,25 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setup(comm_in, globalcomm_in, path_in, session_in,
-     $                      ifflow_in, npscal_in, p32, meshp_in,
-     $                      rho, mue, rhoCp, lambda,
-     $                      ifneknekc_in,nsessions_in,idsess_in)
+      subroutine nekf_bootstrap(comm_in,path_in,session_in,mesh_in)
 
       include 'SIZE'
       include 'TOTAL'
       include 'DOMAIN'
       include 'NEKINTF'
 
-      integer comm_in, globalcomm_in
-      integer iftmsh_in, ifflow_in, meshp_in, p32
-      real rho, mue, rhoCp, lambda
+      integer comm_in
       character session_in*(*),path_in*(*)
-
-      common /rdump/ ntdump
+      character mesh_in*(*)
 
       real rtest
       integer itest
       integer*8 itest8
       character ctest
       logical ltest 
-      logical ifbswap
+
+      character*1  re2fle1(132)
+      equivalence  (RE2FLE,re2fle1)
 
       ! set word size for REAL
       wdsize = sizeof(rtest)
@@ -169,19 +167,37 @@ c-----------------------------------------------------------------------
       ! set word size for CHARACTER
       csize = sizeof(ctest)
 
-      llelt = lelt
-      lldimt = ldimt
-
-      call nekf_setupcomm(comm_in,globalcomm_in,path_in,session_in,
-     $                    ifneknekc_in,nsessions_in,idsess_in)
+      call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
-      etimes = dnekclock_sync()
       istep  = 0
-
       call initdim ! Initialize / set default values.
       call initdat
       call files
+
+      ls = ltrunc(PATH,132)
+      call chcopy(re2fle1(ls+1),mesh_in,len(mesh_in))
+      ls = ltrunc(PATH,132) + len(mesh_in)
+      call blank(re2fle1(ls+1),132-ls)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setup(ifflow_in,
+     $                      npscal_in, p32, mpart, contol,
+     $                      rho, mue, rhoCp, lambda) 
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+
+      integer iftmsh_in, ifflow_in, mpart, p32
+      real rho, mue, rhoCp, lambda, contol
+
+      common /rdump/ ntdump
+
+      etimes = dnekclock_sync()
 
       call read_re2_hdr(ifbswap, .true.)
 
@@ -197,7 +213,9 @@ c-----------------------------------------------------------------------
       param(27) = 1  ! torder 1 to save mem
       param(32) = p32 ! number of BC fields read from re2
       param(99) = -1 ! no dealiasing to save mem
-      meshPartitioner = meshp_in 
+
+      meshPartitioner = mpart 
+      connectivityTol = contol
 
       ifflow = .true.
       if(ifflow_in.eq.0) ifflow = .false.
@@ -461,7 +479,8 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'NEKINTF'
 
-      character*3 suffix
+      character suffix*(*)
+
       common /scrcg/ pm1(lx1,ly1,lz1,lelv)
 
       call copy(pm1,pr,nx1*ny1*nz1*nelv)
@@ -600,13 +619,13 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      integer function nekf_bcmap(bID, ifld)
+      integer function nekf_bcmap(bID, ifld, ismesh)
 
       include 'SIZE'
       include 'TOTAL'
       include 'NEKINTF'
 
-      integer bID, ifld
+      integer bID, ifld, ismesh
       character*3 c
 
       if (bID < 1) then ! not a boundary
@@ -622,6 +641,9 @@ c-----------------------------------------------------------------------
           ibc = 1
         else if (c.eq.'v  ') then 
           ibc = 2
+          if(ismesh.eq.1) then
+            ibc = 1
+          endif
         else if (c.eq.'o  ' .or. c.eq.'O  ') then 
           ibc = 3
         else if (c.eq.'SYX') then 
@@ -630,6 +652,8 @@ c-----------------------------------------------------------------------
           ibc = 5
          else if (c.eq.'SYZ') then 
           ibc = 6
+         else if (c.eq.'mv ') then 
+          ibc = 2
         endif
       else if(ifld.gt.1) then
         if (c.eq.'t  ') then 
@@ -747,7 +771,7 @@ c
       include 'TOTAL'
 
       integer bID, bcID
-      integer map(6)
+      integer map(7)
       integer ibc_bmap(lbid, ldimt1) 
 
       logical ifalg,ifnorx,ifnory,ifnorz
@@ -764,6 +788,7 @@ c
            cb = cbc(ifc,iel,1) 
            if(cb.eq.'W  ') map(1) = 1
            if(cb.eq.'v  ') map(2) = 1
+           if(cb.eq.'mv ') map(7) = 1
            if(cb.eq.'o  ' .or. cb.eq.'O  ') map(3) = 1
            if(cb.eq.'SYM') then
              call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
@@ -785,7 +810,7 @@ c
       endif
 
       bID = 1
-      do i = 1,6
+      do i = 1,7
         map(i) = iglmax(map(i),1)
         if(map(i).gt.0) then
           map(i) = bID
@@ -802,6 +827,8 @@ c
            boundaryID(ifc,iel) = map(1) 
          else if(cb.eq.'v  ') then
            boundaryID(ifc,iel) = map(2) 
+         else if(cb.eq.'mv ') then
+           boundaryID(ifc,iel) = map(7) 
          else if(cb.eq.'o  ' .or. cb.eq.'O  ') then
            boundaryID(ifc,iel) = map(3) 
          else if(cb.eq.'SYM') then
@@ -822,6 +849,7 @@ c
 
       if(map(1).gt.0) cbc_bmap(map(1), ifld) = 'W  '
       if(map(2).gt.0) cbc_bmap(map(2), ifld) = 'v  '
+      if(map(7).gt.0) cbc_bmap(map(7), ifld) = 'mv '
       if(map(3).gt.0) cbc_bmap(map(3), ifld) = 'o  '
       if(map(4).gt.0) cbc_bmap(map(4), ifld) = 'SYX'
       if(map(5).gt.0) cbc_bmap(map(5), ifld) = 'SYY'
@@ -856,7 +884,7 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
         enddo
         call err_chk(ierr, 'Invalid boundary condition type!$')
 
-        do bID = 1,6
+        do bID = 1,7
            bcID = iglmax(ibc_bmap(bID, ifld),1)
            if(bcID.eq.1) cbc_bmap(bID, ifld) = 't  ' 
            if(bcID.eq.2) cbc_bmap(bID, ifld) = 'I  ' 
@@ -930,7 +958,6 @@ c-----------------------------------------------------------------------
       pointer(ptr,i8)
 
       include 'SIZE'
-      include 'TOTAL'
       include 'NEKINTF'
      
       ptr = nrs_scptr(id)  

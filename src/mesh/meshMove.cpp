@@ -24,18 +24,14 @@ void mesh_t::move(){
 void mesh_t::update(){
     geometricFactorsKernel(
         Nelements,
-        1,
         o_D,
         o_gllw,
         o_x,
         o_y,
         o_z,
-        o_cubInterpT,
-        o_cubw,
         o_LMM,
         o_vgeo,
         o_ggeo,
-        o_cubvgeo,
         platform->o_mempool.slice0
     );
 
@@ -56,15 +52,9 @@ void mesh_t::update(){
     computeInvLMM();
     surfaceGeometricFactorsKernel(
         Nelements,
-        o_D,
         o_gllw,
         o_faceNodes,
-        o_x,
-        o_y,
-        o_z,
+        o_vgeo,
         o_sgeo
     );
-}
-void mesh_t::solve()
-{
 }

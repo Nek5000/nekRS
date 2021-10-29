@@ -66,8 +66,7 @@ struct cds_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* mapB[NSCALAR_MAX], * EToB[NSCALAR_MAX];
-  occa::memory o_mapB[NSCALAR_MAX];
+  int* EToB[NSCALAR_MAX];
   occa::memory o_EToB[NSCALAR_MAX];
 
   occa::memory* o_usrwrk;
@@ -77,8 +76,7 @@ struct cds_t
   dfloat* Ue;
   occa::memory o_Ue;
 
-  int var_coeff;
-  dfloat* prop, * ellipticCoeff;
+  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 

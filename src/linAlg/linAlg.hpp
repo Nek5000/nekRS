@@ -31,8 +31,6 @@ SOFTWARE.
 
 //#define ENABLE_TIMER
 
-using std::string;
-
 class linAlg_t {
 private:
   occa::properties kernelInfo;
@@ -46,7 +44,7 @@ private:
   occa::memory o_scratch;
 
   void setup();
-  void reallocScratch(const dlong Nbytes);
+  void reallocScratch(const size_t Nbytes);
 
   ~linAlg_t();
   linAlg_t();
@@ -133,6 +131,7 @@ public:
 
   // \sum o_a
   dfloat sum(const dlong N, occa::memory& o_a, MPI_Comm _comm, const dlong offset = 0);
+  dfloat sumMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
 
   // \min o_a
   dfloat min(const dlong N, occa::memory& o_a, MPI_Comm _comm);
@@ -141,12 +140,25 @@ public:
   dfloat max(const dlong N, occa::memory& o_a, MPI_Comm _comm);
 
   // ||o_a||_2
-  //dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
+
+  // ||o_a||_1
+  dfloat norm1(const dlong N, occa::memory& o_a, MPI_Comm _comm);
+  dfloat norm1Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
 
   // o_x.o_y
   dfloat innerProd(const dlong N, occa::memory& o_x, occa::memory& o_y,
                     MPI_Comm _comm, const dlong offset = 0);
 
+  // ||o_a||_w1
+  dfloat weightedNorm1(const dlong N, occa::memory& o_w, occa::memory& o_a,
+                       MPI_Comm _comm);
+  dfloat weightedNorm1Many(const dlong N,
+                           const dlong Nfields,
+                           const dlong fieldOffset,
+                           occa::memory& o_w, occa::memory& o_a,
+                           MPI_Comm _comm);
   // ||o_a||_w2
   dfloat weightedNorm2(const dlong N, occa::memory& o_w, occa::memory& o_a,
                        MPI_Comm _comm);
@@ -187,10 +199,16 @@ public:
   occa::kernel adyManyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
+  occa::kernel sumManyKernel;
   occa::kernel sumFieldKernel;
   occa::kernel minKernel;
   occa::kernel maxKernel;
   occa::kernel norm2Kernel;
+  occa::kernel norm2ManyKernel;
+  occa::kernel norm1Kernel;
+  occa::kernel norm1ManyKernel;
+  occa::kernel weightedNorm1Kernel;
+  occa::kernel weightedNorm1ManyKernel;
   occa::kernel weightedNorm2Kernel;
   occa::kernel weightedNorm2ManyKernel;
   occa::kernel innerProdKernel;

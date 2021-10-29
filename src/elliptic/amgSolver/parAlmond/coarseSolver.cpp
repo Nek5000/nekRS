@@ -33,7 +33,15 @@ SOFTWARE.
 #include "omp.h"
 #include "limits.h"
 #include "boomerAMG.h"
+#include "amgx.h"
 #include "platform.hpp"
+
+namespace {
+  static occa::kernel convertFP64ToFP32Kernel;
+  static occa::kernel convertFP32ToFP64Kernel;
+  static occa::memory o_rhsBuffer;
+  static occa::memory o_xBuffer;
+}
 
 namespace parAlmond {
 
@@ -63,30 +71,51 @@ void coarseSolver::setup(
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
 
-   if(options.compareArgs("BUILD ONLY", "TRUE"))
-    return; // bail early as this will not get used
-
   if(options.compareArgs("PARALMOND SMOOTH COARSEST", "TRUE"))
     return; // bail early as this will not get used
 
   if ((rank==0)&&(options.compareArgs("VERBOSE","TRUE")))
     printf("Setting up coarse solver...");fflush(stdout);
 
+  {
+    std::string kernelName = "convertFP64ToFP32";
+    convertFP64ToFP32Kernel = platform->kernels.getKernel(kernelName);
+
+    kernelName = "convertFP32ToFP64";
+    convertFP32ToFP64Kernel = platform->kernels.getKernel(kernelName);
+
+    kernelName = "vectorDotStar2";
+    vectorDotStarKernel2 = platform->kernels.getKernel(kernelName);
+  }
+
+
   if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
+    const int useFP32 = options.compareArgs("AMG SOLVER PRECISION", "FP32");
+    if(useFP32)
+    {
+      if(platform->comm.mpiRank == 0) printf("FP32 is not supported in BoomerAMG.\n");
+      MPI_Barrier(platform->comm.mpiComm);
+      ABORT(1);
+    }
+    if(options.compareArgs("AMG SOLVER LOCATION", "GPU")){
+      if(platform->comm.mpiRank == 0) printf("BoomerAMG only supports CPU!\n");
+      MPI_Barrier(platform->comm.mpiComm);
+      ABORT(1);
+    } 
     int Nthreads = 1;
  
     double settings[BOOMERAMG_NPARAM+1];
     settings[0]  = 1;    /* custom settings              */
     settings[1]  = 8;    /* coarsening                   */
     settings[2]  = 6;    /* interpolation                */
-    settings[3]  = 2;    /* number of cycles             */
+    settings[3]  = 1;    /* number of cycles             */
     settings[4]  = 16;   /* smoother for crs level       */
     settings[5]  = 3;    /* number of coarse sweeps      */
     settings[6]  = 16;   /* smoother                     */
     settings[7]  = 1;    /* number of sweeps             */
     settings[8]  = 0.25; /* strong threshold             */
-    settings[9]  = 0;    /* non galerkin tol             */
-    settings[10] = 1;    /* aggressive coarsening levels */
+    settings[9]  = 0.05; /* non galerkin tol             */
+    settings[10] = 0;    /* aggressive coarsening levels */
 
     options.getArgs("BOOMERAMG COARSEN TYPE", settings[1]);
     options.getArgs("BOOMERAMG INTERPOLATION TYPE", settings[2]);
@@ -95,6 +124,7 @@ void coarseSolver::setup(
     options.getArgs("BOOMERAMG ITERATIONS", settings[3]);
     options.getArgs("BOOMERAMG STRONG THRESHOLD", settings[8]);
     options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
+    options.getArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS" , settings[10]);
 
     boomerAMGSetup(Nrows,
                    nnz,
@@ -109,8 +139,52 @@ void coarseSolver::setup(
                    settings);
  
     N = (int) Nrows;
-    xLocal   = (dfloat*) calloc(N,sizeof(dfloat));
-    rhsLocal = (dfloat*) calloc(N,sizeof(dfloat));
+    h_xLocal   = platform->device.mallocHost(N*sizeof(dfloat));
+    h_rhsLocal = platform->device.mallocHost(N*sizeof(dfloat));
+    xLocal   = (dfloat*) h_xLocal.ptr();
+    rhsLocal = (dfloat*) h_rhsLocal.ptr();
+  }
+  else if (options.compareArgs("AMG SOLVER", "AMGX")){
+    const int useFP32 = options.compareArgs("AMG SOLVER PRECISION", "FP32");
+    if(platform->device.mode() != "CUDA") {
+      if(platform->comm.mpiRank == 0) printf("AmgX only supports CUDA!\n");
+      MPI_Barrier(platform->comm.mpiComm);
+      ABORT(1);
+    } 
+    if(options.compareArgs("AMG SOLVER LOCATION", "CPU")){
+      if(platform->comm.mpiRank == 0) printf("AmgX only supports GPU!\n");
+      MPI_Barrier(platform->comm.mpiComm);
+      ABORT(1);
+    } 
+    std::string configFile;
+    options.getArgs("AMGX CONFIG FILE", configFile);
+    char *cfg = NULL;
+    if(configFile.size()) cfg = (char*) configFile.c_str();
+    AMGXsetup(
+      Nrows,
+      nnz,
+      Ai,
+      Aj,
+      Avals,
+      (int) nullSpace,
+      comm,
+      platform->device.id(),
+      useFP32,
+      std::stoi(getenv("NEKRS_GPU_MPI")),
+      cfg);
+    N = (int) Nrows;
+    if(useFP32)
+    {
+      o_rhsBuffer = platform->device.malloc(N * sizeof(float));
+      o_xBuffer = platform->device.malloc(N * sizeof(float));
+    }
+  } else {
+    if(platform->comm.mpiRank == 0){
+      std::string amgSolver;
+      options.getArgs("AMG SOLVER", amgSolver);
+      printf("AMG SOLVER %s is not supported!\n", amgSolver.c_str());
+    }
+    ABORT(EXIT_FAILURE);
   }
 }
 
@@ -332,48 +406,70 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  platform->timer.hostTic("BoomerAMGSolve", 1);
   boomerAMGSolve(xLocal, rhsLocal);
-  platform->timer.hostToc("BoomerAMGSolve");
+}
+void coarseSolver::AmgXSolve(occa::memory o_rhs, occa::memory o_x) {
+  const int useFP32 = options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
+  if(useFP32){
+    convertFP64ToFP32Kernel(N, o_rhs, o_rhsBuffer);
+    AMGXsolve(o_xBuffer.ptr(), o_rhsBuffer.ptr());
+    convertFP32ToFP64Kernel(N, o_xBuffer, o_x);
+  } else {
+    AMGXsolve(o_x.ptr(), o_rhs.ptr());
+  }
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 
-  if (gatherLevel) {
-    //weight
-    vectorDotStar(ogs->N, 1.0, ogs->o_invDegree, o_rhs, 0.0, o_Sx);
-    ogsGather(o_Gx, o_Sx, ogsDfloat, ogsAdd, ogs);
-    if(N)
-      o_Gx.copyTo(rhsLocal, N*sizeof(dfloat), 0);
-  } else {
-    if(N)
-      o_rhs.copyTo(rhsLocal, N*sizeof(dfloat), 0);
+  platform->timer.tic("coarseSolve", 1);
+  if(useSEMFEM){
+    semfemSolver(o_rhs, o_x);
   }
+  else {
+    const bool useDevice = options.compareArgs("AMG SOLVER", "AMGX");
+    if (gatherLevel) {
+      //weight
+      vectorDotStar(ogs->N, 1.0, ogs->o_invDegree, o_rhs, 0.0, o_Sx);
+      ogsGather(o_Gx, o_Sx, ogsDfloat, ogsAdd, ogs);
+      if(N && !useDevice)
+        o_Gx.copyTo(rhsLocal, N*sizeof(dfloat), 0);
+    } else {
+      if(N && !useDevice)
+        o_rhs.copyTo(rhsLocal, N*sizeof(dfloat), 0);
+    }
 
-  if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
-    BoomerAMGSolve(); 
-  } else {
-    //gather the full vector
-    MPI_Allgatherv(rhsLocal,             N,                MPI_DFLOAT,
-                   rhsCoarse, coarseCounts, coarseOffsets, MPI_DFLOAT, comm);
+    if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
+      BoomerAMGSolve(); 
+    } else if (options.compareArgs("AMG SOLVER", "AMGX")){
+      occa::memory o_b = gatherLevel ? o_Gx : o_rhs;
+      AmgXSolve(o_b, o_x);
+    } else {
+      //gather the full vector
+      MPI_Allgatherv(rhsLocal,             N,                MPI_DFLOAT,
+                     rhsCoarse, coarseCounts, coarseOffsets, MPI_DFLOAT, comm);
 
-    //multiply by local part of the exact matrix inverse
-    // #pragma omp parallel for
-    for (int n=0;n<N;n++) {
-      xLocal[n] = 0.;
-      for (int m=0;m<coarseTotal;m++) {
-        xLocal[n] += invCoarseA[n*coarseTotal+m]*rhsCoarse[m];
+      //multiply by local part of the exact matrix inverse
+      // #pragma omp parallel for
+      for (int n=0;n<N;n++) {
+        xLocal[n] = 0.;
+        for (int m=0;m<coarseTotal;m++) {
+          xLocal[n] += invCoarseA[n*coarseTotal+m]*rhsCoarse[m];
+        }
       }
     }
-  }
 
-  if (gatherLevel) {
-    if(N)
-      o_Gx.copyFrom(xLocal, N*sizeof(dfloat), 0);
-    ogsScatter(o_x, o_Gx, ogsDfloat, ogsAdd, ogs);
-  } else {
-    if(N)
-      o_x.copyFrom(xLocal, N*sizeof(dfloat), 0);
+    if (gatherLevel) {
+      if(N && !useDevice)
+        o_Gx.copyFrom(xLocal, N*sizeof(dfloat));
+      if(N && useDevice)
+        o_Gx.copyFrom(o_x, N*sizeof(dfloat));
+      ogsScatter(o_x, o_Gx, ogsDfloat, ogsAdd, ogs);
+    } else {
+      if(N && !useDevice)
+        o_x.copyFrom(xLocal, N*sizeof(dfloat), 0);
+    }
   }
+  platform->timer.toc("coarseSolve");
+
 }
 
 } //namespace parAlmond

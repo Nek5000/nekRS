@@ -12,7 +12,7 @@
 namespace avm {
 
 
-static occa::kernel evaluateShockSensorKernel;
+static occa::kernel relativeMassHighestModeKernel;
 static occa::kernel computeMaxViscKernel;
 static occa::kernel interpolateP1Kernel;
 
@@ -21,6 +21,8 @@ static occa::memory o_r;
 static occa::memory o_s;
 static occa::memory o_t;
 static occa::memory o_diffOld; // diffusion from initial state
+static double cachedDt = -1.0;
+static bool recomputeUrst = false;
 namespace
 {
 
@@ -37,28 +39,29 @@ void allocateMemory(cds_t* cds)
 void compileKernels(cds_t* cds)
 {
   mesh_t* mesh = cds->mesh[0];
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/cds/regularization/";
-  std::string filename = oklpath + "evaluateShockSensor.okl";
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = installDir + "/okl/cds/regularization/";
+  std::string fileName, kernelName;
+  const std::string extension = ".okl";
   occa::properties info = platform->kernelInfo;
   info["defines/" "p_Nq"] = cds->mesh[0]->Nq;
   info["defines/" "p_Np"] = cds->mesh[0]->Np;
-  evaluateShockSensorKernel =
-    platform->device.buildKernel(filename,
-                             "evaluateShockSensor",
-                             info);
 
-  filename = oklpath + "computeMaxVisc.okl";
+  kernelName = "relativeMassHighestMode";
+  fileName = oklpath + kernelName + extension;
+  relativeMassHighestModeKernel =
+    platform->device.buildKernel(fileName, info);
+
+  kernelName = "computeMaxVisc";
+  fileName = oklpath + kernelName + extension;
   computeMaxViscKernel =
-    platform->device.buildKernel(filename,
-                             "computeMaxVisc",
-                             info);
-  filename = oklpath + "interpolateP1.okl";
+    platform->device.buildKernel(fileName, info);
+
+  kernelName = "interpolateP1";
+  fileName = oklpath + kernelName + extension;
   interpolateP1Kernel =
-    platform->device.buildKernel(filename,
-      "interpolateP1",
-      info);
+    platform->device.buildKernel(fileName, info);
 }
 
 }
@@ -68,36 +71,109 @@ void setup(cds_t* cds)
   compileKernels(cds);
 }
 
-occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory o_S)
+occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, occa::memory o_S)
 {
+  cds_t* cds = nrs->cds;
+
+  const dfloat TOL = 1e-10;
+  if(std::abs(cachedDt - time) > TOL)
+    recomputeUrst = true;
+  
+  cachedDt = time;
+  
   mesh_t* mesh = cds->mesh[scalarIndex];
   int Nblock = (cds->mesh[scalarIndex]->Nlocal+BLOCKSIZE-1)/BLOCKSIZE;
 
-  occa::memory& o_logShockSensor = platform->o_mempool.slice0;
+  occa::memory& o_logRelativeMassHighestMode = platform->o_mempool.slice0;
+  occa::memory& o_filteredField = platform->o_mempool.slice1;
+  occa::memory& o_hpfResidual = platform->o_mempool.slice2;
+  occa::memory& o_aliasedUrst = platform->o_mempool.slice6;
 
   // artificial viscosity magnitude
-  occa::memory o_epsilon = platform->o_mempool.slice1;
+  occa::memory o_epsilon = platform->o_mempool.slice5;
   platform->linAlg->fill(cds->fieldOffset[scalarIndex], 0.0, o_epsilon);
 
   const dfloat p = mesh->N;
   
-  evaluateShockSensorKernel(
+  relativeMassHighestModeKernel(
     mesh->Nelements,
     scalarIndex,
     cds->fieldOffsetScan[scalarIndex],
     cds->o_filterMT,
     mesh->o_LMM,
     o_S,
-    o_logShockSensor
+    o_filteredField,
+    o_logRelativeMassHighestMode
   );
+
+  const bool useHPFResidual = cds->options[scalarIndex].compareArgs("REGULARIZATION METHOD", "HPF_RESIDUAL");
+
+  dfloat Uinf = 1.0;
+  if(useHPFResidual){
+
+    occa::memory o_rhoField = cds->o_rho + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
+    
+    if(recomputeUrst){
+      nrs->UrstKernel(
+        cds->meshV->Nelements,
+        cds->meshV->o_vgeo,
+        nrs->fieldOffset,
+        nrs->o_U,
+        cds->meshV->o_U,
+        o_aliasedUrst
+      );
+      recomputeUrst = false;
+    }
+
+    cds->advectionStrongVolumeKernel(
+      cds->meshV->Nelements,
+      cds->meshV->o_vgeo,
+      mesh->o_D,
+      cds->vFieldOffset,
+      0,
+      o_filteredField,
+      o_aliasedUrst,
+      o_rhoField,
+      o_hpfResidual);
+    
+    occa::memory o_S_field = o_S + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
+    
+    const dfloat Uavg = platform->linAlg->weightedNorm2(
+      mesh->Nlocal,
+      mesh->o_LMM,
+      o_S_field,
+      platform->comm.mpiComm
+    ) / sqrt(mesh->volume);
+
+    platform->linAlg->fill(mesh->Nlocal,
+      Uavg,
+      o_filteredField);
+
+    platform->linAlg->axpby(
+      mesh->Nlocal,
+      -1.0,
+      o_S_field,
+      1.0,
+      o_filteredField
+    );
+
+    if(Uavg > 0.0){
+      Uinf = platform->linAlg->max(mesh->Nlocal, o_filteredField, platform->comm.mpiComm);
+    }
+    Uinf = 1.0 / Uinf;
+  }
 
   const dfloat logReferenceSensor = -4.0 * log10(p);
 
   dfloat coeff = 0.5;
-  cds->options[scalarIndex].getArgs("VISMAX COEFF", coeff);
+  cds->options[scalarIndex].getArgs("REGULARIZATION VISMAX COEFF", coeff);
 
   dfloat rampParameter = 1.0;
-  cds->options[scalarIndex].getArgs("RAMP CONSTANT", rampParameter);
+  cds->options[scalarIndex].getArgs("REGULARIZATION RAMP CONSTANT", rampParameter);
+
+
+  dfloat scalingCoeff = 1.0;
+  cds->options[scalarIndex].getArgs("REGULARIZATION SCALING COEFF", scalingCoeff);
 
   computeMaxViscKernel(
     mesh->Nelements,
@@ -105,15 +181,19 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
     logReferenceSensor,
     rampParameter,
     coeff,
+    scalingCoeff,
+    Uinf,
+    useHPFResidual,
     mesh->o_x,
     mesh->o_y,
     mesh->o_z,
     cds->o_U,
-    o_logShockSensor,
+    o_hpfResidual,
+    o_logRelativeMassHighestMode,
     o_epsilon // max(|df/du|) <- max visc
   );
 
-  const bool makeCont = cds->options[scalarIndex].compareArgs("AVM C0", "TRUE");
+  const bool makeCont = cds->options[scalarIndex].compareArgs("REGULARIZATION AVM C0", "TRUE");
   if(makeCont){
     oogs_t* gsh;
     if(scalarIndex){
@@ -136,8 +216,9 @@ occa::memory computeEps(cds_t* cds, const dfloat time, const dlong scalarIndex, 
 
 }
 
-void apply(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory o_S)
+void apply(nrs_t* nrs, const dfloat time, const dlong scalarIndex, occa::memory o_S)
 {
+  cds_t* cds = nrs->cds;
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   mesh_t* mesh = cds->mesh[scalarIndex];
   const dlong scalarOffset = cds->fieldOffsetScan[scalarIndex];
@@ -149,7 +230,7 @@ void apply(cds_t* cds, const dfloat time, const dlong scalarIndex, occa::memory 
       cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat)
     );
   }
-  occa::memory o_eps = computeEps(cds, time, scalarIndex, o_S);
+  occa::memory o_eps = computeEps(nrs, time, scalarIndex, o_S);
   if(verbose && platform->comm.mpiRank == 0){
     const dfloat maxEps = platform->linAlg->max(
       mesh->Nlocal,

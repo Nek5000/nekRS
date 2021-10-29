@@ -210,6 +210,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->ggeo[mesh->Nggeo * mesh->Np * e + n + mesh->Np * GWJID] = JW;
         }
 
+#if 0
     interpolateHex3D(mesh->cubInterp, xre, mesh->Nq, cubxre, mesh->cubNq);
     interpolateHex3D(mesh->cubInterp, xse, mesh->Nq, cubxse, mesh->cubNq);
     interpolateHex3D(mesh->cubInterp, xte, mesh->Nq, cubxte, mesh->cubNq);
@@ -269,6 +270,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->cubvgeo[base + mesh->cubNp * JWID] = JW;
           mesh->cubvgeo[base + mesh->cubNp * IJWID] = 1. / JW;
         }
+#endif
   }
 
   {
@@ -284,9 +286,9 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
 
     if(globalMinJ < 0 || globalMaxJ < 0) {
       if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
-	(platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
+	    (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
         if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
-        ABORT(EXIT_FAILURE);
+        EXIT_AND_FINALIZE(EXIT_FAILURE);
       }
     }  
 

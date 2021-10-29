@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 21.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 21.2.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
@@ -9,7 +9,9 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
-set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+include(config/utils.cmake)
+
+#set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(FETCHCONTENT_QUIET on)
@@ -42,8 +44,6 @@ set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=nati
 set(OCCA_CUDA_COMPILER_FLAGS "-O3 --fmad=true" CACHE STRING "CUDA flags for OCCA JIT compile")
 set(OCCA_HIP_COMPILER_FLAGS "-O3 -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
 set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
-set(GPU_MPI "0" CACHE STRING "GPU aware MPI")
-set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
 
 # From OCCA's CMakeLists. All default to ON, but are verified in config tests
 #   - ENABLE_OPENMP
@@ -53,7 +53,9 @@ set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
 #   - ENABLE_METAL
 #   - ENABLE_MPI
 
+set(ENABLE_METAL OFF CACHE BOOL "Enable OCCA Metal support")
 set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
+set(GPU_MPI "0" CACHE STRING "GPU aware MPI")
 
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
@@ -194,28 +196,37 @@ set(SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/utils.cpp
+    src/core/utils/inipp.cpp
     src/core/utils/mysort.cpp
     src/core/utils/parallelSort.cpp
     src/core/utils/tinyexpr.c
     src/core/setupAide.cpp
+    src/core/printHeader.cpp
     src/core/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
     src/core/bcMap.cpp
+    src/core/compileKernels.cpp
     src/core/setup.cpp
+    src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp
+    src/lns/constantFlowRate.cpp
     src/cds/cds.cpp
+    src/cds/registerCdsKernels.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/kernelRequestManager.cpp
+    src/core/device.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp
     src/linAlg/matrixInverse.cpp
     src/linAlg/matrixEig.cpp
     src/linAlg/matrixTranspose.cpp
     src/linAlg/matrixRightSolve.cpp
+    src/linAlg/registerLinAlgKernels.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
@@ -223,6 +234,7 @@ set(SRC
     src/plugins/interp.cpp
     src/neknek/neknek.cpp
     src/udf/udf.cpp
+    src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     src/ogsFindpts/ogsFindpts.cpp
     src/ogsFindpts/ogs_findpts_local.cpp
@@ -238,7 +250,7 @@ set(SRC
 )
 
 set_property(
-   SOURCE src/lib/nekrs.cpp 
+   SOURCE src/core/printHeader.cpp 
    APPEND PROPERTY COMPILE_DEFINITIONS
    GITCOMMITHASH="${GIT_COMMIT_HASH}"
    NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
@@ -297,11 +309,66 @@ endif()
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-bin nekrs-lib)
+target_link_libraries(nekrs-bin PRIVATE nekrs-lib)
+
+add_executable(axhelm-bin src/bench/axHelm/main.cpp)
+set_target_properties(axhelm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-axhelm)
+target_link_libraries(axhelm-bin PRIVATE nekrs-lib)
+
+add_executable(advsub-bin src/bench/advsub/main.cpp)
+set_target_properties(advsub-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-advsub)
+target_link_libraries(advsub-bin PRIVATE nekrs-lib)
+
+add_executable(fdm-bin src/bench/fdm/main.cpp)
+set_target_properties(fdm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-fdm)
+target_link_libraries(fdm-bin PRIVATE nekrs-lib)
+
+if(ENABLE_CUDA)
+  set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
+elseif(ENABLE_HIP)
+  set(BACKEND_DEFAULT "HIP" CACHE STRING "Default occa mode")
+else()
+  set(BACKEND_DEFAULT "SERIAL" CACHE STRING "Default occa mode")
+endif() 
+
+#################################################################################
+### Install                                                                     #
+#################################################################################
+
+# Generate nekrs.conf
+__MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
+
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
+  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
+  @ONLY)
+
+#install nekRS
+install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+
+# Trailing slash prevents parent directory from being copied
+install(DIRECTORY scripts/ DESTINATION bin
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.hpp$")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
+install(FILES src/udf/CMakeLists.txt DESTINATION udf)
+install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
+
+# Examples will follow a different policy -- only copy if source tree is newer than install tree
+file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
+install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
+
+install(FILES src/core/parHelp.txt DESTINATION include)
 
 message(NOTICE "")
-message(NOTICE "------------ Summary ------------")
-message(NOTICE "Installation directory: ${CMAKE_CURRENT_SOURCE_DIR}") 
+message(NOTICE "----------------- Summary -----------------")
+message(NOTICE "Installation directory: ${CMAKE_INSTALL_PREFIX}") 
 message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
 message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
 message(NOTICE "Fortran compiler: ${CMAKE_Fortran_COMPILER}")
@@ -321,41 +388,7 @@ if(GPU_MPI)
 else(GPU_MPI)
   message(NOTICE "GPU aware MPI support disabled!")
 endif()
-message(NOTICE "")
-
-###############################################################################
-# Generate nekrs.conf                                                       #
-###############################################################################
-
-configure_file(
-  ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
-  ${CMAKE_INSTALL_PREFIX}/nekrs.conf
-  @ONLY)
-
-#################################################################################
-### Install                                                                     #
-#################################################################################
-
-#install nekRS
-install(TARGETS nekrs-lib nekrs-bin
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
-
-# Trailing slash prevents parent directory from being copied
-install(DIRECTORY scripts/ DESTINATION bin
-  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.hpp$")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
-install(FILES src/udf/CMakeLists.txt DESTINATION udf)
-install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
-
-# Examples will follow a different policy -- only copy if source tree is newer than install tree
-file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
-configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
-install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
+message(NOTICE "-------------------------------------------")
 
 #################################################################################
 # Uninstall

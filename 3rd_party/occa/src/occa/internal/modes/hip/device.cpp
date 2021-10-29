@@ -303,6 +303,8 @@ namespace occa {
 
       const int compileError = system(sCommand.c_str());
 
+      io::sync(binaryFilename);
+
       lock.release();
       if (compileError) {
         OCCA_FORCE_ERROR("Error compiling [" << kernelName << "],"
@@ -345,7 +347,7 @@ namespace occa {
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(
-        kernelName,
+        kernelName + kernelProps.get<std::string>("kernelNameSuffix", ""),
         deviceMetadata
       );
 

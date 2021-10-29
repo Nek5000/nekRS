@@ -7,6 +7,7 @@
 
 #include "boomerAMG.h"
 
+static int _Nthreads = 1;
 static double boomerAMGParam[BOOMERAMG_NPARAM];
 
 #ifdef HYPRE
@@ -49,7 +50,7 @@ int boomerAMGSetup(int nrows,
 
   if(sizeof(HYPRE_Real) != ((useFP32) ? sizeof(float) : sizeof(double))) {
     if(rank == 0) printf("HYPRE has not been built to support FP32.\n");
-    MPI_Abort(MPI_COMM_WORLD, 1);
+    MPI_Abort(ce, 1);
   } 
 
   long long rowStart = nrows;
@@ -159,7 +160,6 @@ int boomerAMGSetup(int nrows,
   HYPRE_ParCSRMatrix par_A;
   HYPRE_IJMatrixGetObject(data->A,(void**) &par_A);
 
-  int _Nthreads = 1;
   #pragma omp parallel
   {
     int tid = omp_get_thread_num();
@@ -180,10 +180,9 @@ int boomerAMGSetup(int nrows,
 
 int boomerAMGSolve(void *x, void *b)
 {
-  int i; 
   int err;
 
-  const HYPRE_Real *xx = (HYPRE_Real*) x; 
+  HYPRE_Real *xx = (HYPRE_Real*) x; 
   const HYPRE_Real *bb = (HYPRE_Real*) b; 
 
   HYPRE_ParVector par_x;
@@ -199,14 +198,8 @@ int boomerAMGSolve(void *x, void *b)
 
   HYPRE_IJMatrixGetObject(data->A,(void**) &par_A);
 
-  int _Nthreads = 1;
-  #pragma omp parallel
-  {
-    int tid = omp_get_thread_num();
-    if(tid==0) _Nthreads = omp_get_num_threads();
-  }
   omp_set_num_threads(data->Nthreads);
-  HYPRE_BoomerAMGSolve(data->solver,par_A,par_b,par_x);
+  err = HYPRE_BoomerAMGSolve(data->solver,par_A,par_b,par_x);
   if(err > 0) { 
     int rank;
     MPI_Comm_rank(data->comm,&rank);
@@ -215,7 +208,7 @@ int boomerAMGSolve(void *x, void *b)
   }
   omp_set_num_threads(_Nthreads);
 
-  HYPRE_IJVectorGetValues(data->x,data->nRows,data->ii,(HYPRE_Real*)xx);
+  HYPRE_IJVectorGetValues(data->x,data->nRows,data->ii,xx);
 
   return 0; 
 }
@@ -242,22 +235,22 @@ int boomerAMGSetup(int nrows,
                   const double *param)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
   return 1;
 }
 int boomerAMGSolve(void *x, void *b)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
   return 1;
 }
 void boomerAMGFree()
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_rank(ce,&rank);
   if(rank == 0) printf("ERROR: Recompile with HYPRE support!\n");
-  MPI_Abort(MPI_COMM_WORLD, 1);
+  MPI_Abort(ce, 1);
 }
 #endif

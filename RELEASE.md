@@ -1,20 +1,60 @@
-# Release v21.1.0
+# Release v21.2
 
 ## What is new? 
 
-* Flexible GMRES for pressure 
+* Multi-session (uncoupled) support
+* Fix various potential race conditions 
+* Fix `mcmodel` issue on ppc 
+* Fix Dirichlet handling in Jacobi smoother
+* Fix minor performance regression in pressure solve
+
+## Known Bugs / Restrictions
+
+* [383](https://github.com/Nek5000/nekRS/issues/383)
+* [300](https://github.com/Nek5000/nekRS/issues/300)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
+* [201](https://github.com/Nek5000/nekRS/issues/201)
+
+# Release v21.1
+
+## What is new? 
+
+* Flexible GMRES
+* Constant flow rate
+* Time step controller for targetCFL
+* Improved runtime statistics
+* Support for ROCm version > v4.0
+* AVM for scalars
+* FEMSEM preconditioner
+* Update file (nekrs.upd) for runtime modifications
+* Validate key/value input in par
 * Various bug fixes 
 
-## What you may have to change to be compatible 
+## Good to know 
+* [par] `preconditioner = multigrid` was replaced by `preconditioner = multigrid+coarse`
+* [par] Only valid `key/value` pairs will be accepted 
+* [par] Default smootherType is `ASM+Chebyshev+degree=2` (instead of degree=1)
+* [fld] Only first checkpoint will contain mesh coordinates 
+* GMRES is now the default linear solver for pressure (higher memory usage)
 
-## Known Bugs 
+## Breaking Changes 
 
+* [udf] Use std namespace qualifier e.g. `std::cout` instead of `cout`
+* [udf] Rename `UDF_LoadKernels(nrs_t *nrs)` => `UDF_LoadKernels(occa::properties& kernelInfo)`
+* [udf] Replace argument `nrs_t *nrs` by `occa::properties& kernelInfo` in `udfBuildKernel()`, `(plugin)::buildKernel()`
+* [udf] `UDF_LoadKernels(occa::properties& kernelInfo)` is no longer optional
+* Code crashes (Segmentation fault: invalid permissions) if MPI installation is not GPU aware unless you specify `NEKRS_GPU_MPI=0` in `$NEKRS_HOME/nekrs.conf`
+
+## Known Bugs / Restrictions
+
+* [383](https://github.com/Nek5000/nekRS/issues/383)
+* [300](https://github.com/Nek5000/nekRS/issues/300)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)
-* [199](https://github.com/Nek5000/nekRS/issues/199)
-* [166](https://github.com/Nek5000/nekRS/issues/166)
-* [2](https://github.com/Nek5000/nekRS/issues/2)
 
 ## Thanks to our Contributors
+
+@RonRahaman, @aprilnovak, @yslan
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

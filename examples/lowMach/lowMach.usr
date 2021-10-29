@@ -1,13 +1,12 @@
 C Linearized Model problem described in Ananias G. Tomboulides et. al
 C JCP 146, CP986079, 1998
 
-#include "casedata.h"
-
 c-----------------------------------------------------------------------
       SUBROUTINE USERCHK
 
       INCLUDE 'SIZE'
       INCLUDE 'TOTAL'
+      INCLUDE 'CASEDATA'
 
       COMMON /SCRNS/ pre    (LX1,LY1,LZ1,LELT)
      $              ,T_err  (LX1,LY1,LZ1,LELT)
@@ -98,6 +97,7 @@ C   Set initial conditions
       INCLUDE 'SIZE'
       INCLUDE 'TSTEP'
       INCLUDE 'NEKUSE'
+      INCLUDE 'CASEDATA'
 
       real xd
 
@@ -120,8 +120,15 @@ C-----------------------------------------------------------------------
       subroutine usrdat2
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
+      
+      common /scnrs/ sc_nrs(10)
+      real               sc_nrs
 
       logical ifaln,ifnorx,ifnory,ifnorz
+
+      P_DELTA = sc_nrs(1)
+      P_GAMMA = sc_nrs(2)
 
       call rescale_x(xm1,-1.0,1.0)
       call rescale_x(ym1, 0.0,1.0)

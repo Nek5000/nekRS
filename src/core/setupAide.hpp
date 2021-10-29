@@ -38,47 +38,34 @@ SOFTWARE.
 #include <sys/stat.h>
 
 #include "nrssys.hpp"
-
-using std::stringstream;
-using std::fstream;
-using std::string;
-using std::vector;
-using std::cout;
-using std::endl;
-
+#include <map>
 
 class setupAide {
 private:
-  vector<string> data;
-  vector<string> keyword;
+  std::map<std::string, std::string> keyWordToDataMap;
 
 public:
-  setupAide();
-  setupAide(string);
+  setupAide(){};
+  ~setupAide() = default;
 
-  setupAide(const setupAide&);
-  setupAide& operator=(const setupAide&);
+  setupAide(const setupAide&) = default;
+  setupAide& operator=(const setupAide&) = default;
 
-  string readFile(string);
-  void read(string);
+  std::string getArgs(std::string) const;
 
-  string getArgs(string);
+  void removeArgs(std::string key);
 
-  void setArgs(string key, string value);
-
-  template <class T>
-  int getArgs(string, T&);
+  void setArgs(std::string key, std::string value);
 
   template <class T>
-  int getArgs(string, vector<T>&);
+  int getArgs(std::string, T&) const;
 
-  int getArgs(string, vector<string>&, string);
+  template <class T>
+  int getArgs(std::string, std::vector<T>&) const;
 
+  int getArgs(std::string, std::vector<std::string>&, std::string) const;
 
-  int compareArgs(string key, string token);
-
-  vector<string> &getData(){ return data; }
-  vector<string> &getKeyword() { return keyword; }
+  int compareArgs(std::string key, std::string token) const;
 
   friend std::ostream & operator << (std::ostream &out, const setupAide &aide);  
 };

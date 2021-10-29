@@ -83,13 +83,12 @@ if [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$PPLIST" == "?" ]; then
   echo ""
   echo "PPLIST config options:" 
   echo "  NOMPIIO       disable MPI-IO"
-  echo "  BGQ           use BGQ optimized mxm"
   echo "  XSMM          use libxsmm for mxm"
   echo "  CVODE         enable CVODE support"
   echo "  HYPRE         enable HYPRE support"
   echo "  VENDOR_BLAS   use VENDOR BLAS/LAPACK"
   echo "  DPROCMAP      use distributed processor mapping"
-  echo "  PARRSB        use online RSB partitioner (experimental)"
+  echo "  PARRSB        use online RSB partitioner"
   return 11
 fi
 
@@ -295,7 +294,6 @@ fi
 PPLIST="${PPLIST}"
 
 # add user defined preprocessor symbols
-CMT=0
 MPIIO=1
 DPROCMAP=0
 PARRSB=0
@@ -307,9 +305,6 @@ VENDOR_BLAS=0
 
 for i in $PPLIST
 do
-   if [ "$i" == "CMTNEK" ]; then
-     CMT=1
-   fi
    if [ "$i" == "NOMPIIO" ]; then
      MPIIO=0
    fi
@@ -318,8 +313,7 @@ do
    fi
    if [ "$i" == "PARRSB" ]; then
      PARRSB=1
-     PARRSB_OPT=" DESTDIR=.. UNDERSCORE=$UNDERSCORE MPI=$MPI BLAS=1"
-     PARRSB_OPT+=" BLASLIBPATH=${SOURCE_ROOT_BLAS}" 
+     PARRSB_OPT=" DESTDIR=.. UNDERSCORE=$UNDERSCORE MPI=$MPI BLAS=0"
      PARRSB_OPT+=" GSLIBPATH=${SOURCE_ROOT_GSLIB}"
      USR_LFLAGS+=" -L${SOURCE_ROOT_PARRSB}/lib -lparRSB"
      PARRSB_INC="${SOURCE_ROOT_PARRSB}/include"
@@ -344,9 +338,6 @@ do
      USR_LFLAGS+=" -L$SOURCE_ROOT_HYPRE/lib -lHYPRE"
      HYPRE_INC="$SOURCE_ROOT_HYPRE/include"
    fi
-   if [ "$i" == "BGQ" ]; then
-     MXM_USER+=" mxm_bgq.o" 
-   fi
    if [ "$i" == "VENDOR_BLAS" ]; then
      VENDOR_BLAS=1
    fi
@@ -354,6 +345,8 @@ done
 
 if [ $VENDOR_BLAS -ne 1 ]; then
   USR_LFLAGS+=" -L$SOURCE_ROOT_BLAS -lblasLapack"
+  PARRSB_OPT+=" BLASDIR=${SOURCE_ROOT_BLAS}"
+  PARRSB_OPT+=" BLASFLAGS=-lblasLapack"
 fi
 
 # gslib build options
@@ -363,14 +356,6 @@ GSLIB_OPT+=" ADDUS=$UNDERSCORE USREXIT=0 BLAS=2"
 GSLIB_IFLAGS=" -I$SOURCE_ROOT_GSLIB/include"
 USR_LFLAGS+=" -L$SOURCE_ROOT_GSLIB/lib -lgs"
 
-if ! which openssl >/dev/null; then
-  echo "FATAL ERROR: Cannot find openssl!"
-  return 11
-fi
-if ! which wget >/dev/null; then
-  echo "FATAL ERROR: Cannot find wget!"
-  return 11
-fi
 if ! which tar >/dev/null; then
   echo "FATAL ERROR: Cannot find tar!"
   return 11
@@ -421,12 +406,16 @@ if [ ! -f ${CASENAME}'.usr' ]; then
    return 11
 fi
 
+: ${INCLUDES:=""}
+OPT_INCDIR="./ ${INCLUDES}"
+
 printf "generating makefile ... "
 rm -rf makefile 2>/dev/null
 
 sed -e "s:^FC[ ]*=.*:FC=$FC:" \
 -e "s:^CC[ ]*=.*:CC=$CC:" \
 -e "s:^LD[ ]*=.*:LD=$LD:" \
+-e "s:^OPT_INCDIR[ ]*=.*:OPT_INCDIR=$OPT_INCDIR:" \
 -e "s:^FFLAGS[ ]*+=.*:FFLAGS+=$FCPP $FR8 $FF77 $FFLAGS:" \
 -e "s:^CFLAGS[ ]*+=.*:CFLAGS+=$CFLAGS:" \
 -e "s:^LDFLAGS[ ]*+=.*:LDFLAGS+=$LDFLAGS:" \
@@ -436,13 +425,11 @@ sed -e "s:^FC[ ]*=.*:FC=$FC:" \
 -e "s:^BLAS[ ]*=.*:BLAS=$BLAS:" \
 -e "s/^MPI[ ]*=.*/MPI=$MPI/" \
 -e "s/^CVODE[ ]*=.*/CVODE=$CVODE/" \
--e "s/^CMT[ ]*=.*/CMT=$CMT/" \
 -e "s:^GSLIB_IFLAGS[ ]*=.*:GSLIB_IFLAGS\:=${GSLIB_IFLAGS}:" \
 -e "s/^DPROCMAP[ ]*=.*/DPROCMAP=${DPROCMAP}/" \
 -e "s/^VISIT[ ]*=.*/VISIT=${VISIT}/" \
 -e "s:^USR[ ]*=.*:USR=$USR:" \
 -e "s:^USR_LFLAGS[ ]*=.*:USR_LFLAGS=$USR_LFLAGS:" \
--e "s:^SCMT[ ]*=.*:SCMT=${NEK_SOURCE_ROOT}/core/cmt:" \
 -e "s:^S[ ]*=.*:S=${NEK_SOURCE_ROOT}:" \
 $NEK_SOURCE_ROOT/core/makefile.template >.makefile
 
@@ -604,15 +591,6 @@ if ! cat SIZE | grep -q 'SIZE.inc' ; then
      echo >>SIZE
      echo 'c automatically added by makenek' >>SIZE
      echo '      common/IOFLAG/nio  ! for logfile verbosity control' >> SIZE
-  fi
-
-  if ! cat SIZE | grep -qi 'toteq' ; then
-  if [ $CMT -ne 0 ]; then
-      echo >>SIZE
-      echo 'c automatically added by makenek' >>SIZE
-      echo '      integer toteq' >> SIZE
-      echo '      parameter(toteq = 5  ) ! Number of conserved variables '  >>SIZE
-  fi
   fi
 fi
 

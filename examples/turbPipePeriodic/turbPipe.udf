@@ -3,7 +3,11 @@
 //
 #include <math.h>
 #include "udf.hpp"
-#include "casedata.h"
+
+static dfloat Re_tau;
+static dfloat zLength;
+
+#include "ci.inc"
 
 /* User Functions */
 
@@ -14,25 +18,57 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho/mue; 
-  const dfloat DPDZ = 4 * (2*RE_TAU/RE_B)*(2*RE_TAU/RE_B);
+  const dfloat DPDZ = 4 * (2*Re_tau/RE_B)*(2*Re_tau/RE_B);
 
   occa::memory o_FUz = o_FU + 2*nrs->fieldOffset*sizeof(dfloat);
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
 }
 
-
 /* UDF Functions */                                                      
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "re_tau",Re_tau);
+  platform->par->extract("casedata", "zlength",zLength);
+
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
+
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = zLength;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // assign function pointer to drive flow by constant mean pressure gradient
-  udf.uEqnSource = &userf;
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")){
+    // assign function pointer to drive flow by constant mean pressure gradient
+    udf.uEqnSource = &userf;
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
+  if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")){
+    mesh_t * mesh = nrs->meshV;
+    occa::memory o_Uz = nrs->o_U + 2 * nrs->fieldOffset * sizeof(dfloat);
+    const dfloat ubar = platform->linAlg->innerProd(mesh->Nlocal, o_Uz, mesh->o_LMM, platform->comm.mpiComm)/mesh->volume;
+
+    dfloat expectedUbar;
+    platform->options.getArgs("FLOW RATE", expectedUbar);
+
+    if(platform->comm.mpiRank == 0 && tstep > 0){
+      printf("constantFlowScale = %g, flowRateError = %g\n",
+        ConstantFlowRate::scaleFactor(),
+        std::abs(ubar - expectedUbar));
+    }
+    fflush(stdout);
+  }
+  if (nrs->lastStep)
+    if (ciMode) ciTestErrors(nrs, time, tstep);
 }

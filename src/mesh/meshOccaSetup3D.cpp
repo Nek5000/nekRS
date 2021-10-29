@@ -102,9 +102,10 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   mesh->o_ggeo =
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
-  mesh->o_cubvgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
-                        mesh->cubvgeo);
+  //if(mesh->cubNq - 1)
+  //  mesh->o_cubvgeo =
+  //    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
+  //                            mesh->cubvgeo);
 
   mesh->o_vmapM =
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
@@ -143,7 +144,7 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
       platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
-  kernelInfo += populateMeshProperties(mesh);
+  kernelInfo += meshKernelProperties(mesh->N);
 }
 
 void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)

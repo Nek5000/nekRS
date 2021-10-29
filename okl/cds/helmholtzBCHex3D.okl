@@ -51,6 +51,7 @@
   }
 
 //RHS contributions for continuous solver
+
 @kernel void helmholtzBCHex3D(const dlong Nelements,
                                  @restrict const dfloat*  sgeo,
                                  @restrict const dlong*  vmapM,
@@ -63,16 +64,12 @@
                                  @restrict const dfloat*  z,
                                  @restrict const dfloat*  S,
                                  @restrict const int*  EToB,
-                                 @restrict const int*  mapB,
                                  @restrict const dfloat*  W,
                                  @restrict dfloat*  rhsU)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @shared dfloat s_ndU[p_Nq][p_Nq];
 
-#define s_Gur s_ndU
-
-    @exclusive dfloat r_ut, r_Gut, r_Auk;
     @exclusive dfloat r_rhsU[p_Nq]; // array  for results Au(i,j,0:N)
 
     // for all face nodes of all elements
@@ -215,6 +212,8 @@
       }
     }
 
+    @barrier("local");
+
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
@@ -225,57 +224,4 @@
       }
     }
   }
-}
-
-@kernel void dirichletBC(const dlong Nelements,
-                            const dlong offset,
-                            const dlong scalarId,
-                            const dfloat time,
-                            @restrict const dfloat*  sgeo,
-                            @restrict const dfloat*  x,
-                            @restrict const dfloat*  y,
-                            @restrict const dfloat*  z,
-                            @restrict const dlong*  vmapM,
-                            @restrict const int*  EToBM,
-                            @restrict const int*  EToB,
-                            @restrict const dlong*  neknekPointMap,
-                            @restrict const dfloat*  neknekValInterp,
-                            @restrict const dfloat*  W,
-                            @restrict dfloat*  S)
-{
-  for(dlong e = 0; e < Nelements; e++; @outer(0))
-    for(int f = 0; f < p_Nfaces; f++) {
-      @barrier("global");
-      for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
-        struct bcData bc;
-        const int n = m + f * p_Nfp;
-        const dlong sk = e * p_Nfp * p_Nfaces + n;
-        const dlong idM = vmapM[sk];
-        const dlong bcType = EToB[f + p_Nfaces * e];
-        const dlong neknekOffset = neknekPointMap[offset];
-
-        if(bcType == 1) {
-          bc.id = EToBM[f + p_Nfaces * e];
-          bc.idM = idM;
-          bc.time = time;
-          bc.x  = x[idM];
-          bc.y  = y[idM];
-          bc.z  = z[idM];
-          bc.s  = S[idM];
-          bc.wrk = W;
-          bc.fieldOffset = offset;
-          bc.scalarId = scalarId;
-
-          bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
-          bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
-          bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
-          if (neknekOffset > 0 && neknekPointMap[idM] >= 0) {
-            bc.s = neknekValInterp[neknekPointMap[idM]];
-          } else {
-            scalarDirichletConditions(&bc);
-          }
-          S[idM] = bc.s;
-        }
-      }
-    }
 }
