@@ -68,6 +68,10 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   auto par = new inipp::Ini();	  
   std::string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
+  const int nsessmax = std::stoi(options.getArgs("NEKNEK MAX NUM SESSIONS"));
+  if(nsessmax > 1){
+    neknek->connected = true;
+  }
 
   {
     char buf[FILENAME_MAX];
@@ -146,7 +150,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   if(rank == 0 && ciMode)
     std::cout << "enabling continous integration mode " << ciMode << "\n";
 
-  nek::bootstrap();
+  nek::bootstrap(neknek);
 
   if(udf.setup0) udf.setup0(comm, options);
 

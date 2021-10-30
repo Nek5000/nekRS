@@ -325,6 +325,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm, neknek_t* neknek
 
     neknek->sessionID = color;
     neknek->globalComm = comm;
+    neknek->localComm = newComm;
 
     cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;

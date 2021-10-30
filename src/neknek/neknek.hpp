@@ -8,6 +8,7 @@
 struct neknek_t {
   dlong nsessions, sessionID;
   MPI_Comm globalComm;
+  MPI_Comm localComm;
   bool connected;
 
   dlong NcorrectorSteps;

@@ -4,6 +4,7 @@
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
 #include "io.hpp"
+#include "neknek.hpp"
 
 nekdata_private nekData;
 static int rank;
@@ -37,7 +38,7 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
 static void (* nek_bootstrap_ptr)(int*, char*, char*, char*, int, int, int);
-static void (* nek_set_neknek_ptr)();
+static void (* nek_bootstrap_neknek_ptr)(int*, int*, int*, int*, int*, char*, char*, char*, int, int, int);
 static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*, double*);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
@@ -270,8 +271,8 @@ void set_usr_handles(const char* session_in,int verbose)
   nek_bootstrap_ptr =
     (void (*)(int*, char*, char*, char*, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
   check_error(dlerror());
-  nek_set_neknek_ptr =
-    (void (*)())dlsym(handle, fname("set_neknek"));
+  nek_bootstrap_neknek_ptr =
+    (void (*)(int*, int*, int*, int*, int*, char*, char*, char*, int, int, int))dlsym(handle, fname("nekf_bootstrap_neknek"));
   check_error(dlerror());
   nek_setup_ptr =
     (void (*)(int*, int*, int*, int*, double*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
@@ -599,7 +600,7 @@ void gen_bcmap()
   (*nek_gen_bcmap_ptr)();
 }
 
-void bootstrap()
+void bootstrap(neknek_t* neknek)
 {
   options = &platform->options;
 
@@ -639,20 +640,35 @@ void bootstrap()
     std::string cwd;
     cwd.assign(buf);
 
-    MPI_Fint nek_comm = MPI_Comm_c2f(platform->comm.mpiComm);
 
     set_usr_handles(usrname.c_str(), 0);
 
     const int nsessmax = std::stoi(options->getArgs("NEKNEK MAX NUM SESSIONS"));
 
-    (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), 
-                         /* basename */ (char*)usrname.c_str(),
-                         (char*)meshFile.c_str(),
-                         cwd.length(), usrname.length(),
-                         meshFile.length());
-    if(nsessmax > 1){
-      (*nek_set_neknek_ptr)();
+    if(nsessmax <= 1){
+      MPI_Fint nek_comm = MPI_Comm_c2f(platform->comm.mpiComm);
+      (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), 
+                           /* basename */ (char*)usrname.c_str(),
+                           (char*)meshFile.c_str(),
+                           cwd.length(), usrname.length(),
+                           meshFile.length());
+    } else {
+      dlong ifneknekc = neknek->connected;
+      dlong nsessions = neknek->nsessions;
+      dlong sessionID = neknek->sessionID;
+      MPI_Fint nek_comm = MPI_Comm_c2f(neknek->localComm);
+      MPI_Fint nek_global_comm = MPI_Comm_c2f(neknek->globalComm);
+      (*nek_bootstrap_neknek_ptr)(&nek_comm, &nek_global_comm,
+                          &ifneknekc,
+                          &nsessions,
+                          &sessionID,
+                          (char*)cwd.c_str(), 
+                           /* basename */ (char*)usrname.c_str(),
+                           (char*)meshFile.c_str(),
+                           cwd.length(), usrname.length(),
+                           meshFile.length());
     }
+
     if (rank == 0) { 
      printf("done\n"); 
      fflush(stdout);

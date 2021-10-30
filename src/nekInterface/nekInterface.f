@@ -183,6 +183,59 @@ c-----------------------------------------------------------------------
 
       return
       end
+c-----------------------------------------------------------------------
+      subroutine nekf_bootstrap_neknek(comm_in,globalcomm_in,
+     $ ifneknekc_in,nessions_in,idsess_in,
+     $ path_in,session_in,mesh_in)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+
+      integer comm_in, globalcomm_in
+      character session_in*(*), path_in*(*)
+      character mesh_in*(*)
+      real rtest
+      integer itest
+      integer*8 itest8
+      character ctest
+      logical ltest 
+
+      integer ifneknekc_in, nsessions_in, idsess_in
+
+      character*1  re2fle1(132)
+      equivalence  (RE2FLE,re2fle1)
+
+      ! set word size for REAL
+      wdsize = sizeof(rtest)
+      ! set word size for INTEGER
+      isize = sizeof(itest)
+      ! set word size for INTEGER*8
+      isize8 = sizeof(itest8) 
+      ! set word size for LOGICAL
+      lsize = sizeof(ltest) 
+      ! set word size for CHARACTER
+      csize = sizeof(ctest)
+
+      call nekf_setupcomm_neknek(comm_in, globalcomm_in,
+     $ ifneknekc_in,nsessions_in,idsess_in,
+     $ path_in,session_in)
+
+      call iniproc()
+
+      istep  = 0
+      call initdim ! Initialize / set default values.
+      call initdat
+      call files
+
+      ls = ltrunc(PATH,132)
+      call chcopy(re2fle1(ls+1),mesh_in,len(mesh_in))
+      ls = ltrunc(PATH,132) + len(mesh_in)
+      call blank(re2fle1(ls+1),132-ls)
+
+      return
+      end
 
 c-----------------------------------------------------------------------
       subroutine set_neknek()
@@ -324,9 +377,10 @@ c      call findSYMOrient
       return
       end
 c-----------------------------------------------------------------------
-      subroutine nekf_setupcomm(comm_in,globalcomm_in,path_in,
-     $                          session_in,ifneknekc_in,nsessions_in,
-     $                          idsess_in)
+      subroutine nekf_setupcomm_neknek(comm_in,globalcomm_in,
+     $ ifneknekc_in,nsessions_in,idsess_in,
+     $ path_in, session_in)
+
       include 'mpif.h'
       include 'SIZE'
       include 'PARALLEL' 
@@ -334,6 +388,8 @@ c-----------------------------------------------------------------------
       include 'INPUT'
 
       integer comm_in, globalcomm_in
+      integer ifneknekc_in, nsessions_in, idsess_in
+
       character session_in*(*), path_in*(*)
       logical flag
     
@@ -345,6 +401,7 @@ c-----------------------------------------------------------------------
       logical mpi_is_initialized
 
       integer*8 ntags
+
 
       call mpi_initialized(mpi_is_initialized, ierr)
       if (.not.mpi_is_initialized) call mpi_init(ierr)
