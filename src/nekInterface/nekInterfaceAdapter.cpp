@@ -37,6 +37,7 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
 static void (* nek_bootstrap_ptr)(int*, char*, char*, char*, int, int, int);
+static void (* nek_set_neknek_ptr)();
 static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*, double*);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
@@ -268,6 +269,9 @@ void set_usr_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_bootstrap_ptr =
     (void (*)(int*, char*, char*, char*, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
+  check_error(dlerror());
+  nek_set_neknek_ptr =
+    (void (*)())dlsym(handle, fname("set_neknek"));
   check_error(dlerror());
   nek_setup_ptr =
     (void (*)(int*, int*, int*, int*, double*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
@@ -639,11 +643,17 @@ void bootstrap()
 
     set_usr_handles(usrname.c_str(), 0);
 
+    int sessions;
+    options->getArgs("SESSIONS", sessions);
+
     (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), 
                          /* basename */ (char*)usrname.c_str(),
                          (char*)meshFile.c_str(),
                          cwd.length(), usrname.length(),
                          meshFile.length());
+    if(sessions > 1){
+      (*nek_set_neknek_ptr)();
+    }
     if (rank == 0) { 
      printf("done\n"); 
      fflush(stdout);

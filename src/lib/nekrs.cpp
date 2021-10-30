@@ -170,6 +170,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   nrs->neknek = neknek;
   nrsSetup(comm, options, nrs);
   neknekSetup(nrs);
+  platform->options.setArgs("SESSIONS", std::to_string(neknek->nsessions));
 
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");

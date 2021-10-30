@@ -180,6 +180,18 @@ c-----------------------------------------------------------------------
       ls = ltrunc(PATH,132) + len(mesh_in)
       call blank(re2fle1(ls+1),132-ls)
 
+
+      return
+      end
+
+c-----------------------------------------------------------------------
+      subroutine set_neknek()
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+      ifneknek = .true.
+      ifneknekc = .true.
       return
       end
 c-----------------------------------------------------------------------
