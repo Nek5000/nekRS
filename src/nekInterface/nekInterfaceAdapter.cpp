@@ -237,7 +237,7 @@ void set_usr_handles(const char* session_in,int verbose)
   char lib_session[BUFSIZ], * error;
 
   const char* cache_dir = getenv("NEKRS_CACHE_DIR");
-  sprintf(lib_session, "%s/nek5000/%s/lib%s.so", cache_dir, session_in, session_in);
+  sprintf(lib_session, "%s/nek5000/lib%s.so", cache_dir, session_in);
 
   void* handle = dlopen(lib_session,RTLD_NOW | RTLD_LOCAL);
   if(!handle) {
@@ -643,15 +643,14 @@ void bootstrap()
 
     set_usr_handles(usrname.c_str(), 0);
 
-    int sessions;
-    options->getArgs("SESSIONS", sessions);
+    const int nsessmax = std::stoi(options->getArgs("NEKNEK MAX NUM SESSIONS"));
 
     (*nek_bootstrap_ptr)(&nek_comm, (char*)cwd.c_str(), 
                          /* basename */ (char*)usrname.c_str(),
                          (char*)meshFile.c_str(),
                          cwd.length(), usrname.length(),
                          meshFile.length());
-    if(sessions > 1){
+    if(nsessmax > 1){
       (*nek_set_neknek_ptr)();
     }
     if (rank == 0) { 

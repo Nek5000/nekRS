@@ -114,6 +114,9 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform = _platform;
   platform->par = par;
 
+  platform->options.setArgs("SESSIONS", std::to_string(neknek->nsessions));
+  printf("Nsessions = %d\n", neknek->nsessions); fflush(stdout);
+
   platform->timer.tic("setup", 1);
 
   int buildRank = rank;
@@ -170,7 +173,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   nrs->neknek = neknek;
   nrsSetup(comm, options, nrs);
   neknekSetup(nrs);
-  platform->options.setArgs("SESSIONS", std::to_string(neknek->nsessions));
 
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");

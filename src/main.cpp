@@ -470,6 +470,8 @@ int main(int argc, char** argv)
     if (nekrs::writeInterval() < 0) outputStep = 0;
     nekrs::outputStep(outputStep);
 
+    printf("tStep = %d\n", tStep);
+
     nekrs::runStep(time, dt, tStep);
     time += dt;
 

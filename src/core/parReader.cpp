@@ -70,6 +70,8 @@ static std::vector<std::string> generalKeys = {
   {"udf"},
   {"usr"},
 
+  {"maxnumsessions"},
+
 };
 
 static std::vector<std::string> problemTypeKeys = {

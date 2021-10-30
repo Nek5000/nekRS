@@ -317,7 +317,8 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
     nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
-    nrs->converged = nrs->neknek->NcorrectorSteps >= stage;
+    if(nrs->neknek->nsessions > 1)
+      nrs->converged = nrs->neknek->NcorrectorSteps >= stage;
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
