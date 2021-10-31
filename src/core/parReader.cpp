@@ -71,6 +71,7 @@ static std::vector<std::string> generalKeys = {
   {"usr"},
 
   {"maxnumsessions"},
+  {"neknekcorrectorsteps"},
 
 };
 
