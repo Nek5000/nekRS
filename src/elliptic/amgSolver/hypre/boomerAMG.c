@@ -152,13 +152,16 @@ int boomerAMGSetup(int nrows,
   HYPRE_IJVectorInitialize(x);
   HYPRE_IJVectorAssemble(x);
 
-  // Perform AMG setup
+  // Perform AMG setup 
   HYPRE_ParVector par_b;
   HYPRE_ParVector par_x;
   HYPRE_IJVectorGetObject(b,(void**) &par_b);
   HYPRE_IJVectorGetObject(x,(void**) &par_x);
   HYPRE_ParCSRMatrix par_A;
   HYPRE_IJMatrixGetObject(data->A,(void**) &par_A);
+
+  const char* filename = "expr-neknek.mat";
+  HYPRE_IJMatrixPrint(data->A, filename);
 
   #pragma omp parallel
   {

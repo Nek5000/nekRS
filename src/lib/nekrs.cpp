@@ -73,7 +73,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     neknek->connected = true;
   }
 
-  nekenk->NcorrectorSteps = std::stoi(options.getArgs("NEKNEK CORRECTOR STEPS"));
+  neknek->NcorrectorSteps = std::stoi(options.getArgs("NEKNEK CORRECTOR STEPS"));
 
   {
     char buf[FILENAME_MAX];
