@@ -318,7 +318,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
 
     nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
     if(nrs->neknek->nsessions > 1 && nrs->neknek->connected)
-      nrs->converged = stage >= nrs->neknek->NcorrectorSteps;
+      nrs->converged &= stage >= nrs->neknek->NcorrectorSteps;
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
