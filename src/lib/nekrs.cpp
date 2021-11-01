@@ -73,7 +73,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     neknek->connected = true;
   }
 
-  nekenk->NcorrectorSteps = std::stoi(options.getArgs("NEKNEK CORRECTOR STEPS"));
+  neknek->NcorrectorSteps = std::stoi(options.getArgs("NEKNEK CORRECTOR STEPS"));
 
   {
     char buf[FILENAME_MAX];
@@ -121,7 +121,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform->par = par;
 
   platform->options.setArgs("SESSIONS", std::to_string(neknek->nsessions));
-  printf("Nsessions = %d\n", neknek->nsessions); fflush(stdout);
 
   platform->timer.tic("setup", 1);
 
