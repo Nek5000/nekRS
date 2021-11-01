@@ -251,8 +251,6 @@ void neknekUpdateBoundary(nrs_t *nrs)
   neknek_t *neknek = nrs->neknek;
   if(!neknek->connected) return;
 
-  printf("neknek connected!\n"); fflush(stdout);
-
   if (neknek->globalMovingMesh) {
     findInterpPoints(nrs);
   }

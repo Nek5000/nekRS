@@ -61,24 +61,6 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       )
       * sqrt(elliptic->resNormFactor); 
     if(platform->comm.mpiRank == 0) printf("%s RHS norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
-    const dfloat invDegreeNorm2 = 
-      platform->linAlg->norm2Many(
-        mesh->Nlocal,
-        elliptic->Nfields,
-        elliptic->Ntotal,
-        elliptic->o_invDegree,
-        platform->comm.mpiComm
-      );
-    if(platform->comm.mpiRank == 0) printf("%s inv degree norm: %.15e\n", elliptic->name.c_str(), invDegreeNorm2);
-    const dfloat rNorm2 = 
-      platform->linAlg->norm2Many(
-        mesh->Nlocal,
-        elliptic->Nfields,
-        elliptic->Ntotal,
-        o_r,
-        platform->comm.mpiComm
-      );
-    if(platform->comm.mpiRank == 0) printf("%s r norm: %.15e\n", elliptic->name.c_str(), rNorm2);
   }
 
   if(verbose) {
