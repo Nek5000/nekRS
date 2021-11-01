@@ -25,6 +25,8 @@
       lagrange_eval(wts, fd->fed.lag_data[1], p_NS, 0, r[1], j);
     }
 
+    @barrier("local");
+
     // out[i] = sum_j sum_k wts[j]*wtr[k]*in[j + k*nr]
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
       if(j<p_NR){
@@ -39,6 +41,9 @@
         sums[j] = 0.0;
       }
     }
+
+    @barrier("local");
+
     dfloat * out = AT(dfloat, out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
@@ -47,6 +52,7 @@
         sums[j] += sums[j+128];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>64
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -54,6 +60,7 @@
         sums[j] += sums[j+64];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>32
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -61,6 +68,7 @@
         sums[j] += sums[j+32];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>16
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -68,6 +76,7 @@
         sums[j] += sums[j+16];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>8
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -75,6 +84,7 @@
         sums[j] += sums[j+8];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>4
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -82,6 +92,7 @@
         sums[j] += sums[j+4];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>2
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -89,6 +100,7 @@
         sums[j] += sums[j+2];
       }
     }
+    @barrier("local");
 #endif
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
       if(j==0){
@@ -99,6 +111,7 @@
         }
       }
     }
+    @barrier("local");
   }
 }
 
@@ -127,6 +140,7 @@
       lagrange_eval(wts, fd->fed.lag_data[1], p_NS, 0, r[1], j);
       lagrange_eval(wtt, fd->fed.lag_data[2], p_NT, 0, r[2], j);
     }
+    @barrier("local");
 
     // out[i] = sum_j sum_k sum_l wtr[j]*wts[k]*wtt[l]*in[j + k*nr + l*nr*ns]
     //        = sum_j wtr[j] * sum_k wts[k] * sum_l wtt[l]*in[j + k*nr + l*nr*ns]
@@ -148,6 +162,7 @@
         sums[j] = 0.0;
       }
     }
+    @barrier("local");
     dfloat * out = AT(dfloat, out, i);
 // p_NR is assumed to be at most 256
 #if p_NR>128
@@ -156,6 +171,7 @@
         sums[j] += sums[j+128];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>64
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -163,6 +179,7 @@
         sums[j] += sums[j+64];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>32
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -170,6 +187,7 @@
         sums[j] += sums[j+32];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>16
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -177,6 +195,7 @@
         sums[j] += sums[j+16];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>8
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -184,6 +203,7 @@
         sums[j] += sums[j+8];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>4
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -191,6 +211,7 @@
         sums[j] += sums[j+4];
       }
     }
+    @barrier("local");
 #endif
 #if p_NR>2
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
@@ -198,6 +219,7 @@
         sums[j] += sums[j+2];
       }
     }
+    @barrier("local");
 #endif
     for(dlong j=0;j<INNER_SIZE;++j;@inner){
       if(j==0){
@@ -208,5 +230,6 @@
         }
       }
     }
+    @barrier("local");
   }
 }

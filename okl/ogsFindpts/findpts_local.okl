@@ -968,6 +968,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
       fpt = el_pts+0;
       tmp = el_pts+1;
     }
+    @barrier("local");
 
     const dlong n[3] = {p_NR, p_NS, p_NT};
 
@@ -1003,6 +1004,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
               if(j<p_D) fpt->x[j]=x_i[j];
               constraint_init = 0;
             }
+            @barrier("local");
             //// seed ////
             {
               dfloat *dist2_temp = r_workspace_ptr;
@@ -1010,6 +1012,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
               for(dlong j=0;j<INNER_SIZE;++j;@inner){
                 seed_j(elx, x_i, fd->fed.z, dist2_temp, r_temp, j);
               }
+              @barrier("local");
               // TODO switch to binary reduction
               for(dlong j=0;j<INNER_SIZE;++j;@inner){
                 if (j == 0) {
@@ -1022,6 +1025,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                   }
                 }
               }
+              @barrier("local");
             }
 
             for(dlong j = 0; j<INNER_SIZE;++j;@inner){
@@ -1030,6 +1034,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                 for(dlong d=0;d<p_D;++d){tmp->x[d]=fpt->x[d]; tmp->r[d]=fpt->r[d];}
               }
             }
+            @barrier("local");
 
             for(dlong step=0;step<50;++step) {
               switch (num_constrained(tmp->flags & FLAG_MASK)) {
@@ -1051,6 +1056,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                     lagrange_eval(wts, fd->fed.lag_data[1], p_NS, 1, tmp->r[1], j);
                     lagrange_eval(wtt, fd->fed.lag_data[2], p_NT, 1, tmp->r[2], j);
                   }    
+                  @barrier("local");
                   for (dlong j = 0; j < INNER_SIZE; ++j;@inner) {
                     if(j<p_NR){
                       for(dlong d=0;d<3;++d){
@@ -1063,6 +1069,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                       }
                     }
                   }
+                  @barrier("local");
                   // TODO consider binary reduction
                   for(dlong l=0;l<INNER_SIZE;++l;@inner){
                     if(l<3){
@@ -1078,6 +1085,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                       }
                     }
                   }
+                  @barrier("local");
                   if(reject_prior_step_q(fpt, resid, tmp, fd->tol)) break;
                   newton_vol(fpt, jac, resid, tmp, fd->tol);
 #endif
@@ -1105,6 +1113,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                     lagrange_eval(wt1, fd->fed.lag_data[d1], n1, der, tmp->r[d1], j);
                     lagrange_eval(wt2, fd->fed.lag_data[d2], n2, der, tmp->r[d2], j);
                   }
+                  @barrier("local");
                   dfloat *J1 = wt1, *D1 = wt1+n1;
                   dfloat *J2 = wt2, *D2 = wt2+n2;
 #if p_D==3
@@ -1113,6 +1122,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     face = get_face(&fd->fed,elx,fi,constraint_workspace,constraint_init,j);
                   }
+                  @barrier("local");
 #endif
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     if (j < n1) {
@@ -1145,6 +1155,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                       }
                     }
                   }
+                  @barrier("local");
                   // TODO consider binary reduction
                   for(dlong l=0;l<INNER_SIZE;++l;@inner){
                     if(l<p_D){
@@ -1163,6 +1174,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                     }
 #endif
                   }
+                  @barrier("local");
                   if(reject_prior_step_q(fpt, resid, tmp, fd->tol)) break;
 
 #if p_D==3
@@ -1200,6 +1212,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     edge = get_edge(&fd->fed,elx,ei,constraint_workspace,constraint_init,j);
                   }
+                  @barrier("local");
 #if p_D==3
                   // TODO consider optimizing this using the internal structure of findpts_el_gedge
                   const dfloat* const* e_x[p_D+3] = {edge.x, edge.x, edge.dxdn1, edge.dxdn2, edge.d2xdn1, edge.d2xdn2};
@@ -1209,6 +1222,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     lagrange_eval(wt, fd->fed.lag_data[de], n1, 2, tmp->r[de], j);
                   }
+                  @barrier("local");
 
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     const  dlong d = j%p_D;
@@ -1242,6 +1256,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                       }
                     }
                   }
+                  @barrier("local");
                   for(dlong j=0;j<INNER_SIZE;++j;@inner){
                     if(j < hes_count){
                       hes[j] = 0.0;
@@ -1250,6 +1265,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                       }
                     }
                   }
+                  @barrier("local");
                   /* check prior step */
                   if(reject_prior_step_q(fpt,resid,tmp,fd->tol)) break;
 
@@ -1394,6 +1410,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
                 break;
               }
               for(dlong j=0;j<INNER_SIZE;++j;@inner) if(j==0) *tmp=*fpt;
+              @barrier("local");
             }
           }
 
@@ -1409,6 +1426,7 @@ dfloat tensor_ig3_j(      dfloat *g_partials,
               }
               if(j<p_D) r_i[j]=fpt->r[j];
             }
+            @barrier("local");
             if(converged_internal){
               break;
             }

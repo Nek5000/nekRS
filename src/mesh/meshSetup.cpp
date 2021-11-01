@@ -234,9 +234,11 @@ mesh_t *createMeshMG(mesh_t* _mesh,
 
   meshGlobalIds(mesh);
 
+#if 0
   free(mesh->x);
   free(mesh->y);
   free(mesh->z);
+#endif
 
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
