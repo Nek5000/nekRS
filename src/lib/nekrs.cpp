@@ -120,8 +120,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform = _platform;
   platform->par = par;
 
-  platform->options.setArgs("SESSIONS", std::to_string(neknek->nsessions));
-
   platform->timer.tic("setup", 1);
 
   int buildRank = rank;
