@@ -63,6 +63,28 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                                    platform->o_mempool.slice7, nrs->o_U);
   }
 
+  const dfloat norm2P = 
+    platform->linAlg->weightedNorm2Many(
+      mesh->Nlocal,
+      1,
+      nrs->fieldOffset,
+      nrs->pSolver->o_invDegree,
+      nrs->o_P,
+      platform->comm.mpiComm
+    );
+  printf("norm2 P : %.15e\n", norm2P);
+
+  const dfloat norm2UVW = 
+    platform->linAlg->weightedNorm2Many(
+      mesh->Nlocal,
+      nrs->NVfields,
+      nrs->fieldOffset,
+      nrs->uvwSolver->o_invDegree,
+      nrs->o_U,
+      platform->comm.mpiComm
+    );
+  printf("norm2 UVW : %.15e\n", norm2UVW);
+
   nrs->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
                   mesh->o_D,
@@ -71,6 +93,16 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                   platform->o_mempool.slice0);
 
   oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
+
+  const dfloat curlNorm2 = 
+  platform->linAlg->norm2Many(
+    mesh->Nlocal,
+    nrs->NVfields,
+    nrs->fieldOffset,
+    platform->o_mempool.slice0,
+    platform->comm.mpiComm
+  );
+  printf("curlNorm2 : %.15e\n", curlNorm2);
 
   platform->linAlg->axmyVector(
     mesh->Nlocal,
