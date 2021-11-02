@@ -36,7 +36,7 @@ interp_t::interp_t(nrs_t* nrs_, double newton_tol_)
 
   findpts = ogsFindptsSetup(3, comm, elx, n1, nelm, m1, bb_tol,
                             hash_size, hash_size, npt_max, newton_tol,
-                            (occa::device*)&platform_t::getInstance()->device);
+                            &platform_t::getInstance()->device.occaDevice());
 }
 
 
