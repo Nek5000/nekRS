@@ -309,6 +309,24 @@ c-----------------------------------------------------------------------
       call mapelpr 
       call read_re2_data(ifbswap, .true., .true., .true.)
 
+      call izero(boundaryID, size(boundaryID))
+      ifld_bId = 2
+      if(ifflow) ifld_bId = 1
+      do iel = 1,nelv
+      do ifc = 1,2*ndim
+         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
+      enddo
+      enddo
+      call izero(boundaryIDt, size(boundaryIDt))
+      if(nelgt.ne.nelgv) then
+        do iel = 1,nelt
+        do ifc = 1,2*ndim
+           boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
+        enddo
+        enddo
+      endif
+
+
       call setvar          ! Initialize most variables
 
       igeom = 2
@@ -334,23 +352,6 @@ c-----------------------------------------------------------------------
       call setlog(.false.)  ! Initalize logical flags
 
       call nekf_neknek_setup
-
-      call izero(boundaryID, size(boundaryID))
-      ifld_bId = 2
-      if(ifflow) ifld_bId = 1
-      do iel = 1,nelv
-      do ifc = 1,2*ndim
-         boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
-      enddo
-      enddo
-      call izero(boundaryIDt, size(boundaryIDt))
-      if(nelgt.ne.nelgv) then
-        do iel = 1,nelt
-        do ifc = 1,2*ndim
-           boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
-        enddo
-        enddo
-      endif
 
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
