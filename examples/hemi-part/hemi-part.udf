@@ -238,13 +238,13 @@ void particleStep(nrs_t *nrs, dfloat time, int tstep)
 
 /* UDF Functions */
 
-void UDF_LoadKernels(nrs_t *nrs)
+void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  particle_data = new particles_t(nrs, 0);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
+  particle_data = new particles_t(nrs, 0);
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
