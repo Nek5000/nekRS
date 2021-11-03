@@ -49,6 +49,18 @@ void registerCdsKernels(occa::properties kernelInfoBC) {
   occa::properties meshProps = kernelInfo;
   meshProps += meshKernelProperties(N);
   {
+    kernelName = "relativeMassHighestMode";
+    fileName = oklpath + "cds/regularization/" + kernelName + ".okl";
+    platform->kernels.add(kernelName, fileName, meshProps);
+
+    kernelName = "computeMaxVisc";
+    fileName = oklpath + "cds/regularization/" + kernelName + ".okl";
+    platform->kernels.add(kernelName, fileName, meshProps);
+
+    kernelName = "interpolateP1";
+    fileName = oklpath + "cds/regularization/" + kernelName + ".okl";
+    platform->kernels.add(kernelName, fileName, meshProps);
+
     {
       occa::properties prop = meshProps;
       prop["defines/p_cubNq"] = cubNq;

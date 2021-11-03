@@ -38,30 +38,19 @@ void allocateMemory(cds_t* cds)
 
 void compileKernels(cds_t* cds)
 {
-  mesh_t* mesh = cds->mesh[0];
-  std::string installDir;
-  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = installDir + "/okl/cds/regularization/";
-  std::string fileName, kernelName;
-  const std::string extension = ".okl";
-  occa::properties info = platform->kernelInfo;
-  info["defines/" "p_Nq"] = cds->mesh[0]->Nq;
-  info["defines/" "p_Np"] = cds->mesh[0]->Np;
+  std::string kernelName;
 
   kernelName = "relativeMassHighestMode";
-  fileName = oklpath + kernelName + extension;
   relativeMassHighestModeKernel =
-    platform->device.buildKernel(fileName, info);
+    platform->kernels.get(kernelName);
 
   kernelName = "computeMaxVisc";
-  fileName = oklpath + kernelName + extension;
   computeMaxViscKernel =
-    platform->device.buildKernel(fileName, info);
+    platform->kernels.get(kernelName);
 
   kernelName = "interpolateP1";
-  fileName = oklpath + kernelName + extension;
   interpolateP1Kernel =
-    platform->device.buildKernel(fileName, info);
+    platform->kernels.get(kernelName);
 }
 
 }

@@ -21,8 +21,8 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
 
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
-  gatherKernel = platform->kernels.getKernel("gather");
-  scatterKernel = platform->kernels.getKernel("scatter");
+  gatherKernel = platform->kernels.get("gather");
+  scatterKernel = platform->kernels.get("scatter");
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();

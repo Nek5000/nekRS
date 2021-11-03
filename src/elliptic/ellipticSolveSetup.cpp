@@ -75,11 +75,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     initializeGmresData(elliptic);
     const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
     elliptic->gramSchmidtOrthogonalizationKernel =
-      platform->kernels.getKernel(sectionIdentifier + "gramSchmidtOrthogonalization");
+      platform->kernels.get(sectionIdentifier + "gramSchmidtOrthogonalization");
     elliptic->updatePGMRESSolutionKernel =
-      platform->kernels.getKernel(sectionIdentifier + "updatePGMRESSolution");
+      platform->kernels.get(sectionIdentifier + "updatePGMRESSolution");
     elliptic->fusedResidualAndNormKernel =
-      platform->kernels.getKernel(sectionIdentifier + "fusedResidualAndNorm");
+      platform->kernels.get(sectionIdentifier + "fusedResidualAndNorm");
   }
 
   const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
@@ -192,15 +192,15 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   {
       mesh->maskKernel =
-        platform->kernels.getKernel("mask");
+        platform->kernels.get("mask");
   }
 
   {
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
-      elliptic->updateDiagonalKernel = platform->kernels.getKernel(sectionIdentifier + kernelName);
-      elliptic->axmyzManyPfloatKernel = platform->kernels.getKernel("axmyzManyPfloat");
-      elliptic->adyManyPfloatKernel = platform->kernels.getKernel("adyManyPfloat");
+      elliptic->updateDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
+      elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
+      elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
 
       std::string kernelNamePrefix = "";
       if(elliptic->poisson) kernelNamePrefix += "poisson-";
@@ -216,10 +216,10 @@ void ellipticSolveSetup(elliptic_t* elliptic)
         kernelName += "_N" + std::to_string(elliptic->Nfields);
 
       elliptic->AxKernel = 
-        platform->kernels.getKernel(kernelNamePrefix + "Partial" + kernelName);
+        platform->kernels.get(kernelNamePrefix + "Partial" + kernelName);
 
       elliptic->updatePCGKernel =
-        platform->kernels.getKernel(sectionIdentifier + "ellipticBlockUpdatePCG");
+        platform->kernels.get(sectionIdentifier + "ellipticBlockUpdatePCG");
   }
 
   MPI_Barrier(platform->comm.mpiComm);

@@ -371,13 +371,13 @@ void loadKernels(mesh_t* mesh)
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     {
         mesh->velocityDirichletKernel =
-          platform->kernels.getKernel(meshPrefix + "velocityDirichletBCHex3D");
+          platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
         mesh->geometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "geometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
         mesh->surfaceGeometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "surfaceGeometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
         mesh->nStagesSumVectorKernel =
-          platform->kernels.getKernel(meshPrefix + "nStagesSumVector");
+          platform->kernels.get(meshPrefix + "nStagesSumVector");
     }
   }
 }
