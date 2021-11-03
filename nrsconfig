@@ -6,7 +6,7 @@ set -e -a
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_COMPILER_FLAGS:=""}
+: ${NEKRS_COMPILER_FLAGS:="-O3 -march=native -mtune=native -g"}
 
 : ${NEKRS_GPU_MPI:=1}
 
@@ -25,6 +25,11 @@ set -e -a
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 
+if uname -a | grep 'ppc64'; then
+  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
+  OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
+fi
+
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
 
@@ -38,9 +43,9 @@ cmake -Wno-dev \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
       -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
-      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
-      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
-      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_Fortran_FLAGS_RELWITHDEBINFO="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DOCCA_CXX="${OCCA_CXX}" \
       -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \

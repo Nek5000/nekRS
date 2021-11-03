@@ -57,7 +57,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   }else if (options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     ellipticSEMFEMSolve(elliptic, o_r, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "NONE")) {
-    o_z.copyFrom(o_r);
+    o_z.copyFrom(o_r, Nlocal*sizeof(dfloat));
   }else {
     if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(platform->comm.mpiComm, 1);
