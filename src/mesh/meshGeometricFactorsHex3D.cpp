@@ -274,11 +274,11 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   }
 
   {
-    dfloat globalMinJ, globalMaxJ, globalMaxSkew;
+    dfloat globalMinJ = 0, globalMaxJ = 0, globalMaxSkew = 0;
 
-    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, platform->comm.mpiComm);
-    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
-    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
+    MPI_Allreduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+    MPI_Allreduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+    MPI_Allreduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
 
     if(platform->comm.mpiRank == 0)
       printf("J [%g,%g] ", globalMinJ, globalMaxJ);
@@ -288,6 +288,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
       if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
 	    (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
         if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
+        printf("here!\n");
         EXIT_AND_FINALIZE(EXIT_FAILURE);
       }
     }  
