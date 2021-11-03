@@ -59,7 +59,7 @@ occa::kernel
 device_t::buildKernel(const std::string &fileName,
                              const std::string &kernelName,
                              const occa::properties &props,
-                             std::string suffix) const
+                             const std::string& suffix) const
 {
 
   if(fileName.find(".okl") != std::string::npos){
@@ -78,6 +78,27 @@ device_t::buildKernel(const std::string &fileName,
     const std::string alteredName =  kernelName + suffix;
     return this->buildNativeKernel(fileName, alteredName, propsWithSuffix);
   }
+}
+
+occa::kernel
+device_t::buildKernel(const std::string &fileName,
+                             const std::string &kernelName,
+                             const occa::properties &props) const
+{
+
+  const std::string suffix("");
+  const bool buildNodeLocal = useNodeLocalCache();
+  const int rank = buildNodeLocal ? _comm.localRank : _comm.mpiRank;
+  MPI_Comm localCommunicator = buildNodeLocal ? _comm.mpiCommLocal : _comm.mpiComm;
+  occa::kernel constructedKernel;
+  for(int pass = 0; pass < 2; ++pass){
+    if((pass == 0 && rank == 0) || (pass == 1 && rank != 0)){
+      constructedKernel = this->buildKernel(fileName, kernelName, props, suffix);
+    }
+    MPI_Barrier(localCommunicator);
+  }
+  return constructedKernel;
+
 }
 
 occa::kernel

@@ -73,23 +73,23 @@ void RANSktau::buildKernel(occa::properties kernelInfo)
   {
       kernelName = "computeHex3D";
       fileName = path + kernelName + extension;
-      computeKernel    = platform->device.buildKernel(fileName, kernelInfo);
+      computeKernel    = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "SijOijHex3D";
       fileName = path + kernelName + extension;
-      SijOijKernel     = platform->device.buildKernel(fileName, kernelInfo);
+      SijOijKernel     = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "SijOijMag2";
       fileName = path + kernelName + extension;
-      SijOijMag2Kernel = platform->device.buildKernel(fileName, kernelInfo);
+      SijOijMag2Kernel = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "limit";
       fileName = path + kernelName + extension;
-      limitKernel      = platform->device.buildKernel(fileName, kernelInfo);
+      limitKernel      = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "mue";
       fileName = path + kernelName + extension;
-      mueKernel        = platform->device.buildKernel(fileName, kernelInfo);
+      mueKernel        = platform->device.buildKernel(fileName, kernelInfo, true);
   }
 
   int Nscalar;

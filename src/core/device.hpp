@@ -25,25 +25,33 @@ class device_t {
     void finish() { _device.finish(); }
 
     occa::kernel buildKernel(const std::string &fullPath,
-                             const occa::properties &props) const;
-    occa::kernel buildKernel(const std::string &fullPath,
-                             const occa::properties &props,
-                             const std::string& suffix) const;
-    occa::kernel buildKernel(const std::string &fullPath,
                              const occa::properties &props,
                              const std::string& suffix,
                              bool buildRank0) const;
     occa::kernel buildKernel(const std::string &fullPath,
                              const occa::properties &props,
                              bool buildRank0) const;
+
+    // collective
+    occa::kernel buildKernel(const std::string &fileName,
+                             const std::string &kernelName,
+                             const occa::properties &props) const;
+
     bool deviceAtomic;
 
   private:
-    friend occa::kernel udfBuildKernel(occa::properties, const char*);
+
+    // non-collective
+    occa::kernel buildKernel(const std::string &fullPath,
+                             const occa::properties &props) const;
+    occa::kernel buildKernel(const std::string &fullPath,
+                             const occa::properties &props,
+                             const std::string& suffix) const;
     occa::kernel buildKernel(const std::string &fileName,
                              const std::string &kernelName,
                              const occa::properties &props,
-                             std::string suffix = "") const;
+                             const std::string& suffix) const;
+
     occa::kernel buildNativeKernel(const std::string &fileName,
                              const std::string &kernelName,
                              const occa::properties &props) const;

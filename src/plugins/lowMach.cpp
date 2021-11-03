@@ -32,15 +32,15 @@ void lowMach::buildKernel(occa::properties kernelInfo)
   {
     kernelName = "qtlHex3D";
     fileName = path + kernelName + extension;
-    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo);
+    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo, true);
 
     kernelName = "p0thHelper";
     fileName = path + kernelName + extension;
-    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo);
+    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
     kernelName = "surfaceFlux";
     fileName = path + kernelName + extension;
-    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo);
+    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
 }
 

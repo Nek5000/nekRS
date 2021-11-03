@@ -114,7 +114,9 @@ kernelRequestManager_t::compile()
           const std::string fileName = kernelRequest.fileName;
           const std::string suffix = kernelRequest.suffix;
           const occa::properties props = kernelRequest.props;
-          auto kernel = device.buildKernel(fileName, props, suffix);
+
+          // MPI staging already handled
+          auto kernel = device.buildKernel(fileName, props, suffix, false);
           requestToKernel[requestName] = kernel;
         }
       }
@@ -130,7 +132,9 @@ kernelRequestManager_t::compile()
         const std::string fileName = kernelRequest.fileName;
         const std::string suffix = kernelRequest.suffix;
         const occa::properties props = kernelRequest.props;
-        auto kernel = device.buildKernel(fileName, props, suffix);
+
+        // MPI staging already handled
+        auto kernel = device.buildKernel(fileName, props, suffix, false);
         requestToKernel[requestName] = kernel;
       }
     }
