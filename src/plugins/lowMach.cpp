@@ -86,12 +86,11 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     nrs->meshV->o_invLMM,
     platform->o_mempool.slice0);
 
+  platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   if(udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, platform->o_mempool.slice3);
     platform->timer.toc("udfSEqnSource");
-  } else {
-    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   }
 
   qtlKernel(
