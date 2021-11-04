@@ -200,6 +200,7 @@ set(SRC
     src/core/utils/mysort.cpp
     src/core/utils/parallelSort.cpp
     src/core/utils/tinyexpr.c
+    src/core/numberActiveFields.cpp
     src/core/setupAide.cpp
     src/core/printHeader.cpp
     src/core/cfl.cpp

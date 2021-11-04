@@ -217,4 +217,6 @@ void compileKernels();
 std::vector<int>
 determineMGLevels(std::string section);
 
+int numberActiveFields(nrs_t* nrs);
+
 #endif
