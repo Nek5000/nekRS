@@ -5,6 +5,8 @@
 namespace {
 
 void registerJacobiKernels(const std::string &section, int poissonEquation) {
+  const bool serial = platform->serial;
+  const std::string extension = serial ? ".c" : ".okl";
   const std::string optionsPrefix = createOptionsPrefix(section);
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -14,7 +16,7 @@ void registerJacobiKernels(const std::string &section, int poissonEquation) {
 
   // This kernel is needed as it used for mixed-precision Jacobi preconditioning 
   std::string kernelName = "axmyzManyPfloat";
-  std::string fileName = oklpath + "elliptic/" + kernelName + ".okl";
+  std::string fileName = oklpath + "elliptic/" + kernelName + extension;
   platform->kernels.add(
     kernelName, fileName, platform->kernelInfo);
 
