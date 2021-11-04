@@ -21,14 +21,13 @@ set -e -a
 : ${OCCA_ENABLE_OPENCL:=1}
 : ${AMGX_ENABLED:=0}
 
+if uname -a | grep 'ppc64'; then
+  NEKRS_COMPILER_FLAGS=$(echo "$NEKRS_COMPILER_FLAGS" | sed -e "s/march/mcpu/g")
+fi
+
 : ${NEKRS_CXXFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
-
-if uname -a | grep 'ppc64'; then
-  NEKRS_CXXFLAGS=$(echo "$NEKRS_CXXFLAGS" | sed -e "s/march/mcpu/g")
-  OCCA_CXXFLAGS=$(echo "$OCCA_CXXFLAGS" | sed -e "s/march/mcpu/g")
-fi
 
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
