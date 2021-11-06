@@ -195,12 +195,14 @@ void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, 
 
     if(mode == "HIP" || mode == "CUDA") {
       std::string fileName = DOGS;
-      if(mode == "CUDA") fileName += "/okl/oogs-half.cu";
-      if(mode == "HIP") fileName += "/okl/oogs-half.hip";
+      fileName += "/okl/";
+      std::string extension;
+      if(mode == "CUDA") extension = ".cu";
+      if(mode == "HIP") extension = ".hip";
       occa::properties nativeProperties = props;
       nativeProperties["okl/enabled"] = false;
-      device.buildKernel(fileName.c_str(), "packBuf_halfAdd", nativeProperties);
-      device.buildKernel(fileName.c_str(), "unpackBuf_halfAdd", nativeProperties);
+      device.buildKernel(fileName + "oogs-half" + extension, "packBuf_halfAdd", nativeProperties);
+      device.buildKernel(fileName + "oogs-half" + extension, "unpackBuf_halfAdd", nativeProperties);
     }
   }
   compiled++;
@@ -227,23 +229,27 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   if(!compiled) oogs::compile(device, device.mode(), gs->comm);
 
   if(gsMode == OOGS_DEFAULT) return gs; 
-  gs->packBufFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_floatAdd", ogs::kernelInfo);
-  gs->unpackBufFloatAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", ogs::kernelInfo);
-  gs->packBufDoubleAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleAdd", ogs::kernelInfo);
+  gs->packBufFloatAddKernel    = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_floatAdd", ogs::kernelInfo);
+  gs->unpackBufFloatAddKernel  = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_floatAdd", ogs::kernelInfo);
+  gs->packBufDoubleAddKernel   = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleAdd", ogs::kernelInfo);
   gs->unpackBufDoubleAddKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleAdd", ogs::kernelInfo);
-  gs->packBufDoubleMinKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleMin", ogs::kernelInfo);
+  gs->packBufDoubleMinKernel   = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleMin", ogs::kernelInfo);
   gs->unpackBufDoubleMinKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMin", ogs::kernelInfo);
-  gs->packBufDoubleMaxKernel = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleMax", ogs::kernelInfo);
+  gs->packBufDoubleMaxKernel   = device.buildKernel(DOGS "/okl/oogs.okl", "packBuf_doubleMax", ogs::kernelInfo);
   gs->unpackBufDoubleMaxKernel = device.buildKernel(DOGS "/okl/oogs.okl", "unpackBuf_doubleMax", ogs::kernelInfo);
 
   if(device.mode() == "HIP" || device.mode() == "CUDA") {
     std::string fileName = DOGS;
-    if(device.mode() == "CUDA") fileName += "/okl/oogs-half.cu";
-    if(device.mode() == "HIP") fileName += "/okl/oogs-half.hip";
+    fileName += "/okl/";
+    std::string extension;
+    if(device.mode() == "CUDA") extension = ".cu";
+    if(device.mode() == "HIP") extension = ".hip";
     occa::properties nativeProperties = ogs::kernelInfo;
     nativeProperties["okl/enabled"] = false;
-    gs->packBufFloatToHalfAddKernel = device.buildKernel(fileName.c_str(), "packBuf_halfAdd", nativeProperties);
-    gs->unpackBufHalfToFloatAddKernel = device.buildKernel(fileName.c_str(), "unpackBuf_halfAdd", nativeProperties);
+    gs->packBufFloatToHalfAddKernel =
+      device.buildKernel(fileName + "oogs-half" + extension, "packBuf_halfAdd", nativeProperties);
+    gs->unpackBufHalfToFloatAddKernel =
+      device.buildKernel(fileName + "oogs-half" + extension, "unpackBuf_halfAdd", nativeProperties);
   }
 
   if(ogs->NhaloGather == 0) return gs;

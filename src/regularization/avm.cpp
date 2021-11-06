@@ -38,29 +38,19 @@ void allocateMemory(cds_t* cds)
 
 void compileKernels(cds_t* cds)
 {
-  mesh_t* mesh = cds->mesh[0];
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = install_dir + "/okl/cds/regularization/";
-  std::string filename = oklpath + "relativeMassHighestMode.okl";
-  occa::properties info = platform->kernelInfo;
-  info["defines/" "p_Nq"] = cds->mesh[0]->Nq;
-  info["defines/" "p_Np"] = cds->mesh[0]->Np;
-  relativeMassHighestModeKernel =
-    platform->device.buildKernel(filename,
-                             "relativeMassHighestMode",
-                             info);
+  std::string kernelName;
 
-  filename = oklpath + "computeMaxVisc.okl";
+  kernelName = "relativeMassHighestMode";
+  relativeMassHighestModeKernel =
+    platform->kernels.get(kernelName);
+
+  kernelName = "computeMaxVisc";
   computeMaxViscKernel =
-    platform->device.buildKernel(filename,
-                             "computeMaxVisc",
-                             info);
-  filename = oklpath + "interpolateP1.okl";
+    platform->kernels.get(kernelName);
+
+  kernelName = "interpolateP1";
   interpolateP1Kernel =
-    platform->device.buildKernel(filename,
-      "interpolateP1",
-      info);
+    platform->kernels.get(kernelName);
 }
 
 }
@@ -126,6 +116,7 @@ occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, 
 
     cds->advectionStrongVolumeKernel(
       cds->meshV->Nelements,
+      cds->meshV->o_vgeo,
       mesh->o_D,
       cds->vFieldOffset,
       0,

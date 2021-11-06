@@ -140,8 +140,7 @@ struct nrs_t
   occa::memory o_BF;
   occa::memory o_FU;
 
-  int var_coeff;
-  dfloat* prop, * ellipticCoeff;
+  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
 
   //EXTBDF data
@@ -217,5 +216,7 @@ void compileKernels();
 
 std::vector<int>
 determineMGLevels(std::string section);
+
+int numberActiveFields(nrs_t* nrs);
 
 #endif

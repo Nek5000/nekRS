@@ -1,5 +1,6 @@
 #include <math.h>
 #include <limits>
+#include <vector>
 
 static int ciMode = 0;
 
@@ -311,8 +312,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
      }
 
   if (ciMode == 4){
-    dfloat memoryUsage = platform->device.memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0450654;
+    dfloat memoryUsage = platform->device.occaDevice().memoryAllocated()/1e9;
+    const dfloat expectedMemoryUsage = 0.0455484;
     if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){
@@ -346,8 +347,25 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
            vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr, s01IterErr, s02IterErr);
+  
+  std::vector<double> relErrors = {vxErr, prErr, s1Err, s2Err};
+  std::vector<double> absErrors = {abs(err[0]), abs(err[1]), abs(err[2]), abs(err[3])};
+  bool passTest = true;
+  const double absTol = 1e-11; // values below this threshold are ignored
+  for(size_t i = 0; i < relErrors.size(); ++i){
 
-  (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
-   velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
+    const double absError = absErrors[i];
+    const double relError = relErrors[i];
+    if(absError > absTol){
+      passTest &= relError < EPS;
+    }
+  }
+
+  passTest &= velIterErr <= 1;
+  passTest &= pIterErr <= 2;
+  passTest &= s01IterErr <= 1;
+  passTest &= s02IterErr <= 1;
+
+  passTest ? (PASS) : (FAIL);
 
 }

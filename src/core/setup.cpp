@@ -344,10 +344,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_BF = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat), nrs->BF);
   nrs->o_FU = platform->device.malloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset * sizeof(dfloat), nrs->FU);
 
-  nrs->var_coeff = 1; // use always var coeff elliptic
-  nrs->ellipticCoeff = (dfloat*) calloc(2 * nrs->fieldOffset,sizeof(dfloat));
-  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat),
-                                             nrs->ellipticCoeff);
+  nrs->o_ellipticCoeff = device.malloc(2 * nrs->fieldOffset * sizeof(dfloat));
 
   int nProperties = 2;
   if(options.compareArgs("MESH SOLVER", "ELASTICITY")) nProperties = 4;
@@ -473,137 +470,137 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       const std::string section = "nrs-";
       kernelName = "nStagesSum3";
       nrs->nStagesSum3Kernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "computeFieldDotNormal";
       nrs->computeFieldDotNormalKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "computeFaceCentroid";
       nrs->computeFaceCentroidKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       {
         kernelName = "strongAdvectionVolume" + suffix;
         nrs->advectionStrongVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
         kernelName = "strongAdvectionCubatureVolume" + suffix;
         nrs->advectionStrongCubatureVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
       }
 
       kernelName = "curl" + suffix;
       nrs->curlKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "gradientVolume" + suffix;
-      nrs->gradientVolumeKernel =  platform->kernels.getKernel( section + kernelName);
+      nrs->gradientVolumeKernel =  platform->kernels.get( section + kernelName);
 
       kernelName = "nrswGradientVolume" + suffix;
       nrs->wgradientVolumeKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       {
         kernelName = "sumMakef";
-        nrs->sumMakefKernel =  platform->kernels.getKernel( section + kernelName);
+        nrs->sumMakefKernel =  platform->kernels.get( section + kernelName);
       }
 
       kernelName = "nrswDivergenceVolume" + suffix;
       nrs->wDivergenceVolumeKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
       kernelName = "divergenceVolume" + suffix;
       nrs->divergenceVolumeKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "divergenceSurfaceTOMBO" + suffix;
       nrs->divergenceSurfaceKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "advectMeshVelocityHex3D";
       nrs->advectMeshVelocityKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "pressureRhsTOMBO" + suffix;
       nrs->pressureRhsKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "pressureStress" + suffix;
       nrs->pressureStressKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "pressureDirichletBC" + suffix;
       nrs->pressureDirichletBCKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "velocityRhsTOMBO" + suffix;
       nrs->velocityRhsKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "velocityDirichletBC" + suffix;
       nrs->velocityDirichletBCKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "velocityNeumannBC" + suffix;
       nrs->velocityNeumannBCKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "UrstCubature" + suffix;
       nrs->UrstCubatureKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "Urst" + suffix;
       nrs->UrstKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
 
       if(nrs->Nsubsteps){
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         nrs->subCycleStrongCubatureVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
         kernelName = "subCycleStrongVolume" + suffix;
         nrs->subCycleStrongVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
 
         kernelName = "subCycleERKUpdate";
         nrs->subCycleRKUpdateKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
         kernelName = "subCycleRK";
         nrs->subCycleRKKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
 
         kernelName = "subCycleInitU0";
-        nrs->subCycleInitU0Kernel =  platform->kernels.getKernel( section + kernelName);
+        nrs->subCycleInitU0Kernel =  platform->kernels.get( section + kernelName);
       }
 
       kernelName = "multiExtrapolate";
       nrs->extrapolateKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "maskCopy";
       nrs->maskCopyKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
       kernelName = "mask";
       nrs->maskKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "filterRT" + suffix;
       nrs->filterRTKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "cfl" + suffix;
       nrs->cflKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "pressureAddQtl";
       nrs->pressureAddQtlKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "setEllipticCoeff";
       nrs->setEllipticCoeffKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
       kernelName = "setEllipticCoeffPressure";
       nrs->setEllipticCoeffPressureKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
   }
 
   MPI_Barrier(platform->comm.mpiComm);
@@ -621,6 +618,20 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(platform->comm.mpiRank == 0)  printf("calling udf_setup ... "); fflush(stdout);
   udf.setup(nrs);
   if(platform->comm.mpiRank == 0)  printf("done\n"); fflush(stdout);
+
+  nrs->o_U.copyFrom(nrs->U);
+  nrs->o_P.copyFrom(nrs->P);
+  nrs->o_prop.copyFrom(nrs->prop);
+  if(nrs->Nscalar) {
+    nrs->cds->o_S.copyFrom(nrs->cds->S);
+    nrs->cds->o_prop.copyFrom(nrs->cds->prop);
+  }
+
+  evaluateProperties(nrs, startTime);
+  nrs->o_prop.copyTo(nrs->prop);
+  if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
+
+  nek::ocopyToNek(startTime, 0);
 
   // setup elliptic solvers
 
@@ -665,9 +676,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       cds->solver[is]->BCType = (int*) calloc(nbrBIDs + 1,sizeof(int));
       memcpy(cds->solver[is]->BCType,sBCType,(nbrBIDs + 1) * sizeof(int));
       free(sBCType);
-      cds->solver[is]->var_coeff = cds->var_coeff;
-      for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
-      cds->solver[is]->lambda = cds->ellipticCoeff;
+
+      const int coeffField = platform->options.compareArgs("SCALAR" + sid + " COEFF FIELD", "TRUE");
+      cds->solver[is]->coeffField = coeffField;
+      cds->solver[is]->coeffFieldPreco = coeffField;
+      cds->solver[is]->poisson = 0;
+
+      platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
       cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
       cds->solver[is]->loffset = 0;
  
@@ -748,7 +763,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->mOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("MESH MAXIMUM ITERATIONS"));
 
     // coeff used by ellipticSetup to detect allNeumann
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 1;
+    platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
+    
+    const int velCoeffField = platform->options.compareArgs("VELOCITY COEFF FIELD", "TRUE");
 
     if(nrs->uvwSolver) {
       nrs->uvwSolver->blockSolver = 1;
@@ -765,10 +782,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uvwSolver->NBCType = NBCType;
       nrs->uvwSolver->BCType = (int*) calloc(nrs->NVfields * NBCType,sizeof(int));
       memcpy(nrs->uvwSolver->BCType,uvwBCType,nrs->NVfields * NBCType * sizeof(int));
-      nrs->uvwSolver->var_coeff = nrs->var_coeff;
-      nrs->uvwSolver->lambda = nrs->ellipticCoeff;
+      nrs->uvwSolver->coeffField = velCoeffField;
+      nrs->uvwSolver->coeffFieldPreco = velCoeffField;
       nrs->uvwSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
+      nrs->uvwSolver->poisson = 0;
 
       ellipticSolveSetup(nrs->uvwSolver);
     } else {
@@ -784,10 +802,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->uSolver->NBCType = NBCType;
       nrs->uSolver->BCType = (int*) calloc(NBCType,sizeof(int));
       memcpy(nrs->uSolver->BCType,uBCType,NBCType * sizeof(int));
-      nrs->uSolver->var_coeff = nrs->var_coeff;
-      nrs->uSolver->lambda = nrs->ellipticCoeff;
+      nrs->uSolver->coeffField = velCoeffField;
+      nrs->uSolver->coeffFieldPreco = velCoeffField;
       nrs->uSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->uSolver->loffset = 0;
+      nrs->uSolver->poisson = 0;
 
       ellipticSolveSetup(nrs->uSolver);
 
@@ -803,10 +822,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->vSolver->NBCType = NBCType;
       nrs->vSolver->BCType = (int*) calloc(NBCType,sizeof(int));
       memcpy(nrs->vSolver->BCType,vBCType,NBCType * sizeof(int));
-      nrs->vSolver->var_coeff = nrs->var_coeff;
-      nrs->vSolver->lambda = nrs->ellipticCoeff;
+      nrs->vSolver->coeffField = velCoeffField;
+      nrs->vSolver->coeffFieldPreco = velCoeffField;
       nrs->vSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->vSolver->loffset = 0;
+      nrs->vSolver->poisson = 0;
 
       ellipticSolveSetup(nrs->vSolver);
 
@@ -823,10 +843,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         nrs->wSolver->NBCType = NBCType;
         nrs->wSolver->BCType = (int*) calloc(NBCType,sizeof(int));
         memcpy(nrs->wSolver->BCType,wBCType,NBCType * sizeof(int));
-        nrs->wSolver->var_coeff = nrs->var_coeff;
-        nrs->wSolver->lambda = nrs->ellipticCoeff;
+        nrs->wSolver->coeffField = velCoeffField;
+        nrs->wSolver->coeffFieldPreco = velCoeffField;
         nrs->wSolver->o_lambda = nrs->o_ellipticCoeff;
         nrs->wSolver->loffset = 0;
+        nrs->wSolver->poisson = 0;
 
         ellipticSolveSetup(nrs->wSolver);
       }
@@ -837,7 +858,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     } else {
       nrs->uSolver->name = "x-velocity";
       nrs->vSolver->name = "y-velocity";
-      nrs->wSolver->name = "v-velocity";
+      nrs->wSolver->name = "z-velocity";
     }
   } // flow
 
@@ -897,13 +918,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->pSolver->BCType = (int*) calloc(nbrBIDs + 1,sizeof(int));
     memcpy(nrs->pSolver->BCType,pBCType,(nbrBIDs + 1) * sizeof(int));
 
-    nrs->pSolver->var_coeff = 1;
+    int pCoeffField = 0;
 
-    // coeff used by ellipticSetup to detect allNeumann
-    for (int i = 0; i < 2 * nrs->fieldOffset; i++) nrs->ellipticCoeff[i] = 0;
-    nrs->pSolver->lambda = nrs->ellipticCoeff;
+    if(platform->options.compareArgs("LOWMACH", "TRUE"))
+      pCoeffField = 1;
+
+    nrs->pSolver->coeffField = pCoeffField;
+    nrs->pSolver->coeffFieldPreco = pCoeffField;
+    nrs->pSolver->poisson = 1;
+
+    // lambda0 = 1/rho
+    // lambda1 = 0
+    platform->linAlg->fill(2*nrs->fieldOffset, 0.0, nrs->o_ellipticCoeff);
+    nrs->o_ellipticCoeff.copyFrom(nrs->o_rho, nrs->fieldOffset * sizeof(dfloat));
+    platform->linAlg->ady(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
     nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;
-    nrs->pSolver->loffset = 0;
+    nrs->pSolver->loffset = 0; // Poisson
 
     {
       const std::vector<int> levels = determineMGLevels("pressure");
@@ -932,6 +962,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         vMeshBCType[bID] = bcMap::type(bID, "y-mesh");
         wMeshBCType[bID] = bcMap::type(bID, "z-mesh");
       }
+
+      const int meshCoeffField = platform->options.compareArgs("MESH COEFF FIELD", "TRUE");
+      platform->linAlg->fill(2*nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
+
       nrs->meshSolver = new elliptic_t();
       nrs->meshSolver->name = "mesh";
       nrs->meshSolver->blockSolver = 1;
@@ -946,10 +980,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->meshSolver->NBCType = NBCType;
       nrs->meshSolver->BCType = (int*) calloc(nrs->NVfields * NBCType,sizeof(int));
       memcpy(nrs->meshSolver->BCType,uvwMeshBCType,nrs->NVfields * NBCType * sizeof(int));
-      nrs->meshSolver->var_coeff = 1;
-      nrs->meshSolver->lambda = nrs->ellipticCoeff;
+      nrs->meshSolver->coeffField = meshCoeffField;
+      nrs->meshSolver->coeffFieldPreco = meshCoeffField;
       nrs->meshSolver->o_lambda = nrs->o_ellipticCoeff;
       nrs->meshSolver->loffset = 0; // use same ellipticCoeff for u,v and w
+      nrs->meshSolver->poisson = 0;
 
       ellipticSolveSetup(nrs->meshSolver);
     }
@@ -977,7 +1012,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       if (sweep == 0) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
       if (sweep == 1) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
     }
-    nrs->o_U.copyFrom(platform->o_mempool.slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+    platform->o_mempool.slice3.copyFrom(platform->o_mempool.slice0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
     platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, 0.0, platform->o_mempool.slice0);
     for (int sweep = 0; sweep < 2; sweep++) {
@@ -985,7 +1020,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                                    nrs->fieldOffset,
                                    mesh->o_vmapM,
                                    nrs->o_EToBMesh,
-                                   nrs->o_U,
+                                   platform->o_mempool.slice3,
                                    platform->o_mempool.slice0);
       //take care of Neumann-Dirichlet shared edges across elements
       if(sweep == 0) oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
@@ -1105,8 +1140,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
   cds->o_rho  = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
-  cds->var_coeff = 1; // use always var coeff elliptic
-  cds->ellipticCoeff   = nrs->ellipticCoeff;
   cds->o_ellipticCoeff = nrs->o_ellipticCoeff;
 
   cds->o_U  = nrs->o_U;
@@ -1219,58 +1252,58 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
    {
         kernelName = "strongAdvectionVolume" + suffix;
         cds->advectionStrongVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
 
         kernelName = "strongAdvectionCubatureVolume" + suffix;
         cds->advectionStrongCubatureVolumeKernel =  
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
 
   	kernelName = "advectMeshVelocityHex3D";
       cds->advectMeshVelocityKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "maskCopy";
       cds->maskCopyKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       {
         kernelName = "sumMakef";
-        cds->sumMakefKernel =  platform->kernels.getKernel( section + kernelName);
+        cds->sumMakefKernel =  platform->kernels.get( section + kernelName);
       }
 
       kernelName = "helmholtzBC" + suffix;
-      cds->helmholtzRhsBCKernel =  platform->kernels.getKernel( section + kernelName);
+      cds->helmholtzRhsBCKernel =  platform->kernels.get( section + kernelName);
       kernelName = "dirichletBC";
-      cds->dirichletBCKernel =  platform->kernels.getKernel( section + kernelName);
+      cds->dirichletBCKernel =  platform->kernels.get( section + kernelName);
 
       kernelName = "setEllipticCoeff";
       cds->setEllipticCoeffKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "filterRT" + suffix;
       cds->filterRTKernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       kernelName = "nStagesSum3";
       cds->nStagesSum3Kernel =
-        platform->kernels.getKernel( section + kernelName);
+        platform->kernels.get( section + kernelName);
 
       if(cds->Nsubsteps) {
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         cds->subCycleStrongCubatureVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
         kernelName = "subCycleStrongVolume" + suffix;
         cds->subCycleStrongVolumeKernel =
-          platform->kernels.getKernel( section + kernelName);
+          platform->kernels.get( section + kernelName);
 
 
         kernelName = "subCycleERKUpdate";
-        cds->subCycleRKUpdateKernel =  platform->kernels.getKernel( section + kernelName);
+        cds->subCycleRKUpdateKernel =  platform->kernels.get( section + kernelName);
         kernelName = "subCycleRK";
-        cds->subCycleRKKernel =  platform->kernels.getKernel( section + kernelName);
+        cds->subCycleRKKernel =  platform->kernels.get( section + kernelName);
 
         kernelName = "subCycleInitU0";
-        cds->subCycleInitU0Kernel =  platform->kernels.getKernel( section + kernelName);
+        cds->subCycleInitU0Kernel =  platform->kernels.get( section + kernelName);
       }
   }
 

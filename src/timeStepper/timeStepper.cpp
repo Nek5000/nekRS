@@ -323,6 +323,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     if (stage == 1) tElapsedStage += tPreStep;
     tElapsedStep += tElapsedStage;
     tElapsed += tElapsedStage;
+    platform->timer.set("solve", tElapsed);
 
     printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed);
 
@@ -344,7 +345,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     platform->timer.set("minSolveStep", tElapsedStepMin);
     platform->timer.set("maxSolveStep", tElapsedStepMax);
   }
-  platform->timer.set("solve", tElapsed);
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
@@ -1579,7 +1579,9 @@ void printInfo(
     printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
   }
 
-  if (cfl > 30 || std::isnan(cfl) || std::isinf(cfl)) {
+  bool largeCFLCheck = (cfl > 30) && numberActiveFields(nrs);
+
+  if (largeCFLCheck || std::isnan(cfl) || std::isinf(cfl)) {
     if (platform->comm.mpiRank == 0)
       std::cout << "Unreasonable CFL! Dying ...\n" << std::endl;
     ABORT(1);

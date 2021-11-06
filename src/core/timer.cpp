@@ -7,13 +7,6 @@
 #include "platform.hpp"
 #include "ogs.hpp"
 
-std::string printPercentage(double num, double dom)
-{
-  char buf[4096];
-  double frac = num/dom;
-  snprintf(buf, sizeof(buf), "(%.2f)", frac);
-  return std::string(buf);
-}
 
 namespace timer
 {
@@ -21,7 +14,7 @@ namespace
 {
 struct tagData
 {
-  int count;
+  long long int count;
   double hostElapsed;
   double deviceElapsed;
   double startTime;
@@ -50,7 +43,7 @@ void timer_t::init(MPI_Comm comm,occa::device device,int ifSync)
   comm_ = comm;
 }
 
-void timer_t::set(const std::string tag, double time)
+void timer_t::set(const std::string tag, double time, long long int count)
 {
   m_[tag].startTime = time;	
   auto it = m_.find(tag);
@@ -61,7 +54,7 @@ void timer_t::set(const std::string tag, double time)
 
   it->second.hostElapsed = time; 
   it->second.deviceElapsed = it->second.hostElapsed;
-  it->second.count++;
+  it->second.count = count;
 }
 
 void timer_t::reset()
@@ -177,7 +170,7 @@ double timer_t::deviceElapsed(const std::string tag)
   return it->second.deviceElapsed;
 }
 
-int timer_t::count(const std::string tag)
+long long int timer_t::count(const std::string tag)
 {
   auto it = m_.find(tag);
   if(it == m_.end()) return NEKRS_TIMER_INVALID_KEY;
@@ -235,105 +228,121 @@ double timer_t::query(const std::string tag,const std::string metric)
   return NEKRS_TIMER_INVALID_METRIC;
 }
 
+std::string printPercentage(double num, double dom)
+{
+  char buf[4096];
+  double frac = num/dom;
+  snprintf(buf, sizeof(buf), "%7.2f", frac);
+  return std::string(buf);
+}
+
+void timer_t::printStatEntry(std::string name, std::string tag, std::string type) 
+{
+  int rank;
+  MPI_Comm_rank(comm_, &rank);
+  const double tTag = query(tag, type);
+  const double tSolve = query("solve", type);
+  const long long int nCalls = count(tag);
+  if(tTag > 0) {
+    if(rank == 0){
+      std::cout << name 
+                << tTag << "s"  
+                << "  " << printPercentage(tTag, tSolve)
+                << "  " << nCalls << "\n";
+    }
+  } 
+}
+
+void timer_t::printStatEntry(std::string name, double time) 
+{
+  int rank;
+  MPI_Comm_rank(comm_, &rank);
+  const double tSolve = query("solve", "DEVICE:MAX");
+  if(time > 0) {
+    if(rank == 0){
+      std::cout << name 
+                << time << "s"  
+                << "  " << printPercentage(time, tSolve) << "\n";
+    } 
+  } 
+}
+
 void timer_t::printRunStat(int step)
 {
   int rank;
   MPI_Comm_rank(comm_, &rank);
 
-  double dEtime[20];
-  dEtime[0] = query("makef", "DEVICE:MAX");
+  set("velocity proj", 
+      query("velocity proj pre", "DEVICE:MAX") + query("velocity proj post", "DEVICE:MAX"),
+      count("velocity proj pre"));
 
-  dEtime[1] = query("velocitySolve", "DEVICE:MAX");
-  dEtime[17] = query("velocity proj pre", "DEVICE:MAX");
-  dEtime[17]+= query("velocity proj post", "DEVICE:MAX");
-  dEtime[2] = query("pressureSolve", "DEVICE:MAX");
-  dEtime[3] = query("makeq", "DEVICE:MAX");
-  dEtime[4] = query("scalarSolve", "DEVICE:MAX");
-  dEtime[18] = query("meshSolve", "DEVICE:MAX");
-  dEtime[5] = query("pressure preconditioner", "DEVICE:MAX");
-  dEtime[16] = query("pressure preconditioner smoother", "DEVICE:MAX");
-  dEtime[6] = query("pressure proj pre", "DEVICE:MAX");
-  dEtime[6]+= query("pressure proj post", "DEVICE:MAX");
-  dEtime[8] = query("dotp", "DEVICE:MAX");
-  dEtime[9] = query("solve", "DEVICE:MAX");
-  dEtime[10] = query("setup", "DEVICE:MAX");
-  dEtime[11] = query("checkpointing", "DEVICE:MAX");
-  dEtime[12] = query("udfExecuteStep", "DEVICE:MAX");
-  dEtime[13] = query("udfUEqnSource", "DEVICE:MAX");
-  dEtime[14] = query("udfSEqnSource", "DEVICE:MAX");
-  dEtime[15] = query("udfProperties", "DEVICE:MAX");
+  set("pressure proj", 
+      query("pressure proj pre", "DEVICE:MAX") + query("pressure proj post", "DEVICE:MAX"),
+      count("pressure proj pre"));
 
-  dEtime[19] = query("coarseSolve", "DEVICE:MAX");
+  set("scalar proj", 
+      query("scalar proj pre", "DEVICE:MAX") + query("scalar proj post", "DEVICE:MAX"),
+      count("scalar proj pre"));
 
-  double hEtime[10];
-  hEtime[1] = ogsTime(/* reportHostTime */ true);
-  MPI_Allreduce(MPI_IN_PLACE, &hEtime[1], 1, MPI_DOUBLE, MPI_MAX, comm_);
 
-  hEtime[2] = query("minSolveStep", "HOST:MAX");
-  hEtime[3] = query("maxSolveStep", "HOST:MAX");
-  hEtime[4] = query("loadKernels", "HOST:MAX");
+  double gsTime = ogsTime(/* reportHostTime */ true);
+  MPI_Allreduce(MPI_IN_PLACE, &gsTime, 1, MPI_DOUBLE, MPI_MAX, comm_);
 
-  if (rank == 0) {
-    std::cout << "step=  " << step << " runtime statistics\n\n";
+  if(rank == 0) std::cout << ">>> runtime statistics (step = " << step << "):\n";
 
-    std::cout.setf(std::ios::scientific);
-    int outPrecisionSave = std::cout.precision();
-    std::cout.precision(5);
+  std::cout.setf(std::ios::scientific);
+  int outPrecisionSave = std::cout.precision();
+  std::cout.precision(5);
 
-  	std::cout << "  setup                 " << dEtime[10] << "s " << printPercentage(dEtime[10],dEtime[9]) << "\n"; 
-  	std::cout << "    loadKernels         " << hEtime[4]  << "s " << printPercentage(hEtime[4],dEtime[9]) << "\n"; 
+  if(rank == 0) std::cout <<   "name                    " << "time          " << "time(%)  " << "calls\n";
 
-    if(dEtime[11] > 0)
-    std::cout << "  checkpointing         " << dEtime[11]<< "s " << printPercentage(dEtime[11],dEtime[9]) << "\n"; 
+  printStatEntry("  setup                 ", "setup", "DEVICE:MAX");
 
-    if(dEtime[12] > 0)
-    std::cout << "  udfExecuteStep        " << dEtime[12] << "s " << printPercentage(dEtime[12],dEtime[9]) << "\n";
+  printStatEntry("    loadKernels         ", "loadKernels", "HOST:MAX");
 
-    if(hEtime[2] > 0 && hEtime[3] > 0)
-    std::cout << "  solve step min/max    " << hEtime[2] << "s / " << hEtime[3] << "s (first 10 steps excluded)\n";
+  printStatEntry("  checkpointing         ", "checkpointing", "DEVICE:MAX");
 
-    std::cout << "  total solve           " << dEtime[9] << "s\n"; 
-  	std::cout << "    makef               " << dEtime[0] << "s " << printPercentage(dEtime[0],dEtime[9]) << "\n";
-    if(dEtime[13] > 0)
-    std::cout << "      udfUEqnSource     " << dEtime[13] << "s " << printPercentage(dEtime[13],dEtime[9]) << "\n"; 
-    std::cout << "    velocitySolve       " << dEtime[1] << "s " << printPercentage(dEtime[1],dEtime[9]) << "\n"; 
-    if(dEtime[17] > 0)
-    std::cout << "      projection        " << dEtime[17] << "s " << printPercentage(dEtime[17],dEtime[9]) << "\n";;
+  printStatEntry("  udfExecuteStep        ", "udfExecuteStep", "DEVICE:MAX");
 
-    std::cout << "    pressureSolve       " << dEtime[2] << "s " << printPercentage(dEtime[2],dEtime[9]) << "\n";
-
-    std::cout << "      preconditioner    " << dEtime[5] << "s " << printPercentage(dEtime[5],dEtime[9]) << "\n";
-    if(dEtime[16] > 0)
-    std::cout << "        pMG smoother    " << dEtime[16] << "s " << printPercentage(dEtime[16],dEtime[9]) << "\n"; 
-    if(hEtime[0] > 0)
-    std::cout << "        coarse grid     " << dEtime[19] << "s " << printPercentage(dEtime[19],dEtime[9]) << "\n"; 
-    if(dEtime[6] > 0)
-    std::cout << "      projection        " << dEtime[6] << "s " << printPercentage(dEtime[6],dEtime[9]) << "\n"; 
-
-    if(dEtime[4] > 0)
-    std::cout << "    scalarSolve         " << dEtime[4] << "s " << printPercentage(dEtime[4],dEtime[9]) << "\n";
-    if(dEtime[4] > 0) {
-    std::cout << "      makeq             " << dEtime[3] << "s " << printPercentage(dEtime[3],dEtime[9]) << "\n";
-     if(dEtime[14] > 0)
-    std::cout << "      udfSEqnSource     " << dEtime[14] << "s " << printPercentage(dEtime[14],dEtime[9]) << "\n";
-    }
-
-    if(dEtime[15] > 0)
-    std::cout << "    udfProperties       " << dEtime[15] << "s " << printPercentage(dEtime[15],dEtime[9]) << "\n";
-
-    if(dEtime[18] > 0)
-    std::cout << "    meshSolve           " << dEtime[18] << " s\n";
-
-    if(hEtime[1] > 0)
-    std::cout << "    gsMPI               " << hEtime[1] << "s " << printPercentage(hEtime[1],dEtime[9]) << "\n";
-    if(dEtime[8] > 0)
-    std::cout << "    dotp                " << dEtime[8] << "s " << printPercentage(dEtime[8],dEtime[9]) << "\n";
-
-    std::cout << std::endl;
-
-    std::cout.unsetf(std::ios::scientific);
-    std::cout.precision(outPrecisionSave);
+  const double tSolve        = query("solve", "DEVICE:MAX");
+  const double tMinSolveStep = query("minSolveStep", "HOST:MAX");
+  const double tMaxSolveStep = query("maxSolveStep", "HOST:MAX");
+  if(tSolve > 0 && rank == 0) {
+    std::cout <<   "  total solve           " << tSolve << "s\n";
+    std::cout <<   "    step min            " << tMinSolveStep << "s\n";
+    std::cout <<   "    step max            " << tMaxSolveStep << "s\n";
   }
+
+  printStatEntry("    makef               ", "makef", "DEVICE:MAX");
+  printStatEntry("      udfUEqnSource     ", "udfUEqnSource", "DEVICE:MAX");
+
+  printStatEntry("    makeq               ", "makeq", "DEVICE:MAX");
+  printStatEntry("      udfSEqnSource     ", "udfSEqnSource", "DEVICE:MAX");
+
+  printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
+ 
+  printStatEntry("    velocitySolve       ", "velocitySolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "velocity proj", "DEVICE:MAX");
+
+  printStatEntry("    pressureSolve       ", "pressureSolve", "DEVICE:MAX");
+  printStatEntry("      preconditioner    ", "pressure preconditioner", "DEVICE:MAX");
+  printStatEntry("        pMG smoother    ", "pressure preconditioner smoother", "DEVICE:MAX");
+  printStatEntry("        coarse grid     ", "coarseSolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "pressure proj", "DEVICE:MAX");
+
+  printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
+  printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
+
+  printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
+
+  printStatEntry("    gsMPI               ", gsTime);
+
+  printStatEntry("    dotp                ", "dotp", "DEVICE:MAX");
+
+  if(rank == 0) std::cout << std::endl;
+
+  std::cout.unsetf(std::ios::scientific);
+  std::cout.precision(outPrecisionSave);
 }
 
 } // namespace

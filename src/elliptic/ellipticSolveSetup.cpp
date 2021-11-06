@@ -42,8 +42,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
-  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
-
   if (elliptic->blockSolver &&  elliptic->elementType != HEXAHEDRA &&
       !options.compareArgs("DISCRETIZATION",
                            "CONTINUOUS") && !options.compareArgs("PRECONDITIONER","JACOBI") ) {
@@ -77,11 +75,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     initializeGmresData(elliptic);
     const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
     elliptic->gramSchmidtOrthogonalizationKernel =
-      platform->kernels.getKernel(sectionIdentifier + "gramSchmidtOrthogonalization");
+      platform->kernels.get(sectionIdentifier + "gramSchmidtOrthogonalization");
     elliptic->updatePGMRESSolutionKernel =
-      platform->kernels.getKernel(sectionIdentifier + "updatePGMRESSolution");
+      platform->kernels.get(sectionIdentifier + "updatePGMRESSolution");
     elliptic->fusedResidualAndNormKernel =
-      platform->kernels.getKernel(sectionIdentifier + "fusedResidualAndNorm");
+      platform->kernels.get(sectionIdentifier + "fusedResidualAndNorm");
   }
 
   const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
@@ -119,33 +117,28 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   elliptic->NelementsGlobal = NelementsGlobal;
 
-  elliptic->allNeumannPenalty = 1.;
-  hlong localElements = (hlong) mesh->Nelements;
-  hlong totalElements = 0;
-  MPI_Allreduce(&localElements, &totalElements, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  elliptic->allNeumannScale = 1. / sqrt((dfloat)mesh->Np * totalElements);
-
-  elliptic->allNeumannPenalty = 0;
-  elliptic->allNeumannScale = 0;
-
   elliptic->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces * elliptic->Nfields,sizeof(int));
   int* allNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
+
+  dfloat* lambda = (dfloat*) calloc(2*elliptic->Ntotal, sizeof(dfloat));
+  elliptic->o_lambda.copyTo(lambda, 2*elliptic->Ntotal*sizeof(dfloat));
   // check based on the coefficient
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
-    if(elliptic->var_coeff) {
+    if(elliptic->coeffField) {
       int allzero = 1;
       for(int n = 0; n < Nlocal; n++) { // check any non-zero value for each field
-        const dfloat lambda = elliptic->lambda[n + elliptic->Ntotal + fld * elliptic->loffset];
-        if(lambda) {
+        if(lambda[n + elliptic->Ntotal + fld * elliptic->loffset]) {
           allzero = 0;
           break;
         }
       }
       allNeumann[fld] = allzero;
     }else{
-      allNeumann[fld] = (elliptic->lambda[fld] == 0) ? 1 : 0;
+      allNeumann[fld] = (lambda[elliptic->Ntotal + fld * elliptic->loffset] == 0) ? 1 : 0;
     }
   }
+
+  free(lambda);
 
   // check based on BC
   for(int fld = 0; fld < elliptic->Nfields; fld++)
@@ -160,86 +153,32 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       }
 
   elliptic->allNeumann = 0;
-  elliptic->allBlockNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
+  int* allBlockNeumann = (int*)calloc(elliptic->Nfields, sizeof(int));
   for(int fld = 0; fld < elliptic->Nfields; fld++) {
     int lallNeumann, gallNeumann;
     lallNeumann = allNeumann[fld] ? 0:1;
     MPI_Allreduce(&lallNeumann, &gallNeumann, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
-    elliptic->allBlockNeumann[fld] = (gallNeumann > 0) ? 0: 1;
+    allBlockNeumann[fld] = (gallNeumann > 0) ? 0: 1;
     // even if there is a single allNeumann activate Null space correction
-    if(elliptic->allBlockNeumann[fld])
+    if(allBlockNeumann[fld])
       elliptic->allNeumann = 1;
   }
+  free(allBlockNeumann);
 
   if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  //setup an unmasked gs handle
   int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
   if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
 
-  //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
-  const int mapSize = elliptic->blockSolver ? elliptic->Ntotal * elliptic->Nfields: Nlocal;
-  elliptic->mapB = (int*) calloc(mapSize,sizeof(int));
-  const int largeNumber = 1 << 20;
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong e = 0; e < mesh->Nelements; e++) {
-      for (int n = 0; n < mesh->Np; n++)
-        elliptic->mapB[n + e * mesh->Np + fld * elliptic->Ntotal] = largeNumber;
-      for (int f = 0; f < mesh->Nfaces; f++) {
-        int bc = mesh->EToB[f + e * mesh->Nfaces];
-        if (bc > 0) {
-          int BCFlag = elliptic->BCType[bc + elliptic->NBCType * fld];
-          for (int n = 0; n < mesh->Nfp; n++) {
-            int fid = mesh->faceNodes[n + f * mesh->Nfp];
-            elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal] = 
-              mymin(BCFlag, elliptic->mapB[fid + e * mesh->Np + fld * elliptic->Ntotal]);
-          }
-        }
-      }
-    }
-  ogsGatherScatterMany(elliptic->mapB,
-                       elliptic->Nfields,
-                       elliptic->Ntotal,
-                       ogsInt,
-                       ogsMin,
-                       mesh->ogs);
-
-  // Create mask Ids
-  elliptic->Nmasked  = 0;
-  elliptic->fNmasked = (dlong*)calloc(elliptic->Nfields, sizeof(dlong));
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++) {
-      if (elliptic->mapB[n + fld * elliptic->Ntotal] == largeNumber) {
-        elliptic->mapB[n + fld * elliptic->Ntotal] = 0.;
-      } else if (elliptic->mapB[n + fld * elliptic->Ntotal] == 1) { //Dirichlet boundary
-        elliptic->Nmasked++; // increase global accumulator
-        elliptic->fNmasked[fld]++; // increase local accumulator
-      }
-    }
-  elliptic->o_mapB = platform->device.malloc(mapSize * sizeof(int), elliptic->mapB);
-
-  elliptic->maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-  elliptic->Nmasked = 0;
-  for(int fld = 0; fld < elliptic->Nfields; fld++)
-    for (dlong n = 0; n < mesh->Nelements * mesh->Np; n++)
-      if (elliptic->mapB[n + fld * elliptic->Ntotal] == 1)
-        elliptic->maskIds[elliptic->Nmasked++] = n + fld * elliptic->Ntotal;
-  if (elliptic->Nmasked) 
-    elliptic->o_maskIds = platform->device.malloc(elliptic->Nmasked * sizeof(dlong), elliptic->maskIds);
-
-  if(elliptic->blockSolver) {
-    elliptic->ogs = mesh->ogs; // cannot use masked version as mixed BC's possible in each field
-  } else {
-    hlong* maskedGlobalIds = (hlong*) calloc(Nlocal,sizeof(hlong));
-    memcpy(maskedGlobalIds, mesh->globalIds, Nlocal * sizeof(hlong));
-    for (dlong n = 0; n < elliptic->Nmasked; n++)
-      maskedGlobalIds[elliptic->maskIds[n]] = 0;
-
-    elliptic->ogs = ogsSetup(Nlocal, maskedGlobalIds, platform->comm.mpiComm, verbose, platform->device);
-    free(maskedGlobalIds);
+  { //setup an unmasked gs handle
+    ogs_t *ogs = NULL;
+    if(elliptic->blockSolver) ogs = mesh->ogs; 
+    ellipticOgs(mesh, elliptic->Ntotal, elliptic->Nfields, elliptic->Ntotal, elliptic->BCType, elliptic->NBCType, 
+                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    elliptic->ogs = ogs;
+    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
-  elliptic->o_invDegree = elliptic->ogs->o_invDegree;
 
   elliptic->precon = new precon_t();
 
@@ -253,83 +192,34 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   {
       mesh->maskKernel =
-        platform->kernels.getKernel("mask");
+        platform->kernels.get("mask");
   }
 
   {
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
-      elliptic->updateDiagonalKernel = platform->kernels.getKernel(sectionIdentifier + kernelName);
-      if(elliptic->blockSolver) {
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA) {
-          if(elliptic->stressForm)
-            kernelName = "ellipticStressAxVar" + suffix;
-          else
-            kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-        }else {
-          if(elliptic->stressForm)
-            kernelName = "ellipticStressAx" + suffix;
-          else
-            kernelName = "ellipticBlockAx", suffix + "_N" + std::to_string(elliptic->Nfields);
-        }
-      }else{
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticAxVar" + suffix;
-        else
-          kernelName =  "ellipticAx" + suffix;
-      }
-      elliptic->AxStressKernel = platform->kernels.getKernel(kernelName);
-      if(elliptic->blockSolver) {
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticBlockAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-        else
-          kernelName = "ellipticBlockAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
-      }else{
-        if(elliptic->var_coeff && elliptic->elementType == HEXAHEDRA)
-          kernelName = "ellipticAxVar" + suffix;
-        else
-          kernelName = "ellipticAx" + suffix;
-      }
-      // Keep other kernel around
-      elliptic->AxKernel = platform->kernels.getKernel(kernelName);
+      elliptic->updateDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
+      elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
+      elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
 
-      if(!serial) {
-        if(elliptic->elementType != HEXAHEDRA) {
-          kernelName = "ellipticPartialAx" + suffix;
-        }else {
-          if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR")) {
-            if(elliptic->var_coeff || elliptic->blockSolver) {
-              printf(
-                "ERROR: TRILINEAR form is not implemented for varibale coefficient and block solver yet \n");
-              ABORT(EXIT_FAILURE);
-            }
-            kernelName = "ellipticPartialAxTrilinear" + suffix;
-          }else {
-            if(elliptic->blockSolver) {
-              if(elliptic->var_coeff) {
-                if(elliptic->stressForm)
-                  kernelName = "ellipticStressPartialAxVar" + suffix;
-                else
-                  kernelName = "ellipticBlockPartialAxVar" + suffix + "_N" + std::to_string(elliptic->Nfields);
-              }else {
-                if(elliptic->stressForm)
-                  kernelName = "ellipticStessPartialAx" + suffix;
-                else
-                  kernelName = "ellipticBlockPartialAx" + suffix + "_N" + std::to_string(elliptic->Nfields);
-              }
-            }else {
-              if(elliptic->var_coeff)
-                kernelName = "ellipticPartialAxVar" + suffix;
-              else
-                kernelName = "ellipticPartialAx" + suffix;
-            }
-          }
-        }
-        elliptic->partialAxKernel = platform->kernels.getKernel(kernelName);
-        elliptic->partialAxKernel2 = platform->kernels.getKernel(kernelName);
-      }
+      std::string kernelNamePrefix = "";
+      if(elliptic->poisson) kernelNamePrefix += "poisson-";
+      kernelNamePrefix += "elliptic";
+      if (elliptic->blockSolver)
+        kernelNamePrefix += (elliptic->stressForm) ? "Stress" : "Block";
+ 
+      kernelName = "Ax";
+      if (elliptic->coeffField) kernelName += "Coeff";
+      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
+      kernelName += suffix; 
+      if (elliptic->blockSolver && !elliptic->stressForm) 
+        kernelName += "_N" + std::to_string(elliptic->Nfields);
+
+      elliptic->AxKernel = 
+        platform->kernels.get(kernelNamePrefix + "Partial" + kernelName);
+
       elliptic->updatePCGKernel =
-        platform->kernels.getKernel(sectionIdentifier + "ellipticBlockUpdatePCG");
+        platform->kernels.get(sectionIdentifier + "ellipticBlockUpdatePCG");
   }
 
   MPI_Barrier(platform->comm.mpiComm);
@@ -337,7 +227,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   fflush(stdout);
 
   oogs_mode oogsMode = OOGS_AUTO;
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
   auto callback = [&]() // hardwired to FP64 variable coeff
                   {
                     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
@@ -346,10 +235,10 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
-  long long int pre = platform->device.memoryAllocated();
+  long long int pre = platform->device.occaDevice().memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs);
 
-  long long int usedBytes = platform->device.memoryAllocated() - pre;
+  long long int usedBytes = platform->device.occaDevice().memoryAllocated() - pre;
 
   elliptic->precon->preconBytes = usedBytes;
 

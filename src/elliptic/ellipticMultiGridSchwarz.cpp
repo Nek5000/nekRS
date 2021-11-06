@@ -643,7 +643,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
   meshConnectFaceNodes3D(mesh);
   meshGlobalIds(mesh);
 
-  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device);
+  mesh->ogs = ogsSetup(mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 1, platform->device.occaDevice());
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
@@ -825,7 +825,7 @@ void MGLevel::build(
   //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
 
   extendedOgs = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIds, 1, 0,
-                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device,
+                                    ogsPfloat, platform->comm.mpiComm, 1, platform->device.occaDevice(),
                                     NULL, oogsMode);
   meshFree(extendedMesh);
 
@@ -889,9 +889,9 @@ void MGLevel::build(
   const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
 
   {
-    preFDMKernel = platform->kernels.getKernel("preFDM" + suffix);
-    fusedFDMKernel = platform->kernels.getKernel("fusedFDM" + suffix);
-    postFDMKernel = platform->kernels.getKernel("postFDM" + suffix);
+    preFDMKernel = platform->kernels.get("preFDM" + suffix);
+    fusedFDMKernel = platform->kernels.get("fusedFDM" + suffix);
+    postFDMKernel = platform->kernels.get("postFDM" + suffix);
   }
 }
 
@@ -907,33 +907,33 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
   if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
 
     oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
 
     oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   } else {
     if(!overlap){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(Nelements,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(Nelements,mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     }
 
     oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);
 
     if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(Nelements,mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
 
     oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) extendedOgs);

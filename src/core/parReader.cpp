@@ -820,12 +820,18 @@ void parseInitialGuess(const int rank, setupAide &options,
                       "PROJECTION");
     } else if (initialGuess.find("previous") != std::string::npos) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+      // removeArgs any default entries associated with projection initial guess
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
     } else if (checkForTrue(initialGuess)) {
       const int defaultNumVectors = parScope == "pressure" ? 10 : 5;
       options.setArgs(parSectionName + " INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
     } else if (checkForFalse(initialGuess)) {
       options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+      // removeArgs any default entries associated with projection initial guess
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+      options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
     } else {
       std::ostringstream error;
       error << "Could not parse initialGuess string" << initialGuess << "!\n";
@@ -868,9 +874,13 @@ void parseInitialGuess(const int rank, setupAide &options,
         options.setArgs(parSectionName + " RESIDUAL PROJECTION VECTORS",
                         std::to_string(defaultNumVectors));
         options.setArgs(parSectionName + " RESIDUAL PROJECTION START", "5");
+      } else {
+        options.setArgs(parSectionName + " INITIAL GUESS", "PREVIOUS");
+        
+        // removeArgs any default entries associated with projection initial guess
+        options.removeArgs(parSectionName + " RESIDUAL PROJECTION START");
+        options.removeArgs(parSectionName + " RESIDUAL PROJECTION VECTORS");
       }
-
-      return;
     }
 
     int nVectors;
@@ -1176,6 +1186,9 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("ENABLE OVERLAP", "TRUE");
 
   options.setArgs("VARIABLE DT", "FALSE");
+
+  // coeff fields
+  options.setArgs("VELOCITY COEFF FIELD", "TRUE");
 }
 
 setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
@@ -1232,9 +1245,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   std::string sbuf;
 
   // OCCA
-  std::string threadModel;
-  if (par->extract("occa", "backend", threadModel)) {
-    const std::vector<std::string> validValues = {
+  std::string backendSpecification;
+  if (par->extract("occa", "backend", backendSpecification)) {
+    const std::vector<std::string> validBackends = {
       {"serial"},
       {"cpu"},
       {"cuda"},
@@ -1242,11 +1255,59 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       {"opencl"},
       {"openmp"},
     };
+    const std::vector<std::string> validArchitectures = {
+      {"arch"}, // include the arch= specifier here
+      {"x86"},
+      {"a64fx"},
+    };
 
-    checkValidity(rank, validValues, threadModel);
+    std::vector<std::string> validValues = validBackends;
+    validValues.insert(validValues.end(), validArchitectures.begin(), validArchitectures.end());
+
+    const std::vector<std::string> list = serializeString(backendSpecification, '+');
+    for(const std::string entry : list){
+      const std::vector<std::string> arguments = serializeString(entry, '=');
+      for(const std::string argument : arguments){
+        checkValidity(rank, validValues, argument);
+      }
+    }
+
+    std::string threadModel = "";
+    std::string architecture = "";
+    for(const std::string entry : list){
+      const std::vector<std::string> arguments = serializeString(entry, '=');
+      if(arguments.size() == 1){
+        for(const std::string backend : validBackends){
+          if(backend == arguments.at(0)){
+            threadModel = backend;
+          }
+        }
+      } else if (arguments.size() == 2){
+        for(const std::string arch : validArchitectures){
+          if(arch == arguments.at(1)){
+            architecture = arch;
+          }
+        }
+      } else {
+        std::ostringstream error;
+        error << "Could not parse string \"" << entry << "\" while parsing OCCA:backend.\n";
+        append_error(error.str());
+      }
+    }
+
+    if(threadModel.empty()){
+      std::ostringstream error;
+      error << "Could not parse valid backend from \"" << backendSpecification << "\" while parsing OCCA:backend.\n";
+      append_error(error.str());
+    }
 
     UPPER(threadModel);
     options.setArgs("THREAD MODEL", threadModel);
+
+    if(!architecture.empty()){
+      UPPER(architecture);
+      options.setArgs("ARCHITECTURE", architecture);
+    }
   }
 
   std::string deviceNumber;
@@ -1517,6 +1578,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     options.setArgs("MOVING MESH", "TRUE");
     if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
     else if(meshSolver == "elasticity") {
+      options.setArgs("MESH COEFF FIELD", "TRUE");
       options.setArgs("MESH SOLVER", "ELASTICITY");
       options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
       options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
@@ -1789,6 +1851,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
       options.setArgs("SCALAR00 KRYLOV SOLVER", "PCG");
       options.setArgs("SCALAR00 PRECONDITIONER", "JACOBI");
+      options.setArgs("SCALAR00 COEFF FIELD", "TRUE");
 
       parseInitialGuess(rank, options, par, "temperature");
 
@@ -1849,6 +1912,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       if (par->extract("scalar" + sidPar, "maxiterations", keyValue))
         options.setArgs("SCALAR" + sid + " MAXIMUM ITERATIONS", keyValue);
     }
+
+    options.setArgs("SCALAR" + sid + " COEFF FIELD", "TRUE");
 
     { 
       parseRegularization(rank, options, par, "scalar" + sidPar);

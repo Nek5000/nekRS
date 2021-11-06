@@ -10,9 +10,9 @@ mesh_t *createMeshV(MPI_Comm comm,
                     mesh_t* meshT,
                     occa::properties& kernelInfo);
 
-occa::properties populateMeshProperties(int N)
+occa::properties meshKernelProperties(int N)
 {
-  occa::properties meshProperties = platform->kernelInfo;
+  occa::properties meshProperties;
   const int Nq = N+1;
   const int Np = Nq * Nq * Nq;
   const int Nfp = Nq * Nq;
@@ -23,10 +23,13 @@ occa::properties populateMeshProperties(int N)
   constexpr int Nsgeo {17};
 
   meshProperties["defines/" "p_dim"] = 3;
+  meshProperties["defines/" "p_Nverts"] = 8;
   meshProperties["defines/" "p_Nfields"] = 1;
   meshProperties["defines/" "p_N"] = N;
   meshProperties["defines/" "p_Nq"] = Nq;
+  meshProperties["defines/" "p_Nq_g"] = Nq;
   meshProperties["defines/" "p_Np"] = Np;
+  meshProperties["defines/" "p_Np_g"] = Np;
   meshProperties["defines/" "p_Nfp"] = Nfp;
   meshProperties["defines/" "p_Nfaces"] = Nfaces;
   meshProperties["defines/" "p_NfacesNfp"] = Nfp * Nfaces;
@@ -115,8 +118,6 @@ mesh_t *createMesh(MPI_Comm comm,
     else
       printf("Nq: %d\n", mesh->Nq);
   }
-
-  mesh->Nlocal = mesh->Nelements * mesh->Np;
 
   loadKernels(mesh);
 
@@ -212,15 +213,68 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
   mesh->computeInvLMM();
 
-  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-    const int maxTemporalOrder = 3;
-    mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
-    mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
-  }
-
   return mesh;
 }
 */
+
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc)
+{
+  mesh_t* mesh = new mesh_t();
+  memcpy(mesh, _mesh, sizeof(mesh_t));
+
+  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
+  meshHaloSetup(mesh);
+  meshPhysicalNodesHex3D(mesh);
+  meshHaloPhysicalNodes(mesh);
+  meshGeometricFactorsHex3D(mesh);
+
+  meshConnectFaceNodes3D(mesh);
+  meshSurfaceGeometricFactorsHex3D(mesh);
+
+  meshGlobalIds(mesh);
+
+  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
+  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
+  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
+
+  free(mesh->x);
+  free(mesh->y);
+  free(mesh->z);
+
+  mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
+
+  dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
+  for (int j = 0; j < mesh->Nq; j++)
+    for (int i = 0; i < mesh->Nq; i++)
+      DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
+  mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
+  free(DT);
+
+  mesh->o_ggeo = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
+                                         mesh->ggeo);
+
+  if(!strstr(pfloatString,dfloatString)) {
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
+    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+    platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+                                       mesh->o_ggeo,
+                                       mesh->o_ggeoPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_D,
+                                       mesh->o_DPfloat);
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+                                       mesh->o_DT,
+                                       mesh->o_DTPfloat);
+
+    // TODO: once full preconditioner is in FP32, uncomment below
+    //mesh->o_D.free();
+    //mesh->o_DT.free();
+    //mesh->o_ggeo.free();
+  }
+  return mesh;
+}
 
 mesh_t *createMeshV(
                     MPI_Comm comm,
@@ -321,13 +375,13 @@ void loadKernels(mesh_t* mesh)
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     {
         mesh->velocityDirichletKernel =
-          platform->kernels.getKernel(meshPrefix + "velocityDirichletBCHex3D");
+          platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
         mesh->geometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "geometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
         mesh->surfaceGeometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "surfaceGeometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
         mesh->nStagesSumVectorKernel =
-          platform->kernels.getKernel(meshPrefix + "nStagesSumVector");
+          platform->kernels.get(meshPrefix + "nStagesSumVector");
     }
   }
 }

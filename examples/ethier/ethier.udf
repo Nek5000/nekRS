@@ -36,6 +36,10 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
+  // called from all ranks, so MPI collectives are O.K.
+  int maxRank = platform->comm.mpiRank;
+  MPI_Allreduce(MPI_IN_PLACE, &maxRank, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+
   setupAide &options = platform->options;
 
   dfloat mue, rho;

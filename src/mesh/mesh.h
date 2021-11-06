@@ -205,6 +205,8 @@ struct mesh_t
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
+  occa::memory o_gllzw;
+
   occa::memory o_gllw;
   occa::memory o_cubw;
   occa::memory o_faceNodes;
@@ -220,7 +222,10 @@ struct mesh_t
   occa::kernel velocityDirichletKernel;
 };
 
-occa::properties populateMeshProperties(int N);
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc);
+
+occa::properties meshKernelProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 

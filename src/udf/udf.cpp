@@ -80,9 +80,7 @@ void oudfInit(setupAide &options)
 
   int buildRank = platform->comm.mpiRank;
   MPI_Comm comm = platform->comm.mpiComm;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal) {
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);
     comm = platform->comm.mpiCommLocal;
@@ -125,11 +123,6 @@ void oudfInit(setupAide &options)
     if(!found)
       out << "void scalarDirichletConditions(bcData *bc){}\n";
 
-    out <<
-      "@kernel void __dummy__(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
-      "}";
-
     out.close();
   }
 
@@ -146,9 +139,7 @@ void oudfInit(setupAide &options)
 void udfBuild(const char* udfFile, setupAide& options)
 {
   int buildRank = platform->comm.mpiRank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_CACHE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
   
@@ -156,9 +147,9 @@ void udfBuild(const char* udfFile, setupAide& options)
     if(buildRank == 0){
       double tStart = MPI_Wtime();
 
-      std::string install_dir;
-      install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-      std::string udf_dir = install_dir + "/udf";
+      std::string installDir;
+      installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+      std::string udf_dir = installDir + "/udf";
 
       std::string cache_dir;
       cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
@@ -249,9 +240,9 @@ void udfLoad(void)
 
 occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function)
 {
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string bcDataFile = install_dir + "/include/core/bcData.h";
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string bcDataFile = installDir + "/include/core/bcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   // provide some common kernel args

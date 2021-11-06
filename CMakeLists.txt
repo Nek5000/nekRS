@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 21.1.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 21.2.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
@@ -200,6 +200,7 @@ set(SRC
     src/core/utils/mysort.cpp
     src/core/utils/parallelSort.cpp
     src/core/utils/tinyexpr.c
+    src/core/numberActiveFields.cpp
     src/core/setupAide.cpp
     src/core/printHeader.cpp
     src/core/cfl.cpp
@@ -208,14 +209,17 @@ set(SRC
     src/core/bcMap.cpp
     src/core/compileKernels.cpp
     src/core/setup.cpp
+    src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
     src/lns/tombo.cpp
     src/lns/constantFlowRate.cpp
     src/cds/cds.cpp
+    src/cds/registerCdsKernels.cpp
     src/core/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/kernelRequestManager.cpp
     src/core/device.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp
@@ -223,11 +227,13 @@ set(SRC
     src/linAlg/matrixEig.cpp
     src/linAlg/matrixTranspose.cpp
     src/linAlg/matrixRightSolve.cpp
+    src/linAlg/registerLinAlgKernels.cpp
     src/plugins/avg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
+    src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
@@ -294,7 +300,19 @@ endif()
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-bin nekrs-lib)
+target_link_libraries(nekrs-bin PRIVATE nekrs-lib)
+
+add_executable(axhelm-bin src/bench/axHelm/main.cpp)
+set_target_properties(axhelm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-axhelm)
+target_link_libraries(axhelm-bin PRIVATE nekrs-lib)
+
+add_executable(advsub-bin src/bench/advsub/main.cpp)
+set_target_properties(advsub-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-advsub)
+target_link_libraries(advsub-bin PRIVATE nekrs-lib)
+
+add_executable(fdm-bin src/bench/fdm/main.cpp)
+set_target_properties(fdm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-fdm)
+target_link_libraries(fdm-bin PRIVATE nekrs-lib)
 
 if(ENABLE_CUDA)
   set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
@@ -317,7 +335,7 @@ configure_file(
   @ONLY)
 
 #install nekRS
-install(TARGETS nekrs-lib nekrs-bin
+install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
