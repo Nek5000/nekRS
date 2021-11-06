@@ -14,10 +14,10 @@ Usage: ./nekrs-bench-fdm --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OP
 
 ### NVIDIA A100
 ```
-> nekrs-bench-fdm  --p-order 9 --elements 4096 --backend CUDA --fp32
+> mpirun -np 1 nekrs-bench-fdm  --p-order 9 --elements 4096 --backend CUDA --fp32
 MPItasks=1 OMPthreads=1 NRepetitions=76285 N=9 Nelements=4096 elapsed time=9.7327e-05 wordSize=32 GDOF/s=30.6799 GB/s=555.521 GFLOPS/s=5092.28
 
-> nekrs-bench-fdm  --p-order 7 --elements 4096 --backend CUDA --fp32
+> mpirun -np 1 nekrs-bench-fdm  --p-order 7 --elements 4096 --backend CUDA --fp32
 MPItasks=1 OMPthreads=1 NRepetitions=98526 N=7 Nelements=4096 elapsed time=7.08805e-05 wordSize=32 GDOF/s=19.8211 GB/s=399.427 GFLOPS/s=2869.96
 ```
 
