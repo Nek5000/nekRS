@@ -6,14 +6,14 @@ set -e -a
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_COMPILER_FLAGS:="-O3 -march=native -mtune=native -g"}
+: ${NEKRS_COMPILER_FLAGS:="-O2 -g -march=native -mtune=native -ftree-vectorize"}
 
 : ${NEKRS_GPU_MPI:=1}
 
 : ${OCCA_CXX:="g++"}
-: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native -g"}
+: ${OCCA_CXXFLAGS:="-O3 -g -march=native -mtune=native"}
 : ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true -lineinfo"}
-: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast -g"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -g -ffp-contract=fast"}
 : ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
 
 : ${OCCA_ENABLE_CUDA:=1}
