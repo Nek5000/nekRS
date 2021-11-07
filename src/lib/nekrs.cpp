@@ -22,6 +22,7 @@ static MPI_Comm commg, comm;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
+static int firstOutfld = 1;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
@@ -282,14 +283,14 @@ void outfld(double time, std::string suffix)
   std::string oldValue;
   platform->options.getArgs("CHECKPOINT OUTPUT MESH", oldValue);
 
-  if(lastOutputTime == 0)
+  if(firstOutfld)
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   if(platform->options.compareArgs("MOVING MESH", "TRUE"))
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   writeFld(nrs, time, suffix);
-  lastOutputTime = time;
+  firstOutfld = 0;
 
   platform->options.setArgs("CHECKPOINT OUTPUT MESH", oldValue);
 }
