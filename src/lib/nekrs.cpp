@@ -290,6 +290,7 @@ void outfld(double time, std::string suffix)
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   writeFld(nrs, time, suffix);
+  lastOutputTime = time;
   firstOutfld = 0;
 
   platform->options.setArgs("CHECKPOINT OUTPUT MESH", oldValue);
