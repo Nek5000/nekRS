@@ -340,6 +340,8 @@ void compute_1d_stiffness_matrix(
   }
 #undef a
 #undef ah
+  free(ah);
+  free(tmp);
 }
 
 void compute_1d_mass_matrix(
