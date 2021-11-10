@@ -251,13 +251,13 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     dlong nStepsStart = 5;
     options.getArgs("RESIDUAL PROJECTION START", nStepsStart);
 
-    ResidualProjection::ProjectionType type = ResidualProjection::ProjectionType::CLASSIC;
+    SolutionProjection::ProjectionType type = SolutionProjection::ProjectionType::CLASSIC;
     if(options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
-      type = ResidualProjection::ProjectionType::ACONJ;
+      type = SolutionProjection::ProjectionType::ACONJ;
     else if (options.compareArgs("INITIAL GUESS", "PROJECTION"))
-      type = ResidualProjection::ProjectionType::CLASSIC;
+      type = SolutionProjection::ProjectionType::CLASSIC;
 
-    elliptic->residualProjection = new ResidualProjection(*elliptic, type, nVecsProject, nStepsStart);
+    elliptic->solutionProjection = new SolutionProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
 
   MPI_Barrier(platform->comm.mpiComm);

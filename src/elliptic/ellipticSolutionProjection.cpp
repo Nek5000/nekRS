@@ -25,13 +25,13 @@
  */
 #include "mesh.h"
 #include "elliptic.h"
-#include "ellipticResidualProjection.h"
+#include "ellipticSolutionProjection.h"
 #include <iostream>
 #include "timer.hpp"
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-void ResidualProjection::matvec(occa::memory& o_Ax,
+void SolutionProjection::matvec(occa::memory& o_Ax,
                                 const dlong Ax_offset,
                                 occa::memory& o_x,
                                 const dlong x_offset)
@@ -41,7 +41,7 @@ void ResidualProjection::matvec(occa::memory& o_Ax,
   matvecOperator(o_xtmp, o_Axtmp);
 }
 
-void ResidualProjection::updateProjectionSpace()
+void SolutionProjection::updateProjectionSpace()
 {
   
   if(numVecsProjection <= 0) return;
@@ -85,7 +85,7 @@ void ResidualProjection::updateProjectionSpace()
   }
 }
 
-void ResidualProjection::computePreProjection(occa::memory& o_r)
+void SolutionProjection::computePreProjection(occa::memory& o_r)
 {
   
   dfloat one = 1.0;
@@ -118,7 +118,7 @@ void ResidualProjection::computePreProjection(occa::memory& o_r)
   }
 }
 
-void ResidualProjection::computePostProjection(occa::memory & o_x)
+void SolutionProjection::computePostProjection(occa::memory & o_x)
 {
   
   const dfloat one = 1.0;
@@ -152,7 +152,7 @@ void ResidualProjection::computePostProjection(occa::memory & o_x)
   }
 }
 
-ResidualProjection::ResidualProjection(elliptic_t& elliptic,
+SolutionProjection::SolutionProjection(elliptic_t& elliptic,
                                        const ProjectionType _type,
                                        const dlong _maxNumVecsProjection,
                                        const dlong _numTimeSteps)
@@ -194,17 +194,19 @@ ResidualProjection::ResidualProjection(elliptic_t& elliptic,
                    };
 }
 
-void ResidualProjection::pre(occa::memory& o_r)
+void SolutionProjection::pre(occa::memory& o_r)
 {
   ++timestep;
   if(timestep < numTimeSteps)
     return;
 
   if(numVecsProjection <= 0) return;
+
+  prevNumVecsProjection = numVecsProjection;
   computePreProjection(o_r);
 }
 
-void ResidualProjection::post(occa::memory& o_x)
+void SolutionProjection::post(occa::memory& o_x)
 {
   if(timestep < numTimeSteps)
     return;
