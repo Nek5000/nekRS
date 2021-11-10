@@ -31,19 +31,22 @@
 #include <functional>
 #include "elliptic.h"
 
-class ResidualProjection final
+class SolutionProjection final
 {
 public:
   enum class ProjectionType {
     CLASSIC,
     ACONJ,
   };
-  ResidualProjection(elliptic_t& _elliptic,
+  SolutionProjection(elliptic_t& _elliptic,
                      const ProjectionType _type,
                      const dlong _maxNumVecsProjection = 8,
                      const dlong _numTimeSteps = 5);
   void pre(occa::memory& o_r);
   void post(occa::memory& o_x);
+  dlong getNumVecsProjection() const { return numVecsProjection; }
+  dlong getPrevNumVecsProjection() const { return prevNumVecsProjection; }
+  dlong getMaxNumVecsProjection() const { return maxNumVecsProjection; }
 private:
   void computePreProjection(occa::memory& o_r);
   void computePostProjection(occa::memory& o_x);
@@ -71,6 +74,7 @@ private:
   dfloat* alpha;
 
   dlong numVecsProjection;
+  dlong prevNumVecsProjection;
   const dlong Nlocal; // vector size
   const dlong fieldOffset; // offset
   const dlong Nfields;

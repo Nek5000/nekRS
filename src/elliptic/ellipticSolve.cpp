@@ -113,7 +113,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       if(platform->comm.mpiRank == 0) printf("Unreasonable res00Norm!\n");
       ABORT(EXIT_FAILURE);
     }
-    elliptic->residualProjection->pre(o_r);
+    elliptic->solutionProjection->pre(o_r);
     platform->timer.toc(name + " proj pre");
   }
 
@@ -156,7 +156,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) { 
     platform->timer.tic(name + " proj post",1);
-    elliptic->residualProjection->post(o_x);
+    elliptic->solutionProjection->post(o_x);
     platform->timer.toc(name + " proj post");
   } else {
     elliptic->res00Norm = elliptic->res0Norm;

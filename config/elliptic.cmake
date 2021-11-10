@@ -22,7 +22,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticOperator.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditioner.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticPreconditionerSetup.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticResidualProjection.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSolutionProjection.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticOgs.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
