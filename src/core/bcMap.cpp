@@ -298,20 +298,20 @@ void check(mesh_t* mesh)
   int nid = nbid[0];
   if(mesh->cht) nid = nbid[1];
 
+  int err = 0;
   int retval = 0;
 
-  retval = 0;
   for (int id = 1; id <= nid; id++) {
     retval = 0;
     for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
       if (mesh->EToB[f] == id) retval = 1;
     }
     MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    if (retval == 0) {
-      if (platform->comm.mpiRank == 0) printf("Cannot find boundary ID %d in mesh!\n", id);
-      ABORT(1);
-    }
+    err += (retval ? 0 : 1);
+    if (retval == 0 && platform->comm.mpiRank == 0) 
+      printf("Cannot find boundary ID %d in mesh!\n", id);
   }
+  if (err) EXIT_AND_FINALIZE(EXIT_FAILURE);
 
   retval = 0;
   for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++)
@@ -319,7 +319,7 @@ void check(mesh_t* mesh)
   MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
   if (retval > 0) {
     if (platform->comm.mpiRank == 0) printf("Mesh has unmapped boundary IDs!\n");
-    ABORT(1);
+    EXIT_AND_FINALIZE(EXIT_FAILURE);
   }
 
 
