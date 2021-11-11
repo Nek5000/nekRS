@@ -1,0 +1,451 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+@kernel void gatherScatter_floatAdd(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict float *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      float gq = 0;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq += q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_doubleAdd(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict double *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      double gq = 0;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq += q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_intAdd(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict int *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      int gq = 0;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq += q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_longAdd(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict hlong *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      hlong gq = 0;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq += q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_floatMul(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict float *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      float gq = 1;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq *= q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_doubleMul(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict double *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      double gq = 1;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq *= q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_intMul(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict int *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      int gq = 1;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq *= q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_longMul(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict hlong *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      hlong gq = 1;
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq *= q[id];
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+
+@kernel void gatherScatter_floatMin(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict float *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      float gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] < gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_doubleMin(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict double *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      double gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] < gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_intMin(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict int *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      int gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] < gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_longMin(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict hlong *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      hlong gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] < gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_floatMax(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict float *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      float gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] > gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_doubleMax(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict double *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      double gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] > gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_intMax(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict int *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      int gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] > gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}
+
+@kernel void gatherScatter_longMax(const dlong Ngather,
+                                    @restrict const  dlong *  gatherStarts,
+                                    @restrict const  dlong *  gatherIds,
+                                    @restrict hlong *  q){
+  
+  for(dlong g=0;g<Ngather;++g;@tile(p_blockSize,@outer,@inner)){
+    
+    const dlong start = gatherStarts[g];
+    const dlong end = gatherStarts[g+1];
+    if((start+1)!=end){
+    
+      const dlong startId = gatherIds[start];
+      hlong gq = q[startId];
+
+      for(dlong n=start+1;n<end;++n){
+        const dlong id = gatherIds[n];
+        gq = (q[id] > gq) ? q[id] : gq;
+      }
+      
+      for(dlong n=start;n<end;++n){
+        const dlong id = gatherIds[n];
+        q[id] = gq;
+      }
+    }
+  }
+}

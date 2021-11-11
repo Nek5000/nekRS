@@ -313,7 +313,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (ciMode == 4){
     dfloat memoryUsage = platform->device.occaDevice().memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0450654;
+    const dfloat expectedMemoryUsage = 0.0455484;
     if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){

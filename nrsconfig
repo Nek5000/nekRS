@@ -6,20 +6,24 @@ set -e -a
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_COMPILER_FLAGS:=""}
+: ${NEKRS_COMPILER_FLAGS:="-O2 -g -march=native -mtune=native -ftree-vectorize"}
 
 : ${NEKRS_GPU_MPI:=1}
 
 : ${OCCA_CXX:="g++"}
-: ${OCCA_CXXFLAGS:="-O3 -march=native -mtune=native -g"}
+: ${OCCA_CXXFLAGS:="-O3 -g -march=native -mtune=native"}
 : ${OCCA_CUDA_COMPILER_FLAGS:="-O3 --fmad=true -lineinfo"}
-: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -ffp-contract=fast -g"}
+: ${OCCA_HIP_COMPILER_FLAGS:="-O3 -g -ffp-contract=fast"}
 : ${OCCA_OPENCL_COMPILER_FLAGS:="-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros"}
 
 : ${OCCA_ENABLE_CUDA:=1}
 : ${OCCA_ENABLE_HIP:=1}
 : ${OCCA_ENABLE_OPENCL:=1}
 : ${AMGX_ENABLED:=0}
+
+if uname -a | grep 'ppc64'; then
+  NEKRS_COMPILER_FLAGS=$(echo "$NEKRS_COMPILER_FLAGS" | sed -e "s/march/mcpu/g")
+fi
 
 : ${NEKRS_CXXFLAGS:="${NEKRS_COMPILER_FLAGS}"}
 : ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
@@ -38,9 +42,9 @@ cmake -Wno-dev \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
       -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
-      -DCMAKE_Fortran_FLAGS="${NEKRS_FFLAGS}"  \
-      -DCMAKE_C_FLAGS="${NEKRS_CFLAGS}" \
-      -DCMAKE_CXX_FLAGS="${NEKRS_CXXFLAGS}" \
+      -DCMAKE_Fortran_FLAGS_RELWITHDEBINFO="${NEKRS_FFLAGS}"  \
+      -DCMAKE_C_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
+      -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
       -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
       -DOCCA_CXX="${OCCA_CXX}" \
       -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \

@@ -259,7 +259,7 @@ int main(int argc, char** argv)
   // ***** 
  
   // print statistics
-  const dfloat GDOFPerSecond = (size * Nelements * (N * N * N) / elapsed) / 1.e9;
+  const dfloat GDOFPerSecond = nFields * (size * Nelements * (N * N * N) / elapsed) / 1.e9;
 
   size_t bytesPerElem = 2 * nFields * Np; // Ud, NU
   bytesPerElem += Np; // inv mass matrix

@@ -43,7 +43,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   std::vector<double> smootherTime; 
   std::vector<double> crsTime;
 
-  const int Nrep = 25;
+  const int Nrep = 50;
   if(platform->comm.mpiRank == 0) printf("solving "); 
   for (int i = 0; i < Nrep; i++) { 
     platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);

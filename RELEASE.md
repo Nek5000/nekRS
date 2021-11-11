@@ -6,11 +6,11 @@
 * Fix various potential race conditions 
 * Fix `mcmodel` issue on ppc 
 * Fix Dirichlet handling in Jacobi smoother
-* Fix minor performance regression in pressure solve
+* Fix minor performance regression in coarse grid solve
 
 ## Known Bugs / Restrictions
 
-* [383](https://github.com/Nek5000/nekRS/issues/383)
+* [729](https://github.com/Nek5000/Nek5000/issues/729)
 * [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)

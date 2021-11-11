@@ -32,15 +32,15 @@ void lowMach::buildKernel(occa::properties kernelInfo)
   {
     kernelName = "qtlHex3D";
     fileName = path + kernelName + extension;
-    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo);
+    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo, true);
 
     kernelName = "p0thHelper";
     fileName = path + kernelName + extension;
-    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo);
+    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
     kernelName = "surfaceFlux";
     fileName = path + kernelName + extension;
-    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo);
+    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
 }
 
@@ -86,12 +86,11 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     nrs->meshV->o_invLMM,
     platform->o_mempool.slice0);
 
+  platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   if(udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, platform->o_mempool.slice3);
     platform->timer.toc("udfSEqnSource");
-  } else {
-    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   }
 
   qtlKernel(

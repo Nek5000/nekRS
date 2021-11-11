@@ -92,6 +92,14 @@ void compileKernels() {
 
   platform->kernels.compile();
 
+  // load platform related kernels
+  std::string kernelName;
+  kernelName = "copyDfloatToPfloat";
+  platform->copyDfloatToPfloatKernel = platform->kernels.get(kernelName);
+
+  kernelName = "copyPfloatToDfloat";
+  platform->copyPfloatToDfloatKernel = platform->kernels.get(kernelName);
+
   MPI_Barrier(platform->comm.mpiComm);
   const double loadTime = MPI_Wtime() - tStart;
 

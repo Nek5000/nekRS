@@ -234,11 +234,9 @@ mesh_t *createMeshMG(mesh_t* _mesh,
 
   meshGlobalIds(mesh);
 
-#if 0
-  free(mesh->x);
-  free(mesh->y);
-  free(mesh->z);
-#endif
+  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
+  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
+  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
 
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
@@ -373,13 +371,13 @@ void loadKernels(mesh_t* mesh)
   if(platform->options.compareArgs("MOVING MESH", "TRUE")){
     {
         mesh->velocityDirichletKernel =
-          platform->kernels.getKernel(meshPrefix + "velocityDirichletBCHex3D");
+          platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
         mesh->geometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "geometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
         mesh->surfaceGeometricFactorsKernel =
-          platform->kernels.getKernel(meshPrefix + "surfaceGeometricFactorsHex3D");
+          platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
         mesh->nStagesSumVectorKernel =
-          platform->kernels.getKernel(meshPrefix + "nStagesSumVector");
+          platform->kernels.get(meshPrefix + "nStagesSumVector");
     }
   }
 }

@@ -564,12 +564,12 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 		     "CASEDIR=%s "
 		     "-f %s/Makefile lib usr libnekInterface "
 		     "%s",
-                     cache_dir.c_str(), nek5000_dir.c_str(), 
+             cache_dir.c_str(), nek5000_dir.c_str(), 
 		     nek5000_dir.c_str(), 
 		     include_dirs.c_str(), 
 		     usrname.c_str(), 
 		     cache_dir.c_str(), 
-                     nekInterface_dir.c_str(), 
+             nekInterface_dir.c_str(), 
 		     pipeToNull.c_str());
         if(verbose && rank == 0) printf("%s\n", buf);
         if(system(buf)) return EXIT_FAILURE;

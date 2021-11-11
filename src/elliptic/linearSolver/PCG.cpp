@@ -109,7 +109,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       o_p,
       o_Ap,
       platform->comm.mpiComm);
-    alpha = rdotz1 / pAp;
+    alpha = rdotz1 / (pAp + 1e-300);
 
     //printf("norm pAp: %.15e\n", pAp);
 

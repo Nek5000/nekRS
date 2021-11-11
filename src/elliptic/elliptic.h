@@ -42,7 +42,7 @@
 
 #define ELLIPTIC_ENABLE_TIMER
 
-class ResidualProjection;
+class SolutionProjection;
 class elliptic_t;
 
 struct GmresData{
@@ -164,12 +164,12 @@ struct elliptic_t
   int nLevels;
   int* levels;
 
-  ResidualProjection* residualProjection;
+  SolutionProjection* solutionProjection;
   GmresData* gmresData;
 };
 
 #include "ellipticMultiGrid.h"
-#include "ellipticResidualProjection.h"
+#include "ellipticSolutionProjection.h"
 
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 

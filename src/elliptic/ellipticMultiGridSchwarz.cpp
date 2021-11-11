@@ -340,6 +340,8 @@ void compute_1d_stiffness_matrix(
   }
 #undef a
 #undef ah
+  free(ah);
+  free(tmp);
 }
 
 void compute_1d_mass_matrix(
@@ -889,9 +891,9 @@ void MGLevel::build(
   const std::string suffix = std::string("_") + std::to_string(Nq_e-1) + std::string("pfloat");
 
   {
-    preFDMKernel = platform->kernels.getKernel("preFDM" + suffix);
-    fusedFDMKernel = platform->kernels.getKernel("fusedFDM" + suffix);
-    postFDMKernel = platform->kernels.getKernel("postFDM" + suffix);
+    preFDMKernel = platform->kernels.get("preFDM" + suffix);
+    fusedFDMKernel = platform->kernels.get("fusedFDM" + suffix);
+    postFDMKernel = platform->kernels.get("postFDM" + suffix);
   }
 }
 

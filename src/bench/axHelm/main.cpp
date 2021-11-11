@@ -191,7 +191,7 @@ int main(int argc, char** argv)
   std::string kernelName = "elliptic";
   if(Ndim > 1) kernelName += "Block";
   kernelName += "PartialAx";
-  if(!BKmode) kernelName += "Var";
+  if(!BKmode) kernelName += "Coeff";
   if(Ng != N) {
     if(computeGeom) {
       if(Ng == 1) {

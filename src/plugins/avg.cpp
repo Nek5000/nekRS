@@ -57,15 +57,15 @@ void avg::buildKernel(occa::properties kernelInfo)
   {
       kernelName = "EX";
       fileName = path + kernelName + extension;
-      EXKernel  = platform->device.buildKernel(fileName, kernelInfo);
+      EXKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "EXX";
       fileName = path + kernelName + extension;
-      EXXKernel = platform->device.buildKernel(fileName, kernelInfo);
+      EXXKernel = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "EXY";
       fileName = path + kernelName + extension;
-      EXYKernel = platform->device.buildKernel(fileName, kernelInfo);
+      EXYKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
   buildKernelCalled = 1;
 }
