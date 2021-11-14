@@ -10,10 +10,11 @@
 
 ## Known Bugs / Restrictions
 
-* [729](https://github.com/Nek5000/Nek5000/issues/729)
+* [396](https://github.com/Nek5000/nekRS/issues/396)
 * [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)
+* [729](https://github.com/Nek5000/Nek5000/issues/729)
 
 # Release v21.1
 
