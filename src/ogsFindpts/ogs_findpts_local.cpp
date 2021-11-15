@@ -56,10 +56,10 @@ void ogs_findpts_local_2(    uint   *const  code_base   , const unsigned  code_s
   d_x1_base.copyFrom(x_base[1], x_stride[1]*pn);
   d_x_stride.copyFrom(x_stride, 2*sizeof(dlong));
 
-  ogs_fd->local_kernel( d_code_base,   sizeof(dlong),
-                          d_el_base,   sizeof(dlong),
-                           d_r_base, 2*sizeof(dfloat),
-                       d_dist2_base,   sizeof(dfloat),
+  ogs_fd->local_kernel( d_code_base, (dlong)sizeof(dlong),
+                          d_el_base, (dlong)sizeof(dlong),
+                           d_r_base, (dlong)(2*sizeof(dfloat)),
+                       d_dist2_base, (dlong) sizeof(dfloat),
                            d_x_base,       d_x_stride,
                        pn, ogs_fd->o_fd_local);
 
@@ -138,10 +138,10 @@ void ogs_findpts_local_3(    uint   *const  code_base   , const unsigned  code_s
   d_x2_base.copyFrom(x_base[2], x_stride[2]*pn);
   d_x_stride.copyFrom(x_stride, 3*sizeof(dlong));
 
-  ogs_fd->local_kernel( d_code_base,   sizeof(dlong),
-                          d_el_base,   sizeof(dlong),
-                           d_r_base, 3*sizeof(dfloat),
-                       d_dist2_base,   sizeof(dfloat),
+  ogs_fd->local_kernel( d_code_base, (dlong)sizeof(dlong),
+                          d_el_base, (dlong)sizeof(dlong),
+                           d_r_base, (dlong)(3*sizeof(dfloat)),
+                       d_dist2_base, (dlong)sizeof(dfloat),
                            d_x_base, d_x_stride,
                        pn, ogs_fd->o_fd_local);
 
