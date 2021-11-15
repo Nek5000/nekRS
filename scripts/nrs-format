@@ -1,0 +1,4 @@
+#/bin/bash
+find . -regex '.*\.\(cpp\)' -exec clang-format -style=file -i {} \;
+find . -regex '.*\.\(hpp\)' -exec clang-format -style=file -i {} \;
+find . -regex '.*\.\(okl\)' -exec clang-format -style=file -i {} \;
