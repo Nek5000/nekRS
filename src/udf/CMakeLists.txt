@@ -17,6 +17,7 @@ set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
 set(INCLUDE_DIRS
   ${CASE_DIR}
   ${OGSDIR}
+  ${OGSDIR}/include
   ${GSDIR}
   ${NEKRS_INSTALL_DIR}
   ${NEKRS_INSTALL_DIR}/include
@@ -32,6 +33,8 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg
+  ${NEKRS_INSTALL_DIR}/include/ogsFindpts
+  ${NEKRS_INSTALL_DIR}/include/neknek
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 

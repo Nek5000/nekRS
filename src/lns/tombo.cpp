@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include "udf.hpp"
 #include "linAlg.hpp"
+#include "neknek.hpp"
 #include <limits>
 
 namespace tombo
@@ -36,6 +37,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    mesh->o_vmapM,
                                    mesh->o_EToB,
                                    nrs->o_EToB,
+                                   nrs->neknek->o_pointMap,
+                                   nrs->neknek->o_valInterp,
                                    nrs->o_usrwrk,
                                    nrs->o_U,
                                    platform->o_mempool.slice7);
@@ -46,17 +49,17 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
   }
 
   if (nrs->pSolver->Nmasked) nrs->maskCopyKernel(nrs->pSolver->Nmasked, 0, nrs->pSolver->o_maskIds,
-                                                 platform->o_mempool.slice6, nrs->o_P); 
+                                                 platform->o_mempool.slice6, nrs->o_P);
 
   if (nrs->uvwSolver) {
     if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
                                                      platform->o_mempool.slice7, nrs->o_U);
   } else {
-    if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds, 
+    if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds,
                                                    platform->o_mempool.slice7, nrs->o_U);
-    if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds, 
+    if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds,
                                                    platform->o_mempool.slice7, nrs->o_U);
-    if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds, 
+    if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds,
                                                    platform->o_mempool.slice7, nrs->o_U);
   }
 
@@ -68,7 +71,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                   platform->o_mempool.slice0);
 
   oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
-  
+
   platform->linAlg->axmyVector(
     mesh->Nlocal,
     nrs->fieldOffset,
@@ -164,7 +167,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 {
   mesh_t* mesh = nrs->meshV;
-  
+
   dfloat scale = -1./3;
   if(platform->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
 
@@ -173,7 +176,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
        scale,
        nrs->o_mue,
        nrs->o_div,
-       platform->o_mempool.slice3); 
+       platform->o_mempool.slice3);
 
   nrs->gradientVolumeKernel(
     mesh->Nelements,
@@ -189,7 +192,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
     mesh->o_D,
     nrs->fieldOffset,
     nrs->o_P,
-    platform->o_mempool.slice3); 
+    platform->o_mempool.slice3);
 
   platform->linAlg->axpby(
     nrs->NVfields*nrs->fieldOffset,
@@ -211,7 +214,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
        mesh->o_z,
        nrs->o_usrwrk,
        nrs->o_U,
-       platform->o_mempool.slice0); 
+       platform->o_mempool.slice0);
 
   nrs->velocityRhsKernel(
     mesh->Nlocal,

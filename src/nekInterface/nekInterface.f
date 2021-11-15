@@ -16,6 +16,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'NEKINTF'
       include 'HSMG'
+      include 'NEKNEK'
 
       if (id .eq. 'nelv') then 
          ptr = loc(nelv)
@@ -61,6 +62,8 @@ c-----------------------------------------------------------------------
          ptr = loc(UNZ(1,1,1,1)) 
       elseif (id .eq. 'cbc') then
          ptr = loc(cbc(1,1,1)) 
+      elseif (id .eq. 'intflag') then
+         ptr = loc(intflag(1,1))
       elseif (id .eq. 'eface1') then
          ptr = loc(eface1) 
       elseif (id .eq. 'eface') then
@@ -177,6 +180,71 @@ c-----------------------------------------------------------------------
       ls = ltrunc(PATH,132) + len(mesh_in)
       call blank(re2fle1(ls+1),132-ls)
 
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_bootstrap_neknek(comm_in,globalcomm_in,
+     $ ifneknekc_in,nessions_in,idsess_in,
+     $ path_in,session_in,mesh_in)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+
+      integer comm_in, globalcomm_in
+      character session_in*(*), path_in*(*)
+      character mesh_in*(*)
+      real rtest
+      integer itest
+      integer*8 itest8
+      character ctest
+      logical ltest 
+
+      integer ifneknekc_in, nsessions_in, idsess_in
+
+      character*1  re2fle1(132)
+      equivalence  (RE2FLE,re2fle1)
+
+      ! set word size for REAL
+      wdsize = sizeof(rtest)
+      ! set word size for INTEGER
+      isize = sizeof(itest)
+      ! set word size for INTEGER*8
+      isize8 = sizeof(itest8) 
+      ! set word size for LOGICAL
+      lsize = sizeof(ltest) 
+      ! set word size for CHARACTER
+      csize = sizeof(ctest)
+
+      call nekf_setupcomm_neknek(comm_in, globalcomm_in,
+     $ ifneknekc_in,nsessions_in,idsess_in,
+     $ path_in,session_in)
+
+      call iniproc()
+
+      istep  = 0
+      call initdim ! Initialize / set default values.
+      call initdat
+      call files
+
+      ls = ltrunc(PATH,132)
+      call chcopy(re2fle1(ls+1),mesh_in,len(mesh_in))
+      ls = ltrunc(PATH,132) + len(mesh_in)
+      call blank(re2fle1(ls+1),132-ls)
+
+      return
+      end
+
+c-----------------------------------------------------------------------
+      subroutine set_neknek()
+      include 'SIZE'
+      include 'TOTAL'
+      include 'DOMAIN'
+      include 'NEKINTF'
+      ifneknek = .true.
+      ifneknekc = .true.
       return
       end
 c-----------------------------------------------------------------------
@@ -250,13 +318,14 @@ c-----------------------------------------------------------------------
       enddo
       enddo
       call izero(boundaryIDt, size(boundaryIDt))
-      if(nelgt.ne.nelgv) then 
+      if(nelgt.ne.nelgv) then
         do iel = 1,nelt
         do ifc = 1,2*ndim
            boundaryIDt(ifc,iel) = bc(5,ifc,iel,2)
         enddo
         enddo
       endif
+
 
       call setvar          ! Initialize most variables
 
@@ -282,6 +351,9 @@ c-----------------------------------------------------------------------
 
       call setlog(.false.)  ! Initalize logical flags
 
+      call nekf_neknek_setup
+
+
       call bcmask  ! Set BC masks for Dirichlet boundaries.
 
 c      call findSYMOrient
@@ -302,6 +374,86 @@ c      call findSYMOrient
  999  format(' nek setup done in ', 1p1e13.4, ' s')
       if(nio.eq.0) write(6,*) 
       call flush(6)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine nekf_setupcomm_neknek(comm_in,globalcomm_in,
+     $ ifneknekc_in,nsessions_in,idsess_in,
+     $ path_in, session_in)
+
+      include 'mpif.h'
+      include 'SIZE'
+      include 'PARALLEL' 
+      include 'TSTEP' 
+      include 'INPUT'
+
+      integer comm_in, globalcomm_in
+      integer ifneknekc_in, nsessions_in, idsess_in
+
+      character session_in*(*), path_in*(*)
+      logical flag
+    
+      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
+ 
+      integer nid_global_root(0:nsessmax-1)
+
+      logical ifhigh
+      logical mpi_is_initialized
+
+      integer*8 ntags
+
+
+      call mpi_initialized(mpi_is_initialized, ierr)
+      if (.not.mpi_is_initialized) call mpi_init(ierr)
+
+      call mpi_comm_dup(comm_in,intracomm,ierr)
+      nekcomm = intracomm
+      call mpi_comm_dup(globalcomm_in,iglobalcomm,ierr)
+
+      call mpi_comm_size(iglobalcomm,np_global,ierr)
+      call mpi_comm_rank(iglobalcomm,nid_global,ierr)
+      call mpi_comm_size(intracomm,np,ierr)
+      call mpi_comm_rank(intracomm,nid,ierr)
+
+      ! check upper tag size limit
+      call mpi_comm_get_attr(MPI_COMM_WORLD,MPI_TAG_UB,ntags,flag,ierr)
+      if (ntags .lt. np_global) then
+         if(nid_global.eq.0) write(6,*) 'ABORT: MPI_TAG_UB too small!'
+         call exitt
+      endif
+
+      nsessions = nsessions_in
+      path      = path_in
+      session   = session_in
+      amgfile   = session
+      if (nsessions.eq.1) then
+         ifneknek  = .false.
+         ifneknekc = .false.
+         idsess    = 1
+      else
+         ifneknek  = .true.
+         ifneknekc = ifneknekc_in.eq.1
+         idsess    = idsess_in
+      endif
+ 
+      return
+      end
+c-------------------------------------------------------------
+      subroutine nekf_neknek_setup
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      if(.not.ifneknek) return
+
+      if (nsessmax.eq.1) 
+     $  call exitti('set nsessmax > 1 in SIZE!$',nsessmax)
+
+      call setup_neknek_wts
+
+      call set_intflag
+      call neknekmv
 
       return
       end
@@ -757,6 +909,7 @@ c
          else
            if(cb.ne.'E  ' .and. cb.ne.'P  ') then
              ierr = 1
+             write(6,*) 'b/c(1) of type ', cb
              goto 99
            endif
          endif
@@ -790,7 +943,10 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
             else if(cb.eq.'f  ' .or. cb.eq.'O  ') then
               bcID = 3
             else
-              if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+              if(cb.ne.'E  ' .and. cb.ne.'P  ') then
+                ierr = 1
+                write(6,*) 'b/c(2) of type ', cb
+              endif
             endif 
             ibc_bmap(bID, ifld) = bcID 
           endif          
@@ -825,7 +981,10 @@ c        write(6,*) ifld, 't cbc_bmap: ', (cbc_bmap(i,ifld), i=1,6)
            else if(cb.eq.'f  ') then
              map(3) = 1
            else 
-             if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1
+             if(cb.ne.'E  ' .and. cb.ne.'P  ') then
+               ierr = 1
+               write(6,*) 'b/c(3) of type ', cb
+             endif
            endif
         enddo
         enddo

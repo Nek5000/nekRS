@@ -70,6 +70,9 @@ static std::vector<std::string> generalKeys = {
   {"udf"},
   {"usr"},
 
+  {"maxnumsessions"},
+  {"neknekcorrectorsteps"},
+
 };
 
 static std::vector<std::string> problemTypeKeys = {
@@ -1135,6 +1138,9 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("PLATFORM NUMBER", "0");
   options.setArgs("VERBOSE", "FALSE");
 
+  options.setArgs("NEKNEK MAX NUM SESSIONS", "1");
+  options.setArgs("NEKNEK CORRECTOR STEPS", "1");
+
   options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
 
@@ -1552,6 +1558,17 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   {
     parseRegularization(rank, options, par, "velocity");
   }
+
+  dlong maxNumSessions;
+  if (par->extract("general", "maxnumsessions", maxNumSessions)) {
+    options.setArgs("NEKNEK MAX NUM SESSIONS", std::to_string(maxNumSessions));
+  }
+
+  dlong NcorrectorSteps;
+  if (par->extract("general", "neknekcorrectorsteps", NcorrectorSteps)) {
+    options.setArgs("NEKNEK CORRECTOR STEPS", std::to_string(NcorrectorSteps));
+  }
+
 
   // MESH
   std::string meshPartitioner;

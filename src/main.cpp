@@ -65,6 +65,7 @@
 #include <fstream>
 #include <cstdio>
 #include <string>
+#include <sstream>
 #include <cstring>
 #include <getopt.h>
 #include <cfenv>
@@ -107,6 +108,11 @@ struct cmdOptions
   std::string setupFile;
   std::string deviceID;
   std::string backend;
+  bool redirectOutput;
+  int neknekSessions = 1;
+  std::vector<std::string> neknekSetupFiles;
+  std::vector<int> neknekProcs;
+  bool neknekConnected = true;
 };
 
 struct session
@@ -238,7 +244,7 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
   return cmdOpt;
 }
 
-MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
+MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm, neknek_t* neknek)
 {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -287,6 +293,8 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
       nSessions++;
     }
 
+    neknek->nsessions = nSessions;
+
     int err = 0;
     if(rankSum != size) err = 1;
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, comm);
@@ -314,6 +322,10 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 
     MPI_Comm_rank(newComm, &rank);
     MPI_Comm_size(newComm, &size);
+
+    neknek->sessionID = color;
+    neknek->globalComm = comm;
+    neknek->localComm = newComm;
 
     cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;
@@ -379,7 +391,8 @@ int main(int argc, char** argv)
   }
 
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv, commGlobal);
-  MPI_Comm comm = setupSession(cmdOpt, commGlobal);
+  neknek_t *neknek = new neknek_t();
+  MPI_Comm comm = setupSession(cmdOpt, commGlobal, neknek);
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -412,7 +425,7 @@ int main(int argc, char** argv)
   nekrs::setup(commGlobal, comm, 
 	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID);
+               cmdOpt->backend, cmdOpt->deviceID, neknek);
 
   if (cmdOpt->buildOnly) {
     nekrs::finalize();
@@ -457,6 +470,8 @@ int main(int argc, char** argv)
     if (lastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
     nekrs::outputStep(outputStep);
+
+    printf("tStep = %d\n", tStep);
 
     nekrs::runStep(time, dt, tStep);
     time += dt;

@@ -1,10 +1,11 @@
 #include <limits>
 #include "nrs.hpp"
 #include "linAlg.hpp"
+#include "neknek.hpp"
 
 occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
 {
-  
+
   mesh_t* mesh;
   oogs_t* gsh;
   if(is) {
@@ -32,6 +33,8 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                            mesh->o_vmapM,
                            mesh->o_EToB,
                            cds->o_EToB[is],
+                           cds->neknek->o_pointMap,
+                           cds->neknek->o_valInterp+(cds->dim+is)*cds->neknek->npt,
                            *(cds->o_usrwrk),
                            platform->o_mempool.slice2);
 
@@ -62,5 +65,3 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
 
   return platform->o_mempool.slice0;
 }
-
-

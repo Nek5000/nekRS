@@ -1,0 +1,42 @@
+@kernel void coriolis(const dlong Ntotal,
+                      const dlong offset,
+                      @restrict const dfloat * Y, 
+                      @restrict const dfloat * S, 
+                      @restrict const dfloat * U, 
+                      @restrict dfloat * OUT) 
+{
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<Ntotal){
+      const dfloat y    = Y[n];
+      const dfloat temp = S[n];
+      const dfloat u    = U[n + 0*offset];
+      const dfloat v    = U[n + 1*offset];
+      const dfloat w    = U[n + 2*offset];
+
+      const dfloat fac = exp(-p_YLEN*(p_YLEN-y));
+
+      OUT[n + 0*offset] =  p_fcor*w     + (1-u)*fac;
+      OUT[n + 1*offset] =  p_bcor*w     + temp*p_gacc;
+      OUT[n + 2*offset] = -p_fcor*(u-1) - p_bcor*v + (0-w)*fac;
+    }
+  }
+}
+
+// Boundary conditions
+void velocityDirichletConditions(bcData *bc)
+{                                                                        
+  bc->u = 1.0;
+  bc->v = 0;
+  bc->w = 0;
+}
+
+void scalarDirichletConditions(bcData *bc)
+{
+  bc->s = p_T0s;
+  bc->s += p_sCoolRate * bc->time - 1.0;
+}
+
+void scalarNeumannConditions(bcData *bc)
+{
+  bc->flux = p_cond*p_TsGrad;
+}
