@@ -232,9 +232,17 @@ set(SRC
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
+    src/plugins/interp.cpp
+    src/neknek/neknek.cpp
     src/udf/udf.cpp
     src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
+    src/ogsFindpts/ogsFindpts.cpp
+    src/ogsFindpts/ogs_findpts_local.cpp
+    src/ogsFindpts/ogs_findpts.c
+    src/ogsFindpts/ogsDevFindpts.c
+    src/ogsFindpts/ogsHostFindpts.c
+    src/ogsFindpts/ogsKernels_FINDPTS.cpp
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
@@ -272,6 +280,8 @@ target_include_directories(nekrs-lib
   src/timeStepper
   src/lns
   src/cds
+  src/neknek
+  src/ogsFindpts
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
@@ -344,7 +354,7 @@ install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.hpp$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)

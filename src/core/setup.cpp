@@ -1057,6 +1057,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->dim         = nrs->dim;
   cds->NVfields    = nrs->NVfields;
   cds->NSfields    = nrs->Nscalar;
+  cds->neknek      = nrs->neknek;
 
   cds->coeffEXT    = nrs->coeffEXT;
   cds->coeffBDF    = nrs->coeffBDF;

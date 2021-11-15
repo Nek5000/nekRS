@@ -70,6 +70,10 @@ set(OGS_SOURCES
 set(file_pattern "\.cu$|\.hip$|\.okl$|\.c$|\.hpp$|\.tpp$|\.h$$")
 
 install(DIRECTORY
+        ${GS_SOURCE_DIR}/src/
+        DESTINATION gslib
+        FILES_MATCHING REGEX "\.h$")
+install(DIRECTORY
         ${OGS_SOURCE_DIR}/include
         ${OGS_SOURCE_DIR}/okl
         DESTINATION gatherScatter

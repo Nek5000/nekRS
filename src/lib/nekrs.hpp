@@ -3,13 +3,14 @@
 
 #include <string>
 #include <mpi.h>
+#include "neknek.hpp"
 
 namespace nekrs
 {
 void setup(MPI_Comm commg_in, MPI_Comm comm_in,
            int buildOnly, int commSizeTarget,
            int ciMode, std::string _setupFile,
-           std::string _backend, std::string _deviceID);
+           std::string _backend, std::string _deviceID, neknek_t* neknek);
 void runStep(double time, double dt, int tstep);
 void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);

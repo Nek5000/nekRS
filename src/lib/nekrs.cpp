@@ -47,7 +47,7 @@ double startTime(void)
 void setup(MPI_Comm commg_in, MPI_Comm comm_in, 
     	   int buildOnly, int commSizeTarget,
            int ciMode, std::string _setupFile,
-           std::string _backend, std::string _deviceID)
+           std::string _backend, std::string _deviceID, neknek_t* neknek)
 {
   MPI_Comm_dup(commg_in, &commg);
   MPI_Comm_dup(comm_in, &comm);
@@ -69,6 +69,12 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   auto par = new inipp::Ini();	  
   std::string setupFile = _setupFile + ".par";
   options = parRead((void*) par, setupFile, comm);
+  const int nsessmax = std::stoi(options.getArgs("NEKNEK MAX NUM SESSIONS"));
+  if(nsessmax > 1){
+    neknek->connected = true;
+  }
+
+  neknek->NcorrectorSteps = std::stoi(options.getArgs("NEKNEK CORRECTOR STEPS"));
 
   {
     char buf[FILENAME_MAX];
@@ -105,7 +111,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     fflush(stdout);	
   }
 
-  if (options.getArgs("THREAD MODEL").length() == 0) 
+  if (options.getArgs("THREAD MODEL").length() == 0)
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
@@ -144,7 +150,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   if(rank == 0 && ciMode)
     std::cout << "enabling continous integration mode " << ciMode << "\n";
 
-  nek::bootstrap();
+  nek::bootstrap(neknek);
 
   if(udf.setup0) udf.setup0(comm, options);
 
@@ -168,8 +174,9 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform->linAlg = linAlg_t::getInstance();
 
   nrs = new nrs_t();
-
+  nrs->neknek = neknek;
   nrsSetup(comm, options, nrs);
+  neknekSetup(nrs);
 
   platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
@@ -320,8 +327,8 @@ int lastStep(double time, int tstep, double elapsedTime)
   if(!platform->options.getArgs("STOP AT ELAPSED TIME").empty()) {
     double maxElaspedTime;
     platform->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
-    if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
-  } else if (endTime() > 0) { 
+    if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1;
+  } else if (endTime() > 0) {
      const double eps = 1e-12;
      nrs->lastStep = fabs((time+nrs->dt[0]) - endTime()) < eps || (time+nrs->dt[0]) > endTime();
   } else {

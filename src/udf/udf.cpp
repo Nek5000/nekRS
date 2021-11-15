@@ -230,7 +230,7 @@ err:
   ABORT(EXIT_FAILURE);
 }
 
-void udfLoad(void)
+void udfLoad()
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
   *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",0);

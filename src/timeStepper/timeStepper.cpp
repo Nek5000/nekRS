@@ -299,6 +299,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
 
     stage++;
     const dfloat timeNew = time + nrs->dt[0];
+    neknekUpdateBoundary(nrs);
 
     if (nrs->Nscalar)
       scalarSolve(nrs, timeNew, cds->o_S, stage);
@@ -316,6 +317,8 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
 
     nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
+    if(nrs->neknek->nsessions > 1 && nrs->neknek->connected)
+      nrs->converged &= stage >= nrs->neknek->NcorrectorSteps;
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
@@ -1626,7 +1629,7 @@ void printInfo(
       
     for(int is = 0; is < nrs->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
- 
+
     printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
   }
 
