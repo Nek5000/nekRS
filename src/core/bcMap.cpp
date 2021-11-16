@@ -300,8 +300,6 @@ void check(mesh_t* mesh)
   int nid = nbid[0];
   if(mesh->cht) nid = nbid[1];
 
-  printf("nbid %d %d %d\n", nid, nbid[0], nbid[1]);
-
   int err = 0;
   int found = 0;
 
