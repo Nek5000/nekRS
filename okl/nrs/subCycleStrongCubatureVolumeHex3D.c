@@ -83,7 +83,6 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
       for (int b = 0; b < p_Nq; ++b) {
         #pragma unroll
         for (int a = 0; a < p_Nq; ++a) {
-            // this can be improved
             const int id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
             s_Ud[b][a] = Ud[id + 0 * offset];
             s_Vd[b][a] = Ud[id + 1 * offset];

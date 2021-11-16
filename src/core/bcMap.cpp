@@ -167,8 +167,10 @@ void setup(std::vector<std::string> slist, std::string field)
 {
   if (slist.size() == 0 || slist[0].compare("none") == 0) return;
 
-  nbid[0] = slist.size();
-  if (field.compare(0, 8, "scalar00") == 0) nbid[1] = slist.size();
+  if (field.compare(0, 8, "scalar00") == 0) /* tmesh */ 
+    nbid[1] = slist.size();
+  else 
+    nbid[0] = slist.size();
 
   if (field.compare("velocity") == 0)
     v_setup(field, slist);
@@ -299,25 +301,28 @@ void check(mesh_t* mesh)
   if(mesh->cht) nid = nbid[1];
 
   int err = 0;
-  int retval = 0;
+  int found = 0;
 
   for (int id = 1; id <= nid; id++) {
-    retval = 0;
+    found = 0;
     for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
-      if (mesh->EToB[f] == id) retval = 1;
+      if (mesh->EToB[f] == id) {
+        found = 1;
+        break;
+      }
     }
-    MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    err += (retval ? 0 : 1);
-    if (retval == 0 && platform->comm.mpiRank == 0) 
+    MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+    err += (found ? 0 : 1);
+    if (err && platform->comm.mpiRank == 0) 
       printf("Cannot find boundary ID %d in mesh!\n", id);
   }
   if (err) EXIT_AND_FINALIZE(EXIT_FAILURE);
 
-  retval = 0;
+  found = 0;
   for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++)
-    if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) retval = 1;
-  MPI_Allreduce(MPI_IN_PLACE, &retval, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-  if (retval > 0) {
+    if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) found = 1;
+  MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+  if (found) {
     if (platform->comm.mpiRank == 0) printf("Mesh has unmapped boundary IDs!\n");
     EXIT_AND_FINALIZE(EXIT_FAILURE);
   }
