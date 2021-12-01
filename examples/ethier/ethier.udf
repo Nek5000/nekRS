@@ -55,9 +55,9 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/p_omega"] = P_OMEGA;
   kernelInfo["defines/p_pi"] = M_PI;
 
-  dpdxKernel = udfBuildKernel(kernelInfo, "dpdx");
-  exactUVWPKernel = udfBuildKernel(kernelInfo, "exactUVWP"); 
-  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
+  dpdxKernel = oudfBuildKernel(kernelInfo, "dpdx");
+  exactUVWPKernel = oudfBuildKernel(kernelInfo, "exactUVWP"); 
+  userMeshVelocityKernel = oudfBuildKernel(kernelInfo, "userMeshVelocity");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

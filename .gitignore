@@ -7,3 +7,4 @@ CMakeFiles
 # From AMGX
 plugin_config.cu
 *.swp
+.cache/

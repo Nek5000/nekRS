@@ -8,6 +8,10 @@
 * Fix Dirichlet handling in Jacobi smoother
 * Fix minor performance regression in coarse grid solve
 
+## Breaking Changes
+
+* [udf] Rename `udfBuildKernel` => `oudfBuildKernel`
+
 ## Known Bugs / Restrictions
 
 * [396](https://github.com/Nek5000/nekRS/issues/396)

@@ -46,8 +46,8 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  userfKernel = udfBuildKernel(kernelInfo, "cfill");
-  scalarScaledAddKernel = udfBuildKernel(kernelInfo, "scalarScaledAdd");
+  userfKernel = oudfBuildKernel(kernelInfo, "cfill");
+  scalarScaledAddKernel = oudfBuildKernel(kernelInfo, "scalarScaledAdd");
   RANSktau::buildKernel(kernelInfo);
 }
 

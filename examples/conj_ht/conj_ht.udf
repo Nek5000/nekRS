@@ -51,7 +51,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  cFillKernel = udfBuildKernel(kernelInfo, "cFill");
+  cFillKernel = oudfBuildKernel(kernelInfo, "cFill");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

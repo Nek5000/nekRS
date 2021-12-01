@@ -49,6 +49,6 @@ void oudfInit(setupAide &options);
 void udfBuild(const char* udfFile, setupAide& options);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
-occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function);
+occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function);
 
 #endif

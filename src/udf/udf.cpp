@@ -238,7 +238,7 @@ void udfLoad(void)
   *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
 }
 
-occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function)
+occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function)
 {
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));

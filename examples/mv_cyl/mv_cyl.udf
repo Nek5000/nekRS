@@ -55,8 +55,8 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/" "p_PI"] = M_PI;
   kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
   kernelInfo["defines/" "p_AMP"] = P_AMP;
-  userVpKernel = udfBuildKernel(kernelInfo, "userVp");
-  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
+  userVpKernel = oudfBuildKernel(kernelInfo, "userVp");
+  userMeshVelocityKernel = oudfBuildKernel(kernelInfo, "userMeshVelocity");
   lowMach::buildKernel(kernelInfo);
 }
 
