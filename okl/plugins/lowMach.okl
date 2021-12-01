@@ -29,7 +29,6 @@
                          @restrict const dfloat*  D,
                          const dlong offset,
                          @restrict const dfloat*  gradQ,
-                         const dlong expansionCoeff,
                          @restrict const dfloat*  Q,
                          @restrict const dfloat*  DIFF,
                          @restrict const dfloat*  RHOCP,
@@ -82,10 +81,7 @@
 
 
           dfloat alpha  = 0.0;
-          if (expansionCoeff) 
-              alpha = Q[id]/RHOCP[id];
-          else 
-              alpha = 1.0/(RHOCP[id] * Q[id]);
+          alpha = Q[id]/RHOCP[id];
 
           const dfloat qvol    = SRC[id];
 
@@ -122,7 +118,11 @@
   }
 }
 @kernel void p0thHelper(const dlong N,
-                      const dfloat dd,
+					  const integer	ifRealGas,
+					  const dlong dd,
+					  const dlong p0,
+					  @restrict const dfloat* beta,
+					  @restrict const dfloat* kappa,
                       @restrict const dfloat* rhoCp,
                       @restrict const dfloat* rho,
                       @restrict const dfloat* massMatrix,
@@ -131,8 +131,15 @@
 {
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
-      const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
-      w2[n] = w2_val;
+
+      dfloat w2_val;
+	
+	  if(ifRealGas)
+		w2_val = (kappa[n]-beta[n]/rhoCp[n])*p0;
+      else 
+		w2_val = dd + 1.0;
+	  
+	  w2[n] = w2_val;
       w1[n] = w2_val * massMatrix[n];
     }
   }
