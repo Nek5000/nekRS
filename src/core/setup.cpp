@@ -93,7 +93,8 @@ determineMGLevels(std::string section)
     };
 
     return mg_level_lookup.at(N);
-  } else if(platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER","JAC")) {
+  }
+  else {
     std::map<int,std::vector<int> > mg_level_lookup =
     {
       {1,{1}},
@@ -115,8 +116,6 @@ determineMGLevels(std::string section)
 
     return mg_level_lookup.at(N);
   }
-
-  return {};
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)

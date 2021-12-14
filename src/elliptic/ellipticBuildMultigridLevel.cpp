@@ -100,7 +100,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->precon = new precon_t();
 
   {
-    const std::string kernelSuffix = std::string("_") + std::to_string(Nf);
+    const std::string kernelSuffix =
+        std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
 
     kernelName = "ellipticPreconCoarsen" + suffix;
     elliptic->precon->coarsenKernel = platform->kernels.get(kernelName + kernelSuffix);
