@@ -77,9 +77,8 @@ SOFTWARE.
         sgeo[sgid+p_NYID] = ny;
         sgeo[sgid+p_NZID] = nz;
         sgeo[sgid+p_SJID] = sJ;
-        sgeo[sgid+p_IJID] = 1./J;
-  
-        sgeo[sgid+p_WIJID] = 1./(J*w[0]);
+        sgeo[sgid+p_IJID] = 1.0 / J;
+        sgeo[sgid+p_WIJID] = 1.0 / (J * w[0]);
         sgeo[sgid+p_WSJID] = sJ*w[n%p_Nq]*w[n/p_Nq];
       }
     }

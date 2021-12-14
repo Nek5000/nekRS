@@ -39,7 +39,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
   printf("%s: bytes allocated = %lu\n", mess, bytes);
 }
 
-void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
   mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
@@ -147,7 +147,7 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
   kernelInfo += meshKernelProperties(mesh->N);
 }
 
-void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaSetup3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
   meshOccaPopulateDeviceHex3D(mesh, newOptions, kernelInfo);
 }
