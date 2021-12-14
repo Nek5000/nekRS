@@ -198,6 +198,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (!nrs->lastStep) return;
  
 
+  ciTestLinAlg(1);
   ciTestLinAlg(BLOCKSIZE / 16);
   ciTestLinAlg(BLOCKSIZE / 8);
   ciTestLinAlg(BLOCKSIZE / 4);
