@@ -214,39 +214,23 @@ void MGLevel::Report()
 void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
 {
   
-  int NqFine   = Nf + 1;
-  int NqCoarse = Nc + 1;
-  dfloat* P    = (dfloat*) calloc(NqFine * NqCoarse,sizeof(dfloat));
-  dfloat* Ptmp = (dfloat*) calloc(NqFine * NqCoarse,sizeof(dfloat));
+  const int Nfq = Nf+1;
+  const int Ncq = Nc+1;
+  dfloat* cToFInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+  dfloat* R          = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+  InterpolationMatrix1D(Nc, Ncq, meshLevels[Nc]->r, Nfq, meshLevels[Nf]->r, cToFInterp);
 
-  //initialize P as identity
-  for (int i = 0; i < NqCoarse; i++) P[i * NqCoarse + i] = 1.0;
-
-  for (int n = Nc; n < Nf; n++) {
-    int Nqp1 = n + 2;
-    int Nq   = n + 1;
-
-    //copy P
-    for (int i = 0; i < Nq * NqCoarse; i++) Ptmp[i] = P[i];
-
-    //Multiply by the raise op
-    for (int i = 0; i < Nqp1; i++)
-      for (int j = 0; j < NqCoarse; j++) {
-        P[i * NqCoarse + j] = 0.;
-        for (int k = 0; k < Nq; k++)
-          P[i * NqCoarse + j] += meshLevels[n]->interpRaise[i * Nq + k] * Ptmp[k * NqCoarse + j];
-      }
+  // transpose
+  for (int i = 0; i < Ncq; i++){
+    for (int j = 0; j < Nfq; j++){
+      R[i * Nfq + j] = cToFInterp[j * Ncq + i];
+    }
   }
 
-  //the coarsen matrix is P^T
-  R = (dfloat*) calloc(NqFine * NqCoarse,sizeof(dfloat));
-  for (int i = 0; i < NqCoarse; i++)
-    for (int j = 0; j < NqFine; j++)
-      R[i * NqFine + j] = P[j * NqCoarse + i];
-  o_R = platform->device.malloc(NqFine * NqCoarse * sizeof(dfloat), R);
-
-  free(P);
-  free(Ptmp);
+  o_R = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), R);
+  
+  free(R);
+  free(cToFInterp);
 }
 
 static void eig(const int Nrows, double* A, double* WR, double* WI)
