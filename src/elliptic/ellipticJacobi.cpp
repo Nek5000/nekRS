@@ -34,16 +34,16 @@ void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA)
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-  elliptic->updateDiagonalKernel(mesh->Nelements,
-                                 elliptic->Nfields,
-                                 elliptic->Ntotal,
-                                 elliptic->loffset,
-                                 elliptic->o_mapB,
-                                 mesh->o_ggeo,
-                                 mesh->o_D,
-                                 mesh->o_DT,
-                                 elliptic->o_lambda,
-                                 o_invDiagA);
+  elliptic->ellipticBlockBuildDiagonalKernel(mesh->Nelements,
+                                             elliptic->Nfields,
+                                             elliptic->Ntotal,
+                                             elliptic->loffset,
+                                             elliptic->o_mapB,
+                                             mesh->o_ggeo,
+                                             mesh->o_D,
+                                             mesh->o_DT,
+                                             elliptic->o_lambda,
+                                             o_invDiagA);
 
   oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
 

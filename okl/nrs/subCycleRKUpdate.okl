@@ -23,7 +23,7 @@
    SOFTWARE.
 
  */
-@kernel void subCycleERKUpdate(const dlong N,
+@kernel void subCycleRKUpdate(const dlong N,
                                   const int stage,
                                   const dfloat dt,
                                   const dlong offset,

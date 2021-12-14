@@ -50,7 +50,7 @@
     s_fluxDiv[m][j][i] = -WSJ*flux;                                                    \
   }
 
-@kernel void divergenceSurfaceTOMBOHex3D(const dlong Nelements,
+@kernel void divergenceSurfaceHex3D(const dlong Nelements,
                                             @restrict const dfloat*  sgeo,
                                             @restrict const dlong*  vmapM,
                                             @restrict const int*  EToB,

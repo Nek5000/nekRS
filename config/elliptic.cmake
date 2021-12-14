@@ -7,7 +7,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticJacobi.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticUpdateJacobi.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/registerEllipticKernels.cpp
         ${ELLIPTIC_SOURCE_DIR}/registerEllipticPreconditionerKernels.cpp

@@ -157,7 +157,7 @@ struct elliptic_t
 
   hlong NelementsGlobal;
 
-  occa::kernel updateDiagonalKernel;
+  occa::kernel ellipticBlockBuildDiagonalKernel;
   occa::memory o_lambda;
   occa::memory o_lambdaPfloat;
   dlong loffset;

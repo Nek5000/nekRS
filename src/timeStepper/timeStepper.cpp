@@ -451,28 +451,28 @@ void makeq(
               cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
       } else {
         if (cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
-          cds->advectionStrongCubatureVolumeKernel(cds->meshV->Nelements,
-              mesh->o_vgeo,
-              mesh->o_cubDiffInterpT,
-              mesh->o_cubInterpT,
-              mesh->o_cubProjectT,
-              cds->vFieldOffset,
-              isOffset,
-              cubatureOffset,
-              cds->o_S,
-              cds->o_Urst,
-              cds->o_rho,
-              platform->o_mempool.slice0);
+          cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
+                                                   mesh->o_vgeo,
+                                                   mesh->o_cubDiffInterpT,
+                                                   mesh->o_cubInterpT,
+                                                   mesh->o_cubProjectT,
+                                                   cds->vFieldOffset,
+                                                   isOffset,
+                                                   cubatureOffset,
+                                                   cds->o_S,
+                                                   cds->o_Urst,
+                                                   cds->o_rho,
+                                                   platform->o_mempool.slice0);
         else
-          cds->advectionStrongVolumeKernel(cds->meshV->Nelements,
-              mesh->o_vgeo,
-              mesh->o_D,
-              cds->vFieldOffset,
-              isOffset,
-              cds->o_S,
-              cds->o_Urst,
-              cds->o_rho,
-              platform->o_mempool.slice0);
+          cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
+                                           mesh->o_vgeo,
+                                           mesh->o_D,
+                                           cds->vFieldOffset,
+                                           isOffset,
+                                           cds->o_S,
+                                           cds->o_Urst,
+                                           cds->o_rho,
+                                           platform->o_mempool.slice0);
         platform->linAlg->axpby(cds->meshV->Nelements * cds->meshV->Np,
             -1.0,
             platform->o_mempool.slice0,
@@ -585,24 +585,24 @@ void makef(
             nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
     } else {
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-        nrs->advectionStrongCubatureVolumeKernel(mesh->Nelements,
-            mesh->o_vgeo,
-            mesh->o_cubDiffInterpT,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            nrs->fieldOffset,
-            std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
-            nrs->o_U,
-            nrs->o_Urst,
-            platform->o_mempool.slice0);
+        nrs->strongAdvectionCubatureVolumeKernel(mesh->Nelements,
+                                                 mesh->o_vgeo,
+                                                 mesh->o_cubDiffInterpT,
+                                                 mesh->o_cubInterpT,
+                                                 mesh->o_cubProjectT,
+                                                 nrs->fieldOffset,
+                                                 std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
+                                                 nrs->o_U,
+                                                 nrs->o_Urst,
+                                                 platform->o_mempool.slice0);
       else
-        nrs->advectionStrongVolumeKernel(mesh->Nelements,
-            mesh->o_vgeo,
-            mesh->o_D,
-            nrs->fieldOffset,
-            nrs->o_U,
-            nrs->o_Urst,
-            platform->o_mempool.slice0);
+        nrs->strongAdvectionVolumeKernel(mesh->Nelements,
+                                         mesh->o_vgeo,
+                                         mesh->o_D,
+                                         nrs->fieldOffset,
+                                         nrs->o_U,
+                                         nrs->o_Urst,
+                                         platform->o_mempool.slice0);
 
       platform->linAlg->axpby(nrs->NVfields * nrs->fieldOffset,
           -1.0,

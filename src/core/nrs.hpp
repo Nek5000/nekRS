@@ -149,8 +149,8 @@ struct nrs_t
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionCubatureVolumeKernel;
 
-  occa::kernel advectionStrongVolumeKernel;
-  occa::kernel advectionStrongCubatureVolumeKernel;
+  occa::kernel strongAdvectionVolumeKernel;
+  occa::kernel strongAdvectionCubatureVolumeKernel;
 
   occa::kernel gradientVolumeKernel;
 

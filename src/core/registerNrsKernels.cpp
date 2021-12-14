@@ -96,7 +96,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
 
-    kernelName = "nrswGradientVolume" + suffix;
+    kernelName = "wGradientVolume" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -119,7 +119,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
           section + kernelName, fileName, prop);
     }
 
-    kernelName = "nrswDivergenceVolume" + suffix;
+    kernelName = "wDivergenceVolume" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
@@ -128,7 +128,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
 
-    kernelName = "divergenceSurfaceTOMBO" + suffix;
+    kernelName = "divergenceSurface" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
@@ -138,7 +138,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
 
-    kernelName = "pressureRhsTOMBO" + suffix;
+    kernelName = "pressureRhs" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -153,7 +153,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
 
-    kernelName = "velocityRhsTOMBO" + suffix;
+    kernelName = "velocityRhs" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -208,7 +208,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
       platform->kernels.add(
           section + kernelName, fileName, prop);
 
-      kernelName = "subCycleERKUpdate";
+      kernelName = "subCycleRKUpdate";
       fileName = oklpath + "nrs/" + kernelName + ".okl";
       platform->kernels.add(
           section + kernelName, fileName, prop);
@@ -223,7 +223,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
           section + kernelName, fileName, prop);
     }
 
-    kernelName = "multiExtrapolate";
+    kernelName = "extrapolate";
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
