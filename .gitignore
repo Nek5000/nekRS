@@ -2,7 +2,6 @@ build/
 CMakeFiles
 *.tgz
 .vscode/
-.clang-format
 *.swp
 # From AMGX
 plugin_config.cu
