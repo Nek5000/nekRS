@@ -86,14 +86,15 @@ echo "#SBATCH --gpu-bind=map_gpu:0,1,2,3" >> $SFILE
 echo "#SBATCH --gpus-per-task=1" >> $SFILE
 
 echo "module load PrgEnv-gnu" >>$SFILE
+echo "module load cudatoolkit" >>$SFILE
 echo "module load cpe-cuda" >>$SFILE
-echo "module load cuda" >>$SFILE
-echo "module load cmake/3.20" >>$SFILE
+echo "module load cmake" >>$SFILE
 echo "module unload cray-libsci" >>$SFILE
 echo "module list" >>$SFILE
 echo "nvidia-smi" >>$SFILE
 
 echo "export SLURM_CPU_BIND=\"cores\"" >> $SFILE
+echo "export CRAY_ACCEL_TARGET=nvidia80" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
