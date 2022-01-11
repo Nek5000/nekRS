@@ -170,6 +170,7 @@ SolutionProjection::SolutionProjection(elliptic_t& elliptic,
   platform_t* platform = platform_t::getInstance();
   timestep = 0;
   numVecsProjection = 0;
+  prevNumVecsProjection = 0;
   verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
   alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
   o_alpha = platform->device.malloc(maxNumVecsProjection, sizeof(dfloat));
