@@ -36,6 +36,22 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
+      subroutine dProcmapFinalize()
+
+      include 'mpif.h'
+      include 'SIZE'
+      include 'PARALLEL'
+      include 'DPROCMAP'
+
+#ifdef MPI
+      integer ierr
+      call MPI_Win_free(dProcmapH,ierr)
+      if (ierr .ne. 0 ) call exitti('MPI_Win_free failed!$',0)
+#endif
+
+      return
+      end
+c-----------------------------------------------------------------------
       subroutine dProcmapPut(ibuf,lbuf,ioff,ieg)
 
       include 'mpif.h'

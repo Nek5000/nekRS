@@ -86,6 +86,11 @@ struct comm_t{
     ss << "localRank = " << localRank << std::endl;
     return ss.str();
   }
+
+  void finalize() {
+    if(MPI_COMM_NULL != mpiCommLocal)
+      MPI_Comm_free(&mpiCommLocal);
+  }
 };
 
 struct platform_t{

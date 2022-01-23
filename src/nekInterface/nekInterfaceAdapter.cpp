@@ -9,6 +9,7 @@ nekdata_private nekData;
 static int rank;
 static setupAide* options;
 static nrs_t* nrs;
+static bool nek_is_setup = false;
 
 static void (* usrdat_ptr)(void);
 static void (* usrdat2_ptr)(void);
@@ -158,7 +159,8 @@ void uic(int ifield)
 
 void end()
 {
-  (*nek_end_ptr)();
+  if(nek_is_setup)
+    (*nek_end_ptr)();
 }
 
 void setic(void)
@@ -691,6 +693,8 @@ int setup(nrs_t* nrs_in)
 
   (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType, &meshConTol,
 		   &rho, &mue, &rhoCp, &lambda); 
+
+  nek_is_setup = true;
 
   nekData.param = (double*) ptr("param");
   nekData.ifield = (int*) ptr("ifield");

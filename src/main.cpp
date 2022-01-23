@@ -243,6 +243,8 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
+  // Communicator is copied, not duplicated; therefore, it does not need to be freed.
+  // Should this be `MPI_Comm_dup(comm,&newComm);`?
   MPI_Comm newComm = comm;
 
   if(cmdOpt->multiSessionFile.size()) {
@@ -481,6 +483,9 @@ int main(int argc, char** argv)
   nekrs::finalize();
 
   MPI_Barrier(commGlobal);
+  // Communicator is copied, not duplicated; therefore, it does not need to be freed
+  // MPI_Comm_free(&comm);
+  MPI_Comm_free(&commGlobal);
   MPI_Finalize();
   return EXIT_SUCCESS;
 }
