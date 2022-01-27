@@ -17,3 +17,6 @@ residualTol = 1e-08
 residualTol = 1e-12
 density = 1.0
 viscosity = 0.1 
+
+[CASEDATA]
+p_rot = 0.7853981633974483 # \pi / 4

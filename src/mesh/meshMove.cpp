@@ -50,11 +50,5 @@ void mesh_t::update(){
     volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 
     computeInvLMM();
-    surfaceGeometricFactorsKernel(
-        Nelements,
-        o_gllw,
-        o_faceNodes,
-        o_vgeo,
-        o_sgeo
-    );
+    surfaceGeometricFactorsKernel(Nelements, UNormalZero, o_gllw, o_faceNodes, o_vgeo, o_sgeo, o_VT1, o_VT2);
 }

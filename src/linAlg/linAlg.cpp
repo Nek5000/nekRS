@@ -110,6 +110,7 @@ void linAlg_t::setup()
     weightedInnerProdKernel = kernels.get("weightedInnerProd");
     weightedInnerProdManyKernel = kernels.get("weightedInnerProdMany");
     weightedInnerProdMultiKernel = kernels.get("weightedInnerProdMulti");
+    crossProductKernel = kernels.get("crossProduct");
   }
 }
 
@@ -926,4 +927,13 @@ dfloat linAlg_t::weightedNorm1Many(const dlong N,
   platform->timer.toc("dotp");
 #endif
   return norm;
+}
+
+void linAlg_t::crossProduct(const dlong N,
+                            const dlong fieldOffset,
+                            occa::memory &o_x,
+                            occa::memory &o_y,
+                            occa::memory &o_z)
+{
+  crossProductKernel(N, fieldOffset, o_x, o_y, o_z);
 }

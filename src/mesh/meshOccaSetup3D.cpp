@@ -31,6 +31,7 @@
 
 #include "mesh3D.h"
 #include "platform.hpp"
+#include "bcMap.hpp"
 
 void reportMemoryUsage(occa::device &device, const char* mess)
 {
@@ -102,6 +103,13 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
   mesh->o_ggeo =
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
+  mesh->UNormalZero = bcMap::unalignedBoundary(mesh->cht, "velocity");
+  if (mesh->UNormalZero) {
+    mesh->o_VT1 =
+        platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * 3 * sizeof(dfloat), mesh->VT1);
+    mesh->o_VT2 =
+        platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * 3 * sizeof(dfloat), mesh->VT2);
+  }
   //if(mesh->cubNq - 1)
   //  mesh->o_cubvgeo =
   //    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),

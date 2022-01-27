@@ -4,6 +4,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/linearSolver/PGMRES.cpp
         ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx/amgx.c
+        ${ELLIPTIC_SOURCE_DIR}/ellipticApplyMask.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildSEMFEM.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuous.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticBuildContinuousGalerkin.cpp

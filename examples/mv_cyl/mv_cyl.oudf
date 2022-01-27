@@ -1,9 +1,13 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
-  bc->u = 0.0;
-  bc->v = p_AMP*sin(p_OMEGA*bc->time);
-  bc->w = 0.0;
+  const dfloat u = 0.0;
+  const dfloat v = p_AMP*sin(p_OMEGA*bc->time);
+  const dfloat w = 0.0;
+
+  bc->u = u * cos(p_ROT) - v * sin(p_ROT);
+  bc->v = u * sin(p_ROT) + v * cos(p_ROT);
+  bc->w = w;
 }
 
 @kernel void userVp(const dlong Nelements,
@@ -26,22 +30,26 @@ void velocityDirichletConditions(bcData *bc)
 }
 @kernel void userMeshVelocity(const dlong Nelements,
                     const dlong offset,
-                    const dfloat ymin,
-                    const dfloat ymax,
+                    const dfloat hmin,
+                    const dfloat hmax,
                     const dfloat time,
-                    @restrict const dfloat * y,
+                    @restrict const dfloat * h,
                     @restrict dfloat * W)
 {
   for(dlong e=0;e<Nelements;++e;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       const dfloat v_piston = p_AMP * sin(p_OMEGA * time);
-      const dfloat ylen = ymin - ymax;
+      const dfloat hlen = hmin - hmax;
 
       const int id = e*p_Np + n;
-      const dfloat yy = y[id];
-      const dfloat ysc = (yy - ymax) / ylen;
-      W[id + 0 * offset] = 0.0;
-      W[id + 1 * offset] = ysc * v_piston;
+      const dfloat hh = h[id];
+
+      const dfloat hsc = (hh - hmax) / hlen;
+      const dfloat wxt = 0.0;
+      const dfloat wyt = hsc * v_piston;
+
+      W[id + 0 * offset] = wxt * cos(p_ROT) - wyt * sin(p_ROT);
+      W[id + 1 * offset] = wxt * sin(p_ROT) + wyt * cos(p_ROT);
       W[id + 2 * offset] = 0.0;
     }
   }

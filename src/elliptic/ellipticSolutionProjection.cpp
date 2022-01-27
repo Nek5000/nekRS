@@ -173,7 +173,6 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
     Nfields * fieldOffset
     , sizeof(dfloat));
 
-  std::string kernelName;
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
   {

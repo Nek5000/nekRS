@@ -7,6 +7,12 @@
 * Fix `mcmodel` issue on ppc 
 * Fix Dirichlet handling in Jacobi smoother
 * Fix minor performance regression in coarse grid solve
+* Support unaligned symmetry boundary condition
+
+## Good to know
+
+* [par] `sym` boundary condition is remapped to the correct aligned symmetry boundary condition
+* Shared SYM/SYM boundary conditions are not supported
 
 ## Breaking Changes
 

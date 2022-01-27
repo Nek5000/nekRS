@@ -57,8 +57,21 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   { // setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    ellipticOgs(mesh, mesh->Nlocal, /* nFields */ 1, /* offset */ 0, elliptic->BCType, /* BCTypeOffset */ 0,
-                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    ellipticOgs(mesh,
+                mesh->Nlocal,
+                /* nFields */ 1,
+                /* offset */ 0,
+                elliptic->BCType,
+                elliptic->NBCType,
+                elliptic->UNormalZero,
+                elliptic->Nmasked,
+                elliptic->o_maskIds,
+                elliptic->NmaskedLocal,
+                elliptic->o_maskIdsLocal,
+                elliptic->NmaskedGlobal,
+                elliptic->o_maskIdsGlobal,
+                elliptic->o_BCType,
+                &ogs);
     elliptic->ogs = ogs;
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }

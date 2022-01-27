@@ -65,6 +65,10 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
   mesh->sgeo = (dfloat*) calloc((mesh->Nelements + mesh->totalHaloPairs) *
                                 mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
                                 sizeof(dfloat));
+  mesh->VT1 = (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * 3 * mesh->Nfp * mesh->Nfaces,
+                               sizeof(dfloat));
+  mesh->VT2 = (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * 3 * mesh->Nfp * mesh->Nfaces,
+                               sizeof(dfloat));
 
   dfloat* xre = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* xse = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
@@ -198,6 +202,42 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
         mesh->sgeo[base + IJID] = 1. / J;
         mesh->sgeo[base + WIJID] = 1. / (J * mesh->gllw[0]);
         mesh->sgeo[base + WSJID] = sJ * mesh->gllw[i % mesh->Nq] * mesh->gllw[i / mesh->Nq];
+
+        base = 3 * (mesh->Nfaces * mesh->Nfp * e + mesh->Nfp * f + i); // tangential components
+
+        const dfloat tol = 1e-4;
+        dfloat vt1x = 0, vt1y = 0, vt1z = 0;
+        dfloat vt2x = 0, vt2y = 0, vt2z = 0;
+        if (std::abs(std::abs(nz) - 1.0) < tol) {
+          vt1x = 1.0;
+          vt1y = 0.0;
+          vt1z = 0.0;
+        }
+        else {
+          const dfloat mag = std::sqrt(nx * nx + ny * ny);
+          vt1x = -ny / mag;
+          vt1y = nx / mag;
+          vt1z = 0.0;
+        }
+
+        mesh->VT1[base + 0] = vt1x;
+        mesh->VT1[base + 1] = vt1y;
+        mesh->VT1[base + 2] = vt1z;
+
+        // vt2 = n \cross vt1
+        vt2x = ny * vt1z - nz * vt1y;
+        vt2y = nz * vt1x - nx * vt1z;
+        vt2z = nx * vt1y - ny * vt1x;
+
+        // normalize vt2
+        const dfloat invMag = 1.0 / std::sqrt(vt2x * vt2x + vt2y * vt2y + vt2z * vt2z);
+        vt2x *= invMag;
+        vt2y *= invMag;
+        vt2z *= invMag;
+
+        mesh->VT2[base + 0] = vt2x;
+        mesh->VT2[base + 1] = vt2y;
+        mesh->VT2[base + 2] = vt2z;
       }
     }
   }

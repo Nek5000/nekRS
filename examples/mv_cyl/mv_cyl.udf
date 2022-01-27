@@ -17,6 +17,7 @@ static dfloat P_GAMMA;
 static dfloat P_DELTA;
 static dfloat P_OMEGA;
 static dfloat P_AMP;
+static dfloat P_ROT;
  
 void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
@@ -55,6 +56,7 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/" "p_PI"] = M_PI;
   kernelInfo["defines/" "p_OMEGA"] = P_OMEGA;
   kernelInfo["defines/" "p_AMP"] = P_AMP;
+  kernelInfo["defines/" "p_ROT"] = P_ROT;
   userVpKernel = oudfBuildKernel(kernelInfo, "userVp");
   userMeshVelocityKernel = oudfBuildKernel(kernelInfo, "userMeshVelocity");
   lowMach::buildKernel(kernelInfo);
@@ -71,6 +73,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "p_delta",P_DELTA);
   platform->par->extract("casedata", "p_omega",P_OMEGA);
   platform->par->extract("casedata", "p_amp",P_AMP);
+  platform->par->extract("casedata", "p_rot",P_ROT);
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = XLEN;
@@ -80,6 +83,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     nek_cb_scnrs[4] = P_DELTA;
     nek_cb_scnrs[5] = P_OMEGA;
     nek_cb_scnrs[6] = P_AMP;
+    nek_cb_scnrs[7] = P_ROT;
   }
 }
 
@@ -97,14 +101,24 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   cds_t* cds = nrs->cds;
   linAlg_t* linAlg = platform->linAlg;
   if(platform->options.compareArgs("MESH SOLVER", "USER")){
-    const dfloat ymin = linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
-    const dfloat ymax = linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+
+    // rotate back into reference frame
+    platform->linAlg->axpbyz(
+      mesh->Nlocal,
+      -1.0 * std::sin(P_ROT),
+      mesh->o_x,
+      std::cos(P_ROT),
+      mesh->o_y,
+      platform->o_mempool.slice0);
+
+    const dfloat hmin = linAlg->min(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+    const dfloat hmax = linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
     userMeshVelocityKernel(mesh->Nelements,
       nrs->fieldOffset,
-      ymin,
-      ymax,
+      hmin,
+      hmax,
       time,
-      mesh->o_y,
+      platform->o_mempool.slice0,
       mesh->o_U);
   }
 

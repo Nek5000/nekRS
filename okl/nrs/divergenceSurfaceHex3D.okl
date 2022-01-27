@@ -41,7 +41,7 @@
     dfloat flux = 0;                                                                   \
     if(bcType == 2) {                                                                  \
       flux = coef * (bc.nx * bc.u + bc.ny * bc.v + bc.nz * bc.w);                      \
-    } else if(bcType == 4 || bcType == 5 || bcType == 6 ) {                            \
+    } else if(bcType == 4 || bcType == 5 || bcType == 6 || bcType == 7) {              \
       const dfloat fx = F[idM + 0 * offset];                                           \
       const dfloat fy = F[idM + 1 * offset];                                           \
       const dfloat fz = F[idM + 2 * offset];                                           \

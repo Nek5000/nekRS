@@ -700,11 +700,13 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice3);
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->meshV->velocityDirichletKernel(mesh->Nelements,
-                                     nrs->fieldOffset,
-                                     mesh->o_vmapM,
-                                     nrs->o_EToBMesh,
-                                     nrs->o_U,
-                                     platform->o_mempool.slice3);
+                                          nrs->fieldOffset,
+                                          mesh->o_VT1,
+                                          mesh->o_VT2,
+                                          mesh->o_vmapM,
+                                          nrs->o_EToBMesh,
+                                          nrs->o_U,
+                                          platform->o_mempool.slice3);
 
       //take care of Neumann-Dirichlet shared edges across elements
       if(sweep == 0) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, gsh);

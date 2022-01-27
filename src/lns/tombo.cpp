@@ -30,6 +30,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    nrs->fieldOffset,
                                    time,
                                    mesh->o_sgeo,
+                                   mesh->o_VT1,
+                                   mesh->o_VT2,
                                    mesh->o_x,
                                    mesh->o_y,
                                    mesh->o_z,

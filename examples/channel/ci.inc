@@ -24,6 +24,13 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
   options.setArgs("STRESSFORMULATION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+
+  if(ciMode == 1){
+    platform->par->set("casedata", "p_rot", 0.0);
+  }
+  if(ciMode == 2){
+    platform->par->set("casedata", "p_rot", 0.7853981633974483);
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)

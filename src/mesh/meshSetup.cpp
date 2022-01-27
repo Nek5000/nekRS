@@ -138,6 +138,8 @@ mesh_t *createMesh(MPI_Comm comm,
   // global nodes
   meshGlobalIds(mesh);
   bcMap::check(mesh);
+  bcMap::checkBoundaryAlignment(mesh);
+  bcMap::remapUnalignedBoundaries(mesh);
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 

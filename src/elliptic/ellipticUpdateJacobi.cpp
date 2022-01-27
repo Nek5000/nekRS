@@ -38,7 +38,6 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
                                              elliptic->Nfields,
                                              elliptic->Ntotal,
                                              elliptic->loffset,
-                                             elliptic->o_mapB,
                                              mesh->o_ggeo,
                                              mesh->o_D,
                                              mesh->o_DT,

@@ -213,22 +213,22 @@ void MGLevel::Report()
 
 void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
 {
-  
-  const int Nfq = Nf+1;
-  const int Ncq = Nc+1;
-  dfloat* cToFInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
-  dfloat* R          = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+
+  const int Nfq = Nf + 1;
+  const int Ncq = Nc + 1;
+  dfloat *cToFInterp = (dfloat *)calloc(Nfq * Ncq, sizeof(dfloat));
+  dfloat *R = (dfloat *)calloc(Nfq * Ncq, sizeof(dfloat));
   InterpolationMatrix1D(Nc, Ncq, meshLevels[Nc]->r, Nfq, meshLevels[Nf]->r, cToFInterp);
 
   // transpose
-  for (int i = 0; i < Ncq; i++){
-    for (int j = 0; j < Nfq; j++){
+  for (int i = 0; i < Ncq; i++) {
+    for (int j = 0; j < Nfq; j++) {
       R[i * Nfq + j] = cToFInterp[j * Ncq + i];
     }
   }
 
   o_R = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), R);
-  
+
   free(R);
   free(cToFInterp);
 }

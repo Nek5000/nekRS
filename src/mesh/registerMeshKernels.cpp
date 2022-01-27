@@ -64,5 +64,6 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
     fileName = oklpath + "core/" + kernelName + ".okl";
     platform->kernels.add(
         meshPrefix + kernelName, fileName, meshKernelInfo);
+
   }
 }
