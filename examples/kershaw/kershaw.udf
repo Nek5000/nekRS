@@ -38,6 +38,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
     if(solverName == "jacobi"){
       nrs->pSolver->options.setArgs("PRECONDITIONER", "JACOBI");
+      nrs->pSolver->options.setArgs("KRYLOV SOLVER", "PCG");
       ellipticPreconditionerSetup(nrs->pSolver, nrs->pSolver->ogs);
     }
 
@@ -87,7 +88,6 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     const double throughput = (double)Ntotal/solveTime;
 
     if(platform->comm.mpiRank == 0) {
-      printf("solver: %s\n", solverName.c_str());
       printf("repetitions: %d\n", Nrep);
       printf("iterations: %d\n", nrs->pSolver->Niter);
       printf("min solve time: %g s (avg: %g s, max: %g s)\n", solveTime, solveTimeAvg, solveTimeMax);
