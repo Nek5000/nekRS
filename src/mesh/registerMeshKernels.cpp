@@ -26,6 +26,25 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
     kernelName = "velocityDirichletBCHex3D";
     fileName = oklpath + "mesh/" + kernelName + ".okl";
     platform->kernels.add(meshPrefix + kernelName, fileName, kernelInfo);
+
+    {
+      int N;
+      platform->options.getArgs("POLYNOMIAL DEGREE", N);
+      const int Nq = N + 1;
+      if (BLOCKSIZE < Nq * Nq) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: avgBIDValue kernel requires BLOCKSIZE >= Nq * Nq."
+                 "BLOCKSIZE = %d, Nq*Nq = %d\n",
+                 BLOCKSIZE,
+                 Nq * Nq);
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
+    kernelName = "avgBIDValue";
+    fileName = oklpath + "mesh/" + kernelName + ".okl";
+    platform->kernels.add(meshPrefix + kernelName, fileName, kernelInfo);
+
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_cubNq"] = cubNq;
     meshKernelInfo["defines/p_cubNp"] = cubNp;

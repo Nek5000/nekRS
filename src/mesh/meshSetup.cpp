@@ -369,16 +369,9 @@ void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 void loadKernels(mesh_t* mesh)
 {
   const std::string meshPrefix = "mesh-";
-  if(platform->options.compareArgs("MOVING MESH", "TRUE")){
-    {
-        mesh->velocityDirichletKernel =
-          platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
-        mesh->geometricFactorsKernel =
-          platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
-        mesh->surfaceGeometricFactorsKernel =
-          platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
-        mesh->nStagesSumVectorKernel =
-          platform->kernels.get(meshPrefix + "nStagesSumVector");
-    }
-  }
+  mesh->avgBIDValueKernel = platform->kernels.get(meshPrefix + "avgBIDValue");
+  mesh->velocityDirichletKernel = platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
+  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
+  mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
+  mesh->nStagesSumVectorKernel = platform->kernels.get(meshPrefix + "nStagesSumVector");
 }

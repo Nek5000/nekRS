@@ -44,6 +44,7 @@
 
 struct mesh_t
 {
+  dfloat avgBoundaryValue(int bId, occa::memory fld);
   void move();
   void update();
   void computeInvLMM();
@@ -220,6 +221,14 @@ struct mesh_t
   occa::kernel surfaceGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
   occa::kernel velocityDirichletKernel;
+
+  occa::kernel avgBIDValueKernel;
+
+  // temporaries for avgBoundaryValue
+  occa::memory o_sum;
+  occa::memory o_area;
+  dfloat *sum;
+  dfloat *area;
 };
 
 mesh_t *createMeshMG(mesh_t* _mesh,

@@ -126,12 +126,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int Nq = N+1;
     if( BLOCKSIZE < Nq * Nq ){
       if(platform->comm.mpiRank == 0)
-        printf("ERROR: several kernels require BLOCKSIZE >= Nq * Nq."
-          "BLOCKSIZE = %d, Nq*Nq = %d\n", BLOCKSIZE, Nq * Nq);
+        printf("ERROR: several kernels requires BLOCKSIZE >= Nq * Nq."
+               "BLOCKSIZE = %d, Nq*Nq = %d\n",
+               BLOCKSIZE,
+               Nq * Nq);
       ABORT(EXIT_FAILURE);
     }
   }
-
   platform_t* platform = platform_t::getInstance();
   device_t& device = platform->device;
   nrs->kernelInfo = new occa::properties();
