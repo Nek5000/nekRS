@@ -58,12 +58,15 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
     platform->kernels.add(
         meshPrefix + kernelName, fileName, meshKernelInfo);
 
+    kernelName = "cubatureGeometricFactorsHex3D";
+    fileName = oklpath + "mesh/" + kernelName + ".okl";
+    platform->kernels.add(meshPrefix + kernelName, fileName, meshKernelInfo);
+
     meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_nAB"] = nAB;
     kernelName = "nStagesSumVector";
     fileName = oklpath + "core/" + kernelName + ".okl";
     platform->kernels.add(
         meshPrefix + kernelName, fileName, meshKernelInfo);
-
   }
 }

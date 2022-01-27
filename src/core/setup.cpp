@@ -118,7 +118,6 @@ determineMGLevels(std::string section)
   }
 }
 
-
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
   {
@@ -1310,5 +1309,4 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
 
   return cds;
 }
-
 }

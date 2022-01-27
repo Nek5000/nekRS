@@ -35,6 +35,8 @@ void mesh_t::update(){
         platform->o_mempool.slice0
     );
 
+    cubatureGeometricFactorsKernel(Nelements, o_D, o_x, o_y, o_z, o_cubInterpT, o_cubw, o_cubvgeo);
+
     // do add check if negative
     const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
     const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);

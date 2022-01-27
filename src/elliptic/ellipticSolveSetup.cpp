@@ -173,7 +173,8 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   { //setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    if(elliptic->blockSolver) ogs = mesh->ogs;
+    if (elliptic->blockSolver)
+      ogs = mesh->ogs;
     ellipticOgs(mesh,
                 elliptic->Ntotal,
                 elliptic->Nfields,

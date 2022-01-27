@@ -225,17 +225,13 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   mesh = nrs->meshV;
   if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     nrs->UrstCubatureKernel(mesh->Nelements,
-        mesh->o_D,
-        mesh->o_x,
-        mesh->o_y,
-        mesh->o_z,
-        mesh->o_cubInterpT,
-        mesh->o_cubw,
-        nrs->fieldOffset,
-        cubatureOffset,
-        nrs->o_U,
-        mesh->o_U,
-        o_Urst);
+                            mesh->o_cubvgeo,
+                            mesh->o_cubInterpT,
+                            nrs->fieldOffset,
+                            cubatureOffset,
+                            nrs->o_U,
+                            mesh->o_U,
+                            o_Urst);
   else
     nrs->UrstKernel(mesh->Nelements,
         mesh->o_vgeo,

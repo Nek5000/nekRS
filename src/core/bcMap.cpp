@@ -60,34 +60,30 @@ alignment_t computeAlignment(mesh_t *mesh, dlong element, dlong face)
 
   return alignment_t::UNALIGNED;
 }
-}
+} // namespace
 
 static std::set<std::string> fields;
 // stores for every (field, boundaryID) pair a bcID
 static std::map<std::pair<std::string, int>, int> bToBc;
 static int nbid[] = {0, 0};
 
-static std::map<std::string, int> vBcTextToID = {
-  {"periodic", 0},
-  {"zerovalue", 1},
-  {"fixedvalue", 2},
-  {"zerogradient", 3},
-  {"zeroxvalue/zerogradient", 4},
-  {"zeroyvalue/zerogradient", 5},
-  {"zerozvalue/zerogradient", 6},
-  {"zeronvalue/zerogradient", 7}
-};
+static std::map<std::string, int> vBcTextToID = {{"periodic", 0},
+                                                 {"zerovalue", 1},
+                                                 {"fixedvalue", 2},
+                                                 {"zerogradient", 3},
+                                                 {"zeroxvalue/zerogradient", 4},
+                                                 {"zeroyvalue/zerogradient", 5},
+                                                 {"zerozvalue/zerogradient", 6},
+                                                 {"zeronvalue/zerogradient", 7}};
 
-static std::map<int, std::string> vBcIDToText = {
-  {0, "periodic"               },
-  {1, "zeroValue"              },
-  {2, "fixedValue"             },
-  {3, "zeroGradient"           },
-  {4, "zeroXValue/zeroGradient"},
-  {5, "zeroYValue/zeroGradient"},
-  {6, "zeroZValue/zeroGradient"},
-  {7, "zeroNValue/zeroGradient"}
-};
+static std::map<int, std::string> vBcIDToText = {{0, "periodic"},
+                                                 {1, "zeroValue"},
+                                                 {2, "fixedValue"},
+                                                 {3, "zeroGradient"},
+                                                 {4, "zeroXValue/zeroGradient"},
+                                                 {5, "zeroYValue/zeroGradient"},
+                                                 {6, "zeroZValue/zeroGradient"},
+                                                 {7, "zeroNValue/zeroGradient"}};
 
 static std::map<std::string, int> sBcTextToID = {
   {"periodic", 0},
@@ -126,7 +122,8 @@ static void m_setup(std::string field, std::vector<std::string> slist)
     if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient";
     if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
-    if (key.compare("sym") == 0) key = "zeronvalue/zerogradient";
+    if (key.compare("sym") == 0)
+      key = "zeronvalue/zerogradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
       std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
@@ -162,7 +159,8 @@ static void v_setup(std::string field, std::vector<std::string> slist)
     if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient";
     if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
-    if (key.compare("sym") == 0) key = "zeronvalue/zerogradient";
+    if (key.compare("sym") == 0)
+      key = "zeronvalue/zerogradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
       std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";

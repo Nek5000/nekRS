@@ -103,6 +103,10 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
   mesh->o_ggeo =
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
+  if (mesh->cubNq - 1) {
+    mesh->o_cubvgeo =
+        platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat), mesh->cubvgeo);
+  }
   mesh->UNormalZero = bcMap::unalignedBoundary(mesh->cht, "velocity");
   if (mesh->UNormalZero) {
     mesh->o_VT1 =
@@ -110,10 +114,6 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
     mesh->o_VT2 =
         platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * 3 * sizeof(dfloat), mesh->VT2);
   }
-  //if(mesh->cubNq - 1)
-  //  mesh->o_cubvgeo =
-  //    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
-  //                            mesh->cubvgeo);
 
   mesh->o_vmapM =
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
