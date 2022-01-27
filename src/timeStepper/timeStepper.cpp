@@ -1496,12 +1496,15 @@ void printInfo(
       if (nrs->flow) {
         elliptic_t *solver = nrs->pSolver;
         if(solver->solutionProjection){
-          printf("  projP  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-            solver->res00Norm,
-            solver->res0Norm,
-            solver->res00Norm / solver->res0Norm,
-            solver->solutionProjection->getPrevNumVecsProjection(),
-            solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            printf("  projP  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                   solver->res00Norm,
+                   solver->res0Norm,
+                   solver->res00Norm / solver->res0Norm,
+                   prevVecs,
+                   solver->solutionProjection->getMaxNumVecsProjection());
+          }
         }
         printf("  P      : iter %03d  resNorm0 %.2e  resNorm %.2e\n",
             solver->Niter,
@@ -1511,12 +1514,15 @@ void printInfo(
         if (nrs->uvwSolver) {
           solver = nrs->uvwSolver;
           if(solver->solutionProjection){
-            printf("  projUVW: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projUVW: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  UVW    : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e  divErrNorms %.2e %.2e\n",
@@ -1527,13 +1533,16 @@ void printInfo(
               divUErrL2);
         } else {
           solver = nrs->uSolver;
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
           if(solver->solutionProjection){
-            printf("  projU  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            if (prevVecs > 0) {
+              printf("  projU  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  U  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e  divErrNorms %.2e %.2e\n",
@@ -1544,12 +1553,15 @@ void printInfo(
               divUErrL2);
           solver = nrs->vSolver;
           if(solver->solutionProjection){
-            printf("  projV  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projV  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  V  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
@@ -1558,12 +1570,15 @@ void printInfo(
               solver->resNorm);
           solver = nrs->wSolver;
           if(solver->solutionProjection){
-            printf("  projW  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projW  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  W  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
@@ -1577,12 +1592,15 @@ void printInfo(
       {
         elliptic_t* solver = nrs->meshSolver;
         if(solver->solutionProjection){
-          printf("  projMSH: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-            solver->res00Norm,
-            solver->res0Norm,
-            solver->res00Norm / solver->res0Norm,
-            solver->solutionProjection->getPrevNumVecsProjection(),
-            solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            printf("  projMSH: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                   solver->res00Norm,
+                   solver->res0Norm,
+                   solver->res00Norm / solver->res0Norm,
+                   prevVecs,
+                   solver->solutionProjection->getMaxNumVecsProjection());
+          }
         }
         printf("  MSH    : iter %03d  resNorm0 %.2e  resNorm %.2e\n",
                solver->Niter, solver->res0Norm, solver->resNorm);
@@ -1591,14 +1609,17 @@ void printInfo(
       for(int is = 0; is < nrs->Nscalar; is++) {
         if (cds->compute[is]) {
           elliptic_t *solver = cds->solver[is];
-          if(solver->solutionProjection){
-            printf("  projS%02d: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              is,
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            if (solver->solutionProjection) {
+              printf("  projS%02d: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     is,
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  S%02d    : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
