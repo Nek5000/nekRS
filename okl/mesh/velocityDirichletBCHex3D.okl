@@ -42,7 +42,7 @@
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
 
-        if(bcType == 7) {
+        if(bcType == 7 || bcType == 8) {
 
           const dfloat v1x = V1[sid * 3 + 0];
           const dfloat v1y = V1[sid * 3 + 1];

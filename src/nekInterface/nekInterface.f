@@ -574,6 +574,8 @@ c-----------------------------------------------------------------------
           ibc = 6
          else if (c.eq.'SYM') then 
           ibc = 7
+         else if (c.eq.'SHL'.or.c.eq.'shl') then 
+          ibc = 8
          else if (c.eq.'mv ') then 
           ibc = 2
         endif
@@ -692,7 +694,7 @@ c
       include 'SIZE'
       include 'TOTAL'
 
-      parameter (NBID_TYPES=8)
+      parameter (NBID_TYPES=9)
       parameter (NSBID_TYPES=3) ! scalar boundary types
 
       integer bID, bcID
@@ -722,6 +724,7 @@ c
              if (ifnorz) map(6) = 1 
              if (.not.ifalg) map(7) = 1 ! unaligned SYM boundary
            endif
+           if(cb.eq.'SHL'.or.cb.eq.'shl') map(8) = 1
         enddo
         enddo
       else
@@ -763,6 +766,8 @@ c
            if (ifnory) boundaryID(ifc,iel) = map(5) 
            if (ifnorz) boundaryID(ifc,iel) = map(6) 
            if (.not.ifalg) boundaryID(ifc,iel) = map(7) 
+         else if(cb.eq.'SHL'.or.cb.eq.'shl') then
+           boundaryID(ifc,iel) = map(8)
          else
            if(cb.ne.'E  ' .and. cb.ne.'P  ') then
              ierr = 1
@@ -781,6 +786,7 @@ c
       if(map(5).gt.0)          cbc_bmap(map(5), ifld) = 'SYY'
       if(map(6).gt.0)          cbc_bmap(map(6), ifld) = 'SYZ'
       if(map(7).gt.0)          cbc_bmap(map(7), ifld) = 'SYM'
+      if(map(8).gt.0)          cbc_bmap(map(8), ifld) = 'shl'
 
 c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,NBID_TYPES)
  

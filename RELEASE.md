@@ -8,6 +8,7 @@
 * Fix Dirichlet handling in Jacobi smoother
 * Fix minor performance regression in coarse grid solve
 * Support unaligned symmetry boundary condition
+* Support unaligned traction boundary condition
 
 ## Good to know
 

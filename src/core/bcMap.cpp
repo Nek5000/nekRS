@@ -67,14 +67,17 @@ static std::set<std::string> fields;
 static std::map<std::pair<std::string, int>, int> bToBc;
 static int nbid[] = {0, 0};
 
-static std::map<std::string, int> vBcTextToID = {{"periodic", 0},
-                                                 {"zerovalue", 1},
-                                                 {"fixedvalue", 2},
-                                                 {"zerogradient", 3},
-                                                 {"zeroxvalue/zerogradient", 4},
-                                                 {"zeroyvalue/zerogradient", 5},
-                                                 {"zerozvalue/zerogradient", 6},
-                                                 {"zeronvalue/zerogradient", 7}};
+static std::map<std::string, int> vBcTextToID = {
+    {"periodic", 0},
+    {"zerovalue", 1},
+    {"fixedvalue", 2},
+    {"zerogradient", 3},
+    {"zeroxvalue/zerogradient", 4},
+    {"zeroyvalue/zerogradient", 5},
+    {"zerozvalue/zerogradient", 6},
+    {"zeronvalue/zerogradient", 7},
+    {"zeronvalue/fixedgradient", 8},
+};
 
 static std::map<int, std::string> vBcIDToText = {{0, "periodic"},
                                                  {1, "zeroValue"},
@@ -83,7 +86,8 @@ static std::map<int, std::string> vBcIDToText = {{0, "periodic"},
                                                  {4, "zeroXValue/zeroGradient"},
                                                  {5, "zeroYValue/zeroGradient"},
                                                  {6, "zeroZValue/zeroGradient"},
-                                                 {7, "zeroNValue/zeroGradient"}};
+                                                 {7, "zeroNValue/zeroGradient"},
+                                                 {8, "zeroNValue/fixedGradient"}};
 
 static std::map<std::string, int> sBcTextToID = {
   {"periodic", 0},
@@ -122,8 +126,9 @@ static void m_setup(std::string field, std::vector<std::string> slist)
     if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient";
     if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
-    if (key.compare("sym") == 0)
-      key = "zeronvalue/zerogradient";
+    if (key.compare("sym") == 0) key = "zeronvalue/zerogradient";
+    if (key.compare("shl") == 0)
+      key = "zeronvalue/fixedgradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
       std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
@@ -159,8 +164,9 @@ static void v_setup(std::string field, std::vector<std::string> slist)
     if (key.compare("symx") == 0) key = "zeroxvalue/zerogradient";
     if (key.compare("symy") == 0) key = "zeroyvalue/zerogradient";
     if (key.compare("symz") == 0) key = "zerozvalue/zerogradient";
-    if (key.compare("sym") == 0)
-      key = "zeronvalue/zerogradient";
+    if (key.compare("sym") == 0) key = "zeronvalue/zerogradient";
+    if (key.compare("shl") == 0)
+      key = "zeronvalue/fixedgradient";
 
     if (vBcTextToID.find(key) == vBcTextToID.end()) {
       std::cout << "Invalid bcType " << "\'" << key << "\'" << "!\n";
@@ -261,6 +267,8 @@ int type(int bid, std::string field)
       bcType = NEUMANN;
     if (bcID == 7)
       bcType = ZERO_NORMAL;
+    if (bcID == 8)
+      bcType = ZERO_NORMAL;
     if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("y-velocity") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
@@ -274,6 +282,8 @@ int type(int bid, std::string field)
     if (bcID == 6)
       bcType = NEUMANN;
     if (bcID == 7)
+      bcType = ZERO_NORMAL;
+    if (bcID == 8)
       bcType = ZERO_NORMAL;
     if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("z-velocity") == 0) {
@@ -289,6 +299,8 @@ int type(int bid, std::string field)
     if (bcID == 6) bcType = DIRICHLET;
     if (bcID == 7)
       bcType = ZERO_NORMAL;
+    if (bcID == 8)
+      bcType = ZERO_NORMAL;
     if (bcID == 2) oudfFindDirichlet(field);
   } else if (field.compare("x-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
@@ -303,6 +315,8 @@ int type(int bid, std::string field)
       bcType = NEUMANN;
     if (bcID == 7)
       bcType = ZERO_NORMAL;
+    if (bcID == 8)
+      bcType = ZERO_NORMAL;
   } else if (field.compare("y-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
@@ -316,6 +330,8 @@ int type(int bid, std::string field)
       bcType = NEUMANN;
     if (bcID == 7)
       bcType = ZERO_NORMAL;
+    if (bcID == 8)
+      bcType = ZERO_NORMAL;
   } else if (field.compare("z-mesh") == 0) {
     const int bcID = bToBc[{"mesh", bid - 1}];
     if (bcID == 1) bcType = DIRICHLET;
@@ -328,6 +344,8 @@ int type(int bid, std::string field)
       bcType = NEUMANN;
     if (bcID == 6) bcType = DIRICHLET;
     if (bcID == 7)
+      bcType = ZERO_NORMAL;
+    if (bcID == 8)
       bcType = ZERO_NORMAL;
   } else if (field.compare("pressure") == 0) {
     const int bcID = bToBc[{"velocity", bid - 1}];
@@ -343,6 +361,8 @@ int type(int bid, std::string field)
     if (bcID == 6)
       bcType = NEUMANN;
     if (bcID == 7)
+      bcType = NEUMANN;
+    if (bcID == 8)
       bcType = NEUMANN;
     if (bcID == 3) oudfFindDirichlet(field);
   } else if (field.compare(0, 6, "scalar") == 0) {
@@ -463,8 +483,8 @@ void checkOpposingFaces(mesh_t *mesh)
         int bid = mesh->EToB[e * mesh->Nfaces + f];
         int bc = id(bid, field);
 
-        // only applicable for unaligned SYM boundaries
-        if (bc != 7)
+        // only applicable for unaligned SYM/SHL boundaries
+        if (bc != 7 || bc != 8)
           continue;
         for (int of = 0; of < mesh->Nfaces; of++) {
           if (of == opposing)
@@ -473,7 +493,7 @@ void checkOpposingFaces(mesh_t *mesh)
             continue;
           int obid = mesh->EToB[e * mesh->Nfaces + of];
           int obc = id(obid, field);
-          if (obc == 7) {
+          if (obc == bc) {
             valid[bid - 1] = 0;
             valid[obid - 1] = 0;
             err = 1;
@@ -677,6 +697,8 @@ bool unalignedBoundary(bool cht, std::string field)
   for (int bid = 1; bid <= nid; bid++) {
     int bcType = id(bid, field);
     if (bcType == 7)
+      return true;
+    if (bcType == 8)
       return true;
   }
 

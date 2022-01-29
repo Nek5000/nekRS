@@ -52,7 +52,7 @@
         const dlong bcType = EToB[f + p_Nfaces * e];
 
         if(bcType > 0) {
-          if(bcType == 7) {
+          if(bcType == 7 || bcType == 8) {
 
             const dfloat v1x = V1[sid * 3 + 0];
             const dfloat v1y = V1[sid * 3 + 1];
@@ -104,6 +104,14 @@
           bc.nx = sgeo[sid * p_Nsgeo + p_NXID];
           bc.ny = sgeo[sid * p_Nsgeo + p_NYID];
           bc.nz = sgeo[sid * p_Nsgeo + p_NZID];
+
+          bc.t1x = V1[sid * 3 + 0];
+          bc.t1y = V1[sid * 3 + 1];
+          bc.t1z = V1[sid * 3 + 2];
+
+          bc.t2x = V2[sid * 3 + 0];
+          bc.t2y = V2[sid * 3 + 1];
+          bc.t2z = V2[sid * 3 + 2];
 
           bc.u = U[idM + 0 * offset];
           bc.v = U[idM + 1 * offset];

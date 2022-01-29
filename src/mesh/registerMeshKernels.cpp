@@ -66,7 +66,6 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
     meshKernelInfo["defines/p_nAB"] = nAB;
     kernelName = "nStagesSumVector";
     fileName = oklpath + "core/" + kernelName + ".okl";
-    platform->kernels.add(
-        meshPrefix + kernelName, fileName, meshKernelInfo);
+    platform->kernels.add(meshPrefix + kernelName, fileName, meshKernelInfo);
   }
 }
