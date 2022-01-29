@@ -1,0 +1,131 @@
+// compute the average value of a field
+// on a specified BID
+
+// pre: result (length: p_Nfaces * Nelements)
+// pre: area (length: p_Nfaces * Nelements)
+
+// Assumes p_blockSize > p_Nfp
+
+@kernel void avgBIDValue(const dlong Nelements,
+    const dlong BID,
+    @restrict const dfloat *sgeo,
+    @restrict const dlong *EToB,
+    @restrict const dlong *vmapM,
+    @restrict const dfloat *field,
+    @restrict dfloat *result,
+    @restrict dfloat *area) {
+
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    for (int f = 0; f < p_Nfaces; f++) {
+
+      @shared dfloat s_sum[p_blockSize];
+      @shared dfloat s_area[p_blockSize];
+
+      for (int m = 0; m < p_blockSize; ++m; @inner(0)) {
+        if (m < p_Nfp) {
+          if(EToB[f + p_Nfaces * e] == BID) {
+            const int n = m + f * p_Nfp;
+            const int sk = e * p_Nfp * p_Nfaces + n;
+            const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];
+            const dlong idM = vmapM[sk];
+            s_sum[m] = field[idM] * WsJ;
+            s_area[m] = WsJ;
+          } else {
+            s_sum[m] = 0.0;
+            s_area[m] = 0.0;
+          }
+
+        } else {
+          s_sum[m] = 0.0;
+          s_area[m] = 0.0;
+        }
+      }
+
+      // compute reduction
+      @barrier("local");
+
+#if p_blockSize > 512
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 512) {
+          s_sum[t] += s_sum[t + 512];
+          s_area[t] += s_area[t + 512];
+        }
+      }
+      @barrier("local");
+#endif
+
+#if p_blockSize > 256
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 256) {
+          s_sum[t] += s_sum[t + 256];
+          s_area[t] += s_area[t + 256];
+        }
+      }
+      @barrier("local");
+#endif
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 128) {
+          s_sum[t] += s_sum[t + 128];
+          s_area[t] += s_area[t + 128];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 64) {
+          s_sum[t] += s_sum[t + 64];
+          s_area[t] += s_area[t + 64];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 32) {
+          s_sum[t] += s_sum[t + 32];
+          s_area[t] += s_area[t + 32];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 16) {
+          s_sum[t] += s_sum[t + 16];
+          s_area[t] += s_area[t + 16];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 8) {
+          s_sum[t] += s_sum[t + 8];
+          s_area[t] += s_area[t + 8];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 4) {
+          s_sum[t] += s_sum[t + 4];
+          s_area[t] += s_area[t + 4];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 2) {
+          s_sum[t] += s_sum[t + 2];
+          s_area[t] += s_area[t + 2];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 1) {
+          result[f + p_Nfaces * e] = s_sum[0] + s_sum[1];
+          area[f + p_Nfaces * e] = s_area[0] + s_area[1];
+        }
+      }
+    }
+  }
+}

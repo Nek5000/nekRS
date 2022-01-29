@@ -7,6 +7,7 @@
 
 static occa::memory o_nekFU;
 static occa::memory o_nekMue;
+static dfloat P_ROT;
 
 /* User Functions */
 
@@ -33,6 +34,11 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "p_rot", P_ROT);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_ROT;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)

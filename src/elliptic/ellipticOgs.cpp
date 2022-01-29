@@ -1,10 +1,24 @@
 #include "elliptic.h"
 #include "platform.hpp"
 
-void ellipticOgs(mesh_t *mesh, dlong _Nlocal, int nFields, dlong offset, int *BCType, int BCTypeOffset,
-                 dlong& Nmasked, occa::memory& o_mapB, occa::memory& o_maskIds, ogs_t **ogs)
+void ellipticOgs(mesh_t *mesh,
+                 dlong mNlocal,
+                 int nFields,
+                 dlong offset,
+                 int *BCType,
+                 int BCTypeOffset,
+                 bool &UNormalZero,
+                 dlong &Nmasked,
+                 occa::memory &o_maskIds,
+                 dlong &NmaskedLocal,
+                 occa::memory &o_maskIdsLocal,
+                 dlong &NmaskedGlobal,
+                 occa::memory &o_maskIdsGlobal,
+                 occa::memory &o_BCType,
+                 ogs_t **ogs)
 {
-  const int Nlocal = (nFields == 1) ? _Nlocal : nFields*offset;
+  UNormalZero = false;
+  const int Nlocal = (nFields == 1) ? mNlocal : nFields * offset;
   const int largeNumber = 1 << 20;
 
   int *mapB = (int*) calloc(Nlocal, sizeof(int));
@@ -37,21 +51,80 @@ void ellipticOgs(mesh_t *mesh, dlong _Nlocal, int nFields, dlong offset, int *BC
     for (dlong n = 0; n < mesh->Nlocal; n++) {
       if (mapB[n + fld * offset] == largeNumber) {
         mapB[n + fld * offset] = 0;
-      } else if (mapB[n + fld * offset] == 1) { //Dirichlet boundary
+      }
+      else if (mapB[n + fld * offset] == DIRICHLET) { // Dirichlet boundary
         Nmasked++;
+      }
+      else if (mapB[n + fld * offset] == ZERO_NORMAL) {
+        UNormalZero = true;
       }
     }
   }
-  o_mapB = platform->device.malloc(Nlocal * sizeof(int), mapB);
   dlong *maskIds = (dlong*) calloc(Nmasked, sizeof(dlong));
 
   Nmasked = 0;
   for(int fld = 0; fld < nFields; fld++) {
     for (dlong n = 0; n < mesh->Nlocal; n++) {
-      if (mapB[n + fld * offset] == 1) maskIds[Nmasked++] = n + fld * offset;
+      if (mapB[n + fld * offset] == DIRICHLET)
+        maskIds[Nmasked++] = n + fld * offset;
     }
   }
   if(Nmasked) o_maskIds = platform->device.malloc(Nmasked * sizeof(dlong), maskIds);
+
+  NmaskedLocal = 0;
+  for (int fld = 0; fld < nFields; fld++) {
+    for (dlong el = 0; el < mesh->NlocalGatherElements; ++el) {
+      const dlong elemOffset = mesh->localGatherElementList[el] * mesh->Np;
+      for (dlong qp = 0; qp < mesh->Np; qp++) {
+        const dlong n = elemOffset + qp;
+        if (mapB[n + fld * offset] == DIRICHLET)
+          NmaskedLocal++;
+      }
+    }
+  }
+  dlong *localMaskIds = (dlong *)calloc(NmaskedLocal, sizeof(dlong));
+  NmaskedLocal = 0;
+  for (int fld = 0; fld < nFields; fld++) {
+    for (dlong el = 0; el < mesh->NlocalGatherElements; ++el) {
+      const dlong elemOffset = mesh->localGatherElementList[el] * mesh->Np;
+      for (dlong qp = 0; qp < mesh->Np; qp++) {
+        const dlong n = elemOffset + qp;
+        if (mapB[n + fld * offset] == DIRICHLET)
+          localMaskIds[NmaskedLocal++] = n + fld * offset;
+      }
+    }
+  }
+  if (NmaskedLocal)
+    o_maskIdsLocal = platform->device.malloc(NmaskedLocal * sizeof(dlong), localMaskIds);
+  free(localMaskIds);
+
+  NmaskedGlobal = 0;
+  for (int fld = 0; fld < nFields; fld++) {
+    for (dlong eg = 0; eg < mesh->NglobalGatherElements; ++eg) {
+      const dlong elemOffset = mesh->globalGatherElementList[eg] * mesh->Np;
+      for (dlong qp = 0; qp < mesh->Np; qp++) {
+        const dlong n = elemOffset + qp;
+        if (mapB[n + fld * offset] == DIRICHLET)
+          NmaskedGlobal++;
+      }
+    }
+  }
+  dlong *globalMaskIds = (dlong *)calloc(NmaskedGlobal, sizeof(dlong));
+  NmaskedGlobal = 0;
+  for (int fld = 0; fld < nFields; fld++) {
+    for (dlong eg = 0; eg < mesh->NglobalGatherElements; ++eg) {
+      const dlong elemOffset = mesh->globalGatherElementList[eg] * mesh->Np;
+      for (dlong qp = 0; qp < mesh->Np; qp++) {
+        const dlong n = elemOffset + qp;
+        if (mapB[n + fld * offset] == DIRICHLET)
+          globalMaskIds[NmaskedGlobal++] = n + fld * offset;
+      }
+    }
+  }
+  if (NmaskedGlobal)
+    o_maskIdsGlobal = platform->device.malloc(NmaskedGlobal * sizeof(dlong), globalMaskIds);
+  free(globalMaskIds);
+
   free(mapB);
 
   if(! *ogs) {
@@ -68,4 +141,6 @@ void ellipticOgs(mesh_t *mesh, dlong _Nlocal, int nFields, dlong offset, int *BC
     free(maskedGlobalIds);
   }
   free(maskIds);
+
+  o_BCType = platform->device.malloc(BCTypeOffset * nFields * sizeof(int), BCType);
 }

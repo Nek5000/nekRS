@@ -168,6 +168,22 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 2
 
+    - name: 'mv_cyl + subcycling + elasticity solve'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 3
+
+    - name: 'mv_cyl + subcycling + elasticity solve (projection)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 4
+
+    - name: 'mv_cyl + unaligned SYM'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 5
+
+    - name: 'mv_cyl + unaligned SYM + mesh solver'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 6
+
 
   conj_ht:
     needs: install
@@ -220,10 +236,44 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
 
-    - name: 'channelStress'
+    - name: 'channelStress (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 1
 
+    - name: 'channelStress (45 degree rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 2
+
+  tractionBoundary:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'traction channel (no rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 1
+
+    - name: 'traction channel (45 degree rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 2
 
   kershaw:
     runs-on: ubuntu-18.04

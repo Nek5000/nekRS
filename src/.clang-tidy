@@ -1,0 +1,10 @@
+---
+Checks:          '-*,bugprone*,cppcoreguidelines*,-cppcoreguidelines-pro-bounds*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-avoid-magic-numbers,misc-unconventional-assign-operator,modernize*,-modernize-use-trailing-return-type,mpi*,performance*,readability*,-readability-implicit-bool-conversion,-readability-magic-numbers'
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+CheckOptions:
+  - key:             readability-braces-around-statements.ShortStatementLines
+    value:           '2'
+  - key:             modernize-use-nullptr.NullMacros
+    value:           'NULL'

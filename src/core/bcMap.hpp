@@ -14,6 +14,9 @@ std::string text(int bid, std::string field);
 int size(int isTmesh);
 void check(mesh_t* mesh);
 void setBcMap(std::string field, int* map, int nbid);
+void checkBoundaryAlignment(mesh_t *mesh);
+void remapUnalignedBoundaries(mesh_t *mesh);
+bool unalignedBoundary(bool cht, std::string field);
 }
 
 #endif

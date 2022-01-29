@@ -80,13 +80,19 @@ C=======================================================================
       INCLUDE 'NEKUSE'
       include 'CASEDATA'
 
+      real uxt, uyt
+
       omega = P_OMEGA
       amp   = P_AMP
 
       IF (IFIELD .eq. 1) THEN 
-        UX = 0.0
-        UY = amp*sin(omega*time) ! piston 
+        uxt = 0.0
+        uyt = amp * sin(omega * time)
+
+        UX = uxt * cos(P_ROT) - uyt * sin(P_ROT)
+        UY = uxt * sin(P_ROT) + uyt * cos(P_ROT)
         UZ = 0.0
+
       ENDIF
 
       return
@@ -141,10 +147,22 @@ C=======================================================================
       P_DELTA = sc_nrs(5)
       P_OMEGA = sc_nrs(6)
       P_AMP = sc_nrs(7)
+      P_ROT = sc_nrs(8)
 
       call rescale_x(xm1, 0.0,XLEN)
       call rescale_x(ym1,-1.0,-1.0+YLEN)
       call rescale_x(zm1, 0.0,ZLEN)
+
+      ! rotate coordinates
+      ntot = nx1*ny1*nz1*nelt
+      do i=1,ntot
+        xpt = xm1(i,1,1,1)
+        ypt = ym1(i,1,1,1)
+
+        xm1(i,1,1,1) = xpt * cos(P_ROT) - ypt * sin(P_ROT)
+        ym1(i,1,1,1) = xpt * sin(P_ROT) + ypt * cos(P_ROT)
+      enddo
+
 
       do iel=1,nelt
       do ifc=5,6
@@ -200,22 +218,37 @@ C=======================================================================
       include 'TOTAL'
       include 'CASEDATA'
 
+      real ht(lx1, ly1, lz1, lelt)
+      real xp, yp
+
+      real hmin, hmax, hlen, h, hsc
+      real wxt, wyt
+
       common /c_mybc/ omega, v_piston
 
       n    = nx1*ny1*nz1*nelv
-      ymin = glmin(ym1,n)
-      ymax = glmax(ym1,n)  ! this is the separation between moving and nonmvg
-      ylen = ymin-ymax
+      do i=1,n
+        xp = xm1(i,1,1,1)
+        yp = ym1(i,1,1,1)
+        ht(i,1,1,1) = -xp * sin(P_ROT) + yp * cos(P_ROT)
+      enddo
+
+      hmin = glmin(ht,n)
+      hmax = glmax(ht,n)  ! this is the separation between moving and nonmvg
+      hlen = hmin-hmax
 
       omega = P_OMEGA
       amp   = P_AMP
       v_piston = amp*sin(omega*time_)
 
       do i=1,n
-        yy = ym1(i,1,1,1)
-        ysc = (yy-ymax)/ylen
-        wx(i,1,1,1) = 0
-        wy(i,1,1,1) = ysc*v_piston
+        h = ht(i,1,1,1)
+        hsc = (h-hmax)/hlen
+        wxt = 0.0
+        wyt = hsc * v_piston
+
+        wx(i,1,1,1) = wxt * cos(P_ROT) - wyt * sin(P_ROT)
+        wy(i,1,1,1) = wxt * sin(P_ROT) + wyt * cos(P_ROT)
         if (if3d) wz(i,1,1,1) = 0
       enddo
 
@@ -252,6 +285,7 @@ c
       real tavg, tex, var
       real err(6)
       save err
+      real ht(lx1, ly1, lz1, lelt)
       COMMON /NRSSCPTR/ nrs_scptr(1)
       integer*8         nrs_scptr
 
@@ -261,7 +295,12 @@ c
       ntotv = nxyz*nelv
 
       termV = -1.*glcflux(vx,vy,vz)
-      ypist = glmin(ym1,ntotv)
+      do i = 1,ntotv
+        xp = xm1(i,1,1,1)
+        yp = ym1(i,1,1,1)
+        ht(i,1,1,1) = -xp * sin(P_ROT) + yp * cos(P_ROT)
+      enddo
+      ypist = glmin(ht,ntotv)
 
       call exact_sol (time,volex,vpex,pex,dpdtex,qtlex,ypex)
       tavg = glsc2(t, bm1, ntotv) / volvm1

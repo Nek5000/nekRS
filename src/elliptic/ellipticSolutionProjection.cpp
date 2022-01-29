@@ -152,26 +152,19 @@ void SolutionProjection::computePostProjection(occa::memory & o_x)
   }
 }
 
-SolutionProjection::SolutionProjection(elliptic_t& elliptic,
+SolutionProjection::SolutionProjection(elliptic_t &elliptic,
                                        const ProjectionType _type,
                                        const dlong _maxNumVecsProjection,
                                        const dlong _numTimeSteps)
-  :
-  maxNumVecsProjection(_maxNumVecsProjection),
-  numTimeSteps(_numTimeSteps),
-  type(_type),
-  Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
-  fieldOffset(elliptic.Ntotal),
-  Nfields(elliptic.Nfields),
-  o_invDegree(elliptic.mesh->ogs->o_invDegree),
-  o_rtmp(elliptic.o_z),
-  o_Ap(elliptic.o_Ap)
+    : maxNumVecsProjection(_maxNumVecsProjection), numTimeSteps(_numTimeSteps), type(_type),
+      alpha((dfloat *)calloc(maxNumVecsProjection, sizeof(dfloat))), numVecsProjection(0),
+      prevNumVecsProjection(0), Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
+      fieldOffset(elliptic.Ntotal), Nfields(elliptic.Nfields), timestep(0),
+      verbose(elliptic.options.compareArgs("VERBOSE", "TRUE")), o_invDegree(elliptic.mesh->ogs->o_invDegree),
+      o_rtmp(elliptic.o_z), o_Ap(elliptic.o_Ap)
 {
   platform_t* platform = platform_t::getInstance();
-  timestep = 0;
-  numVecsProjection = 0;
-  verbose = elliptic.options.compareArgs("VERBOSE","TRUE");
-  alpha = (dfloat*) calloc(maxNumVecsProjection, sizeof(dfloat));
+
   o_alpha = platform->device.malloc(maxNumVecsProjection, sizeof(dfloat));
   o_xbar = platform->device.malloc(Nfields * fieldOffset, sizeof(dfloat));
   o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
@@ -180,7 +173,6 @@ SolutionProjection::SolutionProjection(elliptic_t& elliptic,
     Nfields * fieldOffset
     , sizeof(dfloat));
 
-  std::string kernelName;
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
   {

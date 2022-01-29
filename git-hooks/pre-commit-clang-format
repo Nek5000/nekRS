@@ -1,0 +1,7 @@
+#!/bin/bash
+
+git-clang-format --style=file | tail -n +2 > .git-clang-format-changed-files
+while read p; do
+  git add $p
+done < .git-clang-format-changed-files
+rm .git-clang-format-changed-files

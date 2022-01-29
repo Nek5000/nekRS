@@ -178,6 +178,13 @@ public:
                                const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
 
+  // z = x \cross y
+  void crossProduct(const dlong N,
+                    const dlong fieldOffset,
+                    occa::memory &o_x,
+                    occa::memory &o_y,
+                    occa::memory &o_z);
+
   occa::kernel fillKernel;
   occa::kernel absKernel;
   occa::kernel addKernel;
@@ -215,6 +222,7 @@ public:
   occa::kernel weightedInnerProdKernel;
   occa::kernel weightedInnerProdManyKernel;
   occa::kernel weightedInnerProdMultiKernel;
+  occa::kernel crossProductKernel;
 };
 
 #endif

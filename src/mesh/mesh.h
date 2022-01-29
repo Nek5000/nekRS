@@ -44,6 +44,7 @@
 
 struct mesh_t
 {
+  dfloat avgBoundaryValue(int bId, occa::memory fld);
   void move();
   void update();
   void computeInvLMM();
@@ -186,6 +187,11 @@ struct mesh_t
   occa::memory o_vgeo, o_sgeo;
   occa::memory o_vmapM, o_vmapP, o_mapP;
 
+  // tangential directions (only needed in unaligned case)
+  bool UNormalZero;
+  dfloat *VT1, *VT2;
+  occa::memory o_VT1, o_VT2;
+
   occa::memory o_EToB, o_x, o_y, o_z;
 
   // cubature (for wadg)
@@ -218,8 +224,17 @@ struct mesh_t
 
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
+  occa::kernel cubatureGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
   occa::kernel velocityDirichletKernel;
+
+  occa::kernel avgBIDValueKernel;
+
+  // temporaries for avgBoundaryValue
+  occa::memory o_sum;
+  occa::memory o_area;
+  dfloat *sum;
+  dfloat *area;
 };
 
 mesh_t *createMeshMG(mesh_t* _mesh,

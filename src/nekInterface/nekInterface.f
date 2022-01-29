@@ -182,7 +182,7 @@ c-----------------------------------------------------------------------
 c-----------------------------------------------------------------------
       subroutine nekf_setup(ifflow_in,
      $                      npscal_in, p32, mpart, contol,
-     $                      rho, mue, rhoCp, lambda) 
+     $                      rho, mue, rhoCp, lambda, stsform) 
 
       include 'SIZE'
       include 'TOTAL'
@@ -191,6 +191,7 @@ c-----------------------------------------------------------------------
 
       integer iftmsh_in, ifflow_in, mpart, p32
       real rho, mue, rhoCp, lambda, contol
+      integer stsform
 
       common /rdump/ ntdump
 
@@ -220,6 +221,7 @@ c-----------------------------------------------------------------------
       ifheat = .false.
       ifvo   = .true.
       ifpo   = .true.
+      if(stsform.eq.1) ifstrs = .true.
 
       if (npscal_in .gt. 0) then
         ifheat = .true.
@@ -570,6 +572,10 @@ c-----------------------------------------------------------------------
           ibc = 5
          else if (c.eq.'SYZ') then 
           ibc = 6
+         else if (c.eq.'SYM') then 
+          ibc = 7
+         else if (c.eq.'SHL'.or.c.eq.'shl') then 
+          ibc = 8
          else if (c.eq.'mv ') then 
           ibc = 2
         endif
@@ -688,8 +694,11 @@ c
       include 'SIZE'
       include 'TOTAL'
 
+      parameter (NBID_TYPES=9)
+      parameter (NSBID_TYPES=3) ! scalar boundary types
+
       integer bID, bcID
-      integer map(7)
+      integer map(NBID_TYPES)
       integer ibc_bmap(lbid, ldimt1) 
 
       logical ifalg,ifnorx,ifnory,ifnorz
@@ -706,14 +715,16 @@ c
            cb = cbc(ifc,iel,1) 
            if(cb.eq.'W  ') map(1) = 1
            if(cb.eq.'v  ') map(2) = 1
-           if(cb.eq.'mv ') map(7) = 1
+           if(cb.eq.'mv ') map(NBID_TYPES) = 1 ! last is reserved for mv
            if(cb.eq.'o  ' .or. cb.eq.'O  ') map(3) = 1
            if(cb.eq.'SYM') then
              call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
              if (ifnorx) map(4) = 1 
              if (ifnory) map(5) = 1 
              if (ifnorz) map(6) = 1 
+             if (.not.ifalg) map(7) = 1 ! unaligned SYM boundary
            endif
+           if(cb.eq.'SHL'.or.cb.eq.'shl') map(8) = 1
         enddo
         enddo
       else
@@ -728,7 +739,7 @@ c
       endif
 
       bID = 1
-      do i = 1,7
+      do i = 1,NBID_TYPES
         map(i) = iglmax(map(i),1)
         if(map(i).gt.0) then
           map(i) = bID
@@ -746,7 +757,7 @@ c
          else if(cb.eq.'v  ') then
            boundaryID(ifc,iel) = map(2) 
          else if(cb.eq.'mv ') then
-           boundaryID(ifc,iel) = map(7) 
+           boundaryID(ifc,iel) = map(NBID_TYPES) 
          else if(cb.eq.'o  ' .or. cb.eq.'O  ') then
            boundaryID(ifc,iel) = map(3) 
          else if(cb.eq.'SYM') then
@@ -754,6 +765,9 @@ c
            if (ifnorx) boundaryID(ifc,iel) = map(4) 
            if (ifnory) boundaryID(ifc,iel) = map(5) 
            if (ifnorz) boundaryID(ifc,iel) = map(6) 
+           if (.not.ifalg) boundaryID(ifc,iel) = map(7) 
+         else if(cb.eq.'SHL'.or.cb.eq.'shl') then
+           boundaryID(ifc,iel) = map(8)
          else
            if(cb.ne.'E  ' .and. cb.ne.'P  ') then
              ierr = 1
@@ -764,15 +778,17 @@ c
       enddo
  99   call err_chk(ierr, 'Invalid boundary condition type!$')
 
-      if(map(1).gt.0) cbc_bmap(map(1), ifld) = 'W  '
-      if(map(2).gt.0) cbc_bmap(map(2), ifld) = 'v  '
-      if(map(7).gt.0) cbc_bmap(map(7), ifld) = 'mv '
-      if(map(3).gt.0) cbc_bmap(map(3), ifld) = 'o  '
-      if(map(4).gt.0) cbc_bmap(map(4), ifld) = 'SYX'
-      if(map(5).gt.0) cbc_bmap(map(5), ifld) = 'SYY'
-      if(map(6).gt.0) cbc_bmap(map(6), ifld) = 'SYZ'
+      if(map(1).gt.0)          cbc_bmap(map(1), ifld) = 'W  '
+      if(map(2).gt.0)          cbc_bmap(map(2), ifld) = 'v  '
+      if(map(NBID_TYPES).gt.0) cbc_bmap(map(NBID_TYPES), ifld) = 'mv '
+      if(map(3).gt.0)          cbc_bmap(map(3), ifld) = 'o  '
+      if(map(4).gt.0)          cbc_bmap(map(4), ifld) = 'SYX'
+      if(map(5).gt.0)          cbc_bmap(map(5), ifld) = 'SYY'
+      if(map(6).gt.0)          cbc_bmap(map(6), ifld) = 'SYZ'
+      if(map(7).gt.0)          cbc_bmap(map(7), ifld) = 'SYM'
+      if(map(8).gt.0)          cbc_bmap(map(8), ifld) = 'shl'
 
-c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
+c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,NBID_TYPES)
  
       do ifld = 2,nfield
         ierr = 0
@@ -798,7 +814,7 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,6)
         enddo
         call err_chk(ierr, 'Invalid boundary condition type!$')
 
-        do bID = 1,7
+        do bID = 1,NBID_TYPES
            bcID = iglmax(ibc_bmap(bID, ifld),1)
            if(bcID.eq.1) cbc_bmap(bID, ifld) = 't  ' 
            if(bcID.eq.2) cbc_bmap(bID, ifld) = 'I  ' 
@@ -832,7 +848,7 @@ c        write(6,*) ifld, 't cbc_bmap: ', (cbc_bmap(i,ifld), i=1,6)
         call err_chk(ierr, 'Invalid boundary condition type!$')
  
         bid = 1
-        do i = 1,3
+        do i = 1,NSBID_TYPES
           map(i) = iglmax(map(i),1)
           if(map(i).gt.0) then
             map(i) = bid

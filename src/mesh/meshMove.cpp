@@ -35,6 +35,8 @@ void mesh_t::update(){
         platform->o_mempool.slice0
     );
 
+    cubatureGeometricFactorsKernel(Nelements, o_D, o_x, o_y, o_z, o_cubInterpT, o_cubw, o_cubvgeo);
+
     // do add check if negative
     const dfloat minJ = platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
     const dfloat maxJ = platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
@@ -50,11 +52,5 @@ void mesh_t::update(){
     volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 
     computeInvLMM();
-    surfaceGeometricFactorsKernel(
-        Nelements,
-        o_gllw,
-        o_faceNodes,
-        o_vgeo,
-        o_sgeo
-    );
+    surfaceGeometricFactorsKernel(Nelements, o_gllw, o_faceNodes, o_vgeo, o_sgeo, o_VT1, o_VT2);
 }

@@ -1,0 +1,5 @@
+#!/bin/bash
+for hook in $(find .git/hooks/ -name 'pre-commit-*')
+do
+  ${hook}
+done

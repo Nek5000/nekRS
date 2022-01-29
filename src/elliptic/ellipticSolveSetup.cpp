@@ -173,9 +173,23 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   { //setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    if(elliptic->blockSolver) ogs = mesh->ogs; 
-    ellipticOgs(mesh, elliptic->Ntotal, elliptic->Nfields, elliptic->Ntotal, elliptic->BCType, elliptic->NBCType, 
-                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    if (elliptic->blockSolver)
+      ogs = mesh->ogs;
+    ellipticOgs(mesh,
+                elliptic->Ntotal,
+                elliptic->Nfields,
+                elliptic->Ntotal,
+                elliptic->BCType,
+                elliptic->NBCType,
+                elliptic->UNormalZero,
+                elliptic->Nmasked,
+                elliptic->o_maskIds,
+                elliptic->NmaskedLocal,
+                elliptic->o_maskIdsLocal,
+                elliptic->NmaskedGlobal,
+                elliptic->o_maskIdsGlobal,
+                elliptic->o_BCType,
+                &ogs);
     elliptic->ogs = ogs;
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
@@ -191,14 +205,16 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   fflush(stdout);
 
   {
-      mesh->maskKernel =
-        platform->kernels.get("mask");
+    mesh->maskKernel = platform->kernels.get("mask");
+    mesh->maskPfloatKernel = platform->kernels.get("maskPfloat");
+    elliptic->enforceUnKernel = platform->kernels.get("enforceUn");
+    elliptic->enforceUnPfloatKernel = platform->kernels.get("enforceUnPfloat");
   }
 
   {
       const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
-      elliptic->updateDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
+      elliptic->ellipticBlockBuildDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
       elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
       elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
 

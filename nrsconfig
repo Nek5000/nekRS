@@ -38,6 +38,7 @@ cd ${NEKRS_BUILD_DIR}
 
 cmake -Wno-dev \
       -Wfatal-errors \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
       -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \

@@ -152,7 +152,7 @@ void registerCdsKernels(occa::properties kernelInfoBC) {
       platform->kernels.add(
           section + kernelName, fileName, prop);
 
-      kernelName = "subCycleERKUpdate";
+      kernelName = "subCycleRKUpdate";
       fileName = oklpath + "cds/" + kernelName + ".okl";
       platform->kernels.add(
           section + kernelName, fileName, prop);

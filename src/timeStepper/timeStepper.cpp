@@ -225,17 +225,13 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   mesh = nrs->meshV;
   if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
     nrs->UrstCubatureKernel(mesh->Nelements,
-        mesh->o_D,
-        mesh->o_x,
-        mesh->o_y,
-        mesh->o_z,
-        mesh->o_cubInterpT,
-        mesh->o_cubw,
-        nrs->fieldOffset,
-        cubatureOffset,
-        nrs->o_U,
-        mesh->o_U,
-        o_Urst);
+                            mesh->o_cubvgeo,
+                            mesh->o_cubInterpT,
+                            nrs->fieldOffset,
+                            cubatureOffset,
+                            nrs->o_U,
+                            mesh->o_U,
+                            o_Urst);
   else
     nrs->UrstKernel(mesh->Nelements,
         mesh->o_vgeo,
@@ -451,28 +447,28 @@ void makeq(
               cds, mymin(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
       } else {
         if (cds->options[is].compareArgs("ADVECTION TYPE", "CUBATURE"))
-          cds->advectionStrongCubatureVolumeKernel(cds->meshV->Nelements,
-              mesh->o_vgeo,
-              mesh->o_cubDiffInterpT,
-              mesh->o_cubInterpT,
-              mesh->o_cubProjectT,
-              cds->vFieldOffset,
-              isOffset,
-              cubatureOffset,
-              cds->o_S,
-              cds->o_Urst,
-              cds->o_rho,
-              platform->o_mempool.slice0);
+          cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
+                                                   mesh->o_vgeo,
+                                                   mesh->o_cubDiffInterpT,
+                                                   mesh->o_cubInterpT,
+                                                   mesh->o_cubProjectT,
+                                                   cds->vFieldOffset,
+                                                   isOffset,
+                                                   cubatureOffset,
+                                                   cds->o_S,
+                                                   cds->o_Urst,
+                                                   cds->o_rho,
+                                                   platform->o_mempool.slice0);
         else
-          cds->advectionStrongVolumeKernel(cds->meshV->Nelements,
-              mesh->o_vgeo,
-              mesh->o_D,
-              cds->vFieldOffset,
-              isOffset,
-              cds->o_S,
-              cds->o_Urst,
-              cds->o_rho,
-              platform->o_mempool.slice0);
+          cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
+                                           mesh->o_vgeo,
+                                           mesh->o_D,
+                                           cds->vFieldOffset,
+                                           isOffset,
+                                           cds->o_S,
+                                           cds->o_Urst,
+                                           cds->o_rho,
+                                           platform->o_mempool.slice0);
         platform->linAlg->axpby(cds->meshV->Nelements * cds->meshV->Np,
             -1.0,
             platform->o_mempool.slice0,
@@ -585,24 +581,24 @@ void makef(
             nrs, mymin(tstep, nrs->nEXT), time, nrs->o_U);
     } else {
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-        nrs->advectionStrongCubatureVolumeKernel(mesh->Nelements,
-            mesh->o_vgeo,
-            mesh->o_cubDiffInterpT,
-            mesh->o_cubInterpT,
-            mesh->o_cubProjectT,
-            nrs->fieldOffset,
-            std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
-            nrs->o_U,
-            nrs->o_Urst,
-            platform->o_mempool.slice0);
+        nrs->strongAdvectionCubatureVolumeKernel(mesh->Nelements,
+                                                 mesh->o_vgeo,
+                                                 mesh->o_cubDiffInterpT,
+                                                 mesh->o_cubInterpT,
+                                                 mesh->o_cubProjectT,
+                                                 nrs->fieldOffset,
+                                                 std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
+                                                 nrs->o_U,
+                                                 nrs->o_Urst,
+                                                 platform->o_mempool.slice0);
       else
-        nrs->advectionStrongVolumeKernel(mesh->Nelements,
-            mesh->o_vgeo,
-            mesh->o_D,
-            nrs->fieldOffset,
-            nrs->o_U,
-            nrs->o_Urst,
-            platform->o_mempool.slice0);
+        nrs->strongAdvectionVolumeKernel(mesh->Nelements,
+                                         mesh->o_vgeo,
+                                         mesh->o_D,
+                                         nrs->fieldOffset,
+                                         nrs->o_U,
+                                         nrs->o_Urst,
+                                         platform->o_mempool.slice0);
 
       platform->linAlg->axpby(nrs->NVfields * nrs->fieldOffset,
           -1.0,
@@ -700,11 +696,13 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice3);
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->meshV->velocityDirichletKernel(mesh->Nelements,
-                                     nrs->fieldOffset,
-                                     mesh->o_vmapM,
-                                     nrs->o_EToBMesh,
-                                     nrs->o_U,
-                                     platform->o_mempool.slice3);
+                                          nrs->fieldOffset,
+                                          mesh->o_VT1,
+                                          mesh->o_VT2,
+                                          mesh->o_vmapM,
+                                          nrs->o_EToBMesh,
+                                          nrs->o_U,
+                                          platform->o_mempool.slice3);
 
       //take care of Neumann-Dirichlet shared edges across elements
       if(sweep == 0) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, gsh);
@@ -1496,12 +1494,15 @@ void printInfo(
       if (nrs->flow) {
         elliptic_t *solver = nrs->pSolver;
         if(solver->solutionProjection){
-          printf("  projP  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-            solver->res00Norm,
-            solver->res0Norm,
-            solver->res00Norm / solver->res0Norm,
-            solver->solutionProjection->getPrevNumVecsProjection(),
-            solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            printf("  projP  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                   solver->res00Norm,
+                   solver->res0Norm,
+                   solver->res00Norm / solver->res0Norm,
+                   prevVecs,
+                   solver->solutionProjection->getMaxNumVecsProjection());
+          }
         }
         printf("  P      : iter %03d  resNorm0 %.2e  resNorm %.2e\n",
             solver->Niter,
@@ -1511,12 +1512,15 @@ void printInfo(
         if (nrs->uvwSolver) {
           solver = nrs->uvwSolver;
           if(solver->solutionProjection){
-            printf("  projUVW: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projUVW: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  UVW    : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e  divErrNorms %.2e %.2e\n",
@@ -1527,13 +1531,16 @@ void printInfo(
               divUErrL2);
         } else {
           solver = nrs->uSolver;
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
           if(solver->solutionProjection){
-            printf("  projU  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            if (prevVecs > 0) {
+              printf("  projU  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  U  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e  divErrNorms %.2e %.2e\n",
@@ -1544,12 +1551,15 @@ void printInfo(
               divUErrL2);
           solver = nrs->vSolver;
           if(solver->solutionProjection){
-            printf("  projV  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projV  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  V  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
@@ -1558,12 +1568,15 @@ void printInfo(
               solver->resNorm);
           solver = nrs->wSolver;
           if(solver->solutionProjection){
-            printf("  projW  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
+              printf("  projW  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  W  : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
@@ -1577,12 +1590,15 @@ void printInfo(
       {
         elliptic_t* solver = nrs->meshSolver;
         if(solver->solutionProjection){
-          printf("  projMSH: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-            solver->res00Norm,
-            solver->res0Norm,
-            solver->res00Norm / solver->res0Norm,
-            solver->solutionProjection->getPrevNumVecsProjection(),
-            solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            printf("  projMSH: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                   solver->res00Norm,
+                   solver->res0Norm,
+                   solver->res00Norm / solver->res0Norm,
+                   prevVecs,
+                   solver->solutionProjection->getMaxNumVecsProjection());
+          }
         }
         printf("  MSH    : iter %03d  resNorm0 %.2e  resNorm %.2e\n",
                solver->Niter, solver->res0Norm, solver->resNorm);
@@ -1591,14 +1607,17 @@ void printInfo(
       for(int is = 0; is < nrs->Nscalar; is++) {
         if (cds->compute[is]) {
           elliptic_t *solver = cds->solver[is];
-          if(solver->solutionProjection){
-            printf("  projS%02d: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
-              is,
-              solver->res00Norm,
-              solver->res0Norm,
-              solver->res00Norm / solver->res0Norm,
-              solver->solutionProjection->getPrevNumVecsProjection(),
-              solver->solutionProjection->getMaxNumVecsProjection());
+          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+          if (prevVecs > 0) {
+            if (solver->solutionProjection) {
+              printf("  projS%02d: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
+                     is,
+                     solver->res00Norm,
+                     solver->res0Norm,
+                     solver->res00Norm / solver->res0Norm,
+                     prevVecs,
+                     solver->solutionProjection->getMaxNumVecsProjection());
+            }
           }
           printf("  S%02d    : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",

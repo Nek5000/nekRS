@@ -198,6 +198,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (!nrs->lastStep) return;
  
 
+  ciTestLinAlg(1);
   ciTestLinAlg(BLOCKSIZE / 16);
   ciTestLinAlg(BLOCKSIZE / 8);
   ciTestLinAlg(BLOCKSIZE / 4);
@@ -313,7 +314,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (ciMode == 4){
     dfloat memoryUsage = platform->device.occaDevice().memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0455484;
+    const dfloat expectedMemoryUsage = 0.044742;
     if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){

@@ -38,6 +38,20 @@ void lowMach::buildKernel(occa::properties kernelInfo)
     fileName = path + kernelName + extension;
     p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
+    {
+      int N;
+      platform->options.getArgs("POLYNOMIAL DEGREE", N);
+      const int Nq = N + 1;
+      if (BLOCKSIZE < Nq * Nq) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: surfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+                 "BLOCKSIZE = %d, Nq*Nq = %d\n",
+                 BLOCKSIZE,
+                 Nq * Nq);
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
     kernelName = "surfaceFlux";
     fileName = path + kernelName + extension;
     surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo, true);

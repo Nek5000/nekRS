@@ -57,8 +57,21 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   { // setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    ellipticOgs(mesh, mesh->Nlocal, /* nFields */ 1, /* offset */ 0, elliptic->BCType, /* BCTypeOffset */ 0,
-                elliptic->Nmasked, elliptic->o_mapB, elliptic->o_maskIds, &ogs);
+    ellipticOgs(mesh,
+                mesh->Nlocal,
+                /* nFields */ 1,
+                /* offset */ 0,
+                elliptic->BCType,
+                elliptic->NBCType,
+                elliptic->UNormalZero,
+                elliptic->Nmasked,
+                elliptic->o_maskIds,
+                elliptic->NmaskedLocal,
+                elliptic->o_maskIdsLocal,
+                elliptic->NmaskedGlobal,
+                elliptic->o_maskIdsGlobal,
+                elliptic->o_BCType,
+                &ogs);
     elliptic->ogs = ogs;
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
@@ -100,7 +113,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->precon = new precon_t();
 
   {
-    const std::string kernelSuffix = std::string("_") + std::to_string(Nf);
+    const std::string kernelSuffix =
+        std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
 
     kernelName = "ellipticPreconCoarsen" + suffix;
     elliptic->precon->coarsenKernel = platform->kernels.get(kernelName + kernelSuffix);

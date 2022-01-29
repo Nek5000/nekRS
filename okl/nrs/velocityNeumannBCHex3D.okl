@@ -24,37 +24,49 @@
 
  */
 
-#define surfaceTerms(sk,face,i, j)                                      \
-  {                                                                     \
-    const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];                    \
-    struct bcData bc;                                                   \
-    bc.idM = vmapM[sk];   bc.time = time;                               \
-    bc.nx = sgeo[sk * p_Nsgeo + p_NXID];                                \
-    bc.ny = sgeo[sk * p_Nsgeo + p_NYID];                                \
-    bc.nz = sgeo[sk * p_Nsgeo + p_NZID];                                \
-    bc.x   = x[bc.idM];                                                 \
-    bc.y   = y[bc.idM];                                                 \
-    bc.z   = z[bc.idM];                                                 \
-    bc.fieldOffset = offset;                                            \
-    bc.id  = EToBM[face + p_Nfaces * e];                                \
-    bc.u  = U[bc.idM + 0 * offset];                                     \
-    bc.v  = U[bc.idM + 1 * offset];                                     \
-    bc.w  = U[bc.idM + 2 * offset];                                     \
-    bc.wrk = W;                                                         \
-    dfloat TRx = 0.f;                                                   \
-    dfloat TRy = 0.f;                                                   \
-    dfloat TRz = 0.f;                                                   \
-    const dlong bcType = EToB[face + p_Nfaces * e];                     \
-    if(bcType == 3) {                                                   \
-        bc.p = 0.f;                                                     \
-        pressureDirichletConditions(&bc);                               \
-        TRx = -bc.p*bc.nx;                                              \
-        TRy = -bc.p*bc.ny;                                              \
-        TRz = -bc.p*bc.nz;                                              \
-    }                                                                   \
-    s_ndU[j][i] = WsJ*TRx;                                              \
-    s_ndV[j][i] = WsJ*TRy;                                              \
-    s_ndW[j][i] = WsJ*TRz;                                              \
+#define surfaceTerms(sk,face,i, j)                                       \
+  {                                                                      \
+    const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];                     \
+    struct bcData bc;                                                    \
+    bc.idM = vmapM[sk];   bc.time = time;                                \
+    bc.nx = sgeo[sk * p_Nsgeo + p_NXID];                                 \
+    bc.ny = sgeo[sk * p_Nsgeo + p_NYID];                                 \
+    bc.nz = sgeo[sk * p_Nsgeo + p_NZID];                                 \
+    bc.t1x = V1[sk * 3 + 0];                                             \
+    bc.t1y = V1[sk * 3 + 1];                                             \
+    bc.t1z = V1[sk * 3 + 2];                                             \
+    bc.t2x = V2[sk * 3 + 0];                                             \
+    bc.t2y = V2[sk * 3 + 1];                                             \
+    bc.t2z = V2[sk * 3 + 2];                                             \
+    bc.x   = x[bc.idM];                                                  \
+    bc.y   = y[bc.idM];                                                  \
+    bc.z   = z[bc.idM];                                                  \
+    bc.fieldOffset = offset;                                             \
+    bc.id  = EToBM[face + p_Nfaces * e];                                 \
+    bc.u  = U[bc.idM + 0 * offset];                                      \
+    bc.v  = U[bc.idM + 1 * offset];                                      \
+    bc.w  = U[bc.idM + 2 * offset];                                      \
+    bc.wrk = W;                                                          \
+    dfloat TRx = 0.f;                                                    \
+    dfloat TRy = 0.f;                                                    \
+    dfloat TRz = 0.f;                                                    \
+    const dlong bcType = EToB[face + p_Nfaces * e];                      \
+    if(bcType == 3) {                                                    \
+        bc.p = 0.f;                                                      \
+        pressureDirichletConditions(&bc);                                \
+        TRx = -bc.p*bc.nx;                                               \
+        TRy = -bc.p*bc.ny;                                               \
+        TRz = -bc.p*bc.nz;                                               \
+    }                                                                    \
+    if(bcType == 8) {                                                    \
+        velocityNeumannConditions(&bc);                                  \
+        TRx = bc.nx * bc.trn + bc.t1x * bc.tr1 + bc.t2x * bc.tr2;        \
+        TRy = bc.ny * bc.trn + bc.t1y * bc.tr1 + bc.t2y * bc.tr2;        \
+        TRz = bc.nz * bc.trn + bc.t1z * bc.tr1 + bc.t2z * bc.tr2;        \
+    }                                                                    \
+    s_ndU[j][i] = WsJ*TRx;                                               \
+    s_ndV[j][i] = WsJ*TRy;                                               \
+    s_ndW[j][i] = WsJ*TRz;                                               \
   }
 
 //RHS contributions for continuous solver
@@ -62,6 +74,8 @@
 @kernel void velocityNeumannBCHex3D(const dlong Nelements,
                                        const dlong offset,
                                        @restrict const dfloat*  sgeo,
+                                       @restrict const dfloat*  V1,
+                                       @restrict const dfloat*  V2,
                                        @restrict const dlong*  vmapM,
                                        @restrict const int*  EToBM,
                                        @restrict const int*  EToB,

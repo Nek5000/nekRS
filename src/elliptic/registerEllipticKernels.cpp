@@ -105,6 +105,25 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
 
     fileName = oklpath + "mask.okl";
     platform->kernels.add("mask", fileName, kernelInfo);
+
+    occa::properties pfloatKernelInfo = kernelInfo;
+    pfloatKernelInfo["defines/dfloat"] = pfloatString;
+    platform->kernels.add("maskPfloat", fileName, pfloatKernelInfo);
+  }
+
+  {
+    const std::string oklpath = installDir + "/okl/elliptic/";
+    const std::string suffix = "Hex3D";
+    std::string fileName;
+
+    occa::properties enforceUnProperties = kernelInfo;
+    enforceUnProperties["defines/p_ZERO_NORMAL"] = ZERO_NORMAL;
+    enforceUnProperties["defines/outputType"] = dfloatString;
+    fileName = oklpath + "enforceUn" + suffix + ".okl";
+    platform->kernels.add("enforceUn", fileName, enforceUnProperties);
+
+    enforceUnProperties["defines/outputType"] = pfloatString;
+    platform->kernels.add("enforceUnPfloat", fileName, enforceUnProperties);
   }
 
   kernelInfo["defines/p_Nfields"] = Nfields;

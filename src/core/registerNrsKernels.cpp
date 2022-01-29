@@ -63,6 +63,19 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     occa::properties centroidProp = kernelInfo;
     centroidProp["defines/p_Nfp"] = Nq * Nq;
     centroidProp["defines/p_Nfaces"] = Nfaces;
+    {
+      int N;
+      platform->options.getArgs("POLYNOMIAL DEGREE", N);
+      const int Nq = N + 1;
+      if (BLOCKSIZE < Nq * Nq) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: computeFaceCentroid kernel requires BLOCKSIZE >= Nq * Nq."
+                 "BLOCKSIZE = %d, Nq*Nq = %d\n",
+                 BLOCKSIZE,
+                 Nq * Nq);
+        ABORT(EXIT_FAILURE);
+      }
+    }
     kernelName = "computeFaceCentroid";
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
@@ -96,7 +109,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
 
-    kernelName = "nrswGradientVolume" + suffix;
+    kernelName = "wGradientVolume" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -119,7 +132,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
           section + kernelName, fileName, prop);
     }
 
-    kernelName = "nrswDivergenceVolume" + suffix;
+    kernelName = "wDivergenceVolume" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
@@ -128,7 +141,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
 
-    kernelName = "divergenceSurfaceTOMBO" + suffix;
+    kernelName = "divergenceSurface" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
@@ -138,7 +151,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
 
-    kernelName = "pressureRhsTOMBO" + suffix;
+    kernelName = "pressureRhs" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -153,7 +166,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, kernelInfoBC);
 
-    kernelName = "velocityRhsTOMBO" + suffix;
+    kernelName = "velocityRhs" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -208,7 +221,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
       platform->kernels.add(
           section + kernelName, fileName, prop);
 
-      kernelName = "subCycleERKUpdate";
+      kernelName = "subCycleRKUpdate";
       fileName = oklpath + "nrs/" + kernelName + ".okl";
       platform->kernels.add(
           section + kernelName, fileName, prop);
@@ -223,7 +236,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
           section + kernelName, fileName, prop);
     }
 
-    kernelName = "multiExtrapolate";
+    kernelName = "extrapolate";
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
@@ -242,6 +255,20 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     fileName = oklpath + "nrs/regularization/" + kernelName + ".okl";
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
+
+    {
+      int N;
+      platform->options.getArgs("POLYNOMIAL DEGREE", N);
+      const int Nq = N + 1;
+      if (BLOCKSIZE < Nq * Nq) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: cfl kernel requires BLOCKSIZE >= Nq * Nq."
+                 "BLOCKSIZE = %d, Nq*Nq = %d\n",
+                 BLOCKSIZE,
+                 Nq * Nq);
+        ABORT(EXIT_FAILURE);
+      }
+    }
 
     occa::properties cflProps = meshProps;
     cflProps["defines/p_MovingMesh"] = movingMesh;

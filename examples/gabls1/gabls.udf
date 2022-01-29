@@ -64,7 +64,7 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
   kernelInfo["defines/p_YLEN"]      = YLEN;
 
-  coriolisKernel = udfBuildKernel(kernelInfo, "coriolis");
+  coriolisKernel = oudfBuildKernel(kernelInfo, "coriolis");
 }
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {

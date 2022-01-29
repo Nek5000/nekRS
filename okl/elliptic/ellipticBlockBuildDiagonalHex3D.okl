@@ -28,7 +28,6 @@
                                              const dlong Nfields,
                                              const dlong offset,
                                              const dlong loffset,
-                                             @restrict const int*  mapB,
                                              @restrict const dfloat*  ggeo,
                                              @restrict const dfloat*  D,
                                              @restrict const dfloat*  S,
@@ -79,9 +78,7 @@
           dfloat r_q              = 1.0;
 
           for(int l = 0; l < Nfields; l++) {
-            const int if_not_masked = (mapB[id + l * offset] != 1 ) ? 1:0;
 
-            if(if_not_masked) {
               r_q = 0.0; // first make it zero
               const dlong base = e * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
@@ -107,8 +104,7 @@
               r_q  += gwJ * lambda_1;
 #endif
 
-            }
-            Aq[id + l * offset] = (pfloat) r_q;
+              Aq[id + l * offset] = (pfloat) r_q;
           }
         }
       }

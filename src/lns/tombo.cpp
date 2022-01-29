@@ -30,6 +30,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
                                    nrs->fieldOffset,
                                    time,
                                    mesh->o_sgeo,
+                                   mesh->o_VT1,
+                                   mesh->o_VT2,
                                    mesh->o_x,
                                    mesh->o_y,
                                    mesh->o_z,
@@ -198,20 +200,21 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
     -1.0,
     platform->o_mempool.slice0);
 
-  nrs->velocityNeumannBCKernel(
-       mesh->Nelements,
-       nrs->fieldOffset,
-       mesh->o_sgeo,
-       mesh->o_vmapM,
-       mesh->o_EToB,
-       nrs->o_EToB,
-       time,
-       mesh->o_x,
-       mesh->o_y,
-       mesh->o_z,
-       nrs->o_usrwrk,
-       nrs->o_U,
-       platform->o_mempool.slice0); 
+  nrs->velocityNeumannBCKernel(mesh->Nelements,
+                               nrs->fieldOffset,
+                               mesh->o_sgeo,
+                               mesh->o_VT1,
+                               mesh->o_VT2,
+                               mesh->o_vmapM,
+                               mesh->o_EToB,
+                               nrs->o_EToB,
+                               time,
+                               mesh->o_x,
+                               mesh->o_y,
+                               mesh->o_z,
+                               nrs->o_usrwrk,
+                               nrs->o_U,
+                               platform->o_mempool.slice0);
 
   nrs->velocityRhsKernel(
     mesh->Nlocal,

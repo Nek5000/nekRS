@@ -135,6 +135,24 @@ public:
     }
   }
 
+  template <typename TT> bool set(const String &key, const String &value, TT &&src)
+  {
+    if (sections[key].count(value)) {
+      if (std::is_same<TT, bool>::value) {
+        sections[key][value] = src;
+      }
+      else {
+        std::ostringstream ss;
+        ss << src;
+        sections[key][value] = ss.str();
+      }
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
   bool extract(const String & key,
                const String & value,
                String & dst) ;

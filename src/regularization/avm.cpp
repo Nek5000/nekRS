@@ -114,17 +114,16 @@ occa::memory computeEps(nrs_t* nrs, const dfloat time, const dlong scalarIndex, 
       recomputeUrst = false;
     }
 
-    cds->advectionStrongVolumeKernel(
-      cds->meshV->Nelements,
-      cds->meshV->o_vgeo,
-      mesh->o_D,
-      cds->vFieldOffset,
-      0,
-      o_filteredField,
-      o_aliasedUrst,
-      o_rhoField,
-      o_hpfResidual);
-    
+    cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
+                                     cds->meshV->o_vgeo,
+                                     mesh->o_D,
+                                     cds->vFieldOffset,
+                                     0,
+                                     o_filteredField,
+                                     o_aliasedUrst,
+                                     o_rhoField,
+                                     o_hpfResidual);
+
     occa::memory o_S_field = o_S + cds->fieldOffsetScan[scalarIndex] * sizeof(dfloat);
     
     const dfloat Uavg = platform->linAlg->weightedNorm2(

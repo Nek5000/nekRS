@@ -24,26 +24,28 @@
 
  */
 
-@kernel void velocityRhsTOMBOHex3D(const dlong N,
-                                      const dlong fieldOffset,
-                                      @restrict const dfloat*  BF,
-                                      @restrict const dfloat*  GP,
-                                      @restrict const dfloat*  RHO,
-                                      @restrict dfloat*  rhsU)
+#include "elliptic.h"
+#include "linAlg.hpp"
+
+void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
 {
-  for(dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
-    const dfloat rhoM = RHO[id];
+  mesh_t *mesh = elliptic->mesh;
+  setupAide options = elliptic->options;
 
-    const dfloat GPx = GP[id + 0 * fieldOffset];
-    const dfloat GPy = GP[id + 1 * fieldOffset];
-    const dfloat GPz = GP[id + 2 * fieldOffset];
+  const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-    const dfloat BFx = BF[id + 0 * fieldOffset];
-    const dfloat BFy = BF[id + 1 * fieldOffset];
-    const dfloat BFz = BF[id + 2 * fieldOffset];
+  elliptic->ellipticBlockBuildDiagonalKernel(mesh->Nelements,
+                                             elliptic->Nfields,
+                                             elliptic->Ntotal,
+                                             elliptic->loffset,
+                                             mesh->o_ggeo,
+                                             mesh->o_D,
+                                             mesh->o_DT,
+                                             elliptic->o_lambda,
+                                             o_invDiagA);
 
-    rhsU[id + 0 * fieldOffset] = rhoM * BFx + GPx;
-    rhsU[id + 1 * fieldOffset] = rhoM * BFy + GPy;
-    rhsU[id + 2 * fieldOffset] = rhoM * BFz + GPz;
-  }
+  oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
+
+  const pfloat one = 1.0;
+  elliptic->adyManyPfloatKernel(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, o_invDiagA);
 }

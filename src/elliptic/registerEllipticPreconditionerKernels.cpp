@@ -306,7 +306,8 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
     coarsenProlongateKernelInfo["defines/p_NpFine"] = NpFine;
     coarsenProlongateKernelInfo["defines/p_NpCoarse"] = NpCoarse;
 
-    const std::string orderSuffix = std::string("_") + std::to_string(Nf);
+    const std::string orderSuffix =
+        std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
     const std::string fileExtension = serial ? ".c" : ".okl";
 
     fileName = oklpath + "ellipticPreconCoarsen" + suffix + fileNameExtension;
@@ -332,6 +333,9 @@ void registerMultiGridKernels(const std::string &section, int poissonEquation) {
   registerFineLevelKernels(section, N, poissonEquation);
 
   std::vector<int> levels = determineMGLevels(section);
+
+  if (levels.empty())
+    return;
 
   for (unsigned levelIndex = 1U; levelIndex < levels.size(); ++levelIndex) {
     const int levelFine = levels[levelIndex - 1];
@@ -404,21 +408,12 @@ void registerSEMFEMKernels(const std::string &section, int N, int poissonEquatio
 
 }
 
-void registerEllipticPreconditionerKernels(std::string section, int poissonEquation) {
-  const std::string optionsPrefix = createOptionsPrefix(section);
+void registerEllipticPreconditionerKernels(std::string section, int poissonEquation)
+{
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
 
-  if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "MULTIGRID")) {
-    registerMultiGridKernels(section, poissonEquation);
-  } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "SEMFEM")) {
-    registerSEMFEMKernels(section, N, poissonEquation);
-  } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "JACOBI")) {
-    registerJacobiKernels(section, poissonEquation);
-  } else if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "NONE")) {
-    // nothing 
-  } else {
-    printf("ERROR: Unknown preconditioner!\n");
-    ABORT(EXIT_FAILURE);
-  }
+  registerMultiGridKernels(section, poissonEquation);
+  registerSEMFEMKernels(section, N, poissonEquation);
+  registerJacobiKernels(section, poissonEquation);
 }

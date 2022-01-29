@@ -26,6 +26,7 @@
 
 #include "elliptic.h"
 #include "linAlg.hpp"
+#include "ellipticApplyMask.hpp"
 
 void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA)
 {
@@ -34,19 +35,21 @@ void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA)
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
-  elliptic->updateDiagonalKernel(mesh->Nelements,
-                                 elliptic->Nfields,
-                                 elliptic->Ntotal,
-                                 elliptic->loffset,
-                                 elliptic->o_mapB,
-                                 mesh->o_ggeo,
-                                 mesh->o_D,
-                                 mesh->o_DT,
-                                 elliptic->o_lambda,
-                                 o_invDiagA);
+  elliptic->ellipticBlockBuildDiagonalKernel(mesh->Nelements,
+                                             elliptic->Nfields,
+                                             elliptic->Ntotal,
+                                             elliptic->loffset,
+                                             mesh->o_ggeo,
+                                             mesh->o_D,
+                                             mesh->o_DT,
+                                             elliptic->o_lambda,
+                                             o_invDiagA);
 
   oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
 
   const pfloat one = 1.0;
   elliptic->adyManyPfloatKernel(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, o_invDiagA);
+
+  if (elliptic->Nmasked)
+    mesh->maskPfloatKernel(elliptic->Nmasked, elliptic->o_maskIds, o_invDiagA);
 }
