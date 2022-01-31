@@ -1607,9 +1607,9 @@ void printInfo(
       for(int is = 0; is < nrs->Nscalar; is++) {
         if (cds->compute[is]) {
           elliptic_t *solver = cds->solver[is];
-          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
-          if (prevVecs > 0) {
-            if (solver->solutionProjection) {
+          if (solver->solutionProjection) {
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
+            if (prevVecs > 0) {
               printf("  projS%02d: resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
                      is,
                      solver->res00Norm,
