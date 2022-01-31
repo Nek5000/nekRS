@@ -79,32 +79,28 @@ static std::vector<std::string> problemTypeKeys = {
 
 // common keys
 static std::vector<std::string> commonKeys = {
-  {"solver"},
-  {"residualTol"},
-  {"initialGuess"},
-  {"preconditioner"},
-  {"pMultigridCoarsening"},
-  {"smootherType"},
-  {"coarseSolver"},
-  {"boundaryTypeMap"},
-  {"maxIterations"},
-  {"regularization"},
+    {"solver"},
+    {"residualTol"},
+    {"initialGuess"},
+    {"preconditioner"},
+    {"pMultigridCoarsening"},
+    {"smootherType"},
+    {"coarseSolver"},
+    {"boundaryTypeMap"},
+    {"maxIterations"},
+    {"regularization"},
 
-  // deprecated filter params
-  {"filtering"},
-  {"filterWeight"},
-  {"filterModes"},
-  {"filterCutoffRatio"},
+    // deprecated filter params
+    {"filtering"},
+    {"filterWeight"},
+    {"filterModes"},
+    {"filterCutoffRatio"},
 
-  // deprecated no-op extrapolation param
-  {"extrapolation"},
-
-
-  // deprecated projection params
-  {"residualProj"},
-  {"residualProjection"},
-  {"residualProjectionVectors"},
-  {"residualProjectionStart"},
+    // deprecated projection params
+    {"residualProj"},
+    {"residualProjection"},
+    {"residualProjectionVectors"},
+    {"residualProjectionStart"},
 };
 
 static std::vector<std::string> meshKeys = {
@@ -151,20 +147,31 @@ static std::vector<std::string> occaKeys = {
 static std::vector<std::string> pressureKeys = {};
 
 static std::vector<std::string> deprecatedKeys = {
-  // deprecated filter params
-  {"filtering"},
-  {"filterWeight"},
-  {"filterModes"},
-  {"filterCutoffRatio"},
+    // deprecated filter params
+    {"filtering"},
+    {"filterWeight"},
+    {"filterModes"},
+    {"filterCutoffRatio"},
 
-  // deprecated no-op extrapolation param
-  {"extrapolation"},
+    // deprecated projection params
+    {"residualProj"},
+    {"residualProjection"},
+    {"residualProjectionVectors"},
+    {"residualProjectionStart"},
+};
 
-  // deprecated projection params
-  {"residualProj"},
-  {"residualProjection"},
-  {"residualProjectionVectors"},
-  {"residualProjectionStart"},
+static std::vector<std::string> validSections = {
+    {"general"},
+    {"temperature"},
+    {"pressure"},
+    {"velocity"},
+    {"problemtype"},
+    {"amgx"},
+    {"boomeramg"},
+    {"occa"},
+    {"mesh"},
+    {"scalar"},
+    {"casedata"},
 };
 
 void convertToLowerCase(std::vector<std::string>& stringVec)
@@ -188,6 +195,7 @@ void makeStringsLowerCase()
   convertToLowerCase(boomeramgKeys);
   convertToLowerCase(pressureKeys);
   convertToLowerCase(occaKeys);
+  convertToLowerCase(validSections);
 }
 
 const std::vector<std::string>& getValidKeys(const std::string& section)
@@ -228,6 +236,26 @@ int validateKeys(const inipp::Ini::Sections& sections)
   bool generalExists = false;
   for (auto const & sec : sections) {
     if(sec.first.find("general") != std::string::npos) generalExists = true;
+
+    // check that section exists
+    if (std::find(validSections.begin(), validSections.end(), sec.first) == validSections.end()) {
+      if (sec.first.find("scalar") != std::string::npos) {
+        // scalar sections must have a two-digit number, e.g., 01
+        if (sec.first.size() != std::string("scalar").size() + 2) {
+          std::ostringstream error;
+          error << "ERROR: Scalar section names require exactly two digits, e.g. [SCALAR01]. ";
+          error << "You provided " << sec.first << " as a scalar section name." << std::endl;
+          append_error(error.str());
+          err++;
+        }
+      }
+      else {
+        std::ostringstream error;
+        error << "ERROR: Invalid section name: " << sec.first << std::endl;
+        append_error(error.str());
+        err++;
+      }
+    }
   }
   if(!generalExists){
     std::ostringstream error;
@@ -237,7 +265,6 @@ int validateKeys(const inipp::Ini::Sections& sections)
   }
   for (auto const & sec : sections) {
     if(sec.first.find("casedata") != std::string::npos) continue;
-    if(sec.first.find("general") != std::string::npos) generalExists = true;
     const auto& validKeys = getValidKeys(sec.first);
     for (auto const & val : sec.second) {
       if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
@@ -1636,15 +1663,26 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
 
   bool stressFormulation;
-  if (par->extract("problemtype", "stressformulation", stressFormulation))
-    if (stressFormulation)
+  if (par->extract("problemtype", "stressformulation", stressFormulation)){
+    if (stressFormulation){
       options.setArgs("STRESSFORMULATION", "TRUE");
+    }
+  }
 
   std::string eqn;
   if (par->extract("problemtype", "equation", eqn)) {
+    const std::vector<std::string> validValues = {
+        {"stokes"},
+    };
+    const std::vector<std::string> list = serializeString(eqn, '+');
+    for(std::string s : list)
+    {
+      checkValidity(rank, validValues, s);
+    }
     options.setArgs("ADVECTION", "TRUE");
-    if (eqn == "stokes")
+    if (eqn == "stokes"){
       options.setArgs("ADVECTION", "FALSE");
+    }
   }
 
   if (par->sections.count("velocity")) {
