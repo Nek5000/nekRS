@@ -83,7 +83,9 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
       platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "ellipticBlockBuildDiagonalHex3D";
-    elliptic->ellipticBlockBuildDiagonalKernel = platform->kernels.get(kernelName + orderSuffix);
+    const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
+    elliptic->ellipticBlockBuildDiagonalKernel =
+        platform->kernels.get(poissonPrefix + kernelName + orderSuffix);
 
     elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
     elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");

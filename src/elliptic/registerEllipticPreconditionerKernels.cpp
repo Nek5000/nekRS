@@ -118,12 +118,10 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
 
     occa::properties buildDiagInfo = kernelInfo;
     if(poissonEquation) buildDiagInfo["defines/p_poisson"] = 1;
+    const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
     kernelName = "ellipticBlockBuildDiagonalHex3D";
     fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        buildDiagInfo,
-        orderSuffix);
+    platform->kernels.add(poissonPrefix + kernelName + orderSuffix, fileName, buildDiagInfo, orderSuffix);
   }
 }
 
