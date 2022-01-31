@@ -32,12 +32,12 @@
     bc.nx = sgeo[sk * p_Nsgeo + p_NXID];                                 \
     bc.ny = sgeo[sk * p_Nsgeo + p_NYID];                                 \
     bc.nz = sgeo[sk * p_Nsgeo + p_NZID];                                 \
-    bc.t1x = V1[sk * 3 + 0];                                             \
-    bc.t1y = V1[sk * 3 + 1];                                             \
-    bc.t1z = V1[sk * 3 + 2];                                             \
-    bc.t2x = V2[sk * 3 + 0];                                             \
-    bc.t2y = V2[sk * 3 + 1];                                             \
-    bc.t2z = V2[sk * 3 + 2];                                             \
+    bc.t1x = sgeo[sk * p_Nsgeo + p_T1XID];                               \
+    bc.t1y = sgeo[sk * p_Nsgeo + p_T1YID];                               \
+    bc.t1z = sgeo[sk * p_Nsgeo + p_T1ZID];                               \
+    bc.t2x = sgeo[sk * p_Nsgeo + p_T2XID];                               \
+    bc.t2y = sgeo[sk * p_Nsgeo + p_T2YID];                               \
+    bc.t2z = sgeo[sk * p_Nsgeo + p_T2ZID];                               \
     bc.x   = x[bc.idM];                                                  \
     bc.y   = y[bc.idM];                                                  \
     bc.z   = z[bc.idM];                                                  \
@@ -74,8 +74,6 @@
 @kernel void velocityNeumannBCHex3D(const dlong Nelements,
                                        const dlong offset,
                                        @restrict const dfloat*  sgeo,
-                                       @restrict const dfloat*  V1,
-                                       @restrict const dfloat*  V2,
                                        @restrict const dlong*  vmapM,
                                        @restrict const int*  EToBM,
                                        @restrict const int*  EToB,

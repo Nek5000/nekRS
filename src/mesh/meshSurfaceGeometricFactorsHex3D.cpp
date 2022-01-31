@@ -62,13 +62,9 @@ void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* I
 void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
 {
   /* unified storage array for geometric factors */
-  mesh->sgeo = (dfloat*) calloc((mesh->Nelements + mesh->totalHaloPairs) *
-                                mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
-                                sizeof(dfloat));
-  mesh->VT1 = (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * 3 * mesh->Nfp * mesh->Nfaces,
-                               sizeof(dfloat));
-  mesh->VT2 = (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * 3 * mesh->Nfp * mesh->Nfaces,
-                               sizeof(dfloat));
+  mesh->sgeo =
+      (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
+                       sizeof(dfloat));
 
   dfloat* xre = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* xse = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
@@ -203,8 +199,6 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
         mesh->sgeo[base + WIJID] = 1. / (J * mesh->gllw[0]);
         mesh->sgeo[base + WSJID] = sJ * mesh->gllw[i % mesh->Nq] * mesh->gllw[i / mesh->Nq];
 
-        base = 3 * (mesh->Nfaces * mesh->Nfp * e + mesh->Nfp * f + i); // tangential components
-
         const dfloat tol = 1e-4;
         dfloat vt1x = 0, vt1y = 0, vt1z = 0;
         dfloat vt2x = 0, vt2y = 0, vt2z = 0;
@@ -220,9 +214,9 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
           vt1z = 0.0;
         }
 
-        mesh->VT1[base + 0] = vt1x;
-        mesh->VT1[base + 1] = vt1y;
-        mesh->VT1[base + 2] = vt1z;
+        mesh->sgeo[base + T1XID] = vt1x;
+        mesh->sgeo[base + T1YID] = vt1y;
+        mesh->sgeo[base + T1ZID] = vt1z;
 
         // vt2 = n \cross vt1
         vt2x = ny * vt1z - nz * vt1y;
@@ -235,9 +229,9 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
         vt2y *= invMag;
         vt2z *= invMag;
 
-        mesh->VT2[base + 0] = vt2x;
-        mesh->VT2[base + 1] = vt2y;
-        mesh->VT2[base + 2] = vt2z;
+        mesh->sgeo[base + T2XID] = vt2x;
+        mesh->sgeo[base + T2YID] = vt2y;
+        mesh->sgeo[base + T2ZID] = vt2z;
       }
     }
   }
