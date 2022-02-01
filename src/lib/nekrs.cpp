@@ -347,6 +347,13 @@ void finalize(void)
   AMGXfree();
 }
 
+int runTimeStatFreq()
+{
+  int freq = 500;
+  platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
+  return freq;
+} 
+
 void printRuntimeStatistics(int step)
 {
   platform->timer.printRunStat(step);
