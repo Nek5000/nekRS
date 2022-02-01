@@ -1530,8 +1530,8 @@ void printInfo(
               divUErrL2);
         } else {
           solver = nrs->uSolver;
-          const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
           if(solver->solutionProjection){
+            const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
             if (prevVecs > 0) {
               printf("  projU  : resNorm0 %.2e  resNorm %.2e  ratio = %.3e  %d/%d\n",
                      solver->res00Norm,
