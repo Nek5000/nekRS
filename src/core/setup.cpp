@@ -10,7 +10,7 @@
 #include <cctype>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options);
+cds_t *cdsSetup(nrs_t *nrs, setupAide options);
 }
 
 std::vector<int>
@@ -441,6 +441,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
   }
 
+  std::cout << "Options are\n";
+  std::cout << platform->options << "\n";
+
   if(platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "RELAXATION")){
 
     nrs->filterNc = -1;
@@ -640,9 +643,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
 
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
+
     for (int is = 0; is < cds->NSfields; is++) {
       std::stringstream ss;
-      ss << std::setfill('0') << std::setw(2) << is;
+      ss << std::setfill('0') << std::setw(scalarWidth) << is;
       std::string sid = ss.str();
  
       if(!cds->compute[is]) continue;
@@ -1131,8 +1136,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->prop = (dfloat*) calloc(2 * cds->fieldOffsetSum,sizeof(dfloat));
 
   for(int is = 0; is < cds->NSfields; is++) {
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(2) << is;
+    ss << std::setfill('0') << std::setw(scalarWidth) << is;
     std::string sid = ss.str();
 
     if(options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) continue;
@@ -1172,8 +1178,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_Urst = nrs->o_Urst;
 
   for (int is = 0; is < cds->NSfields; is++) {
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(2) << is;
+    ss << std::setfill('0') << std::setw(scalarWidth) << is;
     std::string sid = ss.str();
 
     cds->compute[is] = 1;
