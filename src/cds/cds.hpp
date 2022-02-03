@@ -31,6 +31,7 @@ struct cds_t
   oogs_t *gsh, *gshT;
 
   dlong vFieldOffset;
+  dlong vCubatureOffset;
   dfloat idt;
   dfloat *dt;
   int tstep;

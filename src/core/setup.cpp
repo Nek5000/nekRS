@@ -262,6 +262,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->_mesh->fieldOffset = nrs->fieldOffset;
 
+  { // setup cubatureOffset
+    dlong cubatureOffset;
+    if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+      nrs->cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+    }
+    else {
+      nrs->cubatureOffset = nrs->fieldOffset;
+    }
+    const int pageW = ALIGN_SIZE / sizeof(dfloat);
+    if (nrs->cubatureOffset % pageW)
+      nrs->cubatureOffset = (nrs->cubatureOffset / pageW + 1) * pageW;
+  }
+
   if(nrs->Nsubsteps) {
     int Sorder;
     platform->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
@@ -319,17 +332,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   {
-    dlong offset;
-    if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      offset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-    else
-      offset = nrs->fieldOffset;
- 
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
     if(nrs->Nsubsteps && platform->options.compareArgs("MOVING MESH", "TRUE"))
-      nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+      nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * nrs->cubatureOffset, sizeof(dfloat));
     else
-      nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+      nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * nrs->cubatureOffset, sizeof(dfloat));
   }
 
   nrs->U  = (dfloat*) calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,sizeof(dfloat));
@@ -1090,6 +1097,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_usrwrk = &(nrs->o_usrwrk);
 
   cds->vFieldOffset = nrs->fieldOffset;
+  cds->vCubatureOffset = nrs->cubatureOffset;
   cds->fieldOffset[0]  = nrs->fieldOffset;
   cds->fieldOffsetScan[0] = 0;
   dlong sum = cds->fieldOffset[0];
