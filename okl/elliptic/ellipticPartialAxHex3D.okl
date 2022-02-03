@@ -10,7 +10,10 @@
                                     @restrict       dfloat* Aq)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
-#if (p_Nq % 2 == 0)
+
+#if defined(FP32) && defined(gfxXX)
+    @shared dfloat s_D[p_Nq][p_Nq];
+#elif (p_Nq % 2 == 0)
     @shared dfloat s_D[p_Nq][p_Nq+1];
 #else
     @shared dfloat s_D[p_Nq][p_Nq];
