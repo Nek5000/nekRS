@@ -38,6 +38,8 @@
 #include <sstream>
 #include <vector>
 
+int getDigitsRepresentation(int n);
+
 namespace inipp
 {
 

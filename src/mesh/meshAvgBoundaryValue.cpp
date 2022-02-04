@@ -26,7 +26,7 @@ dfloat mesh_t::avgBoundaryValue(int BID, occa::memory fld)
   }
 
   dfloat values[2] = {localSum, localArea};
-  MPI_Allreduce(MPI_IN_PLACE, values, 2, MPI_DFLOAT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, values, 2, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
   return values[0] / values[1];
 }

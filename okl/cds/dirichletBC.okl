@@ -65,6 +65,14 @@
           bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
           bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
           bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
+
+          bc.t1x = sgeo[sk * p_Nsgeo + p_T1XID];
+          bc.t1y = sgeo[sk * p_Nsgeo + p_T1YID];
+          bc.t1z = sgeo[sk * p_Nsgeo + p_T1ZID];
+
+          bc.t2x = sgeo[sk * p_Nsgeo + p_T2XID];
+          bc.t2y = sgeo[sk * p_Nsgeo + p_T2YID];
+          bc.t2z = sgeo[sk * p_Nsgeo + p_T2ZID];
           scalarDirichletConditions(&bc);
           S[idM] = bc.s;
         }

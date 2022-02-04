@@ -188,6 +188,8 @@ int main(int argc, char** argv)
   const int pageW = ALIGN_SIZE / sizeof(dfloat);
   if (fieldOffset % pageW) fieldOffset = (fieldOffset / pageW + 1) * pageW;
   cubatureOffset = std::max(fieldOffset, Nelements * cubNp);
+  if (cubatureOffset % pageW)
+    cubatureOffset = (cubatureOffset / pageW + 1) * pageW;
 
   platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD); 
   const int Nthreads =  omp_get_max_threads();

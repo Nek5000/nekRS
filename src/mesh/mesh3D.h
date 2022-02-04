@@ -105,10 +105,20 @@ void interpolateHex3D(dfloat* Inter, dfloat* x, int N, dfloat* Ix, int M);
 #define NXID 0
 #define NYID 1
 #define NZID 2
-#define SJID 3
-#define IJID 4
-#define WIJID 5
-#define WSJID 6
+
+// tangentails
+#define T1XID 3
+#define T1YID 4
+#define T1ZID 5
+
+#define T2XID 6
+#define T2YID 7
+#define T2ZID 8
+
+#define SJID 9
+#define IJID 10
+#define WIJID 11
+#define WSJID 12
 
 // Mesh generation
 void NodesHex3D(int _N, dfloat* _r, dfloat* _s, dfloat* _t);

@@ -779,7 +779,7 @@ int setup(nrs_t* nrs_in)
     }
     for(int is = 0; is < nscal; is++) {
       std::stringstream ss;
-      ss << std::setfill('0') << std::setw(2) << is;
+      ss << std::setfill('0') << std::setw(getDigitsRepresentation(NSCALAR_MAX - 1)) << is;
       std::string sid = ss.str();
 
       int isTMesh = 0;

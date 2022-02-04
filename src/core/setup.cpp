@@ -10,7 +10,7 @@
 #include <cctype>
 
 namespace{
-cds_t* cdsSetup(nrs_t* nrs, setupAide options);
+cds_t *cdsSetup(nrs_t *nrs, setupAide options);
 }
 
 std::vector<int>
@@ -262,6 +262,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->_mesh->fieldOffset = nrs->fieldOffset;
 
+  { // setup cubatureOffset
+    dlong cubatureOffset;
+    if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+      nrs->cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
+    }
+    else {
+      nrs->cubatureOffset = nrs->fieldOffset;
+    }
+    const int pageW = ALIGN_SIZE / sizeof(dfloat);
+    if (nrs->cubatureOffset % pageW)
+      nrs->cubatureOffset = (nrs->cubatureOffset / pageW + 1) * pageW;
+  }
+
   if(nrs->Nsubsteps) {
     int Sorder;
     platform->options.getArgs("SUBCYCLING TIME ORDER", Sorder);
@@ -319,17 +332,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   {
-    dlong offset;
-    if(platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
-      offset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-    else
-      offset = nrs->fieldOffset;
- 
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
     if(nrs->Nsubsteps && platform->options.compareArgs("MOVING MESH", "TRUE"))
-      nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+      nrs->o_relUrst = platform->device.malloc(Nstates * nrs->NVfields * nrs->cubatureOffset, sizeof(dfloat));
     else
-      nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * offset, sizeof(dfloat));
+      nrs->o_Urst = platform->device.malloc(Nstates * nrs->NVfields * nrs->cubatureOffset, sizeof(dfloat));
   }
 
   nrs->U  = (dfloat*) calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,sizeof(dfloat));
@@ -440,6 +447,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     }
     nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
   }
+
+  std::cout << "Options are\n";
+  std::cout << platform->options << "\n";
 
   if(platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "RELAXATION")){
 
@@ -640,9 +650,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if(nrs->Nscalar) {
     cds_t* cds = nrs->cds;
 
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
+
     for (int is = 0; is < cds->NSfields; is++) {
       std::stringstream ss;
-      ss << std::setfill('0') << std::setw(2) << is;
+      ss << std::setfill('0') << std::setw(scalarWidth) << is;
       std::string sid = ss.str();
  
       if(!cds->compute[is]) continue;
@@ -696,6 +708,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (platform->comm.mpiRank == 0) printf("================ ELLIPTIC SETUP VELOCITY ================\n");
 
     nrs->uvwSolver = NULL;
+
+    bool unalignedBoundary = bcMap::unalignedBoundary(mesh->cht, "velocity");
+    if (unalignedBoundary) {
+      if (!options.compareArgs("STRESSFORMULATION", "TRUE")) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: unaligned SHL/SYM boundaries require STRESSFORMULATION = TRUE\n");
+        ABORT(EXIT_FAILURE);
+      }
+    }
 
     if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();
@@ -1005,8 +1026,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                                      nrs->fieldOffset,
                                      startTime,
                                      mesh->o_sgeo,
-                                     mesh->o_VT1,
-                                     mesh->o_VT2,
                                      mesh->o_x,
                                      mesh->o_y,
                                      mesh->o_z,
@@ -1025,8 +1044,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->meshV->velocityDirichletKernel(mesh->Nelements,
                                           nrs->fieldOffset,
-                                          mesh->o_VT1,
-                                          mesh->o_VT2,
+                                          mesh->o_sgeo,
                                           mesh->o_vmapM,
                                           nrs->o_EToBMesh,
                                           platform->o_mempool.slice3,
@@ -1079,6 +1097,7 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_usrwrk = &(nrs->o_usrwrk);
 
   cds->vFieldOffset = nrs->fieldOffset;
+  cds->vCubatureOffset = nrs->cubatureOffset;
   cds->fieldOffset[0]  = nrs->fieldOffset;
   cds->fieldOffsetScan[0] = 0;
   dlong sum = cds->fieldOffset[0];
@@ -1125,8 +1144,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->prop = (dfloat*) calloc(2 * cds->fieldOffsetSum,sizeof(dfloat));
 
   for(int is = 0; is < cds->NSfields; is++) {
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(2) << is;
+    ss << std::setfill('0') << std::setw(scalarWidth) << is;
     std::string sid = ss.str();
 
     if(options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) continue;
@@ -1166,8 +1186,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->o_Urst = nrs->o_Urst;
 
   for (int is = 0; is < cds->NSfields; is++) {
+    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(2) << is;
+    ss << std::setfill('0') << std::setw(scalarWidth) << is;
     std::string sid = ss.str();
 
     cds->compute[is] = 1;

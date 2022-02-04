@@ -27,9 +27,7 @@ SOFTWARE.
                 const dfloat *w,
                 const dlong *faceNodes,
                 const dfloat *vgeo,
-                dfloat *sgeo,
-                dfloat *VT1,
-                dfloat *VT2){
+                dfloat *sgeo){
 
   for(dlong e=0;e<Nelements;++e;@outer(0)){ /* for each element */
 
@@ -83,7 +81,6 @@ SOFTWARE.
         sgeo[sgid+p_WIJID] = 1.0 / (J * w[0]);
         sgeo[sgid+p_WSJID] = sJ*w[n%p_Nq]*w[n/p_Nq];
 
-        const dlong base = 3*(p_Nfaces*p_Nfp*e + p_Nfp*f + n);
         const dfloat tol = 1e-4;
         dfloat vt1x = 0, vt1y = 0, vt1z = 0;
         dfloat vt2x = 0, vt2y = 0, vt2z = 0;
@@ -99,9 +96,9 @@ SOFTWARE.
           vt1z = 0.0;
         }
 
-        VT1[base + 0] = vt1x;
-        VT1[base + 1] = vt1y;
-        VT1[base + 2] = vt1z;
+        sgeo[sgid + p_T1XID] = vt1x;
+        sgeo[sgid + p_T1YID] = vt1y;
+        sgeo[sgid + p_T1ZID] = vt1z;
 
         // vt2 = n \cross vt1
         vt2x = ny * vt1z - nz * vt1y;
@@ -114,9 +111,9 @@ SOFTWARE.
         vt2y *= invMag;
         vt2z *= invMag;
 
-        VT2[base + 0] = vt2x;
-        VT2[base + 1] = vt2y;
-        VT2[base + 2] = vt2z;
+        sgeo[sgid + p_T2XID] = vt2x;
+        sgeo[sgid + p_T2YID] = vt2y;
+        sgeo[sgid + p_T2ZID] = vt2z;
       }
     }
   }

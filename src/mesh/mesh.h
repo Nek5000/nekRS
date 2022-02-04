@@ -187,11 +187,6 @@ struct mesh_t
   occa::memory o_vgeo, o_sgeo;
   occa::memory o_vmapM, o_vmapP, o_mapP;
 
-  // tangential directions (only needed in unaligned case)
-  bool UNormalZero;
-  dfloat *VT1, *VT2;
-  occa::memory o_VT1, o_VT2;
-
   occa::memory o_EToB, o_x, o_y, o_z;
 
   // cubature (for wadg)

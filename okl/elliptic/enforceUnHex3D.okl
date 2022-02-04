@@ -1,8 +1,7 @@
 @kernel void enforceUnHex3D(const dlong Nelements,
                                          const dlong offset,
                                          @restrict const dlong*  elementList,
-                                         @restrict const dfloat*  V1,
-                                         @restrict const dfloat*  V2,
+                                         @restrict const dfloat*  sgeo,
                                          @restrict const dlong*  vmapM,
                                          @restrict const int*  EToB,
                                          @restrict const int*  BToBCType,
@@ -25,25 +24,25 @@
 
         if(bcType == p_ZERO_NORMAL) {
 
-          const dfloat v1x = V1[sid * 3 + 0];
-          const dfloat v1y = V1[sid * 3 + 1];
-          const dfloat v1z = V1[sid * 3 + 2];
+          const dfloat t1x = sgeo[sid * p_Nsgeo + p_T1XID];
+          const dfloat t1y = sgeo[sid * p_Nsgeo + p_T1YID];
+          const dfloat t1z = sgeo[sid * p_Nsgeo + p_T1ZID];
 
-          const dfloat v2x = V2[sid * 3 + 0];
-          const dfloat v2y = V2[sid * 3 + 1];
-          const dfloat v2z = V2[sid * 3 + 2];
+          const dfloat t2x = sgeo[sid * p_Nsgeo + p_T2XID];
+          const dfloat t2y = sgeo[sid * p_Nsgeo + p_T2YID];
+          const dfloat t2z = sgeo[sid * p_Nsgeo + p_T2ZID];
 
 
           const dfloat u = U[idM + 0 * offset];
           const dfloat v = U[idM + 1 * offset];
           const dfloat w = U[idM + 2 * offset];
 
-          const dfloat Rtn1 = (u * v1x + v * v1y + w * v1z);
-          const dfloat Rtn2 = (u * v2x + v * v2y + w * v2z);
+          const dfloat Rtn1 = (u * t1x + v * t1y + w * t1z);
+          const dfloat Rtn2 = (u * t2x + v * t2y + w * t2z);
 
-          U[idM + 0 * offset] = outputType(Rtn1 * v1x + Rtn2 * v2x);
-          U[idM + 1 * offset] = outputType(Rtn1 * v1y + Rtn2 * v2y);
-          U[idM + 2 * offset] = outputType(Rtn1 * v1z + Rtn2 * v2z);
+          U[idM + 0 * offset] = outputType(Rtn1 * t1x + Rtn2 * t2x);
+          U[idM + 1 * offset] = outputType(Rtn1 * t1y + Rtn2 * t2y);
+          U[idM + 2 * offset] = outputType(Rtn1 * t1z + Rtn2 * t2z);
         }
       }
       @barrier("global");

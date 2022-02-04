@@ -42,6 +42,7 @@ struct nrs_t
 
   int Nscalar;
   dlong fieldOffset;
+  dlong cubatureOffset;
   setupAide vOptions, pOptions, mOptions;
 
   int NVfields, NTfields;
