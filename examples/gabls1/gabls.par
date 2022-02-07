@@ -1,39 +1,49 @@
 [GENERAL]
-#verbose = true
-polynomialOrder = 9
-#startFrom = "restart.fld"
+polynomialOrder = 8 
+cubaturePolynomialOrder = 10 
+
+#startFrom = "r.fld"
+
 stopAt = endTime
 endTime = 2600
 
-dt = 1.0e-2
-#dt = targetCFL=2 + max=5e-2
-
+dt = targetCFL=2 + max=2e-2
 timeStepper = tombo2
-subCyclingSteps = 1
 
 writeControl = runTime
-writeInterval = 100
+writeInterval = 100 
 
-regularization = hpfrt + nModes=1 + scalingCoeff=10
+regularization = hpfrt + nModes=3 + scalingCoeff=10
+
+[PROBLEMTYPE]
+stressFormulation = true
 
 [PRESSURE]
+solver = pfcg
 residualTol = 1e-04
+preconditioner = multigrid+coarse
+smootherType = JAC+Chebyshev+degree=2
+pMultigridCoarsening = 8,4,1
 
 [VELOCITY]
-boundaryTypeMap = wall, inlet
+boundaryTypeMap = v, shl
 residualTol = 1e-06
 density = 1.0
-viscosity = -50e3
+viscosity = 1/50e6
 
 [TEMPERATURE]
-boundaryTypeMap = inlet, flux 
+boundaryTypeMap = flux, flux 
 residualTol = 1e-06
 rhoCp = 1.0
-conductivity = -50e3
+conductivity = 1/50e6
+
+[BOOMERAMG]
+iterations = 1
 
 [CASEDATA]
 #/* latitude north */
 nlat = 73.0
+
 #/* geostrophic wind speed [m/s] */
 uref = 8.0
 
@@ -47,11 +57,17 @@ scr = -0.25
 #/* inversion layer strength [k/m]*/
 ilstrength = 0.01
 
-number_elements_x = 16 
-number_elements_y = 16
-number_elements_z = 16
+z1 = 1.0
+z0 = 0.1
+
+number_elements_x = 32 
+number_elements_y = 32 
+number_elements_z = 32 
 xlen  = 4.0
 ylen  = 4.0
 zlen  = 4.0
 
-betam = 2.5
+betam = 4.8
+betah = 7.8
+kappa = 0.4
+zwall = 0.01 # 1.0/lref
