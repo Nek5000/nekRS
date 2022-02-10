@@ -112,4 +112,6 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
   if(localCount)
     mesh->o_localGatherElementList =
       platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
+  
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 }

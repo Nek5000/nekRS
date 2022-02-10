@@ -157,9 +157,6 @@ mesh_t *createMesh(MPI_Comm comm,
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
-  oogs_mode oogsMode = OOGS_AUTO; 
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
   // build mass + inverse mass matrix
   for(dlong e = 0; e < mesh->Nelements; ++e)
@@ -211,12 +208,12 @@ mesh_t* duplicateMesh(MPI_Comm comm,
   meshGlobalIds(mesh);
 
   bcMap::check(mesh);
+  bcMap::checkBoundaryAlignment(mesh);
+  bcMap::remapUnalignedBoundaries(mesh);
+
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
-  oogs_mode oogsMode = OOGS_AUTO; 
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
   // build mass + inverse mass matrix
   for(dlong e = 0; e < mesh->Nelements; ++e)
@@ -336,13 +333,12 @@ mesh_t *createMeshV(
   mesh->globalIds = meshT->globalIds;
 
   bcMap::check(mesh);
+  bcMap::checkBoundaryAlignment(mesh);
+  bcMap::remapUnalignedBoundaries(mesh);
 
   meshVOccaSetup3D(mesh, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
-  oogs_mode oogsMode = OOGS_AUTO; 
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, oogsMode);
 
   mesh->computeInvLMM();
 
