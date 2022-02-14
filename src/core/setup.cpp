@@ -263,7 +263,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->_mesh->fieldOffset = nrs->fieldOffset;
 
   { // setup cubatureOffset
-    dlong cubatureOffset;
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
       nrs->cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
     }
