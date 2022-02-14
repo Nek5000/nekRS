@@ -179,19 +179,41 @@ void udfBuild(const char* udfFile, setupAide& options)
         char udfFileResolved[BUFSIZ];
         realpath(udfFile, udfFileResolved);
         sprintf(cmd,
-                "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && "
-                "rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
-	            "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" . %s",
-                 cache_dir.c_str(),
-                 udfFileResolved,
-                 udf_dir.c_str(),
-                 case_dir.c_str(),
-                 pipeToNull.c_str());
+                "cp -f %s %s/udf/udf.cpp && cp -f %s/CMakeLists.txt %s/udf && rm -f %s/udf/*.so",
+                udfFileResolved,
+                cache_dir.c_str(),
+                udf_dir.c_str(),
+                cache_dir.c_str(),
+                cache_dir.c_str());
         if(verbose && platform->comm.mpiRank == 0) printf("%s\n", cmd);
         if(system(cmd)) return EXIT_FAILURE; 
+
+        std::string cmakeFlags("-Wno-dev");
+        if(verbose) cmakeFlags += " --trace-expand";
+        std::string cmakeBuildDir = cache_dir + "/udf"; 
+        sprintf(cmd, "cmake %s -S %s -B %s -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
+	            "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" %s",
+                 cmakeFlags.c_str(),
+                 cmakeBuildDir.c_str(),
+                 cmakeBuildDir.c_str(),
+                 case_dir.c_str(),
+                 pipeToNull.c_str());
+        const int retVal = system(cmd);
+        if(verbose && platform->comm.mpiRank == 0) {
+          printf("%s (retVal: %d)\n", cmd, retVal);
+        }
+        if(retVal) return EXIT_FAILURE; 
       }
-      sprintf(cmd, "cd %s/udf && make %s", cache_dir.c_str(), pipeToNull.c_str());
-      if(system(cmd)) return EXIT_FAILURE; 
+
+      {
+        sprintf(cmd, "cd %s/udf && make %s", cache_dir.c_str(), pipeToNull.c_str());
+        const int retVal = system(cmd);
+        if(verbose && platform->comm.mpiRank == 0) {
+          printf("%s (retVal: %d)\n", cmd, retVal);
+        }
+        if(retVal) return EXIT_FAILURE; 
+      }
+
       fileSync(udfLib.c_str());
       if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
       fflush(stdout);
