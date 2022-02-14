@@ -151,11 +151,13 @@ typedef struct {
   int         Nhalo;          //  number of halo nodes
   int         NhaloGather;    //  number of gathered nodes on halo
   int         NownedHalo;     //  number of owned halo nodes
+  int         NrowBlocks;
 
   int         *localGatherOffsets;
   int         *localGatherIds;
   occa::memory o_localGatherOffsets;  
   occa::memory o_localGatherIds;      
+  occa::memory o_blockRowStarts;
 
   int         *haloGatherOffsets;
   int         *haloGatherIds;
