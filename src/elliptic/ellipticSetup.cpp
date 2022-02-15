@@ -36,6 +36,8 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   
   setupAide options = elliptic->options;
 
+  const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
+
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
 
@@ -168,13 +170,14 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   if(platform->comm.mpiRank == 0)
     printf("allNeumann = %d \n", elliptic->allNeumann);
 
-  int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  if(mesh->ogs == NULL) meshParallelGatherScatterSetup(mesh, Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
+  if(mesh->ogs == NULL) {
+    if(platform->comm.mpiRank == 0) printf("ERROR: mesh->ogs == NULL!");
+    ABORT(EXIT_FAILURE);
+  }
 
   { //setup an unmasked gs handle
     ogs_t *ogs = NULL;
-    if (elliptic->blockSolver)
-      ogs = mesh->ogs;
+    if (elliptic->blockSolver) ogs = mesh->ogs;
     ellipticOgs(mesh,
                 elliptic->Ntotal,
                 elliptic->Nfields,
@@ -198,11 +201,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   std::string suffix = "Hex3D";
   std::string kernelName;
-
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0) printf("loading elliptic kernels ... ");
-  fflush(stdout);
 
   {
     mesh->maskKernel = platform->kernels.get("mask");
@@ -237,10 +235,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       elliptic->updatePCGKernel =
         platform->kernels.get(sectionIdentifier + "ellipticBlockUpdatePCG");
   }
-
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
-  fflush(stdout);
 
   oogs_mode oogsMode = OOGS_AUTO;
   auto callback = [&]() // hardwired to FP64 variable coeff

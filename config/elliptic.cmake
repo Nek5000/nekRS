@@ -26,7 +26,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolutionProjection.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticSolve.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticOgs.cpp
-        ${ELLIPTIC_SOURCE_DIR}/ellipticSolveSetup.cpp
+        ${ELLIPTIC_SOURCE_DIR}/ellipticSetup.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticUpdatePCG.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp)
 

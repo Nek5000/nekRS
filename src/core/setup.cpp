@@ -383,45 +383,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
   nrs->o_coeffSubEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
-  oogs_mode oogsMode = OOGS_AUTO; 
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-  nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, oogsMode);
-
-  linAlg_t * linAlg = platform->linAlg;
-
-  int err = 0;
-  dlong gNelements = mesh->Nelements;
-  MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
-  const dfloat sum2 = (dfloat)gNelements * mesh->Np;
-  linAlg->fillKernel(nrs->fieldOffset, 1.0, platform->o_mempool.slice0);
-  ogsGatherScatter(platform->o_mempool.slice0, ogsDfloat, ogsAdd, mesh->ogs);
-  linAlg->axmyKernel(Nlocal, 1.0, mesh->ogs->o_invDegree, platform->o_mempool.slice0); 
-  dfloat* tmp = (dfloat*) calloc(Nlocal, sizeof(dfloat));
-  platform->o_mempool.slice0.copyTo(tmp, Nlocal * sizeof(dfloat));
-  dfloat sum1 = 0;
-  for(int i = 0; i < Nlocal; i++) sum1 += tmp[i];
-  MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-  sum1 = abs(sum1 - sum2) / sum2;
-  if(sum1 > 1e-15) {
-    if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
-    fflush(stdout);
-    err++;
-  }
-
-  mesh->ogs->o_invDegree.copyTo(tmp, Nlocal * sizeof(dfloat));
-  double* vmult = (double*) nek::ptr("vmult");
-  sum1 = 0;
-  for(int i = 0; i < Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
-  MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-  if(sum1 > 1e-15) {
-    if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
-    fflush(stdout);
-    err++;
-  }
-
-  if(err) ABORT(1);
-  free(tmp);
+  //meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
 
   nrs->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
   int cnt = 0;
@@ -448,9 +411,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->o_EToBMesh = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),nrs->EToBMesh);
   }
 
-  std::cout << "Options are\n";
-  std::cout << platform->options << "\n";
-
   if(platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "RELAXATION")){
 
     nrs->filterNc = -1;
@@ -472,11 +432,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // build kernels
   std::string kernelName;
   const std::string suffix = "Hex3D";
-
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0)  printf("loading ns kernels ... "); fflush(stdout);
-
   {
       const std::string section = "nrs-";
       kernelName = "nStagesSum3";
@@ -611,9 +566,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->setEllipticCoeffPressureKernel =
         platform->kernels.get( section + kernelName);
   }
-
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   if(nrs->Nscalar) {
     nrs->cds = cdsSetup(nrs, platform->options);
@@ -1110,18 +1062,9 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
   cds->fieldOffsetSum = sum;
 
   cds->gsh = nrs->gsh;
-  
-  if(nrs->cht) {
-    meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, 0);
-    oogs_mode oogsMode = OOGS_AUTO; 
-    //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-    cds->gshT = oogs::setup(mesh->ogs, 1, cds->fieldOffset[0], ogsDfloat, NULL, oogsMode);
-  } else {
-    cds->gshT = cds->gsh;
-  }
+  cds->gshT = (nrs->cht) ? oogs::setup(mesh->ogs, 1, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO) : cds->gsh;
 
-  // Solution storage at interpolation nodes
-  cds->U     = nrs->U; // Point to INS side Velocity
+  cds->U     = nrs->U;
   cds->S     =
     (dfloat*) calloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum,sizeof(dfloat));
   cds->BF    = (dfloat*) calloc(cds->fieldOffsetSum,sizeof(dfloat));
@@ -1274,11 +1217,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
 
   std::string kernelName;
   const std::string suffix = "Hex3D";
-
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0)  printf("loading cds kernels ... "); fflush(stdout);
-
    {
         kernelName = "strongAdvectionVolume" + suffix;
         cds->strongAdvectionVolumeKernel = platform->kernels.get(section + kernelName);
@@ -1324,9 +1262,6 @@ cds_t* cdsSetup(nrs_t* nrs, setupAide options)
           cds->subCycleInitU0Kernel = platform->kernels.get(section + kernelName);
         }
   }
-
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel); fflush(stdout);
 
   return cds;
 }

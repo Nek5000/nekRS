@@ -104,11 +104,11 @@ mesh_t *createMesh(MPI_Comm comm,
 
   mesh->cht  = cht;
 
+  if (platform->comm.mpiRank == 0)
+    printf("generating t-mesh ...\n");
+
   // get mesh from nek
   meshNekReaderHex3D(N, mesh);
-
-  if (platform->comm.mpiRank == 0)
-    printf("generating mesh ... ");
 
   if (mesh->Nelements * mesh->Nvgeo * cubN > std::numeric_limits<int>::max()) {
     if (platform->comm.mpiRank == 0) printf("FATAL ERROR: Local element count too large!");
@@ -156,7 +156,8 @@ mesh_t *createMesh(MPI_Comm comm,
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
   // build mass + inverse mass matrix
   for(dlong e = 0; e < mesh->Nelements; ++e)
@@ -213,7 +214,8 @@ mesh_t* duplicateMesh(MPI_Comm comm,
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
   // build mass + inverse mass matrix
   for(dlong e = 0; e < mesh->Nelements; ++e)
@@ -294,6 +296,9 @@ mesh_t *createMeshV(
 {
   mesh_t *mesh = new mesh_t();
 
+  if (platform->comm.mpiRank == 0)
+    printf("generating v-mesh ...\n");
+
   // shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
   mesh->cht = 0;
@@ -338,7 +343,8 @@ mesh_t *createMeshV(
 
   meshVOccaSetup3D(mesh, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
   mesh->computeInvLMM();
 

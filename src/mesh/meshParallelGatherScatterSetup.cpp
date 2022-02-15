@@ -30,11 +30,13 @@
 
 #include "mesh.h"
 #include "platform.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,
                                     hlong* globalIds,
                                     MPI_Comm &comm,
+                                    oogs_mode gsMode,
                                     int verbose)
 {
   
@@ -42,6 +44,8 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
+  if(platform->comm.mpiRank == 0)
+    std::cout << "meshParallelGatherScatterSetup N=" << mesh->N << "\n";
   mesh->ogs = ogsSetup(N, globalIds, comm, verbose, platform->device.occaDevice());
 
   //use the gs to find what nodes are local to this rank
@@ -100,7 +104,9 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
     else
       mesh->localGatherElementList[localCount++] = e;
   }
-  //printf("local = %d, global = %d\n", localCount, globalCount);
+
+  free(minRank);
+  free(maxRank);
 
   mesh->NglobalGatherElements = globalCount;
   mesh->NlocalGatherElements = localCount;
@@ -113,5 +119,47 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
     mesh->o_localGatherElementList =
       platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
   
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
+  { // sanity check
+    int err = 0;
+    dlong gNelements = mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
+    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
+ 
+    occa::memory o_tmp = platform->device.malloc(mesh->Nlocal ,  sizeof(dfloat));
+    platform->linAlg->fillKernel(mesh->Nlocal, 1.0, o_tmp);
+ 
+    ogsGatherScatter(o_tmp, ogsDfloat, ogsAdd, mesh->ogs);
+ 
+    platform->linAlg->axmyKernel(mesh->Nlocal, 1.0, mesh->ogs->o_invDegree, o_tmp);
+    dfloat* tmp = (dfloat*) calloc(mesh->Nlocal, sizeof(dfloat));
+    o_tmp.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
+    dfloat sum1 = 0;
+    for(int i = 0; i < mesh->Nlocal; i++) sum1 += tmp[i];
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+    sum1 = abs(sum1 - sum2) / sum2;
+    if(sum1 > 1e-15) {
+      if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
+      fflush(stdout);
+      err++;
+    }
+    o_tmp.free();
+ 
+    int Nfine;
+    platform->options.getArgs("POLYNOMIAL DEGREE", Nfine);
+    if(mesh->N == Nfine) {
+      mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
+      double* vmult = (double*) nek::ptr("vmult");
+      sum1 = 0;
+      for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
+      MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+      if(sum1 > 1e-15) {
+        if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
+        fflush(stdout);
+        err++;
+      }
+    }
+ 
+    if(err) ABORT(1);
+    free(tmp);
+  }
 }
