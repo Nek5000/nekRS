@@ -6,6 +6,7 @@
 #include "udf.hpp"
 
 #include "ci.inc"
+#include <vector>
 
 static dfloat P_U0;
 static dfloat P_V0;

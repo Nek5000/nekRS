@@ -1,6 +1,7 @@
 #include <math.h>
 #include <limits>
 #include <vector>
+#include <numeric>
 
 static int ciMode = 0;
 
@@ -95,6 +96,67 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
+}
+
+void surfaceArea(nrs_t* nrs, int BID, dfloat& SA)
+{
+  auto* mesh = nrs->meshV;
+
+  SA = 0.0;
+
+  for(int elem = 0; elem < mesh->Nelements; ++elem){
+    for(int face = 0; face < mesh->Nfaces; ++face){
+      for(int fp = 0; fp < mesh->Nfp; ++fp){
+        const auto base = mesh->Nsgeo * (mesh->Nfaces * mesh->Nfp * elem + mesh->Nfp * face + fp);
+        /* volume index of face node */
+        const auto n = mesh->faceNodes[face * mesh->Nfp + fp];
+        const auto WsJ = mesh->sgeo[base + WSJID];
+        if(mesh->EToB[elem * mesh->Nfaces + face] == BID){
+            SA += WsJ;
+        }
+      }
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &SA, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+}
+
+void ciTestAvgBoundary(nrs_t* nrs)
+{
+  const int rank = platform->comm.mpiRank;
+  auto * mesh = nrs->meshV;
+  const int BID = 1;
+  const auto testTol = 50. * std::numeric_limits<dfloat>::epsilon();
+
+  constexpr int N = 5;
+
+  dfloat SA = 0.0;
+
+  surfaceArea(nrs, BID, SA);
+
+  // surface area of unit sphere
+  const auto SAref = 4. * M_PI;
+  if(std::abs((SA - SAref)/SAref) > 0.02){
+    if(rank == 0){
+      std::cout << "ciTestAvgBoundary: surface area of unit sphere is " << SAref << " instead of " << SA << std::endl;
+    }
+    FAIL;
+  }
+
+  occa::memory o_fld = platform->device.malloc(N * nrs->fieldOffset * sizeof(dfloat));
+  platform->linAlg->fill(N*nrs->fieldOffset, SA, o_fld);
+
+  std::array<dfloat, N> results;
+  mesh->avgBoundaryValue(BID, N, nrs->fieldOffset, o_fld, results.data());
+
+  for(auto&& v : results){
+    if(std::abs(v - SA) > testTol){
+      if(rank == 0){
+        std::cout << "ciTestAvgBoundary: FAILED" << std::endl;
+      }
+      FAIL;
+    }
+  }
 }
 
 dfloat sum(dfloat const * const array, const int size, MPI_Comm comm)
@@ -205,7 +267,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     }
   }
   if (!nrs->lastStep) return;
- 
+
+  ciTestAvgBoundary(nrs);
 
   ciTestLinAlg(1);
   ciTestLinAlg(BLOCKSIZE / 16);

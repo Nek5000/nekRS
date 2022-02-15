@@ -140,6 +140,8 @@
           count[f + p_Nfaces * e] = (EToB[f + p_Nfaces * e] == BID) ? 1.0 : 0.0;
         }
       }
+      
+      @barrier("local");
     }
   }
 }
