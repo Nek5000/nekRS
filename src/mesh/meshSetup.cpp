@@ -244,6 +244,7 @@ mesh_t *createMeshMG(mesh_t* _mesh,
   meshSurfaceGeometricFactorsHex3D(mesh);
 
   meshGlobalIds(mesh);
+  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
 
   mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
   mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
