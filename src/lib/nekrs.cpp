@@ -229,9 +229,9 @@ double dt(int tstep)
 
     // limit dt to control introduced error
     if(tstep > 1) nrs->dt[0] = std::min(nrs->dt[0], 1.25*dtOld);
-
-    double maxDt = std::numeric_limits<double>::max();
-    platform->options.getArgs("MAX DT", maxDt);
+    double maxDt = 0;
+    if(platform->options.getArgs("MAX DT", maxDt));
+      nrs->dt[0] = std::min(nrs->dt[0], maxDt);
   }
   
   if(nrs->dt[0] < 1e-10 || std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0])) {
