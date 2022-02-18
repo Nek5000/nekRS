@@ -1446,7 +1446,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("VARIABLE DT", "TRUE");
       options.setArgs("TARGET CFL", "0.5");
       const double bigNumber = std::numeric_limits<double>::max();
-      options.setArgs("MAX DT", to_string_f(bigNumber));
       std::vector<std::string> entries = serializeString(dtString, '+');
       for(std::string entry : entries)
       {
@@ -1486,7 +1485,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         double maxDt = 0.0;
         options.getArgs("DT", initialDt);
         options.getArgs("MAX DT", maxDt);
-        if(initialDt > maxDt)
+        if(maxDt > 0 && initialDt > maxDt)
         {
           std::ostringstream error;
           error << "Error: initial dt " << initialDt << " is larger than max dt " << maxDt << "\n";
