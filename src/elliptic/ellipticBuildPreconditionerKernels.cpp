@@ -37,11 +37,6 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
   std::string prefix = "Hex3D";
   std::string kernelName;
 
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0) printf("loading elliptic preconditioner kernels ... ");
-  fflush(stdout);
-
   const std::string orderSuffix = std::string("_") + std::to_string(mesh->N);
 
   {
@@ -90,9 +85,4 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
     elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
     elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
   }
-
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
-  fflush(stdout);
-
 }

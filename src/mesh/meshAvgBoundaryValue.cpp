@@ -1,32 +1,56 @@
 #include <mesh.h>
 #include "platform.hpp"
 
-dfloat mesh_t::avgBoundaryValue(int BID, occa::memory fld)
+static dfloat *sum;
+static dfloat *sumFace;
+static occa::memory o_sumFace;
+static occa::memory h_sumFace;
+
+dfloat mesh_t::avgBoundaryValue(int BID, occa::memory o_fld)
 {
+  dfloat avg = 0.0;
+  avgBoundaryValue(BID, 1, fieldOffset, o_fld, &avg);
+  return avg;
+}
 
-  if (!o_sum.isInitialized()) {
-    o_sum = platform->device.malloc(Nfaces * Nelements * sizeof(dfloat));
-    sum = (dfloat *)calloc(Nfaces * Nelements, sizeof(dfloat));
+void mesh_t::avgBoundaryValue(int BID, int Nfields, int offsetFld, occa::memory o_fld, dfloat *avgs)
+{
+  const auto offset = Nfaces * Nelements;
+  const auto Nbytes = (Nfields + 1) * offset * sizeof(dfloat);
+
+  if (o_sumFace.size() < Nbytes) {
+    if (o_sumFace.size())
+      o_sumFace.free();
+    if (h_sumFace.size())
+      h_sumFace.free();
+
+    // pinned scratch buffer
+    {
+      h_sumFace = platform->device.mallocHost(Nbytes);
+      sumFace = (dfloat *)h_sumFace.ptr();
+    }
+
+    o_sumFace = platform->device.malloc(Nbytes);
+
+    if (sum)
+      free(sum);
+    sum = (dfloat *)calloc(Nfields + 1, sizeof(dfloat));
   }
-  if (!o_area.isInitialized()) {
-    o_area = platform->device.malloc(Nfaces * Nelements * sizeof(dfloat));
-    area = (dfloat *)calloc(Nfaces * Nelements, sizeof(dfloat));
+
+  avgBIDValueKernel(Nelements, BID, Nfields, offsetFld, offset, o_sgeo, o_EToB, o_vmapM, o_fld, o_sumFace);
+
+  o_sumFace.copyTo(sumFace, Nbytes);
+
+  for (int j = 0; j < Nfields + 1; ++j) {
+    sum[j] = 0;
+    for (int i = 0; i < offset; ++i) {
+      sum[j] += sumFace[i + j * offset];
+    }
   }
 
-  avgBIDValueKernel(Nelements, BID, o_sgeo, o_EToB, o_vmapM, fld, o_sum, o_area);
+  MPI_Allreduce(MPI_IN_PLACE, sum, Nfields + 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
-  o_sum.copyTo(sum, Nfaces * Nelements * sizeof(dfloat));
-  o_area.copyTo(area, Nfaces * Nelements * sizeof(dfloat));
-
-  dfloat localSum = 0.0;
-  dfloat localArea = 0.0;
-  for (int face = 0; face < Nfaces * Nelements; ++face) {
-    localSum += sum[face];
-    localArea += area[face];
-  }
-
-  dfloat values[2] = {localSum, localArea};
-  MPI_Allreduce(MPI_IN_PLACE, values, 2, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-
-  return values[0] / values[1];
+  const auto invArea = 1 / sum[Nfields];
+  for (int i = 0; i < Nfields; ++i)
+    avgs[i] = sum[i] * invArea;
 }

@@ -445,7 +445,7 @@ void makeq(
                                                    mesh->o_cubProjectT,
                                                    cds->vFieldOffset,
                                                    isOffset,
-                                                   nrs->cubatureOffset,
+                                                   cds->vCubatureOffset,
                                                    cds->o_S,
                                                    cds->o_Urst,
                                                    cds->o_rho,
@@ -578,7 +578,7 @@ void makef(
                                                  mesh->o_cubInterpT,
                                                  mesh->o_cubProjectT,
                                                  nrs->fieldOffset,
-                                                 std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp),
+                                                 nrs->cubatureOffset,
                                                  nrs->o_U,
                                                  nrs->o_Urst,
                                                  platform->o_mempool.slice0);
@@ -1292,8 +1292,6 @@ occa::memory scalarStrongSubCycle(cds_t *cds,
     occa::memory o_U,
     occa::memory o_S) {
   linAlg_t *linAlg = platform->linAlg;
-  dlong offset =
-      std::max(cds->vFieldOffset, cds->meshV->Nelements * cds->meshV->cubNp);
 
   // Solve for Each SubProblem
   for (int torder = (nEXT - 1); torder >= 0; torder--) {
@@ -1359,7 +1357,7 @@ occa::memory scalarStrongSubCycle(cds_t *cds,
                 cds->meshV->o_cubDiffInterpT,
                 cds->meshV->o_cubInterpT,
                 cds->vFieldOffset,
-                offset,
+                cds->vCubatureOffset,
                 rk * cds->fieldOffset[is],
                 cds->mesh[0]->o_invLMM,
                 cds->mesh[0]->o_divU,
@@ -1406,7 +1404,7 @@ occa::memory scalarStrongSubCycle(cds_t *cds,
                 cds->meshV->o_cubDiffInterpT,
                 cds->meshV->o_cubInterpT,
                 cds->vFieldOffset,
-                offset,
+                cds->vCubatureOffset,
                 rk * cds->fieldOffset[is],
                 cds->mesh[0]->o_invLMM,
                 cds->mesh[0]->o_divU,

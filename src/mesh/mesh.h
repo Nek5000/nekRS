@@ -44,7 +44,8 @@
 
 struct mesh_t
 {
-  dfloat avgBoundaryValue(int bId, occa::memory fld);
+  dfloat avgBoundaryValue(int BID, occa::memory o_fld);
+  void avgBoundaryValue(int BID, int Nfields, int offsetFld, occa::memory o_flds, dfloat *avgs);
   void move();
   void update();
   void computeInvLMM();
@@ -224,12 +225,6 @@ struct mesh_t
   occa::kernel velocityDirichletKernel;
 
   occa::kernel avgBIDValueKernel;
-
-  // temporaries for avgBoundaryValue
-  occa::memory o_sum;
-  occa::memory o_area;
-  dfloat *sum;
-  dfloat *area;
 };
 
 mesh_t *createMeshMG(mesh_t* _mesh,
@@ -289,6 +284,7 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,
                                     hlong* globalIds,
                                     MPI_Comm &comm,
+                                    oogs_mode gsMode,
                                     int verbose);
 
 // generic mesh setup

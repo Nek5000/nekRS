@@ -52,9 +52,6 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   mesh_t* mesh = createMeshMG(baseElliptic->mesh, Nc);
   elliptic->mesh = mesh;
 
-  int verbose = elliptic->options.compareArgs("VERBOSE","TRUE") ? 1:0;
-  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, verbose);
-
   { // setup an unmasked gs handle
     ogs_t *ogs = NULL;
     ellipticOgs(mesh,

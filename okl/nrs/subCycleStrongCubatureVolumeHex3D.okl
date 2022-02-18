@@ -58,7 +58,6 @@
         @shared dfloat s_Vd1[p_Nq][p_cubNq];
         @shared dfloat s_Wd1[p_Nq][p_cubNq];
 
-        @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
         @exclusive dfloat r_U2[p_cubNq], r_V2[p_cubNq], r_W2[p_cubNq];
         @exclusive dfloat r_Ud[p_cubNq], r_Vd[p_cubNq], r_Wd[p_cubNq];
 
@@ -87,21 +86,6 @@
 
 #pragma unroll p_cubNq
                 for(int k = 0; k < p_cubNq; ++k) {
-                    dfloat Ue = 0.0;
-                    dfloat Ve = 0.0;
-                    dfloat We = 0.0;
-                    const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-
-#pragma unroll p_nEXT
-                    for(int s = 0; s < p_nEXT; ++s) {
-                        const int s_offset = s * p_NVfields * cubatureOffset;
-                        Ue += r_c[s] * conv[id + 0 * cubatureOffset + s_offset];
-                        Ve += r_c[s] * conv[id + 1 * cubatureOffset + s_offset];
-                        We += r_c[s] * conv[id + 2 * cubatureOffset + s_offset];
-                    }
-                    r_U[k] = Ue;
-                    r_V[k] = Ve;
-                    r_W[k] = We;
                     r_Ud[k] = 0;
                     r_Vd[k] = 0;
                     r_Wd[k] = 0;
@@ -219,9 +203,18 @@
                         Wdt += Dkn * r_Wd[n];
                     }
 
-                    const dfloat Uhat = r_U[k];
-                    const dfloat Vhat = r_V[k];
-                    const dfloat What = r_W[k];
+                    dfloat Uhat = 0.0;
+                    dfloat Vhat = 0.0;
+                    dfloat What = 0.0;
+                    const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+
+#pragma unroll p_nEXT
+                    for(int s = 0; s < p_nEXT; ++s) {
+                        const int s_offset = s * p_NVfields * cubatureOffset;
+                        Uhat += r_c[s] * conv[id + 0 * cubatureOffset + s_offset];
+                        Vhat += r_c[s] * conv[id + 1 * cubatureOffset + s_offset];
+                        What += r_c[s] * conv[id + 2 * cubatureOffset + s_offset];
+                    }
 
                     // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
                     r_U2[k] = Uhat * Udr + Vhat * Uds + What * Udt;

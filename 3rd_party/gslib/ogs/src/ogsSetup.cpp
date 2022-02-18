@@ -66,6 +66,48 @@ int compareLocalId(const void *a, const void *b){
   return 0;
 }
 
+void setupRowBlocks(ogs_t *ogs, occa::device &device) 
+{
+  dlong blockSum=0;
+  ogs->NrowBlocks=0;
+  if (ogs->NlocalGather) ogs->NrowBlocks++;
+  for (dlong i=0;i<ogs->NlocalGather;i++) {
+    dlong rowSize = ogs->localGatherOffsets[i+1]-ogs->localGatherOffsets[i];
+
+    if (rowSize > ogs::gatherNodesPerBlock) {
+      //this row is pathalogically big. We can't currently run this
+      std::cout << "Multiplicity of global node id: " << i << "in ogsSetup is too large.";
+      exit(1);
+    }
+
+    if (blockSum+rowSize > ogs::gatherNodesPerBlock) { //adding this row will exceed the nnz per block
+      ogs->NrowBlocks++; //count the previous block
+      blockSum=rowSize; //start a new row block
+    } else {
+      blockSum+=rowSize; //add this row to the block
+    }
+  }
+
+  dlong* blockRowStarts  = (dlong*) calloc(ogs->NrowBlocks+1,sizeof(dlong));
+
+  blockSum=0;
+  ogs->NrowBlocks=0;
+  if (ogs->NlocalGather) ogs->NrowBlocks++;
+  for (dlong i=0;i<ogs->NlocalGather;i++) {
+    dlong rowSize = ogs->localGatherOffsets[i+1]-ogs->localGatherOffsets[i];
+
+    if (blockSum+rowSize > ogs::gatherNodesPerBlock) { //adding this row will exceed the nnz per block
+      blockRowStarts[ogs->NrowBlocks++] = i; //mark the previous block
+      blockSum=rowSize; //start a new row block
+    } else {
+      blockSum+=rowSize; //add this row to the block
+    }
+  }
+  blockRowStarts[ogs->NrowBlocks] = ogs->NlocalGather;
+  ogs->o_blockRowStarts = device.malloc((ogs->NrowBlocks+1)*sizeof(dlong), blockRowStarts);
+  free(blockRowStarts);
+}
+
 ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
                 int verbose, occa::device device){
 
@@ -348,6 +390,8 @@ ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
 
   if(ogs->N)
     ogs->o_invDegree.copyFrom(ogs->invDegree);
+
+  setupRowBlocks(ogs, device);
 
   return ogs;
 }
