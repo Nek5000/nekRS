@@ -226,16 +226,16 @@ double dt(int tstep)
     }
     const double dtOld = nrs->dt[0];
     timeStepper::adjustDt(nrs, tstep);
-    // limit relative change to control introduced error
-    if(tstep > 1) nrs->dt[0] = (nrs->dt[0] < 1.25*dtOld) ? nrs->dt[0] : 1.25*dtOld;
+
+    // limit dt to control introduced error
+    if(tstep > 1) nrs->dt[0] = std::min(nrs->dt[0], 1.25*dtOld);
+
+    double maxDt = std::numeric_limits<double>::max();
+    platform->options.getArgs("MAX DT", maxDt);
   }
   
-  double maxDt = std::numeric_limits<double>::max();
-  platform->options.getArgs("MAX DT", maxDt);
-  nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
-
   if(nrs->dt[0] < 1e-10 || std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0])) {
-    if(platform->comm.mpiRank == 0) std::cout << "Invalid time step size!\n";
+    if(platform->comm.mpiRank == 0) printf("Invalid time step size %.2e\n", nrs->dt[0]);
     ABORT(EXIT_FAILURE);
   }
 
