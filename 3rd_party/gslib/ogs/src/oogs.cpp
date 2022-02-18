@@ -173,7 +173,7 @@ void occaGatherScatterLocal(const dlong NlocalGather,
                             const char* op,
                             occa::memory& o_v)
 {
-#if 0
+#if 1
     occaGatherScatterMany(NlocalGather, Nvectors, stride, o_gstart,
                           o_gids, type, op, o_v);
 #else
