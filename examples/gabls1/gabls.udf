@@ -400,7 +400,8 @@ void UDF_Setup(nrs_t *nrs)
   platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
   platform->options.setArgs("RUNTIME STATISTICS FREQUENCY", "5000");
 
-  if(platform->options.getArgs("MAX DT", maxDt0)) {
+  platform->options.getArgs("MAX DT", maxDt0);
+  if (maxDt0 > 0) {
     const double maxDt = 0.25*maxDt0;
     if(platform->comm.mpiRank == 0) printf("\n" "reseting MAX DT = %g\n", maxDt); 
     platform->options.setArgs("MAX DT", to_string_f(maxDt));
