@@ -60,9 +60,9 @@ ilstrength = 0.01
 z1 = 1.0
 z0 = 0.1
 
-number_elements_x = 32 
-number_elements_y = 32 
-number_elements_z = 32 
+number_elements_x = 16 
+number_elements_y = 16 
+number_elements_z = 16 
 xlen  = 4.0
 ylen  = 4.0
 zlen  = 4.0
