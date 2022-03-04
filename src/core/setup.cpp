@@ -151,7 +151,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.getArgs("MESH DIMENSION", nrs->dim);
   platform->options.getArgs("ELEMENT TYPE", nrs->elementType);
   if(platform->device.mode() == "Serial")
-    platform->options.setArgs("ENABLE OVERLAP", "FALSE");
+    platform->options.setArgs("ENABLE GS OVERLAP", "FALSE");
 
   nrs->flow = 1;
   if(platform->options.compareArgs("VELOCITY", "FALSE")) nrs->flow = 0;

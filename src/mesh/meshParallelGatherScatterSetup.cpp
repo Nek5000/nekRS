@@ -60,7 +60,7 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
   ogsGatherScatter(maxRank, ogsInt, ogsMax, mesh->ogs); //maxRank[n] contains the largest rank taking part in the gather of node n
 
   int overlap = 0;
-  platform->options.compareArgs("ENABLE OVERLAP", "TRUE"); overlap = 1;
+  platform->options.compareArgs("ENABLE GS OVERLAP", "TRUE"); overlap = 1;
 
   // count elements that contribute to global C0 gather-scatter
   dlong globalCount = 0;

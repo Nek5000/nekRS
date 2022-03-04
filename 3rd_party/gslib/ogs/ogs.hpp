@@ -290,6 +290,7 @@ oogs_t *setup(ogs_t *ogs, int nVec, int stride, const char *type, std::function<
 oogs_t *setup(int N, long long int *ids, const int k, const int stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);
 void gpu_mpi(int val);
+void overlap(int val);
 int gpu_mpi();
 void destroy(oogs_t *h);
 

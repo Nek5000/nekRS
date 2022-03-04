@@ -18,6 +18,7 @@ static const unsigned transpose = 0;
 static const unsigned recv = 0^transpose, send = 1^transpose;
 
 static int OGS_MPI_SUPPORT = 0;
+static int OGS_OVERLAP = 1;
 static int compiled = 0;
 
 typedef enum { mode_plain, mode_vec, mode_many,
@@ -226,6 +227,11 @@ void oogs::gpu_mpi(int val)
   OGS_MPI_SUPPORT = val;
 }
 
+void oogs::overlap(int val)
+{
+  OGS_OVERLAP = val;
+}
+
 int oogs::gpu_mpi()
 {
   return OGS_MPI_SUPPORT;
@@ -234,6 +240,8 @@ int oogs::gpu_mpi()
 void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, bool verbose)
 {
   ogs::initKernels(comm, device, verbose);
+  if(!OGS_OVERLAP) ogs::dataStream = ogs::defaultStream;
+
   occa::properties props = ogs::kernelInfo;
   if(verbose){
     props["verbose"] = true;
