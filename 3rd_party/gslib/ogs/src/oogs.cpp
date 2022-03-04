@@ -240,8 +240,6 @@ int oogs::gpu_mpi()
 void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, bool verbose)
 {
   ogs::initKernels(comm, device, verbose);
-  if(!OGS_OVERLAP) ogs::dataStream = ogs::defaultStream;
-
   occa::properties props = ogs::kernelInfo;
   if(verbose){
     props["verbose"] = true;
@@ -640,6 +638,7 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
                              k, stride, type, op, o_v);
 
   if (ogs->NhaloGather) {
+    if(!OGS_OVERLAP) ogs->device.finish();
     ogs->device.setStream(ogs::dataStream);
 
     struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
