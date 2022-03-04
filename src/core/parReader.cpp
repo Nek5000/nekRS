@@ -1425,13 +1425,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
   }
 
-  // mesh file
-  {
-    std::string meshFile;
-    if(par->extract("mesh", "file", meshFile)){
-      options.setArgs("MESH FILE", meshFile);
-    }
-  }
 
   std::string dtString;
   if (par->extract("general", "dt", dtString)){
@@ -1601,97 +1594,11 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   par->extract("general", "cubaturepolynomialorder", cubN);
   options.setArgs("CUBATURE POLYNOMIAL DEGREE", std::to_string(cubN));
 
-
   {
     parseRegularization(rank, options, par, "general");
   }
 
-  {
-    parseRegularization(rank, options, par, "velocity");
-  }
-
-  // MESH
-  std::string meshPartitioner;
-  if (par->extract("mesh", "partitioner", meshPartitioner)){
-    if(meshPartitioner != "rcb" && meshPartitioner != "rcb+rsb"){
-      std::ostringstream error;
-      error << "Could not parse mesh::partitioner = " << meshPartitioner;
-      append_error(error.str());
-    }
-    options.setArgs("MESH PARTITIONER", meshPartitioner);
-  }
-
-  std::string meshConTol;
-  if (par->extract("mesh", "connectivitytol", meshConTol)){
-    options.setArgs("MESH CONNECTIVITY TOL", meshConTol);
-  }
-
-  std::string meshSolver;
-  if (par->extract("mesh", "solver", meshSolver)) {
-    options.setArgs("MESH KRYLOV SOLVER", "PCG");
-    options.setArgs("MESH BASIS", "NODAL");
-    options.setArgs("MESH PRECONDITIONER", "JACOBI");
-    options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
-    options.setArgs("MOVING MESH", "TRUE");
-    if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
-    else if(meshSolver == "elasticity") {
-      options.setArgs("MESH COEFF FIELD", "TRUE");
-      options.setArgs("MESH SOLVER", "ELASTICITY");
-      options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
-      options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
-      options.setArgs("MESH RESIDUAL PROJECTION START", "5");
-    }
-    else if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
-    else {
-      std::ostringstream error;
-      error << "Could not parse mesh::solver = " << meshSolver;
-      append_error(error.str());
-    }
-  }
-
-  {
-    const std::vector<std::string> validValues = {
-      {"yes"},
-      {"true"},
-      {"1"},
-      {"no"},
-      {"false"},
-      {"0"},
-    };
-    std::string checkpointOutputMesh;
-    if(par->extract("mesh", "writetofieldfile", checkpointOutputMesh)){
-
-      checkValidity(rank, validValues, checkpointOutputMesh);
-      if(checkForTrue(checkpointOutputMesh)){
-        options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
-      } else {
-        options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
-      }
-    }
-  }
-
-  {
-    std::string keyValue;
-    if (par->extract("mesh", "maxiterations", keyValue))
-      options.setArgs("MESH MAXIMUM ITERATIONS", keyValue);
-  }
-
-  parseInitialGuess(rank, options, par, "mesh");
-
-  parseSolverTolerance(rank, options, par, "mesh");
-
-  int bcInPar = 1;
-  std::string m_bcMap;
-  if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
-    std::vector<std::string> sList;
-    sList = serializeString(m_bcMap,',');
-    bcMap::setup(sList, "mesh");
-    bcInPar = 1;
-  } else {
-    bcInPar = 0;
-  }
-
-
+  // PROBLEMTYPE
   bool stressFormulation;
   if (par->extract("problemtype", "stressformulation", stressFormulation)){
     if (stressFormulation){
@@ -1713,6 +1620,94 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     if (eqn == "stokes"){
       options.setArgs("ADVECTION", "FALSE");
     }
+  }
+
+  int bcInPar = 1;
+
+  // MESH
+  if (par->sections.count("mesh")) {
+    std::string meshFile;
+    if(par->extract("mesh", "file", meshFile)){
+      options.setArgs("MESH FILE", meshFile);
+    }
+
+    std::string m_bcMap;
+    if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(m_bcMap,',');
+      bcMap::setup(sList, "mesh");
+    } else {
+      bcInPar = 0;
+    }
+ 
+    std::string meshPartitioner;
+    if (par->extract("mesh", "partitioner", meshPartitioner)){
+      if(meshPartitioner != "rcb" && meshPartitioner != "rcb+rsb"){
+        std::ostringstream error;
+        error << "Could not parse mesh::partitioner = " << meshPartitioner;
+        append_error(error.str());
+      }
+      options.setArgs("MESH PARTITIONER", meshPartitioner);
+    }
+ 
+    std::string meshConTol;
+    if (par->extract("mesh", "connectivitytol", meshConTol)){
+      options.setArgs("MESH CONNECTIVITY TOL", meshConTol);
+    }
+ 
+    std::string meshSolver;
+    if (par->extract("mesh", "solver", meshSolver)) {
+      options.setArgs("MESH KRYLOV SOLVER", "PCG");
+      options.setArgs("MESH BASIS", "NODAL");
+      options.setArgs("MESH PRECONDITIONER", "JACOBI");
+      options.setArgs("MESH DISCRETIZATION", "CONTINUOUS");
+      options.setArgs("MOVING MESH", "TRUE");
+      if(meshSolver == "user") options.setArgs("MESH SOLVER", "USER");
+      else if(meshSolver == "elasticity") {
+        options.setArgs("MESH COEFF FIELD", "TRUE");
+        options.setArgs("MESH SOLVER", "ELASTICITY");
+        options.setArgs("MESH INITIAL GUESS", "PROJECTION-ACONJ");
+        options.setArgs("MESH RESIDUAL PROJECTION VECTORS", "5");
+        options.setArgs("MESH RESIDUAL PROJECTION START", "5");
+      }
+      else if(meshSolver == "none") options.setArgs("MOVING MESH", "FALSE"); 
+      else {
+        std::ostringstream error;
+        error << "Could not parse mesh::solver = " << meshSolver;
+        append_error(error.str());
+      }
+    }
+
+    {
+      const std::vector<std::string> validValues = {
+        {"yes"},
+        {"true"},
+        {"1"},
+        {"no"},
+        {"false"},
+        {"0"},
+      };
+      std::string checkpointOutputMesh;
+      if(par->extract("mesh", "writetofieldfile", checkpointOutputMesh)){
+ 
+        checkValidity(rank, validValues, checkpointOutputMesh);
+        if(checkForTrue(checkpointOutputMesh)){
+          options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+        } else {
+          options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
+        }
+      }
+    }
+ 
+    {
+      std::string keyValue;
+      if (par->extract("mesh", "maxiterations", keyValue))
+        options.setArgs("MESH MAXIMUM ITERATIONS", keyValue);
+    }
+
+   parseInitialGuess(rank, options, par, "mesh");
+   parseSolverTolerance(rank, options, par, "mesh");
+
   }
 
   if (par->sections.count("velocity")) {
@@ -1869,7 +1864,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       std::vector<std::string> sList;
       sList = serializeString(v_bcMap, ',');
       bcMap::setup(sList, "velocity");
-      bcInPar = 1;
     } else {
       bcInPar = 0;
     }
@@ -1888,6 +1882,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
         viscosity = fabs(1 / viscosity);
       options.setArgs("VISCOSITY", to_string_f(viscosity));
     }
+
+    parseRegularization(rank, options, par, "velocity");
   } else {
     options.setArgs("VELOCITY", "FALSE");
   }
