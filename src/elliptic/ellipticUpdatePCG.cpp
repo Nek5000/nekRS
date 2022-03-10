@@ -65,5 +65,8 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
     //platform->timer.toc("dotp");
 #endif
 
+  platform->flopCounter->add(elliptic->name + " ellipticUpdatePC",
+                             elliptic->Nfields * static_cast<double>(mesh->Nlocal) * 6 + mesh->Nlocal);
+
   return rdotr1;
 }

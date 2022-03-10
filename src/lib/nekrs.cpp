@@ -80,13 +80,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
 
   setOccaVars();
 
-  {
-    int overlap = 1;
-    options.compareArgs("ENABLE GS OVERLAP", "FALSE"); overlap = 0;
-    oogs::overlap(overlap);
-  }
-
-
   if (rank == 0) {
     std::string installDir;
     installDir.assign(getenv("NEKRS_HOME"));
@@ -155,6 +148,12 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
 
   if(udf.setup0) udf.setup0(comm, options);
 
+  {
+    int overlap = 1;
+    if(options.compareArgs("GS OVERLAP", "FALSE")) overlap = 0;
+    oogs::overlap(overlap);
+  }
+
   compileKernels();
 
   if(buildOnly) {
@@ -188,6 +187,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   fflush(stdout);
 
   platform->timer.set("setup", setupTime);
+  platform->flopCounter->clear();
 }
 
 void runStep(double time, double dt, int tstep)
@@ -364,6 +364,18 @@ int runTimeStatFreq()
 void printRuntimeStatistics(int step)
 {
   platform->timer.printRunStat(step);
+#if 0
+  const auto flopCount = platform->flopCounter->count();
+  const auto tSolve = platform->timer.query("solve", "DEVICE:MAX");
+  std::cout.setf(std::ios::scientific);
+  int outPrecisionSave = std::cout.precision();
+  std::cout.precision(5);
+  if (platform->comm.mpiRank == 0) {
+    std::cout << "GFlops/s: " << flopCount / tSolve / 1e9 << std::endl;
+  }
+  std::cout.unsetf(std::ios::scientific);
+  std::cout.precision(outPrecisionSave);
+#endif
 }
 
 void processUpdFile()

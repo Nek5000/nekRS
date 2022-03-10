@@ -46,6 +46,8 @@ void SolutionProjection::updateProjectionSpace()
   
   if(numVecsProjection <= 0) return;
 
+  double flopCount = 0.0;
+
   platform->linAlg->weightedInnerProdMulti(
     Nlocal,
     numVecsProjection,
@@ -67,6 +69,10 @@ void SolutionProjection::updateProjectionSpace()
   const dfloat one = 1.0;
   multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_xx);
   if(type == ProjectionType::CLASSIC) multiScaledAddwOffsetKernel(Nlocal, numVecsProjection, Nfields * (numVecsProjection - 1) * fieldOffset, fieldOffset, o_alpha, one, o_bb);
+
+  flopCount += 3 * static_cast<double>(Nlocal) * Nfields * (numVecsProjection - 1);
+  flopCount *= (type == ProjectionType::CLASSIC) ? 2 : 1;
+
   for(int k = 0; k < numVecsProjection - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
   norm_new = sqrt(norm_new);
@@ -76,6 +82,8 @@ void SolutionProjection::updateProjectionSpace()
     const dfloat scale = 1.0 / norm_new;
     platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
     if(type == ProjectionType::CLASSIC) platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
+    flopCount += static_cast<double>(Nlocal) * Nfields;
+    flopCount *= (type == ProjectionType::CLASSIC) ? 2 : 1;
   } else {
     if(verbose && platform->comm.mpiRank == 0) {
       std::cout << "Detected rank deficiency: " << test << ".\n";
@@ -83,11 +91,15 @@ void SolutionProjection::updateProjectionSpace()
     }
     numVecsProjection--;
   }
+
+  platform->flopCounter->add(solverName + " SolutionProjection::updateProjectionSpace", flopCount);
 }
 
 void SolutionProjection::computePreProjection(occa::memory& o_r)
 {
-  
+
+  dfloat flopCount = 0.0;
+
   dfloat one = 1.0;
   dfloat zero = 0.0;
   dfloat mone = -1.0;
@@ -107,20 +119,25 @@ void SolutionProjection::computePreProjection(occa::memory& o_r)
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
+
+  flopCount += Nfields * (1 + 2 * (numVecsProjection - 1)) * static_cast<double>(Nlocal);
   if(type == ProjectionType::CLASSIC){
     accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_bb, o_rtmp);
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_rtmp, one, o_r);
+
+    flopCount += Nfields * (1 + 2 * (numVecsProjection - 1)) * static_cast<double>(Nlocal); // accumulation
   }
   else if (type == ProjectionType::ACONJ)
   {
     matvec(o_bb, 0, o_xbar, 0);
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, mone, o_bb, one, o_r);
   }
+
+  platform->flopCounter->add(solverName + " SolutionProjection::computePreProjection", flopCount);
 }
 
 void SolutionProjection::computePostProjection(occa::memory & o_x)
 {
-  
   const dfloat one = 1.0;
   const dfloat zero = 0.0;
 
@@ -163,6 +180,8 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
       verbose(elliptic.options.compareArgs("VERBOSE", "TRUE")), o_invDegree(elliptic.mesh->ogs->o_invDegree),
       o_rtmp(elliptic.o_z), o_Ap(elliptic.o_Ap)
 {
+  solverName = elliptic.name;
+
   platform_t* platform = platform_t::getInstance();
 
   o_alpha = platform->device.malloc(maxNumVecsProjection, sizeof(dfloat));

@@ -1241,7 +1241,7 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("PARALMOND SMOOTH COARSEST", "FALSE");
   options.setArgs("ENABLE FLOATCOMMHALF GS SUPPORT", "FALSE");
   options.setArgs("MOVING MESH", "FALSE");
-  options.setArgs("ENABLE GS OVERLAP", "TRUE");
+  options.setArgs("GS OVERLAP", "TRUE");
 
   options.setArgs("VARIABLE DT", "FALSE");
 

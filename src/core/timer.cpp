@@ -307,10 +307,15 @@ void timer_t::printRunStat(int step)
   const double tSolve        = query("solve", "DEVICE:MAX");
   const double tMinSolveStep = query("minSolveStep", "HOST:MAX");
   const double tMaxSolveStep = query("maxSolveStep", "HOST:MAX");
+  const double flops = platform->flopCounter->get(platform->comm.mpiComm);
+  bool printFlops = !platform->options.compareArgs("PRESSURE PRECONDITIONER", "SEMFEM");
+
   if(tSolve > 0 && rank == 0) {
-    std::cout <<   "  total solve           " << tSolve << "s\n";
-    std::cout <<   "    step min            " << tMinSolveStep << "s\n";
-    std::cout <<   "    step max            " << tMaxSolveStep << "s\n";
+    std::cout << "  total solve           " << tSolve << "s\n";
+    std::cout << "    step min            " << tMinSolveStep << "s\n";
+    std::cout << "    step max            " << tMaxSolveStep << "s\n";
+    if (flops > 0 && printFlops)
+    std::cout << "    FLOPS/s             " << flops/tSolve << "\n";
   }
 
   printStatEntry("    makef               ", "makef", "DEVICE:MAX");
@@ -333,6 +338,7 @@ void timer_t::printRunStat(int step)
   printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
   printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
 
+  printStatEntry("    meshUpdate          ", "meshUpdate", "DEVICE:MAX");
   printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
 
   printStatEntry("    gsMPI               ", gsTime);

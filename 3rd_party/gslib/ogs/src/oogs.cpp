@@ -271,6 +271,26 @@ void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, 
   }
   compiled++;
 }
+
+void reallocBuffers(int unit_size, oogs_t *gs)
+{
+  ogs_t *ogs = gs->ogs;
+  struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+  const void* execdata = hgs->r.data;
+  const struct pw_data *pwd = (pw_data*) execdata;
+
+  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
+    if(gs->o_bufSend.size()) gs->o_bufSend.free();
+    if(gs->h_buffSend.size()) gs->h_buffSend.free();
+    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
+  }
+  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
+    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
+    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
+    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
+  }
+}
+
 oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::function<void()> callback, oogs_mode gsMode)
 {
   oogs_t *gs = new oogs_t[1];
@@ -384,7 +404,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         gs->modeExchange = modeExchange;
 
         if(gs->modeExchange == OOGS_EX_NBC && gs->mode == OOGS_DEVICEMPI)
-  	  continue; // not yet supported by some MPI implementations
+  	    continue; // not yet supported by some MPI implementations
 
         // warum-up
         gs->earlyPrepostRecv = 0;
@@ -401,8 +421,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) continue;
           }
 
-	  //printf("testing mode %d exchange %d earlyPrepost %d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
-	  double elapsedTest[Ntests];
+	      //printf("testing mode %d exchange %d earlyPrepost %d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+	      double elapsedTest[Ntests];
           for(int test=0;test<Ntests;++test) {
             device.finish();
             MPI_Barrier(gs->comm);
@@ -415,8 +435,9 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             elapsedTest[test] = MPI_Wtime() - tStart;
           }
           MPI_Allreduce(MPI_IN_PLACE, elapsedTest, Ntests, MPI_DOUBLE, MPI_MIN, gs->comm);
-	  const double elapsed = elapsedTest[0];
-          if(gs->rank == 0) printf("%gs ", elapsed);
+	      const double elapsed = elapsedTest[0];
+          if(gs->rank == 0) printf("%.2es ", elapsed);
+          fflush(stdout);
           if(elapsed < elapsedMin){
             elapsedMin = elapsed;
 	    fastestMode = gs->mode;
@@ -443,9 +464,43 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 #ifdef DISABLE_OOGS
   gs->mode = OOGS_DEFAULT;
 #endif
-  MPI_Barrier(gs->comm);
-  if(gs->rank == 0) printf("used config: %d.%d.%d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
 
+  double elapsedMinMPI = std::numeric_limits<double>::max();
+  {
+    int earlyPrepostRecv = gs->earlyPrepostRecv;
+    gs->earlyPrepostRecv = 0;
+    const int Ntests = 10;
+    size_t Nbytes;
+    if (!strcmp(type, "float"))
+      Nbytes = sizeof(float);
+    else if (!strcmp(type, "double"))
+      Nbytes = sizeof(double);
+    else if (!strcmp(type, "int"))
+      Nbytes = sizeof(int);
+    else if (!strcmp(type, "long long int"))
+      Nbytes = sizeof(long long int);
+
+    const int unit_size = nVec*Nbytes;
+    reallocBuffers(unit_size, gs);
+
+    device.finish();
+    for(int test=0;test<Ntests;++test) {
+      MPI_Barrier(gs->comm);
+      const double tStart = MPI_Wtime();
+      if(gs->modeExchange == OOGS_EX_NBC)
+        neighborAllToAll(unit_size, gs);
+      else
+        pairwiseExchange(unit_size, gs);
+      MPI_Barrier(gs->comm);
+      elapsedMinMPI = std::min(elapsedMinMPI, MPI_Wtime() - tStart);
+    }
+    gs->earlyPrepostRecv = earlyPrepostRecv;
+  }
+
+  MPI_Barrier(gs->comm);
+  if(gs->rank == 0) printf("used config: %d.%d.%d (MPI: %.2es)\n", 
+                           gs->mode, gs->modeExchange, gs->earlyPrepostRecv, elapsedMinMPI);
+  fflush(stdout);
   return gs;
 }
 
@@ -523,25 +578,6 @@ static void unpackBuf(oogs_t *gs,
   } else {
     printf("oogs: unsupported operation or datatype!\n");
     exit(1);
-  }
-}
-
-void reallocBuffers(int unit_size, oogs_t *gs)
-{
-  ogs_t *ogs = gs->ogs;
-  struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
-  const void* execdata = hgs->r.data;
-  const struct pw_data *pwd = (pw_data*) execdata;
-
-  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
-    if(gs->o_bufSend.size()) gs->o_bufSend.free();
-    if(gs->h_buffSend.size()) gs->h_buffSend.free();
-    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
-  }
-  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
-    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
-    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
-    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
   }
 }
 

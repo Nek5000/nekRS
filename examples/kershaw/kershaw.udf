@@ -16,6 +16,10 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = P_EPS;
   }
+
+  int gsOverlap = 1;
+  platform->par->extract("casedata", "gsoverlap", gsOverlap);
+  if(!gsOverlap) platform->options.setArgs("GS OVERLAP", "FALSE");
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -34,25 +38,38 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   platform->linAlg->fillKernel(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
   platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
-  for(std::string solverName : {"userSpecified", "jacobi"}){
+  if(platform->comm.mpiRank == 0) 
+    std::cout << "\nrunning benchmarks\n"; 
 
-    if(solverName == "jacobi"){
+  for(std::string benchmark : {"BPS5", "BP5"}){
+
+    MPI_Barrier(platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      std::cout << "\n" << benchmark << "\n"; 
+
+    int Nrep = 0;
+    if(benchmark == "BP5"){
+      Nrep = 50;
       nrs->pSolver->options.setArgs("PRECONDITIONER", "JACOBI");
       nrs->pSolver->options.setArgs("KRYLOV SOLVER", "PCG");
+      nrs->pSolver->options.setArgs("MAXIMUM ITERATIONS", "500");
+      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
       ellipticPreconditionerSetup(nrs->pSolver, nrs->pSolver->ogs);
     }
+    if(benchmark == "BPS5"){
+      Nrep = 50;
+      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-8));
+      nrs->pSolver->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+    }
 
-    // warm-up
-    ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
     platform->timer.reset();
+    platform->flopCounter->clear();
 
     std::vector<double> eTime; 
     std::vector<double> precoTime; 
     std::vector<double> smootherTime; 
     std::vector<double> crsTime;
 
-    const int Nrep = 50;
-    if(platform->comm.mpiRank == 0) printf("solving "); 
     for (int i = 0; i < Nrep; i++) { 
       platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);
       platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
@@ -86,16 +103,24 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     const double solveTimeMax = *std::max_element(eTime.begin(), eTime.end()); 
     const double solveTimeAvg = std::accumulate(eTime.begin(), eTime.end(), 0.0) / Nrep; 
     const double throughput = (double)Ntotal/solveTime;
+    const double flopsPerSecond = (platform->flopCounter->get(platform->comm.mpiComm)/Nrep)/solveTime;
 
     if(platform->comm.mpiRank == 0) {
       printf("repetitions: %d\n", Nrep);
+      printf("solve time: min: %gs  avg: %gs  max: %gs\n", solveTime, solveTimeAvg, solveTimeMax);
+      printf("  preconditioner %gs\n", precoTime.at(minEntry));
+      if(smootherTime.at(minEntry) > 0) printf("    smoother %gs\n", smootherTime.at(minEntry));
+      if(crsTime.at(minEntry) > 0) printf("    coarse grid %gs\n", crsTime.at(minEntry));
       printf("iterations: %d\n", nrs->pSolver->Niter);
-      printf("min solve time: %g s (avg: %g s, max: %g s)\n", solveTime, solveTimeAvg, solveTimeMax);
-      printf("  preconditioner %g s\n", precoTime.at(minEntry));
-      if(smootherTime.at(minEntry) > 0) printf("    smoother %g s\n", smootherTime.at(minEntry));
-      if(crsTime.at(minEntry) > 0) printf("    coarse grid %g s\n", crsTime.at(minEntry));
-      printf("aggregated throughput: %g DOF/s\n", throughput);
-      printf("aggregated throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
+      printf("throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
+      if(benchmark == "BPS5") {
+        printf("throughput: %g DOF/s\n", throughput);
+        int nRestart = 0;
+        nrs->pSolver->options.getArgs("PGMRES RESTART", nRestart);
+        if(nrs->pSolver->Niter == nRestart)
+          printf("WARNING: maximum iterations reached!");  
+      }
+      printf("FLOPS/s: %g \n", flopsPerSecond);
     }
   }
   EXIT_AND_FINALIZE(0);

@@ -5,6 +5,7 @@
 #include "linAlg.hpp"
 #include "omp.h"
 #include <iostream>
+#include "flopCounter.hpp"
 
 namespace{
 
@@ -91,6 +92,8 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
   timer(_comm, device.occaDevice(), 0),
   kernels(*this)
 {
+
+  flopCounter = std::make_unique<flopCounter_t>();
 
   kernelInfo["defines/" "p_NVec"] = 3;
   kernelInfo["defines/" "p_blockSize"] = BLOCKSIZE;

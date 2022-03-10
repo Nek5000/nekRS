@@ -29,6 +29,7 @@
 
 void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
 {
+  dfloat flopCount = 0.0;
   mesh_t *mesh = elliptic->mesh;
   setupAide options = elliptic->options;
 
@@ -44,8 +45,13 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
                                              elliptic->o_lambda,
                                              o_invDiagA);
 
+  flopCount += 12 * mesh->Nq + 12;
+  flopCount += (elliptic->poisson) ? 0.0 : 2.0;
+  flopCount *= static_cast<double>(mesh->Nlocal) * elliptic->Nfields;
+
   oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
 
   const pfloat one = 1.0;
   elliptic->adyManyPfloatKernel(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, o_invDiagA);
+  platform->flopCounter->add(elliptic->name + " ellipticUpdateJacobi", flopCount);
 }

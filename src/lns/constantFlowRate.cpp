@@ -80,6 +80,8 @@ bool checkIfRecomputeDirection(nrs_t *nrs, int tstep) {
 
 bool apply(nrs_t *nrs, int tstep, dfloat time) {
 
+  double flops = 0.0;
+
   constexpr int ndim = 3;
   mesh_t *mesh = nrs->meshV;
   dfloat *flowDirection = nrs->flowDirection;
@@ -152,6 +154,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
           mesh->o_z,
           o_centroid,
           o_counts);
+      flops += 3 * mesh->Nlocal;
 
       dfloat NfacesContrib = platform->linAlg->sum(
           mesh->Nelements * mesh->Nfaces, o_counts, platform->comm.mpiComm);
@@ -187,6 +190,8 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
           mesh->o_z,
           o_centroid,
           o_counts);
+
+      flops += 3 * mesh->Nlocal;
 
       NfacesContrib = platform->linAlg->sum(
           mesh->Nelements * mesh->Nfaces, o_counts, platform->comm.mpiComm);
@@ -299,6 +304,8 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
       nrs->o_U,
       o_currentFlowRate);
 
+  flops += 5 * mesh->Nlocal;
+
   // scale by mass matrix
   platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_currentFlowRate);
 
@@ -315,6 +322,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
         nrs->flowDirection[2],
         nrs->o_Uc,
         o_baseFlowRate);
+    flops += 5 * mesh->Nlocal;
 
     // scale by mass matrix
     platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_baseFlowRate);
@@ -343,6 +351,8 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
       nrs->o_U);
   platform->linAlg->axpby(mesh->Nlocal, constantFlowScale, nrs->o_Pc, 1.0, nrs->o_P);
 
+  platform->flopCounter->add("ConstantFlowRate::apply", flops);
+
   return recomputeBaseFlowRate;
 }
 
@@ -355,6 +365,8 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
   constexpr int ndim = 3;
   mesh_t *mesh = nrs->meshV;
   dfloat *flowDirection = nrs->flowDirection;
+
+  double flops = 0.0;
 
   platform->timer.tic("pressureSolve", 1);
   {
@@ -370,6 +382,11 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
         nrs->fieldOffset,
         nrs->o_ellipticCoeff,
         o_gradPCoeff);
+
+    double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
+    flopsGrad *= static_cast<double>(mesh->Nelements);
+    flops += flopsGrad;
+
     nrs->computeFieldDotNormalKernel(mesh->Nlocal,
         nrs->fieldOffset,
         flowDirection[0],
@@ -377,6 +394,8 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
         flowDirection[2],
         o_gradPCoeff,
         o_Prhs);
+
+    flops += 5 * mesh->Nlocal;
 
     // enforce Dirichlet BCs
     platform->linAlg->fill(nrs->fieldOffset,
@@ -455,6 +474,10 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
         nrs->o_Pc,
         o_RhsVel // <- rhs = -\grad{P_c}
     );
+
+    double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
+    flopsGrad *= static_cast<double>(mesh->Nelements);
+    flops += flopsGrad;
 
     // rhs = -\grad{P_c} + BF n_i
     platform->linAlg->scaleMany(
@@ -575,6 +598,8 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     }
   }
   platform->timer.toc("velocitySolve");
+
+  platform->flopCounter->add("ConstantFlowRate::compute", flops);
 }
 
 } // namespace ConstantFlowRate
