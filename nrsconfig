@@ -18,7 +18,7 @@ set -e -a
 
 : ${OCCA_ENABLE_CUDA:=1}
 : ${OCCA_ENABLE_HIP:=1}
-: ${OCCA_ENABLE_OPENCL:=1}
+: ${OCCA_ENABLE_OPENCL:=0}
 : ${AMGX_ENABLED:=0}
 
 if uname -a | grep 'ppc64'; then
