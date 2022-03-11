@@ -20,12 +20,6 @@ endif()
 
 set(NEK5000_SOURCE_DIR ${nek5000_content_SOURCE_DIR})
 
-if (USE_PARRSB)
-  install(FILES ${NEK5000_SOURCE_DIR}/core/PARALLEL.dprocmap DESTINATION ${NEK5000_SOURCE_DIR}/core RENAME "PARALLEL")
-else()
-  install(FILES ${NEK5000_SOURCE_DIR}/core/PARALLEL.default DESTINATION ${NEK5000_SOURCE_DIR}/core RENAME "PARALLEL")
-endif()
-
 # blasLapack
 # ==========
 
