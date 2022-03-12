@@ -238,7 +238,7 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 
 #define USE_OOGS
 
-enum oogs_mode { OOGS_AUTO, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI };
+enum oogs_mode { OOGS_LOCAL, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI, OOGS_AUTO };
 enum oogs_modeExchange { OOGS_EX_PW, OOGS_EX_NBC };
 
 typedef struct {

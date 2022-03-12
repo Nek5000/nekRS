@@ -337,7 +337,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   std::list<oogs_mode> oogs_mode_list;
-  oogs_mode_list.push_back(OOGS_HOSTMPI);
+  oogs_mode_list.push_back(OOGS_LOCAL);
   std::list<oogs_modeExchange> oogs_modeExchange_list;
   oogs_modeExchange_list.push_back(OOGS_EX_PW);
 
@@ -382,6 +382,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 
 
     oogs_mode_list.push_back(OOGS_DEFAULT);
+    oogs_mode_list.push_back(OOGS_HOSTMPI);
     if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
       oogs_mode_list.push_back(OOGS_DEVICEMPI);;
     }
@@ -389,7 +390,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   if(gsMode == OOGS_AUTO) {
-    if(gs->rank == 0) printf("timing oogs modes: ");
+    if(gs->rank == 0) printf("timing gs modes: ");
     const int Ntests = 10;
     double elapsedMin = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
@@ -406,24 +407,24 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         gs->modeExchange = modeExchange;
 
         if(gs->modeExchange == OOGS_EX_NBC && gs->mode == OOGS_DEVICEMPI)
-  	    continue; // not yet supported by some MPI implementations
-
-        // warum-up
-        gs->earlyPrepostRecv = 0;
-        oogs::start (o_q, nVec, stride, type, ogsAdd, gs);
-        if(callback) callback();
-        oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
+  	      continue; // not yet supported by some MPI implementations
 
         int nPass = 1;
         if(gs->modeExchange == OOGS_EX_PW && ogs->NhaloGather > 0) nPass = 2;
         for(int pass = 0; pass < nPass; pass++) {
           gs->earlyPrepostRecv = pass;
 
-	      if(gs->mode == OOGS_DEFAULT) {
-            if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) continue;
+	      if(gs->mode == OOGS_DEFAULT || gs->mode == OOGS_LOCAL) {
+            if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) 
+              continue;
           }
+       
+#if 0 
+          if(gs->rank == 0)
+	        printf("\ntesting mode %d exchange %d earlyPrepost %d\n", 
+                   gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+#endif
 
-	      //printf("testing mode %d exchange %d earlyPrepost %d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
 	      double elapsedTest[Ntests];
           for(int test=0;test<Ntests;++test) {
             device.finish();
@@ -435,14 +436,25 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
 
             device.finish();
+            MPI_Barrier(gs->comm);
             elapsedTest[test] = MPI_Wtime() - tStart;
           }
+
           MPI_Allreduce(MPI_IN_PLACE, elapsedTest, Ntests, MPI_DOUBLE, MPI_MIN, gs->comm);
-	      const double elapsed = elapsedTest[0];
+#if 0 
+          if(gs->rank == 0) {
+            printf("\n");
+	        for(int i=0;i<Ntests;i++) 
+              printf("%.2e ", elapsedTest[i]);
+            printf("\n");
+          } 
+#endif
+          double elapsed = std::numeric_limits<double>::max(); 
+          for(int i=0;i<Ntests;i++) elapsed = std::min(elapsed, elapsedTest[i]); 
           if(gs->rank == 0) printf("%.2es ", elapsed);
           fflush(stdout);
           if(elapsed < elapsedMin){
-            elapsedMin = elapsed;
+            if(gs->mode != OOGS_LOCAL) elapsedMin = elapsed;
 	        fastestMode = gs->mode;
             fastestModeExchange = gs->modeExchange;
             fastestPrepostRecv = gs->earlyPrepostRecv;
@@ -502,10 +514,10 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 
   MPI_Barrier(gs->comm);
   if(gs->rank == 0) { 
+    printf("used config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
     if(ogs->NhaloGather > 0)
-      printf("used config: %d.%d.%d (MPI: %.2es)\n", 
-             gs->mode, gs->modeExchange, gs->earlyPrepostRecv, elapsedMinMPI);
-    else
+      printf("(MPI: %.2es)\n",  elapsedMinMPI);
+    else  
       printf("\n"); 
   }
   fflush(stdout);
@@ -620,7 +632,7 @@ void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char 
     return;
   }
 
-  if (ogs->NhaloGather) {
+  if (ogs->NhaloGather && gs->mode != OOGS_LOCAL) {
     reallocBuffers(Nbytes*k, gs);
 
     packBuf(gs, ogs->NhaloGather, k, stride, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds,
@@ -681,7 +693,7 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
                              ogs->o_localGatherOffsets, ogs->o_localGatherIds,
                              k, stride, type, op, o_v);
 
-  if (ogs->NhaloGather) {
+  if (ogs->NhaloGather && gs->mode != OOGS_LOCAL) {
     if(!OGS_OVERLAP) ogs->device.finish();
     ogs->device.setStream(ogs::dataStream);
 
