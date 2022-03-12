@@ -336,55 +336,57 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
       device.buildKernel(fileName + "oogs-half" + extension, "unpackBuf_halfAdd", nativeProperties);
   }
 
-  if(ogs->NhaloGather == 0) return gs;
-
-  gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
-  int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
-  int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
-  convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
-  gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
-  gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
-  free(scatterOffsets);
-  free(scatterIds);
-
-  gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
-  int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
-  int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
-  convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
-  gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
-  gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
-  free(gatherOffsets);
-  free(gatherIds);
-
-  const int reorder = 0;
-  int* src = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-  int* dst = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  for(int i = 0; i < pwd->comm[recv].n; ++i) {
-    src[i] = pwd->comm[recv].p[i];
-  }
-  for(int i = 0; i < pwd->comm[send].n; ++i) {
-    dst[i] = pwd->comm[send].p[i];
-  }
-  MPI_Dist_graph_create_adjacent(gs->comm,
-                                 pwd->comm[recv].n, src, MPI_UNWEIGHTED,
-                                 pwd->comm[send].n, dst, MPI_UNWEIGHTED,
-                                 MPI_INFO_NULL, reorder, &gs->nbc.comm);
-  free(src);
-  free(dst);
-  gs->nbc.sendcounts = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  gs->nbc.senddispls = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  gs->nbc.recvcounts = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-  gs->nbc.recvdispls = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-
   std::list<oogs_mode> oogs_mode_list;
-  oogs_mode_list.push_back(OOGS_DEFAULT);
   oogs_mode_list.push_back(OOGS_HOSTMPI);
-  if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
-    oogs_mode_list.push_back(OOGS_DEVICEMPI);;
-  }
   std::list<oogs_modeExchange> oogs_modeExchange_list;
   oogs_modeExchange_list.push_back(OOGS_EX_PW);
-  oogs_modeExchange_list.push_back(OOGS_EX_NBC);
+
+  if(ogs->NhaloGather > 0) {
+    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
+    int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
+    int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
+    convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
+    gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
+    gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
+    free(scatterOffsets);
+    free(scatterIds);
+ 
+    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
+    int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
+    int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
+    convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
+    gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
+    gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
+    free(gatherOffsets);
+    free(gatherIds);
+ 
+    const int reorder = 0;
+    int* src = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+    int* dst = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    for(int i = 0; i < pwd->comm[recv].n; ++i) {
+      src[i] = pwd->comm[recv].p[i];
+    }
+    for(int i = 0; i < pwd->comm[send].n; ++i) {
+      dst[i] = pwd->comm[send].p[i];
+    }
+    MPI_Dist_graph_create_adjacent(gs->comm,
+                                   pwd->comm[recv].n, src, MPI_UNWEIGHTED,
+                                   pwd->comm[send].n, dst, MPI_UNWEIGHTED,
+                                   MPI_INFO_NULL, reorder, &gs->nbc.comm);
+    free(src);
+    free(dst);
+    gs->nbc.sendcounts = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    gs->nbc.senddispls = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    gs->nbc.recvcounts = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+    gs->nbc.recvdispls = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+
+
+    oogs_mode_list.push_back(OOGS_DEFAULT);
+    if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
+      oogs_mode_list.push_back(OOGS_DEVICEMPI);;
+    }
+    oogs_modeExchange_list.push_back(OOGS_EX_NBC);
+  }
 
   if(gsMode == OOGS_AUTO) {
     if(gs->rank == 0) printf("timing oogs modes: ");
@@ -413,11 +415,11 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
 
         int nPass = 1;
-        if(gs->modeExchange == OOGS_EX_PW) nPass = 2;
+        if(gs->modeExchange == OOGS_EX_PW && ogs->NhaloGather > 0) nPass = 2;
         for(int pass = 0; pass < nPass; pass++) {
           gs->earlyPrepostRecv = pass;
 
-	  if(gs->mode == OOGS_DEFAULT) {
+	      if(gs->mode == OOGS_DEFAULT) {
             if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) continue;
           }
 
@@ -432,6 +434,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             if(callback) callback();
             oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
 
+            device.finish();
             elapsedTest[test] = MPI_Wtime() - tStart;
           }
           MPI_Allreduce(MPI_IN_PLACE, elapsedTest, Ntests, MPI_DOUBLE, MPI_MIN, gs->comm);
@@ -440,7 +443,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
           fflush(stdout);
           if(elapsed < elapsedMin){
             elapsedMin = elapsed;
-	    fastestMode = gs->mode;
+	        fastestMode = gs->mode;
             fastestModeExchange = gs->modeExchange;
             fastestPrepostRecv = gs->earlyPrepostRecv;
           }
@@ -498,8 +501,13 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   MPI_Barrier(gs->comm);
-  if(gs->rank == 0) printf("used config: %d.%d.%d (MPI: %.2es)\n", 
-                           gs->mode, gs->modeExchange, gs->earlyPrepostRecv, elapsedMinMPI);
+  if(gs->rank == 0) { 
+    if(ogs->NhaloGather > 0)
+      printf("used config: %d.%d.%d (MPI: %.2es)\n", 
+             gs->mode, gs->modeExchange, gs->earlyPrepostRecv, elapsedMinMPI);
+    else
+      printf("\n"); 
+  }
   fflush(stdout);
   return gs;
 }
