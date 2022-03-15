@@ -318,6 +318,7 @@ void timer_t::printRunStat(int step)
     std::cout << "    FLOPS/s             " << flops/tSolve << "\n";
   }
 
+  printStatEntry("    meshUpdate          ", "meshUpdate", "DEVICE:MAX");
   printStatEntry("    makef               ", "makef", "DEVICE:MAX");
   printStatEntry("      udfUEqnSource     ", "udfUEqnSource", "DEVICE:MAX");
 
@@ -326,6 +327,7 @@ void timer_t::printRunStat(int step)
 
   printStatEntry("    udfProperties       ", "udfProperties", "DEVICE:MAX");
  
+
   printStatEntry("    velocitySolve       ", "velocitySolve", "DEVICE:MAX");
   printStatEntry("      projection        ", "velocity proj", "DEVICE:MAX");
 
@@ -338,7 +340,6 @@ void timer_t::printRunStat(int step)
   printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX");
   printStatEntry("      projection        ", "scalar proj", "DEVICE:MAX");
 
-  printStatEntry("    meshUpdate          ", "meshUpdate", "DEVICE:MAX");
   printStatEntry("    meshSolve           ", "meshSolve", "DEVICE:MAX");
 
   printStatEntry("    gsMPI               ", gsTime);
