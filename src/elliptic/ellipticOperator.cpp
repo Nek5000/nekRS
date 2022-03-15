@@ -84,7 +84,24 @@ void ellipticAx(elliptic_t* elliptic,
                   o_lambda,
                   o_q,
                   o_Aq);
+  double flopCount = 0.0;
 
+  if (elliptic->stressForm) {
+    // already factors in Nfields
+    flopCount = 36 * mesh->Np * mesh->Nq + 123 * mesh->Np;
+    flopCount *= static_cast<double>(NelementsList);
+  }
+  else {
+    flopCount = 12 * mesh->Np * mesh->Nq + 15 * mesh->Np;
+    if (!elliptic->poisson) {
+      flopCount += 5 * mesh->Np;
+    }
+    flopCount *= elliptic->Nfields * static_cast<double>(NelementsList);
+  }
+
+  platform->flopCounter->add(elliptic->name + " Ax, N=" + std::to_string(mesh->N) + ", " +
+                                 std::string(precision),
+                             flopCount);
 }
 
 void ellipticOperator(elliptic_t* elliptic,

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 21.2.0)
+project(NekRS LANGUAGES C CXX Fortran VERSION 22.0.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
@@ -196,14 +196,14 @@ set(SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/utils.cpp
-    src/core/utils/inipp.cpp
-    src/core/utils/mysort.cpp
-    src/core/utils/parallelSort.cpp
-    src/core/utils/tinyexpr.c
+    src/utils/inipp.cpp
+    src/utils/mysort.cpp
+    src/utils/parallelSort.cpp
+    src/utils/tinyexpr.c
     src/core/numberActiveFields.cpp
     src/core/setupAide.cpp
     src/core/printHeader.cpp
-    src/core/cfl.cpp
+    src/navierStokes/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
     src/core/bcMap.cpp
@@ -211,14 +211,16 @@ set(SRC
     src/core/setup.cpp
     src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
-    src/lns/tombo.cpp
-    src/lns/constantFlowRate.cpp
+    src/timeStepper/subCycling.cpp
+    src/navierStokes/tombo.cpp
+    src/navierStokes/constantFlowRate.cpp
     src/cds/cds.cpp
     src/cds/registerCdsKernels.cpp
-    src/core/parReader.cpp
+    src/io/parReader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/flopCounter.cpp
     src/core/kernelRequestManager.cpp
     src/core/device.cpp
     src/linAlg/linAlg.cpp
@@ -263,14 +265,14 @@ target_include_directories(nekrs-lib
   PUBLIC 
   ${CMAKE_CURRENT_BINARY_DIR}
   src/core
-  src/core/utils
+  src/utils
   src/lib
   src/io
   src/udf
   src/regularization
   src/linAlg
   src/timeStepper
-  src/lns
+  src/navierStokes
   src/cds
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}

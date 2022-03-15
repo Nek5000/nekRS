@@ -58,6 +58,8 @@ private:
   dlong timestep;
   bool verbose;
 
+  std::string solverName;
+
   occa::memory o_xbar;
   occa::memory o_xx;
   occa::memory o_bb;

@@ -14,6 +14,7 @@ oudf = "ethier.oudf"
 udf = "ethier.udf"
 
 [MESH]
+boundaryTypeMap = inlet 
 solver = user
 file = "ethier.re2"
 

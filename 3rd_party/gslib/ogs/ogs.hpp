@@ -238,7 +238,7 @@ void *ogsHostMallocPinned(occa::device &device, size_t size, void *source, occa:
 
 #define USE_OOGS
 
-enum oogs_mode { OOGS_AUTO, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI };
+enum oogs_mode { OOGS_LOCAL, OOGS_DEFAULT, OOGS_HOSTMPI, OOGS_DEVICEMPI, OOGS_AUTO };
 enum oogs_modeExchange { OOGS_EX_PW, OOGS_EX_NBC };
 
 typedef struct {
@@ -290,6 +290,7 @@ oogs_t *setup(ogs_t *ogs, int nVec, int stride, const char *type, std::function<
 oogs_t *setup(int N, long long int *ids, const int k, const int stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);
 void gpu_mpi(int val);
+void overlap(int val);
 int gpu_mpi();
 void destroy(oogs_t *h);
 

@@ -195,6 +195,9 @@ c-----------------------------------------------------------------------
 
       common /rdump/ ntdump
 
+      common /ivrtx/ vertex ((2**ldim)*lelt)
+      integer*8 vertex
+
       etimes = dnekclock_sync()
 
       call read_re2_hdr(ifbswap, .true.)
@@ -263,7 +266,15 @@ c-----------------------------------------------------------------------
       call setvar          ! Initialize most variables
 
       igeom = 2
-      call setup_topo      ! Setup domain topology  
+      call setup_topo      ! Setup domain topology
+
+      if(.not. ifflow) then
+        call rone(vmult,lx1*ly1*lz1*nelv)
+        ifield = 1
+        call dssum(vmult,lx1,ly1,lz1)
+        call invcol1(vmult,lx1*ly1*lz1*nelv)
+      endif
+
       call genwz           ! Compute GLL points, weights, etc.
 
       if(nio.eq.0) write(6,*) 'call usrdat'
@@ -285,8 +296,6 @@ c-----------------------------------------------------------------------
       call setlog(.false.)  ! Initalize logical flags
 
       call bcmask  ! Set BC masks for Dirichlet boundaries.
-
-c      call findSYMOrient
 
       ifield = 1
 
@@ -708,7 +717,9 @@ c
       call izero(boundaryIDt, size(boundaryIDt))
 
       call izero(map, size(map))
- 
+
+      if(.not.ifflow .and. .not.ifheat) return 
+
       if(ifflow) then
         do iel = 1,nelv
         do ifc = 1,2*ndim
@@ -727,7 +738,7 @@ c
            if(cb.eq.'SHL'.or.cb.eq.'shl') map(8) = 1
         enddo
         enddo
-      else
+      elseif(ifheat) then
         do iel = 1,nelv
         do ifc = 1,2*ndim
            cb = cbc(ifc,iel,1)

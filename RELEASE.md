@@ -1,4 +1,4 @@
-# Release v21.2
+# Release v22.0
 
 ## What is new? 
 
@@ -8,12 +8,14 @@
 * Fix Dirichlet handling in Jacobi smoother
 * Fix minor performance regression in coarse grid solve
 * Support unaligned symmetry boundary condition
-* Support unaligned traction boundary condition
+* Support (unaligned) traction boundary condition
+* Better performance on AMD GPUs
+* FLOP counters
 
 ## Good to know
 
-* [par] `sym` boundary condition is remapped to the correct aligned symmetry boundary condition
-* Shared SYM/SYM boundary conditions are not supported
+* Shared SYM/SYM edges within the same element are not supported
+* OpenCL support is disabled by default 
 
 ## Breaking Changes
 
@@ -26,6 +28,12 @@
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 * [201](https://github.com/Nek5000/nekRS/issues/201)
 * [729](https://github.com/Nek5000/Nek5000/issues/729)
+
+
+## Thanks to our Contributors
+
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.
 
 # Release v21.1
 

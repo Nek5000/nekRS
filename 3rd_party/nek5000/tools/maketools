@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# maximum number of elements
+#MAXNEL=150000
+
+# binary path
+#bin_nek_tools=`cd ../bin && pwd`
+
+# Fortran compiler
+#FC="gfortran"
+#FFLAGS=""
+
+# C compiler
+#CC="gcc"
+#CFLAGS=""
+
+# linking flags
+#LDFLAGS="-L$HOME/lib -lm"
+
+source ./maketools.inc

@@ -18,6 +18,7 @@ static const unsigned transpose = 0;
 static const unsigned recv = 0^transpose, send = 1^transpose;
 
 static int OGS_MPI_SUPPORT = 0;
+static int OGS_OVERLAP = 1;
 static int compiled = 0;
 
 typedef enum { mode_plain, mode_vec, mode_many,
@@ -226,6 +227,11 @@ void oogs::gpu_mpi(int val)
   OGS_MPI_SUPPORT = val;
 }
 
+void oogs::overlap(int val)
+{
+  OGS_OVERLAP = val;
+}
+
 int oogs::gpu_mpi()
 {
   return OGS_MPI_SUPPORT;
@@ -265,6 +271,26 @@ void oogs::compile(const occa::device& device, std::string mode, MPI_Comm comm, 
   }
   compiled++;
 }
+
+void reallocBuffers(int unit_size, oogs_t *gs)
+{
+  ogs_t *ogs = gs->ogs;
+  struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
+  const void* execdata = hgs->r.data;
+  const struct pw_data *pwd = (pw_data*) execdata;
+
+  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
+    if(gs->o_bufSend.size()) gs->o_bufSend.free();
+    if(gs->h_buffSend.size()) gs->h_buffSend.free();
+    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
+  }
+  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
+    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
+    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
+    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
+  }
+}
+
 oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::function<void()> callback, oogs_mode gsMode)
 {
   oogs_t *gs = new oogs_t[1];
@@ -310,58 +336,61 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
       device.buildKernel(fileName + "oogs-half" + extension, "unpackBuf_halfAdd", nativeProperties);
   }
 
-  if(ogs->NhaloGather == 0) return gs;
-
-  gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
-  int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
-  int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
-  convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
-  gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
-  gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
-  free(scatterOffsets);
-  free(scatterIds);
-
-  gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
-  int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
-  int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
-  convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
-  gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
-  gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
-  free(gatherOffsets);
-  free(gatherIds);
-
-  const int reorder = 0;
-  int* src = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-  int* dst = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  for(int i = 0; i < pwd->comm[recv].n; ++i) {
-    src[i] = pwd->comm[recv].p[i];
-  }
-  for(int i = 0; i < pwd->comm[send].n; ++i) {
-    dst[i] = pwd->comm[send].p[i];
-  }
-  MPI_Dist_graph_create_adjacent(gs->comm,
-                                 pwd->comm[recv].n, src, MPI_UNWEIGHTED,
-                                 pwd->comm[send].n, dst, MPI_UNWEIGHTED,
-                                 MPI_INFO_NULL, reorder, &gs->nbc.comm);
-  free(src);
-  free(dst);
-  gs->nbc.sendcounts = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  gs->nbc.senddispls = (int*) calloc(pwd->comm[send].n, sizeof(int));
-  gs->nbc.recvcounts = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-  gs->nbc.recvdispls = (int*) calloc(pwd->comm[recv].n, sizeof(int));
-
   std::list<oogs_mode> oogs_mode_list;
-  oogs_mode_list.push_back(OOGS_DEFAULT);
-  oogs_mode_list.push_back(OOGS_HOSTMPI);
-  if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
-    oogs_mode_list.push_back(OOGS_DEVICEMPI);;
-  }
+  oogs_mode_list.push_back(OOGS_LOCAL);
   std::list<oogs_modeExchange> oogs_modeExchange_list;
   oogs_modeExchange_list.push_back(OOGS_EX_PW);
-  oogs_modeExchange_list.push_back(OOGS_EX_NBC);
+
+  if(ogs->NhaloGather > 0) {
+    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
+    int *scatterOffsets = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
+    int *scatterIds = (int*) calloc(pwd->comm[send].total,sizeof(int));
+    convertPwMap(pwd->map[send], scatterOffsets, scatterIds);
+    gs->o_scatterOffsets = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), scatterOffsets);
+    gs->o_scatterIds = ogs->device.malloc(pwd->comm[send].total*sizeof(int), scatterIds);
+    free(scatterOffsets);
+    free(scatterIds);
+ 
+    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
+    int* gatherOffsets  = (int*) calloc(ogs->NhaloGather+1,sizeof(int));
+    int *gatherIds  = (int*) calloc(pwd->comm[recv].total,sizeof(int));
+    convertPwMap(pwd->map[recv], gatherOffsets, gatherIds);
+    gs->o_gatherOffsets  = ogs->device.malloc((ogs->NhaloGather+1)*sizeof(int), gatherOffsets);
+    gs->o_gatherIds  = ogs->device.malloc(pwd->comm[recv].total*sizeof(int), gatherIds);
+    free(gatherOffsets);
+    free(gatherIds);
+ 
+    const int reorder = 0;
+    int* src = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+    int* dst = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    for(int i = 0; i < pwd->comm[recv].n; ++i) {
+      src[i] = pwd->comm[recv].p[i];
+    }
+    for(int i = 0; i < pwd->comm[send].n; ++i) {
+      dst[i] = pwd->comm[send].p[i];
+    }
+    MPI_Dist_graph_create_adjacent(gs->comm,
+                                   pwd->comm[recv].n, src, MPI_UNWEIGHTED,
+                                   pwd->comm[send].n, dst, MPI_UNWEIGHTED,
+                                   MPI_INFO_NULL, reorder, &gs->nbc.comm);
+    free(src);
+    free(dst);
+    gs->nbc.sendcounts = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    gs->nbc.senddispls = (int*) calloc(pwd->comm[send].n, sizeof(int));
+    gs->nbc.recvcounts = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+    gs->nbc.recvdispls = (int*) calloc(pwd->comm[recv].n, sizeof(int));
+
+
+    oogs_mode_list.push_back(OOGS_DEFAULT);
+    oogs_mode_list.push_back(OOGS_HOSTMPI);
+    if(OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
+      oogs_mode_list.push_back(OOGS_DEVICEMPI);;
+    }
+    oogs_modeExchange_list.push_back(OOGS_EX_NBC);
+  }
 
   if(gsMode == OOGS_AUTO) {
-    if(gs->rank == 0) printf("timing oogs modes: ");
+    if(gs->rank == 0) printf("timing gs modes: ");
     const int Ntests = 10;
     double elapsedMin = std::numeric_limits<double>::max();
     oogs_mode fastestMode;
@@ -378,25 +407,25 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         gs->modeExchange = modeExchange;
 
         if(gs->modeExchange == OOGS_EX_NBC && gs->mode == OOGS_DEVICEMPI)
-  	  continue; // not yet supported by some MPI implementations
-
-        // warum-up
-        gs->earlyPrepostRecv = 0;
-        oogs::start (o_q, nVec, stride, type, ogsAdd, gs);
-        if(callback) callback();
-        oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
+  	      continue; // not yet supported by some MPI implementations
 
         int nPass = 1;
-        if(gs->modeExchange == OOGS_EX_PW) nPass = 2;
+        if(gs->modeExchange == OOGS_EX_PW && ogs->NhaloGather > 0) nPass = 2;
         for(int pass = 0; pass < nPass; pass++) {
           gs->earlyPrepostRecv = pass;
 
-	  if(gs->mode == OOGS_DEFAULT) {
-            if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) continue;
+	      if(gs->mode == OOGS_DEFAULT || gs->mode == OOGS_LOCAL) {
+            if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) 
+              continue;
           }
+       
+#if 0 
+          if(gs->rank == 0)
+	        printf("\ntesting mode %d exchange %d earlyPrepost %d\n", 
+                   gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+#endif
 
-	  //printf("testing mode %d exchange %d earlyPrepost %d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
-	  double elapsedTest[Ntests];
+	      double elapsedTest[Ntests];
           for(int test=0;test<Ntests;++test) {
             device.finish();
             MPI_Barrier(gs->comm);
@@ -406,14 +435,27 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             if(callback) callback();
             oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
 
+            device.finish();
+            MPI_Barrier(gs->comm);
             elapsedTest[test] = MPI_Wtime() - tStart;
           }
+
           MPI_Allreduce(MPI_IN_PLACE, elapsedTest, Ntests, MPI_DOUBLE, MPI_MIN, gs->comm);
-	  const double elapsed = elapsedTest[0];
-          if(gs->rank == 0) printf("%gs ", elapsed);
+#if 0 
+          if(gs->rank == 0) {
+            printf("\n");
+	        for(int i=0;i<Ntests;i++) 
+              printf("%.2e ", elapsedTest[i]);
+            printf("\n");
+          } 
+#endif
+          double elapsed = std::numeric_limits<double>::max(); 
+          for(int i=0;i<Ntests;i++) elapsed = std::min(elapsed, elapsedTest[i]); 
+          if(gs->rank == 0) printf("%.2es ", elapsed);
+          fflush(stdout);
           if(elapsed < elapsedMin){
-            elapsedMin = elapsed;
-	    fastestMode = gs->mode;
+            if(gs->mode != OOGS_LOCAL) elapsedMin = elapsed;
+	        fastestMode = gs->mode;
             fastestModeExchange = gs->modeExchange;
             fastestPrepostRecv = gs->earlyPrepostRecv;
           }
@@ -437,9 +479,48 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
 #ifdef DISABLE_OOGS
   gs->mode = OOGS_DEFAULT;
 #endif
-  MPI_Barrier(gs->comm);
-  if(gs->rank == 0) printf("used config: %d.%d.%d\n", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
 
+  double elapsedMinMPI = std::numeric_limits<double>::max();
+  {
+    int earlyPrepostRecv = gs->earlyPrepostRecv;
+    gs->earlyPrepostRecv = 0;
+    const int Ntests = 10;
+    size_t Nbytes;
+    if (!strcmp(type, "float"))
+      Nbytes = sizeof(float);
+    else if (!strcmp(type, "double"))
+      Nbytes = sizeof(double);
+    else if (!strcmp(type, "int"))
+      Nbytes = sizeof(int);
+    else if (!strcmp(type, "long long int"))
+      Nbytes = sizeof(long long int);
+
+    const int unit_size = nVec*Nbytes;
+    reallocBuffers(unit_size, gs);
+
+    device.finish();
+    for(int test=0;test<Ntests;++test) {
+      MPI_Barrier(gs->comm);
+      const double tStart = MPI_Wtime();
+      if(gs->modeExchange == OOGS_EX_NBC)
+        neighborAllToAll(unit_size, gs);
+      else
+        pairwiseExchange(unit_size, gs);
+      MPI_Barrier(gs->comm);
+      elapsedMinMPI = std::min(elapsedMinMPI, MPI_Wtime() - tStart);
+    }
+    gs->earlyPrepostRecv = earlyPrepostRecv;
+  }
+
+  MPI_Barrier(gs->comm);
+  if(gs->rank == 0) { 
+    printf("used config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+    if(ogs->NhaloGather > 0)
+      printf("(MPI: %.2es)\n",  elapsedMinMPI);
+    else  
+      printf("\n"); 
+  }
+  fflush(stdout);
   return gs;
 }
 
@@ -520,25 +601,6 @@ static void unpackBuf(oogs_t *gs,
   }
 }
 
-void reallocBuffers(int unit_size, oogs_t *gs)
-{
-  ogs_t *ogs = gs->ogs;
-  struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
-  const void* execdata = hgs->r.data;
-  const struct pw_data *pwd = (pw_data*) execdata;
-
-  if (gs->o_bufSend.size() < pwd->comm[send].total*unit_size) {
-    if(gs->o_bufSend.size()) gs->o_bufSend.free();
-    if(gs->h_buffSend.size()) gs->h_buffSend.free();
-    gs->bufSend = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[send].total*unit_size, NULL, gs->o_bufSend, gs->h_buffSend);
-  }
-  if (gs->o_bufRecv.size() < pwd->comm[recv].total*unit_size) {
-    if(gs->o_bufRecv.size()) gs->o_bufRecv.free();
-    if(gs->h_buffRecv.size()) gs->h_buffRecv.free();
-    gs->bufRecv = (unsigned char*) ogsHostMallocPinned(ogs->device, pwd->comm[recv].total*unit_size, NULL, gs->o_bufRecv, gs->h_buffRecv);
-  }
-}
-
 void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char *_type, const char *op, oogs_t *gs)
 {
   size_t Nbytes;
@@ -570,7 +632,7 @@ void oogs::start(occa::memory &o_v, const int k, const dlong stride, const char 
     return;
   }
 
-  if (ogs->NhaloGather) {
+  if (ogs->NhaloGather && gs->mode != OOGS_LOCAL) {
     reallocBuffers(Nbytes*k, gs);
 
     packBuf(gs, ogs->NhaloGather, k, stride, ogs->o_haloGatherOffsets, ogs->o_haloGatherIds,
@@ -631,7 +693,8 @@ void oogs::finish(occa::memory &o_v, const int k, const dlong stride, const char
                              ogs->o_localGatherOffsets, ogs->o_localGatherIds,
                              k, stride, type, op, o_v);
 
-  if (ogs->NhaloGather) {
+  if (ogs->NhaloGather && gs->mode != OOGS_LOCAL) {
+    if(!OGS_OVERLAP) ogs->device.finish();
     ogs->device.setStream(ogs::dataStream);
 
     struct gs_data *hgs = (gs_data*) ogs->haloGshSym;

@@ -2,6 +2,7 @@
 #define platform_hpp_
 #include <occa.hpp>
 #include <mpi.h>
+#include "flopCounter.hpp"
 #include "nrssys.hpp"
 #include "timer.hpp"
 #include "inipp.hpp"
@@ -10,8 +11,10 @@
 #include <set>
 #include <map>
 #include <vector>
+#include <memory>
 class setupAide;
 class linAlg_t;
+class flopCounter_t;
 
 class deviceVector_t{
 public:
@@ -116,6 +119,7 @@ public:
   inipp::Ini *par;
   bool serial;
   linAlg_t* linAlg;
+  std::unique_ptr<flopCounter_t> flopCounter;
   memPool_t mempool;
 
   occa::kernel copyDfloatToPfloatKernel;

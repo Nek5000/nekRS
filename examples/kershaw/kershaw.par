@@ -1,11 +1,13 @@
 [GENERAL] 
 #verbose = true
 polynomialOrder = 7
+dealiasing = false
+timeStepper = tombo1
 stopAt = numSteps
 numSteps = 0
 
 [PRESSURE]
-solver = pfgmres+nVector=20
+solver = pfgmres+nVector=30
 maxIterations = 200
 residualTol = 1e-8+relative
 
@@ -48,3 +50,4 @@ viscosity = 1.0
 
 [CASEDATA]
 P_EPS = 0.3
+gsOverlap = 1
