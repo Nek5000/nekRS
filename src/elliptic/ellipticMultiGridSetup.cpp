@@ -277,9 +277,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
   //  for (int n=1;n<mesh->N+1;n++) delete[] meshLevels[n];
   free(meshLevels);
 
-  //report top levels
-  if (platform->comm.mpiRank == 0) { //report the upper multigrid levels
-    printf("--------------------Multigrid Report---------------------\n");
+  if (platform->comm.mpiRank == 0) {
     printf("---------------------------------------------------------\n");
     printf("level|    Type    |                 |     Smoother      |\n");
     printf("     |            |                 |                   |\n");

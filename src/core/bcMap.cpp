@@ -437,8 +437,7 @@ void check(mesh_t* mesh)
     if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) found = 1;
   MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
   if (found) {
-    if (platform->comm.mpiRank == 0) printf("Mesh has unmapped boundary IDs!\n");
-    EXIT_AND_FINALIZE(EXIT_FAILURE);
+    if (platform->comm.mpiRank == 0) printf("WARNING: Mesh has unmapped boundary IDs!\n");
   }
 
 

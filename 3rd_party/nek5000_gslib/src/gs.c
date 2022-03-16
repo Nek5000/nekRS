@@ -1391,9 +1391,8 @@ static uint local_setup(struct gs_data *gsh, const struct array *nz)
 }
 
 static void gs_setup_aux(struct gs_data *gsh, const slong *id, uint n,
-                         int unique, gs_method _method, int verbose)
+                         int unique, gs_method method, int verbose)
 {
-  gs_method method = gs_pairwise; 
   static setup_fun *const remote_setup[] =
     { &auto_setup, &pw_setup, &cr_setup, &allreduce_setup };
 
