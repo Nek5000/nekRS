@@ -513,8 +513,10 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   }
 
   {
-    size_t nBytesExchange = (pwd->comm[send].total + pwd->comm[recv].total)*unit_size;
-    MPI_Allreduce(MPI_IN_PLACE, &nBytesExchange, sizeof(size_t), MPI_BYTE, MPI_SUM, gs->comm);
+    double nBytesExchange = (pwd->comm[send].total + pwd->comm[recv].total)*unit_size;
+    MPI_Allreduce(MPI_IN_PLACE, &nBytesExchange, 1, MPI_DOUBLE, MPI_SUM, gs->comm);
+
+
     int size;
     MPI_Comm_size(gs->comm, &size);
     nBytesExchange /= size; 
