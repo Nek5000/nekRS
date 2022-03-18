@@ -91,7 +91,8 @@ public:
 
   //local patch data
   occa::memory o_invAP, o_patchesIndex, o_invDegreeAP;
-  void* extendedOgs;
+  void* ogsExt;
+  void* ogsExtOverlap;
   void* ogs;
   void build(
     elliptic_t* pSolver);

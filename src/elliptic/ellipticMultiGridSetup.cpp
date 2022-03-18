@@ -81,7 +81,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  elliptic->o_p, elliptic->o_Ap, pfloatString);
                     };
     elliptic->oogs   = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    elliptic->oogsAx = elliptic->oogs;
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     levels[0] = new MGLevel(elliptic, Nmax, options,
                             precon->parAlmond->ktype, platform->comm.mpiComm);
@@ -111,7 +113,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  pfloatString);
                     };
     ellipticC->oogs   = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    ellipticC->oogsAx = ellipticC->oogs; 
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     //add the level manually
     levels[n] = new MGLevel(elliptic,
@@ -152,7 +156,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  pfloatString);
                     };
     ellipticCoarse->oogs   = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    ellipticCoarse->oogsAx = ellipticCoarse->oogs;
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
   } else {
     ellipticCoarse = elliptic;
   }

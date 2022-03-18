@@ -495,7 +495,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     else if (!strcmp(type, "long long int"))
       Nbytes = sizeof(long long int);
 
-    const int unit_size = nVec*Nbytes;
+    const size_t unit_size = nVec*Nbytes;
     reallocBuffers(unit_size, gs);
 
     device.finish();
@@ -512,15 +512,22 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     gs->earlyPrepostRecv = earlyPrepostRecv;
   }
 
-  MPI_Barrier(gs->comm);
-  if(gs->rank == 0) { 
-    printf("used config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
-    if(ogs->NhaloGather > 0)
-      printf("(MPI: %.2es)\n",  elapsedMinMPI);
-    else  
-      printf("\n"); 
+  {
+    size_t nBytesExchange = (pwd->comm[send].total + pwd->comm[recv].total)*unit_size;
+    MPI_Allreduce(MPI_IN_PLACE, &nBytesExchange, sizeof(size_t), MPI_BYTE, MPI_SUM, gs->comm);
+    int size;
+    MPI_Comm_size(gs->comm, &size);
+    nBytesExchange /= size; 
+    if(gs->rank == 0) { 
+      printf("\nused config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+      if(ogs->NhaloGather > 0) {
+        printf("(MPI exchange: %.2es / %.1fGB/s)\n", elapsedMinMPI, nBytesExchange/elapsedMinMPI/1e9);
+      } else {
+        printf("\n"); 
+      }
+    }
+    fflush(stdout);
   }
-  fflush(stdout);
   return gs;
 }
 

@@ -243,7 +243,9 @@ void ellipticSolveSetup(elliptic_t* elliptic)
                                elliptic->o_p, elliptic->o_Ap, dfloatString);
                   };
   elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
-  elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
+  elliptic->oogsAx = elliptic->oogs;
+  if(options.compareArgs("GS OVERLAP", "TRUE")) 
+    elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
 
   long long int pre = platform->device.occaDevice().memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs);
