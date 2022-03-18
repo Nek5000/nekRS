@@ -32,7 +32,8 @@ smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenval
 pMultigridCoarsening = 7,3,1
 initialGuess = previous
 
-[VELOCITY]
+[VELOCITY] # dummy
+preconditioner = none
 density = 1.0
 viscosity = 1.0
 

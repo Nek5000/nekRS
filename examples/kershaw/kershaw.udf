@@ -49,10 +49,10 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
     int Nrep = 0;
     if(benchmark == "BP5"){
-      Nrep = 50;
-      nrs->pSolver->options.setArgs("PRECONDITIONER", "JACOBI");
+      Nrep = 25;
+      nrs->pSolver->options.setArgs("PRECONDITIONER", "NONE");
       nrs->pSolver->options.setArgs("KRYLOV SOLVER", "PCG");
-      nrs->pSolver->options.setArgs("MAXIMUM ITERATIONS", "500");
+      nrs->pSolver->options.setArgs("MAXIMUM ITERATIONS", "1000");
       nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
       ellipticPreconditionerSetup(nrs->pSolver, nrs->pSolver->ogs);
     }
@@ -108,7 +108,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     if(platform->comm.mpiRank == 0) {
       printf("repetitions: %d\n", Nrep);
       printf("solve time: min: %gs  avg: %gs  max: %gs\n", solveTime, solveTimeAvg, solveTimeMax);
-      printf("  preconditioner %gs\n", precoTime.at(minEntry));
+      if(precoTime.at(minEntry) > 0) printf("  preconditioner %gs\n", precoTime.at(minEntry));
       if(smootherTime.at(minEntry) > 0) printf("    smoother %gs\n", smootherTime.at(minEntry));
       if(crsTime.at(minEntry) > 0) printf("    coarse grid %gs\n", crsTime.at(minEntry));
       printf("iterations: %d\n", nrs->pSolver->Niter);
