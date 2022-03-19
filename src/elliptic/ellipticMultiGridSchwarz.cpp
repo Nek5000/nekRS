@@ -24,6 +24,7 @@
 
  */
 
+#include <type_traits>
 #include "elliptic.h"
 #include <vector>
 #include <algorithm>
@@ -973,5 +974,7 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
   const auto Npe = Nqe * Nqe * Nqe;
   const double flopsPerElem = 12 * Nqe * Npe + Npe;
   const double flops = static_cast<double>(mesh->Nelements) * flopsPerElem;
-  platform->flopCounter->add(elliptic->name + " Schwarz, N=" + std::to_string(mesh->N), flops);
+
+  const double factor = std::is_same<pfloat, float>::value ? 0.5 : 1.0;
+  platform->flopCounter->add(elliptic->name + " Schwarz, N=" + std::to_string(mesh->N), factor * flops);
 }

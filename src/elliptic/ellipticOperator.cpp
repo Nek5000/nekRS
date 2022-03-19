@@ -24,6 +24,7 @@
 
  */
 
+#include <type_traits>
 #include "elliptic.h"
 #include <iostream>
 void ellipticAx(elliptic_t* elliptic,
@@ -99,9 +100,11 @@ void ellipticAx(elliptic_t* elliptic,
     flopCount *= elliptic->Nfields * static_cast<double>(NelementsList);
   }
 
+  const double factor = std::is_same<pfloat, float>::value && (precisionStr != dFloatStr) ? 0.5 : 1.0;
+
   platform->flopCounter->add(elliptic->name + " Ax, N=" + std::to_string(mesh->N) + ", " +
                                  std::string(precision),
-                             flopCount);
+                             factor * flopCount);
 }
 
 void ellipticOperator(elliptic_t* elliptic,
