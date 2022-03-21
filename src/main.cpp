@@ -410,9 +410,10 @@ int main(int argc, char** argv)
   const double time0 = MPI_Wtime();
 
   nekrs::setup(commGlobal, comm, 
-	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
+    	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID);
+               cmdOpt->backend, cmdOpt->deviceID,
+               cmdOpt->debug);
 
   if (cmdOpt->buildOnly) {
     nekrs::finalize();
