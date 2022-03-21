@@ -1,8 +1,4 @@
-
-
-
-
-@kernel void computeHex3D(const dlong Nelements,
+@kernel void RANSktauComputeHex3D(const dlong Nelements,
                           const dlong offset,
                           const dfloat rho,
                           const dfloat mue,
@@ -137,7 +133,7 @@
 
           // compute rource term for omega
           const dfloat x_w = abs(OiOjSk) * (tau * tau * tau * p_ibetainf_str3);
-          const dfloat f_b = (1.0 + p_fb_c1 * x_w) / (1.0 + p_fb_c2 * x_w);
+          const dfloat f_b = (p_pope) ? (1.0 + p_fb_c1 * x_w) / (1.0 + p_fb_c2 * x_w) : 1.0;
           dfloat tauSrc  = rho * (p_beta0 * f_b - sigd * xk * tau);
           dfloat tauDiag = rho * tau * p_alp_inf * stMag2 +
                            8.0 * rho * p_alpinf_str * kk * xtq * p_sigma_tau;
