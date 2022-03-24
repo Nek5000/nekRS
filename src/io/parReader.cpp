@@ -904,7 +904,7 @@ void parseInitialGuess(const int rank, setupAide &options,
       options.removeArgs(parSectionName + "RESIDUAL PROJECTION VECTORS");
     } else {
       std::ostringstream error;
-      error << "Could not parse initialGuess string" << initialGuess << "!\n";
+      error << "Could not parse initialGuess = " << initialGuess << "!\n";
       append_error(error.str());
     }
 
