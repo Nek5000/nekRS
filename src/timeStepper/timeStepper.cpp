@@ -139,6 +139,8 @@ void adjustDt(nrs_t* nrs, int tstep)
 
         }
       }
+      nrs->CFL = CFL;
+      return;
     }
 
     const double unitTimeCFLold = (tstep == 1) ? CFL/nrs->dt[0] : nrs->unitTimeCFL;
