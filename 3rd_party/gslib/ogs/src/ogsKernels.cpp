@@ -31,7 +31,7 @@ SOFTWARE.
 namespace ogs {
 
   int Nrefs = 0;
-  const int gatherNodesPerBlock = std::min(4*BLOCKSIZE, 1024); //should be a multiple of blockSize for good unrolling
+  const int gatherNodesPerBlock = std::min(BLOCKSIZE, 1024); //should be a multiple of blockSize for good unrolling
 
   void* hostBuf;
   size_t hostBufSize=0;

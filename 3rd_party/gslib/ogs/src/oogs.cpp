@@ -393,9 +393,9 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     if(gs->rank == 0) printf("timing gs modes: ");
     const int Ntests = 10;
     double elapsedMin = std::numeric_limits<double>::max();
-    oogs_mode fastestMode;
-    oogs_modeExchange fastestModeExchange;
-    int fastestPrepostRecv;
+    oogs_mode fastestMode = OOGS_DEFAULT;
+    oogs_modeExchange fastestModeExchange = OOGS_EX_PW;
+    int fastestPrepostRecv = 0;
 
     char* q = (char*) calloc(std::max(stride,ogs->N)*unit_size, sizeof(char));
     occa::memory o_q = device.malloc(std::max(stride,ogs->N)*unit_size, q);
@@ -410,15 +410,17 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   	      continue; // not yet supported by some MPI implementations
 
         int nPass = 1;
-        if(gs->modeExchange == OOGS_EX_PW && ogs->NhaloGather > 0) nPass = 2;
         for(int pass = 0; pass < nPass; pass++) {
           gs->earlyPrepostRecv = pass;
 
+          // skip invalid combinations
+          if(gs->modeExchange != OOGS_EX_PW && gs->earlyPrepostRecv)
+            continue; 
 	      if(gs->mode == OOGS_DEFAULT || gs->mode == OOGS_LOCAL) {
-            if(!(gs->modeExchange == OOGS_EX_PW && gs->earlyPrepostRecv ==0)) 
-              continue;
+            if(gs->modeExchange != OOGS_EX_PW) continue; 
+            if(gs->earlyPrepostRecv) continue;  
           }
-       
+
 #if 0 
           if(gs->rank == 0)
 	        printf("\ntesting mode %d exchange %d earlyPrepost %d\n", 
@@ -454,10 +456,12 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
           if(gs->rank == 0) printf("%.2es ", elapsed);
           fflush(stdout);
           if(elapsed < elapsedMin){
-            if(gs->mode != OOGS_LOCAL) elapsedMin = elapsed;
-	        fastestMode = gs->mode;
-            fastestModeExchange = gs->modeExchange;
-            fastestPrepostRecv = gs->earlyPrepostRecv;
+            if(gs->mode != OOGS_LOCAL) {
+              elapsedMin = elapsed;
+	          fastestMode = gs->mode;
+              fastestModeExchange = gs->modeExchange;
+              fastestPrepostRecv = gs->earlyPrepostRecv;
+            }
           }
         }
       }
@@ -480,9 +484,9 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   gs->mode = OOGS_DEFAULT;
 #endif
 
-  double elapsedMinMPI = std::numeric_limits<double>::max();
+  double elapsedMaxMPI = std::numeric_limits<double>::min();
   {
-    int earlyPrepostRecv = gs->earlyPrepostRecv;
+    const int earlyPrepostRecv = gs->earlyPrepostRecv;
     gs->earlyPrepostRecv = 0;
     const int Ntests = 10;
     size_t Nbytes;
@@ -506,8 +510,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         neighborAllToAll(unit_size, gs);
       else
         pairwiseExchange(unit_size, gs);
-      MPI_Barrier(gs->comm);
-      elapsedMinMPI = std::min(elapsedMinMPI, MPI_Wtime() - tStart);
+      elapsedMaxMPI = std::max(elapsedMaxMPI, MPI_Wtime() - tStart);
     }
     gs->earlyPrepostRecv = earlyPrepostRecv;
   }
@@ -523,7 +526,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
     if(gs->rank == 0) { 
       printf("\nused config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
       if(ogs->NhaloGather > 0) {
-        printf("(MPI exchange: %.2es / %.1fGB/s)\n", elapsedMinMPI, nBytesExchange/elapsedMinMPI/1e9);
+        printf("(MPI exchange: %.2es / %.1fGB/s)\n", elapsedMaxMPI, nBytesExchange/elapsedMaxMPI/1e9);
       } else {
         printf("\n"); 
       }
