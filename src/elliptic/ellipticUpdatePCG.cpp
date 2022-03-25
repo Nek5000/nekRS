@@ -43,7 +43,6 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
                             o_p,
                             o_Ap,
                             alpha,
-                            o_x,
                             o_r,
                             elliptic->o_tmpNormr);
 
