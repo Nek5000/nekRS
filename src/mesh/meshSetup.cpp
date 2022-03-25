@@ -164,11 +164,11 @@ mesh_t *createMesh(MPI_Comm comm,
   if(mesh->N == Nfine) {
     dfloat* tmp = (dfloat*) calloc(mesh->Nlocal, sizeof(dfloat));
     mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
-    double* mult = (double*) nek::ptr("tmult");
+    double* mult = (cht) ? (double*) nek::ptr("tmult") : (double*) nek::ptr("vmult");
     dfloat sum1 = 0;
-    for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - mult[i]);
+    for(int i = 0; i < mesh->Nlocal; i++) sum1 += std::abs(tmp[i] - mult[i]);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    if(sum1 > 1e-15) {
+    if(sum1 > 1e-14) {
       if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
       fflush(stdout);
       err++;
@@ -375,9 +375,9 @@ mesh_t *createMeshV(
     mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
     double* mult = (double*) nek::ptr("vmult");
     dfloat sum1 = 0;
-    for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - mult[i]);
+    for(int i = 0; i < mesh->Nlocal; i++) sum1 += std::abs(tmp[i] - mult[i]);
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    if(sum1 > 1e-15) {
+    if(sum1 > 1e-14) {
       if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
       fflush(stdout);
       err++;
