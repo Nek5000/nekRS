@@ -49,7 +49,7 @@
             const dfloat pn = p[n + fld * offset];
             const dfloat Apn = Ap[n + fld * offset];
  
-            xn  += alpha * pn;
+            //xn  += alpha * pn;
             rn  -= alpha * Apn;
             sum += rn * rn;
  
