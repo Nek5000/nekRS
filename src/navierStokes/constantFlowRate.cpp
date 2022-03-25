@@ -625,7 +625,8 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
 
 }
 
-void printInfo(mesh_t* mesh){
+void printInfo(mesh_t* mesh, bool verboseInfo)
+{
 
   if(platform->comm.mpiRank != 0) return;
 
@@ -646,9 +647,9 @@ void printInfo(mesh_t* mesh){
     finalFlowRate *= lengthScale / mesh->volume;
     err = std::abs(currentRate - finalFlowRate);
   }
-
-  printf("  force  : %s0 %.3e  %s %.3e  err %.3e  scale %.3e\n",
-    flowRateType.c_str(), currentRate, flowRateType.c_str(), finalFlowRate, err, scale);
+  if(verboseInfo) 
+    printf("  flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.2e\n",
+      flowRateType.c_str(), currentRate, flowRateType.c_str(), finalFlowRate, err, scale);
 }
 
 } // namespace ConstantFlowRate

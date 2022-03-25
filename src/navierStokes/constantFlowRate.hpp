@@ -7,7 +7,7 @@ namespace ConstantFlowRate{
 bool apply(nrs_t *nrs, int tstep, dfloat time);
 void compute(nrs_t *nrs, dfloat lengthScale, dfloat time);
 bool checkIfRecompute(nrs_t* nrs, int tstep);
-void printInfo(mesh_t* mesh);
+void printInfo(mesh_t* mesh, bool verboseInfo);
 dfloat scaleFactor();
 }
 
