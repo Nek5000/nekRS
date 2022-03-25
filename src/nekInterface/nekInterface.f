@@ -105,6 +105,8 @@ c-----------------------------------------------------------------------
          ptr = loc(getps)
       elseif (id .eq. 'vmult') then
          ptr = loc(vmult)
+      elseif (id .eq. 'tmult') then
+         ptr = loc(tmult)
       elseif (id .eq. 'cb_scnrs') then
          ptr = loc(sc_nrs(1))
       elseif (id .eq. 'p0th') then

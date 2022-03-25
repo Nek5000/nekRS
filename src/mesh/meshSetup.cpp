@@ -157,6 +157,26 @@ mesh_t *createMesh(MPI_Comm comm,
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+
+  int err = 0;
+  int Nfine;
+  platform->options.getArgs("POLYNOMIAL DEGREE", Nfine);
+  if(mesh->N == Nfine) {
+    dfloat* tmp = (dfloat*) calloc(mesh->Nlocal, sizeof(dfloat));
+    mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
+    double* mult = (double*) nek::ptr("tmult");
+    dfloat sum1 = 0;
+    for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - mult[i]);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+    if(sum1 > 1e-15) {
+      if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
+      fflush(stdout);
+      err++;
+    }
+    free(tmp);
+  }
+  if(err) ABORT(1);
+
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
   // build mass + inverse mass matrix
@@ -285,6 +305,7 @@ mesh_t *createMeshMG(mesh_t* _mesh,
     //mesh->o_DT.free();
     //mesh->o_ggeo.free();
   }
+
   return mesh;
 }
 
@@ -345,9 +366,43 @@ mesh_t *createMeshV(
   meshVOccaSetup3D(mesh, kernelInfo);
 
   meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+
+  int err = 0;
+  int Nfine;
+  platform->options.getArgs("POLYNOMIAL DEGREE", Nfine);
+  if(mesh->N == Nfine) {
+    dfloat* tmp = (dfloat*) calloc(mesh->Nlocal, sizeof(dfloat));
+    mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
+    double* mult = (double*) nek::ptr("vmult");
+    dfloat sum1 = 0;
+    for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - mult[i]);
+    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+    if(sum1 > 1e-15) {
+      if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
+      fflush(stdout);
+      err++;
+    }
+    free(tmp);
+  }
+  if(err) ABORT(1);
+
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
   mesh->computeInvLMM();
+
+  // compute V mesh volume
+  dfloat volume = 0.0;
+  const auto Np = mesh->Np;
+  const auto Nggeo = mesh->Nggeo;
+  for(dlong e = 0; e < mesh->Nelements; ++e) {
+    for(dlong n = 0; n < Np; ++n){
+        volume += mesh->ggeo[Nggeo * Np * e + n + Np * GWJID];
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &volume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+  mesh->volume = volume;
+
 
   return mesh;
 }

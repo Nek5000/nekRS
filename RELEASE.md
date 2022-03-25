@@ -11,6 +11,7 @@
 * Support (unaligned) traction boundary condition
 * Better performance on AMD GPUs
 * FLOP counters
+* Fix bug in computing fluid mesh volume in CHT cases  (https://github.com/Nek5000/nekRS/issues/417)
 
 ## Good to know
 

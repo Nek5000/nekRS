@@ -144,21 +144,6 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
     }
     o_tmp.free();
  
-    int Nfine;
-    platform->options.getArgs("POLYNOMIAL DEGREE", Nfine);
-    if(mesh->N == Nfine) {
-      mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
-      double* vmult = (double*) nek::ptr("vmult");
-      sum1 = 0;
-      for(int i = 0; i < mesh->Nlocal; i++) sum1 += abs(tmp[i] - vmult[i]);
-      MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-      if(sum1 > 1e-15) {
-        if(platform->comm.mpiRank == 0) printf("multiplicity test err=%g!\n", sum1);
-        fflush(stdout);
-        err++;
-      }
-    }
- 
     if(err) ABORT(1);
     free(tmp);
   }
