@@ -952,6 +952,12 @@ void printInfo(
         }
       }
     }
+
+    if(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")){
+      ConstantFlowRate::printInfo(nrs->meshV);
+    }
+
+
     printf("step= %d  t= %.8e  dt=%.1e  C= %.2f", tstep, time, nrs->dt[0], cfl);
 
     if (nrs->flow) {

@@ -12,24 +12,9 @@
 #include "udf.hpp"
 
 #include <elliptic.h>
+#include "alignment.hpp"
 
 namespace {
-enum class alignment_t { X, Y, Z, UNALIGNED };
-std::string to_string(alignment_t a)
-{
-  switch (a) {
-  case alignment_t::X:
-    return "X";
-  case alignment_t::Y:
-    return "Y";
-  case alignment_t::Z:
-    return "Z";
-  case alignment_t::UNALIGNED:
-    return "UNALIGNED";
-  }
-
-  return "";
-}
 alignment_t computeAlignment(mesh_t *mesh, dlong element, dlong face)
 {
   const dfloat alignmentTol = 1e-3;

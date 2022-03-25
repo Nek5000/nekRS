@@ -3,6 +3,7 @@
 #include "nrs.hpp"
 #include "udf.hpp"
 #include <limits>
+#include "alignment.hpp"
 
 namespace {
 static dfloat constantFlowScale = 0.0;
@@ -33,6 +34,8 @@ inline void computeDirection(dfloat x1,
 
 static dfloat lengthScale;
 static dfloat baseFlowRate;
+static dfloat currentFlowRate;
+static dfloat postCorrectionFlowRate;
 
 } // namespace
 
@@ -309,7 +312,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
   // scale by mass matrix
   platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_currentFlowRate);
 
-  const dfloat currentFlowRate =
+  currentFlowRate =
       platform->linAlg->sum(
           mesh->Nlocal, o_currentFlowRate, platform->comm.mpiComm) /
       lengthScale;
@@ -350,6 +353,25 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
       1.0,
       nrs->o_U);
   platform->linAlg->axpby(mesh->Nlocal, constantFlowScale, nrs->o_Pc, 1.0, nrs->o_P);
+
+  // compute flow rate after correction as diagnostic
+  nrs->computeFieldDotNormalKernel(mesh->Nlocal,
+      nrs->fieldOffset,
+      nrs->flowDirection[0],
+      nrs->flowDirection[1],
+      nrs->flowDirection[2],
+      nrs->o_U,
+      o_currentFlowRate);
+
+  flops += 5 * mesh->Nlocal;
+
+  // scale by mass matrix
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_currentFlowRate);
+
+  postCorrectionFlowRate =
+      platform->linAlg->sum(
+          mesh->Nlocal, o_currentFlowRate, platform->comm.mpiComm) /
+      lengthScale;
 
   platform->flopCounter->add("ConstantFlowRate::apply", flops);
 
@@ -600,6 +622,33 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
   platform->timer.toc("velocitySolve");
 
   platform->flopCounter->add("ConstantFlowRate::compute", flops);
+
+}
+
+void printInfo(mesh_t* mesh){
+
+  if(platform->comm.mpiRank != 0) return;
+
+  std::string flowRateType = "flowRate";
+
+  dfloat currentRate = currentFlowRate;
+  dfloat finalFlowRate = postCorrectionFlowRate;
+  dfloat err = std::abs(currentRate - finalFlowRate);
+
+  // scale is invariant to uBulk/volumetric flow rate, since it's a unitless ratio
+  dfloat scale = constantFlowScale;
+
+  if(!platform->options.compareArgs("CONSTANT FLOW RATE TYPE", "VOLUMETRIC")){
+    flowRateType = "uBulk";
+
+    // put in bulk terms, instead of volumetric
+    currentRate *= lengthScale / mesh->volume;
+    finalFlowRate *= lengthScale / mesh->volume;
+    err = std::abs(currentRate - finalFlowRate);
+  }
+
+  printf("  force  : %s0 %.3e  %s %.3e  err %.3e  scale %.3e\n",
+    flowRateType.c_str(), currentRate, flowRateType.c_str(), finalFlowRate, err, scale);
 }
 
 } // namespace ConstantFlowRate

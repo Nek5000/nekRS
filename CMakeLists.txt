@@ -209,6 +209,7 @@ set(SRC
     src/core/bcMap.cpp
     src/core/compileKernels.cpp
     src/core/setup.cpp
+    src/core/alignment.cpp
     src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
     src/timeStepper/subCycling.cpp
