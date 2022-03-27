@@ -70,9 +70,10 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
 
 namespace timeStepper {
 
-double tElapsed = 0;
-double tElapsedStepMin = std::numeric_limits<double>::max();
-double tElapsedStepMax = std::numeric_limits<double>::min();
+double tSolve = 0;
+double elapsed = 0;
+double tSolveStepMin = std::numeric_limits<double>::max();
+double tSolveStepMax = std::numeric_limits<double>::min();
 
 void adjustDt(nrs_t* nrs, int tstep)
 {
@@ -185,19 +186,10 @@ void adjustDt(nrs_t* nrs, int tstep)
     }
 }
 
-void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
-  const double tStart = MPI_Wtime();
-
+void extrapolate(nrs_t *nrs)
+{
   mesh_t *mesh = nrs->meshV;
-
   cds_t *cds = nrs->cds;
-
-  coeffs(nrs, dt, tstep);
-
-  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-
-  bool verboseInfo = platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE");
-  if (tstep <= 1000) verboseInfo = true;
 
   if (nrs->flow)
     nrs->extrapolateKernel(mesh->Nelements,
@@ -216,6 +208,131 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
         cds->o_coeffEXT,
         cds->o_S,
         cds->o_Se);
+}
+
+void applyDirichlet(nrs_t *nrs, double time)
+{
+  if (nrs->Nscalar) {
+    cds_t *cds = nrs->cds;
+    for (int is = 0; is < cds->NSfields; is++) {
+      mesh_t* mesh = cds->mesh[0];;
+      oogs_t* gsh = cds->gshT;
+      if(is) {
+        mesh = cds->meshV;
+        gsh = cds->gsh;
+      }
+ 
+      platform->linAlg->fill(cds->fieldOffset[is], -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice2);
+      for (int sweep = 0; sweep < 2; sweep++) {
+        cds->dirichletBCKernel(mesh->Nelements,
+                               cds->fieldOffset[is],
+                               is,
+                               time,
+                               mesh->o_sgeo,
+                               mesh->o_x,
+                               mesh->o_y,
+                               mesh->o_z,
+                               mesh->o_vmapM,
+                               mesh->o_EToB,
+                               cds->o_EToB[is],
+                               *(cds->o_usrwrk),
+                               platform->o_mempool.slice2);
+  
+        if(sweep == 0) oogs::startFinish(platform->o_mempool.slice2, 1, cds->fieldOffset[is], ogsDfloat, ogsMax, gsh);
+        if(sweep == 1) oogs::startFinish(platform->o_mempool.slice2, 1, cds->fieldOffset[is], ogsDfloat, ogsMin, gsh);
+      }
+      occa::memory o_Si = cds->o_S.slice(cds->fieldOffsetScan[is] * sizeof(dfloat), cds->fieldOffset[is] * sizeof(dfloat));
+      if (cds->solver[is]->Nmasked) cds->maskCopyKernel(cds->solver[is]->Nmasked, 0, 
+        cds->solver[is]->o_maskIds, platform->o_mempool.slice2, o_Si);
+    }
+  }
+  
+  if(nrs->flow) {
+    mesh_t* mesh = nrs->meshV;
+    platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), 
+                           platform->o_mempool.slice6);
+    for (int sweep = 0; sweep < 2; sweep++) {
+      nrs->pressureDirichletBCKernel(mesh->Nelements,
+                                     time,
+                                     nrs->fieldOffset,
+                                     mesh->o_sgeo,
+                                     mesh->o_x,
+                                     mesh->o_y,
+                                     mesh->o_z,
+                                     mesh->o_vmapM,
+                                     mesh->o_EToB,
+                                     nrs->o_EToB,
+                                     nrs->o_usrwrk,
+                                     nrs->o_U,
+                                     platform->o_mempool.slice6);
+ 
+      nrs->velocityDirichletBCKernel(mesh->Nelements,
+                                     nrs->fieldOffset,
+                                     time,
+                                     mesh->o_sgeo,
+                                     mesh->o_x,
+                                     mesh->o_y,
+                                     mesh->o_z,
+                                     mesh->o_vmapM,
+                                     mesh->o_EToB,
+                                     nrs->o_EToB,
+                                     nrs->o_usrwrk,
+                                     nrs->o_U,
+                                     platform->o_mempool.slice7);
+ 
+      if (sweep == 0) oogs::startFinish(platform->o_mempool.slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
+      if (sweep == 1) oogs::startFinish(platform->o_mempool.slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
+    }
+ 
+    if (nrs->pSolver->Nmasked) nrs->maskCopyKernel(nrs->pSolver->Nmasked, 0, nrs->pSolver->o_maskIds,
+                                                   platform->o_mempool.slice6, nrs->o_P);
+ 
+    if (nrs->uvwSolver) {
+      if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
+                                                       platform->o_mempool.slice7, nrs->o_U);
+    } else {
+      if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds,
+                                                     platform->o_mempool.slice7, nrs->o_U);
+      if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds,
+                                                     platform->o_mempool.slice7, nrs->o_U);
+      if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds,
+                                                     platform->o_mempool.slice7, nrs->o_U);
+    }
+  }
+
+  if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")) {
+    mesh_t* mesh = nrs->meshV;
+    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice3);
+    for (int sweep = 0; sweep < 2; sweep++) {
+      nrs->meshV->velocityDirichletKernel(mesh->Nelements,
+                                          nrs->fieldOffset,
+                                          mesh->o_sgeo,
+                                          mesh->o_vmapM,
+                                          nrs->o_EToBMesh,
+                                          nrs->o_U,
+                                          platform->o_mempool.slice3);
+
+      if(sweep == 0) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
+      if(sweep == 1) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
+    }
+    if (nrs->meshSolver->Nmasked) nrs->maskCopyKernel(nrs->meshSolver->Nmasked, 0*nrs->fieldOffset, nrs->meshSolver->o_maskIds,
+        platform->o_mempool.slice3, mesh->o_U);
+  }
+}
+
+void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
+{
+  const double tStart = MPI_Wtime();
+  mesh_t *mesh = nrs->meshV;
+  cds_t *cds = nrs->cds;
+
+  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  bool verboseInfo = platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE");
+  if (tstep <= 1000) verboseInfo = true;
+
+  coeffs(nrs, dt, tstep);
+
+  extrapolate(nrs);
 
   if (nrs->Nsubsteps) {
     mesh_t *mesh = nrs->meshV;
@@ -328,7 +445,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
   const int isOutputStep = nrs->isOutputStep;
   nrs->converged = false;
 
-  double tElapsedStep = 0;
+  double tSolveStep = 0;
   int stage = 0;
   do {
     platform->device.finish();
@@ -338,6 +455,9 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     stage++;
     const dfloat timeNew = time + nrs->dt[0];
 
+    //////////////////////////////////////////////
+    applyDirichlet(nrs, timeNew);
+    
     if (nrs->Nscalar)
       scalarSolve(nrs, timeNew, cds->o_S, stage);
 
@@ -350,20 +470,27 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     }
 
     fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage, tstep);
+
     if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY"))
       meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
+    //////////////////////////////////////////////
 
     nrs->converged = (udf.converged) ? udf.converged(nrs, stage) : true; 
 
     platform->device.finish();
     MPI_Barrier(platform->comm.mpiComm);
-    double tElapsedStage = MPI_Wtime() - tStartStage;
-    if (stage == 1) tElapsedStage += tPreStep;
-    tElapsedStep += tElapsedStage;
-    tElapsed += tElapsedStage;
-    platform->timer.set("solve", tElapsed);
+    double tSolveStage = MPI_Wtime() - tStartStage;
+    if (stage == 1) tSolveStage += tPreStep;
+    tSolveStep += tSolveStage;
+    tSolve += tSolveStage;
+    platform->timer.set("solve", tSolve);
 
-    printInfo(nrs, timeNew, tstep, tElapsedStage, tElapsed, verboseInfo);
+    if(tstep > 9) {
+      tSolveStepMin = std::fmin(tSolveStep, tSolveStepMin); 
+      tSolveStepMax = std::fmax(tSolveStep, tSolveStepMax); 
+      platform->timer.set("minSolveStep", tSolveStepMin);
+      platform->timer.set("maxSolveStep", tSolveStepMax);
+    }
 
     platform->timer.tic("udfExecuteStep", 1);
     nek::ifoutfld(0);
@@ -375,14 +502,14 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep) {
     if (udf.executeStep)
       udf.executeStep(nrs, timeNew, tstep);
     platform->timer.toc("udfExecuteStep");
-  } while (!nrs->converged);
 
-  if(tstep > 9) {
-    tElapsedStepMin = std::fmin(tElapsedStep, tElapsedStepMin); 
-    tElapsedStepMax = std::fmax(tElapsedStep, tElapsedStepMax); 
-    platform->timer.set("minSolveStep", tElapsedStepMin);
-    platform->timer.set("maxSolveStep", tElapsedStepMax);
-  }
+    platform->device.finish();
+    MPI_Barrier(platform->comm.mpiComm);
+    const double elapsedStep = MPI_Wtime() - tStart;
+    elapsed += elapsedStep; 
+
+    printInfo(nrs, timeNew, tstep, elapsedStep, elapsed, verboseInfo);
+  } while (!nrs->converged);
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
@@ -763,25 +890,6 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     mesh_t* mesh = nrs->meshV;
     oogs_t* gsh = nrs->gsh;
 
-    //enforce Dirichlet BCs
-    platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice3);
-    for (int sweep = 0; sweep < 2; sweep++) {
-      nrs->meshV->velocityDirichletKernel(mesh->Nelements,
-                                          nrs->fieldOffset,
-                                          mesh->o_sgeo,
-                                          mesh->o_vmapM,
-                                          nrs->o_EToBMesh,
-                                          nrs->o_U,
-                                          platform->o_mempool.slice3);
-
-      //take care of Neumann-Dirichlet shared edges across elements
-      if(sweep == 0) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, gsh);
-      if(sweep == 1) oogs::startFinish(platform->o_mempool.slice3, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, gsh);
-    }
-
-    if (nrs->meshSolver->Nmasked) nrs->maskCopyKernel(nrs->meshSolver->Nmasked, 0*nrs->fieldOffset, nrs->meshSolver->o_maskIds,
-        platform->o_mempool.slice3, mesh->o_U);
-
     platform->linAlg->fill(nrs->NVfields*nrs->fieldOffset, 0, platform->o_mempool.slice3);
     platform->o_mempool.slice0.copyFrom(mesh->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
     ellipticSolve(nrs->meshSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);
@@ -805,7 +913,7 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
 }
 
 
-void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double tElapsed,
+void printInfo(nrs_t *nrs, dfloat time, int tstep, double elapsedStep, double elapsed,
                bool verboseInfo) 
 {
   cds_t *cds = nrs->cds;
@@ -868,7 +976,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
                      solver->solutionProjection->getMaxNumVecsProjection());
             }
           }
-          printf("  U    : iter %03d  resNorm0 %.2e  "
+          printf("  U        : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e  divErrNorms %.2e %.2e\n",
               solver->Niter,
               solver->res0Norm,
@@ -887,7 +995,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
                      solver->solutionProjection->getMaxNumVecsProjection());
             }
           }
-          printf("  V    : iter %03d  resNorm0 %.2e  "
+          printf("  V        : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
               solver->Niter,
               solver->res0Norm,
@@ -904,7 +1012,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
                      solver->solutionProjection->getMaxNumVecsProjection());
             }
           }
-          printf("  W    : iter %03d  resNorm0 %.2e  "
+          printf("  W        : iter %03d  resNorm0 %.2e  "
                  "resNorm %.2e\n",
               solver->Niter,
               solver->res0Norm,
@@ -978,7 +1086,7 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double tElapsedStep, double t
     for(int is = 0; is < nrs->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
  
-    printf("  eTimeStep= %.2es eTime= %.5es\n", tElapsedStep, tElapsed);
+    printf("  elapsedStep= %.2es elapsed= %.5es\n", elapsedStep, elapsed);
   }
 
   bool largeCFLCheck = (cfl > 30) && numberActiveFields(nrs);

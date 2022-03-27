@@ -10,57 +10,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
   double flopCount = 0.0;
   mesh_t* mesh = nrs->meshV;
   
-  //enforce Dirichlet BCs
-  platform->linAlg->fill((1+nrs->NVfields)*nrs->fieldOffset, -1.0*std::numeric_limits<dfloat>::max(), platform->o_mempool.slice6);
-  for (int sweep = 0; sweep < 2; sweep++) {
-    nrs->pressureDirichletBCKernel(mesh->Nelements,
-                                   time,
-                                   nrs->fieldOffset,
-                                   mesh->o_sgeo,
-                                   mesh->o_x,
-                                   mesh->o_y,
-                                   mesh->o_z,
-                                   mesh->o_vmapM,
-                                   mesh->o_EToB,
-                                   nrs->o_EToB,
-                                   nrs->o_usrwrk,
-                                   nrs->o_U,
-                                   platform->o_mempool.slice6);
-
-    nrs->velocityDirichletBCKernel(mesh->Nelements,
-                                   nrs->fieldOffset,
-                                   time,
-                                   mesh->o_sgeo,
-                                   mesh->o_x,
-                                   mesh->o_y,
-                                   mesh->o_z,
-                                   mesh->o_vmapM,
-                                   mesh->o_EToB,
-                                   nrs->o_EToB,
-                                   nrs->o_usrwrk,
-                                   nrs->o_U,
-                                   platform->o_mempool.slice7);
-
-    //take care of Neumann-Dirichlet shared edges across elements
-    if (sweep == 0) oogs::startFinish(platform->o_mempool.slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMax, nrs->gsh);
-    if (sweep == 1) oogs::startFinish(platform->o_mempool.slice6, 1+nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsMin, nrs->gsh);
-  }
-
-  if (nrs->pSolver->Nmasked) nrs->maskCopyKernel(nrs->pSolver->Nmasked, 0, nrs->pSolver->o_maskIds,
-                                                 platform->o_mempool.slice6, nrs->o_P); 
-
-  if (nrs->uvwSolver) {
-    if (nrs->uvwSolver->Nmasked) nrs->maskCopyKernel(nrs->uvwSolver->Nmasked, 0*nrs->fieldOffset, nrs->uvwSolver->o_maskIds,
-                                                     platform->o_mempool.slice7, nrs->o_U);
-  } else {
-    if (nrs->uSolver->Nmasked) nrs->maskCopyKernel(nrs->uSolver->Nmasked, 0*nrs->fieldOffset, nrs->uSolver->o_maskIds, 
-                                                   platform->o_mempool.slice7, nrs->o_U);
-    if (nrs->vSolver->Nmasked) nrs->maskCopyKernel(nrs->vSolver->Nmasked, 1*nrs->fieldOffset, nrs->vSolver->o_maskIds, 
-                                                   platform->o_mempool.slice7, nrs->o_U);
-    if (nrs->wSolver->Nmasked) nrs->maskCopyKernel(nrs->wSolver->Nmasked, 2*nrs->fieldOffset, nrs->wSolver->o_maskIds, 
-                                                   platform->o_mempool.slice7, nrs->o_U);
-  }
-
   nrs->curlKernel(mesh->Nelements,
                   mesh->o_vgeo,
                   mesh->o_D,
@@ -79,7 +28,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->meshV->o_invLMM,
     platform->o_mempool.slice0
   );
-
   flopCount += mesh->Nlocal;
 
   nrs->curlKernel(
@@ -89,7 +37,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->fieldOffset,
     platform->o_mempool.slice0,
     platform->o_mempool.slice3);
-
   flopCount += static_cast<double>(mesh->Nelements) * (18 * mesh->Np * mesh->Nq + 36 * mesh->Np);
 
   nrs->gradientVolumeKernel(
@@ -99,7 +46,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->fieldOffset,
     nrs->o_div,
     platform->o_mempool.slice0);
-
   flopCount += static_cast<double>(mesh->Nelements) * (6 * mesh->Np * mesh->Nq + 18 * mesh->Np);
 
   if (platform->options.compareArgs("STRESSFORMULATION", "TRUE")) {
@@ -125,7 +71,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice3,
     platform->o_mempool.slice0,
     platform->o_mempool.slice6);
-
   flopCount += 12 * static_cast<double>(mesh->Nlocal);
 
   oogs::startFinish(platform->o_mempool.slice6, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
@@ -146,7 +91,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->fieldOffset,
     platform->o_mempool.slice6,
     platform->o_mempool.slice3);
-
   flopCount += static_cast<double>(mesh->Nelements) * (6 * mesh->Np * mesh->Nq + 18 * mesh->Np);
 
   nrs->pressureAddQtlKernel(
@@ -155,7 +99,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     nrs->g0 * nrs->idt,
     nrs->o_div,
     platform->o_mempool.slice3);
-
   flopCount += 3 * mesh->Nlocal;
 
   nrs->divergenceSurfaceKernel(
@@ -168,7 +111,6 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice6,
     nrs->o_U,
     platform->o_mempool.slice3);
-
   flopCount += 25 * static_cast<double>(mesh->Nelements) * mesh->Nq * mesh->Nq;
 
   platform->o_mempool.slice1.copyFrom(nrs->o_P, mesh->Nlocal * sizeof(dfloat));
