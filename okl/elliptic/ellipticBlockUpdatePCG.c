@@ -41,7 +41,6 @@ extern "C" void FUNC(ellipticBlockUpdatePCG)(const dlong & N,
   for(int fld = 0; fld < p_Nfields; fld++)
     for(int i = 0; i < N; ++i) {
       const dlong n = i + fld * offset;
-      cpu_x[n] += alpha * cpu_p[n];
 
       const dfloat rn = cpu_r[n] - alpha * cpu_Ap[n];
       rdotr += rn * rn * cpu_invDegree[i];
