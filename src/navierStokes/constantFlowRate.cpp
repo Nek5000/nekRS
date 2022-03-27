@@ -627,7 +627,6 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
 
 void printInfo(mesh_t* mesh, bool verboseInfo)
 {
-
   if(platform->comm.mpiRank != 0) return;
 
   std::string flowRateType = "flowRate";

@@ -288,7 +288,7 @@ void timer_t::printRunStat(int step)
   double gsTime = ogsTime(/* reportHostTime */ true);
   MPI_Allreduce(MPI_IN_PLACE, &gsTime, 1, MPI_DOUBLE, MPI_MAX, comm_);
 
-  if(rank == 0) std::cout << ">>> runtime statistics (step = " << step << "):\n";
+  if(rank == 0) std::cout << "\n>>> runtime statistics (step = " << step << "):\n";
 
   std::cout.setf(std::ios::scientific);
   int outPrecisionSave = std::cout.precision();

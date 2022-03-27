@@ -71,7 +71,6 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
 namespace timeStepper {
 
 double tSolve = 0;
-double elapsed = 0;
 double tSolveStepMin = std::numeric_limits<double>::max();
 double tSolveStepMax = std::numeric_limits<double>::min();
 
@@ -327,8 +326,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
   cds_t *cds = nrs->cds;
 
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-  bool verboseInfo = platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE");
-  if (tstep <= 1000) verboseInfo = true;
 
   coeffs(nrs, dt, tstep);
 
@@ -503,12 +500,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
       udf.executeStep(nrs, timeNew, tstep);
     platform->timer.toc("udfExecuteStep");
 
-    platform->device.finish();
-    MPI_Barrier(platform->comm.mpiComm);
-    const double elapsedStep = MPI_Wtime() - tStart;
-    elapsed += elapsedStep; 
-
-    printInfo(nrs, timeNew, tstep, elapsedStep, elapsed, verboseInfo);
+    if(!nrs->converged) printInfo(nrs, timeNew, tstep, 0, 0);
   } while (!nrs->converged);
 
   nrs->dt[2] = nrs->dt[1];
@@ -913,10 +905,11 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
 }
 
 
-void printInfo(nrs_t *nrs, dfloat time, int tstep, double elapsedStep, double elapsed,
-               bool verboseInfo) 
+void printInfo(nrs_t *nrs, dfloat time, int tstep, double elapsedStep, double elapsed)
 {
   cds_t *cds = nrs->cds;
+
+  bool verboseInfo = platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE");
 
   const dfloat cfl = computeCFL(nrs);
   dfloat divUErrVolAvg, divUErrL2;
@@ -1085,8 +1078,11 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double elapsedStep, double el
       
     for(int is = 0; is < nrs->Nscalar; is++)
       if(cds->compute[is]) printf("  S: %d", cds->solver[is]->Niter);
- 
-    printf("  elapsedStep= %.2es elapsed= %.5es\n", elapsedStep, elapsed);
+
+    if(elapsedStep != 0) 
+      printf("  elapsedStep= %.2es  elapsed= %.5es", elapsedStep, elapsed);
+
+    printf("\n");
   }
 
   bool largeCFLCheck = (cfl > 30) && numberActiveFields(nrs);
@@ -1096,9 +1092,6 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, double elapsedStep, double el
       std::cout << "Unreasonable CFL! Dying ...\n" << std::endl;
     ABORT(1);
   }
-
-  if (tstep % 10 == 0)
-    fflush(stdout);
 }
 
 void computeDivUErr(nrs_t* nrs, dfloat& divUErrVolAvg, dfloat& divUErrL2)

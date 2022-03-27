@@ -447,6 +447,17 @@ void processUpdFile()
   }
 }
 
+void printInfo(double time, int tstep, double elapsedStep, double elapsedTime)
+{
+  timeStepper::printInfo(nrs, time, tstep, elapsedStep, elapsedTime);
+}
+
+void verboseInfo(bool enabled)
+{
+  platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
+  if(enabled) platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
+}
+
 } // namespace
 
 static void setOccaVars()

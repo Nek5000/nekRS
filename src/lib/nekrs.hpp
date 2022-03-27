@@ -30,6 +30,8 @@ int numSteps(void);
 int lastStep(double time, int tstep, double elapsedTime);
 int writeControlRunTime(void);
 void processUpdFile();
+void printInfo(double time, int tstep, double elapsedStep, double elapsedTime);
+void verboseInfo(bool enabled);
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);
