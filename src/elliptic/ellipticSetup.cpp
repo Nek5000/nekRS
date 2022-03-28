@@ -32,9 +32,8 @@
 void ellipticSolveSetup(elliptic_t* elliptic)
 {
   
-  mesh_t* mesh      = elliptic->mesh;
-  
-  setupAide options = elliptic->options;
+  mesh_t* mesh = elliptic->mesh;
+  setupAide& options = elliptic->options;
 
   const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 

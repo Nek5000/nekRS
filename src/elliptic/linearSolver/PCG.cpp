@@ -33,7 +33,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 {
   
   mesh_t* mesh = elliptic->mesh;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   const int flexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
   const int verbose = options.compareArgs("VERBOSE", "TRUE");
