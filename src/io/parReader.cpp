@@ -80,12 +80,12 @@ void append_value_error(Printable message)
 #define UPPER(a)                                                               \
   {                                                                            \
     transform(a.begin(), a.end(), a.begin(),                                   \
-              std::ptr_fun<int, int>(std::toupper));                           \
+              [](int c){return std::toupper(c);});                             \
   }
 #define LOWER(a)                                                               \
   {                                                                            \
     transform(a.begin(), a.end(), a.begin(),                                   \
-              std::ptr_fun<int, int>(std::tolower));                           \
+              [](int c){return std::tolower(c);});                             \
   }
 
 namespace
@@ -1609,11 +1609,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
 
   bool dealiasing = true;
-  if (par->extract("general", "dealiasing", dealiasing))
+  if (par->extract("general", "dealiasing", dealiasing)) {
     if (dealiasing)
       options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
     else
       options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+  }
 
   int cubN = round((3./2) * (N+1) - 1) - 1;
   if(!dealiasing) cubN = 0;

@@ -118,7 +118,7 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
         if (line.back() == char_section_end) {
           section = line.substr(1, length - 2);
           transform(section.begin(), section.end(), section.begin(),
-                    std::ptr_fun<int, int>(std::tolower));
+                    [](int c){return std::tolower(c);});
         } else {
           errors.push_back(line);
         }
@@ -126,7 +126,7 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
         std::string variable(line.substr(0, pos));
         std::string value(line.substr(pos + 1, length));
         transform(variable.begin(), variable.end(), variable.begin(),
-                  std::ptr_fun<int, int>(std::tolower));
+                  [](int c){return std::tolower(c);});
         detail::rtrim(variable);
         detail::ltrim(value);
 
@@ -134,7 +134,7 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
                         lowerValue && value.back() == '"';
         if (lowerValue && !inquotes)
           transform(value.begin(), value.end(), value.begin(),
-                    std::ptr_fun<int, int>(std::tolower));
+                    [](int c){return std::tolower(c);});
         value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
 
         auto & sec = sections[section];
