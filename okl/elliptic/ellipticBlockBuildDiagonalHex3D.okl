@@ -42,8 +42,10 @@
     @shared dfloat s_Gss[p_Nq][p_Nq];
     @exclusive dfloat s_Gtt[p_Nq];
     @exclusive dfloat s_lambdat[p_MaxNFields][p_Nq];
-    // prefetch lamda 0
+
+#ifdef smXX
 #pragma unroll p_Nq
+#endif
     for(int k = 0; k < p_Nq; ++k) {
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {

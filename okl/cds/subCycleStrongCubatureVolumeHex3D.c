@@ -42,9 +42,7 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
   dfloat s_Ud1[p_Nq][p_cubNq];
   dfloat r_U2[p_cubNq][p_cubNq][p_cubNq];
   dfloat r_Ud[p_cubNq][p_cubNq][p_cubNq];
-  #pragma unroll
   for (int j = 0; j < p_cubNq; ++j) {
-    #pragma unroll
     for (int i = 0; i < p_cubNq; ++i) {
       const int id = i + j * p_cubNq;
       if (id < p_Nq * p_cubNq) {
@@ -59,21 +57,15 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
 #endif
   for (int e = 0; e < Nelements; ++e) {
     const int element = elementList[e];
-    #pragma unroll
     for (int j = 0; j < p_cubNq; ++j) {
-      #pragma unroll
       for (int i = 0; i < p_cubNq; ++i) {
-        #pragma unroll
         for (int k = 0; k < p_cubNq; ++k) {
           r_Ud[j][i][k] = 0;
         }
       }
     }
-    #pragma unroll
     for (int c = 0; c < p_Nq; ++c) {
-      #pragma unroll
       for (int b = 0; b < p_Nq; ++b) {
-        #pragma unroll
         for (int a = 0; a < p_Nq; ++a) {
             const int id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
             s_Ud[b][a] = S[id];
@@ -81,12 +73,9 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
       }
 
       // interpolate in 'r'
-      #pragma unroll
       for (int b = 0; b < p_Nq; ++b) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
             dfloat Ud1 = 0;
-            #pragma unroll
             for (int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
               Ud1 += Iia * s_Ud[b][a];
@@ -96,21 +85,17 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
       }
 
       // interpolate in 's'
-      #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
           dfloat Ud2 = 0;
 
           // interpolate in b
-          #pragma unroll
           for (int b = 0; b < p_Nq; ++b) {
             dfloat Ijb = s_cubInterpT[b][j];
             Ud2 += Ijb * s_Ud1[b][i];
           }
 
           // interpolate in c progressively
-          #pragma unroll
           for (int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
             r_Ud[j][i][k] += Ikc * Ud2;
@@ -120,21 +105,16 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
     }
 
     // Uhat * dr
-    #pragma unroll p_cubNq
     for (int j = 0; j < p_cubNq; ++j) {
-      #pragma unroll
       for (int k = 0; k < p_cubNq; ++k) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
           dfloat Udr = 0;
-          #pragma unroll
           for (int n = 0; n < p_cubNq; ++n) {
             dfloat Din = s_cubD[i][n];
             Udr += Din * r_Ud[j][n][k];
           }
           dfloat Uhat = 0.0;
           const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          #pragma unroll
           for (int s = 0; s < p_nEXT; ++s) {
             const int s_offset = s * p_NVfields * cubatureOffset;
             const dfloat coeff = r_c[s];
@@ -149,21 +129,16 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
       }
     }
     // Vhat * ds
-    #pragma unroll p_cubNq
     for (int j = 0; j < p_cubNq; ++j) {
-      #pragma unroll
       for (int i = 0; i < p_cubNq; ++i) {
-        #pragma unroll
         for (int k = 0; k < p_cubNq; ++k) {
           dfloat Uds = 0;
-          #pragma unroll
           for (int n = 0; n < p_cubNq; ++n) {
             dfloat Djn = s_cubD[j][n];
             Uds += Djn * r_Ud[n][i][k];
           }
           dfloat Vhat = 0.0;
           const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          #pragma unroll
           for (int s = 0; s < p_nEXT; ++s) {
             const int s_offset = s * p_NVfields * cubatureOffset;
             const dfloat coeff = r_c[s];
@@ -178,21 +153,16 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
       }
     }
     // What * dt
-    #pragma unroll p_cubNq
     for (int j = 0; j < p_cubNq; ++j) {
-      #pragma unroll
       for (int k = 0; k < p_cubNq; ++k) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
           dfloat Udt = 0;
-          #pragma unroll
           for (int n = 0; n < p_cubNq; ++n) {
             dfloat Dkn = s_cubD[k][n];
             Udt += Dkn * r_Ud[j][i][n];
           }
           dfloat What = 0.0;
           const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
-          #pragma unroll
           for (int s = 0; s < p_nEXT; ++s) {
             const int s_offset = s * p_NVfields * cubatureOffset;
             const dfloat coeff = r_c[s];
@@ -208,14 +178,10 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
     }
 
     // now project back in t
-    #pragma unroll
     for (int c = 0; c < p_Nq; ++c) {
-      #pragma unroll
       for (int j = 0; j < p_cubNq; ++j) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
           dfloat rhsU = 0;
-          #pragma unroll
           for (int k = 0; k < p_cubNq; ++k) {
             dfloat Ikc = s_cubInterpT[c][k];
             rhsU += Ikc * r_U2[j][i][k];
@@ -223,12 +189,9 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
           s_U[j][i] = rhsU;
         }
       }
-      #pragma unroll
       for (int b = 0; b < p_Nq; ++b) {
-        #pragma unroll
         for (int i = 0; i < p_cubNq; ++i) {
             dfloat rhsU = 0;
-            #pragma unroll
             for (int j = 0; j < p_cubNq; ++j) {
               dfloat Ijb = s_cubInterpT[b][j];
               rhsU += Ijb * s_U[j][i];
@@ -236,12 +199,9 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
             s_Ud[b][i] = rhsU;
         }
       }
-      #pragma unroll
       for (int b = 0; b < p_Nq; ++b) {
-        #pragma unroll
         for (int a = 0; a < p_Nq; ++a) {
             dfloat rhsU = 0;
-            #pragma unroll
             for (int i = 0; i < p_cubNq; ++i) {
               dfloat Iia = s_cubInterpT[a][i];
               rhsU += Iia * s_Ud[b][i];
@@ -250,7 +210,6 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
             dfloat invLMM = p_MovingMesh ? 0.0 : invLumpedMassMatrix[id];
             dfloat bdivw = 0.0;
             if (p_MovingMesh) {
-              #pragma unroll
               for (int s = 0; s < p_nEXT; s++) {
                 const dfloat coeff = r_c[s];
                 invLMM += coeff * invLumpedMassMatrix[id + s * offset];

@@ -45,7 +45,9 @@
     @exclusive dfloat r_SWy[p_Nq];
     @exclusive dfloat r_SWz[p_Nq];
 
+#ifdef smXX
     #pragma unroll
+#endif
     for(int k = 0; k < p_Nq; ++k){
       
       @barrier("local");

@@ -20,22 +20,16 @@ extern "C" void FUNC(ellipticPartialAxCoeffHex3D)(const dlong & Nelements,
   for(dlong e = 0; e < Nelements; ++e) {
     const dlong element = elementList[e];
 
-#pragma unroll
     for(int k = 0; k < p_Nq; k++)
-#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
-#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong base = i + j * p_Nq + k * p_Nq * p_Nq + element * p_Np;
           const dfloat qbase = q[base];
           s_q[k][j][i] = qbase;
         }
 
-#pragma unroll
     for(int k = 0; k < p_Nq; ++k)
-#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
-#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
           const dfloat r_G00 = ggeo[gbase + p_G00ID * p_Np];
@@ -52,7 +46,6 @@ extern "C" void FUNC(ellipticPartialAxCoeffHex3D)(const dlong & Nelements,
           dfloat qs = 0.f;
           dfloat qt = 0.f;
 
-#pragma unroll
           for(int m = 0; m < p_Nq; m++){
             qr += S[m*p_Nq + i] * s_q[k][j][m];
             qs += S[m*p_Nq + j] * s_q[k][m][i];
@@ -76,11 +69,8 @@ extern "C" void FUNC(ellipticPartialAxCoeffHex3D)(const dlong & Nelements,
           s_Gqt[k][j][i] = r_lam0 * Gqt;
         }
 
-#pragma unroll
     for(int k = 0; k < p_Nq; k++)
-#pragma unroll
       for(int j = 0; j < p_Nq; ++j)
-#pragma unroll
         for(int i = 0; i < p_Nq; ++i) {
           const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
@@ -93,7 +83,6 @@ extern "C" void FUNC(ellipticPartialAxCoeffHex3D)(const dlong & Nelements,
 #endif
           dfloat r_Aqr = 0, r_Aqs = 0, r_Aqt = 0;
 
-#pragma unroll
           for(int m = 0; m < p_Nq; m++){
             r_Aqr += D[m*p_Nq+i] * s_Gqr[k][j][m];
             r_Aqs += D[m*p_Nq+j] * s_Gqs[k][m][i];
