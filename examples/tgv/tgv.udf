@@ -67,9 +67,9 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     energyComputed[1] = energyComputed[0];
     energyComputed[0] = energy;
     const dfloat dissipationRate = (nrs->g0*energy - sum) / nrs->dt[0];
-    const dfloat error = std::abs((dissipationRate - rhs)/rhs);
+    const dfloat nuEff = -0.5*dissipationRate/enstrophy;
     if(platform->comm.mpiRank == 0)
-      printf(", d(energy)/dt=%g (relError= %g)", dissipationRate, error);
+      printf(", d(energy)/dt=%g, nuEff/nu= %g)", dissipationRate, nuEff/nu);
   } else {
     energyComputed[0] = energy;
   }
