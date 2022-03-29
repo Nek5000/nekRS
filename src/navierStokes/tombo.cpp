@@ -191,7 +191,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 
   flopCount += 6 * mesh->Nlocal;
 
-  platform->o_mempool.slice0.copyFrom(nrs->o_Ue, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  platform->o_mempool.slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
   if(nrs->uvwSolver) {
     ellipticSolve(nrs->uvwSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);
