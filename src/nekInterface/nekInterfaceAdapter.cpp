@@ -502,9 +502,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 
       char ver[10];
       int ndim;
-      hlong nelgv, nelgt;
+      int nelgv, nelgt;
       // has to match header in re2
-      sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
+      sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
       if(ndim != 3) {
         if(rank == 0) printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
         ABORT(EXIT_FAILURE);
@@ -545,9 +545,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       if(recompile) {
         const double tStart = MPI_Wtime();
         const std::string pipeToNull = (rank == 0) ? std::string("") :  std::string(">/dev/null 2>&1");
-	const std::string include_dirs = "./ " + case_dir; 
+	    const std::string include_dirs = "./ " + case_dir; 
         if(rank == 0) 
-	  printf("building nekInterface for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
+	      printf("building nekInterface for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
 
         sprintf(buf, "cd %s && cp -f %s/makefile.template makefile && "
 		     "make -s -j8 " 

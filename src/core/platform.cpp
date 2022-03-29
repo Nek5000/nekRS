@@ -70,7 +70,7 @@ deviceVector_t::at(const int i)
 {
   if(i >= nVectors){
     if(platform->comm.mpiRank == 0){
-      printf("ERROR: deviceVector_t(%s) has %d size, but an attempt to access entry %i was made!\n",
+      printf("ERROR: deviceVector_t(%s) has %zu size, but an attempt to access entry %i was made!\n",
         vectorName.c_str(),
         nVectors,
         i

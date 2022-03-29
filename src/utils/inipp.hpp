@@ -69,7 +69,7 @@ string_to_boolean_t string_to_boolean( const std::string s, bool strict = false 
     s2.begin(),
     s2.end(),
     s2.begin(),
-    std::ptr_fun <int, int> ( std::tolower )
+    [](int c){return std::tolower(c);}
     );
 
   // Does the string represent a FALSE?

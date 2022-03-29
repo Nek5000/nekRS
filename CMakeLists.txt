@@ -13,7 +13,7 @@ include(config/utils.cmake)
 
 #set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
@@ -61,25 +61,13 @@ set(GPU_MPI "0" CACHE STRING "GPU aware MPI")
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
 ###############################################################################
 
-macro(check_compiler_id compiler)
+macro(check_fcompiler_id compiler)
   if(NOT "${compiler}" STREQUAL "GNU")
-    message(FATAL_ERROR "NekRS only supports GNU compilers")
+  message(FATAL_ERROR "NekRS only supports gfortran")
   endif()
 endmacro()
 
-macro(check_compiler_version compiler_version)
-  if(${compiler_version} LESS 6.2)
-    message(FATAL_ERROR "NekRS only supports GNU compiler versions >= 6.2")
-  endif()
-endmacro()
-
-check_compiler_id("${CMAKE_CXX_COMPILER_ID}")
-check_compiler_id("${CMAKE_C_COMPILER_ID}")
-check_compiler_id("${CMAKE_Fortran_COMPILER_ID}")
-
-check_compiler_version("${CMAKE_CXX_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_C_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_Fortran_COMPILER_VERSION}")
+check_fcompiler_id("${CMAKE_Fortran_COMPILER_ID}")
 
 ## Sanity checks for MPI
 set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
@@ -108,11 +96,13 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-find_package(OpenMP)
-if (OPENMP_FOUND)
+find_package(OpenMP REQUIRED)
+if(OpenMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+  if(OpenMP_CXX_INCLUDE_DIR)
+    include_directories(SYSTEM ${OpenMP_CXX_INCLUDE_DIRS})
+  endif()
 endif()
 
 # For CMake targets, CMAKE_<LANG>_FLAGS, CMAKE_<LANG>_FLAGS_<CONFIG>, and
@@ -209,6 +199,7 @@ set(SRC
     src/core/bcMap.cpp
     src/core/compileKernels.cpp
     src/core/setup.cpp
+    src/core/alignment.cpp
     src/core/registerNrsKernels.cpp
     src/timeStepper/timeStepper.cpp
     src/timeStepper/subCycling.cpp
@@ -255,7 +246,7 @@ set_property(
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE gs ${GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE HYPRE gs ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"

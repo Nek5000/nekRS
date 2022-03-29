@@ -6,10 +6,10 @@ cubaturePolynomialOrder = 9
 stopAt = endTime
 endTime = 20
 
-timeStepper = tombo2
+#timeStepper = tombo3
+#dt = targetCFL=0.5
 
-#dt = 2.0e-2
-#subCyclingSteps = 1
+timeStepper = tombo2
 dt = targetCFL=2 + max=2e-2
 
 writeControl = runTime
@@ -20,11 +20,10 @@ regularization = hpfrt + nModes=1 + scalingCoeff=10
 [PRESSURE]
 solver = pfcg
 residualTol = 1e-04
-preconditioner = multigrid+coarse
-smootherType = JAC+Chebyshev+degree=2
+preconditioner = multigrid+additive+coarse
+smootherType = ASM 
 
 [VELOCITY]
-solver = cg+block
 boundaryTypeMap = none
 density = 1.0
 viscosity = -1600

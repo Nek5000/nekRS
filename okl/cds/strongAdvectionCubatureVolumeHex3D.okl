@@ -118,7 +118,9 @@
       }
     }
 
+#ifdef smXX
 #pragma unroll p_cubNq
+#endif
     for(int k = 0; k < p_cubNq; ++k) {
       @barrier("local");
 

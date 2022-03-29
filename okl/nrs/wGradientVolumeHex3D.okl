@@ -67,7 +67,9 @@
 
     @barrier("local");
 
+#ifdef smXX
 #pragma unroll p_Nq
+#endif
     for(int k = 0; k < p_Nq; ++k) {
       //fetch slice
       for(int j = 0; j < p_Nq; ++j; @inner(1))

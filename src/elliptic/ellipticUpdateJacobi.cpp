@@ -31,7 +31,7 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
 {
   dfloat flopCount = 0.0;
   mesh_t *mesh = elliptic->mesh;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 

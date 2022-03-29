@@ -358,6 +358,9 @@ int main(int argc, char** argv)
     }
   }
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  const double time0 = MPI_Wtime(); 
+
   MPI_Comm commGlobal;
   MPI_Comm_dup(MPI_COMM_WORLD, &commGlobal);
 
@@ -406,13 +409,11 @@ int main(int argc, char** argv)
     cmdOpt->setupFile.assign(casename);
   }
 
-  MPI_Barrier(comm);
-  const double time0 = MPI_Wtime();
-
   nekrs::setup(commGlobal, comm, 
-	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
+    	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID);
+               cmdOpt->backend, cmdOpt->deviceID,
+               cmdOpt->debug);
 
   if (cmdOpt->buildOnly) {
     nekrs::finalize();
@@ -420,16 +421,19 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
   }
 
-  MPI_Barrier(comm);
-  double elapsedTime = (MPI_Wtime() - time0);
-
   const int updCheckFreq = 20;
 
   int tStep = 0;
   double time = nekrs::startTime();
-  int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
   nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
+
+  MPI_Barrier(comm);
+  const double timeSetup = MPI_Wtime() - time0;
+
+  double elapsedTime = timeSetup;
+  int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
+  double elapsedTimeSolve = 0;
 
   if (rank == 0 && !lastStep) {
     if (nekrs::endTime() > nekrs::startTime())
@@ -457,18 +461,26 @@ int main(int argc, char** argv)
     if (nekrs::writeInterval() < 0) outputStep = 0;
     nekrs::outputStep(outputStep);
 
+    if (tStep <= 1000) nekrs::verboseInfo(true); 
+
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
     if (outputStep) nekrs::outfld(time);
 
+    if(tStep % updCheckFreq) nekrs::processUpdFile();
+
+    MPI_Barrier(comm);
+    const double elapsedStep = MPI_Wtime() - timeStart;  
+    elapsedTimeSolve += elapsedStep;
+    elapsedTime = timeSetup + elapsedTimeSolve;
+
+    nekrs::printInfo(time + dt, tStep, elapsedStep, elapsedTimeSolve);
+
     if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep) 
       nekrs::printRuntimeStatistics(tStep);
 
-    MPI_Barrier(comm);
-    elapsedTime += (MPI_Wtime() - timeStart);
-
-    if(tStep % updCheckFreq) nekrs::processUpdFile();
+    if (tStep % 10 == 0) fflush(stdout);
   }
   MPI_Pcontrol(0);
 

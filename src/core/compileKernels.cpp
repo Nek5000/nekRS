@@ -67,7 +67,7 @@ void compileKernels() {
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0)
-    printf("loading kernels ... ");
+    printf("loading kernels (this may take awhile) ... ");
   fflush(stdout);
 
     {

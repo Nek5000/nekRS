@@ -80,12 +80,12 @@ void append_value_error(Printable message)
 #define UPPER(a)                                                               \
   {                                                                            \
     transform(a.begin(), a.end(), a.begin(),                                   \
-              std::ptr_fun<int, int>(std::toupper));                           \
+              [](int c){return std::toupper(c);});                             \
   }
 #define LOWER(a)                                                               \
   {                                                                            \
     transform(a.begin(), a.end(), a.begin(),                                   \
-              std::ptr_fun<int, int>(std::tolower));                           \
+              [](int c){return std::tolower(c);});                             \
   }
 
 namespace
@@ -904,7 +904,7 @@ void parseInitialGuess(const int rank, setupAide &options,
       options.removeArgs(parSectionName + "RESIDUAL PROJECTION VECTORS");
     } else {
       std::ostringstream error;
-      error << "Could not parse initialGuess string" << initialGuess << "!\n";
+      error << "Could not parse initialGuess = " << initialGuess << "!\n";
       append_error(error.str());
     }
 
@@ -1425,6 +1425,28 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
   }
 
+  std::string subCyclingString;
+  if(par->extract("general", "subcyclingsteps", subCyclingString))
+  {
+    if(subCyclingString.find("auto") != std::string::npos)
+    {
+      std::string dtString;
+      if (par->extract("general", "dt", dtString)){
+        if(dtString.find("targetcfl") == std::string::npos)
+        {
+          append_error("subCyclingSteps = auto requires the targetCFL to be set");
+        }
+      }
+    }
+  }
+
+  {
+    int NSubCycles = 0;
+    if (par->extract("general", "subcyclingsteps", NSubCycles)){
+      options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
+    }
+  }
+
 
   std::string dtString;
   if (par->extract("general", "dt", dtString)){
@@ -1433,9 +1455,19 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       {"max"},
       {"initial"},
     };
-    if(dtString.find("targetcfl") != std::string::npos)
+
+    bool useVariableDt = false;
+    for(auto&& variableDtEntry : validValues){
+      if(dtString.find(variableDtEntry) != std::string::npos){
+        useVariableDt = true;
+      }
+    }
+
+
+    if(useVariableDt)
     {
       bool userSuppliesInitialDt = false;
+      bool userSuppliesTargetCFL = false;
       options.setArgs("VARIABLE DT", "TRUE");
       options.setArgs("TARGET CFL", "0.5");
       const double bigNumber = std::numeric_limits<double>::max();
@@ -1468,7 +1500,22 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
           int nSteps = std::ceil(targetCFL / 2.0);
           if (targetCFL <= 0.51) nSteps = 0;
           options.setArgs("SUBCYCLING STEPS", std::to_string(nSteps));
+
+          userSuppliesTargetCFL = true;
         }
+      }
+
+      // if targetCFL is not set, try to infer from subcyclingSteps
+      if(!userSuppliesTargetCFL){
+        int NSubCycles = 0;
+        double targetCFL = 0.5;
+        options.getArgs("SUBCYCLING STEPS", NSubCycles);
+        if(NSubCycles == 0){
+          targetCFL = 0.5;
+        } else {
+          targetCFL = 2 * NSubCycles;
+        }
+        options.setArgs("TARGET CFL", to_string_f(targetCFL));
       }
 
       // guard against using a higher initial dt than the max
@@ -1543,27 +1590,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     append_error(error.str());
   }
 
-  std::string subCyclingString;
-  if(par->extract("general", "subcyclingsteps", subCyclingString))
-  {
-    if(subCyclingString.find("auto") != std::string::npos)
-    {
-      if (par->extract("general", "dt", dtString)){
-        if(dtString.find("targetcfl") == std::string::npos)
-        {
-          append_error("subCyclingSteps = auto requires the targetCFL to be set");
-        }
-      }
-    }
-  }
-
-  {
-    int NSubCycles = 0;
-    if (par->extract("general", "subcyclingsteps", NSubCycles)){
-      options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
-    }
-  }
-
 
   double writeInterval = 0;
   par->extract("general", "writeinterval", writeInterval);
@@ -1583,11 +1609,12 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   }
 
   bool dealiasing = true;
-  if (par->extract("general", "dealiasing", dealiasing))
+  if (par->extract("general", "dealiasing", dealiasing)) {
     if (dealiasing)
       options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
     else
       options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+  }
 
   int cubN = round((3./2) * (N+1) - 1) - 1;
   if(!dealiasing) cubN = 0;

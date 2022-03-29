@@ -78,7 +78,7 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
 {
   
   mesh_t* mesh = elliptic->mesh;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   // Poisson only
   const dfloat lambda = 0.0;

@@ -23,16 +23,16 @@ Capabilities:
 
 Requirements:
 * POSIX compilant OS
-* GNU compiler collection version 6.2 or later
+* C++14/C99 compatible compilers
+* GNU Fortran
 * MPI-3.1 or later
 * CMake version 3.11 or later
-* bash
 
 Download the latest release tarball (recommended)
 
 ```sh
-wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.1.tar.gz 
-tar -zxf v21.1.tar.gz 
+wget https://github.com/Nek5000/nekRS/archive/refs/tags/v22.0.tar.gz 
+tar -zxf v22.0.tar.gz 
 ```
 
 or clone our GitHub repository:

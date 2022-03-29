@@ -29,10 +29,10 @@
 
 void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
-  // setup new object with constant coeff
+  // setup new object from fine grid but with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
   mesh_t* mesh = elliptic->mesh;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   //read all the nodes files and load them in a dummy mesh array
   mesh_t** meshLevels = (mesh_t**) calloc(mesh->N + 1,sizeof(mesh_t*));
@@ -81,7 +81,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  elliptic->o_p, elliptic->o_Ap, pfloatString);
                     };
     elliptic->oogs   = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    elliptic->oogsAx = elliptic->oogs;
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     levels[0] = new MGLevel(elliptic, Nmax, options,
                             precon->parAlmond->ktype, platform->comm.mpiComm);
@@ -111,7 +113,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  pfloatString);
                     };
     ellipticC->oogs   = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    ellipticC->oogsAx = ellipticC->oogs; 
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      ellipticC->oogsAx = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
     //add the level manually
     levels[n] = new MGLevel(elliptic,
@@ -152,7 +156,9 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                                  pfloatString);
                     };
     ellipticCoarse->oogs   = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
-    ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
+    ellipticCoarse->oogsAx = ellipticCoarse->oogs;
+    if(options.compareArgs("GS OVERLAP", "TRUE"))
+      ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
   } else {
     ellipticCoarse = elliptic;
   }

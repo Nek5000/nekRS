@@ -40,7 +40,9 @@
     @exclusive dfloat s_Sloc[p_Nq];
     @shared dfloat s_D[p_Nq][p_Nq];
 
+#ifdef smXX
     #pragma unroll p_Nq
+#endif
     for(int k = 0; k < p_Nq; ++k){
       @barrier("local");
       for(int j = 0; j < p_Nq; ++j; @inner(1)){

@@ -135,6 +135,13 @@ int main(int argc, char** argv)
     exit(1); 
   }
 
+  if(N <= 2){
+    if(rank == 0){
+      printf("Error: N > 2!\n");
+    }
+    exit(1);
+  }
+
   Nelements = std::max(1, Nelements/size);
   const int Nq = N + 1;
   const int Np = Nq * Nq * Nq;
@@ -143,7 +150,7 @@ int main(int argc, char** argv)
   const int Nthreads =  omp_get_max_threads();
 
   // build+load kernel
-  occa::properties props = platform->kernelInfo + meshKernelProperties(N);
+  occa::properties props = platform->kernelInfo + meshKernelProperties(N-2); // regular, non-extended mesh
   if(wordSize == 4) props["defines/pfloat"] = "float";
   else props["defines/pfloat"] = "dfloat";
 

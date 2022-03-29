@@ -47,7 +47,8 @@ double startTime(void)
 void setup(MPI_Comm commg_in, MPI_Comm comm_in, 
     	   int buildOnly, int commSizeTarget,
            int ciMode, std::string _setupFile,
-           std::string _backend, std::string _deviceID)
+           std::string _backend, std::string _deviceID,
+           int debug)
 {
   MPI_Comm_dup(commg_in, &commg);
   MPI_Comm_dup(comm_in, &comm);
@@ -105,7 +106,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     fflush(stdout);	
   }
 
-  if (options.getArgs("THREAD MODEL").length() == 0) 
+  if(options.getArgs("THREAD MODEL").length() == 0) 
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
@@ -114,6 +115,8 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   platform_t* _platform = platform_t::getInstance(options, commg, comm);
   platform = _platform;
   platform->par = par;
+
+  if(debug) platform->options.setArgs("VERBOSE","TRUE");
 
   platform->timer.tic("setup", 1);
 
@@ -442,6 +445,17 @@ void processUpdFile()
 
     delete[] rbuf;
   }
+}
+
+void printInfo(double time, int tstep, double elapsedStep, double elapsedTime)
+{
+  timeStepper::printInfo(nrs, time, tstep, elapsedStep, elapsedTime);
+}
+
+void verboseInfo(bool enabled)
+{
+  platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
+  if(enabled) platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
 }
 
 } // namespace

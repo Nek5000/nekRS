@@ -93,7 +93,7 @@
             }
         }
 
-#ifndef gfxXX
+#ifdef smXX
 #pragma unroll p_Nq
 #endif
         for(int c = 0; c < p_Nq; ++c) {
@@ -225,7 +225,7 @@
         }
 
         // now project back in t
-#ifndef gfxXX
+#ifdef smXX
 #pragma unroll p_Nq
 #endif
         for(int c = 0; c < p_Nq; ++c) {

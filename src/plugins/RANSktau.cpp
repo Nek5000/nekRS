@@ -41,28 +41,56 @@ static dfloat coeff[] = {
   85.0,                     // fb_c1
   100.0,                    // fb_c2
   0.52,                     // alp_inf
-  1e-8                      // TINY
+  1e-8,                     // TINY
+  0                         // Pope correction
 };
 }
 
-void RANSktau::buildKernel(occa::properties kernelInfo)
+void RANSktau::buildKernel(occa::properties _kernelInfo)
 {
 
-  kernelInfo["defines/p_sigma_k"]       = coeff[0];
-  kernelInfo["defines/p_sigma_tau"]     = coeff[1];
-  kernelInfo["defines/p_alpinf_str"]    = coeff[2];
-  kernelInfo["defines/p_beta0"]         = coeff[3];
-  kernelInfo["defines/p_kappa"]         = coeff[4];
-  kernelInfo["defines/p_betainf_str"]   = coeff[5];
-  kernelInfo["defines/p_ibetainf_str3"] = 1 / pow(coeff[5],3);
-  kernelInfo["defines/p_sigd_min"]      = coeff[6];
-  kernelInfo["defines/p_sigd_max"]      = coeff[7];
-  kernelInfo["defines/p_fb_c1st"]       = coeff[8];
-  kernelInfo["defines/p_fb_c2st"]       = coeff[9];
-  kernelInfo["defines/p_fb_c1"]         = coeff[10];
-  kernelInfo["defines/p_fb_c2"]         = coeff[11];
-  kernelInfo["defines/p_alp_inf"]       = coeff[12];
-  kernelInfo["defines/p_tiny"]          = coeff[13];
+  occa::properties kernelInfo;
+  if(!kernelInfo.get<std::string>("defines/p_sigma_k").size())
+    kernelInfo["defines/p_sigma_k"]       = coeff[0];
+  if(!kernelInfo.get<std::string>("defines/p_sigma_tau").size())
+    kernelInfo["defines/p_sigma_tau"]     = coeff[1];
+  if(!kernelInfo.get<std::string>("defines/p_alpinf_str").size())
+    kernelInfo["defines/p_alpinf_str"]    = coeff[2];
+  if(!kernelInfo.get<std::string>("defines/p_beta0").size())
+    kernelInfo["defines/p_beta0"]         = coeff[3];
+  if(!kernelInfo.get<std::string>("defines/p_kappa").size())
+    kernelInfo["defines/p_kappa"]         = coeff[4];
+  if(!kernelInfo.get<std::string>("defines/p_betainf_str").size())
+    kernelInfo["defines/p_betainf_str"]   = coeff[5];
+  if(!kernelInfo.get<std::string>("defines/p_ibetainf_str3").size())
+    kernelInfo["defines/p_ibetainf_str3"] = 1 / pow(coeff[5],3);
+  if(!kernelInfo.get<std::string>("defines/p_sigd_min").size())
+    kernelInfo["defines/p_sigd_min"]      = coeff[6];
+  if(!kernelInfo.get<std::string>("defines/p_sigd_max").size())
+    kernelInfo["defines/p_sigd_max"]      = coeff[7];
+  if(!kernelInfo.get<std::string>("defines/p_fb_c1st").size())
+    kernelInfo["defines/p_fb_c1st"]       = coeff[8];
+  if(!kernelInfo.get<std::string>("defines/p_fb_c2st").size())
+    kernelInfo["defines/p_fb_c2st"]       = coeff[9];
+  if(!kernelInfo.get<std::string>("defines/p_fb_c1").size())
+    kernelInfo["defines/p_fb_c1"]         = coeff[10];
+  if(!kernelInfo.get<std::string>("defines/p_fb_c2").size())
+    kernelInfo["defines/p_fb_c2"]         = coeff[11];
+  if(!kernelInfo.get<std::string>("defines/p_alp_inf").size())
+    kernelInfo["defines/p_alp_inf"]       = coeff[12];
+  if(!kernelInfo.get<std::string>("defines/p_tiny").size())
+    kernelInfo["defines/p_tiny"]          = coeff[13];
+  if(!kernelInfo.get<std::string>("defines/p_pope").size())
+    kernelInfo["defines/p_pope"]          = coeff[14];
+
+  const int verbose = platform->options.compareArgs("VERBOSE","TRUE") ? 1:0;
+
+  if(platform->comm.mpiRank == 0 && verbose) {
+    std::cout << "\nRANSktau settings\n"; 
+    std::cout << kernelInfo << std::endl;
+  }
+
+  kernelInfo += _kernelInfo;
 
   std::string path;
   int rank = platform->comm.mpiRank;
@@ -71,7 +99,7 @@ void RANSktau::buildKernel(occa::properties kernelInfo)
   std::string fileName, kernelName;
   const std::string extension = ".okl";
   {
-      kernelName = "computeHex3D";
+      kernelName = "RANSktauComputeHex3D";
       fileName = path + kernelName + extension;
       computeKernel    = platform->device.buildKernel(fileName, kernelInfo, true);
 
@@ -196,8 +224,6 @@ void RANSktau::setup(nrs_t* nrsIn, dfloat mueIn, dfloat rhoIn,
 {
   if(setupCalled) return;
   
-  
-
   nrs    = nrsIn;
   mueLam = mueIn;
   rho    = rhoIn;

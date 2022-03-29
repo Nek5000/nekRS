@@ -128,7 +128,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
 {
   mesh_t* mesh = elliptic->mesh;
   
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();

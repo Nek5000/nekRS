@@ -3,14 +3,11 @@
 ## What is new? 
 
 * Multi-session (uncoupled) support
-* Fix various potential race conditions 
-* Fix `mcmodel` issue on ppc 
-* Fix Dirichlet handling in Jacobi smoother
-* Fix minor performance regression in coarse grid solve
 * Support unaligned symmetry boundary condition
 * Support (unaligned) traction boundary condition
 * Better performance on AMD GPUs
 * FLOP counters
+* Various bug fixes 
 
 ## Good to know
 
@@ -23,12 +20,9 @@
 
 ## Known Bugs / Restrictions
 
-* [396](https://github.com/Nek5000/nekRS/issues/396)
+* [729](https://github.com/Nek5000/Nek5000/issues/729)
 * [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
-* [201](https://github.com/Nek5000/nekRS/issues/201)
-* [729](https://github.com/Nek5000/Nek5000/issues/729)
-
 
 ## Thanks to our Contributors
 

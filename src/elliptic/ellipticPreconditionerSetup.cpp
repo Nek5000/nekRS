@@ -32,7 +32,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
   
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();

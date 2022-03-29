@@ -55,7 +55,6 @@ struct nrs_t
   dfloat unitTimeCFL;
 
   dfloat dp0thdt;
-  int tstep;
   int lastStep;
   dfloat g0, ig0;
 

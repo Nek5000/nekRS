@@ -29,7 +29,6 @@
                                     @restrict const dfloat* p,
                                     @restrict const dfloat* Ap,
                                     const dfloat alpha,
-                                    @restrict dfloat* x,
                                     @restrict dfloat* r,
                                     @restrict dfloat* redr)
 {
@@ -43,17 +42,14 @@
           dfloat sum = 0.0;
           #pragma unroll
           for(int fld = 0; fld < p_Nfields; fld++) {
-            dfloat xn = x[n + fld * offset];
             dfloat rn = r[n + fld * offset];
  
             const dfloat pn = p[n + fld * offset];
             const dfloat Apn = Ap[n + fld * offset];
  
-            xn  += alpha * pn;
             rn  -= alpha * Apn;
             sum += rn * rn;
  
-            x[n + fld * offset] = xn;
             r[n + fld * offset] = rn;
           }
           s_sum[t] = sum*invDegree[n];
