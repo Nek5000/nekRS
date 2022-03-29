@@ -25,7 +25,7 @@
  */
 
 @kernel void curlHex3D(const dlong Nelements,
-                       const dfloat scaleJW,
+                       const dlong scaleJW,
                        @restrict const dfloat*  vgeo,
                        @restrict const dfloat*  const D,
                        const dlong offset,
