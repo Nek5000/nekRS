@@ -147,6 +147,34 @@ static void findInterpPoints(nrs_t* nrs){
                (sess==sessionID)?0:npt,
                ogsHandles[sess]);
 
+    {
+        dlong nFail = 0;
+        int n = (sess==sessionID)?0:npt;
+        for (int in = 0; in < n; ++in) {
+          if (codeTemp[in] == 1) {
+            if (dist2Temp[in] > 10*5e-13) {
+              nFail += 1;
+              if (nFail < 10){
+                std::cerr << " WARNING: point from session " << sessionID << " on boundary or outside the mesh xy[z]d^2: "
+                          << interpX[in] << "," << interpX[in+npt] << ", " << interpX[in+2*npt] << ", " << dist2Temp[in] << std::endl;
+              }
+            }
+          } else if (codeTemp[in] == 2) {
+            nFail += 1;
+            if (nFail < 10){
+              std::cerr << " WARNING: point from session " << sessionID << " not within mesh xy[z]: "
+                        << interpX[in] << "," << interpX[in+npt] << ", " << interpX[in+2*npt] << std::endl;
+            }
+          }
+        }
+        hlong counts[4] = {npt, nFail, 0, 0};
+        MPI_Reduce(counts, counts+2, 2, MPI_HLONG, MPI_SUM, 0, platform_t::getInstance()->comm.mpiComm);
+        if (platform_t::getInstance()->comm.mpiRank == 0 && counts[3] > 0) {
+          std::cout << "interp::findPoints - Total number of points = " << counts[2]
+                    << ", failed = " << counts[3] << std::endl;
+        }
+    }
+
     if(sess!=sessionID) {
       for(dlong i = 0; i < npt; ++i) {
         // TODO review this condition
@@ -235,6 +263,10 @@ static void fieldEval(nrs_t *nrs, dlong field, occa::memory in) {
   neknek_t *neknek = nrs->neknek;
   const dlong D = nrs->dim;
   dfloat *out = neknek->valInterp+field*neknek->npt;
+
+  for (int i = 0; i < neknek->npt; ++i) {
+    out[i] = 0.0;
+  }
 
   ogsFindptsEval(out,          1*sizeof(dfloat),
                  neknek->code, 1*sizeof(dlong),
