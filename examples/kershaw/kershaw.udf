@@ -62,7 +62,10 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
       nrs->pSolver->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
     }
 
-    platform->timer.reset();
+    platform->timer.reset("pressureSolve");
+    platform->timer.reset("pressure preconditioner");
+    platform->timer.reset("pressure preconditioner smoother");
+    platform->timer.reset("coarseSolve");
     platform->flopCounter->clear();
 
     std::vector<double> eTime; 
@@ -123,6 +126,5 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
       printf("FLOPS/s: %g \n", flopsPerSecond);
     }
   }
-  EXIT_AND_FINALIZE(0);
   
 }

@@ -25,4 +25,5 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshParallelGatherScatterSetup.cpp
     ${MESH_SOURCE_DIR}/meshSurfaceGeometricFactorsHex3D.cpp
     ${MESH_SOURCE_DIR}/meshComputeInvLMM.cpp
+    ${MESH_SOURCE_DIR}/meshSolve.cpp
     ${MESH_SOURCE_DIR}/meshParallelConnectOpt.cpp)

@@ -7,6 +7,7 @@
 
 namespace bcMap
 {
+bool useNekBCs();
 void setup(std::vector<std::string> slist, std::string field);
 int id(int bid, std::string field);
 int type(int bid, std::string field);
@@ -17,6 +18,8 @@ void setBcMap(std::string field, int* map, int nbid);
 void checkBoundaryAlignment(mesh_t *mesh);
 void remapUnalignedBoundaries(mesh_t *mesh);
 bool unalignedBoundary(bool cht, std::string field);
+void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs);
+bool useDerivedMeshBoundaryConditions();
 }
 
 #endif

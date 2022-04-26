@@ -444,7 +444,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   std::vector<double> relErrors = {vxErr, prErr, s1Err, s2Err};
   std::vector<double> absErrors = {abs(err[0]), abs(err[1]), abs(err[2]), abs(err[3])};
   bool passTest = true;
-  const double absTol = 1e-11; // values below this threshold are ignored
+  const double absTol = 5e-11; // values below this threshold are ignored
   for(size_t i = 0; i < relErrors.size(); ++i){
 
     const double absError = absErrors[i];

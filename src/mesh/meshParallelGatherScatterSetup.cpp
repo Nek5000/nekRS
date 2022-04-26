@@ -81,8 +81,13 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
     localCount += 1 - isHalo;
   }
 
+  mesh->elementList = (dlong *)calloc(mesh->Nelements, sizeof(dlong));
   mesh->globalGatherElementList = (dlong*) calloc(globalCount, sizeof(dlong));
   mesh->localGatherElementList  = (dlong*) calloc(localCount, sizeof(dlong));
+
+  for (dlong e = 0; e < mesh->Nelements; ++e) {
+    mesh->elementList[e] = e;
+  }
 
   globalCount = 0;
   localCount = 0;
@@ -110,6 +115,8 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
 
   mesh->NglobalGatherElements = globalCount;
   mesh->NlocalGatherElements = localCount;
+
+  mesh->o_elementList = platform->device.malloc(mesh->Nelements * sizeof(dlong), mesh->elementList);
 
   if(globalCount)
     mesh->o_globalGatherElementList =

@@ -4,24 +4,23 @@
 
 static int firstTime = 1;
 
-void setup(nrs_t* nrs)
+void setup(nrs_t *nrs)
 {
-  mesh_t* mesh = nrs->meshV;
-  
+  mesh_t *mesh = nrs->meshV;
 
-  dfloat* dH;
-  if(nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
-    dH = (dfloat*) calloc((mesh->N + 1),sizeof(dfloat));
+  dfloat *dH;
+  if (nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
+    dH = (dfloat *)calloc((mesh->N + 1), sizeof(dfloat));
 
-    for(int n = 0; n < (mesh->N + 1); n++) {
-      if(n == 0)
+    for (int n = 0; n < (mesh->N + 1); n++) {
+      if (n == 0)
         dH[n] = mesh->gllz[n + 1] - mesh->gllz[n];
-      else if(n == mesh->N)
+      else if (n == mesh->N)
         dH[n] = mesh->gllz[n] - mesh->gllz[n - 1];
       else
-        dH[n] = 0.5 * ( mesh->gllz[n + 1] - mesh->gllz[n - 1]);
+        dH[n] = 0.5 * (mesh->gllz[n + 1] - mesh->gllz[n - 1]);
     }
-    for(int n = 0; n < (mesh->N + 1); n++)
+    for (int n = 0; n < (mesh->N + 1); n++)
       dH[n] = 1.0 / dH[n];
 
     nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
@@ -30,11 +29,12 @@ void setup(nrs_t* nrs)
   firstTime = 0;
 }
 
-dfloat computeCFL(nrs_t* nrs)
+dfloat computeCFL(nrs_t *nrs)
 {
-  mesh_t* mesh = nrs->meshV;
-  
-  if(firstTime) setup(nrs);
+  mesh_t *mesh = nrs->meshV;
+
+  if (firstTime)
+    setup(nrs);
 
   // Compute cfl factors i.e. dt* U / h
   nrs->cflKernel(mesh->Nelements,
@@ -51,8 +51,8 @@ dfloat computeCFL(nrs_t* nrs)
 
   // finish reduction
   dfloat cfl = 0.f;
-  for(dlong n = 0; n < mesh->Nelements; ++n)
-    cfl  = mymax(cfl, platform->mempool.slice0[n]);
+  for (dlong n = 0; n < mesh->Nelements; ++n)
+    cfl = mymax(cfl, platform->mempool.slice0[n]);
 
   dfloat gcfl = 0.f;
   MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);

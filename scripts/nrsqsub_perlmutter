@@ -82,8 +82,8 @@ echo "#SBATCH -C gpu" >>$SFILE
 echo "#SBATCH --exclusive" >>$SFILE
 echo "#SBATCH --ntasks-per-node=$gpu_per_node" >>$SFILE
 echo "#SBATCH --cpus-per-task=$cores_per_socket" >>$SFILE
-echo "#SBATCH --gpu-bind=map_gpu:0,1,2,3" >> $SFILE
-echo "#SBATCH --gpus-per-task=1" >> $SFILE
+echo "#SBATCH --gpu-bind=none" >> $SFILE
+echo "#SBATCH --gpus-per-node=4" >> $SFILE
 
 echo "module load PrgEnv-gnu" >>$SFILE
 echo "module load cudatoolkit" >>$SFILE
@@ -104,7 +104,7 @@ echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
 
 echo "date" >>$SFILE
-echo "srun $bin --backend $backend --device-id 0 --setup $case" >>$SFILE
+echo "srun $bin --backend $backend --setup $case" >>$SFILE
 
 sbatch $SFILE
 

@@ -118,8 +118,6 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
 
   if(debug) platform->options.setArgs("VERBOSE","TRUE");
 
-  platform->timer.tic("setup", 1);
-
   int buildRank = rank;
   const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
@@ -180,16 +178,14 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
 
   nrsSetup(comm, options, nrs);
 
-  platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     std::cout << "\nsettings:\n" << std::endl << options << std::endl;
-    std::cout << "occa memory usage: " << platform->device.occaDevice().memoryAllocated()/1e9 << " GB" << std::endl;
-    std::cout << "initialization took " << setupTime << " s" << std::endl;
+    std::cout << "occa memory usage: " << platform->device.occaDevice().memoryAllocated() / 1e9 << " GB"
+              << std::endl;
   }
   fflush(stdout);
 
-  platform->timer.set("setup", setupTime);
   platform->flopCounter->clear();
 }
 
@@ -354,7 +350,10 @@ void* nrsPtr(void)
 
 void finalize(void)
 {
-  AMGXfree();
+  if(options.compareArgs("BUILD ONLY", "FALSE")) {
+    AMGXfree();
+    nek::end();
+  }
 }
 
 int runTimeStatFreq()
@@ -362,24 +361,9 @@ int runTimeStatFreq()
   int freq = 500;
   platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
   return freq;
-} 
-
-void printRuntimeStatistics(int step)
-{
-  platform->timer.printRunStat(step);
-#if 0
-  const auto flopCount = platform->flopCounter->count();
-  const auto tSolve = platform->timer.query("solve", "DEVICE:MAX");
-  std::cout.setf(std::ios::scientific);
-  int outPrecisionSave = std::cout.precision();
-  std::cout.precision(5);
-  if (platform->comm.mpiRank == 0) {
-    std::cout << "GFlops/s: " << flopCount / tSolve / 1e9 << std::endl;
-  }
-  std::cout.unsetf(std::ios::scientific);
-  std::cout.precision(outPrecisionSave);
-#endif
 }
+
+void printRuntimeStatistics(int step) { platform->timer.printRunStat(step); }
 
 void processUpdFile()
 {
@@ -447,16 +431,15 @@ void processUpdFile()
   }
 }
 
-void printInfo(double time, int tstep, double elapsedStep, double elapsedTime)
-{
-  timeStepper::printInfo(nrs, time, tstep, elapsedStep, elapsedTime);
-}
+void printInfo(double time, int tstep) { timeStepper::printInfo(nrs, time, tstep); }
 
 void verboseInfo(bool enabled)
 {
   platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
   if(enabled) platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
 }
+
+void updateTimer(const std::string &key, double time) { platform->timer.set(key, time); }
 
 } // namespace
 

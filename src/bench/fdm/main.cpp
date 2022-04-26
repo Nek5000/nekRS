@@ -5,64 +5,15 @@
 #include "omp.h"
 #include <unistd.h>
 #include "mpi.h"
+#include <vector>
+#include <algorithm>
 
 #include "nrssys.hpp"
 #include "setupAide.hpp"
 #include "platform.hpp"
 #include "configReader.hpp"
 
-namespace {
-
-occa::kernel fdmKernel;
-
-occa::memory o_Sx;
-occa::memory o_Sy;
-occa::memory o_Sz;
-occa::memory o_invL;
-occa::memory o_u;
-occa::memory o_Su;
-
-int Np; 
-int Nelements; 
-
-double run(int Ntests)
-{
-  platform->device.finish();
-  MPI_Barrier(MPI_COMM_WORLD);
-  const double start = MPI_Wtime();
-
-  for(int test = 0; test < Ntests; ++test) {
-    fdmKernel(Nelements, o_Su, o_Sx, o_Sy, o_Sz, o_invL, o_u);
-  }
-
-  platform->device.finish();
-  MPI_Barrier(MPI_COMM_WORLD);
-  return (MPI_Wtime() - start) / Ntests;
-} 
-
-void* (*randAlloc)(int);
-
-void* rand32Alloc(int N)
-{
-  float* v = (float*) malloc(N * sizeof(float));
-
-  for(int n = 0; n < N; ++n)
-    v[n] = drand48();
-
-  return v;
-}
-
-void* rand64Alloc(int N)
-{
-  double* v = (double*) malloc(N * sizeof(double));
-
-  for(int n = 0; n < N; ++n)
-    v[n] = drand48();
-
-  return v;
-}
-
-} // namespace
+#include "benchmarkFDM.hpp"
 
 int main(int argc, char** argv)
 {
@@ -78,10 +29,12 @@ int main(int argc, char** argv)
   int err = 0;
   int cmdCheck = 0;
 
+  int wordSize = 8;
+  int Nelements;
+
   int N;
   int okl = 1;
   int Ntests = -1;
-  size_t wordSize = 8;
 
   while(1) {
     static struct option long_options[] =
@@ -146,82 +99,16 @@ int main(int argc, char** argv)
   const int Nq = N + 1;
   const int Np = Nq * Nq * Nq;
 
-  platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD); 
-  const int Nthreads =  omp_get_max_threads();
+  platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD);
 
-  // build+load kernel
-  occa::properties props = platform->kernelInfo + meshKernelProperties(N-2); // regular, non-extended mesh
-  if(wordSize == 4) props["defines/pfloat"] = "float";
-  else props["defines/pfloat"] = "dfloat";
-
-  props["defines/p_Nq_e"] = Nq;
-  props["defines/p_Np_e"] = Np;
-  props["defines/p_overlap"] = 0;
-
-  // always benchmark ASM
-  props["defines/p_restrict"] = 0;
-
-  std::string kernelName = "fusedFDM";
-  const std::string ext = (platform->device.mode() == "Serial") ? ".c" : ".okl";
-  const std::string fileName = 
-    installDir + "/okl/elliptic/" + kernelName + ext;
-
-  fdmKernel = platform->device.buildKernel(fileName, props, true);
-
-  // populate arrays
-  randAlloc = &rand64Alloc; 
-  if(wordSize == 4) randAlloc = &rand32Alloc;
-
-  void *Sx   = randAlloc(Nelements * Nq * Nq);
-  void *Sy   = randAlloc(Nelements * Nq * Nq);
-  void *Sz   = randAlloc(Nelements * Nq * Nq);
-  void *invL = randAlloc(Nelements * Np);
-  void *Su   = randAlloc(Nelements * Np);
-  void *u    = randAlloc(Nelements * Np);
-
-  o_Sx = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sx);
-  free(Sx);
-  o_Sy = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sy);
-  free(Sy);
-  o_Sz = platform->device.malloc(Nelements * Nq * Nq * wordSize, Sz);
-  free(Sz);
-  o_invL = platform->device.malloc(Nelements * Np * wordSize, invL);
-  free(invL);
-  o_Su = platform->device.malloc(Nelements * Np * wordSize, Su);
-  free(Su);
-  o_u = platform->device.malloc(Nelements * Np * wordSize, u);
-  free(u);
-
-  // warm-up
-  double elapsed = run(10);
-  const int elapsedTarget = 10;
-  if(Ntests < 0) Ntests = elapsedTarget/elapsed;
-
-  // ***** 
-  elapsed = run(Ntests);
-  // ***** 
- 
-  // print statistics
-  const dfloat GDOFPerSecond = (size * Nelements * (N* N * N) / elapsed) / 1.e9;
-
-  size_t bytesPerElem = (3 * Np + 3 * Nq * Nq) * wordSize;
-  const double bw = (size * Nelements * bytesPerElem / elapsed) / 1.e9;
-
-  double flopsPerElem = 12 * Nq * Np + Np;
-  const double gflops = (size * flopsPerElem * Nelements / elapsed) / 1.e9;
-
-  if(rank == 0)
-    std::cout << "MPItasks=" << size
-              << " OMPthreads=" << Nthreads
-              << " NRepetitions=" << Ntests
-              << " N=" << N
-              << " Nelements=" << size * Nelements
-              << " elapsed time=" << elapsed
-              << " wordSize=" << 8*wordSize
-              << " GDOF/s=" << GDOFPerSecond
-              << " GB/s=" << bw
-              << " GFLOPS/s=" << gflops
-              << "\n";
+  const int verbosity = 2;
+  if (Ntests != -1) {
+    benchmarkFDM(Nelements, Nq, wordSize, false, false, verbosity, Ntests, true, "");
+  }
+  else {
+    const double targetTime = 10.0;
+    benchmarkFDM(Nelements, Nq, wordSize, false, false, verbosity, targetTime, true, "");
+  }
 
   MPI_Finalize();
   exit(0);

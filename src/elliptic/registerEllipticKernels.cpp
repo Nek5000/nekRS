@@ -1,5 +1,7 @@
 #include <compileKernels.hpp>
 #include "elliptic.h"
+#include "re2Reader.hpp"
+#include "benchmarkAx.hpp"
 
 namespace{
 
@@ -111,21 +113,6 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
     platform->kernels.add("maskPfloat", fileName, pfloatKernelInfo);
   }
 
-  {
-    const std::string oklpath = installDir + "/okl/elliptic/";
-    const std::string suffix = "Hex3D";
-    std::string fileName;
-
-    occa::properties enforceUnProperties = kernelInfo;
-    enforceUnProperties["defines/p_ZERO_NORMAL"] = ZERO_NORMAL;
-    enforceUnProperties["defines/outputType"] = dfloatString;
-    fileName = oklpath + "enforceUn" + suffix + ".okl";
-    platform->kernels.add("enforceUn", fileName, enforceUnProperties);
-
-    enforceUnProperties["defines/outputType"] = pfloatString;
-    platform->kernels.add("enforceUnPfloat", fileName, enforceUnProperties);
-  }
-
   kernelInfo["defines/p_Nfields"] = Nfields;
 
   occa::properties dfloatKernelInfo = kernelInfo;
@@ -153,6 +140,13 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
     AxKernelInfo["defines/p_poisson"] = 1;
   }
 
+  int nelgt, nelgv;
+  const std::string meshFile = platform->options.getArgs("MESH FILE");
+  re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+  const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+  bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+  const int verbosity = verbose ? 2 : 1;
+
   for(auto&& coeffField : {true, false}){
     std::string kernelNamePrefix = "elliptic";
     if (blockSolver)
@@ -166,9 +160,24 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
 
     const std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
     const std::string prefix = (poissonEquation) ? "poisson-" : "";
-    fileName = oklpath + _kernelName + fileNameExtension; 
+    fileName = oklpath + _kernelName + fileNameExtension;
+
+    auto axKernel = benchmarkAx(NelemBenchmark,
+                                N + 1,
+                                N,
+                                !coeffField,
+                                poissonEquation,
+                                false,
+                                sizeof(dfloat),
+                                Nfields,
+                                stressForm,
+                                verbosity,
+                                0.2,
+                                false,
+                                "");
+
     platform->kernels.add(
-      prefix + _kernelName, fileName, AxKernelInfo);
+      prefix + _kernelName, axKernel);
   }
 
   kernelName = "ellipticBlockBuildDiagonal" + suffix;

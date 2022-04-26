@@ -1,5 +1,7 @@
 #include <nrs.hpp>
 #include <compileKernels.hpp>
+#include "re2Reader.hpp"
+#include "benchmarkAdvsub.hpp"
 
 void registerCdsKernels(occa::properties kernelInfoBC) {
   const bool serial = platform->serial;
@@ -141,11 +143,23 @@ void registerCdsKernels(occa::properties kernelInfoBC) {
 
       occa::properties subCycleStrongCubatureProps = prop;
 
-      kernelName = "subCycleStrongCubatureVolume" + suffix;
-      fileName = oklpath + "cds/" + kernelName + extension;
-      platform->kernels.add(section + kernelName,
-          fileName,
-          subCycleStrongCubatureProps);
+      int nelgt, nelgv;
+      const std::string meshFile = platform->options.getArgs("MESH FILE");
+      re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+      const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+      bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+      const int verbosity = verbose ? 2 : 1;
+
+      int Nsubsteps;
+      platform->options.getArgs("SUBCYCLING STEPS", Nsubsteps);
+
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
+        auto subCycleKernel =
+            benchmarkAdvsub(1, NelemBenchmark, Nq, cubNq, nEXT, true, true, verbosity, 0.5, false);
+
+        kernelName = "subCycleStrongCubatureVolume" + suffix;
+        platform->kernels.add(section + kernelName, subCycleKernel);
+      }
 
       kernelName = "subCycleStrongVolume" + suffix;
       fileName = oklpath + "cds/" + kernelName + ".okl";

@@ -173,6 +173,7 @@ include(config/nek5000.cmake)
 ###############################################################################
 
 
+include(config/bench.cmake)
 include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/gslib.cmake)
@@ -190,24 +191,27 @@ set(SRC
     src/utils/mysort.cpp
     src/utils/parallelSort.cpp
     src/utils/tinyexpr.c
+    src/utils/setupAide.cpp
     src/core/numberActiveFields.cpp
-    src/core/setupAide.cpp
     src/core/printHeader.cpp
-    src/navierStokes/cfl.cpp
+    src/timeStepper/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
-    src/core/bcMap.cpp
+    src/bdry/bcMap.cpp
     src/core/compileKernels.cpp
-    src/core/setup.cpp
+    src/setup/setup.cpp
     src/core/alignment.cpp
     src/core/registerNrsKernels.cpp
+    src/bdry/createEToBV.cpp
+    src/bdry/applyDirichlet.cpp
     src/timeStepper/timeStepper.cpp
     src/timeStepper/subCycling.cpp
     src/navierStokes/tombo.cpp
     src/navierStokes/constantFlowRate.cpp
-    src/cds/cds.cpp
+    src/cds/cdsSolve.cpp
     src/cds/registerCdsKernels.cpp
     src/io/parReader.cpp
+    src/io/re2Reader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
@@ -221,13 +225,15 @@ set(SRC
     src/linAlg/matrixTranspose.cpp
     src/linAlg/matrixRightSolve.cpp
     src/linAlg/registerLinAlgKernels.cpp
-    src/plugins/avg.cpp
+    src/plugins/tavg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
     src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
+    src/postProcessing/planarAvg.cpp
+    ${BENCH_SOURCES}
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
@@ -255,6 +261,9 @@ target_compile_definitions(nekrs-lib PUBLIC
 target_include_directories(nekrs-lib 
   PUBLIC 
   ${CMAKE_CURRENT_BINARY_DIR}
+  src
+  src/setup
+  src/bdry
   src/core
   src/utils
   src/lib
@@ -265,6 +274,12 @@ target_include_directories(nekrs-lib
   src/timeStepper
   src/navierStokes
   src/cds
+  src/postProcessing
+  ${BENCH_SOURCE_DIR}
+  ${BENCH_SOURCE_DIR}/core
+  ${BENCH_SOURCE_DIR}/fdm
+  ${BENCH_SOURCE_DIR}/axHelm
+  ${BENCH_SOURCE_DIR}/advsub
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
@@ -286,8 +301,8 @@ target_include_directories(nekrs-lib
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
-  target_link_libraries(nekrs-lib PUBLIC amgxsh)
-  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
+  target_link_libraries(nekrs-lib PUBLIC amgxsh amgx)
+  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
 endif()
 
 add_executable(nekrs-bin src/main.cpp)
@@ -337,7 +352,7 @@ install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.h$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
@@ -348,7 +363,7 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
-install(FILES src/core/parHelp.txt DESTINATION include)
+install(FILES src/io/parHelp.txt DESTINATION include)
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")

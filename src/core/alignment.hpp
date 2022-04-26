@@ -3,7 +3,7 @@
 #include "nrssys.hpp"
 #include <array>
 #include <vector>
-enum class alignment_t { X, Y, Z, UNALIGNED };
-std::string to_string(alignment_t a);
-alignment_t computeAlignment(const std::array<dfloat,3>& n);
+enum class boundaryAlignment_t { X, Y, Z, UNALIGNED };
+std::string to_string(boundaryAlignment_t a);
+boundaryAlignment_t computeAlignment(const std::array<dfloat, 3> &n);
 #endif

@@ -43,10 +43,7 @@ struct cds_t
 
   int compute[NSCALAR_MAX];
 
-  dfloat* U, * S;
-  dfloat* rkNS;
-  //  dfloat *rhsS;
-  dfloat* rkS;
+  dfloat *U, *S;
 
   // filter
   int filterNc;
@@ -71,7 +68,7 @@ struct cds_t
   occa::memory* o_usrwrk;
 
   int Nsubsteps;
-  dfloat sdt;
+
   dfloat* Ue;
   occa::memory o_Ue;
 

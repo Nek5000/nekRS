@@ -1,8 +1,8 @@
 #if !defined(nekrs_nrs_hpp_)
 #define nekrs_nrs_hpp_
 
-#include <string>
 #include <mpi.h>
+#include <string>
 
 namespace nekrs
 {
@@ -30,8 +30,9 @@ int numSteps(void);
 int lastStep(double time, int tstep, double elapsedTime);
 int writeControlRunTime(void);
 void processUpdFile();
-void printInfo(double time, int tstep, double elapsedStep, double elapsedTime);
+void printInfo(double time, int tstep);
 void verboseInfo(bool enabled);
+void updateTimer(const std::string &key, double time);
 
 void* nrsPtr(void);
 void* nekPtr(const char* id);

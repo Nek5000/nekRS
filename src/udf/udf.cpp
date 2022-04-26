@@ -5,12 +5,14 @@
 #include <regex>
 
 #include "udf.hpp"
-#include "io.hpp"
+#include "ioUtils.hpp"
 #include "platform.hpp"
+#include "bcMap.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
 static int velocityDirichletConditions = 0;
+static int meshVelocityDirichletConditions = 0;
 static int velocityNeumannConditions = 0;
 static int pressureDirichletConditions = 0;
 static int scalarDirichletConditions = 0;
@@ -44,6 +46,10 @@ void oudfFindDirichlet(std::string &field)
     if (platform->comm.mpiRank == 0) 
      std::cout << "WARNING: Cannot find oudf function: pressureDirichletConditions!\n";
     // ABORT(EXIT_FAILURE); this bc is optional 
+  }
+  if(field.find("mesh") != std::string::npos && !meshVelocityDirichletConditions && !bcMap::useDerivedMeshBoundaryConditions()) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: meshVelocityDirichletConditions!\n";
+    ABORT(EXIT_FAILURE);
   }
 }
 
@@ -103,6 +109,13 @@ void oudfInit(setupAide &options)
     if(!found)
       out << "void velocityDirichletConditions(bcData *bc){}\n";
 
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+meshVelocityDirichletConditions)"));
+    meshVelocityDirichletConditions = found;
+    if(!found)
+      out << "void meshVelocityDirichletConditions(bcData *bc){\n"
+      "  velocityDirichletConditions(bc);\n"
+      "}\n";
+
     found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
     velocityNeumannConditions = found;
     if(!found)
@@ -127,6 +140,7 @@ void oudfInit(setupAide &options)
   }
 
   MPI_Bcast(&velocityDirichletConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&meshVelocityDirichletConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&velocityNeumannConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, comm);
@@ -234,7 +248,7 @@ void* udfLoadFunction(const char* fname, int errchk)
   sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
   void* h, * fptr;
-  h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);
+  h = dlopen(udfLib, RTLD_NOW | RTLD_GLOBAL);
   if (!h) goto errOpen;
 
   fptr = dlsym(h,fname);
@@ -264,7 +278,7 @@ occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function)
 {
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string bcDataFile = installDir + "/include/core/bcData.h";
+  const std::string bcDataFile = installDir + "/include/bdry/bcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   // provide some common kernel args

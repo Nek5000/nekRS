@@ -74,6 +74,7 @@ struct GmresData{
 struct elliptic_t
 {
   static constexpr int NScratchFields {4};
+  static constexpr int minNFDMOverlap{4};
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
   int coeffField;        // flag for variable coefficient (solver)
@@ -102,9 +103,6 @@ struct elliptic_t
 
   dfloat tau;
 
-  int* BCType;
-  int NBCType;
-
   bool allNeumann;
 
   // HOST shadow copies
@@ -122,6 +120,8 @@ struct elliptic_t
   occa::memory o_maskIds;
   occa::memory o_maskIdsGlobal;
   occa::memory o_maskIdsLocal;
+
+  occa::memory o_EToB;
 
   occa::memory o_x;
   occa::memory o_x0;
@@ -175,13 +175,9 @@ struct elliptic_t
   int* levels;
 
   SolutionProjection* solutionProjection;
-  GmresData* gmresData;
+  GmresData *gmresData;
 
-  bool UNormalZero;
-
-  occa::kernel enforceUnKernel;
-  occa::kernel enforceUnPfloatKernel;
-  occa::memory o_BCType;
+  std::function<void(dlong Nelements, occa::memory &o_elementList, occa::memory &o_x)> applyZeroNormalMask;
 };
 
 #include "ellipticMultiGrid.h"
@@ -260,15 +256,12 @@ void ellipticOgs(mesh_t *mesh,
                  dlong mNlocal,
                  int nFields,
                  dlong offset,
-                 int *BCType,
-                 int BCTypeOffset,
-                 bool &UNormalZero,
+                 int *EToB,
                  dlong &Nmasked,
                  occa::memory &o_maskIds,
                  dlong &NmaskedLocal,
                  occa::memory &o_maskIdsLocal,
                  dlong &NmaskedGlobal,
                  occa::memory &o_maskIdsGlobal,
-                 occa::memory &o_BCType,
                  ogs_t **ogs);
 #endif

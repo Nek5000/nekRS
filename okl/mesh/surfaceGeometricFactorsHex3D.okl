@@ -24,10 +24,10 @@ SOFTWARE.
 
 */
 @kernel void surfaceGeometricFactorsHex3D(const dlong Nelements,
-                const dfloat *w,
-                const dlong *faceNodes,
-                const dfloat *vgeo,
-                dfloat *sgeo){
+                @restrict const dfloat *w,
+                @restrict const dlong *faceNodes,
+                @restrict const dfloat *vgeo,
+                @restrict dfloat *sgeo){
 
   for(dlong e=0;e<Nelements;++e;@outer(0)){ /* for each element */
 

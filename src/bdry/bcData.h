@@ -22,5 +22,7 @@ struct bcData
   int scalarId;
   dfloat s, flux;
 
+  dfloat meshu, meshv, meshw;
+
   @globalPtr const dfloat* wrk;
 };

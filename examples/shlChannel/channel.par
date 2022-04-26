@@ -13,13 +13,13 @@ writeInterval = 100
 stressFormulation = true # required for variable viscosity/rotated shl/sym boundaries
 
 [PRESSURE]
-residualTol = 1e-04
+residualTol = 1e-08
 
 [VELOCITY]
 boundaryTypeMap = shl, sym
-residualTol = 1e-06
+residualTol = 1e-12
 density = 1.0
-viscosity = 10.0
+viscosity = -100.0
 
 [CASEDATA]
 P_ROT = 0.5

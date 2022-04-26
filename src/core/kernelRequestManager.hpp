@@ -58,6 +58,9 @@ public:
                   const occa::properties& m_props,
                   std::string m_suffix = std::string(),
                   bool assertUnique = false);
+  void add(const std::string& requestName, occa::kernel kernel){
+    requestToKernelMap[requestName] = kernel;
+  }
   
   void compile();
 

@@ -17,134 +17,123 @@
 #include "linAlg.hpp"
 #include "timer.hpp"
 #include "platform.hpp"
+#include "fldFile.hpp"
 
-struct nrs_t
-{
+struct nrs_t {
   int dim, elementType;
 
-  mesh_t* _mesh;
-  mesh_t* meshV;
+  mesh_t *_mesh;
+  mesh_t *meshV;
 
-  elliptic_t* uSolver;
-  elliptic_t* vSolver;
-  elliptic_t* wSolver;
-  elliptic_t* uvwSolver;
-  elliptic_t* pSolver;
-  elliptic_t* meshSolver;
+  elliptic_t *uSolver;
+  elliptic_t *vSolver;
+  elliptic_t *wSolver;
+  elliptic_t *uvwSolver;
+  elliptic_t *pSolver;
+  elliptic_t *meshSolver;
 
-  cds_t* cds;
+  cds_t *cds;
 
-  oogs_t* gsh;
+  oogs_t *gsh;
 
   dlong ellipticWrkOffset;
 
   int flow;
-
+  int cht;
   int Nscalar;
+  int NVfields, NTfields;
   dlong fieldOffset;
   dlong cubatureOffset;
   setupAide vOptions, pOptions, mOptions;
 
-  int NVfields, NTfields;
-
-  int converged;
+  int timeStepConverged;
 
   dfloat dt[3], idt;
-  dfloat p0th[3] = {0.0, 0.0, 0.0};
-  dfloat CFL;
-  dfloat unitTimeCFL;
-
-  dfloat dp0thdt;
-  int lastStep;
   dfloat g0, ig0;
+  dfloat CFL, unitTimeCFL;
 
-  int cht;
+  dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat dp0thdt;
 
   int nEXT;
   int nBDF;
+  int lastStep;
   int isOutputStep;
   int outputForceStep;
 
-  dfloat* U, * P;
-  dfloat* BF, * FU;
-
-  // unit normal flow direction for constant flow rate
-  dfloat flowDirection[3];
-  int fromBID;
-  int toBID;
-  dfloat flowRate;
-
-  //RK Subcycle Data
-  int nRK;
-  dfloat* coeffsfRK, * weightsRK, * nodesRK;
+  int nRK, Nsubsteps;
+  dfloat *coeffsfRK, *weightsRK, *nodesRK;
   occa::memory o_coeffsfRK, o_weightsRK;
 
-  //ARK data
-  int Nrk;
-  dfloat* rkC;
+  dfloat *U, *P;
+  occa::memory o_U, o_P;
 
-  //EXTBDF data
-  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
-
-  int Nsubsteps;
-  dfloat* Ue, sdt;
+  dfloat *Ue;
   occa::memory o_Ue;
 
-  dfloat* div;
+  dfloat *div;
   occa::memory o_div;
 
   dfloat rho, mue;
   occa::memory o_rho, o_mue;
   occa::memory o_meshRho, o_meshMue;
 
-  dfloat* usrwrk;
+  dfloat *usrwrk;
   occa::memory o_usrwrk;
 
-  occa::memory o_idH; // i.e. inverse of 1D Gll Spacing for quad and Hex
+  occa::memory o_idH;
 
-  int filterNc; // filter cut modes i.e. below is not touched
-  dfloat* filterM, filterS;
-  occa::memory o_filterMT; // transpose of filter matrix
-  occa::kernel filterRTKernel; // Relaxation-Term based filtering
-  occa::kernel advectMeshVelocityKernel;
+  dfloat *BF, *FU;
+  occa::memory o_BF;
+  occa::memory o_FU;
 
-  occa::kernel pressureAddQtlKernel;
-  occa::kernel pressureStressKernel;
+  dfloat *prop;
+  occa::memory o_prop, o_ellipticCoeff;
 
-  occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
-  occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
-  occa::kernel subCycleRKUpdateKernel;
-  occa::kernel extrapolateKernel;
-  occa::kernel subCycleRKKernel;
-  occa::kernel subCycleInitU0Kernel;
-  occa::kernel nStagesSum3Kernel;
+  dfloat *coeffEXT, *coeffBDF, *coeffSubEXT;
+  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
 
-  occa::kernel wgradientVolumeKernel;
+  int *EToB;
+  int *EToBMeshVelocity;
+  occa::memory o_EToB;
+  occa::memory o_EToBMeshVelocity;
 
-  occa::kernel subCycleStrongCubatureVolumeKernel;
-  occa::kernel subCycleStrongVolumeKernel;
-
-  occa::kernel computeFaceCentroidKernel;
-  occa::kernel computeFieldDotNormalKernel;
-
-  occa::memory o_U, o_P;
+  occa::memory o_EToBVVelocity;
+  occa::memory o_EToBVMeshVelocity;
 
   occa::memory o_Uc, o_Pc;
   occa::memory o_prevProp;
 
   occa::memory o_relUrst;
   occa::memory o_Urst;
+
+  occa::properties *kernelInfo;
+
+  int filterNc;
+  dfloat *filterM, filterS;
+  occa::memory o_filterMT;
+
+  occa::kernel filterRTKernel;
+  occa::kernel advectMeshVelocityKernel;
+  occa::kernel pressureAddQtlKernel;
+  occa::kernel pressureStressKernel;
+  occa::kernel extrapolateKernel;
+  occa::kernel subCycleRKKernel;
+  occa::kernel subCycleInitU0Kernel;
+  occa::kernel nStagesSum3Kernel;
+  occa::kernel wgradientVolumeKernel;
+
+  occa::kernel subCycleVolumeKernel, subCycleCubatureVolumeKernel;
+  occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
+  occa::kernel subCycleRKUpdateKernel;
+  occa::kernel subCycleStrongCubatureVolumeKernel;
+  occa::kernel subCycleStrongVolumeKernel;
+
+  occa::kernel computeFaceCentroidKernel;
+  occa::kernel computeFieldDotNormalKernel;
+
   occa::kernel UrstCubatureKernel;
   occa::kernel UrstKernel;
-
-  occa::memory o_BF;
-  occa::memory o_FU;
-
-  dfloat* prop;
-  occa::memory o_prop, o_ellipticCoeff;
-
-  //EXTBDF data
-  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionCubatureVolumeKernel;
@@ -176,16 +165,14 @@ struct nrs_t
   occa::kernel maskCopyKernel;
   occa::kernel maskKernel;
 
-  int* EToB;
-  int* EToBMesh;
-  occa::memory o_EToB;
-  occa::memory o_EToBMesh;
+  occa::memory o_zeroNormalMaskVelocity;
+  occa::memory o_zeroNormalMaskMeshVelocity;
+  occa::kernel averageNormalBcTypeKernel;
+  occa::kernel fixZeroNormalMaskKernel;
+  occa::kernel initializeZeroNormalMaskKernel;
 
-  occa::properties *kernelInfo;
+  occa::kernel applyZeroNormalMaskKernel;
 };
-
-
-#include "io.hpp"
 
 // std::to_string might be not accurate enough
 static std::string to_string_f(double a)
@@ -202,7 +189,7 @@ static std::vector<std::string> serializeString(const std::string sin, char dlim
   s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
   std::stringstream ss;
   ss.str(s);
-  while( ss.good() ) {
+  while (ss.good()) {
     std::string substr;
     std::getline(ss, substr, dlim);
     slist.push_back(substr);
@@ -210,13 +197,12 @@ static std::vector<std::string> serializeString(const std::string sin, char dlim
   return slist;
 }
 
-void evaluateProperties(nrs_t* nrs, const double timeNew);
+void evaluateProperties(nrs_t *nrs, const double timeNew);
 
 void compileKernels();
 
-std::vector<int>
-determineMGLevels(std::string section);
+std::vector<int> determineMGLevels(std::string section);
 
-int numberActiveFields(nrs_t* nrs);
+int numberActiveFields(nrs_t *nrs);
 
 #endif

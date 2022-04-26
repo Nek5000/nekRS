@@ -31,8 +31,8 @@ double deviceElapsed(const std::string tag);
 long long int count(const std::string tag);
 double query(const std::string tag,std::string metric);
 void printRunStat(int step);
-void printStatEntry(std::string name, std::string tag, std::string type);
-void printStatEntry(std::string name, double time);
+void printStatEntry(std::string name, std::string tag, std::string type, double tNorm);
+void printStatEntry(std::string name, double time, double tNorm);
 };
 }
 

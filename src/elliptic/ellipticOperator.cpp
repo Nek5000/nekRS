@@ -122,12 +122,26 @@ void ellipticOperator(elliptic_t* elliptic,
     :
                                   ogsDfloat;
   ellipticAx(elliptic, mesh->NglobalGatherElements, mesh->o_globalGatherElementList, o_q, o_Aq, precision);
-  if (masked)
-    applyMaskExterior(elliptic, o_Aq, std::string(precision));
+  if (masked) {
+    ellipticApplyMask(elliptic,
+                      mesh->NglobalGatherElements,
+                      elliptic->NmaskedGlobal,
+                      mesh->o_globalGatherElementList,
+                      elliptic->o_maskIdsGlobal,
+                      o_Aq,
+                      precision);
+  }
   oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
   ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
 
-  if (masked)
-    applyMaskInterior(elliptic, o_Aq, std::string(precision));
+  if (masked) {
+    ellipticApplyMask(elliptic,
+                      mesh->NlocalGatherElements,
+                      elliptic->NmaskedLocal,
+                      mesh->o_localGatherElementList,
+                      elliptic->o_maskIdsLocal,
+                      o_Aq,
+                      precision);
+  }
   oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
 }

@@ -10,6 +10,13 @@ void velocityDirichletConditions(bcData *bc)
   bc->w = w;
 }
 
+void meshVelocityDirichletConditions(bcData *bc)
+{
+  bc->meshu = bc->u;
+  bc->meshv = bc->v;
+  bc->meshw = bc->w;
+}
+
 @kernel void userVp(const dlong Nelements,
                     const dlong uOffset,
                     const dlong sOffset,

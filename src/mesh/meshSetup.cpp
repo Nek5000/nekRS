@@ -156,7 +156,12 @@ mesh_t *createMesh(MPI_Comm comm,
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  meshParallelGatherScatterSetup(mesh,
+                                 mesh->Nelements * mesh->Np,
+                                 mesh->globalIds,
+                                 platform->comm.mpiComm,
+                                 OOGS_AUTO,
+                                 0);
 
   int err = 0;
   int Nfine;

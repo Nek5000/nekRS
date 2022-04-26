@@ -185,6 +185,8 @@ public:
                     occa::memory &o_y,
                     occa::memory &o_z);
 
+  void unitVector(const dlong N, const dlong fieldOffset, occa::memory &o_v);
+
   occa::kernel fillKernel;
   occa::kernel absKernel;
   occa::kernel addKernel;
@@ -223,6 +225,7 @@ public:
   occa::kernel weightedInnerProdManyKernel;
   occa::kernel weightedInnerProdMultiKernel;
   occa::kernel crossProductKernel;
+  occa::kernel unitVectorKernel;
 };
 
 #endif

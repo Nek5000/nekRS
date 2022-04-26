@@ -79,7 +79,14 @@ device_t::buildKernel(const std::string &fileName,
       propsWithSuffix["defines/FP32"] = 1;
     }
 
-    return _device.buildKernel(fileName, kernelName, propsWithSuffix);
+    // if p_knl is defined, add _v(p_knl) to the kernel name
+    std::string newKernelName = kernelName;
+    if (props.has("defines/p_knl")) {
+      const int kernelVariant = static_cast<int>(props["defines/p_knl"]);
+      newKernelName += "_v" + std::to_string(kernelVariant);
+    };
+
+    return _device.buildKernel(fileName, newKernelName, propsWithSuffix);
   }
   else{
     occa::properties propsWithSuffix = props;
@@ -102,6 +109,7 @@ device_t::buildKernel(const std::string &fileName,
   const bool buildNodeLocal = useNodeLocalCache();
   const int rank = buildNodeLocal ? _comm.localRank : _comm.mpiRank;
   MPI_Comm localCommunicator = buildNodeLocal ? _comm.mpiCommLocal : _comm.mpiComm;
+
   occa::kernel constructedKernel;
   for(int pass = 0; pass < 2; ++pass){
     if((pass == 0 && rank == 0) || (pass == 1 && rank != 0)){

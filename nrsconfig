@@ -36,6 +36,8 @@ NEKRS_BUILD_DIR=`pwd`/build
 mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
 cd ${NEKRS_BUILD_DIR}
 
+export CUDAHOSTCXX=${NEKRS_CXX}
+
 cmake -Wno-dev \
       -Wfatal-errors \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \

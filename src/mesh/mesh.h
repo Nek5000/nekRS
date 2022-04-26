@@ -42,6 +42,8 @@
 #define TETRAHEDRA 6
 #define HEXAHEDRA 12
 
+struct nrs_t;
+
 struct mesh_t
 {
   dfloat avgBoundaryValue(int BID, occa::memory o_fld);
@@ -94,6 +96,11 @@ struct mesh_t
   void* gsh, * hostGsh; // gslib struct pointer
   ogs_t* ogs; //occa gs pointer
   oogs_t* oogs; //occa gs pointer
+
+  // list of all elements
+  // elementList[e] = e
+  dlong *elementList;
+  occa::memory o_elementList;
 
   // list of elements that are needed for global gather-scatter
   dlong NglobalGatherElements;
@@ -243,6 +250,8 @@ void parallelSort(int size, int rank, MPI_Comm comm,
 
 #define mymax(a,b) (((a) > (b))?(a):(b))
 #define mymin(a,b) (((a) < (b))?(a):(b))
+
+void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
 
 /* dimension independent mesh operations */
 void meshConnect(mesh_t* mesh);

@@ -15,7 +15,7 @@
 
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
-#include "avg.hpp"
+#include "tavg.hpp"
 #include "platform.hpp"
 #include "linAlg.hpp"
 
@@ -45,7 +45,7 @@ static dfloat timel;
 static int outfldCounter = 0;
 }
 
-void avg::buildKernel(occa::properties kernelInfo)
+void tavg::buildKernel(occa::properties kernelInfo)
 {
 
   std::string path;
@@ -70,23 +70,23 @@ void avg::buildKernel(occa::properties kernelInfo)
   buildKernelCalled = 1;
 }
 
-void avg::reset()
+void tavg::reset()
 {
   counter = 0;
   atime   = 0;
 }
 
-void avg::EX (dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EX)
+void tavg::EX (dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EX)
 {
   EXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EX);
 }
 
-void avg::EXX(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EXX)
+void tavg::EXX(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_x, occa::memory o_EXX)
 {
   EXXKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_EXX);
 }
 
-void avg::EXY(dlong N,
+void tavg::EXY(dlong N,
               dfloat a,
               dfloat b,
               int nflds,
@@ -97,12 +97,12 @@ void avg::EXY(dlong N,
   EXYKernel(N, nrs->fieldOffset, nflds, a, b, o_x, o_y, o_EXY);
 }
 
-void avg::run(dfloat time)
+void tavg::run(dfloat time)
 {
-  if(!nrs->converged) return;
+  if(!nrs->timeStepConverged) return;
 
   if(!setupCalled || !buildKernelCalled) {
-    std::cout << "avg::run() was called prior to avg::setup()!\n";
+    std::cout << "tavg::run() was called prior to tavg::setup()!\n";
     ABORT(1);
   }
 
@@ -151,10 +151,10 @@ void avg::run(dfloat time)
   timel = time;
 }
 
-void avg::setup(nrs_t* nrs_)
+void tavg::setup(nrs_t* nrs_)
 {
   if(!buildKernelCalled) {
-    std::cout << "avg::setup() was called prior avg::buildKernel()!\n";
+    std::cout << "tavg::setup() was called prior tavg::buildKernel()!\n";
     ABORT(1);
   }
 
@@ -186,9 +186,9 @@ void avg::setup(nrs_t* nrs_)
   setupCalled = 1;
 }
 
-void avg::outfld(int _outXYZ, int FP64)
+void tavg::outfld(int _outXYZ, int FP64)
 {
-  if(!nrs->converged) return;
+  if(!nrs->timeStepConverged) return;
 
   cds_t* cds = nrs->cds;
   mesh_t* mesh = nrs->meshV;
@@ -228,7 +228,7 @@ void avg::outfld(int _outXYZ, int FP64)
 }
 
 
-void avg::outfld()
+void tavg::outfld()
 {
-  avg::outfld(/* outXYZ */ 0, /* FP64 */ 1);
+  tavg::outfld(/* outXYZ */ 0, /* FP64 */ 1);
 }

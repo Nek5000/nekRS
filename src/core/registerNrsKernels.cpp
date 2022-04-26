@@ -2,6 +2,9 @@
 #include "mesh.h"
 #include <compileKernels.hpp>
 
+#include "re2Reader.hpp"
+#include "benchmarkAdvsub.hpp"
+
 void registerNrsKernels(occa::properties kernelInfoBC)
 {
   const bool serial = platform->serial;
@@ -171,6 +174,25 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(
         section + kernelName, fileName, meshProps);
 
+    auto zeroNormalProps = kernelInfoBC;
+    zeroNormalProps["defines/p_ZERO_NORMAL"] = ZERO_NORMAL;
+    zeroNormalProps["defines/p_NO_OP"] = NO_OP;
+    kernelName = "averageNormalBcType";
+    fileName = oklpath + "nrs/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, zeroNormalProps);
+
+    kernelName = "fixZeroNormalMask";
+    fileName = oklpath + "nrs/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, zeroNormalProps);
+
+    kernelName = "applyZeroNormalMask";
+    fileName = oklpath + "nrs/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, zeroNormalProps);
+
+    kernelName = "initializeZeroNormalMask";
+    fileName = oklpath + "nrs/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, zeroNormalProps);
+
     kernelName = "velocityDirichletBC" + suffix;
     fileName = oklpath + "nrs/" + kernelName + ".okl";
     platform->kernels.add(
@@ -210,11 +232,23 @@ void registerNrsKernels(occa::properties kernelInfoBC)
 
       occa::properties subCycleStrongCubatureProps = prop;
 
-      kernelName = "subCycleStrongCubatureVolume" + suffix;
-      fileName = oklpath + "nrs/" + kernelName + extension;
-      platform->kernels.add(section + kernelName,
-          fileName,
-          subCycleStrongCubatureProps);
+      int nelgt, nelgv;
+      const std::string meshFile = platform->options.getArgs("MESH FILE");
+      re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+      const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+      bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+      const int verbosity = verbose ? 2 : 1;
+
+      int Nsubsteps;
+      platform->options.getArgs("SUBCYCLING STEPS", Nsubsteps);
+
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
+        auto subCycleKernel =
+            benchmarkAdvsub(3, NelemBenchmark, Nq, cubNq, nEXT, true, false, verbosity, 0.5, false);
+
+        kernelName = "subCycleStrongCubatureVolume" + suffix;
+        platform->kernels.add(section + kernelName, subCycleKernel);
+      }
 
       kernelName = "subCycleStrongVolume" + suffix;
       fileName = oklpath + "nrs/" + kernelName + ".okl";

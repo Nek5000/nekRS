@@ -27,7 +27,7 @@ occa::properties compileUDFKernels()
     // side-effect: kernelInfoBC will include any relevant user-defined kernel props
     udf.loadKernels(kernelInfoBC);
   }
-  const std::string bcDataFile = installDir + "/include/core/bcData.h";
+  const std::string bcDataFile = installDir + "/include/bdry/bcData.h";
   kernelInfoBC["includes"] += bcDataFile.c_str();
   std::string boundaryHeaderFileName;
   platform->options.getArgs("DATA FILE", boundaryHeaderFileName);
@@ -38,7 +38,7 @@ occa::properties compileUDFKernels()
   MPI_Barrier(platform->comm.mpiComm);
   const double loadTime = MPI_Wtime() - tStart;
   if (platform->comm.mpiRank == 0)
-    printf("done (%gs)\n\n", loadTime);
+    printf("done (%gs)\n", loadTime);
   fflush(stdout);
 
   return kernelInfoBC;

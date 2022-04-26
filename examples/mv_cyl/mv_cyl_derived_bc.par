@@ -1,0 +1,42 @@
+[GENERAL]
+#verbose=true
+polynomialOrder = 7
+stopAt = numSteps
+numSteps = 100
+dt = 1e-3
+timeStepper = tombo3
+writeInterval = 50
+
+usr = "mv_cyl.usr"
+oudf = "mv_cyl_derived_bc.oudf"
+udf = "mv_cyl.udf"
+
+[MESH]
+solver = elasticity
+file = "mv_cyl.re2"
+
+[PROBLEMTYPE]
+stressFormulation = true
+
+[PRESSURE]
+residualTol = 1e-8
+initialGuess = previous
+
+[VELOCITY]
+boundaryTypeMap = fixedValue+moving, zeroValue, sym
+residualTol = 1e-12
+
+[TEMPERATURE]
+boundaryTypeMap = zeroGradient,zeroGradient,zeroGradient
+residualTol = 1e-12
+
+[CASEDATA]
+XLEN = 1.0
+YLEN = 1.5
+ZLEN = 0.1
+
+P_GAMMA = 1.4
+P_DELTA = 0.2
+P_OMEGA = 3.141592653589793
+P_AMP = 1.5707963267948966
+P_ROT = 0.0

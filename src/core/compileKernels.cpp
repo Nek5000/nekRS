@@ -21,6 +21,12 @@ std::string createOptionsPrefix(std::string section) {
 
 void compileKernels() {
 
+  MPI_Barrier(platform->comm.mpiComm);
+  const double tStart = MPI_Wtime();
+  if (platform->comm.mpiRank == 0)
+    printf("loading kernels (this may take awhile) ...\n");
+  fflush(stdout);
+
   const occa::properties kernelInfoBC = compileUDFKernels();
 
   registerLinAlgKernels();
@@ -64,19 +70,14 @@ void compileKernels() {
     registerEllipticPreconditionerKernels(section, poissonEquation);
   }
 
-  MPI_Barrier(platform->comm.mpiComm);
-  const double tStart = MPI_Wtime();
-  if (platform->comm.mpiRank == 0)
-    printf("loading kernels (this may take awhile) ... ");
-  fflush(stdout);
 
-    {
-      const bool buildNodeLocal = useNodeLocalCache();
-      const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
-      auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
-      oogs::compile(
-          platform->device.occaDevice(), platform->device.mode(), communicator, buildOnly);
-    }
+  {
+    const bool buildNodeLocal = useNodeLocalCache();
+    const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
+    auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
+    oogs::compile(
+        platform->device.occaDevice(), platform->device.mode(), communicator, buildOnly);
+  }
 
   platform->kernels.compile();
 

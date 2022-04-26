@@ -1,7 +1,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-namespace avg
+namespace tavg
 {
 void buildKernel(occa::properties kernelInfo);
 void run(dfloat time);

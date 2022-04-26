@@ -47,12 +47,12 @@
     bc.v  = U[bc.idM + 1 * offset];                                      \
     bc.w  = U[bc.idM + 2 * offset];                                      \
     bc.wrk = W;                                                          \
-    dfloat TRx = 0.f;                                                    \
-    dfloat TRy = 0.f;                                                    \
-    dfloat TRz = 0.f;                                                    \
+    dfloat TRx = 0;                                                      \
+    dfloat TRy = 0;                                                      \
+    dfloat TRz = 0;                                                      \
     const dlong bcType = EToB[face + p_Nfaces * e];                      \
     if(bcType == 3) {                                                    \
-        bc.p = 0.f;                                                      \
+        bc.p = 0;                                                        \
         pressureDirichletConditions(&bc);                                \
         TRx = -bc.p*bc.nx;                                               \
         TRy = -bc.p*bc.ny;                                               \

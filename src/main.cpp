@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------*\
-   Copyright (c) 2019-2021, UCHICAGO ARGONNE, LLC.
+   Copyright (c) 2019-2022, UCHICAGO ARGONNE, LLC.
 
    The UChicago Argonne, LLC as Operator of Argonne National
    Laboratory holds copyright in the Software. The copyright holder
@@ -75,6 +75,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fcntl.h>
+#include <chrono>
 
 #include "nekrs.hpp"
 
@@ -179,6 +180,7 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
         cmdOpt->backend.assign(optarg);
         break;
       case 'h':
+        printHelp++;
         if(!optarg && argv[optind] != NULL && argv[optind][0] != '-')
           helpCat.assign(argv[optind++]);
         break;
@@ -344,6 +346,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 
 int main(int argc, char** argv)
 {
+  const auto timeStart = std::chrono::high_resolution_clock::now();
   {
     int request = MPI_THREAD_SINGLE;
     const char* env_val = std::getenv ("NEKRS_MPI_THREAD_MULTIPLE");
@@ -426,14 +429,21 @@ int main(int argc, char** argv)
   int tStep = 0;
   double time = nekrs::startTime();
 
+  double elapsedTime = 0;
+  {
+    MPI_Barrier(comm);
+    const auto timeStop = std::chrono::high_resolution_clock::now();
+    elapsedTime += std::chrono::duration<double, std::milli>(timeStop - timeStart).count() / 1e3;
+    MPI_Allreduce(MPI_IN_PLACE, &elapsedTime, 1, MPI_DOUBLE, MPI_MAX, comm);
+    nekrs::updateTimer("setup", elapsedTime);
+    if (rank == 0)
+      std::cout << "initialization took " << elapsedTime << " s" << std::endl;
+  }
+
   nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
 
-  MPI_Barrier(comm);
-  const double timeSetup = MPI_Wtime() - time0;
-
-  double elapsedTime = timeSetup;
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
-  double elapsedTimeSolve = 0;
+  double elapsedStepSum = 0;
 
   if (rank == 0 && !lastStep) {
     if (nekrs::endTime() > nekrs::startTime())
@@ -441,10 +451,12 @@ int main(int argc, char** argv)
     else
       std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
   }
+
+  fflush(stdout);
   MPI_Pcontrol(1);
   while (!lastStep) {
     MPI_Barrier(comm);
-    const double timeStart = MPI_Wtime();
+    const double timeStartStep = MPI_Wtime();
 
     ++tStep;
     lastStep = nekrs::lastStep(time, tStep, elapsedTime);
@@ -471,28 +483,29 @@ int main(int argc, char** argv)
     if(tStep % updCheckFreq) nekrs::processUpdFile();
 
     MPI_Barrier(comm);
-    const double elapsedStep = MPI_Wtime() - timeStart;  
-    elapsedTimeSolve += elapsedStep;
-    elapsedTime = timeSetup + elapsedTimeSolve;
+    const double elapsedStep = MPI_Wtime() - timeStartStep;
+    elapsedStepSum += elapsedStep;
+    elapsedTime += elapsedStep;
+    nekrs::updateTimer("elapsedStep", elapsedStep);
+    nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
+    nekrs::updateTimer("elapsed", elapsedTime);
 
-    nekrs::printInfo(time + dt, tStep, elapsedStep, elapsedTimeSolve);
+    nekrs::printInfo(time, tStep);
 
-    if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep) 
+    if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep)
       nekrs::printRuntimeStatistics(tStep);
 
     if (tStep % 10 == 0) fflush(stdout);
   }
   MPI_Pcontrol(0);
 
-  if (rank == 0) {
-    std::cout << "elapsedTime: " << elapsedTime << " s\n";
-    std::cout << "End\n";
-  }
-  fflush(stdout);
-
   nekrs::finalize();
 
   MPI_Barrier(commGlobal);
+  if (rank == 0)
+    std::cout << "End\n";
+
   MPI_Finalize();
+
   return EXIT_SUCCESS;
 }

@@ -14,6 +14,8 @@
 #include "nrs.hpp"
 #include <algorithm>
 
+#include "amgx.h"
+
 namespace{
 static std::ostringstream errorLogger;
 static std::ostringstream valueErrorLogger;
@@ -133,6 +135,7 @@ static std::vector<std::string> commonKeys = {
     {"pMultigridCoarsening"},
     {"smootherType"},
     {"coarseSolver"},
+    {"coarseGridDiscretization"},
     {"boundaryTypeMap"},
     {"maxIterations"},
     {"regularization"},
@@ -490,6 +493,45 @@ void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, s
     }
   }
 }
+
+void parseCoarseGridDiscretization(const int rank, setupAide &options, inipp::Ini *par, std::string parScope)
+{
+  std::string parSectionName = parPrefixFromParSection(parScope);
+  UPPER(parSectionName);
+  std::string p_coarseGridDiscretization;
+  const bool continueParsing = par->extract(parScope, "coarsegriddiscretization", p_coarseGridDiscretization);
+  if (!continueParsing)
+    return;
+
+  const std::vector<std::string> validValues = {
+      {"semfem"},
+      {"fem"},
+      {"galerkin"},
+  };
+
+  const auto entries = serializeString(p_coarseGridDiscretization, '+');
+  for (auto &&s : entries) {
+    checkValidity(rank, validValues, s);
+  }
+
+  // exit early if not using multigrid as preconditioner
+  if (!options.compareArgs(parSectionName + "PRECONDITIONER", "MULTIGRID")) {
+    return;
+  }
+
+  // coarse grid discretization
+  if (p_coarseGridDiscretization.find("semfem") != std::string::npos) {
+    options.setArgs(parSectionName + "MULTIGRID COARSE SEMFEM", "TRUE");
+  }
+  else if (p_coarseGridDiscretization.find("fem") != std::string::npos) {
+    options.setArgs(parSectionName + "MULTIGRID COARSE SEMFEM", "FALSE");
+    options.setArgs("GALERKIN COARSE OPERATOR", "FALSE");
+    if (p_coarseGridDiscretization.find("galerkin") != std::string::npos) {
+      options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
+    }
+  }
+}
+
 void parseCoarseSolver(const int rank, setupAide &options, inipp::Ini *par, std::string parScope)
 {
   std::string parSectionName = parPrefixFromParSection(parScope);
@@ -500,15 +542,23 @@ void parseCoarseSolver(const int rank, setupAide &options, inipp::Ini *par, std:
     return;
 
   const std::vector<std::string> validValues = {
-    {"boomeramg"},
-    {"amgx"},
-    {"semfem"},
-    {"fem"},
-    {"fp32"},
-    {"fp64"},
-    {"cpu"},
-    {"gpu"},
+      {"boomeramg"},
+      {"amgx"},
+      {"fp32"},
+      {"fp64"},
+      {"cpu"},
+      {"gpu"},
   };
+
+  std::vector<std::string> entries = serializeString(p_coarseSolver, '+');
+  for (std::string entry : entries) {
+    checkValidity(rank, validValues, entry);
+  }
+
+  // exit early if not using multigrid as preconditioner
+  if (!options.compareArgs(parSectionName + "PRECONDITIONER", "MULTIGRID")) {
+    return;
+  }
 
   // solution methods
   if(p_coarseSolver.find("boomeramg") != std::string::npos){
@@ -519,6 +569,11 @@ void parseCoarseSolver(const int rank, setupAide &options, inipp::Ini *par, std:
     options.setArgs("AMG SOLVER LOCATION", "CPU");
   }
   else if(p_coarseSolver.find("amgx") != std::string::npos){
+
+    if(!AMGXenabled()){
+        append_error("AMGX was requested but is not compiled!\n");
+    }
+
     options.setArgs("AMG SOLVER", "AMGX");
     options.setArgs(parSectionName + "SEMFEM SOLVER", options.getArgs("AMG SOLVER"));
     options.setArgs("AMG SOLVER PRECISION", "FP32");
@@ -526,25 +581,8 @@ void parseCoarseSolver(const int rank, setupAide &options, inipp::Ini *par, std:
     options.setArgs("AMG SOLVER LOCATION", "GPU");
   }
 
-  // coarse grid discretization
-  if(p_coarseSolver.find("semfem") != std::string::npos){
-    options.setArgs(parSectionName + "MULTIGRID COARSE SEMFEM", "TRUE");
-  }
-  else if(p_coarseSolver.find("fem") != std::string::npos){
-    options.setArgs(parSectionName + "MULTIGRID COARSE SEMFEM", "FALSE");
-    options.setArgs("GALERKIN COARSE OPERATOR", "FALSE");
-    options.setArgs(parSectionName + "USER SPECIFIED FEM COARSE SOLVER", "TRUE");
-    if(p_coarseSolver.find("galerkin") != std::string::npos){
-      options.setArgs("GALERKIN COARSE OPERATOR", "TRUE");
-    }
-  }
-
-
   // parse fp type + location
-  std::vector<std::string> entries = serializeString(p_coarseSolver, '+');
-  for(std::string entry : entries)
-  {
-    checkValidity(rank, validValues, entry);
+  for (std::string entry : entries) {
     if(entry.find("fp32") != std::string::npos)
     {
       options.setArgs("AMG SOLVER PRECISION", "FP32");
@@ -753,20 +791,19 @@ void parseSmoother(const int rank, setupAide &options, inipp::Ini *par,
 void parsePreconditioner(const int rank, setupAide &options,
                          inipp::Ini *par, std::string parScope) {
   const std::vector<std::string> validValues = {
-    {"none"},
-    {"jac"},
-    {"semfem"},
-    {"pmg"},
-    {"multigrid"},
-    {"semg"},
-    {"semfem"},
-    {"amgx"},
-    {"fp32"},
-    {"fp64"},
-    {"additive"},
-    {"multiplicative"},
-    {"overlap"},
-    {"coarse"},
+      {"none"},
+      {"jac"},
+      {"semfem"},
+      {"pmg"},
+      {"multigrid"},
+      {"semfem"},
+      {"amgx"},
+      {"fp32"},
+      {"fp64"},
+      {"additive"},
+      {"multiplicative"},
+      {"overlap"},
+      {"coarse"},
   };
 
   std::string parSection =
@@ -803,6 +840,9 @@ void parsePreconditioner(const int rank, setupAide &options,
     for (std::string s : list) {
       if (s.find("semfem") != std::string::npos) {
       } else if (s.find("amgx") != std::string::npos) {
+        if(!AMGXenabled()){
+            append_error("AMGX was requested but is not compiled!\n");
+        }
         options.setArgs(parSection + " SEMFEM SOLVER", "AMGX");
         options.setArgs(parSection + " SEMFEM SOLVER PRECISION", "FP32");
       } else if (s.find("fp32") != std::string::npos) {
@@ -817,10 +857,9 @@ void parsePreconditioner(const int rank, setupAide &options,
           append_error(error.str());
       }
     }
-
-  } else if (p_preconditioner.find("semg") != std::string::npos ||
-             p_preconditioner.find("multigrid") != std::string::npos ||
-             p_preconditioner.find("pmg") != std::string::npos) {
+  }
+  else if (p_preconditioner.find("multigrid") != std::string::npos ||
+           p_preconditioner.find("pmg") != std::string::npos) {
     options.setArgs(parSection + " PRECONDITIONER", "MULTIGRID");
     std::string key = "VCYCLE";
     if (p_preconditioner.find("additive") != std::string::npos)
@@ -1215,7 +1254,6 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank) {
   options.setArgs("ELLIPTIC INTEGRATION", "NODAL");
 
   options.setArgs("PRESSURE MAXIMUM ITERATIONS", "200");
-  options.setArgs("GALERKIN COARSE MATRIX", "FALSE");
   options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");
   options.setArgs("PRESSURE PRECONDITIONER", "MULTIGRID");
   options.setArgs("PRESSURE DISCRETIZATION", "CONTINUOUS");
@@ -1658,30 +1696,6 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       options.setArgs("MESH FILE", meshFile);
     }
 
-    std::string m_bcMap;
-    if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
-      std::vector<std::string> sList;
-      sList = serializeString(m_bcMap,',');
-      bcMap::setup(sList, "mesh");
-    } else {
-      bcInPar = 0;
-    }
- 
-    std::string meshPartitioner;
-    if (par->extract("mesh", "partitioner", meshPartitioner)){
-      if(meshPartitioner != "rcb" && meshPartitioner != "rcb+rsb"){
-        std::ostringstream error;
-        error << "Could not parse mesh::partitioner = " << meshPartitioner;
-        append_error(error.str());
-      }
-      options.setArgs("MESH PARTITIONER", meshPartitioner);
-    }
- 
-    std::string meshConTol;
-    if (par->extract("mesh", "connectivitytol", meshConTol)){
-      options.setArgs("MESH CONNECTIVITY TOL", meshConTol);
-    }
- 
     std::string meshSolver;
     if (par->extract("mesh", "solver", meshSolver)) {
       options.setArgs("MESH KRYLOV SOLVER", "PCG");
@@ -1705,6 +1719,39 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
       }
     }
 
+
+    std::string m_bcMap;
+    if(par->extract("mesh", "boundarytypemap", m_bcMap)) {
+      std::vector<std::string> sList;
+      sList = serializeString(m_bcMap,',');
+      bcMap::setup(sList, "mesh");
+    } else {
+      if(meshSolver == "elasticity"){
+        // use derived mapping based on fluid boundary conditions
+        std::string v_bcMap;
+        if(par->extract("velocity", "boundarytypemap", v_bcMap)) {
+          std::vector<std::string> sList;
+          sList = serializeString(v_bcMap,',');
+          bcMap::deriveMeshBoundaryConditions(sList);
+        }
+      }
+    }
+ 
+    std::string meshPartitioner;
+    if (par->extract("mesh", "partitioner", meshPartitioner)){
+      if(meshPartitioner != "rcb" && meshPartitioner != "rcb+rsb"){
+        std::ostringstream error;
+        error << "Could not parse mesh::partitioner = " << meshPartitioner;
+        append_error(error.str());
+      }
+      options.setArgs("MESH PARTITIONER", meshPartitioner);
+    }
+ 
+    std::string meshConTol;
+    if (par->extract("mesh", "connectivitytol", meshConTol)){
+      options.setArgs("MESH CONNECTIVITY TOL", meshConTol);
+    }
+ 
     {
       const std::vector<std::string> validValues = {
         {"yes"},
@@ -1751,9 +1798,11 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     parsePreconditioner(rank, options, par, "pressure");
 
-    std::string p_mglevels;
-    if (par->extract("pressure", "pmultigridcoarsening", p_mglevels))
-      options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
+    if (options.compareArgs("PRESSURE PRECONDITIONER", "MULTIGRID")) {
+      std::string p_mglevels;
+      if (par->extract("pressure", "pmultigridcoarsening", p_mglevels))
+        options.setArgs("PRESSURE MULTIGRID COARSENING", p_mglevels);
+    }
 
     std::string p_solver;
     if (par->extract("pressure", "solver", p_solver)) {
@@ -1811,6 +1860,7 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
 
     parseSmoother(rank, options, par, "pressure");
 
+    parseCoarseGridDiscretization(rank, options, par, "pressure");
     parseCoarseSolver(rank, options, par, "pressure");
 
     if (par->sections.count("boomeramg")) {
@@ -1843,6 +1893,9 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
     }
 
     if (par->sections.count("amgx")) {
+      if(!AMGXenabled()){
+          append_error("AMGX was requested but is not compiled!\n");
+      }
       std::string configFile;
       if (par->extract("amgx", "configfile", configFile))
         options.setArgs("AMGX CONFIG FILE", configFile);
@@ -1914,6 +1967,8 @@ setupAide parRead(void *ppar, std::string setupFile, MPI_Comm comm) {
   } else {
     options.setArgs("VELOCITY", "FALSE");
   }
+
+  // MESH
 
   // SCALARS
   int nscal = 0;

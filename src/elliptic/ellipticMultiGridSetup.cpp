@@ -31,8 +31,8 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
 {
   // setup new object from fine grid but with constant coeff
   elliptic_t* elliptic = ellipticBuildMultigridLevelFine(elliptic_);
+  setupAide options = elliptic_->options;
   mesh_t* mesh = elliptic->mesh;
-  setupAide& options = elliptic->options;
 
   //read all the nodes files and load them in a dummy mesh array
   mesh_t** meshLevels = (mesh_t**) calloc(mesh->N + 1,sizeof(mesh_t*));
@@ -157,7 +157,7 @@ void ellipticMultiGridSetup(elliptic_t* elliptic_, precon_t* precon)
                     };
     ellipticCoarse->oogs   = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     ellipticCoarse->oogsAx = ellipticCoarse->oogs;
-    if(options.compareArgs("GS OVERLAP", "TRUE"))
+    if(options.compareArgs("GS OVERLAP", "TRUE") && options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
       ellipticCoarse->oogsAx = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, callback, oogsMode);
   } else {
     ellipticCoarse = elliptic;

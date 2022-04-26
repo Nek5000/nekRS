@@ -4,7 +4,7 @@
 #include <math.h>
 #include "udf.hpp"
 #include "plugins/velRecycling.hpp"
-#include "plugins/avg.hpp"
+#include "plugins/tavg.hpp"
 
 static dfloat ZLENGTH;
 static int NSLABS;
@@ -15,7 +15,7 @@ static int NELSLAB;
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
   velRecycling::buildKernel(kernelInfo);
-  avg::buildKernel(kernelInfo);
+  tavg::buildKernel(kernelInfo);
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -31,7 +31,7 @@ void UDF_Setup(nrs_t *nrs)
   const hlong offset = NELSLAB * round(NSLABS * zRecycLayer/ZLENGTH); 
   velRecycling::setup(nrs, nrs->o_usrwrk, offset, bID, wbar);
 
-  avg::setup(nrs);
+  tavg::setup(nrs);
 }
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
@@ -51,13 +51,13 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   mesh_t *mesh = nrs->meshV;
 
   velRecycling::copy();
-  avg::run(time);
+  tavg::run(time);
 
   if (nrs->isOutputStep) {
     occa::memory o_UZ = nrs->o_U + 2*nrs->fieldOffset * sizeof(dfloat);
     const dfloat ubar = platform->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_LMM, platform->comm.mpiComm)/mesh->volume;
     if (platform->comm.mpiRank == 0) printf(" uBulk: %g\n", ubar);
 
-    avg::outfld();
+    tavg::outfld();
   }
 }

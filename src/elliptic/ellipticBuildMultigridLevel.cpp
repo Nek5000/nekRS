@@ -58,16 +58,13 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
                 mesh->Nlocal,
                 /* nFields */ 1,
                 /* offset */ 0,
-                elliptic->BCType,
-                elliptic->NBCType,
-                elliptic->UNormalZero,
+                elliptic->EToB,
                 elliptic->Nmasked,
                 elliptic->o_maskIds,
                 elliptic->NmaskedLocal,
                 elliptic->o_maskIdsLocal,
                 elliptic->NmaskedGlobal,
                 elliptic->o_maskIdsGlobal,
-                elliptic->o_BCType,
                 &ogs);
     elliptic->ogs = ogs;
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
@@ -84,6 +81,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
 
+  if(Nc > 1 || elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
   {
       const std::string AxSuffix = elliptic->coeffFieldPreco ? "CoeffHex3D" : "Hex3D";
       // check for trilinear

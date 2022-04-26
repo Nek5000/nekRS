@@ -3,7 +3,8 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
-#include "io.hpp"
+#include "ioUtils.hpp"
+#include "re2Reader.hpp"
 
 nekdata_private nekData;
 static int rank;
@@ -464,6 +465,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   fflush(stdout);
 }
 
+
 void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 {
   int buildRank = rank;
@@ -490,33 +492,13 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const std::string usrname = options.getArgs("CASENAME");
       const std::string meshFile = options.getArgs("MESH FILE");
 
-      // create SIZE
-      strcpy(buf, meshFile.c_str());
-      FILE *fp = fopen(buf, "r");
-      if (!fp) {
-        if(rank == 0) printf("\nERROR: Cannot find %s!\n", buf);
-        ABORT(EXIT_FAILURE);
-      }
-      fgets(buf, 80, fp);
-      fclose(fp);
-
-      char ver[10];
-      int ndim;
-      int nelgv, nelgt;
-      // has to match header in re2
-      sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
-      if(ndim != 3) {
-        if(rank == 0) printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
-        ABORT(EXIT_FAILURE);
-      }
-      if(nelgt <= 0 || nelgv <=0 || nelgv > nelgt) {
-        if(rank == 0) printf("\nERROR: Invalid nelgt=%lld / nelgv=%lld read from re2 header!\n", nelgt, nelgv);
-        ABORT(EXIT_FAILURE);
-      }
+      int nelgt, nelgv;
+      const int ndim = 3;
+      re2::nelg(meshFile, nelgt, nelgv, MPI_COMM_NULL); 
 
       int lelt = (int)(nelgt/np) + 3;
       if(lelt > nelgt) lelt = (int)nelgt;
-      sprintf(buf,"%s/SIZE",cache_dir.c_str()); 
+      sprintf(buf,"%s/SIZE",cache_dir.c_str());
       mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
       // generate usr
@@ -656,6 +638,8 @@ int setup(nrs_t* nrs_in)
   nrs = nrs_in;
   MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
+  bool meshSolver = options->compareArgs("MESH SOLVER", "ELASTICITY");
+
   std::string casename;
   options->getArgs("CASENAME", casename);
 
@@ -674,11 +658,8 @@ int setup(nrs_t* nrs_in)
   options->getArgs("MESH CONNECTIVITY TOL", meshConTol);
 
   int nBcRead = 1;
-  int bcInPar = 1;
-  if(bcMap::size(0) == 0 && bcMap::size(1) == 0) {
-    bcInPar = 0;
+  if (bcMap::useNekBCs())
     nBcRead = flow + nscal;
-  }
 
   dfloat rho;
   options->getArgs("DENSITY", rho);
@@ -762,8 +743,9 @@ int setup(nrs_t* nrs_in)
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
 
-  // import BCs from nek if not specified in par
-  if(!bcInPar) {
+  if (bcMap::useNekBCs()) {
+    if (rank == 0)
+      printf("import BCs from nek\n");
     gen_bcmap();
     if(flow) {
       int isTMesh = 0;
@@ -772,8 +754,10 @@ int setup(nrs_t* nrs_in)
       for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 0);
       bcMap::setBcMap("velocity", map, nIDs);
 
-      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 1);
-      bcMap::setBcMap("mesh", map, nIDs);
+      if(meshSolver){
+        for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 1);
+        bcMap::setBcMap("mesh", map, nIDs);
+      }
 
       free(map);
     }

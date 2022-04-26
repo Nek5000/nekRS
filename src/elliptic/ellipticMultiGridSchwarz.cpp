@@ -252,7 +252,7 @@ void compute_element_boundary_conditions(int* lbr,
   for(int iface = 0; iface < 6; ++iface) {
     const int id = lookup[iface];
     int bc = elliptic->EToB[6 * e + id];
-    assert(bc > -1 && bc < 3);
+    assert(bc == NO_OP || DIRICHLET || NEUMANN);
     fbc[iface] = bc;
   }
   *lbr = fbc[0];
@@ -650,21 +650,22 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
 
   const int bigNum = 1E9;
   dlong Ntotal = mesh->Np * mesh->Nelements;
+
   //make a node-wise bc flag using the gsop (prioritize Dirichlet boundaries over Neumann)
   int* mapB = (int*) calloc(mesh->Nelements * mesh->Np,sizeof(int));
   for (dlong e = 0; e < mesh->Nelements; e++) {
     for (int n = 0; n < mesh->Np; n++) mapB[n + e * mesh->Np] = bigNum;
     for (int f = 0; f < mesh->Nfaces; f++) {
-      const int bc = mesh->EToB[f + e * mesh->Nfaces];
+      const int bc = elliptic->EToB[f + e * mesh->Nfaces];
       if (bc > 0) {
         for (int n = 0; n < mesh->Nfp; n++) {
-          const int BCFlag = elliptic->BCType[bc];
           const int fid = mesh->faceNodes[n + f * mesh->Nfp];
-          mapB[fid + e * mesh->Np] = mymin(BCFlag,mapB[fid + e * mesh->Np]);
+          mapB[fid + e * mesh->Np] = mymin(bc, mapB[fid + e * mesh->Np]);
         }
       }
     }
   }
+
   ogsGatherScatter(mapB, ogsInt, ogsMin, mesh->ogs);
   //use the bc flags to find masked ids
   dlong Nmasked = 0;
@@ -677,7 +678,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
       Nmasked++;
     else if (mapB[n] == bigNum)
       mapB[n] = 0.;
-    else if (mapB[n] == 1)     //Dirichlet boundary
+    else if (mapB[n] == DIRICHLET)
       Nmasked++;
   }
   dlong* maskIds = (dlong*) calloc(Nmasked, sizeof(dlong));
@@ -691,7 +692,7 @@ mesh_t* create_extended_mesh(elliptic_t* elliptic, hlong* maskedGlobalIds)
     else if (isEdgeNode) maskIds[Nmasked++] = n;
   }
   //make a masked version of the global id numbering
-  memcpy(maskedGlobalIds, mesh->globalIds, Ntotal * sizeof(hlong));
+  memcpy(maskedGlobalIds, mesh->globalIds, mesh->Nlocal * sizeof(hlong));
   for (dlong n = 0; n < Nmasked; n++)
     maskedGlobalIds[maskIds[n]] = 0;
 
@@ -812,10 +813,15 @@ void MGLevel::build(
   const int Nq = elliptic->mesh->Nq;
   const int Np = elliptic->mesh->Np;
 
+  if(N == 1 && elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "TRUE")){
+    return;
+  }
+
   const bool serial = (platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP");
 
   overlap = false;
-  if(Nq >= 5 && !serial) overlap = true;
+  if (Nq >= (elliptic_t::minNFDMOverlap + 1) && !serial)
+    overlap = true;
 
   hlong* maskedGlobalIdsExt;
   maskedGlobalIdsExt = (hlong*) calloc(Nelements*(Nq+2)*(Nq+2)*(Nq+2),sizeof(hlong));
@@ -880,24 +886,25 @@ void MGLevel::build(
     postFDMKernel = platform->kernels.get("postFDM" + suffix);
   }
 
-  oogs_mode oogsMode = OOGS_AUTO;
-  //if(platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP") oogsMode = OOGS_DEFAULT;
-
+  const oogs_mode oogsMode = OOGS_AUTO;
   ogsExt = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIdsExt, 1, 0,
                                ogsPfloat, platform->comm.mpiComm, 1, platform->device.occaDevice(),
                                NULL, oogsMode);
 
   ogsExtOverlap = NULL;
-  if(overlap && mesh->NlocalGatherElements) {
+  if(overlap) {
     occa::memory o_Su = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
     const dlong Nelements = elliptic->mesh->Nelements;
     auto callback = [&]() {
-      if(options.compareArgs("MULTIGRID SMOOTHER","RAS"))
-        fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
-      else
-         fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                        o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
+        if(mesh->NlocalGatherElements)
+          fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                         o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+      } else {
+         if(mesh->NlocalGatherElements)
+           fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                          o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+      }
     };
     ogsExtOverlap = (void*) oogs::setup(Nelements * Np_e, maskedGlobalIdsExt, 1, 0,
                                         ogsPfloat, platform->comm.mpiComm, 1, platform->device.occaDevice(),
@@ -927,7 +934,7 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
   const dlong Nelements = elliptic->mesh->Nelements;
   preFDMKernel(Nelements, o_u, o_work1);
 
-  oogs_t *hogsExt = (overlap && mesh->NlocalGatherElements) ? (oogs_t*)ogsExtOverlap : (oogs_t*)ogsExt;
+  oogs_t *hogsExt = (overlap) ? (oogs_t*)ogsExtOverlap : (oogs_t*)ogsExt;
 
   oogs::startFinish(o_work1, 1, 0, ogsDataTypeString, ogsAdd, hogsExt);
 
@@ -935,9 +942,10 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     if(!overlap){
       fusedFDMKernel(Nelements,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
-    } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                     o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
+    } else {
+      if(mesh->NglobalGatherElements)
+        fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                       o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     }
 
     oogs::start(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
@@ -951,16 +959,19 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     if(!overlap){
       fusedFDMKernel(Nelements,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
-    } else if(overlap && mesh->NglobalGatherElements){
-      fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
-                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    } else {
+      if(mesh->NglobalGatherElements)
+        fusedFDMKernel(mesh->NglobalGatherElements,mesh->o_globalGatherElementList,
+                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     }
 
     oogs::start(o_work2, 1, 0, ogsDataTypeString, ogsAdd, hogsExt);
 
-    if(overlap && mesh->NlocalGatherElements)
-      fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
-                     o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    if(overlap) {
+      if(mesh->NlocalGatherElements)
+        fusedFDMKernel(mesh->NlocalGatherElements,mesh->o_localGatherElementList,
+                       o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
+    }
 
     oogs::finish(o_work2, 1, 0, ogsDataTypeString, ogsAdd, hogsExt);
 
@@ -968,7 +979,7 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
     oogs::startFinish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   }
-  applyMask(elliptic, o_Su, pfloatString);
+  ellipticApplyMask(elliptic, o_Su, pfloatString);
 
   const auto Nqe = mesh->Nq + 2;
   const auto Npe = Nqe * Nqe * Nqe;

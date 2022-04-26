@@ -14,7 +14,7 @@ stressFormulation = true # required for variable viscosity
 residualTol = 1e-08
 
 [VELOCITY]
-boundaryTypeMap = wall, sym
+boundaryTypeMap = sym
 residualTol = 1e-12
 density = 1.0
 viscosity = 0.1 

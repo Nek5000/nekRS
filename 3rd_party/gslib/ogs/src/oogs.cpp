@@ -416,7 +416,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
           // skip invalid combinations
           if(gs->modeExchange != OOGS_EX_PW && gs->earlyPrepostRecv)
             continue; 
-	      if(gs->mode == OOGS_DEFAULT || gs->mode == OOGS_LOCAL) {
+	  if(gs->mode == OOGS_DEFAULT || gs->mode == OOGS_LOCAL) {
             if(gs->modeExchange != OOGS_EX_PW) continue; 
             if(gs->earlyPrepostRecv) continue;  
           }
@@ -427,7 +427,8 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
                    gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
 #endif
 
-	      double elapsedTest[Ntests];
+          // run Ntests measurements to eliminate runtime variations
+          double elapsedTest = std::numeric_limits<double>::max();
           for(int test=0;test<Ntests;++test) {
             device.finish();
             MPI_Barrier(gs->comm);
@@ -438,26 +439,15 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
             oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
 
             device.finish();
-            MPI_Barrier(gs->comm);
-            elapsedTest[test] = MPI_Wtime() - tStart;
+            elapsedTest = std::min(elapsedTest, MPI_Wtime() - tStart);
           }
+          MPI_Allreduce(MPI_IN_PLACE, &elapsedTest, 1, MPI_DOUBLE, MPI_MAX, gs->comm);
 
-          MPI_Allreduce(MPI_IN_PLACE, elapsedTest, Ntests, MPI_DOUBLE, MPI_MIN, gs->comm);
-#if 0 
-          if(gs->rank == 0) {
-            printf("\n");
-	        for(int i=0;i<Ntests;i++) 
-              printf("%.2e ", elapsedTest[i]);
-            printf("\n");
-          } 
-#endif
-          double elapsed = std::numeric_limits<double>::max(); 
-          for(int i=0;i<Ntests;i++) elapsed = std::min(elapsed, elapsedTest[i]); 
-          if(gs->rank == 0) printf("%.2es ", elapsed);
+          if(gs->rank == 0) printf("%.2es ", elapsedTest);
           fflush(stdout);
-          if(elapsed < elapsedMin){
+          if(elapsedTest < elapsedMin){
             if(gs->mode != OOGS_LOCAL) {
-              elapsedMin = elapsed;
+              elapsedMin = elapsedTest;
 	          fastestMode = gs->mode;
               fastestModeExchange = gs->modeExchange;
               fastestPrepostRecv = gs->earlyPrepostRecv;
@@ -484,7 +474,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   gs->mode = OOGS_DEFAULT;
 #endif
 
-  double elapsedMaxMPI = std::numeric_limits<double>::min();
+  double elapsedMinMPI = std::numeric_limits<double>::max();
   {
     const int earlyPrepostRecv = gs->earlyPrepostRecv;
     gs->earlyPrepostRecv = 0;
@@ -510,7 +500,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
         neighborAllToAll(unit_size, gs);
       else
         pairwiseExchange(unit_size, gs);
-      elapsedMaxMPI = std::max(elapsedMaxMPI, MPI_Wtime() - tStart);
+      elapsedMinMPI = std::min(elapsedMinMPI, MPI_Wtime() - tStart);
     }
     gs->earlyPrepostRecv = earlyPrepostRecv;
   }
@@ -518,17 +508,25 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   {
     double nBytesExchange = (pwd->comm[send].total + pwd->comm[recv].total)*unit_size;
     MPI_Allreduce(MPI_IN_PLACE, &nBytesExchange, 1, MPI_DOUBLE, MPI_SUM, gs->comm);
-
+    MPI_Allreduce(MPI_IN_PLACE, &elapsedMinMPI, 1, MPI_DOUBLE, MPI_MAX, gs->comm);
 
     int size;
     MPI_Comm_size(gs->comm, &size);
-    nBytesExchange /= size; 
-    if(gs->rank == 0) { 
-      printf("\nused config: %d.%d.%d ", gs->mode, gs->modeExchange, gs->earlyPrepostRecv);
+    nBytesExchange /= size;
+    const std::string gsModeExchangeStr = (gs->modeExchange == OOGS_EX_NBC) ? "nbc": "pw";
+    const std::string gsEarlyPrepostRecvStr = (gs->earlyPrepostRecv) ? "+early": "";
+    if(gs->rank == 0) {
       if(ogs->NhaloGather > 0) {
-        printf("(MPI exchange: %.2es / %.1fGB/s)\n", elapsedMaxMPI, nBytesExchange/elapsedMaxMPI/1e9);
+        std::string gsModeStr; 
+        switch(gs->mode) {
+          case OOGS_DEFAULT  : gsModeStr = "+host"; break;
+          case OOGS_HOSTMPI  : gsModeStr = "+hybrid"; break;
+          case OOGS_DEVICEMPI: gsModeStr = "+device"; break;
+        }
+        printf("\nused config: %s%s%s ", gsModeExchangeStr.c_str(), gsEarlyPrepostRecvStr.c_str(), gsModeStr.c_str());
+        printf("(MPI: %.2es / bi-bw: %.1fGB/s/rank)\n", elapsedMinMPI, nBytesExchange/elapsedMinMPI/1e9);
       } else {
-        printf("\n"); 
+        printf("\nused config: local\n");
       }
     }
     fflush(stdout);

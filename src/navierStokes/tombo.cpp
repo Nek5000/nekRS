@@ -7,6 +7,7 @@ namespace tombo
 {
 occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 {
+  platform->timer.tic("pressure rhs", 1);
   double flopCount = 0.0;
   mesh_t* mesh = nrs->meshV;
   
@@ -115,6 +116,8 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice3);
   flopCount += 25 * static_cast<double>(mesh->Nelements) * mesh->Nq * mesh->Nq;
 
+  platform->timer.toc("pressure rhs");
+
   platform->o_mempool.slice1.copyFrom(nrs->o_P, mesh->Nlocal * sizeof(dfloat));
   ellipticSolve(nrs->pSolver, platform->o_mempool.slice3, platform->o_mempool.slice1);
 
@@ -125,6 +128,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
 
 occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 {
+  platform->timer.tic("velocity rhs", 1);
   double flopCount = 0.0;
   mesh_t* mesh = nrs->meshV;
   
@@ -191,6 +195,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 
   flopCount += 6 * mesh->Nlocal;
 
+  platform->timer.toc("velocity rhs");
   platform->o_mempool.slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
   if(nrs->uvwSolver) {

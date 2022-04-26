@@ -29,6 +29,7 @@
                                          const dlong offset,
                                          const dfloat time,
                                          @restrict const dfloat*  sgeo,
+                                         @restrict const dfloat*  mask,
                                          @restrict const dfloat*  x,
                                          @restrict const dfloat*  y,
                                          @restrict const dfloat*  z,
@@ -51,25 +52,7 @@
 
         if(bcType > 0) {
           if(bcType == 7 || bcType == 8) {
-
-            const dfloat t1x = sgeo[sid * p_Nsgeo + p_T1XID];
-            const dfloat t1y = sgeo[sid * p_Nsgeo + p_T1YID];
-            const dfloat t1z = sgeo[sid * p_Nsgeo + p_T1ZID];
-
-            const dfloat t2x = sgeo[sid * p_Nsgeo + p_T2XID];
-            const dfloat t2y = sgeo[sid * p_Nsgeo + p_T2YID];
-            const dfloat t2z = sgeo[sid * p_Nsgeo + p_T2ZID];
-
-            const dfloat u = U[idM + 0 * offset];
-            const dfloat v = U[idM + 1 * offset];
-            const dfloat w = U[idM + 2 * offset];
-
-            const dfloat Rtn1 = (u * t1x + v * t1y + w * t1z);
-            const dfloat Rtn2 = (u * t2x + v * t2y + w * t2z);
-
-            UH[idM + 0 * offset] = Rtn1 * t1x + Rtn2 * t2x;
-            UH[idM + 1 * offset] = Rtn1 * t1y + Rtn2 * t2y;
-            UH[idM + 2 * offset] = Rtn1 * t1z + Rtn2 * t2z;
+            // handled elsewhere...
           }else if(bcType == 4) {
             UH[idM + 0 * offset] = 0.0;
           }else if(bcType == 5) {

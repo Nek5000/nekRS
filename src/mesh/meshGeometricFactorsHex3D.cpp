@@ -284,9 +284,9 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
 
     if(globalMinJ < 0 || globalMaxJ < 0) {
       if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
-	    (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
-        if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
-        printf("here!\n");
+	    (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) {
+        if (platform->comm.mpiRank == 0)
+          printf("Jacobian < 0!");
         EXIT_AND_FINALIZE(EXIT_FAILURE);
       }
     }  

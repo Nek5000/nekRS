@@ -16,8 +16,20 @@ c-----------------------------------------------------------------------
       include 'CASEDATA'
 
 
-      ux   = 1.0*cos(P_ROT)
-      uy   = 1.0*sin(P_ROT)
+      real h_tilde, vx_tilde, vy_tilde ! in rotated coordinate frame
+
+      ie = gllel(ieg)
+      h_tilde = ym1(ix,iy,iz,ie) * cos(P_ROT)
+      h_tilde = h_tilde - xm1(ix,iy,iz,ie) * sin(P_ROT)
+
+      uxex = 1.5 * (1.0 - h_tilde ** 2.0)
+      uyex = 0.0
+
+      vx_tilde = uxex * cos(P_ROT) - uyex * sin(P_ROT)
+      vy_tilde = uyex * cos(P_ROT) + uxex * sin(P_ROT)
+
+      ux   = vx_tilde
+      uy   = vy_tilde
       uz   = 0.0
 
       return
@@ -27,42 +39,6 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'CASEDATA'
-
-
-      real diffx(lx1,ly1,lz1,lelv)
-      real diffy(lx1,ly1,lz1,lelv)
-
-      real LinfVX, LinfVY, uxex
-
-
-      COMMON /NRSSCPTR/ nrs_scptr(1)
-      integer*8         nrs_scptr
-
-      real err(2)
-      save err
-
-      integer n
-
-      real h_tilde, vx_tilde, vy_tilde ! in rotated coordinate frame
-
-      n = nx1*ny1*nz1*nelv
-
-      nrs_scptr(1) = loc(err(1))
-
-      do i=1,n
-        h_tilde = ym1(i,1,1,1) * cos(P_ROT) - xm1(i,1,1,1) * sin(P_ROT)
-        vx_tilde = vx(i,1,1,1) * cos(P_ROT) + vy(i,1,1,1) * sin(P_ROT)
-        vy_tilde = vy(i,1,1,1) * cos(P_ROT) - vx(i,1,1,1) * sin(P_ROT)
-        uxex = 1.5 * (1.0 - h_tilde ** 2.0)
-        diffx(i,1,1,1) = abs(vx_tilde-uxex)
-        diffy(i,1,1,1) = abs(vy_tilde)
-      enddo
-
-      err(1) = glmax(diffx,n)
-      err(2) = glmax(diffy,n)
-      if (nio.eq.0)
-     $   write(6,'(1p2e13.4,A)') err(1),err(2),' linf VX VY'
-
 
       return
       end

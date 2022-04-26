@@ -1,8 +1,84 @@
 #include <compileKernels.hpp>
 #include "nrs.hpp"
 #include "elliptic.h"
+#include "benchmarkFDM.hpp"
+#include "benchmarkAx.hpp"
+
+#include "re2Reader.hpp"
 
 namespace {
+
+void registerAxKernels(const std::string& section, int N, int poissonEquation)
+{
+  auto gen_suffix = [N](const char *floatString) {
+    const std::string precision = std::string(floatString);
+    if (precision.find(pfloatString) != std::string::npos) {
+      return std::string("_") + std::to_string(N) + std::string("pfloat");
+    } else {
+      return std::string("_") + std::to_string(N);
+    }
+  };
+  constexpr int Nfields{1};
+
+  auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
+  kernelInfo["defines/p_Nfields"] = Nfields;
+
+  std::string fileName, kernelName;
+
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string oklpath = installDir + "/okl/elliptic/";
+  const bool serial = platform->serial;
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
+  const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
+  {
+    int nelgt, nelgv;
+    const std::string meshFile = platform->options.getArgs("MESH FILE");
+    re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+    const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+
+    occa::properties AxKernelInfo = kernelInfo;
+    const auto Nq = N+1;
+    for(auto&& coeffField : {true,false}){
+      for(auto&& floatString : {std::string(dfloatString), std::string(pfloatString)}){
+
+        dlong wordSize = 8;
+        if(floatString.find("float") != std::string::npos){
+          wordSize = 4;
+        }
+
+        bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+        const int verbosity = verbose ? 2 : 1;
+        const std::string kernelSuffix = gen_suffix(floatString.c_str());
+        auto axKernel = benchmarkAx(NelemBenchmark,
+                                    Nq,
+                                    Nq - 1,
+                                    !coeffField,
+                                    poissonEquation,
+                                    false,
+                                    wordSize,
+                                    Nfields,
+                                    false, // no stress formulation in preconditioner
+                                    verbosity,
+                                    0.2,
+                                    false,
+                                    kernelSuffix);
+
+        const std::string suffix = coeffField ? "CoeffHex3D" : "Hex3D";
+
+        if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
+          kernelName = "ellipticPartialAxTrilinear" + suffix;
+        else
+          kernelName = "ellipticPartialAx" + suffix;
+
+        fileName = oklpath + kernelName + fileNameExtension;
+
+        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
+          axKernel);
+      }
+    }
+  }
+}
 
 void registerJacobiKernels(const std::string &section, int poissonEquation) {
   const bool serial = platform->serial;
@@ -134,7 +210,7 @@ void registerSchwarzKernels(const std::string &section, int N) {
 
   bool overlap = false;
   const bool serial = platform->serial;
-  if (Nq >= 5 && !serial)
+  if (Nq >= (elliptic_t::minNFDMOverlap + 1) && !serial)
     overlap = true;
 
   std::string installDir;
@@ -148,20 +224,35 @@ void registerSchwarzKernels(const std::string &section, int N) {
     properties["defines/p_Nq"] = Nq;
     properties["defines/p_Nq_e"] = Nq_e;
     properties["defines/p_restrict"] = 0;
+    bool useRAS = platform->options.compareArgs(optionsPrefix + "MULTIGRID SMOOTHER", "RAS");
     const std::string suffix =
         std::string("_") + std::to_string(Nq_e - 1) + std::string("pfloat");
     properties["defines/p_overlap"] = (int)overlap;
-    if (platform->options.compareArgs(
-            optionsPrefix + "MULTIGRID SMOOTHER", "RAS"))
+    if(useRAS){
       properties["defines/p_restrict"] = 1;
+    }
 
     fileName = oklpath + "preFDM" + extension;
     platform->kernels.add(
         "preFDM" + suffix, fileName, properties, suffix);
 
-    fileName = oklpath + "fusedFDM" + extension;
-    platform->kernels.add(
-        "fusedFDM" + suffix, fileName, properties, suffix);
+    int nelgt, nelgv;
+    const std::string meshFile = platform->options.getArgs("MESH FILE");
+    re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+    const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+
+    bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+    const int verbosity = verbose ? 2 : 1;
+    auto fdmKernel = benchmarkFDM(NelemBenchmark,
+                                  Nq_e,
+                                  sizeof(pfloat),
+                                  useRAS,
+                                  static_cast<int>(overlap),
+                                  verbosity,
+                                  0.2,
+                                  false,
+                                  suffix);
+    platform->kernels.add("fusedFDM" + suffix, fdmKernel);
 
     fileName = oklpath + "postFDM" + extension;
     platform->kernels.add(
@@ -181,50 +272,7 @@ void registerFineLevelKernels(const std::string &section, int N, int poissonEqua
   auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
   registerCommonMGPreconditionerKernels(N, kernelInfo, poissonEquation);
 
-  constexpr int Nfields{1};
-
-  kernelInfo["defines/p_Nfields"] = Nfields;
-
-  std::string fileName, kernelName;
-
-  std::string installDir;
-  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = installDir + "/okl/elliptic/";
-  const bool serial = platform->serial;
-  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
-  const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
-  {
-    occa::properties AxKernelInfo = kernelInfo;
-    if(poissonEquation) AxKernelInfo["defines/p_poisson"] = 1;
-    for(auto&& coeffField : {true,false}){
-      const std::string suffix = coeffField ? "CoeffHex3D" : "Hex3D";
-
-      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-        kernelName = "ellipticPartialAxTrilinear" + suffix;
-      else
-        kernelName = "ellipticPartialAx" + suffix;
-
-      fileName = oklpath + kernelName + fileNameExtension;
-
-      {
-        const std::string kernelSuffix = gen_suffix(dfloatString);
-        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
-            fileName,
-            AxKernelInfo,
-            kernelSuffix);
-      }
-      {
-        AxKernelInfo["defines/dfloat"] = pfloatString;
-        const std::string kernelSuffix = gen_suffix(pfloatString);
-        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
-            fileName,
-            AxKernelInfo,
-            kernelSuffix);
-        AxKernelInfo["defines/dfloat"] = dfloatString;
-      }
-    }
-  }
-
+  registerAxKernels(section, N, poissonEquation);
   registerSchwarzKernels(section, N);
 }
 void registerSEMFEMKernels(const std::string &section, int N, int poissonEquation);
@@ -258,40 +306,6 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
   constexpr int elementType = HEXAHEDRA;
 
   {
-    occa::properties AxKernelInfo = kernelInfo;
-
-    if(poissonEquation) AxKernelInfo["defines/p_poisson"] = 1;
-    const std::string poissonPrefix = poissonEquation ? "poisson-" : "";
-    for(auto&& coeffField : {true,false}){
-      const std::string AxSuffix = coeffField ? "CoeffHex3D" : "Hex3D";
-
-      if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
-        kernelName = "ellipticPartialAxTrilinear" + AxSuffix;
-      else
-        kernelName = "ellipticPartialAx" + AxSuffix;
-
-      fileName = oklpath + kernelName + fileNameExtension;
-
-      {
-        const std::string kernelSuffix = gen_suffix(dfloatString);
-        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
-            fileName,
-            AxKernelInfo,
-            kernelSuffix);
-      }
-      {
-        AxKernelInfo["defines/dfloat"] = pfloatString;
-        const std::string kernelSuffix = gen_suffix(pfloatString);
-        platform->kernels.add(poissonPrefix + kernelName + kernelSuffix,
-            fileName,
-            AxKernelInfo,
-            kernelSuffix);
-        AxKernelInfo["defines/dfloat"] = dfloatString;
-      }
-    }
-  }
-
-  {
     // sizes for the coarsen and prolongation kernels. degree NFine to degree N
     int NqFine = (Nf + 1);
     int NqCoarse = (Nc + 1);
@@ -321,6 +335,13 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
         coarsenProlongateKernelInfo,
         orderSuffix);
   }
+
+  const std::string optionsPrefix = createOptionsPrefix(section);
+  if (N == 1 && platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")) {
+    return;
+  }
+
+  registerAxKernels(section, N, poissonEquation);
   registerSchwarzKernels(section, N);
 }
 void registerMultiGridKernels(const std::string &section, int poissonEquation) {
@@ -410,8 +431,15 @@ void registerEllipticPreconditionerKernels(std::string section, int poissonEquat
 {
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
+  const std::string optionsPrefix = createOptionsPrefix(section);
 
-  registerMultiGridKernels(section, poissonEquation);
-  registerSEMFEMKernels(section, N, poissonEquation);
-  registerJacobiKernels(section, poissonEquation);
+  if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "MULTIGRID")){
+    registerMultiGridKernels(section, poissonEquation);
+  }
+  if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "SEMFEM")){
+    registerSEMFEMKernels(section, N, poissonEquation);
+  }
+  if(platform->options.compareArgs(optionsPrefix + "PRECONDITIONER", "JACOBI")){
+    registerJacobiKernels(section, poissonEquation);
+  }
 }

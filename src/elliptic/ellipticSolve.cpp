@@ -47,7 +47,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   int maxIter = 999;
   options.getArgs("MAXIMUM ITERATIONS", maxIter);
   const int verbose = options.compareArgs("VERBOSE", "TRUE");
-  elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
+  elliptic->resNormFactor = 1 / mesh->volume;
 
   if(verbose) {
     const dfloat rhsNorm = 
@@ -90,7 +90,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     o_r
   );
   if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
-  applyMask(elliptic, o_r, dfloatString);
+  ellipticApplyMask(elliptic, o_r, dfloatString);
   oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
 
   elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
