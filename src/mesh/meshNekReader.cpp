@@ -55,6 +55,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   MPI_Allreduce(MPI_IN_PLACE, &NboundaryFaces, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
   if (platform->comm.mpiRank == 0)
     printf("NboundaryIDs: %d, NboundaryFaces: %lld ", Nbid, NboundaryFaces);
+  mesh->NboundaryFaces = NboundaryFaces;
 
   // boundary face tags (face numbering is in pre-processor notation)
   mesh->EToB = (int*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));

@@ -70,6 +70,7 @@ struct mesh_t
   dlong Nelements;
   dlong fieldOffset;
   dlong Nlocal;
+  hlong NboundaryFaces;
   hlong* EToV; // element-to-vertex connectivity
   dlong* EToE; // element-to-element connectivity
   int* EToF;   // element-to-(local)face connectivity
