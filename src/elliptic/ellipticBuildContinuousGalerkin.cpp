@@ -44,7 +44,6 @@ static int parallelCompareRowColumn(const void* a, const void* b)
 
 void ellipticBuildContinuousGalerkinHex3D (elliptic_t* elliptic,
                                            elliptic_t* ellipticFine,
-                                           dfloat lambda,
                                            nonZero_t** A,
                                            dlong* nnz,
                                            ogs_t** ogs,
@@ -52,7 +51,6 @@ void ellipticBuildContinuousGalerkinHex3D (elliptic_t* elliptic,
 
 void ellipticBuildContinuousGalerkin(elliptic_t* elliptic,
                                      elliptic_t* ellipticFine,
-                                     dfloat lambda,
                                      nonZero_t** A,
                                      dlong* nnz,
                                      ogs_t** ogs,
@@ -73,7 +71,7 @@ void ellipticBuildContinuousGalerkin(elliptic_t* elliptic,
     break;
   case HEXAHEDRA:
     ellipticBuildContinuousGalerkinHex3D(elliptic,ellipticFine,
-                                         lambda,A,nnz,ogs,globalStarts);
+                                         A,nnz,ogs,globalStarts);
     break;
   default:
     break;
@@ -123,7 +121,6 @@ void ellipticGenerateCoarseBasisHex3D(dfloat* b,int j_,elliptic_t* elliptic)
 
 void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           elliptic_t* ellipticFine,
-                                          dfloat lambda,
                                           nonZero_t** A,
                                           dlong* nnz,
                                           ogs_t** ogs,
@@ -131,7 +128,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
 {
   mesh_t* mesh = elliptic->mesh;
   
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
@@ -180,7 +177,12 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
   int* ArecvOffsets = (int*) calloc(platform->comm.mpiCommSize + 1, sizeof(int));
 
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
-  for (dlong n = 0; n < elliptic->Nmasked; n++) mask[elliptic->maskIds[n]] = 1;
+  if(elliptic->Nmasked > 0){
+    dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
+    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+    for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 1.;
+    free(maskIds);
+  }
 
   mesh_t* meshf = ellipticFine->mesh;
 
@@ -217,9 +219,7 @@ void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                  meshf->Np * sizeof(dfloat));
 
         o_q.copyFrom(q);
-        ellipticFine->AxKernel(mesh->Nelements,meshf->o_ggeo,
-                               meshf->o_D,meshf->o_DT,
-                               lambda,o_q,o_Aq);
+        ellipticOperator(ellipticFine, o_q, o_Aq, dfloatString, false);
         o_Aq.copyTo(Aq);
 
         for(dlong e = 0; e < mesh->Nelements; e++)

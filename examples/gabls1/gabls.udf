@@ -1,12 +1,12 @@
-//
-// nekRS User Defined File
-//
 #include <math.h>
 #include "udf.hpp"
 
-/* User Functions */
+occa::kernel coriolisKernel;
+occa::kernel gradYKernel; 
+occa::kernel divStressKernel;
+occa::kernel visMFKernel;
+occa::kernel avgBIDValueKernel;
 
-occa::kernel coriolisKernel; 
 /* latitude north */
 static dfloat NLAT;
 /* geostrophic wind speed [m/s] */
@@ -29,18 +29,163 @@ static dfloat XLEN;
 static dfloat YLEN;
 static dfloat ZLEN;
 
+static dfloat Z0;
+static dfloat Z1;
+
+static dfloat SCOOLRATE;
+static dfloat T0S;
+static dfloat GACC;
+
 static dfloat BETAM;
+static dfloat BETAH;
+static dfloat KAPPA;
+static dfloat ZWALL;
+
+static dfloat maxDt0 = -1;
+
+void avgBoundaryValue(nrs_t *nrs, int BID, int nflds, occa::memory o_flds, dfloat *avgs)
+{
+  mesh_t* mesh = nrs->meshV;
+  const auto Nelements = mesh->Nelements;
+  const auto Nfaces = mesh->Nfaces;
+  const auto offset = Nfaces * Nelements; 
+
+  static dfloat *sum;
+  static dfloat *sumFace;
+  static dfloat *area;
+  static occa::memory o_sumFace;
+  static occa::memory o_area;
+
+  if (!o_sumFace.isInitialized()) {
+    o_sumFace = platform->device.malloc((nflds+1) * Nfaces * Nelements * sizeof(dfloat));
+    sumFace = (dfloat *) calloc((nflds+1) * Nfaces * Nelements, sizeof(dfloat));
+    sum = (dfloat *) calloc(nflds+1, sizeof(dfloat));
+  }
+
+  avgBIDValueKernel(Nelements, 
+    BID, 
+    nrs->fieldOffset, 
+    offset, 
+    mesh->o_sgeo, 
+    mesh->o_EToB, 
+    mesh->o_vmapM, 
+    o_flds, 
+    o_sumFace); 
+  o_sumFace.copyTo(sumFace, (nflds+1) * Nfaces * Nelements * sizeof(dfloat));
+
+  for (int j = 0; j < nflds+1; ++j) {
+    sum[j] = 0; 
+    for (int i = 0; i < Nfaces * Nelements; ++i) {
+      sum[j] += sumFace[i + j*offset]; 
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, sum, nflds+1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+
+  const auto invArea = 1/sum[nflds];
+  for (int i = 0; i < nflds; ++i) avgs[i] = sum[i] * invArea; 
+}
+
+
+void findUThetaTau(dfloat uWall, dfloat tempWall, 
+                   dfloat& rLength, dfloat& uTau, dfloat& thetaTau)
+{
+  const auto tol    = 1e-8;
+  const auto brat   = BETAH/BETAM;
+  const auto z1z0   = Z1/Z0;
+  const auto UmN    = KAPPA*uWall/log(z1z0);
+  const auto ThN    = KAPPA*tempWall/log(z1z0);
+  const auto RiBulk = tempWall*ZWALL*GACC/uWall/uWall;
+  const auto RiCrit = RiBulk*BETAM*BETAM/BETAH;
+
+  uTau = 0;
+  thetaTau = 0;
+  rLength = 1e5;
+
+  if(uWall < tol || RiCrit >= 1) return; 
+
+  if(fabs(brat - 1) < tol) {
+    uTau = UmN * (1 - BETAM*RiBulk);
+    thetaTau = ThN * (1 - BETAM*RiBulk);
+    rLength = KAPPA*GACC*thetaTau/uTau/uTau;
+  } else { // find the 2 roots utau1 and utau2
+    const auto Det = sqrt(1 + 4*RiBulk*(BETAH - BETAM));
+    if(Det < 0) {
+      if (platform->comm.mpiRank == 0) std::cout << "findUThetaTau: Det < 0!\n";
+      ABORT(EXIT_FAILURE);
+    } 
+    const auto utau1 = (0.5*(2*brat - 1)*UmN/(brat - 1)) * (1 - Det/(2*brat - 1));
+    const auto utau2 = (0.5*(2*brat - 1)*UmN/(brat - 1)) * (1 + Det/(2*brat - 1));
+    auto thetau1 = 0.0;
+    auto thetau2 = 0.0;
+    if(RiBulk > tol) {
+      const auto scale = 1/BETAM/KAPPA/GACC/ZWALL;
+      thetau1 = scale * utau1 * (KAPPA*uWall - utau1*log(z1z0));
+      thetau2 = scale * utau2 * (KAPPA*uWall - utau2*log(z1z0));
+    }
+    if(utau1 >= 0 && thetau1 >= 0) {
+      uTau   = utau1;
+      thetaTau = thetau1;
+      rLength = KAPPA*GACC*thetaTau/uTau/uTau;
+    }
+  } 
+}
+
+void average(nrs_t *nrs, occa::memory o_avg)
+{
+  mesh_t* mesh = nrs->meshV;
+  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+
+  // <u>(y) 
+  auto o_uAvg = o_avg.slice(0*fieldOffsetByte, fieldOffsetByte);
+  o_uAvg.copyFrom(nrs->o_U, fieldOffsetByte, 0, 0*fieldOffsetByte);
+
+  // <w>(y) 
+  auto o_wAvg = o_avg.slice(1*fieldOffsetByte, fieldOffsetByte);
+  o_wAvg.copyFrom(nrs->o_U, fieldOffsetByte, 0, 2*fieldOffsetByte);
+
+  // <temp>(y) 
+  auto o_tempAvg = o_avg.slice(2*fieldOffsetByte, fieldOffsetByte);
+  o_tempAvg.copyFrom(nrs->cds->o_S, fieldOffsetByte, 0, 0*fieldOffsetByte);
+
+  // d<u,w,temp>/dy(y)
+  auto o_ddyAvg = o_avg.slice(3*fieldOffsetByte, 3*fieldOffsetByte);
+  gradYKernel(
+    mesh->Nelements,
+    mesh->o_vgeo,
+    mesh->o_D,
+    nrs->fieldOffset,
+    mesh->o_invLMM,
+    o_avg,
+    o_ddyAvg);
+  oogs::startFinish(o_ddyAvg, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  
+  postProcessing::planarAvg(nrs, "x", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_avg);
+  postProcessing::planarAvg(nrs, "z", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_avg);
+}
+
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t* mesh = nrs->meshV;
+  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+  auto o_divTau = nrs->o_usrwrk.slice(6*fieldOffsetByte, 3*fieldOffsetByte);
   coriolisKernel(
     mesh->Nlocal, 
     nrs->fieldOffset, 
     nrs->meshV->o_y,
     nrs->cds->o_S,
     nrs->o_U,
+    o_divTau,
     o_FU);
+}
+
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
+{
+  mesh_t* mesh = nrs->meshV;
+  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+  auto o_divTau = nrs->o_usrwrk.slice(8*fieldOffsetByte, fieldOffsetByte);
+  platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTau, 1.0, o_SU, 0, 0); 
 }
 
 
@@ -57,14 +202,22 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
 
   kernelInfo["defines/p_fcor"]      = 2*omega*LREF/UREF * sin(NLAT*M_PI/180);
   kernelInfo["defines/p_bcor"]      = 2*omega*LREF/UREF * cos(NLAT*M_PI/180);
-  kernelInfo["defines/p_gacc"]      = LREF*g/(UREF*UREF);
+
+  GACC = LREF*g/(UREF*UREF); 
+  kernelInfo["defines/p_gacc"]      = GACC;
   kernelInfo["defines/p_cond"]      = cond;
   kernelInfo["defines/p_TsGrad"]    = ILSTRENGTH * LREF/TREF;
-  kernelInfo["defines/p_T0s"]       = TS0/TREF;
-  kernelInfo["defines/p_sCoolRate"] = SCR * LREF/TREF/UREF/3600;
+  T0S = TS0/TREF;
+  kernelInfo["defines/p_T0s"]       = T0S;
+  SCOOLRATE = SCR * LREF/TREF/UREF/3600; 
+  kernelInfo["defines/p_sCoolRate"] = SCOOLRATE;
   kernelInfo["defines/p_YLEN"]      = YLEN;
 
-  coriolisKernel = udfBuildKernel(kernelInfo, "coriolis");
+  coriolisKernel = oudfBuildKernel(kernelInfo, "coriolis");
+  gradYKernel = oudfBuildKernel(kernelInfo, "gradY");
+  divStressKernel = oudfBuildKernel(kernelInfo, "divStress");
+  visMFKernel = oudfBuildKernel(kernelInfo, "visMF");
+  avgBIDValueKernel = oudfBuildKernel(kernelInfo, "avgBIDValue");
 }
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
@@ -81,7 +234,14 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata","xlen",XLEN);
   platform->par->extract("casedata","ylen",YLEN);
   platform->par->extract("casedata","zlen",ZLEN);
+
+  platform->par->extract("casedata","z0",Z0);
+  platform->par->extract("casedata","z1",Z1);
+
   platform->par->extract("casedata","betam",BETAM);
+  platform->par->extract("casedata","betah",BETAH);
+  platform->par->extract("casedata","kappa",KAPPA);
+  platform->par->extract("casedata","zwall",ZWALL);
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
@@ -105,12 +265,89 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup(nrs_t *nrs)
 {
+  nrs->o_usrwrk = platform->device.malloc((9*nrs->fieldOffset + 5)*sizeof(dfloat));
   udf.uEqnSource = &userf;
+  udf.sEqnSource = &userq;
+
+  platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
+  platform->options.setArgs("RUNTIME STATISTICS FREQUENCY", "5000");
+
+  platform->options.getArgs("MAX DT", maxDt0);
+  if (maxDt0 > 0) {
+    const double maxDt = 0.25*maxDt0;
+    if(platform->comm.mpiRank == 0) printf("\n" "reseting MAX DT = %g\n", maxDt); 
+    platform->options.setArgs("MAX DT", to_string_f(maxDt));
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
+  mesh_t* mesh = nrs->meshV;
+  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+
+  {
+    static int calld = 0; 
+    if(maxDt0 > 0 && time > 100 && !calld) {
+      if(platform->comm.mpiRank == 0) printf("restore original MAX DT = %g\n", maxDt0); 
+      platform->options.setArgs("MAX DT", to_string_f(maxDt0));
+      calld++;
+    }
+  }
+
+  auto o_avg = nrs->o_usrwrk.slice(0*fieldOffsetByte, 6*fieldOffsetByte);
+  average(nrs, o_avg);
+
+  const int bId = 2;
+  dfloat avgWallValues[3];
+  avgBoundaryValue(nrs, bId, 3, o_avg, avgWallValues);
+
+  dfloat tauWall[5];
+  const dfloat thts = tauWall[0] = T0S + SCOOLRATE*time;
+
+  const auto uAvgWall = avgWallValues[0];
+  const auto wAvgWall = avgWallValues[1];
+  const auto magUWall = tauWall[1] = sqrt(uAvgWall*uAvgWall + wAvgWall*wAvgWall);
+  const auto tempAvgWall = tauWall[2] = avgWallValues[2];
+
+  dfloat rLength;
+  const dfloat diffTempWall = fabs(tempAvgWall - (thts - 1.)); 
+  findUThetaTau(magUWall, diffTempWall, rLength, tauWall[3], tauWall[4]);
+  nrs->o_usrwrk.copyFrom(tauWall, sizeof(tauWall), 9*fieldOffsetByte);
+
+  const auto factru = (1. + BETAM*ZWALL*rLength)/KAPPA/ZWALL;
+  const auto scale = 1./(factru*factru);
+  auto o_ddyAvg = o_avg.slice(3*fieldOffsetByte, 3*fieldOffsetByte);
+  visMFKernel(
+    mesh->Nlocal,
+    nrs->fieldOffset,
+    scale,
+    o_ddyAvg,
+    platform->o_mempool.slice0);
+#if 0
+    platform->lingAlg->fill(mesh->Nlocal, 0.0, platform->o_mempool.slice0);
+#endif
+
+  auto o_divTau = nrs->o_usrwrk.slice(6*fieldOffsetByte, 3*fieldOffsetByte);
+  divStressKernel(
+    mesh->Nelements, 
+    nrs->fieldOffset, 
+    mesh->o_invLMM,
+    mesh->o_vgeo,
+    mesh->o_D, 
+    platform->o_mempool.slice0,
+    o_ddyAvg, 
+    o_divTau);
+  oogs::startFinish(o_divTau, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+
   if (nrs->isOutputStep) {
+    if(platform->comm.mpiRank == 0) {
+      printf("uAvgWall: %g  wAvgWall: %g  magUWall: %g  tempAvgWall: %g\n"
+             "uTau: %g  thetaTau: %g  rLength: %g\n", 
+             uAvgWall, wAvgWall, tauWall[1], tempAvgWall,
+             tauWall[3], tauWall[4], rLength);
+    }
+
+    //writeFld("avg", time, 1, 1, &o_NULL, &o_NULL, &o_avg, 6);
     nek::ocopyToNek(time, tstep);
     nek::userchk();
     nek::ocopyFromNek(time);

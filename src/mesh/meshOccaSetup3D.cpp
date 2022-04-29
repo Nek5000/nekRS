@@ -31,6 +31,7 @@
 
 #include "mesh3D.h"
 #include "platform.hpp"
+#include "bcMap.hpp"
 
 void reportMemoryUsage(occa::device &device, const char* mess)
 {
@@ -39,7 +40,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
   printf("%s: bytes allocated = %lu\n", mess, bytes);
 }
 
-void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
   mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
 		                            mesh->elementInfo);
@@ -97,15 +98,16 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nvgeo * sizeof(dfloat),
                         mesh->vgeo);
   mesh->o_sgeo =
-    platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
-                        mesh->sgeo);
+      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat),
+                              mesh->sgeo);
+
   mesh->o_ggeo =
     platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat),
                         mesh->ggeo);
-  //if(mesh->cubNq - 1)
-  //  mesh->o_cubvgeo =
-  //    platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat),
-  //                            mesh->cubvgeo);
+  if (mesh->cubNq - 1) {
+    mesh->o_cubvgeo =
+        platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat), mesh->cubvgeo);
+  }
 
   mesh->o_vmapM =
     platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
@@ -144,10 +146,10 @@ void meshOccaPopulateDeviceHex3D(mesh3D* mesh, setupAide &newOptions, occa::prop
       platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
   }
 
-  kernelInfo += populateMeshProperties(mesh->N);
+  kernelInfo += meshKernelProperties(mesh->N);
 }
 
-void meshOccaSetup3D(mesh3D* mesh, setupAide &newOptions, occa::properties &kernelInfo)
+void meshOccaSetup3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
   meshOccaPopulateDeviceHex3D(mesh, newOptions, kernelInfo);
 }

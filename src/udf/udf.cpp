@@ -5,12 +5,14 @@
 #include <regex>
 
 #include "udf.hpp"
-#include "io.hpp"
+#include "ioUtils.hpp"
 #include "platform.hpp"
+#include "bcMap.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
 static int velocityDirichletConditions = 0;
+static int meshVelocityDirichletConditions = 0;
 static int velocityNeumannConditions = 0;
 static int pressureDirichletConditions = 0;
 static int scalarDirichletConditions = 0;
@@ -44,6 +46,10 @@ void oudfFindDirichlet(std::string &field)
     if (platform->comm.mpiRank == 0) 
      std::cout << "WARNING: Cannot find oudf function: pressureDirichletConditions!\n";
     // ABORT(EXIT_FAILURE); this bc is optional 
+  }
+  if(field.find("mesh") != std::string::npos && !meshVelocityDirichletConditions && !bcMap::useDerivedMeshBoundaryConditions()) {
+    if (platform->comm.mpiRank == 0) std::cout << "Cannot find oudf function: meshVelocityDirichletConditions!\n";
+    ABORT(EXIT_FAILURE);
   }
 }
 
@@ -80,9 +86,7 @@ void oudfInit(setupAide &options)
 
   int buildRank = platform->comm.mpiRank;
   MPI_Comm comm = platform->comm.mpiComm;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal) {
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);
     comm = platform->comm.mpiCommLocal;
@@ -105,6 +109,13 @@ void oudfInit(setupAide &options)
     if(!found)
       out << "void velocityDirichletConditions(bcData *bc){}\n";
 
+    found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+meshVelocityDirichletConditions)"));
+    meshVelocityDirichletConditions = found;
+    if(!found)
+      out << "void meshVelocityDirichletConditions(bcData *bc){\n"
+      "  velocityDirichletConditions(bc);\n"
+      "}\n";
+
     found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
     velocityNeumannConditions = found;
     if(!found)
@@ -125,15 +136,11 @@ void oudfInit(setupAide &options)
     if(!found)
       out << "void scalarDirichletConditions(bcData *bc){}\n";
 
-    out <<
-      "@kernel void __dummy__(int N) {"
-      "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}"
-      "}";
-
     out.close();
   }
 
   MPI_Bcast(&velocityDirichletConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&meshVelocityDirichletConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&velocityNeumannConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, comm);
@@ -146,9 +153,7 @@ void oudfInit(setupAide &options)
 void udfBuild(const char* udfFile, setupAide& options)
 {
   int buildRank = platform->comm.mpiRank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
   
@@ -156,9 +161,9 @@ void udfBuild(const char* udfFile, setupAide& options)
     if(buildRank == 0){
       double tStart = MPI_Wtime();
 
-      std::string install_dir;
-      install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-      std::string udf_dir = install_dir + "/udf";
+      std::string installDir;
+      installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+      std::string udf_dir = installDir + "/udf";
 
       std::string cache_dir;
       cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
@@ -188,19 +193,41 @@ void udfBuild(const char* udfFile, setupAide& options)
         char udfFileResolved[BUFSIZ];
         realpath(udfFile, udfFileResolved);
         sprintf(cmd,
-                "cd %s/udf && cp -f %s udf.cpp && cp -f %s/CMakeLists.txt . && "
-                "rm -f *.so && cmake -Wno-dev -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
-	            "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" . %s",
-                 cache_dir.c_str(),
-                 udfFileResolved,
-                 udf_dir.c_str(),
-                 case_dir.c_str(),
-                 pipeToNull.c_str());
+                "cp -f %s %s/udf/udf.cpp && cp -f %s/CMakeLists.txt %s/udf && rm -f %s/udf/*.so",
+                udfFileResolved,
+                cache_dir.c_str(),
+                udf_dir.c_str(),
+                cache_dir.c_str(),
+                cache_dir.c_str());
         if(verbose && platform->comm.mpiRank == 0) printf("%s\n", cmd);
         if(system(cmd)) return EXIT_FAILURE; 
+
+        std::string cmakeFlags("-Wno-dev");
+        if(verbose) cmakeFlags += " --trace-expand";
+        std::string cmakeBuildDir = cache_dir + "/udf"; 
+        sprintf(cmd, "cmake %s -S %s -B %s -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
+	            "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" %s",
+                 cmakeFlags.c_str(),
+                 cmakeBuildDir.c_str(),
+                 cmakeBuildDir.c_str(),
+                 case_dir.c_str(),
+                 pipeToNull.c_str());
+        const int retVal = system(cmd);
+        if(verbose && platform->comm.mpiRank == 0) {
+          printf("%s (retVal: %d)\n", cmd, retVal);
+        }
+        if(retVal) return EXIT_FAILURE; 
       }
-      sprintf(cmd, "cd %s/udf && make %s", cache_dir.c_str(), pipeToNull.c_str());
-      if(system(cmd)) return EXIT_FAILURE; 
+
+      {
+        sprintf(cmd, "cd %s/udf && make %s", cache_dir.c_str(), pipeToNull.c_str());
+        const int retVal = system(cmd);
+        if(verbose && platform->comm.mpiRank == 0) {
+          printf("%s (retVal: %d)\n", cmd, retVal);
+        }
+        if(retVal) return EXIT_FAILURE; 
+      }
+
       fileSync(udfLib.c_str());
       if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
       fflush(stdout);
@@ -221,7 +248,7 @@ void* udfLoadFunction(const char* fname, int errchk)
   sprintf(udfLib, "%s/udf/libUDF.so", cache_dir);
 
   void* h, * fptr;
-  h = dlopen(udfLib, RTLD_LAZY | RTLD_GLOBAL);
+  h = dlopen(udfLib, RTLD_NOW | RTLD_GLOBAL);
   if (!h) goto errOpen;
 
   fptr = dlsym(h,fname);
@@ -242,16 +269,16 @@ err:
 void udfLoad(void)
 {
   *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-  *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",1);
+  *(void**)(&udf.setup) = udfLoadFunction("UDF_Setup",0);
   *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
   *(void**)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep",0);
 }
 
-occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function)
+occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function)
 {
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string bcDataFile = install_dir + "/include/core/bcData.h";
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
+  const std::string bcDataFile = installDir + "/include/bdry/bcData.h";
   kernelInfo["includes"] += bcDataFile.c_str();
 
   // provide some common kernel args

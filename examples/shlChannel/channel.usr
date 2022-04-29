@@ -1,0 +1,126 @@
+C
+C  USER SPECIFIED ROUTINES: 
+C
+C     - boundary conditions 
+C     - initial conditions  
+C     - variable properties 
+C     - forcing function for fluid (f)
+C     - forcing function for passive scalar (q)
+C     - general purpose routine for checking errors etc.        
+C
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      include 'CASEDATA'
+
+
+      real h_tilde, vx_tilde, vy_tilde ! in rotated coordinate frame
+
+      ie = gllel(ieg)
+      h_tilde = ym1(ix,iy,iz,ie) * cos(P_ROT)
+      h_tilde = h_tilde - xm1(ix,iy,iz,ie) * sin(P_ROT)
+
+      uxex = 1.5 * (1.0 - h_tilde ** 2.0)
+      uyex = 0.0
+
+      vx_tilde = uxex * cos(P_ROT) - uyex * sin(P_ROT)
+      vy_tilde = uyex * cos(P_ROT) + uxex * sin(P_ROT)
+
+      ux   = vx_tilde
+      uy   = vy_tilde
+      uz   = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CASEDATA'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat   ! This routine to modify element vertices
+      include 'SIZE'      ! _before_ mesh is generated, which
+      include 'TOTAL'     ! guarantees GLL mapping of mesh.
+      integer e
+
+      do e=1,nelv    !  Rescale mesh to [0,1]x[-1,0]x[0,1]
+      do i=1,2**ndim !  Assumes original domain in .re2 file on [0,1]^3
+         xc(i,e) = 1.0*xc(i,e)
+         yc(i,e) = 1.0*yc(i,e) - 1.0
+         zc(i,e) = 1.0*zc(i,e)
+      enddo
+      enddo
+
+      return
+      end
+
+c-----------------------------------------------------------------------
+      subroutine usrdat2()  ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CASEDATA'
+
+      common /scnrs/ sc_nrs(1)
+      real           sc_nrs
+
+      real xpt, ypt
+
+      P_ROT = sc_nrs(1)
+
+      call rescale_x(xm1,0.0,1.0)
+      call rescale_x(ym1,-1.0,0.0)
+      call rescale_x(zm1,0.0,1.0)
+
+      ntot = nx1*ny1*nz1*nelt
+
+      do i=1,ntot
+         xpt = xm1(i,1,1,1)
+         ypt = ym1(i,1,1,1)
+
+         xm1(i,1,1,1) = xpt * cos(P_ROT) - ypt * sin(P_ROT)
+         ym1(i,1,1,1) = xpt * sin(P_ROT) + ypt * cos(P_ROT)
+      enddo
+
+      do iel=1,nelt
+         cbc(5,iel,1) = 'P  '
+         cbc(6,iel,1) = 'P  '
+      do ifc=1,2*ndim
+         cbc(ifc,iel,2)  = cbc(ifc,iel,1)
+         if (cbc(ifc,iel,1) .eq. 'W  ') cbc(ifc,iel,2) = 't  ' 
+         if (cbc(ifc,iel,1) .eq. 'SYM') cbc(ifc,iel,2) = 'I  ' 
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 2
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
+      integer*8 glo_num(1)
+
+      ! kludge for periodic bc in z
+      nxy  = nx*ny
+      nxyz = nx*ny*nz
+      do iel = 1,nel
+         ioff = nxyz*(iel-1)
+         do ixy = 1,nxy
+            glo_num(ioff + nxy*(nz-1) + ixy) = glo_num(ioff + ixy)
+         enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------

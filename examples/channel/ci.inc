@@ -24,6 +24,13 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
   options.setArgs("STRESSFORMULATION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+
+  if(ciMode == 1){
+    platform->par->set("casedata", "p_rot", 0.0);
+  }
+  if(ciMode == 2){
+    platform->par->set("casedata", "p_rot", 0.7853981633974483);
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
@@ -37,8 +44,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   double *err = (double *) nek::scPtr(5);
 
-  double vxErr = abs((err[0] - 9.5942E-09)/err[0]);
-  double vyErr = abs((err[1] - 2.3012E-07)/err[1]);
+  const double vxErr = abs((err[0] - 9.5942E-09)/err[0]);
+  const double vyErr = abs((err[1] - 2.3012E-07)/err[1]);
 
   if (rank == 0)
     printf("relative error to target: vx=%g vy=%g\n", 

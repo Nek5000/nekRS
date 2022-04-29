@@ -1,0 +1,39 @@
+[GENERAL]
+#verbose = true 
+polynomialOrder = 9
+#startFrom = "restart.fld"
+stopAt = numSteps
+numSteps = 100 
+dt = 2e-03
+timeStepper = tombo3
+writeControl = runTime
+writeInterval = 0.1
+
+usr = "ethier.usr"
+oudf = "ethier.oudf"
+udf = "ethier.udf"
+
+[MESH]
+file = "ethier.re2"
+
+[TEMPERATURE]
+boundaryTypeMap = inlet 
+residualTol = 1e-12
+rhoCp = 1.0
+conductivity = -100
+
+[SCALAR01]
+boundaryTypeMap = flux
+residualTol = 1e-12
+rho = 1.0
+diffusivity = -100
+
+[CASEDATA]
+P_U0 = 0.5
+P_V0 = 0.1
+P_W0 = 0.2
+P_A0 = 0.025
+P_D0 = 0.5
+P_OMEGA = 15.0
+P_AMP = 1.5
+

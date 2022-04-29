@@ -31,6 +31,7 @@ SOFTWARE.
 namespace ogs {
 
   int Nrefs = 0;
+  const int gatherNodesPerBlock = std::min(BLOCKSIZE, 1024); //should be a multiple of blockSize for good unrolling
 
   void* hostBuf;
   size_t hostBufSize=0;
@@ -43,6 +44,11 @@ namespace ogs {
   occa::stream dataStream;
 
   occa::properties kernelInfo;
+
+  occa::kernel gatherScatterNewKernel_floatAdd;
+  occa::kernel gatherScatterNewKernel_doubleAdd;
+  occa::kernel gatherScatterNewKernel_doubleMin;
+  occa::kernel gatherScatterNewKernel_doubleMax;
 
   occa::kernel gatherScatterKernel_floatAdd;
   occa::kernel gatherScatterKernel_floatMul;
@@ -189,6 +195,27 @@ void ogs::initKernels(MPI_Comm comm, occa::device device, bool verbose) {
   for (int r=0;r<2;r++){
     if ((r==0 && rank==0) || (r==1 && rank>0)) {      
 
+      {
+        occa::properties props2 = ogs::kernelInfo;
+        props2["includes"] += DOGS "/include/ogsDefs.h";
+        props2["defines/p_gatherNodesPerBlock"] = gatherNodesPerBlock;
+        props2["defines/init_" "float" "_add"] = (float) 0;
+        props2["defines/init_" "float" "_add"] = (float) 0;
+        props2["defines/init_" "float" "_min"] = (float)  std::numeric_limits<float>::max(); 
+        props2["defines/init_" "float" "_max"] = (float) -std::numeric_limits<float>::max();
+        props2["defines/init_" "double" "_add"] = (double) 0;
+        props2["defines/init_" "double" "_min"] = (double)  std::numeric_limits<double>::max(); 
+        props2["defines/init_" "double" "_max"] = (double) -std::numeric_limits<double>::max();
+        ogs::gatherScatterNewKernel_floatAdd = 
+          device.buildKernel(DOGS "/okl/gatherScatterNew.okl", "gatherScatter_float_add", props2);
+        ogs::gatherScatterNewKernel_doubleAdd = 
+          device.buildKernel(DOGS "/okl/gatherScatterNew.okl", "gatherScatter_double_add", props2);
+        ogs::gatherScatterNewKernel_doubleMin = 
+          device.buildKernel(DOGS "/okl/gatherScatterNew.okl", "gatherScatter_double_min", props2);
+        ogs::gatherScatterNewKernel_doubleMax = 
+          device.buildKernel(DOGS "/okl/gatherScatterNew.okl", "gatherScatter_double_max", props2);
+      }
+
       ogs::gatherScatterKernel_floatAdd = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatAdd", props);
       ogs::gatherScatterKernel_floatMul = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMul", props);
       ogs::gatherScatterKernel_floatMin = device.buildKernel(DOGS "/okl/gatherScatter.okl", "gatherScatter_floatMin", props);
@@ -313,20 +340,20 @@ void ogs::initKernels(MPI_Comm comm, occa::device device, bool verbose) {
 
 
 
-      ogs::scatterKernel_float = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_float", props);
+      ogs::scatterKernel_float  = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_float", props);
       ogs::scatterKernel_double = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_double", props);
-      ogs::scatterKernel_int = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_int", props);
-      ogs::scatterKernel_long = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_long", props);
+      ogs::scatterKernel_int    = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_int", props);
+      ogs::scatterKernel_long   = device.buildKernel(DOGS "/okl/scatter.okl", "scatter_long", props);
 
-      ogs::scatterVecKernel_float = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_float", props);
+      ogs::scatterVecKernel_float  = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_float", props);
       ogs::scatterVecKernel_double = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_double", props);
-      ogs::scatterVecKernel_int = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_int", props);
-      ogs::scatterVecKernel_long = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_long", props);
+      ogs::scatterVecKernel_int    = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_int", props);
+      ogs::scatterVecKernel_long   = device.buildKernel(DOGS "/okl/scatterVec.okl", "scatterVec_long", props);
 
-      ogs::scatterManyKernel_float = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_float", props);
+      ogs::scatterManyKernel_float  = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_float", props);
       ogs::scatterManyKernel_double = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_double", props);
-      ogs::scatterManyKernel_int = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_int", props);
-      ogs::scatterManyKernel_long = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_long", props);
+      ogs::scatterManyKernel_int    = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_int", props);
+      ogs::scatterManyKernel_long   = device.buildKernel(DOGS "/okl/scatterMany.okl", "scatterMany_long", props);
     }
     MPI_Barrier(comm);
   }

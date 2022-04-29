@@ -1,4 +1,5 @@
 #include <math.h>
+#include <numeric>
 #include "udf.hpp"
 
 /* UDF Functions */                                                      
@@ -15,6 +16,10 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = P_EPS;
   }
+
+  int gsOverlap = 1;
+  platform->par->extract("casedata", "gsoverlap", gsOverlap);
+  if(!gsOverlap) platform->options.setArgs("GS OVERLAP", "FALSE");
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -33,47 +38,93 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   platform->linAlg->fillKernel(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
   platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
 
-  // warm-up
-  ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
-  platform->timer.reset("pressureSolve");
+  if(platform->comm.mpiRank == 0) 
+    std::cout << "\nrunning benchmarks\n"; 
 
-  const int Nrep = 10; 
-  if(platform->comm.mpiRank == 0) printf("solving "); 
-  for (int i = 0; i < Nrep; i++) { 
-    platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);
-    platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+  for(std::string benchmark : {"BPS5", "BP5"}){
 
-    platform->timer.tic("pressureSolve", 1);
-    ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
-    platform->timer.toc("pressureSolve");
-    
+    MPI_Barrier(platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      std::cout << "\n" << benchmark << "\n"; 
+
+    int Nrep = 0;
+    if(benchmark == "BP5"){
+      Nrep = 25;
+      nrs->pSolver->options.setArgs("PRECONDITIONER", "NONE");
+      nrs->pSolver->options.setArgs("KRYLOV SOLVER", "PCG");
+      nrs->pSolver->options.setArgs("MAXIMUM ITERATIONS", "1000");
+      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
+      ellipticPreconditionerSetup(nrs->pSolver, nrs->pSolver->ogs);
+    }
+    if(benchmark == "BPS5"){
+      Nrep = 50;
+      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-8));
+      nrs->pSolver->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+    }
+
+    platform->timer.reset("pressureSolve");
+    platform->timer.reset("pressure preconditioner");
+    platform->timer.reset("pressure preconditioner smoother");
+    platform->timer.reset("coarseSolve");
+    platform->flopCounter->clear();
+
+    std::vector<double> eTime; 
+    std::vector<double> precoTime; 
+    std::vector<double> smootherTime; 
+    std::vector<double> crsTime;
+
+    for (int i = 0; i < Nrep; i++) { 
+      platform->linAlg->fillKernel(mesh->Nlocal, 0.0, nrs->o_P);
+      platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+
+      platform->timer.tic("pressureSolve", 1);
+      ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
+      platform->timer.toc("pressureSolve");
+
+      eTime.push_back(platform->timer.query("pressureSolve", "DEVICE:MAX"));
+      precoTime.push_back(platform->timer.query("pressure preconditioner", "DEVICE:MAX"));
+      smootherTime.push_back(platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX"));
+      crsTime.push_back(platform->timer.query("coarseSolve", "DEVICE:MAX"));
+ 
+      platform->timer.reset("pressureSolve");
+      platform->timer.reset("pressure preconditioner");
+      platform->timer.reset("pressure preconditioner smoother");
+      platform->timer.reset("coarseSolve");
+     
+      if(platform->comm.mpiRank == 0) {
+        printf(".");
+        fflush(stdout); 
+      }
+    }
+    if(platform->comm.mpiRank == 0) printf("\n"); 
+
+    hlong Ntotal = mesh->Nelements * (mesh->N * mesh->N * mesh->N);
+    MPI_Allreduce(MPI_IN_PLACE, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+
+    const auto minEntry = std::distance(eTime.begin(), std::min_element(eTime.begin(), eTime.end()));
+    const double solveTime = eTime.at(minEntry);
+    const double solveTimeMax = *std::max_element(eTime.begin(), eTime.end()); 
+    const double solveTimeAvg = std::accumulate(eTime.begin(), eTime.end(), 0.0) / Nrep; 
+    const double throughput = (double)Ntotal/solveTime;
+    const double flopsPerSecond = (platform->flopCounter->get(platform->comm.mpiComm)/Nrep)/solveTime;
+
     if(platform->comm.mpiRank == 0) {
-      printf(".");
-      fflush(stdout); 
+      printf("repetitions: %d\n", Nrep);
+      printf("solve time: min: %gs  avg: %gs  max: %gs\n", solveTime, solveTimeAvg, solveTimeMax);
+      if(precoTime.at(minEntry) > 0) printf("  preconditioner %gs\n", precoTime.at(minEntry));
+      if(smootherTime.at(minEntry) > 0) printf("    smoother %gs\n", smootherTime.at(minEntry));
+      if(crsTime.at(minEntry) > 0) printf("    coarse grid %gs\n", crsTime.at(minEntry));
+      printf("iterations: %d\n", nrs->pSolver->Niter);
+      printf("throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
+      if(benchmark == "BPS5") {
+        printf("throughput: %g DOF/s\n", throughput);
+        int nRestart = 0;
+        nrs->pSolver->options.getArgs("PGMRES RESTART", nRestart);
+        if(nrs->pSolver->Niter == nRestart)
+          printf("WARNING: maximum iterations reached!");  
+      }
+      printf("FLOPS/s: %g \n", flopsPerSecond);
     }
   }
-  if(platform->comm.mpiRank == 0) printf("\n"); 
-
-  hlong Ntotal = mesh->Nelements * (mesh->N * mesh->N * mesh->N);
-  MPI_Allreduce(MPI_IN_PLACE, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  const double solveTime = platform->timer.query("pressureSolve", "DEVICE:MAX")/Nrep;
-  const double precoTime = platform->timer.query("pressure preconditioner", "DEVICE:MAX")/Nrep;
-  const double smootherTime = platform->timer.query("pressure preconditioner smoother", "DEVICE:MAX")/Nrep;
-  const double crsTime = [&](){
-    const double tBoomerAMG = platform->timer.query("BoomerAMGSolve", "HOST:MAX")/Nrep;
-    const double tAMGX = platform->timer.query("AmgXSolve", "DEVICE:MAX")/Nrep;
-    const double tCrsSEMFEM = platform->timer.query("Coarse SEMFEM Solve", "DEVICE:MAX")/Nrep;
-    const double maxTime = tBoomerAMG > tAMGX ? tBoomerAMG : tAMGX;
-    return maxTime > tCrsSEMFEM ? maxTime : tCrsSEMFEM;
-  }();
-  if(platform->comm.mpiRank == 0) {
-    const double throughput = (double)Ntotal/solveTime;
-    printf("iterations: %d\n", nrs->pSolver->Niter);
-    printf("avg solve time: %g s\n", solveTime);
-    printf("  preconditioner %g s\n", precoTime);
-    if(smootherTime > 0) printf("    smoother %g s\n", smootherTime);
-    if(crsTime > 0) printf("    coarse grid %g s\n", crsTime);
-    printf("avg throughput: %g DOF/s\n", throughput);
-    printf("avg throughput: %g (DOF x iter)/s\n", (double) nrs->pSolver->Niter * throughput);
-  }
+  
 }

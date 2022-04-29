@@ -162,7 +162,7 @@ void inverse(double invA[3][3], double A[3][3]) {
   }
 }
 
-occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, long long& bytesRemaining, long long& byteOffset, long long& bytesAllocated, bool& allocated);
+occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, size_t& bytesRemaining, size_t& byteOffset, size_t& bytesAllocated, bool& allocated);
 static occa::kernel computeStiffnessMatrixKernel;
 static occa::memory o_stiffness;
 static occa::memory o_x;
@@ -242,12 +242,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
                    /* mode */ 0);
   }
 
-  constructOnHost = 
-    platform->device.mode() == std::string("OpenCL")
-    ||
-    platform->device.mode() == std::string("HIP")
-    ||
-    platform->device.mode() == std::string("Serial");
+  constructOnHost = !platform->device.deviceAtomic;
 
   if(!constructOnHost) load();
 
@@ -699,9 +694,9 @@ void fem_assembly_device() {
     bool o_valsAlloc;
   };
   AllocationTracker allocations;
-  long long bytesRemaining = platform->o_mempool.bytesAllocated;
-  long long byteOffset = 0;
-  long long bytesAllocated = 0;
+  size_t bytesRemaining = platform->o_mempool.bytesAllocated;
+  size_t byteOffset = 0;
+  size_t bytesAllocated = 0;
   occa::memory o_mask = scratchOrAllocateMemory(
     n_xyze,
     sizeof(double),
@@ -856,7 +851,7 @@ void fem_assembly() {
 }
 
 void load(){
-  computeStiffnessMatrixKernel = platform->kernels.getKernel(
+  computeStiffnessMatrixKernel = platform->kernels.get(
     "computeStiffnessMatrix"
   );
 }
@@ -921,7 +916,7 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
   (t_map)[7][3] = 5;
 }
 
-occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, long long& bytesRemaining, long long& byteOffset, long long& bytesAllocated, bool& allocated)
+occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, size_t& bytesRemaining, size_t& byteOffset, size_t& bytesAllocated, bool& allocated)
 {
   occa::memory o_mem;
   if(nWords * sizeT < bytesRemaining){

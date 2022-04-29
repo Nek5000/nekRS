@@ -24,7 +24,8 @@
 
  */
 
-@kernel void multiExtrapolate(const dlong Nelements,
+
+@kernel void extrapolate(const dlong Nelements,
                                  const int Nfields,
                                  const int Nstages,
                                  const dlong fieldOffset,
@@ -45,29 +46,6 @@
 
           Ue[id + i * fieldOffset] = Un;
       }
-    }
-  }
-}
-
-@kernel void extrapolate(const dlong Nelements,
-                            const int Nstages,
-                            const dlong fieldOffset,
-                            const dlong stageOffset,
-                            @restrict const dfloat*  c,
-                            @restrict const dfloat*  U,
-                            @restrict dfloat*  Ue)
-{
-  for(dlong id = 0; id < Nelements * p_Np; ++id; @tile(p_blockSize,@outer,@inner)) {
-    if(id < Nelements * p_Np){
-      dfloat Un = 0.;
-
-      for (int s = 0; s < Nstages; s++) {
-        const dlong idm = id + fieldOffset + s * stageOffset;
-        const dfloat Um = U[idm];
-        Un += c[s] * Um;
-      }
-
-      Ue[id] = Un;
     }
   }
 }

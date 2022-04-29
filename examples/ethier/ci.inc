@@ -1,5 +1,8 @@
 #include <math.h>
 #include <limits>
+#include <vector>
+#include <numeric>
+#include <array>
 
 static int ciMode = 0;
 
@@ -71,6 +74,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("TARGET CFL", "0.5");
   }
   if (ciMode == 9) {
+    options.setArgs("ADVECTION TYPE", "CONVECTIVE");
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
@@ -80,6 +84,19 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
   }
+  if (ciMode == 11) {
+    options.setArgs("PRESSURE MULTIGRID SMOOTHER", "DAMPEDJACOBI,CHEBYSHEV");
+    options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
+    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
+  }
+  if (ciMode == 12) {
+    options.setArgs("SCALAR00 SOLVER", "NONE");
+  }
+  if (ciMode == 13) {
+    options.setArgs("SCALAR00 SOLVER", "NONE");
+    options.setArgs("VELOCITY SOLVER", "NONE");
+  }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
@@ -87,6 +104,67 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
+}
+
+void surfaceArea(nrs_t* nrs, int BID, dfloat& SA)
+{
+  auto* mesh = nrs->meshV;
+
+  SA = 0.0;
+
+  for(int elem = 0; elem < mesh->Nelements; ++elem){
+    for(int face = 0; face < mesh->Nfaces; ++face){
+      for(int fp = 0; fp < mesh->Nfp; ++fp){
+        const auto base = mesh->Nsgeo * (mesh->Nfaces * mesh->Nfp * elem + mesh->Nfp * face + fp);
+        /* volume index of face node */
+        const auto n = mesh->faceNodes[face * mesh->Nfp + fp];
+        const auto WsJ = mesh->sgeo[base + WSJID];
+        if(mesh->EToB[elem * mesh->Nfaces + face] == BID){
+            SA += WsJ;
+        }
+      }
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &SA, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+}
+
+void ciTestAvgBoundary(nrs_t* nrs)
+{
+  const int rank = platform->comm.mpiRank;
+  auto * mesh = nrs->meshV;
+  const int BID = 1;
+  const auto testTol = 50. * std::numeric_limits<dfloat>::epsilon();
+
+  constexpr int N = 5;
+
+  dfloat SA = 0.0;
+
+  surfaceArea(nrs, BID, SA);
+
+  // surface area of unit sphere
+  const auto SAref = 4. * M_PI;
+  if(std::abs((SA - SAref)/SAref) > 0.02){
+    if(rank == 0){
+      std::cout << "ciTestAvgBoundary: surface area of unit sphere is " << SAref << " instead of " << SA << std::endl;
+    }
+    FAIL;
+  }
+
+  occa::memory o_fld = platform->device.malloc(N * nrs->fieldOffset * sizeof(dfloat));
+  platform->linAlg->fill(N*nrs->fieldOffset, SA, o_fld);
+
+  std::array<dfloat, N> results;
+  mesh->avgBoundaryValue(BID, N, nrs->fieldOffset, o_fld, results.data());
+
+  for(auto&& v : results){
+    if(std::abs(v - SA) > testTol){
+      if(rank == 0){
+        std::cout << "ciTestAvgBoundary: FAILED" << std::endl;
+      }
+      FAIL;
+    }
+  }
 }
 
 dfloat sum(dfloat const * const array, const int size, MPI_Comm comm)
@@ -183,9 +261,11 @@ void ciTestLinAlg(const int N)
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
-  if(tstep == 1 && ciMode != 7){
+  if(tstep == 1 && ciMode != 7 && ciMode != 13){
     int NiterP = nrs->pSolver->Niter;
-    const int expectedNiterP = 6;
+
+    // mode 11 uses Chebyshev+Jacobi smoothing
+    const int expectedNiterP = (ciMode == 11) ? 13 : 6;
     const int pIterErr = abs(NiterP - expectedNiterP);
     if(pIterErr >= 2) {
       if(rank==0){
@@ -195,8 +275,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     }
   }
   if (!nrs->lastStep) return;
- 
 
+  ciTestAvgBoundary(nrs);
+
+  ciTestLinAlg(1);
   ciTestLinAlg(BLOCKSIZE / 16);
   ciTestLinAlg(BLOCKSIZE / 8);
   ciTestLinAlg(BLOCKSIZE / 4);
@@ -220,15 +302,19 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   int NiterU;
 
-  if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+  if(platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE")){
     NiterU = nrs->uvwSolver->Niter;
-  else
+  }
+  else if(nrs->uSolver){
     NiterU = nrs->uSolver->Niter;
+  } else {
+    NiterU = -1;
+  }
 
-  int NiterP = nrs->pSolver->Niter;
+  int NiterP = nrs->pSolver ? nrs->pSolver->Niter : -1;
 
-  int NiterS01 = nrs->cds->solver[0]->Niter;
-  int NiterS02 = nrs->cds->solver[1]->Niter;
+  int NiterS01 = platform->options.compareArgs("SCALAR00 SOLVER", "NONE") ? -1 : nrs->cds->solver[0]->Niter;
+  int NiterS02 = platform->options.compareArgs("SCALAR01 SOLVER", "NONE") ? -1 : nrs->cds->solver[1]->Niter;
   int s01IterErr, s02IterErr;
 
   switch (ciMode) {
@@ -241,7 +327,9 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
-    case 2 : velIterErr = abs(NiterU - 10);
+    case 2 : 
+    case 11:
+             velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 6.11E-12)/err[2]);
              s2Err = abs((err[3] - 6.84E-12)/err[3]);
              pIterErr = abs(NiterP - 1);
@@ -307,12 +395,91 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              s01IterErr = abs(NiterS01 - 10);
              s02IterErr = abs(NiterS02 - 10);
              break;
-
+    case 9 : velIterErr = abs(NiterU - 10);
+             s1Err = abs((err[2] - 1.03E-11)/err[2]);
+             s2Err = abs((err[3] - 1.34E-11)/err[3]);
+             pIterErr = abs(NiterP - 1);
+             vxErr = abs((err[0] - 2.78E-10)/err[0]);
+             prErr = abs((err[1] - 6.98E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
+             break;
+    case 10 : velIterErr = abs(NiterU - 10);
+             s1Err = abs((err[2] - 1.03E-11)/err[2]);
+             s2Err = abs((err[3] - 1.34E-11)/err[3]);
+             pIterErr = abs(NiterP - 1);
+             vxErr = abs((err[0] - 2.78E-10)/err[0]);
+             prErr = abs((err[1] - 6.98E-10)/err[1]);
+             s01IterErr = abs(NiterS01 - 10);
+             s02IterErr = abs(NiterS02 - 10);
+             break;
+    case 12 : velIterErr = abs(NiterU - 10);
+             s1Err = abs((err[2] - 2.506E-3)/err[2]);
+             s2Err = abs((err[3] - 1.34E-11)/err[3]);
+             pIterErr = abs(NiterP - 4);
+             vxErr = abs((err[0] - 2.78E-10)/err[0]);
+             prErr = abs((err[1] - 6.98E-10)/err[1]);
+             s01IterErr = abs(NiterS01 + 1);
+             s02IterErr = abs(NiterS02 - 10);
+             break;
+    case 13 : velIterErr = abs(NiterU +1);
+             s1Err = abs((err[2] - 2.506E-3)/err[2]);
+             s2Err = abs((err[3] - 1.52E-5)/err[3]);
+             pIterErr = abs(NiterP + 1);
+             vxErr = abs((err[0] - 2.5E-3)/err[0]);
+             prErr = abs((err[1] - 2.364E-2)/err[1]);
+             s01IterErr = abs(NiterS01 + 1);
+             s02IterErr = abs(NiterS02 - 10);
+             break;
      }
 
+  // on ci modes 12, 13, confirm that the correct solvers are present
+  if(ciMode == 12){
+    bool correct = true;
+    correct &= (nrs->pSolver != nullptr);
+    correct &= (nrs->uSolver != nullptr || nrs->uvwSolver != nullptr);
+    correct &= (nrs->cds->solver[0] == nullptr);
+    correct &= (nrs->cds->solver[1] != nullptr);
+    if(!correct){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected solver configuration for CI mode 12" << std::endl;
+      }
+      FAIL;
+    }
+  }
+  if(ciMode == 13){
+    bool correct = true;
+    correct &= (nrs->pSolver == nullptr);
+    correct &= (nrs->uSolver == nullptr && nrs->uvwSolver == nullptr);
+    correct &= (nrs->cds->solver[0] == nullptr);
+    correct &= (nrs->cds->solver[1] != nullptr);
+    if(!correct){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected solver configuration for CI mode 13" << std::endl;
+      }
+      FAIL;
+    }
+
+    // mode 13 requires using ethierScalar.par as the input
+    std::string casename = platform->options.getArgs("CASENAME");
+    if(casename != "ethierScalar"){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected input file for CI mode 13" << std::endl;
+      }
+      FAIL;
+    }
+
+    if(nrs->flow){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "nrs->flow = true for CI mode 13" << std::endl;
+      }
+      FAIL;
+    }
+  }
+
   if (ciMode == 4){
-    dfloat memoryUsage = platform->device.memoryAllocated()/1e9;
-    const dfloat expectedMemoryUsage = 0.0450654;
+    dfloat memoryUsage = platform->device.occaDevice().memoryAllocated()/1e9;
+    const dfloat expectedMemoryUsage = 0.0555274;
     if(memoryUsage > 1.01 * expectedMemoryUsage && platform->comm.mpiCommSize == 2)
     {
       if(platform->comm.mpiRank == 0){
@@ -346,8 +513,25 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s1=%g s2=%g velIter=%d pIter=%d s01Iter=%d s02Iter=%d\n", 
            vxErr, prErr, s1Err, s2Err, velIterErr, pIterErr, s01IterErr, s02IterErr);
+  
+  std::vector<double> relErrors = {vxErr, prErr, s1Err, s2Err};
+  std::vector<double> absErrors = {abs(err[0]), abs(err[1]), abs(err[2]), abs(err[3])};
+  bool passTest = true;
+  const double absTol = 5e-11; // values below this threshold are ignored
+  for(size_t i = 0; i < relErrors.size(); ++i){
 
-  (vxErr < EPS && prErr < EPS && s1Err < EPS && s2Err < EPS && 
-   velIterErr <= 1 && pIterErr <= 2 && s01IterErr <= 1 && s02IterErr <= 1) ? (PASS) : (FAIL); 
+    const double absError = absErrors[i];
+    const double relError = relErrors[i];
+    if(absError > absTol){
+      passTest &= relError < EPS;
+    }
+  }
+
+  passTest &= velIterErr <= 1;
+  passTest &= pIterErr <= 2;
+  passTest &= s01IterErr <= 1;
+  passTest &= s02IterErr <= 1;
+
+  passTest ? (PASS) : (FAIL);
 
 }

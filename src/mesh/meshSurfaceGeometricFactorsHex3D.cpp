@@ -59,12 +59,12 @@ void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* I
 }
 
 /* compute outwards facing normals, surface Jacobian, and volume Jacobian for all face nodes */
-void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
+void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
 {
   /* unified storage array for geometric factors */
-  mesh->sgeo = (dfloat*) calloc((mesh->Nelements + mesh->totalHaloPairs) *
-                                mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
-                                sizeof(dfloat));
+  mesh->sgeo =
+      (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
+                       sizeof(dfloat));
 
   dfloat* xre = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* xse = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
@@ -196,25 +196,45 @@ void meshSurfaceGeometricFactorsHex3D(mesh3D* mesh)
         mesh->sgeo[base + NZID] = nz;
         mesh->sgeo[base + SJID] = sJ;
         mesh->sgeo[base + IJID] = 1. / J;
-
         mesh->sgeo[base + WIJID] = 1. / (J * mesh->gllw[0]);
         mesh->sgeo[base + WSJID] = sJ * mesh->gllw[i % mesh->Nq] * mesh->gllw[i / mesh->Nq];
+
+        const dfloat tol = 1e-4;
+        dfloat vt1x = 0, vt1y = 0, vt1z = 0;
+        dfloat vt2x = 0, vt2y = 0, vt2z = 0;
+        if (std::abs(std::abs(nz) - 1.0) < tol) {
+          vt1x = 1.0;
+          vt1y = 0.0;
+          vt1z = 0.0;
+        }
+        else {
+          const dfloat mag = std::sqrt(nx * nx + ny * ny);
+          vt1x = -ny / mag;
+          vt1y = nx / mag;
+          vt1z = 0.0;
+        }
+
+        mesh->sgeo[base + T1XID] = vt1x;
+        mesh->sgeo[base + T1YID] = vt1y;
+        mesh->sgeo[base + T1ZID] = vt1z;
+
+        // vt2 = n \cross vt1
+        vt2x = ny * vt1z - nz * vt1y;
+        vt2y = nz * vt1x - nx * vt1z;
+        vt2z = nx * vt1y - ny * vt1x;
+
+        // normalize vt2
+        const dfloat invMag = 1.0 / std::sqrt(vt2x * vt2x + vt2y * vt2y + vt2z * vt2z);
+        vt2x *= invMag;
+        vt2y *= invMag;
+        vt2z *= invMag;
+
+        mesh->sgeo[base + T2XID] = vt2x;
+        mesh->sgeo[base + T2YID] = vt2y;
+        mesh->sgeo[base + T2ZID] = vt2z;
       }
     }
   }
-
-  for(dlong e = 0; e < mesh->Nelements; ++e) /* for each non-halo element */
-    for(int n = 0; n < mesh->Nfp * mesh->Nfaces; ++n) {
-      dlong baseM = e * mesh->Nfp * mesh->Nfaces + n;
-      dlong baseP = mesh->mapP[baseM];
-      // rescaling - missing factor of 2 ? (only impacts penalty and thus stiffness)
-      dfloat hinvM = mesh->sgeo[baseM * mesh->Nsgeo + SJID] *
-                     mesh->sgeo[baseM * mesh->Nsgeo + IJID];
-      dfloat hinvP = mesh->sgeo[baseP * mesh->Nsgeo + SJID] *
-                     mesh->sgeo[baseP * mesh->Nsgeo + IJID];
-      mesh->sgeo[baseM * mesh->Nsgeo + IHID] = mymax(hinvM,hinvP);
-      mesh->sgeo[baseP * mesh->Nsgeo + IHID] = mymax(hinvM,hinvP);
-    }
 
   free(xre);
   free(xse);

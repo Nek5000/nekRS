@@ -1,0 +1,177 @@
+----------------------------------------------------------------------------------------------------------------------
+Key                         Value(s)                                   Description / Comment
+----------------------------------------------------------------------------------------------------------------------
+[OCCA]
+
+backend                     SERIAL, CUDA, HIP, OPENCL                  default defined by env var OCCA_MODE_DEFAULT
+
+deviceNumber                <int>, LOCAL-RANK [D]
+
+platformNumber              <int>                                      only used by OOPENCL
+                            0 [D]
+
+[GENERAL]
+
+verbose                     true, false [D]
+
+polynomialOrder             <int>
+
+dealiasing                  true [D], false
+
+  cubaturePolynomialOrder   <int>
+                            3/2*(polynomialOrder+1) -1 [D] 
+
+startFrom                   "<string>"                                 name of restart file
+
+timeStepper                 tombo1, tombo2 [D], tombo3
+
+stopAt                      numSteps [D], endTime, elapsedTime         stop criterion 
+
+  numSteps                  <int>                                  
+
+  endTime                   <float>                                
+
+  elapsedTime               <float>                                    in minutes                                
+
+dt                          <float> [D], targetCFL=<float>
+                              +max=<float>                             maximum step size
+                              +initial=<float>                         initial step size 
+
+subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection
+                            0 [D]                             
+
+writeControl                steps [D], runTime                         checkpoint frequency unit
+
+writeInterval               <int>, <float>                             checkpoint frequency in writeControl units
+                            0 [D]                                      at the end of the simluation
+                            -1                                         disable checkpointing 
+
+constFlowRate               meanVelocity=<float>                       set constant flow velocity
+                            meanVolumetricFlow=<float>                 set constant volumetric flow rate
+                            + direction=<X,Y,Z>                        flow direction
+
+regularization                                                         see COMMON field settings
+
+udf                         "<string>"                                 name of .udf file
+
+oudf                        "<string>"                                 name of .oudf file
+
+usr                i        "<string>"                                 name of .usr file
+----------------------------------------------------------------------------------------------------------------------
+[PROBLEMTYPE]
+stressFormulation           true, false [D]                            enable stress formulation 
+                                                                       (required for spatially varying viscosity)
+ 
+advection                   true, false [D]                            enable advection
+----------------------------------------------------------------------------------------------------------------------
+COMMON field settings:
+
+solver                      PFCG [D], PFGMRES [D for PRESSURE], none   linear solver
+                            +block [D for VELOCITY]                    use block formulation 
+                            +nVector=<int> [for PFGMRES]               dimension of Krylov space
+
+residualTol                 <float>                                    absolute residual tolerance  
+                            +relative                                  use relative residual
+
+maxIterations               <int>                                      maximum number of iterations
+                            200 [D]
+
+initialGuess                previous [D] 
+                            projectionAconj [D for PRESSURE]                           
+                            projection
+                            +nVector=<int>                             dimension of projection space
+
+preconditioner              Jacobi [D]
+                            <multigrid | pMG> [D for PRESSURE]         polynomial multigrid
+                              +coarse [D for PRESSURE]                 coarse grid correction for polynomial multigrid
+
+pMultigridCoarsening        <int>, <int>, ...                          custom polynomial order for each pMG level
+
+smootherType                                                           smoother for polynomial multigrid
+                            Jacobi
+                            ASM [D]                                    overlapping additive Schwarz 
+                            RAS                                        overlapping restrictive Schwarz
+                            +Chebyshev                                  Chebyshev acceleration
+                              +degree=<int>
+                              +minEigenvalueBoundFactor=<float> 
+                              +maxEigenvalueBoundFactor=<float> 
+
+coarseSolver                BoomerAMG [D]                              HYPRE's AMG solver
+                            +AmgX                                      NVIDIA's AMG solver
+                            +FP32 or FP64 [D]                          floating point precision
+
+coarseGridDiscretization    FEM [D]                                    linear finite elment discretization
+                              +Galerkin                                coarse grid matrix by Galerkin projection 
+                            SEMFEM                                     linear FEM approx on high-order nodes
+
+boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID
+                            fixedValue                                 user specified Dirichlet
+                            zeroValue                                  zero Dirichlet
+                            fixedGradient                              user specified Neumann
+                            zeroGradient                               zero Neumann (do nothing)
+                            zeroXValue/zeroGradient                    symmetry x-normal plane
+                            zeroYValue/zeroGradient                    symmetry y-normal plane
+                            zeroZValue/zeroGradient                    symmetry z-normal plane
+                            zeroNValue/zeroGradient                    unaligned symmetry
+                            zeroNValue/fixedGradient                   unaligned traction
+
+regularization                                                         
+                            hpfrt                                      HPF stabilization
+                              +nModes=<int>                            number of modes                                 
+                              +scalingCoeff=<float>                    filter strength
+                            avm                                        artificial viscosity method
+                              +c0                                      make viscosity C0 continous across elements
+                              +scalingCoeff=<float>                    strength of artifical viscosity
+                              +hpfResidual                             use HPF Residual AVM
+                                +nModes=<int>                          number of modes
+                              +highestModalDecay                       use Persson's highest modal decay AVM
+                                +rampConstant=<float>                  controls ramp to maximum artificial viscosity
+----------------------------------------------------------------------------------------------------------------------
+[MESH]
+
+solver                      elasticity                                 solver type 
+                            user                                       user mesh velocity
+
+partitioner                 rbc, rsb, rbc+rsb [D]                      partitioning method
+
+connectivityTol             <float>
+                            0.2 [D]
+
+file                        "<string>"                                 name of .re2 file
+
+writeToFieldFile            true, false [D]                            output mesh in all field writes
+----------------------------------------------------------------------------------------------------------------------
+[VELOCITY]
+
+density                     <float>                                    density
+
+viscosity                   <float>                                    dynamic viscosity
+----------------------------------------------------------------------------------------------------------------------
+[TEMPERATURE]
+
+rhoCp                       <float>                                    rho*Cp 
+
+conductivity                <float>                                    thermal conductivity 
+----------------------------------------------------------------------------------------------------------------------
+[SCALAR01]
+
+rho                         <float>                                    density
+
+diffusivity                 <float>                                    diffusivity 
+----------------------------------------------------------------------------------------------------------------------
+[SCALAR02]
+...
+----------------------------------------------------------------------------------------------------------------------
+[BOOMERAMG]
+
+coarsenType                 <int>                                      
+interpolationType           <int>                                      
+smootherType                <int>                                      
+iterations                  <int>
+strongThreshold             <float>                                    
+nonGalerkinTol              <float>                                    set 0 to classical Galerkin sparsification
+aggressiveCoarseningLevels  <int>
+----------------------------------------------------------------------------------------------------------------------
+[AMGX]
+
+configFile                  <string>                                   AmgX JSON configuration file

@@ -30,7 +30,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-void meshPhysicalNodesHex3D(mesh3D* mesh)
+void meshPhysicalNodesHex3D(mesh_t *mesh)
 {
   mesh->x = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));

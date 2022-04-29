@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(NekRS LANGUAGES C CXX Fortran VERSION 21.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 22.0.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
@@ -9,9 +9,11 @@ include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 
+include(config/utils.cmake)
+
 #set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
@@ -59,25 +61,13 @@ set(GPU_MPI "0" CACHE STRING "GPU aware MPI")
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
 ###############################################################################
 
-macro(check_compiler_id compiler)
+macro(check_fcompiler_id compiler)
   if(NOT "${compiler}" STREQUAL "GNU")
-    message(FATAL_ERROR "NekRS only supports GNU compilers")
+  message(FATAL_ERROR "NekRS only supports gfortran")
   endif()
 endmacro()
 
-macro(check_compiler_version compiler_version)
-  if(${compiler_version} LESS 6.2)
-    message(FATAL_ERROR "NekRS only supports GNU compiler versions >= 6.2")
-  endif()
-endmacro()
-
-check_compiler_id("${CMAKE_CXX_COMPILER_ID}")
-check_compiler_id("${CMAKE_C_COMPILER_ID}")
-check_compiler_id("${CMAKE_Fortran_COMPILER_ID}")
-
-check_compiler_version("${CMAKE_CXX_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_C_COMPILER_VERSION}")
-check_compiler_version("${CMAKE_Fortran_COMPILER_VERSION}")
+check_fcompiler_id("${CMAKE_Fortran_COMPILER_ID}")
 
 ## Sanity checks for MPI
 set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
@@ -106,11 +96,13 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-find_package(OpenMP)
-if (OPENMP_FOUND)
+find_package(OpenMP REQUIRED)
+if(OpenMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+  if(OpenMP_CXX_INCLUDE_DIR)
+    include_directories(SYSTEM ${OpenMP_CXX_INCLUDE_DIRS})
+  endif()
 endif()
 
 # For CMake targets, CMAKE_<LANG>_FLAGS, CMAKE_<LANG>_FLAGS_<CONFIG>, and
@@ -181,6 +173,7 @@ include(config/nek5000.cmake)
 ###############################################################################
 
 
+include(config/bench.cmake)
 include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/gslib.cmake)
@@ -194,25 +187,36 @@ set(SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/utils.cpp
-    src/core/utils/inipp.cpp
-    src/core/utils/mysort.cpp
-    src/core/utils/parallelSort.cpp
-    src/core/utils/tinyexpr.c
-    src/core/setupAide.cpp
-    src/core/cfl.cpp
+    src/utils/inipp.cpp
+    src/utils/mysort.cpp
+    src/utils/parallelSort.cpp
+    src/utils/tinyexpr.c
+    src/utils/setupAide.cpp
+    src/core/numberActiveFields.cpp
+    src/core/printHeader.cpp
+    src/timeStepper/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
-    src/core/bcMap.cpp
+    src/bdry/bcMap.cpp
     src/core/compileKernels.cpp
-    src/core/setup.cpp
+    src/setup/setup.cpp
+    src/core/alignment.cpp
+    src/core/registerNrsKernels.cpp
+    src/bdry/createEToBV.cpp
+    src/bdry/applyDirichlet.cpp
     src/timeStepper/timeStepper.cpp
-    src/lns/tombo.cpp
-    src/lns/constantFlowRate.cpp
-    src/cds/cds.cpp
-    src/core/parReader.cpp
+    src/timeStepper/subCycling.cpp
+    src/navierStokes/tombo.cpp
+    src/navierStokes/constantFlowRate.cpp
+    src/cds/cdsSolve.cpp
+    src/cds/registerCdsKernels.cpp
+    src/io/parReader.cpp
+    src/io/re2Reader.cpp
     src/core/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/flopCounter.cpp
+    src/core/kernelRequestManager.cpp
     src/core/device.cpp
     src/linAlg/linAlg.cpp
     src/linAlg/matrixConditionNumber.cpp
@@ -220,12 +224,16 @@ set(SRC
     src/linAlg/matrixEig.cpp
     src/linAlg/matrixTranspose.cpp
     src/linAlg/matrixRightSolve.cpp
-    src/plugins/avg.cpp
+    src/linAlg/registerLinAlgKernels.cpp
+    src/plugins/tavg.cpp
     src/plugins/velRecycling.cpp
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
     src/udf/udf.cpp
+    src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
+    src/postProcessing/planarAvg.cpp
+    ${BENCH_SOURCES}
     ${MESH_SOURCES}
     ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
@@ -234,7 +242,7 @@ set(SRC
 )
 
 set_property(
-   SOURCE src/lib/nekrs.cpp 
+   SOURCE src/core/printHeader.cpp 
    APPEND PROPERTY COMPILE_DEFINITIONS
    GITCOMMITHASH="${GIT_COMMIT_HASH}"
    NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
@@ -244,7 +252,7 @@ set_property(
 
 add_library(nekrs-lib SHARED ${SRC})
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE HYPRE gs ${GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE HYPRE gs ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
@@ -253,16 +261,25 @@ target_compile_definitions(nekrs-lib PUBLIC
 target_include_directories(nekrs-lib 
   PUBLIC 
   ${CMAKE_CURRENT_BINARY_DIR}
+  src
+  src/setup
+  src/bdry
   src/core
-  src/core/utils
+  src/utils
   src/lib
   src/io
   src/udf
   src/regularization
   src/linAlg
   src/timeStepper
-  src/lns
+  src/navierStokes
   src/cds
+  src/postProcessing
+  ${BENCH_SOURCE_DIR}
+  ${BENCH_SOURCE_DIR}/core
+  ${BENCH_SOURCE_DIR}/fdm
+  ${BENCH_SOURCE_DIR}/axHelm
+  ${BENCH_SOURCE_DIR}/advsub
   ${MESH_SOURCE_DIR}
   ${NEKINTERFACEDIR}
   ${OGS_SOURCE_DIR}/include
@@ -284,14 +301,26 @@ target_include_directories(nekrs-lib
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
-  target_link_libraries(nekrs-lib PUBLIC amgxsh)
-  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include)
+  target_link_libraries(nekrs-lib PUBLIC amgxsh amgx)
+  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
 endif()
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-bin nekrs-lib)
+target_link_libraries(nekrs-bin PRIVATE nekrs-lib)
+
+add_executable(axhelm-bin src/bench/axHelm/main.cpp)
+set_target_properties(axhelm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-axhelm)
+target_link_libraries(axhelm-bin PRIVATE nekrs-lib)
+
+add_executable(advsub-bin src/bench/advsub/main.cpp)
+set_target_properties(advsub-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-advsub)
+target_link_libraries(advsub-bin PRIVATE nekrs-lib)
+
+add_executable(fdm-bin src/bench/fdm/main.cpp)
+set_target_properties(fdm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-fdm)
+target_link_libraries(fdm-bin PRIVATE nekrs-lib)
 
 if(ENABLE_CUDA)
   set(BACKEND_DEFAULT "CUDA" CACHE STRING "Default occa mode")
@@ -305,27 +334,8 @@ endif()
 ### Install                                                                     #
 #################################################################################
 
-# Generate nekrs.conf                                                       #
-set(MPI_COMPILER_CMDLINE "")
-_MPI_check_compiler("CXX" "-show" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-if (NOT MPI_COMPILER_RETURN EQUAL 0)
-  _MPI_check_compiler("CXX" "-showme" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-endif()
-if (NOT MPI_COMPILER_RETURN EQUAL 0)
-  _MPI_check_compiler("CXX" "-craype-verbose" MPI_COMPILER_CMDLINE MPI_COMPILER_RETURN)
-endif()
-if (MPI_COMPILER_RETURN EQUAL 0 AND MPI_COMPILER_CMDLINE)
-  separate_arguments(MPI_COMPILER_CMDLINE)
-  list(GET MPI_COMPILER_CMDLINE 0 _MPI_UNDERLYING_COMPILER)
-  find_program(MPI_UNDERLYING_COMPILER ${_MPI_UNDERLYING_COMPILER})
-  if(EXISTS ${MPI_UNDERLYING_COMPILER})
-    message(NOTICE "-- Found MPI_UNDERLYING_COMPILER: ${MPI_UNDERLYING_COMPILER}")
-  else()
-    message(FATAL_ERROR "Cannot find ${MPI_UNDERLYING_COMPILER}")
-  endif()
-else()
-  message(FATAL_ERROR "Cannot identify underlying compiler used by ${CMAKE_CXX_COMPILER}")
-endif()
+# Generate nekrs.conf
+__MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
 
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
@@ -333,7 +343,7 @@ configure_file(
   @ONLY)
 
 #install nekRS
-install(TARGETS nekrs-lib nekrs-bin
+install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -342,7 +352,7 @@ install(TARGETS nekrs-lib nekrs-bin
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c$")
+install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.h$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
@@ -353,7 +363,7 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
-install(FILES src/core/parHelp.txt DESTINATION include)
+install(FILES src/io/parHelp.txt DESTINATION include)
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")

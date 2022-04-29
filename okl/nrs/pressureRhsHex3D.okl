@@ -1,4 +1,4 @@
-@kernel void pressureRhsTOMBOHex3D(const dlong N,
+@kernel void pressureRhsHex3D(const dlong N,
                                       const dlong fieldOffset,
                                       @restrict const dfloat*  MUE,
                                       @restrict const dfloat*  iRHO,

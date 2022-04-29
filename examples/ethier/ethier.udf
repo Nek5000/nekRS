@@ -6,6 +6,7 @@
 #include "udf.hpp"
 
 #include "ci.inc"
+#include <vector>
 
 static dfloat P_U0;
 static dfloat P_V0;
@@ -36,6 +37,10 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
+  // called from all ranks, so MPI collectives are O.K.
+  int maxRank = platform->comm.mpiRank;
+  MPI_Allreduce(MPI_IN_PLACE, &maxRank, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+
   setupAide &options = platform->options;
 
   dfloat mue, rho;
@@ -51,9 +56,9 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
   kernelInfo["defines/p_omega"] = P_OMEGA;
   kernelInfo["defines/p_pi"] = M_PI;
 
-  dpdxKernel = udfBuildKernel(kernelInfo, "dpdx");
-  exactUVWPKernel = udfBuildKernel(kernelInfo, "exactUVWP"); 
-  userMeshVelocityKernel = udfBuildKernel(kernelInfo, "userMeshVelocity");
+  dpdxKernel = oudfBuildKernel(kernelInfo, "dpdx");
+  exactUVWPKernel = oudfBuildKernel(kernelInfo, "exactUVWP"); 
+  userMeshVelocityKernel = oudfBuildKernel(kernelInfo, "userMeshVelocity");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -98,8 +103,11 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   if (tstep <= 5) {
     exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
-    ellipticZeroMean(nrs->pSolver, nrs->o_P);
-    cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->fieldOffset[0]*sizeof(dfloat));
+    if (nrs->pSolver) 
+      ellipticZeroMean(nrs->pSolver, nrs->o_P);
+    if (nrs->Nscalar > 0) 
+      cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 0*cds->fieldOffset[0]*sizeof(dfloat));
+    if (nrs->Nscalar > 1) 
     cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal*sizeof(dfloat), 1*cds->fieldOffset[0]*sizeof(dfloat));
   }
 

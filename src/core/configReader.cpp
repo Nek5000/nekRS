@@ -27,8 +27,8 @@ void configRead(MPI_Comm comm)
       std::cout << "\nERROR: The environment variable NEKRS_HOME is not defined!\n";
     EXIT_AND_FINALIZE(1);
   }
-  std::string install_dir{nekrs_home};
-  std::string configFile = install_dir + "/nekrs.conf";
+  std::string installDir{nekrs_home};
+  std::string configFile = installDir + "/nekrs.conf";
 
   const char* ptr = realpath(configFile.c_str(), NULL);
   if (!ptr) {
@@ -101,7 +101,7 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nekrs_gpu_mpi", buf);
   if(!getenv("NEKRS_GPU_MPI")) setenv("NEKRS_GPU_MPI", buf.c_str(), 1);
 
-  buf = install_dir;
+  buf = installDir;
   setenv("NEKRS_INSTALL_DIR", buf.c_str(), 1);
 
   ini.extract("general", "occa_mode_default", buf);

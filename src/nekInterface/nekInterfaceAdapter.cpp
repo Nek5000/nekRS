@@ -3,12 +3,13 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
-#include "io.hpp"
+#include "ioUtils.hpp"
+#include "re2Reader.hpp"
 
 nekdata_private nekData;
 static int rank;
 static setupAide* options;
-static nrs_t* nrs;
+static nrs_t *nrs;
 
 static void (* usrdat_ptr)(void);
 static void (* usrdat2_ptr)(void);
@@ -37,7 +38,8 @@ static void (* nek_outpost_ptr)(double* v1, double* v2, double* v3, double* vp,
 static void (* nek_uf_ptr)(double*, double*, double*);
 static int (* nek_lglel_ptr)(int*);
 static void (* nek_bootstrap_ptr)(int*, char*, char*, char*, int, int, int);
-static void (* nek_setup_ptr)(int*, int*, int*, int*, double*, double*, double*, double*, double*);
+static void (
+    *nek_setup_ptr)(int *, int *, int *, int *, double *, double *, double *, double *, double *, int *);
 static void (* nek_ifoutfld_ptr)(int*);
 static void (* nek_setics_ptr)(void);
 static int (* nek_bcmap_ptr)(int*, int*,int*);
@@ -270,7 +272,8 @@ void set_usr_handles(const char* session_in,int verbose)
     (void (*)(int*, char*, char*, char*, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
   check_error(dlerror());
   nek_setup_ptr =
-    (void (*)(int*, int*, int*, int*, double*, double*, double*, double*, double*))dlsym(handle, fname("nekf_setup"));
+      (void (*)(int *, int *, int *, int *, double *, double *, double *, double *, double *, int *))
+          dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int*))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
@@ -349,8 +352,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   char line[BUFSIZ];
   const char *cache_dir = getenv("NEKRS_CACHE_DIR");
 
-  const std::string install_dir(getenv("NEKRS_HOME"));
-  const std::string nek5000_dir = install_dir + "/nek5000";
+  const std::string installDir(getenv("NEKRS_HOME"));
+  const std::string nek5000_dir = installDir + "/nek5000";
 
   const int verbose = options.compareArgs("VERBOSE","TRUE") ? 1:0;
 
@@ -374,7 +377,10 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     }
   }
 
-  const int lx1m = options.compareArgs("MOVING MESH", "TRUE") ? lx1 : 1;
+  int lx1m = (options.compareArgs("MOVING MESH", "TRUE")) ? lx1 : 1;
+  lx1m = (options.compareArgs("STRESSFORMULATION", "TRUE")) ? lx1 : lx1m;
+
+  constexpr int nMaxObj = 20;
 
   int count = 0;
   while(fgets(line, BUFSIZ, fp) != NULL) {
@@ -404,6 +410,8 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
       sprintf(line, "      parameter (lelr=%d)\n", 128 * lelt);
     else if(strstr(line, "parameter (lx1m=") != NULL)
       sprintf(line, "      parameter (lx1m=%d)\n", lx1m);
+    else if(strstr(line, "parameter (maxobj=") != NULL)
+      sprintf(line, "      parameter (maxobj=%d)\n", nMaxObj);
 
     strcpy(sizeFile + count, line);
     count += strlen(line);
@@ -461,12 +469,11 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
   fflush(stdout);
 }
 
+
 void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 {
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
   
@@ -476,9 +483,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const std::string cache_dir = std::string(getenv("NEKRS_CACHE_DIR")) + "/nek5000";
       mkdir(cache_dir.c_str(), S_IRWXU); 
 
-      const std::string install_dir(getenv("NEKRS_HOME"));
-      const std::string nekInterface_dir = install_dir + "/nekInterface";
-      const std::string nek5000_dir = install_dir + "/nek5000";
+      const std::string installDir(getenv("NEKRS_HOME"));
+      const std::string nekInterface_dir = installDir + "/nekInterface";
+      const std::string nek5000_dir = installDir + "/nek5000";
 
       char buf[10*BUFSIZ];
       char *ret = getcwd(buf, sizeof(buf));
@@ -489,33 +496,13 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const std::string usrname = options.getArgs("CASENAME");
       const std::string meshFile = options.getArgs("MESH FILE");
 
-      // create SIZE
-      strcpy(buf, meshFile.c_str());
-      FILE *fp = fopen(buf, "r");
-      if (!fp) {
-        if(rank == 0) printf("\nERROR: Cannot find %s!\n", buf);
-        ABORT(EXIT_FAILURE);
-      }
-      fgets(buf, 80, fp);
-      fclose(fp);
-
-      char ver[10];
-      int ndim;
-      hlong nelgv, nelgt;
-      // has to match header in re2
-      sscanf(buf, "%5s %9lld %1d %9lld", ver, &nelgt, &ndim, &nelgv);
-      if(ndim != 3) {
-        if(rank == 0) printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
-        ABORT(EXIT_FAILURE);
-      }
-      if(nelgt <= 0 || nelgv <=0 || nelgv > nelgt) {
-        if(rank == 0) printf("\nERROR: Invalid nelgt=%lld / nelgv=%lld read from re2 header!\n", nelgt, nelgv);
-        ABORT(EXIT_FAILURE);
-      }
+      int nelgt, nelgv;
+      const int ndim = 3;
+      re2::nelg(meshFile, nelgt, nelgv, MPI_COMM_NULL); 
 
       int lelt = (int)(nelgt/np) + 3;
       if(lelt > nelgt) lelt = (int)nelgt;
-      sprintf(buf,"%s/SIZE",cache_dir.c_str()); 
+      sprintf(buf,"%s/SIZE",cache_dir.c_str());
       mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
       // generate usr
@@ -544,9 +531,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       if(recompile) {
         const double tStart = MPI_Wtime();
         const std::string pipeToNull = (rank == 0) ? std::string("") :  std::string(">/dev/null 2>&1");
-	const std::string include_dirs = "./ " + case_dir; 
+	    const std::string include_dirs = "./ " + case_dir; 
         if(rank == 0) 
-	  printf("building nek for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
+	      printf("building nekInterface for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
 
         sprintf(buf, "cd %s && cp -f %s/makefile.template makefile && "
 		     "make -s -j8 " 
@@ -556,24 +543,27 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
 		     "CASEDIR=%s "
 		     "-f %s/Makefile lib usr libnekInterface "
 		     "%s",
-                     cache_dir.c_str(), nek5000_dir.c_str(), 
+             cache_dir.c_str(), nek5000_dir.c_str(), 
 		     nek5000_dir.c_str(), 
 		     include_dirs.c_str(), 
 		     usrname.c_str(), 
 		     cache_dir.c_str(), 
-                     nekInterface_dir.c_str(), 
+             nekInterface_dir.c_str(), 
 		     pipeToNull.c_str());
         if(verbose && rank == 0) printf("%s\n", buf);
         if(system(buf)) return EXIT_FAILURE;
         fileSync(libFile);
 
-        if(rank == 0) printf("done (%gs)\n\n", MPI_Wtime() - tStart);
+        if(rank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
+        fflush(stdout);
+      } else {
+        if(rank == 0) printf("skip building nekInterface (SIZE requires no update)\n");
         fflush(stdout);
       }
-    }
-
+    } 
     return 0;
   }();
+
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
   if(err) ABORT(EXIT_FAILURE);
 }
@@ -598,9 +588,7 @@ void bootstrap()
   MPI_Comm_size(platform->comm.mpiComm,&size);
 
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
@@ -654,6 +642,8 @@ int setup(nrs_t* nrs_in)
   nrs = nrs_in;
   MPI_Comm_rank(platform->comm.mpiComm, &rank);
 
+  bool meshSolver = options->compareArgs("MESH SOLVER", "ELASTICITY");
+
   std::string casename;
   options->getArgs("CASENAME", casename);
 
@@ -672,11 +662,8 @@ int setup(nrs_t* nrs_in)
   options->getArgs("MESH CONNECTIVITY TOL", meshConTol);
 
   int nBcRead = 1;
-  int bcInPar = 1;
-  if(bcMap::size(0) == 0 && bcMap::size(1) == 0) {
-    bcInPar = 0;
+  if (bcMap::useNekBCs())
     nBcRead = flow + nscal;
-  }
 
   dfloat rho;
   options->getArgs("DENSITY", rho);
@@ -690,8 +677,18 @@ int setup(nrs_t* nrs_in)
   dfloat lambda;
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
-  (*nek_setup_ptr)(&flow, &nscal, &nBcRead, &meshPartType, &meshConTol,
-		   &rho, &mue, &rhoCp, &lambda); 
+  int stressForm = options->compareArgs("STRESSFORMULATION", "TRUE");
+
+  (*nek_setup_ptr)(&flow,
+                   &nscal,
+                   &nBcRead,
+                   &meshPartType,
+                   &meshConTol,
+                   &rho,
+                   &mue,
+                   &rhoCp,
+                   &lambda,
+                   &stressForm);
 
   nekData.param = (double*) ptr("param");
   nekData.ifield = (int*) ptr("ifield");
@@ -750,8 +747,9 @@ int setup(nrs_t* nrs_in)
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal) cht = 1;
 
-  // import BCs from nek if not specified in par
-  if(!bcInPar) {
+  if (bcMap::useNekBCs()) {
+    if (rank == 0)
+      printf("import BCs from nek\n");
     gen_bcmap();
     if(flow) {
       int isTMesh = 0;
@@ -760,14 +758,16 @@ int setup(nrs_t* nrs_in)
       for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 0);
       bcMap::setBcMap("velocity", map, nIDs);
 
-      for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 1);
-      bcMap::setBcMap("mesh", map, nIDs);
+      if(meshSolver){
+        for(int id = 0; id < nIDs; id++) map[id] = bcmap(id + 1, 1, 1);
+        bcMap::setBcMap("mesh", map, nIDs);
+      }
 
       free(map);
     }
     for(int is = 0; is < nscal; is++) {
       std::stringstream ss;
-      ss << std::setfill('0') << std::setw(2) << is;
+      ss << std::setfill('0') << std::setw(getDigitsRepresentation(NSCALAR_MAX - 1)) << is;
       std::string sid = ss.str();
 
       int isTMesh = 0;
@@ -980,8 +980,5 @@ void coeffAB(double *coeff, double *dt, int order)
   (*nek_setabbd_ptr)(coeff, dt, &order, &one);
 }
 
-void recomputeGeometry()
-{
-  (*nek_updggeom_ptr)();
-}
+void recomputeGeometry() { (*nek_updggeom_ptr)(); }
 }

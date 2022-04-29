@@ -281,12 +281,13 @@ namespace occa {
                   migrateLocalDecls((functionDeclStatement&) *smnt);
                   if (!success) return;
 
+                  const bool addLaunchBounds = !settings.get("okl/no_launch_bounds", false);
                   dim kernelInnerDims = innerDims((functionDeclStatement&) *smnt);
                   if (!success) return;
 
                   int kernelInnerDim = kernelInnerDims[0];
                   for(int i=1; i < kernelInnerDims.dims; i++) kernelInnerDim *= kernelInnerDims[i];
-                  if(kernelInnerDim) {
+                  if(kernelInnerDim && addLaunchBounds) {
                     std::string s = "__attribute__((work_group_size_hint(";
                     s += std::to_string(kernelInnerDims[0]); 
                     for(int i=1; i < 3; i++) {

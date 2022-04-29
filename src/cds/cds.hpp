@@ -31,6 +31,7 @@ struct cds_t
   oogs_t *gsh, *gshT;
 
   dlong vFieldOffset;
+  dlong vCubatureOffset;
   dfloat idt;
   dfloat *dt;
   int tstep;
@@ -42,10 +43,7 @@ struct cds_t
 
   int compute[NSCALAR_MAX];
 
-  dfloat* U, * S;
-  dfloat* rkNS;
-  //  dfloat *rhsS;
-  dfloat* rkS;
+  dfloat *U, *S;
 
   // filter
   int filterNc;
@@ -70,12 +68,11 @@ struct cds_t
   occa::memory* o_usrwrk;
 
   int Nsubsteps;
-  dfloat sdt;
+
   dfloat* Ue;
   occa::memory o_Ue;
 
-  int var_coeff;
-  dfloat* prop, * ellipticCoeff;
+  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 
@@ -106,8 +103,8 @@ struct cds_t
   occa::kernel advectionSurfaceKernel;
   occa::kernel advectionCubatureVolumeKernel;
   occa::kernel advectionCubatureSurfaceKernel;
-  occa::kernel advectionStrongVolumeKernel;
-  occa::kernel advectionStrongCubatureVolumeKernel;
+  occa::kernel strongAdvectionVolumeKernel;
+  occa::kernel strongAdvectionCubatureVolumeKernel;
   occa::kernel advectMeshVelocityKernel;
 
   occa::kernel helmholtzRhsIpdgBCKernel;

@@ -55,8 +55,4 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
   mesh_t* mesh = nrs->meshV;
-
-  platform->timer.printRunStat(tstep);
-
-  PASS;
 }

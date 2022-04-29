@@ -79,13 +79,13 @@ void coarseSolver::setup(
 
   {
     std::string kernelName = "convertFP64ToFP32";
-    convertFP64ToFP32Kernel = platform->kernels.getKernel(kernelName);
+    convertFP64ToFP32Kernel = platform->kernels.get(kernelName);
 
     kernelName = "convertFP32ToFP64";
-    convertFP32ToFP64Kernel = platform->kernels.getKernel(kernelName);
+    convertFP32ToFP64Kernel = platform->kernels.get(kernelName);
 
     kernelName = "vectorDotStar2";
-    vectorDotStarKernel2 = platform->kernels.getKernel(kernelName);
+    vectorDotStarKernel2 = platform->kernels.get(kernelName);
   }
 
 
@@ -139,8 +139,10 @@ void coarseSolver::setup(
                    settings);
  
     N = (int) Nrows;
-    xLocal   = (dfloat*) calloc(N,sizeof(dfloat));
-    rhsLocal = (dfloat*) calloc(N,sizeof(dfloat));
+    h_xLocal   = platform->device.mallocHost(N*sizeof(dfloat));
+    h_rhsLocal = platform->device.mallocHost(N*sizeof(dfloat));
+    xLocal   = (dfloat*) h_xLocal.ptr();
+    rhsLocal = (dfloat*) h_rhsLocal.ptr();
   }
   else if (options.compareArgs("AMG SOLVER", "AMGX")){
     const int useFP32 = options.compareArgs("AMG SOLVER PRECISION", "FP32");
@@ -404,13 +406,9 @@ void coarseSolver::scatter(occa::memory o_rhs, occa::memory o_x)
   }
 }
 void coarseSolver::BoomerAMGSolve() {
-  platform->timer.hostTic("BoomerAMGSolve", 1);
   boomerAMGSolve(xLocal, rhsLocal);
-  platform->timer.hostToc("BoomerAMGSolve");
 }
 void coarseSolver::AmgXSolve(occa::memory o_rhs, occa::memory o_x) {
-  platform->timer.tic("AmgXSolve", 1);
-
   const int useFP32 = options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
   if(useFP32){
     convertFP64ToFP32Kernel(N, o_rhs, o_rhsBuffer);
@@ -419,60 +417,59 @@ void coarseSolver::AmgXSolve(occa::memory o_rhs, occa::memory o_x) {
   } else {
     AMGXsolve(o_x.ptr(), o_rhs.ptr());
   }
-
-  platform->timer.toc("AmgXSolve");
 }
 void coarseSolver::solve(occa::memory o_rhs, occa::memory o_x) {
 
+  platform->timer.tic("coarseSolve", 1);
   if(useSEMFEM){
-    platform->timer.tic("Coarse SEMFEM Solve", 1);
     semfemSolver(o_rhs, o_x);
-    platform->timer.toc("Coarse SEMFEM Solve");
-    return;
   }
+  else {
+    const bool useDevice = options.compareArgs("AMG SOLVER", "AMGX");
+    if (gatherLevel) {
+      //weight
+      vectorDotStar(ogs->N, 1.0, ogs->o_invDegree, o_rhs, 0.0, o_Sx);
+      ogsGather(o_Gx, o_Sx, ogsDfloat, ogsAdd, ogs);
+      if(N && !useDevice)
+        o_Gx.copyTo(rhsLocal, N*sizeof(dfloat), 0);
+    } else {
+      if(N && !useDevice)
+        o_rhs.copyTo(rhsLocal, N*sizeof(dfloat), 0);
+    }
 
-  const bool useDevice = options.compareArgs("AMG SOLVER", "AMGX");
-  if (gatherLevel) {
-    //weight
-    vectorDotStar(ogs->N, 1.0, ogs->o_invDegree, o_rhs, 0.0, o_Sx);
-    ogsGather(o_Gx, o_Sx, ogsDfloat, ogsAdd, ogs);
-    if(N && !useDevice)
-      o_Gx.copyTo(rhsLocal, N*sizeof(dfloat), 0);
-  } else {
-    if(N && !useDevice)
-      o_rhs.copyTo(rhsLocal, N*sizeof(dfloat), 0);
-  }
+    if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
+      BoomerAMGSolve(); 
+    } else if (options.compareArgs("AMG SOLVER", "AMGX")){
+      occa::memory o_b = gatherLevel ? o_Gx : o_rhs;
+      AmgXSolve(o_b, o_x);
+    } else {
+      //gather the full vector
+      MPI_Allgatherv(rhsLocal,             N,                MPI_DFLOAT,
+                     rhsCoarse, coarseCounts, coarseOffsets, MPI_DFLOAT, comm);
 
-  if (options.compareArgs("AMG SOLVER", "BOOMERAMG")){
-    BoomerAMGSolve(); 
-  } else if (options.compareArgs("AMG SOLVER", "AMGX")){
-    occa::memory o_b = gatherLevel ? o_Gx : o_rhs;
-    AmgXSolve(o_b, o_x);
-  } else {
-    //gather the full vector
-    MPI_Allgatherv(rhsLocal,             N,                MPI_DFLOAT,
-                   rhsCoarse, coarseCounts, coarseOffsets, MPI_DFLOAT, comm);
-
-    //multiply by local part of the exact matrix inverse
-    // #pragma omp parallel for
-    for (int n=0;n<N;n++) {
-      xLocal[n] = 0.;
-      for (int m=0;m<coarseTotal;m++) {
-        xLocal[n] += invCoarseA[n*coarseTotal+m]*rhsCoarse[m];
+      //multiply by local part of the exact matrix inverse
+      // #pragma omp parallel for
+      for (int n=0;n<N;n++) {
+        xLocal[n] = 0.;
+        for (int m=0;m<coarseTotal;m++) {
+          xLocal[n] += invCoarseA[n*coarseTotal+m]*rhsCoarse[m];
+        }
       }
     }
-  }
 
-  if (gatherLevel) {
-    if(N && !useDevice)
-      o_Gx.copyFrom(xLocal, N*sizeof(dfloat));
-    if(N && useDevice)
-      o_Gx.copyFrom(o_x, N*sizeof(dfloat));
-    ogsScatter(o_x, o_Gx, ogsDfloat, ogsAdd, ogs);
-  } else {
-    if(N && !useDevice)
-      o_x.copyFrom(xLocal, N*sizeof(dfloat), 0);
+    if (gatherLevel) {
+      if(N && !useDevice)
+        o_Gx.copyFrom(xLocal, N*sizeof(dfloat));
+      if(N && useDevice)
+        o_Gx.copyFrom(o_x, N*sizeof(dfloat));
+      ogsScatter(o_x, o_Gx, ogsDfloat, ogsAdd, ogs);
+    } else {
+      if(N && !useDevice)
+        o_x.copyFrom(xLocal, N*sizeof(dfloat), 0);
+    }
   }
+  platform->timer.toc("coarseSolve");
+
 }
 
 } //namespace parAlmond

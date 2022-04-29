@@ -1,18 +1,20 @@
 #ifndef platform_hpp_
 #define platform_hpp_
 #include <occa.hpp>
-#include <vector>
 #include <mpi.h>
+#include "flopCounter.hpp"
 #include "nrssys.hpp"
 #include "timer.hpp"
 #include "inipp.hpp"
 #include "device.hpp"
+#include "kernelRequestManager.hpp"
 #include <set>
 #include <map>
 #include <vector>
+#include <memory>
 class setupAide;
 class linAlg_t;
-class kernelRequestManager_t;
+class flopCounter_t;
 
 class deviceVector_t{
 public:
@@ -20,14 +22,14 @@ public:
   operator occa::memory&(){ return o_vector; }
 // allow implicit conversion between this and kernelArg (for passing to kernels)
   operator occa::kernelArg(){ return o_vector; }
-  deviceVector_t(const dlong _vectorSize, const dlong _nVectors, const dlong _wordSize, std::string _vectorName = "");
+  deviceVector_t(const size_t _offset, const size_t _nVectors, const size_t _wordSize, std::string _vectorName = "");
   occa::memory& at(const int);
+  const size_t offset;
 private:
   occa::memory o_vector;
   std::vector<occa::memory> slices;
-  const dlong vectorSize;
-  const dlong nVectors;
-  const dlong wordSize;
+  const size_t nVectors;
+  const size_t wordSize;
   const std::string vectorName;
 };
 
@@ -64,88 +66,13 @@ struct deviceMemPool_t{
   occa::memory slice18; 
   occa::memory slice19;
   occa::memory o_ptr;
-  long long bytesAllocated;
+  size_t bytesAllocated;
 };
 
-class kernelRequestManager_t
-{
-
-  struct kernelRequest_t
-  {
-    inline bool operator==(const kernelRequest_t& other) const
-    {
-      return requestName == other.requestName;
-    }
-    inline bool operator<(const kernelRequest_t& other) const
-    {
-      return requestName < other.requestName;
-    }
-    inline bool operator> (const kernelRequest_t& other) const { return *this < other; }
-    inline bool operator<=(const kernelRequest_t& other) const { return !(*this > other); }
-    inline bool operator>=(const kernelRequest_t& other) const { return !(*this < other); }
-    inline bool operator!=(const kernelRequest_t& other) const { return !(*this == other); }
-
-    kernelRequest_t(const std::string& m_requestName,
-                    const std::string& m_fileName,
-                    const std::string& m_kernelName,
-                    const occa::properties& m_props,
-                    std::string m_suffix = std::string())
-    :
-    requestName(m_requestName),
-    fileName(m_fileName),
-    kernelName(m_kernelName),
-    suffix(m_suffix),
-    props(m_props)
-    {}
-    std::string requestName;
-    std::string fileName;
-    std::string kernelName;
-    std::string suffix;
-    occa::properties props;
-
-    std::string to_string() const {
-      std::ostringstream ss;
-      ss << "requestName : " << requestName << "\n";
-      ss << "fileName : " << fileName << "\n";
-      ss << "kernelName : " << kernelName << "\n";
-      ss << "suffix : " << suffix << "\n";
-      ss << "props : " << props << "\n";;
-      return ss.str();
-    }
-  };
-public:
-  kernelRequestManager_t(const platform_t& m_platform)
-  : kernelsProcessed(false),
-    platformRef(m_platform)
-  {}
-  void add_kernel(const std::string& m_requestName,
-                  const std::string& m_fileName,
-                  const std::string& m_kernelName,
-                  const occa::properties& m_props,
-                  std::string m_suffix = std::string(),
-                  bool assertUnique = false);
-  
-  void compile();
-
-  occa::kernel
-  getKernel(const std::string& request, bool checkValid = true) const;
-
-  bool
-  processed() const { return kernelsProcessed; }
-
-private:
-  const platform_t& platformRef;
-  bool kernelsProcessed;
-  std::set<kernelRequest_t> kernels;
-  std::map<std::string, occa::kernel> requestToKernelMap;
-  std::map<std::string, std::set<kernelRequest_t>> fileNameToRequestMap;
-
-  void add_kernel(kernelRequest_t request, bool assertUnique = true);
-
-};
 
 struct comm_t{
-  comm_t(MPI_Comm);
+  comm_t(MPI_Comm, MPI_Comm);
+  MPI_Comm mpiCommParent;
   MPI_Comm mpiComm;
   int mpiRank;
   int mpiCommSize;
@@ -153,32 +80,49 @@ struct comm_t{
   MPI_Comm mpiCommLocal;
   int mpiCommLocalSize;
   int localRank;
+
+  std::string to_string() const {
+    std::ostringstream ss;
+    ss << "mpiRank = " << mpiRank << std::endl;
+    ss << "mpiCommSize = " << mpiCommSize << std::endl;
+    ss << "mpiCommLocalSize = " << mpiCommLocalSize << std::endl;
+    ss << "localRank = " << localRank << std::endl;
+    return ss.str();
+  }
 };
 
 struct platform_t{
-  setupAide& options;
-  int warpSize;
-  device_t device;
-  occa::properties kernelInfo;
-  timer::timer_t timer;
-  comm_t comm;
-  linAlg_t* linAlg;
-  memPool_t mempool;
-  deviceMemPool_t o_mempool;
-  kernelRequestManager_t kernels;
+public:
   void create_mempool(const dlong offset, const dlong fields);
-  platform_t(setupAide& _options, MPI_Comm _comm);
-  inipp::Ini *par;
+  platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
 
-  static platform_t* getInstance(setupAide& _options, MPI_Comm _comm){
+  static platform_t* getInstance(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm){
     if(!singleton)
-      singleton = new platform_t(_options, _comm);
+      singleton = new platform_t(_options, _commg, _comm);
     return singleton;
   }
   static platform_t* getInstance(){
     return singleton;
   }
-  private:
+private:
   static platform_t * singleton;
+
+public:
+  setupAide& options;
+  int warpSize;
+  comm_t comm;
+  device_t device;
+  occa::properties kernelInfo;
+  timer::timer_t timer;
+  deviceMemPool_t o_mempool;
+  kernelRequestManager_t kernels;
+  inipp::Ini *par;
+  bool serial;
+  linAlg_t* linAlg;
+  std::unique_ptr<flopCounter_t> flopCounter;
+  memPool_t mempool;
+
+  occa::kernel copyDfloatToPfloatKernel;
+  occa::kernel copyPfloatToDfloatKernel;
 };
 #endif
