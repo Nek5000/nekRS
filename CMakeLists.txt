@@ -45,6 +45,8 @@ set(OCCA_CUDA_COMPILER_FLAGS "-O3 --fmad=true" CACHE STRING "CUDA flags for OCCA
 set(OCCA_HIP_COMPILER_FLAGS "-O3 -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
 set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
 
+set(HYPRE_DIR "" CACHE STRING "Path to external HYPRE installation")
+
 # From OCCA's CMakeLists. All default to ON, but are verified in config tests
 #   - ENABLE_OPENMP
 #   - ENABLE_CUDA
@@ -288,16 +290,21 @@ target_include_directories(nekrs-lib
   PRIVATE
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
-  ${PARALMOND_SOURCE_DIR}
-  ${HYPRE_SOURCE_DIR}/src
-  ${HYPRE_SOURCE_DIR}/src/utilities
-  ${HYPRE_SOURCE_DIR}/src/seq_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_ls
-  ${HYPRE_SOURCE_DIR}/src/IJ_mv
-  ${HYPRE_SOURCE_DIR}/src/multivector
-  ${HYPRE_SOURCE_DIR}/src/krylov
-  ${HYPRE_BINARY_DIR})
+  ${PARALMOND_SOURCE_DIR})
+
+if ("${HYPRE_DIR}" STREQUAL "")
+  target_include_directories(nekrs-lib
+    PRIVATE
+    ${HYPRE_SOURCE_DIR}/src
+    ${HYPRE_SOURCE_DIR}/src/utilities
+    ${HYPRE_SOURCE_DIR}/src/seq_mv
+    ${HYPRE_SOURCE_DIR}/src/parcsr_mv
+    ${HYPRE_SOURCE_DIR}/src/parcsr_ls
+    ${HYPRE_SOURCE_DIR}/src/IJ_mv
+    ${HYPRE_SOURCE_DIR}/src/multivector
+    ${HYPRE_SOURCE_DIR}/src/krylov
+    ${HYPRE_BINARY_DIR})
+endif()
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
