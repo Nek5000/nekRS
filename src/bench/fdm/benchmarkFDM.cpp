@@ -50,6 +50,10 @@ occa::kernel benchmarkFDM(int Nelements,
                           bool requiresBenchmark,
                           std::string suffix)
 {
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")){
+    Nelements = 1;
+  }
+
   CallParameters params{Nelements, Nq_e, wordSize, useRAS, overlap, suffix};
 
   if(cachedResults.count(params) > 0){

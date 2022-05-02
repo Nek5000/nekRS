@@ -14,6 +14,7 @@
 
 struct cds_t
 {
+  static constexpr double targetBenchmark {0.1};
   int dim, elementType;
 
   mesh_t* mesh[NSCALAR_MAX];

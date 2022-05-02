@@ -21,6 +21,8 @@
 
 struct nrs_t {
 
+  static constexpr double targetBenchmark {0.1};
+
   bool multiSession;
 
   int dim, elementType;

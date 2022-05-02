@@ -123,7 +123,9 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
         if(nrs->pSolver->Niter == nRestart)
           printf("WARNING: maximum iterations reached!");  
       }
-      printf("FLOPS/s: %g \n", flopsPerSecond);
+      if(!nrs->pSolver->options.compareArgs("PRECONDITIONER", "SEMFEM")){
+        printf("FLOPS/s: %g \n", flopsPerSecond);
+      }
     }
   }
   

@@ -155,7 +155,7 @@ void registerCdsKernels(occa::properties kernelInfoBC) {
 
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
         auto subCycleKernel =
-            benchmarkAdvsub(1, NelemBenchmark, Nq, cubNq, nEXT, true, true, verbosity, 0.5, false);
+            benchmarkAdvsub(1, NelemBenchmark, Nq, cubNq, nEXT, true, true, verbosity, cds_t::targetBenchmark, false);
 
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         platform->kernels.add(section + kernelName, subCycleKernel);

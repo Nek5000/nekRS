@@ -1,10 +1,11 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.13)
 project(NekRS LANGUAGES C CXX Fortran VERSION 22.0.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
 endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 
+include(CheckCCompilerFlag)
 include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
@@ -13,7 +14,7 @@ include(config/utils.cmake)
 
 #set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-set(CMAKE_VERBOSE_MAKEFILE ON)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 
@@ -22,11 +23,6 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/occa/lib")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/elliptic")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/amgSolver/parAlmond")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/libparanumal")
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/gatherScatter")
 
 ###############################################################################
 # Configure Options
@@ -140,6 +136,17 @@ if ("${GIT_COMMIT_HASH}" STREQUAL "")
   set(GIT_COMMIT_HASH "no sha")
 endif()
 
+# avoid hijacked symbols with the same name
+set(BSYMBOLIC_FLAG " -Wl,-Bsymbolic -Wl,-Bsymbolic-functions")
+list(APPEND CMAKE_REQUIRED_LIBRARIES ${BSYMBOLIC_FLAG})
+check_c_compiler_flag("" Allowed_LD_Flag_BSYMBOLIC)
+if(NOT Allowed_LD_Flag_BSYMBOLIC OR APPLE)
+  set(BSYMBOLIC_FLAG "")
+else()
+#  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${BSYMBOLIC_FLAG}")
+endif()
+list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${BSYMBOLIC_FLAG})
+
 ###############################################################################
 # Build OCCA                                                                  #
 ###############################################################################
@@ -251,8 +258,10 @@ set_property(
 )
 
 add_library(nekrs-lib SHARED ${SRC})
-set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
-target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE HYPRE gs ${GSLIB})
+
+add_dependencies(nekrs-lib HYPRE_BUILD)
+#target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE gs ${GSLIB})
+target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE gs ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
@@ -289,15 +298,8 @@ target_include_directories(nekrs-lib
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
   ${PARALMOND_SOURCE_DIR}
-  ${HYPRE_SOURCE_DIR}/src
-  ${HYPRE_SOURCE_DIR}/src/utilities
-  ${HYPRE_SOURCE_DIR}/src/seq_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_mv
-  ${HYPRE_SOURCE_DIR}/src/parcsr_ls
-  ${HYPRE_SOURCE_DIR}/src/IJ_mv
-  ${HYPRE_SOURCE_DIR}/src/multivector
-  ${HYPRE_SOURCE_DIR}/src/krylov
-  ${HYPRE_BINARY_DIR})
+  ${HYPRE_INCLUDE_DIR}
+)
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)

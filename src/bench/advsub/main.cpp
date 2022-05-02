@@ -148,6 +148,7 @@ int main(int argc, char** argv)
     cubatureOffset = (cubatureOffset / pageW + 1) * pageW;
 
   platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD); 
+  platform->options.setArgs("BUILD ONLY", "FALSE");
   const int Nthreads =  omp_get_max_threads();
 
   bool isScalar = Nfields == 1;

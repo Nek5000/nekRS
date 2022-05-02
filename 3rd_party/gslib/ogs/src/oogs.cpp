@@ -301,7 +301,7 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
   struct gs_data *hgs = (gs_data*) ogs->haloGshSym;
   const void* execdata = hgs->r.data;
   const struct pw_data *pwd = (pw_data*) execdata;
-  const unsigned unit_size = nVec*sizeof(double); // just need to be big enough to run callcack
+  const unsigned unit_size = std::max(nVec, 6)*sizeof(double); // just need to be big enough to run callcack
 
   gs->comm = hgs->comm.c;
 

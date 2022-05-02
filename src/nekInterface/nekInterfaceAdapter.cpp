@@ -531,26 +531,32 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       if(recompile) {
         const double tStart = MPI_Wtime();
         const std::string pipeToNull = (rank == 0) ? std::string("") :  std::string(">/dev/null 2>&1");
-	    const std::string include_dirs = "./ " + case_dir; 
+	    const std::string include_dirs = "./ " + case_dir;
+        std::string make_args = "-j8 "; 
+        if(!verbose) make_args += "-s "; 
         if(rank == 0) 
 	      printf("building nekInterface for lx1=%d, lelt=%d and lelg=%d ...", N+1, lelt, nelgt); fflush(stdout);
 
-        sprintf(buf, "cd %s && cp -f %s/makefile.template makefile && "
-		     "make -s -j8 " 
+        sprintf(buf, 
+             "cd %s"
+             " && cp -f %s/makefile.template makefile"
+             "  && make %s"
 		     "S=%s "
 		     "OPT_INCDIR=\"%s\" "
 		     "CASENAME=%s "
 		     "CASEDIR=%s "
 		     "-f %s/Makefile lib usr libnekInterface "
 		     "%s",
-             cache_dir.c_str(), nek5000_dir.c_str(), 
+             cache_dir.c_str(), 
+             nek5000_dir.c_str(),
+             make_args.c_str(), 
 		     nek5000_dir.c_str(), 
 		     include_dirs.c_str(), 
 		     usrname.c_str(), 
 		     cache_dir.c_str(), 
              nekInterface_dir.c_str(), 
 		     pipeToNull.c_str());
-        if(verbose && rank == 0) printf("%s\n", buf);
+        if(verbose && rank == 0) printf("\n%s\n", buf);
         if(system(buf)) return EXIT_FAILURE;
         fileSync(libFile);
 
