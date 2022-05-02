@@ -12,6 +12,7 @@ if (NOT "${HYPRE_DIR}" STREQUAL "")
     IMPORTED_LOCATION ${HYPRE_DIR}/lib/libHYPRE.so
     IMPORTED_NO_SONAME FALSE)
   target_include_directories(HYPRE INTERFACE ${HYPRE_DIR}/include)
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${HYPRE_DIR}/lib")
 
 # Otherwise, build HYPRE
 else()
