@@ -1,6 +1,6 @@
 @kernel void scatter(
   const dlong numRows,
-  @restrict const long long* dof_map,
+  @restrict const hlong* dof_map,
   @restrict const pfloat* z,
   @restrict dfloat* buffer
 )
