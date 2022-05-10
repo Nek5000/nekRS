@@ -236,6 +236,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
       const std::string meshFile = platform->options.getArgs("MESH FILE");
       re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
       const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+
       bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
       const int verbosity = verbose ? 2 : 1;
 
@@ -244,7 +245,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
 
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
         auto subCycleKernel =
-            benchmarkAdvsub(3, NelemBenchmark, Nq, cubNq, nEXT, true, false, verbosity, 0.5, false);
+            benchmarkAdvsub(3, NelemBenchmark, Nq, cubNq, nEXT, true, false, verbosity, nrs_t::targetBenchmark, false);
 
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         platform->kernels.add(section + kernelName, subCycleKernel);

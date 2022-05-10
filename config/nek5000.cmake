@@ -77,25 +77,23 @@ set(PARRSB_LIB_DIR ${PARRSB_DIR}/../lib)
 # so we use the helper script (run_config.sh) to set the environment
 # variables based on the command-line arguments
 
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-  set(FPIC_FLAG "-fPIC")
+set(FPIC_FLAG "-fPIC")
 
-  set(MCMODEL_FLAG "-mcmodel=medium")
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
-    set(MCMODEL_FLAG "-mcmodel=large")
-  endif()
+set(MCMODEL_FLAG "-mcmodel=medium")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
+  set(MCMODEL_FLAG "-mcmodel=large")
+endif()
 
-  CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL)
-  if(NOT COMPILER_C_SUPPORTS_MCMODEL OR APPLE) 
-    set(MCMODEL_FLAG "")
-  endif()
+CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL)
+if(NOT COMPILER_C_SUPPORTS_MCMODEL OR APPLE) 
+  set(MCMODEL_FLAG "")
+endif()
 
-  if(NOT MCMODEL_FLAG STREQUAL "")
-    CHECK_C_COMPILER_FLAG("${FPIC_FLAG} ${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_FPIC)
-    if(NOT COMPILER_C_SUPPORTS_MCMODEL_FPIC)
-     set(MCMODEL_FLAG "")
-     endif()
-  endif()
+if(NOT MCMODEL_FLAG STREQUAL "")
+  CHECK_C_COMPILER_FLAG("${FPIC_FLAG} ${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_FPIC)
+  if(NOT COMPILER_C_SUPPORTS_MCMODEL_FPIC)
+   set(MCMODEL_FLAG "")
+   endif()
 endif()
 
 include(CheckFortranCompilerFlag)
@@ -125,6 +123,7 @@ ExternalProject_Add(
   CONFIGURE_COMMAND ""
   BUILD_COMMAND 
     ${CMAKE_CURRENT_LIST_DIR}/run_nekconfig.sh 
+    "LDFLAGS=${BSYMBOLIC_FLAG}" 
     "CC=${CMAKE_C_COMPILER}" 
     "CFLAGS=${_EXTERNAL_C_FLAGS} ${FPIC_FLAG} ${MCMODEL_FLAG} ${LARGE_DATA_THRES_FLAG}"
     "FC=${CMAKE_Fortran_COMPILER}"

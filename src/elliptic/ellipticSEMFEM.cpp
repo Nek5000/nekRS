@@ -19,7 +19,7 @@ dlong numRowsSEMFEM;
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
-
+  const int verbose = (platform->options.compareArgs("VERBOSE","TRUE")) ? 1: 0;
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
   gatherKernel = platform->kernels.get("gather");
   scatterKernel = platform->kernels.get("scatter");
@@ -37,7 +37,7 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
     for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 0.;
     free(maskIds);
   }
-  
+ 
   SEMFEMData* data = ellipticBuildSEMFEM(
     mesh->Nq,
     mesh->Nelements,
@@ -112,7 +112,8 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
         1, /* Nthreads */
         useDevice ? platform->device.id() : -1,
         0, /* do not use FP32 - hardwired as no runtime switch is available */
-        settings 
+        settings,
+        verbose 
       );
   }
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){

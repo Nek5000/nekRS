@@ -73,6 +73,7 @@ struct GmresData{
 
 struct elliptic_t
 {
+  static constexpr double targetBenchmark {0.1};
   static constexpr int NScratchFields {4};
   static constexpr int minNFDMOverlap{4};
   int dim;

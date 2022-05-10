@@ -71,11 +71,10 @@ void coarseSolver::setup(
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
 
+  const int verbose = (options.compareArgs("VERBOSE","TRUE")) ? 1: 0;
+
   if(options.compareArgs("PARALMOND SMOOTH COARSEST", "TRUE"))
     return; // bail early as this will not get used
-
-  if ((rank==0)&&(options.compareArgs("VERBOSE","TRUE")))
-    printf("Setting up coarse solver...");fflush(stdout);
 
   {
     std::string kernelName = "convertFP64ToFP32";
@@ -136,7 +135,8 @@ void coarseSolver::setup(
                    Nthreads,
                    -1, /* device ID, if negative run on host */
                    0,  /* useFP32 */
-                   settings);
+                   settings,
+                   verbose);
  
     N = (int) Nrows;
     h_xLocal   = platform->device.mallocHost(N*sizeof(dfloat));

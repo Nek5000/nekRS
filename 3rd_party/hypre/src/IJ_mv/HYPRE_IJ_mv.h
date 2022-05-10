@@ -43,6 +43,8 @@ struct hypre_IJMatrix_struct;
  **/
 typedef struct hypre_IJMatrix_struct *HYPRE_IJMatrix;
 
+#pragma GCC visibility push(default)
+
 /**
  * Create a matrix object.  Each process owns some unique consecutive
  * range of rows, indicated by the global row indices {\tt ilower} and
@@ -327,6 +329,8 @@ HYPRE_Int HYPRE_IJMatrixRead(const char     *filename,
 HYPRE_Int HYPRE_IJMatrixPrint(HYPRE_IJMatrix  matrix,
                               const char     *filename);
 
+#pragma GCC visibility pop
+
 /*@}*/
 
 /*--------------------------------------------------------------------------
@@ -342,6 +346,8 @@ struct hypre_IJVector_struct;
  * The vector object.
  **/
 typedef struct hypre_IJVector_struct *HYPRE_IJVector;
+
+#pragma GCC visibility push(default)
 
 /**
  * Create a vector object.  Each process owns some unique consecutive
@@ -489,6 +495,8 @@ HYPRE_Int HYPRE_IJVectorRead(const char     *filename,
  **/
 HYPRE_Int HYPRE_IJVectorPrint(HYPRE_IJVector  vector,
                               const char     *filename);
+
+#pragma GCC visibility pop 
 
 /*@}*/
 /*@}*/

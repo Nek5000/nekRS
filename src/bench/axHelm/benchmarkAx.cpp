@@ -67,6 +67,10 @@ occa::kernel benchmarkAx(int Nelements,
                          bool requiresBenchmark,
                          std::string suffix)
 {
+  if(platform->options.compareArgs("BUILD ONLY", "TRUE")){
+    Nelements = 1;
+  }
+
   CallParameters params{Nelements, Nq, Ng, constCoeff, poisson, computeGeom, wordSize, Ndim, stressForm, suffix};
 
   if(cachedResults.count(params) > 0){

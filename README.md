@@ -23,10 +23,9 @@ Capabilities:
 
 Requirements:
 * POSIX compilant OS
-* C++14/C99 compatible compilers
-* GNU Fortran
+* C++14/C99 compatible compilers + GNU Fortran
 * MPI-3.1 or later
-* CMake version 3.11 or later
+* CMake version 3.13 (for AMGx support 3.18) or later 
 
 Download the latest release tarball (recommended)
 
@@ -80,12 +79,12 @@ For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/la
 ## Discussion Group
 Please visit [GitHub Discussions](https://github.com/Nek5000/nekRS/discussions). Here we help, find solutions, share ideas, and follow discussions.
 
-## Reporting Bugs
-nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature. If you are having trouble installing the code or getting your model to run properly, you should first vist our discussion group.
-
 ## Contributing
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it.
 For more details see CONTRIBUTING.md.
+
+## Reporting Bugs
+All bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature. If you are having trouble installing the code or getting your model to run properly, you should first vist our discussion group.
 
 ## License
 nekRS is released under the BSD 3-clause license (see LICENSE file). 

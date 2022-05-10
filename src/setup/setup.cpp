@@ -287,9 +287,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     ellipticMaxFields = nrs->NVfields;
   const int ellipticWrkFields = elliptic_t::NScratchFields * ellipticMaxFields;
 
-  int wrkFields = 9;
+  int wrkFields = 10;
   if (nrs->Nsubsteps)
-    wrkFields += 3 * nrs->NVfields;
+    wrkFields = 9 + 3 * nrs->NVfields;
   if (options.compareArgs("MOVING MESH", "TRUE"))
     wrkFields += nrs->NVfields;
 

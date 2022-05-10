@@ -84,7 +84,7 @@ SOFTWARE.
         const dfloat tol = 1e-4;
         dfloat vt1x = 0, vt1y = 0, vt1z = 0;
         dfloat vt2x = 0, vt2y = 0, vt2z = 0;
-        if (abs(abs(nz) - 1.0) < tol) {
+        if (fabs(fabs(nz) - 1.0) < tol) {
           vt1x = 1.0;
           vt1y = 0.0;
           vt1z = 0.0;

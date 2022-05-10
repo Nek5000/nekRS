@@ -123,10 +123,9 @@ mesh_t *createMesh(MPI_Comm comm,
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (platform->comm.mpiRank == 0) {
-    if (cubN)
-      printf("Nq: %d cubNq: %d\n", mesh->Nq, mesh->cubNq);
-    else
-      printf("Nq: %d\n", mesh->Nq);
+    printf("N: %d, Nq: %d", mesh->N, mesh->Nq);
+    if (cubN) printf(", cubNq: %d", mesh->cubNq);
+    printf("\n");
   }
 
   loadKernels(mesh);
