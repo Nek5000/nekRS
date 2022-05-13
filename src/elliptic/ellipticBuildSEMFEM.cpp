@@ -6,10 +6,7 @@
 #include <math.h>
 #include <limits>
 
-#include "_hypre_utilities.h"
-#include "HYPRE_parcsr_ls.h"
-#include "_hypre_parcsr_ls.h"
-#include "HYPRE.h"
+#include "__HYPRE.h"
 
 #include "gslib.h"
 #include "ellipticBuildSEMFEM.hpp"
@@ -162,7 +159,7 @@ void inverse(double invA[3][3], double A[3][3]) {
   }
 }
 
-occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, long long& bytesRemaining, long long& byteOffset, long long& bytesAllocated, bool& allocated);
+occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, size_t& bytesRemaining, size_t& byteOffset, size_t& bytesAllocated, bool& allocated);
 static occa::kernel computeStiffnessMatrixKernel;
 static occa::memory o_stiffness;
 static occa::memory o_x;
@@ -242,16 +239,22 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
                    /* mode */ 0);
   }
 
-  constructOnHost = 
-    platform->device.mode() == std::string("OpenCL")
-    ||
-    platform->device.mode() == std::string("HIP")
-    ||
-    platform->device.mode() == std::string("Serial");
+  constructOnHost = !platform->device.deviceAtomic;
 
   if(!constructOnHost) load();
 
   matrix_distribution();
+
+  {
+    std::string libPath(getenv("NEKRS_INSTALL_DIR"));
+    libPath += "/lib/libHYPRE";
+#ifdef __APPLE__
+    libPath += ".dylib";
+#else
+    libPath += ".so";
+#endif    
+    __HYPRE_Load(libPath.c_str());
+  }
 
   fem_assembly();
 
@@ -267,7 +270,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
       comm_allreduce(&comm, gs_long_long, gs_add, &numRows64, 1, &numRowsGlobal64);
       if(numRowsGlobal64 > std::numeric_limits<int>::max()) { 
         if(comm.id == 0) printf("Number of global rows requires BigInt support!");
-        MPI_Abort(comm.c, EXIT_FAILURE);  
+        ABORT(EXIT_FAILURE);  
       }
     }
 
@@ -277,7 +280,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
       ownedRows[ctr++] = row;
   
     HYPRE_Int *ncols = (HYPRE_Int*) calloc(numRows, sizeof(HYPRE_Int));
-    HYPRE_IJMatrixGetRowCounts(A_bc,
+    __HYPRE_IJMatrixGetRowCounts(A_bc,
       numRows,
       ownedRows,
       ncols);
@@ -289,7 +292,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
     // construct COO matrix from Hypre matrix
     HYPRE_BigInt *hAj = (HYPRE_BigInt*) calloc(nnz, sizeof(HYPRE_BigInt));
     HYPRE_Real   *hAv = (HYPRE_Real*) calloc(nnz, sizeof(HYPRE_Real));
-    HYPRE_IJMatrixGetValues(A_bc,
+    __HYPRE_IJMatrixGetValues(A_bc,
       -numRows,
       ncols,
       ownedRows,
@@ -314,7 +317,7 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
     free(hAv);
     free(ownedRows);
     free(ncols);
-    HYPRE_IJMatrixDestroy(A_bc);
+    __HYPRE_IJMatrixDestroy(A_bc);
 
     data = (SEMFEMData*) malloc(sizeof(SEMFEMData));
     data->Ai = Ai;
@@ -664,11 +667,11 @@ void fem_assembly_host() {
   }
 
 
-  int err = HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
+  int err = __HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
   if (err != 0) {
     if (comm.id == 0)
-      printf("err!\n");
-    exit(EXIT_FAILURE);
+      printf("HYPRE_IJMatrixAddToValues failed!\n");
+    ABORT(EXIT_FAILURE);
   }
 
   free(rows);
@@ -699,9 +702,9 @@ void fem_assembly_device() {
     bool o_valsAlloc;
   };
   AllocationTracker allocations;
-  long long bytesRemaining = platform->o_mempool.bytesAllocated;
-  long long byteOffset = 0;
-  long long bytesAllocated = 0;
+  size_t bytesRemaining = platform->o_mempool.bytesAllocated;
+  size_t byteOffset = 0;
+  size_t bytesAllocated = 0;
   occa::memory o_mask = scratchOrAllocateMemory(
     n_xyze,
     sizeof(double),
@@ -779,11 +782,11 @@ void fem_assembly_device() {
   if(allocations.o_colsAlloc) o_cols.free();
   if(allocations.o_valsAlloc) o_vals.free();
 
-  int err = HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
+  int err = __HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
   if (err != 0) {
     if (comm.id == 0)
-      printf("err!\n");
-    exit(EXIT_FAILURE);
+      printf("HYPRE_IJMatrixAddToValues failed!\n");
+    ABORT(EXIT_FAILURE);
   }
 
   free(rows);
@@ -830,9 +833,9 @@ void fem_assembly() {
   }
 
   /* Assemble FE matrices with boundary conditions applied */
-  HYPRE_IJMatrixCreate(comm.c, row_start, row_end, row_start, row_end, &A_bc);
-  HYPRE_IJMatrixSetObjectType(A_bc, HYPRE_PARCSR);
-  HYPRE_IJMatrixInitialize(A_bc);
+  __HYPRE_IJMatrixCreate(comm.c, row_start, row_end, row_start, row_end, &A_bc);
+  __HYPRE_IJMatrixSetObjectType(A_bc, HYPRE_PARCSR);
+  __HYPRE_IJMatrixInitialize(A_bc);
 
   construct_coo_graph();
 
@@ -846,7 +849,7 @@ void fem_assembly() {
   }
 
   {
-    HYPRE_IJMatrixAssemble(A_bc);
+    __HYPRE_IJMatrixAssemble(A_bc);
   }
 
   free(glo_num);
@@ -856,7 +859,7 @@ void fem_assembly() {
 }
 
 void load(){
-  computeStiffnessMatrixKernel = platform->kernels.getKernel(
+  computeStiffnessMatrixKernel = platform->kernels.get(
     "computeStiffnessMatrix"
   );
 }
@@ -921,7 +924,7 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
   (t_map)[7][3] = 5;
 }
 
-occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, long long& bytesRemaining, long long& byteOffset, long long& bytesAllocated, bool& allocated)
+occa::memory scratchOrAllocateMemory(int nWords, int sizeT, void* src, size_t& bytesRemaining, size_t& byteOffset, size_t& bytesAllocated, bool& allocated)
 {
   occa::memory o_mem;
   if(nWords * sizeT < bytesRemaining){

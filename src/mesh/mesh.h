@@ -42,8 +42,12 @@
 #define TETRAHEDRA 6
 #define HEXAHEDRA 12
 
+struct nrs_t;
+
 struct mesh_t
 {
+  dfloat avgBoundaryValue(int BID, occa::memory o_fld);
+  void avgBoundaryValue(int BID, int Nfields, int offsetFld, occa::memory o_flds, dfloat *avgs);
   void move();
   void update();
   void computeInvLMM();
@@ -66,6 +70,7 @@ struct mesh_t
   dlong Nelements;
   dlong fieldOffset;
   dlong Nlocal;
+  hlong NboundaryFaces;
   hlong* EToV; // element-to-vertex connectivity
   dlong* EToE; // element-to-element connectivity
   int* EToF;   // element-to-(local)face connectivity
@@ -74,10 +79,6 @@ struct mesh_t
 
   dlong* elementInfo; //type of element
   occa::memory o_elementInfo;
-
-  // boundary faces
-  hlong NboundaryFaces; // number of boundary faces
-  hlong* boundaryInfo; // list of all boundary faces (type, vertex-1, vertex-2, vertex-3) in the mesh
 
   // MPI halo exchange info
   dlong totalHaloPairs;   // number of elements to be sent in halo exchange
@@ -96,6 +97,11 @@ struct mesh_t
   void* gsh, * hostGsh; // gslib struct pointer
   ogs_t* ogs; //occa gs pointer
   oogs_t* oogs; //occa gs pointer
+
+  // list of all elements
+  // elementList[e] = e
+  dlong *elementList;
+  occa::memory o_elementList;
 
   // list of elements that are needed for global gather-scatter
   dlong NglobalGatherElements;
@@ -209,6 +215,8 @@ struct mesh_t
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
+  occa::memory o_gllzw;
+
   occa::memory o_gllw;
   occa::memory o_cubw;
   occa::memory o_faceNodes;
@@ -220,11 +228,17 @@ struct mesh_t
 
   occa::kernel geometricFactorsKernel;
   occa::kernel surfaceGeometricFactorsKernel;
+  occa::kernel cubatureGeometricFactorsKernel;
   occa::kernel nStagesSumVectorKernel;
   occa::kernel velocityDirichletKernel;
+
+  occa::kernel avgBIDValueKernel;
 };
 
-occa::properties populateMeshProperties(int N);
+mesh_t *createMeshMG(mesh_t* _mesh,
+                     int Nc);
+
+occa::properties meshKernelProperties(int N);
 // serial sort
 void mysort(hlong* data, int N, const char* order);
 
@@ -237,6 +251,8 @@ void parallelSort(int size, int rank, MPI_Comm comm,
 
 #define mymax(a,b) (((a) > (b))?(a):(b))
 #define mymin(a,b) (((a) < (b))?(a):(b))
+
+void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
 
 /* dimension independent mesh operations */
 void meshConnect(mesh_t* mesh);
@@ -274,13 +290,11 @@ void meshHaloExchangeBlocking(mesh_t* mesh,
 // print out parallel partition i
 void meshPartitionStatistics(mesh_t* mesh);
 
-// build element-boundary connectivity
-void meshConnectBoundary(mesh_t* mesh);
-
 void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     dlong N,
                                     hlong* globalIds,
                                     MPI_Comm &comm,
+                                    oogs_mode gsMode,
                                     int verbose);
 
 // generic mesh setup

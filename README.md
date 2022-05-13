@@ -5,57 +5,57 @@
 [![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.com/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and hardware accelerators like GPUs. The code started as an early fork of [libParanumal](https://github.com/paranumal/libparanumal) tailored to our needs. For API portable programming [OCCA](https://github.com/libocca/occa) is used.  
+**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and accelerators like GPUs. The code started as an fork of [libParanumal](https://github.com/paranumal/libparanumal) in 2019. For API portable programming [OCCA](https://github.com/libocca/occa) is used.  
 
 Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
 * CG-SEM using curvilinear conformal hexaheadral elements 
-* Adaptive 3rd/2nd order semi-implicit time integration + operator integration factor splitting
-* MPI+X hybrid parallelism supporting CUDA, HIP, OPENCL and CPU
-* Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
+* Variable time step 2nd/3rd order semi-implicit time integration
+* MPI+X hybrid parallelism supporting CPU, CUDA, HIP, and OPENCL
+* Various boundary conditions
 * Conjugate fluid-solid heat transfer
 * LES and RANS turbulence models
-* ALE formulation for moving mesh support
+* Arbitrary-Lagrangian-Eulerian moving mesh
 * VisIt & Paraview support for data analysis and visualization
+* Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 
 ## Build Instructions
 
 Requirements:
-* POSIX compilant OS
-* GNU compiler collection version 6.2 or later
+* Linux, Mac OS X (Microsoft Windows is not supported) 
+* C++14/C99 compatible compilers + GNU Fortran
 * MPI-3.1 or later
-* CMake version 3.11 or later
-* bash
+* CMake version 3.13 (AMGx requires >=3.18) or later 
 
-Download the latest release tarball (recommended)
+Download the latest release available under
 
 ```sh
-wget https://github.com/Nek5000/nekRS/archive/refs/tags/v21.1.tar.gz 
-tar -zxf v21.1.tar.gz 
+https://github.com/Nek5000/nekRS/archive/refs/tags/v22.0.tar.gz 
 ```
 
 or clone our GitHub repository:
 
 ```sh
-git clone https://github.com/Nek5000/nekRS.git
+https://github.com/Nek5000/nekRS.git
 ```
-The git master branch always points to the latest release, the next branch
-is a special development branch that contains all the new features that will be released at the next release cycle.
+The `master` branch always points to the latest stable release while `next`
+provides an early preview of the next upcoming release (do not use in a production environment).
 
 #
-To build and install the code just run:
+To build and install the code run:
 
 ```sh
 ./nrsconfig
 cmake --build ./build --target install -j8
 ```
+Please delete instead of overwriting your old build and install directory before updating. 
 Build settings can be customized by environment variables. 
 After installation you may want to adjust `$NEKRS_HOME/nekrs.conf` to your environment.
 
 ## Setting the Enviroment
 
-Assuming you run bash and your install directory is $HOME/.local/nekrs, 
+Assuming you run `bash` and your install directory is $HOME/.local/nekrs, 
 add the following line to your $HOME/.bash_profile:
 
 ```sh
@@ -66,29 +66,28 @@ then type `source $HOME/.bash_profile` in the current terminal window.
 
 ## Run the Code
 
-We try hard not to break userland but the code is evolving quickly so things might change from one version to another without being backward compatible (see release notes). 
+We try hard not to break userland but the code is evolving quickly so things might change from one version to another without being backward compatible. Please consult `RELEASE.md` before using the code. 
 
 ```sh
 cd $NEKRS_HOME/examples/turbPipePeriodic
-nrsmpi turbPipe 2 # run on two MPI ranks
+mpirun -np 2 nekrs --setup turbPipe.par
 ```
-Note, `nrsmpi/nrsbmpi` are just basic launch scripts. Please check `bin` for more examples.
+For convenience we provide various launch scripts in the `bin` directory.
 
 ## Documentation 
-For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/).
+For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/). For now it's just a dummy. We hope to improve documentation to make it more useable for new users. 
 
 ## Discussion Group
 Please visit [GitHub Discussions](https://github.com/Nek5000/nekRS/discussions). Here we help, find solutions, share ideas, and follow discussions.
 
-## Reporting Bugs
-nekRS is hosted on GitHub and all bugs are reported and tracked through the [Issues](https://github.com/Nek5000/nekRS/issues) feature. If you are having trouble installing the code or getting your model to run properly, you should first vist our discussion group.
-
 ## Contributing
-Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS) and everbody is welcome to become a part of it.
-For more details see CONTRIBUTING.md.
+Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS). To learn how to contribute, see `CONTRIBUTING.md`.
+
+## Reporting Bugs
+All bugs are reported and tracked through [Issues](https://github.com/Nek5000/nekRS/issues). If you are having trouble installing the code or getting your model to run properly, you should first vist our discussion group.
 
 ## License
-nekRS is released under the BSD 3-clause license (see LICENSE file). 
+nekRS is released under the BSD 3-clause license (see `LICENSE` file). 
 All new contributions must be made under the BSD 3-clause license.
 
 ## Acknowledgment

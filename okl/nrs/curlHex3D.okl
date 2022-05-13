@@ -25,11 +25,12 @@
  */
 
 @kernel void curlHex3D(const dlong Nelements,
-                          @restrict const dfloat*  vgeo,
-                          @restrict const dfloat*  const D,
-                          const dlong offset,
-                          @restrict const dfloat*  U,
-                          @restrict dfloat*  W)
+                       const dlong scaleJW,
+                       @restrict const dfloat*  vgeo,
+                       @restrict const dfloat*  const D,
+                       const dlong offset,
+                       @restrict const dfloat*  U,
+                       @restrict dfloat*  W)
 {
   for(dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -41,7 +42,9 @@
 
     @shared dfloat s_D[p_Nq][p_Nq];
 
+#ifdef smXX
     #pragma unroll p_Nq
+#endif
     for(int k = 0; k < p_Nq; ++k){
       for(int j = 0; j < p_Nq; ++j; @inner(1)){
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
@@ -111,10 +114,14 @@
           const dfloat wx = drdx * dwdr + dsdx * dwds + dtdx * dwdt;
           const dfloat wy = drdy * dwdr + dsdy * dwds + dtdy * dwdt;
 
-          // Multiply with mass matrix
-          const dfloat vortx = JW * (wy - vz);
-          const dfloat vorty = JW * (uz - wx);
-          const dfloat vortz = JW * (vx - uy);
+          dfloat vortx = (wy - vz);
+          dfloat vorty = (uz - wx);
+          dfloat vortz = (vx - uy);
+          if(scaleJW) { 
+            vortx *= JW;
+            vorty *= JW;
+            vortz *= JW;
+          }
 
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 

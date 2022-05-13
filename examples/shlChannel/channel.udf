@@ -1,0 +1,54 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+#include "ci.inc"
+
+/* User Functions */
+
+static occa::kernel userfKernel; 
+static dfloat P_ROT;
+static dfloat visc;
+
+void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  mesh_t* mesh = nrs->meshV;
+  const dfloat DP   = 3.0 * visc;
+  userfKernel(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, o_FU);
+}
+
+void UDF_LoadKernels(occa::properties& kernelInfo)
+{
+  platform->options.getArgs("VISCOSITY", visc);
+  kernelInfo["defines/p_visc"] = visc;
+  userfKernel = oudfBuildKernel(kernelInfo, "userf");
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide& options){
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "p_rot", P_ROT);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_ROT;
+  }
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  mesh_t *mesh = nrs->meshV;
+  cds_t *cds = nrs->cds;
+
+  udf.uEqnSource = &userf;
+
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+  if (ciMode) ciTestErrors(nrs, time, tstep);
+}

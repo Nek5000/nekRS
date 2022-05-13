@@ -28,7 +28,6 @@ static occa::memory o_tmp1, o_tmp2;
 static occa::kernel setBCVectorValueKernel;
 static occa::kernel getBCFluxKernel;
 static occa::kernel sumReductionKernel;
-static occa::kernel scalarMultiplyKernel;
 
 static bool buildKernelCalled = 0;
 static bool setupCalled = 0;
@@ -41,25 +40,25 @@ static int Nblock;
 
 void velRecycling::buildKernel(occa::properties kernelInfo)
 {
+  std::string path;
+  path.assign(getenv("NEKRS_INSTALL_DIR"));
+  path += "/okl/plugins/";
 
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
-  kernelInfo += populateMeshProperties(N);
-
-  std::string fileName;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/velRecycling.okl";
+  std::string fileName, kernelName;
+  const std::string extension = ".okl";
   {
-      setBCVectorValueKernel =  platform->device.buildKernel(fileName,
-                                                         "setBCVectorValue",
-                                                         kernelInfo);
-      getBCFluxKernel        =  platform->device.buildKernel(fileName, "getBCFlux", kernelInfo);
-      sumReductionKernel     =  platform->device.buildKernel(fileName,
-                                                         "sumReduction",
-                                                         kernelInfo);
-      scalarMultiplyKernel   =  platform->device.buildKernel(fileName,
-                                                         "scalarMultiply",
-                                                         kernelInfo);
+      kernelName = "setBCVectorValue";
+      fileName = path + kernelName + extension;
+      setBCVectorValueKernel =  platform->device.buildKernel(fileName, kernelInfo, true);
+
+      kernelName = "getBCFlux";
+      fileName = path + kernelName + extension;
+      getBCFluxKernel        =  platform->device.buildKernel(fileName, kernelInfo, true);
+
+
+      kernelName = "sumReduction";
+      fileName = path + kernelName + extension;
+      sumReductionKernel     =  platform->device.buildKernel(fileName, kernelInfo, true);
   }
 }
 
@@ -101,7 +100,7 @@ void velRecycling::copy()
 
   const dfloat scale = -wbar * sbuf[0] / sbuf[1];
   //printf("rescaling inflow: %f\n", scale);
-  scalarMultiplyKernel(nrs->NVfields * nrs->fieldOffset, scale, o_wrk);
+  platform->linAlg->scale(nrs->NVfields * nrs->fieldOffset, scale, o_wrk);
 }
 
 void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, const int bID_,
@@ -133,7 +132,7 @@ void velRecycling::setup(nrs_t* nrs_, occa::memory o_wrk_, const hlong eOffset, 
     }
   }
 
-  ogs = ogsSetup(Ntotal, ids, platform->comm.mpiComm, 1, platform->device);
+  ogs = ogsSetup(Ntotal, ids, platform->comm.mpiComm, 1, platform->device.occaDevice());
   free(ids);
 
   const int NfpTotal = mesh->Nelements * mesh->Nfaces * mesh->Nfp;

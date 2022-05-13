@@ -78,9 +78,10 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
 {
   
   mesh_t* mesh = elliptic->mesh;
-  setupAide options = elliptic->options;
-  // currently constant coefficient case only
-  const dfloat lambda = elliptic->lambda[0];
+  setupAide& options = elliptic->options;
+
+  // Poisson only
+  const dfloat lambda = 0.0;
 
   int rank = platform->comm.mpiRank;
 
@@ -124,7 +125,12 @@ void ellipticBuildContinuousHex3D(elliptic_t* elliptic,
   int* ArecvOffsets = (int*) calloc(platform->comm.mpiCommSize + 1, sizeof(int));
 
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
-  for (dlong n = 0; n < elliptic->Nmasked; n++) mask[elliptic->maskIds[n]] = 1;
+  if(elliptic->Nmasked > 0){
+    dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
+    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+    for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 1.;
+    free(maskIds);
+  }
 
   dlong cnt = 0;
   for (dlong e = 0; e < mesh->Nelements; e++)

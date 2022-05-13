@@ -1,36 +1,43 @@
 [GENERAL] 
 #verbose = true
 polynomialOrder = 7
+dealiasing = false
+timeStepper = tombo1
 stopAt = numSteps
 numSteps = 0
 
 [PRESSURE]
-solver = pfgmres+nVector=20
+solver = pfgmres+nVector=30
 maxIterations = 200
 residualTol = 1e-8+relative
 
+# p-MG, smooth on coarsest level rather than solve
+#preconditioner = multigrid 
+
 # p-MG multiplicative V-cycle, coarse grid solve
 preconditioner = multigrid+coarse
-coarseSolver = FEM+BoomerAMG #+Galerkin
-smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
-
-# p-MG, smooth on coarsest level rather than solve
-#preconditioner = pmg
-#coarseSolver = none
+#coarseSolver = BoomerAMG
+#coarseGridDiscretization = FEM #+Galerkin
 
 # p-MG, solve coarsest level using SEMFEM discretization
 #preconditioner = pmg+coarse
-#coarseSolver = SEMFEM+AmgX+FP32
+#coarseSolver = AmgX+FP32
+#coarseGridDiscretization = SEMFEM
 
 # p-MG additive V-cycle, overlapping coarse grid solve
 # requires smootherType = <ASM | RAS>
 #preconditioner = multigrid+additive+overlapCrsSolve+coarse
-#smootherType = ASM
 
-pMultigridCoarsening = 7,3,1
+smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
+#pMultigridCoarsening = 7,5,3,1
+
+# SEMFEM
+#preconditioner = semfem+AMGX+FP32 
+
 initialGuess = previous
 
-[VELOCITY]
+[VELOCITY] # dummy
+preconditioner = none
 density = 1.0
 viscosity = 1.0
 
@@ -48,3 +55,4 @@ viscosity = 1.0
 
 [CASEDATA]
 P_EPS = 0.3
+gsOverlap = 1

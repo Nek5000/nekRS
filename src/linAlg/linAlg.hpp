@@ -44,7 +44,7 @@ private:
   occa::memory o_scratch;
 
   void setup();
-  void reallocScratch(const dlong Nbytes);
+  void reallocScratch(const size_t Nbytes);
 
   ~linAlg_t();
   linAlg_t();
@@ -178,6 +178,15 @@ public:
                                const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
 
+  // z = x \cross y
+  void crossProduct(const dlong N,
+                    const dlong fieldOffset,
+                    occa::memory &o_x,
+                    occa::memory &o_y,
+                    occa::memory &o_z);
+
+  void unitVector(const dlong N, const dlong fieldOffset, occa::memory &o_v);
+
   occa::kernel fillKernel;
   occa::kernel absKernel;
   occa::kernel addKernel;
@@ -215,6 +224,8 @@ public:
   occa::kernel weightedInnerProdKernel;
   occa::kernel weightedInnerProdManyKernel;
   occa::kernel weightedInnerProdMultiKernel;
+  occa::kernel crossProductKernel;
+  occa::kernel unitVectorKernel;
 };
 
 #endif

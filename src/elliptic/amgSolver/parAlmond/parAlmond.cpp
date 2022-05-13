@@ -54,7 +54,7 @@ void AMGSetup(solver_t *MM,
 
   MPI_Barrier(M->comm);
   double startTime = MPI_Wtime();
-  if(rank==0) printf("Setting up AMG...");fflush(stdout);
+  if(rank==0) printf("Setting up coarse solver ...");fflush(stdout);
 
   M->coarseLevel = new coarseSolver(M->options, M->comm);
   M->coarseLevel->setup(numLocalRows, globalRowStarts, nnz, Ai, Aj, Avals, nullSpace);

@@ -32,7 +32,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
   
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
@@ -45,9 +45,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
     precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(pfloat));
-    elliptic->axmyzManyPfloatKernel = platform->kernels.getKernel("axmyzManyPfloat");
-    elliptic->adyManyPfloatKernel = platform->kernels.getKernel("adyManyPfloat");
-    ellipticUpdateJacobi(elliptic);
+    ellipticUpdateJacobi(elliptic, precon->o_invDiagA);
   } else if(options.compareArgs("PRECONDITIONER", "NONE")) {
     // nothing 
   } else {

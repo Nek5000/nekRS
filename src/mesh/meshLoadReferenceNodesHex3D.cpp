@@ -30,7 +30,7 @@
 #include <vector>
 #define NODE_GEN
 
-void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
+void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
 {
   mesh->N = N;
   mesh->Nq = N + 1;
@@ -41,7 +41,9 @@ void meshLoadReferenceNodesHex3D(mesh3D* mesh, int N, int cubN)
 
   mesh->Nvgeo = 12;
   mesh->Nggeo = 7;
-  mesh->Nsgeo = 17;
+  mesh->Nsgeo = 13;
+
+  mesh->Nlocal = mesh->Nelements * mesh->Np;
 
   int Nrows, Ncols;
 

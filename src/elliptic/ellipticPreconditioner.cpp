@@ -36,7 +36,7 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
   
   mesh_t* mesh = elliptic->mesh;
   precon_t* precon = elliptic->precon;
-  setupAide options = elliptic->options;
+  setupAide& options = elliptic->options;
 
   const dlong Nlocal = mesh->Np * mesh->Nelements;
 
@@ -52,12 +52,13 @@ void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memor
       precon->o_invDiagA,
       o_z
       );
+    platform->flopCounter->add("jacobiPrecon", static_cast<double>(Nlocal) * elliptic->Nfields);
   }else if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
     parAlmond::Precon(precon->parAlmond, o_z, o_r);
   }else if (options.compareArgs("PRECONDITIONER", "SEMFEM")) {
     ellipticSEMFEMSolve(elliptic, o_r, o_z);
   }else if (options.compareArgs("PRECONDITIONER", "NONE")) {
-    o_z.copyFrom(o_r);
+    o_z.copyFrom(o_r, elliptic->Ntotal*elliptic->Nfields*sizeof(dfloat));
   }else {
     if(platform->comm.mpiRank == 0) printf("ERRROR: Unknown preconditioner\n");
     MPI_Abort(platform->comm.mpiComm, 1);

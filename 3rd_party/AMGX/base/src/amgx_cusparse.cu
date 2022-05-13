@@ -33,6 +33,7 @@
 #include <types.h>
 #include <thrust/sequence.h>
 #include <util.h>
+#include <sm_utils.inl>
 
 #include <amgx_cusparse.h>
 
@@ -546,6 +547,17 @@ void Cusparse::bsrmv( const int color,
     }
 }
 
+__global__ void offset_by_col_off(int nrows, int* rows, const int* bsrRowPtr)
+{
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    if(i >= nrows+1)
+    {
+        return;
+    }
+
+    rows[i] = bsrRowPtr[i] - bsrRowPtr[0];
+}
+
 template< class TConfig >
 void Cusparse::bsrmv_internal( const typename TConfig::VecPrec alphaConst,
                                const Matrix<TConfig> &A,
@@ -556,8 +568,8 @@ void Cusparse::bsrmv_internal( const typename TConfig::VecPrec alphaConst,
                                const cudaStream_t &stream)
 {
     typedef typename TConfig::VecPrec ValueTypeB;
-    int offset, size, nnz;
-    A.getOffsetAndSizeForView(view, &offset, &size);
+    int row_off, nrows, nnz;
+    A.getOffsetAndSizeForView(view, &row_off, &nrows);
     A.getNnzForView(view, &nnz);
 
     cusparseDirection_t direction = CUSPARSE_DIRECTION_COLUMN;
@@ -571,18 +583,16 @@ void Cusparse::bsrmv_internal( const typename TConfig::VecPrec alphaConst,
 
     if (has_offdiag )
     {
-        cusparseSetStream(Cusparse::get_instance().m_handle, stream);
         bsrmv( Cusparse::get_instance().m_handle,  direction, CUSPARSE_OPERATION_NON_TRANSPOSE,
-               size, A.get_num_cols(), nnz, &alphaConst,
+               nrows, A.get_num_cols(), nnz, &alphaConst,
                A.cuMatDescr,
                A.values.raw(),
-               A.m_seq_offsets.raw() + offset,
-               A.row_offsets.raw() + offset, A.col_indices.raw(),
+               A.m_seq_offsets.raw() + row_off,
+               A.row_offsets.raw() + row_off, A.col_indices.raw(),
                A.get_block_dimx(),
                x.raw(), &betaConst,
-               y.raw() + offset * A.get_block_dimx() );
-        // Reset to default stream
-        cusparseSetStream(Cusparse::get_instance().m_handle, 0);
+               y.raw() + row_off * A.get_block_dimx(),
+               stream);
     }
 
     if (A.hasProps(DIAG))
@@ -598,18 +608,16 @@ void Cusparse::bsrmv_internal( const typename TConfig::VecPrec alphaConst,
             beta = types::util<ValueTypeB>::get_one();
         }
 
-        cusparseSetStream(Cusparse::get_instance().m_handle, stream);
         bsrmv( Cusparse::get_instance().m_handle,  direction, CUSPARSE_OPERATION_NON_TRANSPOSE,
-               size, A.get_num_cols(), A.get_num_rows(), &alphaConst,
+               nrows, A.get_num_cols(), A.get_num_rows(), &alphaConst,
                A.cuMatDescr,
                A.values.raw() + A.diagOffset()*A.get_block_size(),
                A.m_seq_offsets.raw(),
-               A.m_seq_offsets.raw() + offset, A.m_seq_offsets.raw(),
+               A.m_seq_offsets.raw() + row_off, A.m_seq_offsets.raw(),
                A.get_block_dimx(),
                x.raw(), &beta,
-               y.raw() + offset * A.get_block_dimx() );
-        // Reset to default stream
-        cusparseSetStream(Cusparse::get_instance().m_handle, 0);
+               y.raw() + row_off * A.get_block_dimx(),
+               stream);
     }
 }
 
@@ -659,7 +667,7 @@ void Cusparse::bsrmv_internal_with_mask( const typename TConfig::VecPrec alphaCo
     {
         cusparseSetStream(Cusparse::get_instance().m_handle, stream);
         bsrxmv_internal( Cusparse::get_instance().m_handle, direction, CUSPARSE_OPERATION_NON_TRANSPOSE, nrows,
-                         A.get_num_rows(), A.get_num_cols(), nnz, &alphaConst,
+                         nrows, A.get_num_cols(), nnz, &alphaConst,
                          A.cuMatDescr,
                          A.values.raw(),
                          A.manager->getRowsListForView(view).raw(),
@@ -707,8 +715,8 @@ void Cusparse::bsrmv_internal_with_mask_restriction( const typename TConfig::Vec
         direction = CUSPARSE_DIRECTION_ROW;
     }
 
-    int offset, nrows, nnz;
-    R.getFixedSizesForView(view, &offset, &nrows, &nnz);
+    int row_off, nrows, nnz;
+    R.getFixedSizesForView(view, &row_off, &nrows, &nnz);
 
     bool has_offdiag = nnz != 0;
     typedef typename Matrix<TConfig>::index_type index_type;
@@ -720,18 +728,16 @@ void Cusparse::bsrmv_internal_with_mask_restriction( const typename TConfig::Vec
 
     if (has_offdiag)
     {
-        cusparseSetStream(Cusparse::get_instance().m_handle, stream);
         bsrmv( Cusparse::get_instance().m_handle,  direction, CUSPARSE_OPERATION_NON_TRANSPOSE,
                nrows, R.get_num_cols(), nnz, &alphaConst,
                R.cuMatDescr,
                R.values.raw(),
-               R.m_seq_offsets.raw() + offset,
-               R.row_offsets.raw() + offset, R.col_indices.raw(),
+               R.m_seq_offsets.raw() + row_off,
+               R.row_offsets.raw() + row_off, R.col_indices.raw(),
                R.get_block_dimx(),
                x.raw(), &betaConst,
-               y.raw() + offset * R.get_block_dimx() );
-        // Reset to default stream
-        cusparseSetStream(Cusparse::get_instance().m_handle, 0);
+               y.raw() + row_off * R.get_block_dimx(),
+               stream);
     }
 
     if (R.hasProps(DIAG))
@@ -753,23 +759,20 @@ void Cusparse::bsrmv_internal( const typename TConfig::VecPrec alphaConst,
                                const cudaStream_t &stream)
 {
     typedef typename TConfig::VecPrec ValueType;
-    int offset, size;
-    A.getOffsetAndSizeForView(view, &offset, &size);
+    int row_off, nrows, nnz;
+    A.getFixedSizesForView(view, &row_off, &nrows, &nnz);
     cusparseDirection_t direction = A.getBlockFormat() == ROW_MAJOR ? CUSPARSE_DIRECTION_ROW : CUSPARSE_DIRECTION_COLUMN;
-    cusparseSetStream(Cusparse::get_instance().m_handle, stream);
 
     bsrmv( Cusparse::get_instance().m_handle, direction, CUSPARSE_OPERATION_NON_TRANSPOSE,
-           size, A.get_num_cols(), A.get_num_nz(), &alphaConst,
+           nrows, A.get_num_cols(), nnz, &alphaConst,
            A.cuMatDescr,
            E.raw(),
            A.m_seq_offsets.raw(),
-           A.m_seq_offsets.raw() + offset, A.m_seq_offsets.raw(),
+           A.m_seq_offsets.raw() + row_off, A.m_seq_offsets.raw(),
            A.get_block_dimx(),
            x.raw(), &betaConst,
-           y.raw() + offset * A.get_block_dimx() );
-
-    // Reset to default stream
-    cusparseSetStream(Cusparse::get_instance().m_handle, 0);
+           y.raw() + row_off * A.get_block_dimx(),
+           stream);
 }
 
 
@@ -994,22 +997,40 @@ template<class MatType, class VecType, class IndType>
 inline void generic_SpMV(cusparseHandle_t handle, cusparseOperation_t trans,
                              int mb, int nb, int nnzb,
                              const MatType *alpha,
-                             const MatType *vals,
+                             const MatType *val,
                              const IndType *rowPtr,
                              const IndType *colInd,
                              const VecType *x,
                              const VecType *beta,
                              VecType *y,
                              cudaDataType matType,
-                             cudaDataType vecType)
+                             cudaDataType vecType,
+                             const cudaStream_t& stream)
 {
+    int col_off;
+    cudaMemcpyAsync(&col_off, &rowPtr[0], sizeof(int), cudaMemcpyDefault, stream);
+    cudaStreamSynchronize(stream);
+
+    IndType* rows = const_cast<IndType*>(rowPtr);
+    IndType* cols = const_cast<IndType*>(colInd) + col_off;
+    MatType* vals = const_cast<MatType*>(val) + col_off;
+
+    if(col_off > 0)
+    {
+        amgx::memory::cudaMalloc((void**)&rows, sizeof(IndType)*(mb+1));
+
+        constexpr int nthreads = 128;
+        const int nblocks = (mb + 1) / nthreads + 1;
+        offset_by_col_off<<<nblocks, nthreads, 0, stream>>>(mb, rows, rowPtr);
+    }
+
     cusparseSpMatDescr_t matA_descr;
     cusparseDnVecDescr_t vecX_descr;
     cusparseDnVecDescr_t vecY_descr;
     cusparseCheckError(cusparseCreateDnVec(&vecX_descr, nb, const_cast<VecType*>(x), vecType));
     cusparseCheckError(cusparseCreateDnVec(&vecY_descr, mb, const_cast<VecType*>(y), vecType));
     cusparseCheckError(
-        cusparseCreateCsr(&matA_descr, mb, nb, nnzb, const_cast<IndType*>(rowPtr), const_cast<IndType*>(colInd),
+            cusparseCreateCsr(&matA_descr, mb, nb, nnzb, const_cast<IndType*>(rows), const_cast<IndType*>(cols),
                           const_cast<MatType*>(vals), CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, matType));
 
     size_t bufferSize = 0;
@@ -1031,6 +1052,11 @@ inline void generic_SpMV(cusparseHandle_t handle, cusparseOperation_t trans,
     {
         amgx::memory::cudaFreeAsync(dBuffer);
     }
+
+    if(col_off > 0)
+    {
+        amgx::memory::cudaFreeAsync(rows);
+    }
 }
 #endif
 
@@ -1045,12 +1071,16 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const float *x,
                              const float *beta,
-                             float *y)
+                             float *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     if (blockDim == 1)
     {
         #ifdef CUSPARSE_GENERIC_INTERFACES
-            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_R_32F, CUDA_R_32F);
+            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_R_32F, CUDA_R_32F, stream);
         #else
             cusparseCheckError(cusparseScsrmv(handle, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, x, beta, y));
         #endif
@@ -1059,6 +1089,9 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
     {
         cusparseCheckError(cusparseSbsrmv(handle, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y));
     }
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, cusparseOperation_t trans,
@@ -1072,12 +1105,17 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const double *x,
                              const double *beta,
-                             double *y)
+                             double *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     if (blockDim == 1)
     {
         #ifdef CUSPARSE_GENERIC_INTERFACES
-            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_R_64F, CUDA_R_64F);
+            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_R_64F, CUDA_R_64F, stream);
+
         #else
             cusparseCheckError(cusparseDcsrmv(handle, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, x, beta, y));
         #endif
@@ -1086,6 +1124,9 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
     {
         cusparseCheckError(cusparseDbsrmv(handle, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y));
     }
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, cusparseOperation_t trans,
@@ -1099,14 +1140,21 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const double *x,
                              const double *beta,
-                             double *y)
+                             double *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     #ifndef DISABLE_MIXED_PRECISION
         const double *d_bsrVal = reinterpret_cast<const double *>(const_cast<float *>(bsrVal)); // this works due to private API call in the matrix initialization which sets cusparse matrix description in the half precision mode
         cusparseCheckError(cusparseDbsrxmv(handle, dir, trans, mb, mb, nb, nnzb, alpha, descr, d_bsrVal, bsrMaskPtr, bsrRowPtr, bsrRowPtr + 1, bsrColInd, blockDim, x, beta, y));
     #else
         FatalError("Mixed precision modes not currently supported for CUDA 10.1 or later.", AMGX_ERR_NOT_IMPLEMENTED);
     #endif
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 // Custom implementation of matrix-vector product to replace the original bsrxmv,
@@ -1187,7 +1235,7 @@ inline void Xcsrxmv( cusparseHandle_t handle, cusparseDirection_t dir, cusparseO
 
     constexpr int nthreads = 128;
     constexpr int unroll_factor = 16;
-    int nblocks = sizeOfMask / nthreads;
+    int nblocks = sizeOfMask / nthreads + 1;
     csrxmv<unroll_factor><<<nblocks, nthreads>>>(sizeOfMask, *alpha, bsrVal, bsrMaskPtr, bsrRowPtr, bsrColInd, x, *beta, y);
 }
 
@@ -1304,12 +1352,16 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const cuComplex *x,
                              const cuComplex *beta,
-                             cuComplex *y)
+                             cuComplex *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     if (blockDim == 1)
     {
         #ifdef CUSPARSE_GENERIC_INTERFACES
-            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_C_32F, CUDA_C_32F);
+            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_C_32F, CUDA_C_32F, stream);
         #else
             cusparseCheckError(cusparseCcsrmv(handle, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, x, beta, y));
         #endif
@@ -1318,6 +1370,9 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
     {
         cusparseCheckError(cusparseCbsrmv(handle, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y));
     }
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, cusparseOperation_t trans,
@@ -1331,12 +1386,16 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const cuDoubleComplex *x,
                              const cuDoubleComplex *beta,
-                             cuDoubleComplex *y)
+                             cuDoubleComplex *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     if (blockDim == 1)
     {
         #ifdef CUSPARSE_GENERIC_INTERFACES
-            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_C_64F, CUDA_C_64F);
+            generic_SpMV(handle, trans, mb, nb, nnzb, alpha, bsrVal, bsrRowPtr, bsrColInd, x, beta, y, CUDA_C_64F, CUDA_C_64F, stream);
         #else
             cusparseCheckError(cusparseZcsrmv(handle, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, x, beta, y));
         #endif
@@ -1345,6 +1404,9 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
     {
         cusparseCheckError(cusparseZbsrmv(handle, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y));
     }
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, cusparseOperation_t trans,
@@ -1358,14 +1420,21 @@ inline void Cusparse::bsrmv( cusparseHandle_t handle, cusparseDirection_t dir, c
                              int blockDim,
                              const cuDoubleComplex *x,
                              const cuDoubleComplex *beta,
-                             cuDoubleComplex *y)
+                             cuDoubleComplex *y,
+                             const cudaStream_t& stream)
 {
+    // Run cuSparse on selected stream
+    cusparseSetStream(handle, stream);
+
     #ifndef DISABLE_MIXED_PRECISION
         const cuDoubleComplex *d_bsrVal = reinterpret_cast<cuDoubleComplex *>(const_cast<cuComplex *>(bsrVal));
         cusparseCheckError(cusparseZbsrxmv(handle, dir, trans, mb, mb, nb, nnzb, alpha, descr, d_bsrVal, bsrMaskPtr, bsrRowPtr, bsrRowPtr + 1, bsrColInd, blockDim, x, beta, y));
     #else
         FatalError("Mixed precision modes not currently supported for CUDA 10.1 or later.", AMGX_ERR_NOT_IMPLEMENTED);
     #endif
+
+    // Reset cuSparse to default stream
+    cusparseSetStream(handle, 0);
 }
 
 
@@ -1651,6 +1720,64 @@ void Cusparse::csrmm(typename TConfig::VecPrec alpha,
     Res.dirtybit = 1;
 }
 
+template <class T>
+void transpose_internal(cusparseHandle_t handle, int nRows, int nCols, int nNz, const T* Avals, const int* Arows, const int* Acols, T* Bvals, int* Brows, int* Bcols, cudaDataType valType)
+{
+    size_t bufferSize;
+    cusparseCheckError(cusparseCsr2cscEx2_bufferSize(
+        handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, valType,
+        CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO, CUSPARSE_CSR2CSC_ALG2, &bufferSize));
+
+    void *buffer = nullptr;
+    if (bufferSize > 0)
+    {
+        amgx::memory::cudaMalloc(&buffer, bufferSize);
+    }
+
+    cusparseCheckError(cusparseCsr2cscEx2(
+        handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, valType,
+        CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO, CUSPARSE_CSR2CSC_ALG2, buffer));
+
+    if(bufferSize > 0)
+    {
+        amgx::memory::cudaFreeAsync(buffer);
+    }
+}
+
+void transpose_internal(cusparseHandle_t handle, int nRows, int nCols, int nNz, const float* Avals, const int* Arows, const int* Acols, float* Bvals, int* Brows, int* Bcols)
+{
+    transpose_internal(handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, CUDA_R_32F);
+}
+void transpose_internal(cusparseHandle_t handle, int nRows, int nCols, int nNz, const double* Avals, const int* Arows, const int* Acols, double* Bvals, int* Brows, int* Bcols)
+{
+    transpose_internal(handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, CUDA_R_64F);
+}
+void transpose_internal(cusparseHandle_t handle, int nRows, int nCols, int nNz, const cuComplex* Avals, const int* Arows, const int* Acols, cuComplex* Bvals, int* Brows, int* Bcols)
+{
+    transpose_internal(handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, CUDA_C_32F);
+}
+void transpose_internal(cusparseHandle_t handle, int nRows, int nCols, int nNz, const cuDoubleComplex* Avals, const int* Arows, const int* Acols, cuDoubleComplex* Bvals, int* Brows, int* Bcols)
+{
+    transpose_internal(handle, nRows, nCols, nNz, Avals, Arows, Acols, Bvals, Brows, Bcols, CUDA_C_64F);
+}
+
+template <class TConfig>
+void Cusparse::transpose(const Matrix<TConfig>& A, Matrix<TConfig>& B, const int nRows, const int nNz)
+{
+    cusparseHandle_t handle = Cusparse::get_instance().m_handle;
+    transpose_internal(handle, nRows, A.get_num_cols(), nNz,
+        A.values.raw(), A.row_offsets.raw(), A.col_indices.raw(),
+        B.values.raw(), B.row_offsets.raw(), B.col_indices.raw());
+}
+
+template <class TConfig>
+void Cusparse::transpose(const Matrix<TConfig>& A, Matrix<TConfig>& B)
+{
+    cusparseHandle_t handle = Cusparse::get_instance().m_handle;
+    transpose_internal(handle, A.get_num_rows(), A.get_num_cols(), A.get_num_nz(),
+        A.values.raw(), A.row_offsets.raw(), A.col_indices.raw(),
+        B.values.raw(), B.row_offsets.raw(), B.col_indices.raw());
+}
 
 //#define AMGX_CASE_LINE(CASE) template class Cusparse<TemplateMode<CASE>::Type>;
 //    AMGX_FORALL_BUILDS(AMGX_CASE_LINE)
@@ -1701,6 +1828,13 @@ AMGX_FORCOMPLEX_BUILDS(AMGX_CASE_LINE)
 
 #define AMGX_CASE_LINE(CASE) \
   template void Cusparse::csrmm(typename TemplateMode<CASE>::Type::VecPrec, Matrix<TemplateMode<CASE>::Type>&, Vector<TemplateMode<CASE>::Type>&, typename TemplateMode<CASE>::Type::VecPrec, Vector<TemplateMode<CASE>::Type>&);
+AMGX_FORALL_BUILDS(AMGX_CASE_LINE)
+AMGX_FORCOMPLEX_BUILDS(AMGX_CASE_LINE)
+#undef AMGX_CASE_LINE
+
+#define AMGX_CASE_LINE(CASE) \
+  template void Cusparse::transpose(const Matrix<TemplateMode<CASE>::Type>& A, Matrix<TemplateMode<CASE>::Type>& B); \
+  template void Cusparse::transpose(const Matrix<TemplateMode<CASE>::Type>& A, Matrix<TemplateMode<CASE>::Type>& B, const int nRows, const int nNz);
 AMGX_FORALL_BUILDS(AMGX_CASE_LINE)
 AMGX_FORCOMPLEX_BUILDS(AMGX_CASE_LINE)
 #undef AMGX_CASE_LINE

@@ -7,6 +7,7 @@
 #include "nekInterfaceAdapter.hpp"
 #include "parReader.hpp"
 #include "constantFlowRate.hpp"
+#include "postProcessing.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);
@@ -38,7 +39,7 @@ struct UDF
   udfsEqnSource sEqnSource;
   udfproperties properties;
   udfdiv div;
-  udfconv converged;
+  udfconv timeStepConverged;
 };
 
 extern UDF udf;
@@ -49,6 +50,6 @@ void oudfInit(setupAide &options);
 void udfBuild(const char* udfFile, setupAide& options);
 void udfLoad(void);
 void* udfLoadFunction(const char* fname, int errchk);
-occa::kernel udfBuildKernel(occa::properties kernelInfo, const char* function);
+occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function);
 
 #endif

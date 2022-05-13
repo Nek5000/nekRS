@@ -24,7 +24,7 @@
 
  */
 
-@kernel void velocityRhsTOMBOHex3D(const dlong N,
+@kernel void velocityRhsHex3D(const dlong N,
                                       const dlong fieldOffset,
                                       @restrict const dfloat*  BF,
                                       @restrict const dfloat*  GP,

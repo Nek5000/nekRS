@@ -1,3 +1,46 @@
+# Release v22.0
+
+## What is new? 
+
+* Multi-session (uncoupled) support
+* Support unaligned symmetry boundary condition
+* Support (unaligned) traction boundary condition
+* Better performance on AMD MI-GPUs
+* FLOP counters
+* Various bug fixes 
+
+## Good to know
+
+* OpenCL support is now disabled by default 
+
+## Breaking Changes
+
+* [udf] Rename `udfBuildKernel` => `oudfBuildKernel`
+* [par] Separate details of coarse grid discretization from coarse grid solver
+        e.g., `coarseSolver = SEMFEM+AmgX` is replaced by
+        `coarseSolver = AmgX` and `coarseGridDiscretization = SEMFEM`
+* [par] Remove `preconditioner=semg` and `preconditioner=semg_amg`
+* [udf] Rename plug-in name `avg`  => `tavg`
+* [udf] Rename `udf.converged` => `udf.timeStepConverged`
+* [nrsconfig] Rename env-var `AMGX_ENABLE` => `ENABLE_AMGX`
+
+## Known Bugs / Restrictions
+
+* Mesh solver does not support CHT and unaligned sym/shl BCs
+* [729](https://github.com/Nek5000/Nek5000/issues/759)
+* [300](https://github.com/Nek5000/nekRS/issues/300)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
+
+## Thanks to our Contributors
+
+@tcew, @kris-rowe, @aprilnovak
+
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.
+
+A special shout out to Tim Warburton at VT for tuning some critical kernels. 
+
+
 # Release v21.1
 
 ## What is new? 

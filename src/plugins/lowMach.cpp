@@ -23,19 +23,38 @@ static occa::kernel surfaceFluxKernel;
 
 void lowMach::buildKernel(occa::properties kernelInfo)
 {
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
-
-  kernelInfo += populateMeshProperties(N);
-
-  std::string fileName;
+  std::string path;
   int rank = platform->comm.mpiRank;
-  fileName.assign(getenv("NEKRS_INSTALL_DIR"));
-  fileName += "/okl/plugins/lowMach.okl";
+  path.assign(getenv("NEKRS_INSTALL_DIR"));
+  path += "/okl/plugins/";
+  std::string kernelName, fileName;
+  const std::string extension = ".okl";
   {
-    qtlKernel        = platform->device.buildKernel(fileName, "qtlHex3D"  , kernelInfo);
-    p0thHelperKernel = platform->device.buildKernel(fileName, "p0thHelper", kernelInfo);
-    surfaceFluxKernel = platform->device.buildKernel(fileName, "surfaceFlux", kernelInfo);
+    kernelName = "qtlHex3D";
+    fileName = path + kernelName + extension;
+    qtlKernel         = platform->device.buildKernel(fileName, kernelInfo, true);
+
+    kernelName = "p0thHelper";
+    fileName = path + kernelName + extension;
+    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
+
+    {
+      int N;
+      platform->options.getArgs("POLYNOMIAL DEGREE", N);
+      const int Nq = N + 1;
+      if (BLOCKSIZE < Nq * Nq) {
+        if (platform->comm.mpiRank == 0)
+          printf("ERROR: surfaceFlux kernel requires BLOCKSIZE >= Nq * Nq."
+                 "BLOCKSIZE = %d, Nq*Nq = %d\n",
+                 BLOCKSIZE,
+                 Nq * Nq);
+        ABORT(EXIT_FAILURE);
+      }
+    }
+
+    kernelName = "surfaceFlux";
+    fileName = path + kernelName + extension;
+    surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
 }
 
@@ -71,6 +90,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     cds->o_S,
     platform->o_mempool.slice0);
 
+  double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
+  flopsGrad *= static_cast<double>(mesh->Nelements);
+
   oogs::startFinish(platform->o_mempool.slice0, nrs->NVfields, nrs->fieldOffset,ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmyVector(
@@ -81,12 +103,11 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     nrs->meshV->o_invLMM,
     platform->o_mempool.slice0);
 
+  platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   if(udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, platform->o_mempool.slice3);
     platform->timer.toc("udfSEqnSource");
-  } else {
-    platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   }
 
   qtlKernel(
@@ -101,6 +122,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     platform->o_mempool.slice3,
     o_div);
 
+  double flopsQTL = 18 * mesh->Np * mesh->Nq + 23 * mesh->Np;
+  flopsQTL *= static_cast<double>(mesh->Nelements);
+
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
   platform->linAlg->axmy(
@@ -108,7 +132,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
     1.0,
     nrs->meshV->o_invLMM,
     o_div);
-  
+
+  double surfaceFlops = 0.0;
+
   if(nrs->pSolver->allNeumann){
     const dfloat dd = (1.0 - gamma0) / gamma0;
     const dlong Nlocal = mesh->Nlocal;
@@ -125,6 +151,10 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       nrs->o_Ue,
       platform->o_mempool.slice0
     );
+
+    double surfaceFluxFlops = 13 * mesh->Nq * mesh->Nq;
+    surfaceFluxFlops *= static_cast<double>(mesh->Nelements);
+
     platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
     dfloat termV = 0.0;
     for(int i = 0 ; i < mesh->Nelements; ++i) termV += platform->mempool.slice0[i];
@@ -138,6 +168,9 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
       platform->o_mempool.slice0,
       platform->o_mempool.slice1 
     );
+
+    double p0thHelperFlops = 4 * mesh->Nlocal;
+
     const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
     linAlg->axpby(Nlocal, -prhs, platform->o_mempool.slice1, 1.0, o_div);
 
@@ -150,8 +183,13 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 
     nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
     nrs->dp0thdt = prhs * nrs->p0th[0];
+
+    surfaceFlops += surfaceFluxFlops + p0thHelperFlops;
   }
   qThermal = 0;
+
+  double flops = surfaceFlops + flopsGrad + flopsQTL;
+  platform->flopCounter->add("lowMach::qThermalIdealGasSingleComponent", flops);
 }
 
 void lowMach::dpdt(occa::memory o_FU)

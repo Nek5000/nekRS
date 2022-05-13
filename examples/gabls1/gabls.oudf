@@ -1,8 +1,48 @@
+// Boundary conditions
+// =============================================================================
+void velocityDirichletConditions(bcData *bc)
+{ 
+  bc->u = 1.0;
+  bc->v = 0;
+  bc->w = 0;
+}
+
+void velocityNeumannConditions(bcData *bc)
+{
+  const dfloat invMagUWall = 1/bc->wrk[9*bc->fieldOffset + 1];
+  const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
+
+  const dfloat ut1x = bc->u*bc->t1x +  bc->v*bc->t1y +  bc->w*bc->t1z;
+  const dfloat ut2x = bc->u*bc->t2x +  bc->v*bc->t2y +  bc->w*bc->t2z;
+
+  bc->trn  = 0;
+  bc->tr1  = -ut1x*invMagUWall * uTau*uTau; 
+  bc->tr2  = -ut2x*invMagUWall * uTau*uTau;
+}
+
+void scalarNeumannConditions(bcData *bc)
+{
+  bc->flux = p_cond * p_TsGrad; 
+  if(bc->id == 2) {
+    const dfloat thts = bc->wrk[9*bc->fieldOffset + 0];
+    const dfloat dtempWall = fabs(bc->wrk[9*bc->fieldOffset + 2] - (thts - 1));
+    const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
+    const dfloat thetaTau = bc->wrk[9*bc->fieldOffset + 4];
+    const dfloat dtemp = bc->s - (thts - 1);
+
+    bc->flux = 0;
+    if(dtempWall > 0) bc->flux = -dtemp/dtempWall * uTau*thetaTau;
+  }
+}
+
+// Kernels
+// =============================================================================
 @kernel void coriolis(const dlong Ntotal,
                       const dlong offset,
                       @restrict const dfloat * Y, 
                       @restrict const dfloat * S, 
-                      @restrict const dfloat * U, 
+                      @restrict const dfloat * U,
+                      @restrict const dfloat * divTAU,
                       @restrict dfloat * OUT) 
 {
   for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
@@ -15,28 +55,365 @@
 
       const dfloat fac = exp(-p_YLEN*(p_YLEN-y));
 
-      OUT[n + 0*offset] =  p_fcor*w     + (1-u)*fac;
+      OUT[n + 0*offset] =  p_fcor*w     + (1-u)*fac - divTAU[n + 0*offset];
       OUT[n + 1*offset] =  p_bcor*w     + temp*p_gacc;
-      OUT[n + 2*offset] = -p_fcor*(u-1) - p_bcor*v + (0-w)*fac;
+      OUT[n + 2*offset] = -p_fcor*(u-1) - p_bcor*v + (0-w)*fac - divTAU[n + 1*offset];
     }
   }
 }
 
-// Boundary conditions
-void velocityDirichletConditions(bcData *bc)
-{                                                                        
-  bc->u = 1.0;
-  bc->v = 0;
-  bc->w = 0;
+@kernel void visMF(const dlong Ntotal,
+                   const dlong offset,
+                   const dfloat scale,
+                   @restrict const dfloat * DDYAVG, 
+                   @restrict dfloat * OUT) 
+{
+  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
+    if(n<Ntotal){
+      const dfloat dudy = DDYAVG[n + 0*offset];
+      const dfloat dwdy = DDYAVG[n + 1*offset];
+      OUT[n + 0*offset] = scale * sqrt(dudy*dudy + dwdy*dwdy);
+    }
+  }
 }
 
-void scalarDirichletConditions(bcData *bc)
+@kernel void divStress(const dlong Nelements,
+                       const dlong offset,
+                       @restrict const dfloat*  invLMM,
+                       @restrict const dfloat*  vgeo,
+                       @restrict const dfloat*  D,
+                       @restrict const dfloat*  VISMF,
+                       @restrict const dfloat*  AVG,
+                       @restrict dfloat*  TAU)
 {
-  bc->s = p_T0s;
-  bc->s += p_sCoolRate * bc->time - 1.0;
+  for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_U[3][p_Nq][p_Nq];
+    @shared dfloat s_V[3][p_Nq][p_Nq];
+    @shared dfloat s_W[3][p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @exclusive dfloat r_div[3][p_Nq];
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int id = i + j * p_Nq;
+        s_D[j][i] = D[id];
+      }
+    }
+    @barrier("local");
+
+
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        #pragma unroll p_Nq
+        for(int k = 0; k < p_Nq; ++k) {
+          r_div[0][k] = 0.;
+          r_div[1][k] = 0.;
+          r_div[2][k] = 0.;
+        }
+      }
+    }
+    @barrier("local");
+
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k) {
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat JW   = vgeo[gid + p_JWID * p_Np];
+
+          const dfloat vis = VISMF[id];
+
+          s_U[0][j][i] = JW * drdy * AVG[id + 0*offset] * vis;
+          s_V[0][j][i] = JW * dsdy * AVG[id + 0*offset] * vis;
+          s_W[0][j][i] = JW * dtdy * AVG[id + 0*offset] * vis;
+
+          s_U[1][j][i] = JW * drdy * AVG[id + 1*offset] * vis;
+          s_V[1][j][i] = JW * dsdy * AVG[id + 1*offset] * vis;
+          s_W[1][j][i] = JW * dtdy * AVG[id + 1*offset] * vis;
+
+          s_U[2][j][i] = JW * drdy * AVG[id + 2*offset] * vis;
+          s_V[2][j][i] = JW * dsdy * AVG[id + 2*offset] * vis;
+          s_W[2][j][i] = JW * dtdy * AVG[id + 2*offset] * vis;
+
+        }
+      } 
+      @barrier("local");
+
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          #pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Dr = s_D[n][i];
+            const dfloat Ds = s_D[n][j];
+            const dfloat Dt = s_D[k][n];
+
+            r_div[0][k] += Dr * s_U[0][j][n];
+            r_div[0][k] += Ds * s_V[0][n][i];
+            r_div[0][n] += Dt * s_W[0][j][i];
+
+            r_div[1][k] += Dr * s_U[1][j][n];
+            r_div[1][k] += Ds * s_V[1][n][i];
+            r_div[1][n] += Dt * s_W[1][j][i];
+
+            r_div[2][k] += Dr * s_U[2][j][n];
+            r_div[2][k] += Ds * s_V[2][n][i];
+            r_div[2][n] += Dt * s_W[2][j][i];
+          }
+        }
+      }
+      @barrier("local");
+    } //k loop
+
+    //write out
+    for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+        #pragma unroll p_Nq
+        for(int k = 0; k < p_Nq; ++k) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat invlmm = invLMM[id];
+          TAU[id + 0 * offset] = r_div[0][k] * invlmm;
+          TAU[id + 1 * offset] = r_div[1][k] * invlmm;
+          TAU[id + 2 * offset] = r_div[2][k] * invlmm;
+        }
+      }
+    }
+  }
 }
 
-void scalarNeumannConditions(bcData *bc)
+@kernel void gradY(const dlong Nelements,
+                   @restrict const dfloat*  vgeo,
+                   @restrict const dfloat*  D,
+                   const dlong offset,
+                   @restrict const dfloat*  invLMM,
+                   @restrict const dfloat*  P,
+                   @restrict dfloat*  gradP)
 {
-  bc->flux = p_cond*p_TsGrad;
+  for(dlong e = 0; e < Nelements; e++; @outer(0)) {
+    @shared dfloat s_P1[p_Nq][p_Nq];
+    @shared dfloat s_P2[p_Nq][p_Nq];
+    @shared dfloat s_P3[p_Nq][p_Nq];
+
+    @exclusive dfloat s_P1loc[p_Nq];
+    @exclusive dfloat s_P2loc[p_Nq];
+    @exclusive dfloat s_P3loc[p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    #pragma unroll p_Nq
+    for(int k = 0; k < p_Nq; ++k){
+      for(int j = 0; j < p_Nq; ++j; @inner(1)){
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          s_P1[j][i]  = P[id + 0*offset];
+          s_P2[j][i]  = P[id + 1*offset];
+          s_P3[j][i]  = P[id + 2*offset];
+
+          if (k == 0)
+            s_D[j][i] = D[j * p_Nq + i];
+          if(k == 0){
+            #pragma unroll p_Nq
+            for(int l = 0 ; l < p_Nq; ++l){
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_P1loc[l] = P[other_id + 0*offset];
+              s_P2loc[l] = P[other_id + 1*offset];
+              s_P3loc[l] = P[other_id + 2*offset];
+            }
+          }
+        }
+      }
+  
+    @barrier("local");
+      for(int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for(int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+
+          // compute 'r' and 's' derivatives of (q_m) at node n
+          dfloat dp1dr  = 0., dp1ds  = 0., dp1dt  = 0.;
+          dfloat dp2dr  = 0., dp2ds  = 0., dp2dt  = 0.;
+          dfloat dp3dr  = 0., dp3ds  = 0., dp3dt  = 0.;
+
+          #pragma unroll p_Nq
+          for(int n = 0; n < p_Nq; ++n) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+
+            dp1dr += Dr * s_P1[j][n];
+            dp1ds += Ds * s_P1[n][i];
+            dp1dt += Dt * s_P1loc[n];
+
+            dp2dr += Dr * s_P2[j][n];
+            dp2ds += Ds * s_P2[n][i];
+            dp2dt += Dt * s_P2loc[n];
+
+            dp3dr += Dr * s_P3[j][n];
+            dp3ds += Ds * s_P3[n][i];
+            dp3dt += Dt * s_P3loc[n];
+          }
+
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat w  = invLMM[id] * vgeo[gid + p_JWID * p_Np];
+          gradP[id + 0 * offset] = w * (drdy * dp1dr + dsdy * dp1ds + dtdy * dp1dt);
+          gradP[id + 1 * offset] = w * (drdy * dp2dr + dsdy * dp2ds + dtdy * dp2dt);
+          gradP[id + 2 * offset] = w * (drdy * dp3dr + dsdy * dp3ds + dtdy * dp3dt);
+        }
+      }
+      @barrier("local");
+    } // k-loop
+  }
+}
+
+@kernel void avgBIDValue(const dlong Nelements,
+    const dlong BID,
+    const dlong fieldOffset,
+    const dlong offset,
+    @restrict const dfloat *sgeo,
+    @restrict const dlong *EToB,
+    @restrict const dlong *vmapM,
+    @restrict const dfloat *field,
+    @restrict dfloat *sum) {
+
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    @shared dfloat s_sum[3][p_blockSize];
+    @shared dfloat s_area[p_blockSize];
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      @barrier("local");
+
+      for (int m = 0; m < p_blockSize; ++m; @inner(0)) {
+        s_sum[0][m] = 0.0;
+        s_sum[1][m] = 0.0;
+        s_sum[2][m] = 0.0;
+        s_area[m] = 0.0;
+        if (m < p_Nfp) {
+          if(EToB[f + p_Nfaces * e] == BID) {
+            const int n = m + f * p_Nfp;
+            const int sk = e * p_Nfp * p_Nfaces + n;
+            const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];
+            const dlong idM = vmapM[sk];
+            s_sum[0][m] = field[idM + 0*fieldOffset] * WsJ;
+            s_sum[1][m] = field[idM + 1*fieldOffset] * WsJ;
+            s_sum[2][m] = field[idM + 2*fieldOffset] * WsJ;
+            s_area[m] = WsJ;
+          }
+        }
+      }
+
+      // compute reduction
+      @barrier("local");
+
+#if p_blockSize > 512
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 512) {
+          s_sum[0][t] += s_sum[0][t + 512];
+          s_sum[1][t] += s_sum[1][t + 512];
+          s_sum[2][t] += s_sum[2][t + 512];
+          s_area[t] += s_area[t + 512];
+        }
+      }
+      @barrier("local");
+#endif
+
+#if p_blockSize > 256
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 256) {
+          s_sum[0][t] += s_sum[0][t + 256];
+          s_sum[1][t] += s_sum[1][t + 256];
+          s_sum[2][t] += s_sum[2][t + 256];
+          s_area[t] += s_area[t + 256];
+        }
+      }
+      @barrier("local");
+#endif
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 128) {
+          s_sum[0][t] += s_sum[0][t + 128];
+          s_sum[1][t] += s_sum[1][t + 128];
+          s_sum[2][t] += s_sum[2][t + 128];
+          s_area[t] += s_area[t + 128];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 64) {
+          s_sum[0][t] += s_sum[0][t + 64];
+          s_sum[1][t] += s_sum[1][t + 64];
+          s_sum[2][t] += s_sum[2][t + 64];
+          s_area[t] += s_area[t + 64];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 32) {
+          s_sum[0][t] += s_sum[0][t + 32];
+          s_sum[1][t] += s_sum[1][t + 32];
+          s_sum[2][t] += s_sum[2][t + 32];
+          s_area[t] += s_area[t + 32];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 16) {
+          s_sum[0][t] += s_sum[0][t + 16];
+          s_sum[1][t] += s_sum[1][t + 16];
+          s_sum[2][t] += s_sum[2][t + 16];
+          s_area[t] += s_area[t + 16];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 8) {
+          s_sum[0][t] += s_sum[0][t + 8];
+          s_sum[1][t] += s_sum[1][t + 8];
+          s_sum[2][t] += s_sum[2][t + 8];
+          s_area[t] += s_area[t + 8];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 4) {
+          s_sum[0][t] += s_sum[0][t + 4];
+          s_sum[1][t] += s_sum[1][t + 4];
+          s_sum[2][t] += s_sum[2][t + 4];
+          s_area[t] += s_area[t + 4];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 2) {
+          s_sum[0][t] += s_sum[0][t + 2];
+          s_sum[1][t] += s_sum[1][t + 2];
+          s_sum[2][t] += s_sum[2][t + 2];
+          s_area[t] += s_area[t + 2];
+        }
+      }
+      @barrier("local");
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 1) {
+          sum[f + p_Nfaces * e + 0*offset] = s_sum[0][0] + s_sum[0][1];
+          sum[f + p_Nfaces * e + 1*offset] = s_sum[1][0] + s_sum[1][1];
+          sum[f + p_Nfaces * e + 2*offset] = s_sum[2][0] + s_sum[2][1];
+          sum[f + p_Nfaces * e + 3*offset] = s_area[0] + s_area[1];
+        }
+      }
+    }
+  }
 }

@@ -1516,7 +1516,10 @@ void CommsMPIHostBufferStream<T_Config>::exchange_hostnames(std::string &my_host
 }
 
 template <class T_Config>
-void CommsMPIHostBufferStream<T_Config>::all_gather(IndexType_h &my_data, HIVector &gathered_data, int num_parts) { all_gather_templated(my_data, gathered_data, num_parts); }
+void CommsMPIHostBufferStream<T_Config>::all_gather(const IndexType_h &my_data, HIVector &gathered_data, int num_parts) { all_gather_templated(my_data, gathered_data, num_parts); }
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather(const int64_t &my_data, HI64Vector &gathered_data, int num_parts) { all_gather_templated(my_data, gathered_data, num_parts); }
 
 template <class T_Config>
 void CommsMPIHostBufferStream<T_Config>::all_gather_v(HIVector &my_data, HIVector &gathered_data, int num_parts) { all_gather_v_templated(my_data[0], my_data.size(), gathered_data, num_parts); }
@@ -1534,7 +1537,7 @@ void CommsMPIHostBufferStream<T_Config>::all_reduce_max(IndexType_h &my_data, In
 
 template <class T_Config>
 template <class T, class T2>
-void CommsMPIHostBufferStream<T_Config>::all_gather_templated(T &my_data, T2 &gathered_data, int num_parts)
+void CommsMPIHostBufferStream<T_Config>::all_gather_templated(const T &my_data, T2 &gathered_data, int num_parts)
 {
 #ifdef AMGX_WITH_MPI
     gathered_data.resize(num_parts);
@@ -1559,6 +1562,57 @@ void CommsMPIHostBufferStream<T_Config>::all_gather_v_templated(T &my_data, int 
     FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
 #endif
 }
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather_v(HDVector& data, int num_elems, HDVector& gathered_data, HIVector counts, HIVector displs)
+{
+#ifdef AMGX_WITH_MPI
+    MPI_Allgatherv(data.raw(), num_elems, MPI_DOUBLE, gathered_data.raw(), counts.raw(), displs.raw(), MPI_DOUBLE, mpi_comm);
+#else
+    FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
+#endif
+}
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather_v(HFVector& data, int num_elems, HFVector& gathered_data, HIVector counts, HIVector displs)
+{
+#ifdef AMGX_WITH_MPI
+    MPI_Allgatherv(data.raw(), num_elems, MPI_FLOAT, gathered_data.raw(), counts.raw(), displs.raw(), MPI_FLOAT, mpi_comm);
+#else
+    FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
+#endif
+}
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather_v(HCVector& data, int num_elems, HCVector& gathered_data, HIVector counts, HIVector displs)
+{
+#ifdef AMGX_WITH_MPI
+    FatalError("AllgatherV with complex data.", AMGX_ERR_NOT_IMPLEMENTED);
+#else
+    FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
+#endif
+}
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather_v(HZVector& data, int num_elems, HZVector& gathered_data, HIVector counts, HIVector displs)
+{
+#ifdef AMGX_WITH_MPI
+    FatalError("AllgatherV with complex data.", AMGX_ERR_NOT_IMPLEMENTED);
+#else
+    FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
+#endif
+}
+
+template <class T_Config>
+void CommsMPIHostBufferStream<T_Config>::all_gather_v(HIVector& data, int num_elems, HIVector& gathered_data, HIVector counts, HIVector displs)
+{
+#ifdef AMGX_WITH_MPI
+    MPI_Allgatherv(data.raw(), num_elems, MPI_INT, gathered_data.raw(), counts.raw(), displs.raw(), MPI_INT, mpi_comm);
+#else
+    FatalError("MPI Comms module requires compiling with MPI", AMGX_ERR_NOT_IMPLEMENTED);
+#endif
+}
+
 
 /****************************************
  * Explict instantiations

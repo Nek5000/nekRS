@@ -13,14 +13,15 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKUSE'
+      include 'CASEDATA'
 
       common /exavel/ uxex (lx1,ly1,lz1,lelv),uyex (lx1,ly1,lz1,lelv)
      $               ,uzex (lx1,ly1,lz1,lelv)
 
       ie = gllel(ieg)
 
-      ux = uxex(ix,iy,iz,ie)
-      uy = uyex(ix,iy,iz,ie)
+      ux = uxex(ix,iy,iz,ie)*cos(P_ROT) - uyex(ix,iy,iz,ie)*sin(P_ROT)
+      uy = uxex(ix,iy,iz,ie)*sin(P_ROT) + uyex(ix,iy,iz,ie)*cos(P_ROT)
       uz = uzex(ix,iy,iz,ie)
 
       return
@@ -29,6 +30,7 @@ c-----------------------------------------------------------------------
       subroutine userchk
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       common /cforce/ forcx(lx1,ly1,lz1,lelv),forcy(lx1,ly1,lz1,lelv)
      $               ,forcz(lx1,ly1,lz1,lelv)
@@ -59,24 +61,28 @@ c-----------------------------------------------------------------------
       nrs_scptr(5) = loc(err(1))
 
       do i=1,n
-        diffx(i,1,1,1) = abs(vx(i,1,1,1)-uxex(i,1,1,1))
-        if (uxex(i,1,1,1).gt.1e-14) diffx(i,1,1,1) = 
+        vxr = vx(i,1,1,1) * cos(P_ROT) + vy(i,1,1,1) * sin(P_ROT)
+        vyr =-vx(i,1,1,1) * sin(P_ROT) + vy(i,1,1,1) * cos(P_ROT)
+        diffx(i,1,1,1) = abs(vxr        -uxex(i,1,1,1))
+        if (uxex(i,1,1,1).gt.1e-14) diffx(i,1,1,1) =
      $    diffx(i,1,1,1)/uxex(i,1,1,1)
-        diffy(i,1,1,1) = abs(vy(i,1,1,1)-uyex(i,1,1,1))
-        if (uyex(i,1,1,1).gt.1e-14) diffy(i,1,1,1) = 
+        diffy(i,1,1,1) = abs(vyr        -uyex(i,1,1,1))
+        if (uyex(i,1,1,1).gt.1e-14) diffy(i,1,1,1) =
      $    diffy(i,1,1,1)/uyex(i,1,1,1)
       enddo
 
       err(1) = glmax(diffx,n)
       err(2) = glmax(diffy,n)
 
-      if (nio.eq.0) 
-     $   write(6,'(1p2e13.4,A)') err(1),err(2),' Linf VX VY'
+      if (nio.eq.0)
+     $   write(6,'(i6, 1p2e13.4,A)') istep, err(1),err(2),' Linf VX VY'
 
-c      if(ifoutfld) then
-c         call outpost2(diffx,diffy,diffz,mul,t,0,'dif')
-c         call outpost2(mul_dx,mul_dy,mul_dz,mul,t,0,'mul')
-c      endif
+      !if(ifoutfld) then
+      !   call outpost2(diffx,diffy,diffz,mul,t,0,'dif')
+      !   call outpost2(mul_dx,mul_dy,mul_dz,mul,t,0,'mul')
+      !   call outpost2(forcx,forcy,forcz,mul,t,0,'for')
+      !   call outpost2(uxex,uyex,uzex,mul,t,0,'exa')
+      !endif
 
       return
       end
@@ -84,6 +90,15 @@ c-----------------------------------------------------------------------
       subroutine usrdat   ! This routine to modify element vertices
       include 'SIZE'      ! _before_ mesh is generated, which 
       include 'TOTAL'     ! guarantees GLL mapping of mesh.
+      integer e
+
+      do e=1,nelv    !  Rescale mesh to [0,2]^2 x [0,0.1]
+      do i=1,2**ndim !  Assumes original domain in .re2 file on [0,1]^3
+         xc(i,e) = 2.0*xc(i,e)
+         yc(i,e) = 2.0*yc(i,e)
+         zc(i,e) = 0.1*zc(i,e)
+      enddo
+      enddo
 
       return
       end
@@ -92,16 +107,37 @@ c-----------------------------------------------------------------------
 
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
-      call rescale_x(xm1,0.0,2.0)
-      call rescale_x(ym1,0.0,2.0)
-      call rescale_x(zm1,0.0,0.1)
+      common /scnrs/ sc_nrs(10)
+      real               sc_nrs
+
+      P_ROT = sc_nrs(1)
 
       do iel=1,nelt
       do ifc=5,6
          cbc(ifc,iel,1) = 'P  '
       enddo
+      do ifc=1,2*ndim
+         if(cbc(ifc,iel,1) .eq. 'SYM' ) then
+           boundaryID(ifc, iel) = 1
+         endif
       enddo
+      enddo
+
+      call get_mol_visc
+      call get_forcing
+      call get_analsol
+
+      ntot = nx1*ny1*nz1*nelt
+      do i=1,ntot
+        xpt = xm1(i,1,1,1)
+        ypt = ym1(i,1,1,1)
+
+        xm1(i,1,1,1) = xpt * cos(P_ROT) - ypt * sin(P_ROT)
+        ym1(i,1,1,1) = xpt * sin(P_ROT) + ypt * cos(P_ROT)
+      enddo
+
 
       return
       end
@@ -125,10 +161,6 @@ c-----------------------------------------------------------------------
       subroutine usrdat3
       include 'SIZE'
       include 'TOTAL'
-
-      call get_mol_visc
-      call get_forcing
-      call get_analsol
 
       return
       end
@@ -198,12 +230,15 @@ c-----------------------------------------------------------------------
 
       include 'SIZE'
       include 'TOTAL'
+      include 'CASEDATA'
 
       common /cforce/ forcx(lx1,ly1,lz1,lelv),forcy(lx1,ly1,lz1,lelv)
      $               ,forcz(lx1,ly1,lz1,lelv)
       common /viscmol/mul   (lx1,ly1,lz1,lelv), mul_dx(lx1,ly1,lz1,lelv)
      $               ,mul_dy(lx1,ly1,lz1,lelv), mul_dz(lx1,ly1,lz1,lelv)
       real mul, mul_dx, mul_dy, mul_dz
+
+      real Fx, Fy
 
       n=nx1*ny1*nz1*nelv
 
@@ -230,8 +265,10 @@ c-----------------------------------------------------------------------
         yterm = (5.*pi**2*U0/2.) * sin(pi*x+phx) * cos(2.*pi*y+phy)
         zterm =  0.
 
-        forcx(i,1,1,1) = -xterm * valmu - (- Uvec*dmudx + Vvec * dmudy)
-        forcy(i,1,1,1) = -yterm * valmu - (+ Vvec*dmudx + Uvec * dmudy)
+        Fx = -xterm * valmu - (- Uvec*dmudx + Vvec * dmudy)
+        Fy = -yterm * valmu - (+ Vvec*dmudx + Uvec * dmudy)
+        forcx(i,1,1,1) = Fx * cos(P_ROT) - Fy * sin(P_ROT)
+        forcy(i,1,1,1) = Fx * sin(P_ROT) + Fy * cos(P_ROT)
         forcz(i,1,1,1) = -zterm * valmu
       enddo
 

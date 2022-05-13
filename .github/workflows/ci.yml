@@ -4,12 +4,9 @@ on:
   # allows us to run workflows manually
   workflow_dispatch:
 
-  pull_request:
-    branches:
-      - next
   push:
     branches:
-      - next
+      - master 
 
 env:
   GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -20,6 +17,7 @@ env:
   OCCA_CUDA_ENABLED: "0"
   OCCA_HIP_ENABLED: "0"
   OCCA_OPENCL_ENABLED: "0"
+  NEKRS_COMPILER_FLAGS: "-O2"
   NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
   NEKRS_CI: "1"
 
@@ -81,35 +79,55 @@ jobs:
     - name: 'ethier default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 1
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 1
 
     - name: 'ethier subcycle'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 2
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 2
 
     - name: 'ethier velocity and pressure projection'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 3
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 3
 
     - name: 'ethier (block) velocity and pressure projection with subcycling'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 4
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 4
 
     - name: 'ethier default + moving mesh'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 5
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 --cimode 5
 
     - name: 'ethier subcycle + moving mesh + subcycling'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 6
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 --cimode 6
 
     - name: 'ethier gmres bug'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 7
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 7
 
     - name: 'ethier variable dt'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 8
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 8
+
+    - name: 'ethier no dealiasing and subcycling'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 9
+
+    - name: 'ethier no dealiasing'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 10
+
+    - name: 'ethier Chebyshev+Jacobi'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 11
+
+    - name: 'ethier skip solving temperature'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 12
+
+    - name: 'ethier solve single scalar only'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethierScalar 2 --cimode 13
 
   lowMach:
     needs: install
@@ -136,7 +154,7 @@ jobs:
 
     - name: 'lowMach default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 1
 
 
   mv_cyl:
@@ -164,11 +182,53 @@ jobs:
 
     - name: 'mv_cyl'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 1
 
     - name: 'mv_cyl + subcycling'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 2
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 2
+
+    - name: 'mv_cyl + subcycling + elasticity solve'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 3
+
+    - name: 'mv_cyl + subcycling + elasticity solve (projection)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 4
+
+    - name: 'mv_cyl + unaligned SYM'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 5
+
+    # TODO: resolve error in unaligned SYM + mesh solver
+    #- name: 'mv_cyl + unaligned SYM + mesh solver'
+    #  working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+    #  run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 6
+
+    - name: 'mv_cyl, derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 1
+
+    - name: 'mv_cyl + subcycling, derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 2
+
+    - name: 'mv_cyl + subcycling + elasticity solve, derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 3
+
+    - name: 'mv_cyl + subcycling + elasticity solve (projection), derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 4
+
+    - name: 'mv_cyl + unaligned SYM, derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 5
+
+    # TODO: resolve error in unaligned SYM + mesh solver
+    #- name: 'mv_cyl + unaligned SYM + mesh solver, derived bc'
+    #  working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+    #  run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 6
 
 
   conj_ht:
@@ -196,7 +256,7 @@ jobs:
 
     - name: 'conj_ht'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 1
 
 
   channelStress:
@@ -222,10 +282,44 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
 
-    - name: 'channelStress'
+    - name: 'channelStress (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1
 
+    - name: 'channelStress (45 degree rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 2
+
+  tractionBoundary:
+    needs: install
+    runs-on: ubuntu-18.04
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        clean: true
+
+    - name: APT dependencies
+      run: |
+        sudo apt -y update
+        sudo apt install -y mpich libmpich-dev
+
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+
+    - name: 'traction channel (no rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1
+
+    - name: 'traction channel (45 degree rotation)'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 2
 
   kershaw:
     runs-on: ubuntu-18.04

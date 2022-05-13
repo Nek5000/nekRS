@@ -9,8 +9,6 @@ set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 #set(CMAKE_VERBOSE_MAKEFILE on)
 
-set(CMAKE_CXX_STANDARD 14)
-
 set(NEKRS_INSTALL_DIR $ENV{NEKRS_INSTALL_DIR})
 set(OGSDIR      ${NEKRS_INSTALL_DIR}/gatherScatter)
 set(GSDIR       ${NEKRS_INSTALL_DIR}/gslib)
@@ -23,15 +21,16 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/mesh
   ${NEKRS_INSTALL_DIR}/include/io
   ${NEKRS_INSTALL_DIR}/include/core
-  ${NEKRS_INSTALL_DIR}/include/core/utils
+  ${NEKRS_INSTALL_DIR}/include/utils
   ${NEKRS_INSTALL_DIR}/include/timeStepper
   ${NEKRS_INSTALL_DIR}/include/udf
-  ${NEKRS_INSTALL_DIR}/include/lns
+  ${NEKRS_INSTALL_DIR}/include/navierStokes
   ${NEKRS_INSTALL_DIR}/include/elliptic
   ${NEKRS_INSTALL_DIR}/include/elliptic/parAlmond
   ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg
+  ${NEKRS_INSTALL_DIR}/include/postProcessing
   ${NEKRS_INSTALL_DIR}/occa/include
 )
 

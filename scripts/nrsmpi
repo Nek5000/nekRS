@@ -2,18 +2,9 @@
 
 ulimit -s unlimited 2>/dev/null
 export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
-: ${NEKRS_CI:=0}
 
-if [ $NEKRS_CI -eq 1 ]; then
-  if [ $# -eq 0 ] || [ $# -ne 3 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
-    echo "usage: ${0##*/} <casename> <#tasks> <ciMode>"
-    exit 1
-  fi
-  mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 --cimode $3
-else
-  if [ $# -eq 0 ] || [ $# -ne 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
-    echo "usage: ${0##*/} <casename> <#tasks>"
-    exit 1
-  fi
-  mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1
+if [ $# -eq 0 ] || [ $# -lt 2 ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+  echo "usage: ${0##*/} casename #tasks [args]"
+  exit 1
 fi
+mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 ${@:3} 

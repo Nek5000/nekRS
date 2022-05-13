@@ -25,6 +25,8 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-10"));
   options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("MESH SOLVER", "USER");
+
+  platform->par->set("casedata", "p_rot", 0.0);
   
   if(ciMode == 2){
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
@@ -39,6 +41,14 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("MESH SOLVER", "ELASTICITY");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
+  }
+  if(ciMode == 5){
+    platform->par->set("casedata", "p_rot", 0.5);
+  }
+  if(ciMode == 6){
+    options.setArgs("MESH SOLVER", "ELASTICITY");
+    options.setArgs("MESH SOLVER TOLERANCE", "1e-12");
+    platform->par->set("casedata", "p_rot", 0.5);
   }
 }
 
@@ -60,18 +70,18 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   {
     expectedErr[0] = 0.2465620E-06;
     expectedErr[1] = 0.6938894E-16;
-    expectedErr[2] = 0.3044039E-05;
-    expectedErr[3] = 0.2144404E-05;
+    expectedErr[2] = 0.48E-05;
+    expectedErr[3] = 0.295E-05;
     expectedErr[4] = 0.2465620E-05;
-    expectedErr[5] = 0.1080412E-05;
+    expectedErr[5] = 0.125E-05;
     expectedPIter = 6;
   }
   if(ciMode == 2)
   {
     expectedErr[0] = 0.2465620E-06;
     expectedErr[1] = 0.6938894E-16;
-    expectedErr[2] = 0.3044039E-05;
-    expectedErr[3] = 0.2144404E-05;
+    expectedErr[2] = 0.48E-05;
+    expectedErr[3] = 0.295E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
     expectedPIter = 7;
@@ -80,8 +90,8 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   {
     expectedErr[0] = 0.2465620E-06;
     expectedErr[1] = 0.6938894E-16;
-    expectedErr[2] = 0.3044039E-05;
-    expectedErr[3] = 0.1966487E-05;
+    expectedErr[2] = 0.48E-05;
+    expectedErr[3] = 0.295E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
   }
@@ -89,13 +99,33 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   {
     expectedErr[0] = 0.2465620E-06;
     expectedErr[1] = 0.6938894E-16;
-    expectedErr[2] = 0.3044039E-05;
-    expectedErr[3] = 0.1966487E-05;
+    expectedErr[2] = 0.48E-05;
+    expectedErr[3] = 0.295E-05;
     expectedErr[4] = 0.2465620E-05;
     expectedErr[5] = 0.2443839E-05;
   }
+  if(ciMode == 5)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.48E-05;
+    expectedErr[3] = 0.295E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.125E-05;
+    expectedPIter = 6;
+  }
+  if(ciMode == 6)
+  {
+    expectedErr[0] = 0.2465620E-06;
+    expectedErr[1] = 0.6938894E-16;
+    expectedErr[2] = 0.3E-05;
+    expectedErr[3] = 0.21E-05;
+    expectedErr[4] = 0.2465620E-05;
+    expectedErr[5] = 0.108E-05;
+    expectedPIter = 6;
+  }
 
-  const dfloat floor = 1e-12; // values below this threshold are ignored
+  const dfloat absTol = 1e-8; // values below this threshold are ignored
   const int expectedVIter = 11;
 
   double vxErr, prErr;
@@ -108,10 +138,10 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if(rank == 0) printf("relative error to target: ");
   for(int i = 0 ; i < Nfields; ++i){
-    if(abs(err[i]) > floor){
+    if(abs(err[i]) > absTol){
       const dfloat relErr = abs(err[i]-expectedErr[i])/expectedErr[i];
       if(rank == 0) printf("err[%d]=%g ", i, relErr);
-      if(relErr > EPS) passed = false;
+      if(relErr > EPS && abs(expectedErr[i]) < abs(err[i])) passed = false;
     }
   }
   velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
@@ -125,11 +155,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     const int expectedMeshIter =  265;
     const int meshIterErr = abs(nrs->meshSolver->Niter - expectedMeshIter);
     if(meshIterErr >= 3) passed = false;
-  }
-  if(ciMode == 4)
-  {
-    const int meshIterThreshold =  200;
-    if(nrs->meshSolver->Niter >= meshIterThreshold) passed = false;
   }
 
   passed ? (PASS) : (FAIL);

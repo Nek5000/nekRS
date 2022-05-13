@@ -66,14 +66,14 @@ void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
   free(Ix2);
 }
 
-void meshGeometricFactorsHex3D(mesh3D* mesh)
+void meshGeometricFactorsHex3D(mesh_t *mesh)
 {
   double tStart = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("computing geometric factors ... "); fflush(stdout);
 
   /* note that we have volume geometric factors for each node */
   mesh->vgeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
-  mesh->cubvgeo = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
+  mesh->cubvgeo = (dfloat *)calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
 
   dfloat minJ = 1e9, maxJ = -1e9, maxSkew = 0;
@@ -210,7 +210,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->ggeo[mesh->Nggeo * mesh->Np * e + n + mesh->Np * GWJID] = JW;
         }
 
-#if 0
+#if 1
     interpolateHex3D(mesh->cubInterp, xre, mesh->Nq, cubxre, mesh->cubNq);
     interpolateHex3D(mesh->cubInterp, xse, mesh->Nq, cubxse, mesh->cubNq);
     interpolateHex3D(mesh->cubInterp, xte, mesh->Nq, cubxte, mesh->cubNq);
@@ -241,8 +241,6 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           /* compute geometric factors for affine coordinate transform*/
           dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
 
-          //if(J<1e-12) printf("CUBATURE J = %g !!!!!!!!!!!!!\n", J);
-
           dfloat rx =  (ys * zt - zs * yt) / J, ry = -(xs * zt - zs * xt) / J,
                  rz =  (xs * yt - ys * xt) / J;
           dfloat sx = -(yr * zt - zr * yt) / J, sy =  (xr * zt - zr * xt) / J,
@@ -266,7 +264,7 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
           mesh->cubvgeo[base + mesh->cubNp * TYID] = ty;
           mesh->cubvgeo[base + mesh->cubNp * TZID] = tz;
 
-          mesh->cubvgeo[base + mesh->cubNp * JID]  = J;
+          mesh->cubvgeo[base + mesh->cubNp * JID] = J;
           mesh->cubvgeo[base + mesh->cubNp * JWID] = JW;
           mesh->cubvgeo[base + mesh->cubNp * IJWID] = 1. / JW;
         }
@@ -274,11 +272,11 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
   }
 
   {
-    dfloat globalMinJ, globalMaxJ, globalMaxSkew;
+    dfloat globalMinJ = 0, globalMaxJ = 0, globalMaxSkew = 0;
 
-    MPI_Reduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, 0, platform->comm.mpiComm);
-    MPI_Reduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
-    MPI_Reduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, 0, platform->comm.mpiComm);
+    MPI_Allreduce(&minJ, &globalMinJ, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+    MPI_Allreduce(&maxJ, &globalMaxJ, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+    MPI_Allreduce(&maxSkew, &globalMaxSkew, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
 
     if(platform->comm.mpiRank == 0)
       printf("J [%g,%g] ", globalMinJ, globalMaxJ);
@@ -286,9 +284,10 @@ void meshGeometricFactorsHex3D(mesh3D* mesh)
 
     if(globalMinJ < 0 || globalMaxJ < 0) {
       if(platform->options.compareArgs("GALERKIN COARSE OPERATOR","FALSE") ||
-	(platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) { 
-        if(platform->comm.mpiRank == 0) printf("Jacobian < 0!");
-        ABORT(EXIT_FAILURE);
+	    (platform->options.compareArgs("GALERKIN COARSE OPERATOR","TRUE") && mesh->N > 1)) {
+        if (platform->comm.mpiRank == 0)
+          printf("Jacobian < 0!");
+        EXIT_AND_FINALIZE(EXIT_FAILURE);
       }
     }  
 

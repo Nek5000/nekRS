@@ -14,7 +14,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
-  fillFUKernel = udfBuildKernel(kernelInfo, "fillFU");
+  fillFUKernel = oudfBuildKernel(kernelInfo, "fillFU");
 }
 
 void UDF_Setup(nrs_t *nrs)

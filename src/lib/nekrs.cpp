@@ -3,6 +3,7 @@
 #include "meshSetup.hpp"
 #include "setup.hpp"
 #include "nekInterfaceAdapter.hpp"
+#include "printHeader.hpp"
 #include "udf.hpp"
 #include "parReader.hpp"
 #include "configReader.hpp"
@@ -17,27 +18,21 @@
 platform_t* platform;
 
 static int rank, size;
-static MPI_Comm comm;
+static MPI_Comm commg, comm;
 static nrs_t* nrs;
 static setupAide options;
 static dfloat lastOutputTime = 0;
+static int firstOutfld = 1;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
 static void setOccaVars();
 
-void printHeader()
-{
-  std::cout << R"(                 __    ____  _____)" << std::endl
-            << R"(   ____   ___   / /__ / __ \/ ___/)" << std::endl
-            << R"(  / __ \ / _ \ / //_// /_/ /\__ \ )" << std::endl
-            << R"( / / / //  __// ,<  / _, _/___/ / )" << std::endl
-            << R"(/_/ /_/ \___//_/|_|/_/ |_|/____/  )"
-            << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION 
-            << " (" << GITCOMMITHASH << ")" << std::endl
-            << std::endl
-            << "COPYRIGHT (c) 2019-2021 UCHICAGO ARGONNE, LLC" << std::endl
-            << std::endl;
+bool useNodeLocalCache(){
+  int buildNodeLocal = 0;
+  if (getenv("NEKRS_CACHE_LOCAL"))
+    buildNodeLocal = std::stoi(getenv("NEKRS_CACHE_LOCAL"));
+  return (buildNodeLocal > 0);
 }
 
 namespace nekrs
@@ -49,10 +44,13 @@ double startTime(void)
   return val;
 }
 
-void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
-           int ciMode, std::string cacheDir, std::string _setupFile,
-           std::string _backend, std::string _deviceID)
+void setup(MPI_Comm commg_in, MPI_Comm comm_in, 
+    	   int buildOnly, int commSizeTarget,
+           int ciMode, std::string _setupFile,
+           std::string _backend, std::string _deviceID,
+           int debug)
 {
+  MPI_Comm_dup(commg_in, &commg);
   MPI_Comm_dup(comm_in, &comm);
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
@@ -76,12 +74,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   {
     char buf[FILENAME_MAX];
     char * ret = getcwd(buf, sizeof(buf));
-    if(!ret) ABORT(EXIT_FAILURE);;
-    std::string cwd;
-    cwd.assign(buf);
- 
-    std::string dir(cacheDir);
-    if (cacheDir.empty()) dir = cwd + "/.cache";
+    std::string dir = std::string(buf) + "/.cache";
     if(getenv("NEKRS_CACHE_DIR")) dir.assign(getenv("NEKRS_CACHE_DIR"));
     setenv("NEKRS_CACHE_DIR", dir.c_str(), 1);
   }
@@ -89,10 +82,10 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   setOccaVars();
 
   if (rank == 0) {
-    std::string install_dir;
-    install_dir.assign(getenv("NEKRS_HOME"));
+    std::string installDir;
+    installDir.assign(getenv("NEKRS_HOME"));
     std::cout << std::endl;
-    std::cout << "using NEKRS_HOME: " << install_dir << std::endl;
+    std::cout << "using NEKRS_HOME: " << installDir << std::endl;
 
     std:: string cache_dir;
     cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
@@ -113,22 +106,20 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
     fflush(stdout);	
   }
 
-  if (options.getArgs("THREAD MODEL").length() == 0) 
+  if(options.getArgs("THREAD MODEL").length() == 0) 
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
   // setup device
-  platform_t* _platform = platform_t::getInstance(options, comm);
+  platform_t* _platform = platform_t::getInstance(options, commg, comm);
   platform = _platform;
   platform->par = par;
 
-  platform->timer.tic("setup", 1);
+  if(debug) platform->options.setArgs("VERBOSE","TRUE");
 
   int buildRank = rank;
-  int buildNodeLocal = 0;
-  if (getenv("NEKRS_BUILD_NODE_LOCAL"))
-    buildNodeLocal = std::stoi(getenv("NEKRS_BUILD_NODE_LOCAL"));
+  const bool buildNodeLocal = useNodeLocalCache();
   if(buildNodeLocal)
     MPI_Comm_rank(platform->comm.mpiCommLocal, &buildRank);    
 
@@ -147,13 +138,7 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
     udfBuild(udfFile.c_str(), options);
-
-    if(buildOnly) {
-      *(void**)(&udf.loadKernels) = udfLoadFunction("UDF_LoadKernels",1);
-      *(void**)(&udf.setup0) = udfLoadFunction("UDF_Setup0",0);
-    } else {
-      udfLoad();
-    }
+    udfLoad();
   }
 
   options.setArgs("CI-MODE", std::to_string(ciMode));
@@ -163,6 +148,12 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
   nek::bootstrap();
 
   if(udf.setup0) udf.setup0(comm, options);
+
+  {
+    int overlap = 1;
+    if(options.compareArgs("GS OVERLAP", "FALSE")) overlap = 0;
+    oogs::overlap(overlap);
+  }
 
   compileKernels();
 
@@ -185,32 +176,24 @@ void setup(MPI_Comm comm_in, int buildOnly, int commSizeTarget,
 
   nrs = new nrs_t();
 
-  nrsSetup(comm, options, nrs);
+  {
+    int result = 0;
+    MPI_Comm_compare(commg, comm, &result);
 
-  nrs->o_U.copyFrom(nrs->U);
-  nrs->o_P.copyFrom(nrs->P);
-  nrs->o_prop.copyFrom(nrs->prop);
-  if(nrs->Nscalar) {
-    nrs->cds->o_S.copyFrom(nrs->cds->S);
-    nrs->cds->o_prop.copyFrom(nrs->cds->prop);
+    nrs->multiSession = (result == MPI_UNEQUAL);
   }
 
-  evaluateProperties(nrs, startTime());
-  nrs->o_prop.copyTo(nrs->prop);
-  if(nrs->Nscalar) nrs->cds->o_prop.copyTo(nrs->cds->prop);
+  nrsSetup(comm, options, nrs);
 
-  nek::ocopyToNek(startTime(), 0);
-
-  platform->timer.toc("setup");
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if(rank == 0) {
     std::cout << "\nsettings:\n" << std::endl << options << std::endl;
-    std::cout << "occa memory usage: " << platform->device.memoryAllocated()/1e9 << " GB" << std::endl;
-    std::cout << "initialization took " << setupTime << " s" << std::endl;
+    std::cout << "occa memory usage: " << platform->device.occaDevice().memoryAllocated() / 1e9 << " GB"
+              << std::endl;
   }
   fflush(stdout);
 
-  platform->timer.set("setup", setupTime);
+  platform->flopCounter->clear();
 }
 
 void runStep(double time, double dt, int tstep)
@@ -256,16 +239,16 @@ double dt(int tstep)
     }
     const double dtOld = nrs->dt[0];
     timeStepper::adjustDt(nrs, tstep);
-    // limit relative change to control introduced error
-    if(tstep > 1) nrs->dt[0] = (nrs->dt[0] < 1.25*dtOld) ? nrs->dt[0] : 1.25*dtOld;
+
+    // limit dt to control introduced error
+    if(tstep > 1) nrs->dt[0] = std::min(nrs->dt[0], 1.25*dtOld);
+    double maxDt = 0;
+    platform->options.getArgs("MAX DT", maxDt);
+    if(maxDt > 0) nrs->dt[0] = std::min(nrs->dt[0], maxDt);
   }
   
-  double maxDt = std::numeric_limits<double>::max();
-  platform->options.getArgs("MAX DT", maxDt);
-  nrs->dt[0] = (nrs->dt[0] < maxDt) ? nrs->dt[0] : maxDt;
-
   if(nrs->dt[0] < 1e-10 || std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0])) {
-    if(platform->comm.mpiRank == 0) std::cout << "Invalid time step size!\n";
+    if(platform->comm.mpiRank == 0) printf("Invalid time step size %.2e\n", nrs->dt[0]);
     ABORT(EXIT_FAILURE);
   }
 
@@ -313,11 +296,15 @@ void outfld(double time, std::string suffix)
   std::string oldValue;
   platform->options.getArgs("CHECKPOINT OUTPUT MESH", oldValue);
 
-  if(lastOutputTime == 0)
+  if(firstOutfld)
+    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+
+  if(platform->options.compareArgs("MOVING MESH", "TRUE"))
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   writeFld(nrs, time, suffix);
   lastOutputTime = time;
+  firstOutfld = 0;
 
   platform->options.setArgs("CHECKPOINT OUTPUT MESH", oldValue);
 }
@@ -370,14 +357,20 @@ void* nrsPtr(void)
 
 void finalize(void)
 {
-  AMGXfree();
+  if(options.compareArgs("BUILD ONLY", "FALSE")) {
+    AMGXfree();
+    nek::end();
+  }
 }
 
-void printRuntimeStatistics(int step)
+int runTimeStatFreq()
 {
-  platform_t* platform = platform_t::getInstance(options, comm);
-  platform->timer.printRunStat(step);
+  int freq = 500;
+  platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
+  return freq;
 }
+
+void printRuntimeStatistics(int step) { platform->timer.printRunStat(step); }
 
 void processUpdFile()
 {
@@ -445,6 +438,16 @@ void processUpdFile()
   }
 }
 
+void printInfo(double time, int tstep) { timeStepper::printInfo(nrs, time, tstep); }
+
+void verboseInfo(bool enabled)
+{
+  platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
+  if(enabled) platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
+}
+
+void updateTimer(const std::string &key, double time) { platform->timer.set(key, time); }
+
 } // namespace
 
 static void setOccaVars()
@@ -452,14 +455,17 @@ static void setOccaVars()
   std::string cache_dir;
   cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
 
-  if (!getenv("OCCA_CACHE_DIR"))
-    occa::env::OCCA_CACHE_DIR = cache_dir + "/occa/";
+  if (!getenv("OCCA_CACHE_DIR")) {
+    const std::string path= cache_dir + "/occa/";
+    occa::env::OCCA_CACHE_DIR = path;
+    setenv("OCCA_CACHE_DIR", path.c_str(), 1);
+  }
 
-  std::string install_dir;
-  install_dir.assign(getenv("NEKRS_HOME"));
+  std::string installDir;
+  installDir.assign(getenv("NEKRS_HOME"));
 
   if (!getenv("OCCA_DIR"))
-    occa::env::OCCA_DIR = install_dir + "/";
+    occa::env::OCCA_DIR = installDir + "/";
 
   occa::env::OCCA_INSTALL_DIR = occa::env::OCCA_DIR;
 }

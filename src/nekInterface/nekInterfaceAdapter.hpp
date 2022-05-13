@@ -118,7 +118,7 @@ void   bootstrap();
 void   ifoutfld(int i);
 void   setic(void);
 void   userchk(void);
-int    bcmap(int bid, int ifld);
+int bcmap(int bid, int ifld);
 
 void copyToNek(dfloat time, int tstep);
 void ocopyToNek(void);

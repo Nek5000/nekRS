@@ -42,6 +42,8 @@ public:
   int N;
   dfloat *invCoarseA=NULL;
 
+  occa::memory h_xLocal;
+  occa::memory h_rhsLocal;
   dfloat *xLocal=NULL;
   dfloat *rhsLocal=NULL;
 

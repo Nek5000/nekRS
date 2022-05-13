@@ -2,6 +2,7 @@
 #define nekrs_nrssys_hpp_
 
 #define BLOCKSIZE 256
+#define ALIGN_SIZE 4096
 
 //float data type
 #if 0
@@ -70,6 +71,8 @@ static occa::memory o_NULL;
 
 struct platform_t;
 extern platform_t* platform;
+
+bool useNodeLocalCache();
 
 #define EXIT_AND_FINALIZE(a)  { fflush(stdout); MPI_Finalize(); exit(a); }
 #define ABORT(a)  { fflush(stdout); MPI_Abort(MPI_COMM_WORLD, a); }

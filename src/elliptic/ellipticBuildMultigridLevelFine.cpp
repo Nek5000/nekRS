@@ -50,10 +50,8 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   mesh_t* mesh = elliptic->mesh;
   ellipticBuildPreconditionerKernels(elliptic);
 
-  const int serial = platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP";
-
-  elliptic->var_coeff = 0;
-  elliptic->lambda = (dfloat*) calloc(elliptic->Nfields, sizeof(dfloat)); // enforce lambda = 0
+  elliptic->coeffField = baseElliptic->coeffField;
+  elliptic->coeffFieldPreco = baseElliptic->coeffFieldPreco;
 
 
   if(!strstr(pfloatString,dfloatString)) {
@@ -62,50 +60,36 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
     mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
 
     elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-                                       elliptic->mesh->o_ggeoPfloat,
-                                       mesh->o_ggeo);
+                                       mesh->o_ggeo,
+                                       elliptic->mesh->o_ggeoPfloat);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_DPfloat,
-                                       mesh->o_D);
+                                       mesh->o_D,
+                                       elliptic->mesh->o_DPfloat);
     elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       elliptic->mesh->o_DTPfloat,
-                                       mesh->o_DT);
+                                       mesh->o_DT,
+                                       elliptic->mesh->o_DTPfloat);
   }
 
-  std::string suffix;
-  if(elliptic->elementType == HEXAHEDRA)
-    suffix = "Hex3D";
+  std::string suffix = elliptic->coeffFieldPreco ? "CoeffHex3D" : "Hex3D";
 
   std::string kernelName;
 
+  const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
+
   {
-      kernelName = "ellipticAx" + suffix;
-      {
-        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-        elliptic->AxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-      }
-
-      if(!strstr(pfloatString,dfloatString)) {
-        kernelName = "ellipticAx" + suffix;
-        const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-        elliptic->AxPfloatKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-      }
-
       if(elliptic->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
         kernelName = "ellipticPartialAxTrilinear" + suffix;
       else
         kernelName = "ellipticPartialAx" + suffix;
 
-      if(!serial) {
-        {
-          const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-          elliptic->partialAxKernel = platform->kernels.getKernel(kernelName + kernelSuffix);
-        }
-        if(!strstr(pfloatString,dfloatString)) {
-          const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-          elliptic->partialAxPfloatKernel =
-            platform->kernels.getKernel( kernelName + kernelSuffix);
-        }
+      {
+        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
+        elliptic->AxKernel = platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
+      }
+      {
+        const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
+        elliptic->AxPfloatKernel =
+          platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
       }
   }
 

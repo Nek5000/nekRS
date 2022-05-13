@@ -19,10 +19,10 @@ dlong numRowsSEMFEM;
 
 void ellipticSEMFEMSetup(elliptic_t* elliptic)
 {
-
+  const int verbose = (platform->options.compareArgs("VERBOSE","TRUE")) ? 1: 0;
   const int useFP32 = elliptic->options.compareArgs("SEMFEM SOLVER PRECISION", "FP32");
-  gatherKernel = platform->kernels.getKernel("gather");
-  scatterKernel = platform->kernels.getKernel("scatter");
+  gatherKernel = platform->kernels.get("gather");
+  scatterKernel = platform->kernels.get("scatter");
 
   MPI_Barrier(platform->comm.mpiComm);
   double tStart = MPI_Wtime();
@@ -31,10 +31,13 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
   mesh_t* mesh = elliptic->mesh;
   double* mask = (double*) malloc(mesh->Np*mesh->Nelements*sizeof(double));
   for(int i = 0; i < mesh->Np*mesh->Nelements; ++i) mask[i] = 1.0;
-  for(dlong n = 0; n < elliptic->Nmasked; n++){
-    mask[elliptic->maskIds[n]] = 0.0;
+  if(elliptic->Nmasked > 0){
+    dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
+    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+    for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 0.;
+    free(maskIds);
   }
-  
+ 
   SEMFEMData* data = ellipticBuildSEMFEM(
     mesh->Nq,
     mesh->Nelements,
@@ -109,7 +112,8 @@ void ellipticSEMFEMSetup(elliptic_t* elliptic)
         1, /* Nthreads */
         useDevice ? platform->device.id() : -1,
         0, /* do not use FP32 - hardwired as no runtime switch is available */
-        settings 
+        settings,
+        verbose 
       );
   }
   else if(elliptic->options.compareArgs("SEMFEM SOLVER", "AMGX")){

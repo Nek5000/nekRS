@@ -37,54 +37,52 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
   std::string prefix = "Hex3D";
   std::string kernelName;
 
-  MPI_Barrier(platform->comm.mpiComm);
-  double tStartLoadKernel = MPI_Wtime();
-  if(platform->comm.mpiRank == 0) printf("loading elliptic preconditioner kernels ... ");
-  fflush(stdout);
-
   const std::string orderSuffix = std::string("_") + std::to_string(mesh->N);
 
   {
     kernelName = "mask";
     mesh->maskKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     mesh->maskPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix + "pfloat");
+      platform->kernels.get(kernelName + orderSuffix + "pfloat");
                                  kernelName = "fusedCopyDfloatToPfloat";
     elliptic->fusedCopyDfloatToPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
     kernelName = "copyDfloatToPfloat";
     elliptic->copyDfloatToPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "copyPfloatToDfloat";
     elliptic->copyPfloatToDPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "scaledAdd";
     elliptic->scaledAddPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "dotMultiply";
     elliptic->dotMultiplyPfloatKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "updateSmoothedSolutionVec";
     elliptic->updateSmoothedSolutionVecKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "updateChebyshevSolutionVec";
     elliptic->updateChebyshevSolutionVecKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "updateIntermediateSolutionVec";
     elliptic->updateIntermediateSolutionVecKernel =
-      platform->kernels.getKernel(kernelName + orderSuffix);
+      platform->kernels.get(kernelName + orderSuffix);
+
+    kernelName = "ellipticBlockBuildDiagonalHex3D";
+    const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
+    elliptic->ellipticBlockBuildDiagonalKernel =
+        platform->kernels.get(poissonPrefix + kernelName + orderSuffix);
+
+    elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
+    elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
   }
-
-  MPI_Barrier(platform->comm.mpiComm);
-  if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStartLoadKernel);
-  fflush(stdout);
-
 }

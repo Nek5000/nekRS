@@ -39,21 +39,30 @@
 #include "platform.hpp"
 
 #include "timer.hpp"
+#include <functional>
+#include "ellipticApplyMask.hpp"
 
 #define ELLIPTIC_ENABLE_TIMER
 
-class ResidualProjection;
+#define NO_OP 0
+#define DIRICHLET 1
+#define NEUMANN 2
+#define ZERO_NORMAL 3
+#define ZERO_TANGENTIAL 4
+
+class SolutionProjection;
 class elliptic_t;
 
 struct GmresData{
   GmresData(elliptic_t*);
-  int restart;
+  int nRestartVectors;
   int flexible;
   deviceVector_t o_V;
   deviceVector_t o_Z;
   occa::memory o_y;
   occa::memory o_scratch;
   occa::memory h_scratch;
+  occa::memory h_y;
   dfloat* y;
   dfloat* H;
   dfloat* sn;
@@ -64,11 +73,15 @@ struct GmresData{
 
 struct elliptic_t
 {
+  static constexpr double targetBenchmark {0.1};
   static constexpr int NScratchFields {4};
+  static constexpr int minNFDMOverlap{4};
   int dim;
   int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
-  int var_coeff;   // flag for variable coefficient
+  int coeffField;        // flag for variable coefficient (solver)
+  int coeffFieldPreco;   // flag for variable coefficient (preconditioner)
   int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
+  int poisson; 
 
   std::string name;
 
@@ -91,13 +104,7 @@ struct elliptic_t
 
   dfloat tau;
 
-  int* BCType;
-  int NBCType;
-
-  int* allBlockNeumann;
   bool allNeumann;
-  dfloat allNeumannPenalty;
-  dfloat allNeumannScale;
 
   // HOST shadow copies
   dfloat* invDegree;
@@ -106,19 +113,16 @@ struct elliptic_t
 
   occa::memory o_wrk;
 
-  //C0-FEM mask data
-  int* mapB;      // boundary flag of face nodes
+  // C0-FEM mask data
   dlong Nmasked;
-  dlong* fNmasked;
-
-  dlong* maskIds;
-  hlong* maskedGlobalIds;
+  dlong NmaskedLocal;
+  dlong NmaskedGlobal;
 
   occa::memory o_maskIds;
-  occa::memory o_mapB;
+  occa::memory o_maskIdsGlobal;
+  occa::memory o_maskIdsLocal;
 
-  occa::stream defaultStream;
-  occa::stream dataStream;
+  occa::memory o_EToB;
 
   occa::memory o_x;
   occa::memory o_x0;
@@ -128,21 +132,13 @@ struct elliptic_t
   occa::memory o_res;
   occa::memory o_Ap; // A*search direction
   occa::memory o_invDegree;
-  occa::memory o_EToB;
+  occa::memory o_interp; // interpolate (r,s,t)F -> (r,s,t)C for variable properties
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
-  occa::memory o_gllzw; // GLL nodes and weights
 
   occa::kernel AxKernel;
-  occa::kernel AxStressKernel;
   occa::kernel AxPfloatKernel;
-  occa::kernel partialAxKernel;
-  occa::kernel partialAxKernel2;
-  occa::kernel partialAxPfloatKernel;
-  occa::kernel partialCubatureAxKernel;
 
-  occa::kernel rhsBCKernel;
-  occa::kernel addBCKernel;
   occa::kernel scaledAddPfloatKernel;
   occa::kernel dotMultiplyPfloatKernel;
   occa::kernel copyDfloatToPfloatKernel;
@@ -172,19 +168,21 @@ struct elliptic_t
 
   hlong NelementsGlobal;
 
-  occa::kernel updateDiagonalKernel;
+  occa::kernel ellipticBlockBuildDiagonalKernel;
   occa::memory o_lambda;
-  dfloat* lambda;
+  occa::memory o_lambdaPfloat;
   dlong loffset;
   int nLevels;
   int* levels;
 
-  ResidualProjection* residualProjection;
-  GmresData* gmresData;
+  SolutionProjection* solutionProjection;
+  GmresData *gmresData;
+
+  std::function<void(dlong Nelements, occa::memory &o_elementList, occa::memory &o_x)> applyZeroNormalMask;
 };
 
 #include "ellipticMultiGrid.h"
-#include "ellipticResidualProjection.h"
+#include "ellipticSolutionProjection.h"
 
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 
@@ -224,7 +222,8 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 void ellipticOperator(elliptic_t* elliptic,
                       occa::memory &o_q,
                       occa::memory &o_Aq,
-                      const char* precision);
+                      const char* precision,
+                      bool masked = true);
 
 void ellipticAx(elliptic_t* elliptic,
                 dlong NelementsList,
@@ -238,17 +237,13 @@ void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
 
 void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           elliptic_t* ellipticFine,
-                                          dfloat lambda,
                                           nonZero_t** A,
                                           dlong* nnz,
                                           ogs_t** ogs,
                                           hlong* globalStarts);
 
-void ellipticBuildJacobi(elliptic_t* elliptic, dfloat** invDiagA);
-void ellipticUpdateJacobi(elliptic_t* elliptic);
-
-void ellipticBuildLocalPatches(elliptic_t* elliptic, dfloat lambda, dfloat rateTolerance,
-                               dlong* Npataches, dlong** patchesIndex, dfloat** patchesInvA);
+void ellipticMultiGridUpdateLambda(elliptic_t* elliptic);
+void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA);
 
 void ellipticMultiGridSetup(elliptic_t* elliptic, precon_t* precon);
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf);
@@ -256,8 +251,18 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,
                           occa::memory &o_x, occa::memory &o_r);
 
-occa::properties ellipticKernelInfo(int N);
-
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q);
 
+void ellipticOgs(mesh_t *mesh,
+                 dlong mNlocal,
+                 int nFields,
+                 dlong offset,
+                 int *EToB,
+                 dlong &Nmasked,
+                 occa::memory &o_maskIds,
+                 dlong &NmaskedLocal,
+                 occa::memory &o_maskIdsLocal,
+                 dlong &NmaskedGlobal,
+                 occa::memory &o_maskIdsGlobal,
+                 ogs_t **ogs);
 #endif

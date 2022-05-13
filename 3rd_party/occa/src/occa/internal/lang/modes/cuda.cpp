@@ -129,11 +129,13 @@ namespace occa {
             // Set kernel qualifiers
            vartype_t &vartype = kernelSmnt.function().returnType;
 
+           const bool addLaunchBounds = !settings.get("okl/no_launch_bounds", false);
            dim kernelInnerDims = innerDims(kernelSmnt);
            if (!success) return;
+
            int kernelInnerDim = kernelInnerDims[0];
            for(int i=1; i < kernelInnerDims.dims; i++) kernelInnerDim *= kernelInnerDims[i];
-           if(kernelInnerDim) {
+           if(kernelInnerDim && addLaunchBounds) {
              const std::string s = "__launch_bounds__(" + std::to_string(kernelInnerDim) + ")";
              qualifier_t *boundQualifier = new qualifier_t(s, qualifierType::custom);
              vartype.qualifiers.addFirst(vartype.origin(), 

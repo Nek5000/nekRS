@@ -73,6 +73,8 @@ typedef HYPRE_Int (*HYPRE_PtrToModifyPCFcn)(HYPRE_Solver,
  **/
 /*@{*/
 
+#pragma GCC visibility push(default)
+
 /**
  * Create a solver object.
  **/
@@ -3705,6 +3707,8 @@ HYPRE_MGRGetNumIterations( HYPRE_Solver solver, HYPRE_Int *num_iterations );
 HYPRE_Int
 HYPRE_MGRGetFinalRelativeResidualNorm(  HYPRE_Solver solver, HYPRE_Real *res_norm );
 
+#pragma GCC visibility pop
+
 /*@}*/
 
 /*--------------------------------------------------------------------------
@@ -3815,6 +3819,8 @@ GenerateCoordinates(MPI_Comm  comm,
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
+#pragma GCC visibility push(default)
+
 /*
  * (Optional) Switches on use of Jacobi interpolation after computing
  * an original interpolation
@@ -3861,6 +3867,8 @@ HYPRE_Int HYPRE_BoomerAMGSetCRUseCG(HYPRE_Solver solver,
 HYPRE_Int HYPRE_BoomerAMGSetISType(HYPRE_Solver solver,
                                    HYPRE_Int    IS_type);
 
+#pragma GCC visibility pop
+
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
@@ -3902,7 +3910,6 @@ hypre_ParCSRMultiVectorPrint(void *x_, const char *fileName);
  **/
 void *
 hypre_ParCSRMultiVectorRead(MPI_Comm comm, void *ii_, const char *fileName);
-
 
 /*@}*/
 
