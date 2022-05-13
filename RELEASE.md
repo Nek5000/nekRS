@@ -11,7 +11,7 @@
 
 ## Good to know
 
-* OpenCL support is disabled by default 
+* OpenCL support is now disabled by default 
 
 ## Breaking Changes
 
@@ -22,10 +22,12 @@
 * [par] Remove `preconditioner=semg` and `preconditioner=semg_amg`
 * [udf] Rename plug-in name `avg`  => `tavg`
 * [udf] Rename `udf.converged` => `udf.timeStepConverged`
+* [nrsconfig] Rename env-var `AMGX_ENABLE` => `ENABLE_AMGX`
 
 ## Known Bugs / Restrictions
 
 * Mesh solver does not support CHT and unaligned sym/shl BCs
+* [729](https://github.com/Nek5000/Nek5000/issues/759)
 * [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 

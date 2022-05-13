@@ -524,7 +524,10 @@ oogs_t* oogs::setup(ogs_t *ogs, int nVec, dlong stride, const char *type, std::f
           case OOGS_DEVICEMPI: gsModeStr = "+device"; break;
         }
         printf("\nused config: %s%s%s ", gsModeExchangeStr.c_str(), gsEarlyPrepostRecvStr.c_str(), gsModeStr.c_str());
-        printf("(MPI: %.2es / bi-bw: %.1fGB/s/rank)\n", elapsedMinMPI, nBytesExchange/elapsedMinMPI/1e9);
+        if(elapsedMinMPI > MPI_Wtick())
+          printf("(MPI: %.2es / bi-bw: %.1fGB/s/rank)\n", elapsedMinMPI, nBytesExchange/elapsedMinMPI/1e9);
+        else
+          printf("\n");
       } else {
         printf("\nused config: local\n");
       }
