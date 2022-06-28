@@ -84,7 +84,7 @@ static void findInterpPoints(nrs_t* nrs){
                                       nf1, bb_tol, ntot, ntot, npt_max, tol,
                                       &device);
 
-  constexpr dlong faceMap[6] = {5, 0, 1, 2, 3, 4};
+  constexpr dlong faceMap[6] = {4, 0, 1, 2, 3, 5};
 
   dlong num_interp_faces = 0;
   dlong *intflag = (dlong*)nek::ptr("intflag");
