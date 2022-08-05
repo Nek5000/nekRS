@@ -1,21 +1,28 @@
 #/bin/bash
 
 : ${PROJ_ID:=""}
+: ${QUEUE:="batch"} # batch, batch-hm, debug
+
+ : ${NEKRS_HOME:="$HOME/.local/nekrs"} 
+ #: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
+
+
+if [ $# -ne 6 ]; then
+  echo "usage: [PROJ_ID] [CPUONLY=1] $0 <caseA> <caseB> <#compute nodes> <procsA> <procsB> <hh:mm>"
+  echo "not $# args"
+  exit 0
+fi
 
 if [ -z "$PROJ_ID" ]; then
   echo "ERROR: PROJ_ID is empty"
   exit 1
 fi
-
-if [ $# -ne 6 ]; then
-  echo "usage: [PROJ_ID] [CPUONLY=1] $0 <case1> <case2> <number of compute nodes> <procsA> <procsB>  <hh:mm>"
-  echo "not $# args"
-  exit 0
+if [ -z "$QUEUE" ]; then
+  echo "ERROR: QUEUE is empty"
+  exit 1
 fi
 
-: ${NEKRS_HOME:="$HOME/.local/nekrs"}
-: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
-NVME_HOME="/mnt/bb/$USER/"
+export NVME_HOME="/mnt/bb/$USER/"
 
 # temporary load xl modules for OLCF_XLC_ROOT
 module load xl
@@ -26,12 +33,12 @@ module load gcc
 
 : ${CPUONLY:=0}
 export NEKRS_HOME
-export OCCA_CACHE_DIR
+#export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
 if [ $CPUONLY -eq 1 ]; then
-  export OCCA_CXX="$XL_HOME/bin/xlc++" 
-  export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64" 
+  export OCCA_CXX="$XL_HOME/bin/xlc++"
+  export OCCA_CXXFLAGS="-O3 -qarch=pwr9 -qhot -DUSE_OCCA_MEM_BYTE_ALIGN=64"
   export OCCA_LDFLAGS="$XL_HOME/lib/libibmc++.a"
 fi
 
@@ -61,9 +68,11 @@ module load gcc
 bin=$NEKRS_HOME/bin/nekrs
 caseA=$1
 caseB=$2
+
 nodes=$3
 procsA=$4
 procsB=$5
+
 gpu_per_node=6
 cores_per_socket=21
 let nn=$nodes*$gpu_per_node
@@ -75,65 +84,56 @@ if [ $CPUONLY -eq 1 ]; then
   backend=CPU
   let nn=2*$nodes
   let ntasks=$nn*$cores_per_socket
-fi 
+fi
+
+let nn_chk=$procsA+$procsB
+if [[ $nn_chk -ne $nn ]]; then
+  echo "#mpi: "$procsA"+"$procsB" does not match "$nodes" nodes!"
+  exit 1
+fi
 
 if [ ! -f $bin ]; then
   echo "Cannot find" $bin
   exit 1
 fi
 
-if [ ! -f $caseA.par ]; then
-  echo "Cannot find" $caseA.par
+if [ ! -d $caseA ]; then
+  echo "Cannot find folder" $caseA
   exit 1
 fi
 
-if [ ! -f $caseA.udf ]; then
-  echo "Cannot find" $caseA.udf
+if [ ! -d $caseB ]; then
+  echo "Cannot find folder" $caseB
   exit 1
 fi
 
-if [ ! -f $caseA.oudf ]; then
-  echo "Cannot find" $caseA.oudf
-  exit 1
-fi
+list=($caseA/$caseA.par $caseA/$caseA.udf $caseA/$caseA.oudf $caseA/$caseA.re2\
+      $caseB/$caseB.par $caseB/$caseB.udf $caseB/$caseB.oudf $caseB/$caseB.re2)
+for f in ${list[@]}; do
+  if [ ! -f $f ]; then
+    echo "Cannot find" $f
+    exit 1
+  fi
+done
 
-if [ ! -f $caseA.re2 ]; then
-  echo "Cannot find" $caseA.re2
-  exit 1
-fi
+# NekNek sess file
+NNSESS="neknek.sess"
+echo $caseA"/"$caseA":"$procsA";" >  $NNSESS
+echo $caseB"/"$caseB":"$procsB";" >> $NNSESS
 
-if [ ! -f $caseB.par ]; then
-  echo "Cannot find" $caseB.par
-  exit 1
-fi
 
-if [ ! -f $caseB.udf ]; then
-  echo "Cannot find" $caseB.udf
-  exit 1
-fi
-
-if [ ! -f $caseB.oudf ]; then
-  echo "Cannot find" $caseB.oudf
-  exit 1
-fi
-
-if [ ! -f $caseB.re2 ]; then
-  echo "Cannot find" $caseB.re2
-  exit 1
-fi
-
-mkdir -p $OCCA_CACHE_DIR 2>/dev/null
+#mkdir -p $OCCA_CACHE_DIR 2>/dev/null
 
 while true; do
   read -p "Do you want precompile (recommended)? [N]" yn
   case $yn in
     [Yy]* )
       echo $NEKRS_HOME
-      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $caseA --build-only $procsA --backend $backend;
+      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $caseA/$caseA --build-only $procsA --backend $backend;
       if [ $? -ne 0 ]; then
         exit 1
       fi
-      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $caseB --build-only $procsB --backend $backend;
+      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $caseB/$caseB --build-only $procsB --backend $backend;
       if [ $? -ne 0 ]; then
         exit 1
       fi
@@ -143,14 +143,16 @@ while true; do
   esac
 done
 
-export IO_STEPS="jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME; touch nekRS_${caseA}.\\\${LSB_JOBID}; ln -sf nekRS_${caseA}.\\\${LSB_JOBID} ${caseA}.log.${procsA}; touch nekRS_${caseB}.\\\${LSB_JOBID}; ln -sf nekRS_${caseB}.\\\${LSB_JOBID} ${caseB}.log.${procsB}; "
 
 if [ $CPUONLY -eq 1 ]; then
-  jsrun="$IO_STEPS jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup ${caseA},${caseB} --backend $backend --neknek 2 --neknek-procs ${procsA},${procsB}" 
+  jsrun="jsrun -X 1 -n$nn -a$cores_per_socket -c$cores_per_socket -g0 -b packed:1 -d packed $bin --setup ${NNSESS} --backend $backend"
 else
-  jsrun="$IO_STEPS jsrun --smpiargs='-gpu' -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup ${caseA},${caseB} --backend $backend --device-id 0 --neknek 2 --neknek-procs ${procsA},${procsB}" 
+  jsrun="jsrun --smpiargs='-gpu' -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup ${NNSESS} --backend $backend --device-id 0"
 fi
 
-cmd="bsub -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_${caseA},${caseB} \"${jsrun}\""
+cmd="bsub -q $QUEUE -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_${caseA}_${caseB} \"${jsrun}\""
 echo $cmd
 $cmd
+
+
+
